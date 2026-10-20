@@ -519,7 +519,7 @@ def test_ambiguous_union_literal_is_not_covered(excluded) -> None:
 def test_native_container_of_float_records(artifacts) -> None:
     fn = artifacts[1]["points"]
     param = next(s for s in fn.slots if s.name == "ps")
-    assert param.shape.holding is MIRHolding.REGION
+    assert param.shape.holding is MIRHolding.POINTER
     element = param.shape.element
     assert element.cls is MIRClass.RECORD and element.type.name == "Point"
     point, = (r for r in fn.records if r.type == element.type)

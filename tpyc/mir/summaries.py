@@ -8,25 +8,27 @@ from ..type_def_registry import ParamPassing
 from ..typesys import TpyType, receiver_neutral_return
 from .call_contract import (
     BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRAliasObligation, MIRCallSummary, MIRGlobalId,
-    MIRLoanTransfer, MIRParameterBinding, MIRParameterWrite, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, bound_params, call_result, function_binding, obligation_problem, parameter_binding, path_hops,
-    return_origin_problem, summary_problem, transfer_ends, write_problem,
+    MIRLoanTransfer, MIRParameterWrite, MIRPathWalks, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
+    MIRSummaryState, bound_params, call_result, function_binding, obligation_problem, parameter_binding,
+    return_origin_problem, summary_problem, write_problem, summary_path,
 )
 from .call_effects import resolve_call_writes
-from .shapes import view_member
-from .coverage import MIRUnsupported, payload_record_path, summary_path, whole_wrapper_field
+from .shapes import (
+    MIRContainerElements, MIRContainerStructure, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload, object_prefix,
+)
+from .coverage import MIRUnsupported, whole_wrapper_field
 from .definitions import MIRDefinitions
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents, seeded_loan
 from .liveness import MIRLiveness, analyze_liveness
 from .retention import alias_obligation, analyze_body_retention, parameter_indices
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct,
-    MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRFunction, MIRIsPresent, MIRIteratorAdvance,
-    MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn,
-    MIRPlace, MIRSlot, MIRSlotKind, MIRSlotId, MIRTupleIndex, MIRUnionPayload, statement_call,
+    MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
+    MIRFunction, MIRIsPresent, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove,
+    MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead,
+    MIRRecordStorageInit, MIRReturn, MIRPlace, MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk,
+    under_object, view_member,
 )
-from .value import CONTAINER_CLASSES, MIRField, MIRFieldId, MIRHolding, lent_record
+from .value import CONTAINER_CLASSES, MIRField, MIRShape, Records, lent_record
 from .validate import owned_leaf_place_type, statement_reads, validate_function
 
 # The passings that lend storage to the callee without a copy; a template
@@ -124,43 +126,34 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     return frozenset((handed_over - excluded) | (records - handed_over - foreign))
 
 
-def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
-    """Whether `source` reaches through inline record members of storage the
-    summary accounts for: under a live borrowed record (one leading
-    dereference of its holder) or under the body's private record storage,
-    one or more fields, every one before the last a record member or an
-    Optional record field followed by its inline payload (a selection the
-    body's presence proof checked). The last step is the caller's to
-    classify."""
-    path = source.projections
-    if slots[source.root].shape.is_pointer and path[:1] == (MIRDeref(),):
-        steps = path[1:]
-    elif (under := payload_record_path(source, slots)) is not None:
-        # The record an Optional holder's payload points at (its presence proof checked).
-        steps = under
-    elif source.root in private:
-        steps = path
-    else:
-        return False
-    for index, step in enumerate(steps):
-        if isinstance(step, MIROptionalPayload):
-            previous = steps[index - 1] if index else None
-            if not (isinstance(previous, MIRField) and value_class(previous.type) is MIRClass.OPTIONAL):
-                return False
-        elif not isinstance(step, MIRField):
-            return False
-        elif index < len(steps) - 1 and not (value_class(step.type) is MIRClass.RECORD
-                                             or isinstance(steps[index + 1], MIROptionalPayload)):
-            return False
-    return bool(steps)
-
-
-def _path_in_layouts(declaration: th.THIRFunction, definitions: MIRDefinitions, binding: MIRParameterBinding,
-                     path: tuple[object, ...], place: MIRPlace) -> bool:
-    """Whether each field of a published path is a member of the layout of
-    the storage its hop reads: the parameter's record, then each member's."""
-    return all(field in definitions.get(declaration, storage).layout.fields
-               for (storage, _), field in zip(path_hops(binding, path), place.projections))
+def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
+                  records: Records) -> MIRShape | None:
+    """What `source` reaches through inline record members of storage the
+    summary accounts for, or None when it reaches none: under a live
+    borrowed record (one leading dereference of its holder) or under the
+    body's private record storage, one or more fields, every one before
+    the last a record member or an Optional record field followed by its
+    inline payload (a selection the body's presence proof checked). The
+    end is the caller's to classify."""
+    # The record a holder points at, or an Optional holder's payload points
+    # at (its presence proof checked).
+    steps = under_object(source, slots, payload=True)
+    if steps is None and source.root in private:
+        steps = source.projections
+    if not steps:
+        return None
+    hops = place_walk(source, slots, records).hops[-len(steps):]
+    for index, hop in enumerate(hops):
+        if isinstance(hop.projection, MIROptionalPayload):
+            # The payload of an Optional field, never of a wrapper member.
+            if not (index and isinstance(hops[index - 1].projection, MIRField)):
+                return None
+        elif not isinstance(hop.projection, MIRField):
+            return None
+        elif index < len(hops) - 1 and not (hop.reached.cls is MIRClass.RECORD
+                                            or isinstance(hops[index + 1].projection, MIROptionalPayload)):
+            return None
+    return hops[-1].reached
 
 
 def _transfers(body: MIRFunction, dependencies: MIRDependencies,
@@ -180,7 +173,7 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
         holder: int | MIRResultHolder
         if store.result:
             holder = MIR_RESULT
-        elif (slots[store.key.root].shape.is_pointer
+        elif (lent_record(slots[store.key.root].shape) is not None
               or slots[store.key.root].shape.cls is MIRClass.OPTIONAL):
             # A lent record parameter's object, or the payload record an
             # Optional parameter lends (`object_keys`).
@@ -191,7 +184,7 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
             # What a body stores in an `Own[R]` parameter's object, the caller
             # never reads again: its argument is a temporary of the call.
             continue
-        path = summary_path(store.key)
+        path = summary_path(store.key.projections)
         for ref in store.loans:
             if not store.result and ref == seeded_loan(store.key):
                 # The lent object's own loan, which the caller's weak join keeps.
@@ -203,7 +196,7 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
             if index is None:
                 return "summary transfer source outside the parameters"
             if ref.held:
-                found.add(MIRLoanTransfer(holder, path, index, summary_path(ref.place)))
+                found.add(MIRLoanTransfer(holder, path, index, summary_path(ref.place.projections)))
             elif not ref.place.projections:
                 found.add(MIRLoanTransfer(holder, path, index))
             else:
@@ -213,39 +206,25 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
     return frozenset(found)
 
 
-def _transfer_in_layouts(declaration: th.THIRFunction, definitions: MIRDefinitions,
-                         bindings: tuple[MIRParameterBinding, ...], transfer: MIRLoanTransfer,
-                         result: TpyType) -> bool:
-    """Whether each field of a transfer's paths is a member of the layout
-    of the storage its hop reads (`_path_in_layouts`)."""
-    for end in transfer_ends(transfer, bindings, result):
-        hops = (None if end is None else end.owned_hops if end.parameter is None
-                else path_hops(bindings[end.parameter], end.path))
-        if hops is None or not all(MIRField(MIRFieldId(field.owner, field.name), field.type)
-                                   in definitions.get(declaration, storage).layout.fields for storage, field in hops):
-            return False
-    return True
-
-
-def _record_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
+def _record_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
+                   records: Records) -> bool:
     """Whether `place` is an inline record member of storage the summary
     accounts for (`_member_chain`): a whole member a write replaces in
     place or a copy reads, or an Optional record field's payload a holder
     borrows."""
-    last = place.projections[-1] if place.projections else None
-    return (_member_chain(place, slots, private)
-            and (isinstance(last, MIROptionalPayload) or value_class(last.type) is MIRClass.RECORD))
+    end = _member_chain(place, slots, private, records)
+    return end is not None and end.cls is MIRClass.RECORD
 
 
-def _optional_place(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
+def _optional_place(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
+                    records: Records) -> bool:
     """Whether `place` is a whole Optional: a holder slot, or an Optional
     record field of storage the summary accounts for (`_member_chain`):
     replaced, tested or copied."""
     if not place.projections:
         return slots[place.root].shape.cls is MIRClass.OPTIONAL
-    last = place.projections[-1]
-    return (isinstance(last, MIRField) and value_class(last.type) is MIRClass.OPTIONAL
-            and _member_chain(place, slots, private))
+    end = _member_chain(place, slots, private, records)
+    return end is not None and end.cls is MIRClass.OPTIONAL
 
 
 def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, MIRSlot]) -> bool:
@@ -253,7 +232,7 @@ def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, 
     container place itself borrowed by a container holder. Wrapper payloads
     stay out: selecting one needs a presence proof."""
     # An Optional holder's payload record (its presence proof checked) is a record like any other.
-    path = payload_record_path(source, slots)
+    path = under_object(source, slots, payload=True)
     if path is None:
         path = source.projections
     if any(isinstance(p, (MIROptionalPayload, MIRUnionPayload, MIRTupleIndex)) for p in path):
@@ -327,6 +306,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         return private[0]
 
     global_reads: set[MIRGlobalId] = set()
+    # The records whose definitions must verify (checked once, below): each
+    # a slot holds, then each a published path reads a field of.
+    verified: dict[TpyType, None] = {}
     for slot in body.slots:
         if slot.kind is MIRSlotKind.GLOBAL:
             # A handle the body only reads; a write refuses at its statement.
@@ -335,9 +317,13 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         shape = slot.shape
         if slot.shape.is_scalar:
             pass
-        elif slot.shape.view_holder or slot.shape.container_view_holder:
-            # A view holds a loan on owned-leaf or container storage; the
-            # container it views is verified where it is held.
+        elif shape.cls in CONTAINER_CLASSES:
+            # Whatever holds a container (its storage, a pointer at it, a
+            # view, a cursor): a record element is destroyed and copied by
+            # the container itself.
+            records = tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
+        elif slot.shape.view_holder:
+            # A view holds a loan on owned-leaf storage.
             pass
         elif shape.is_pointer:
             records = (slot.type,)
@@ -350,8 +336,6 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             # handed to, or the caller it is returned to -- runs no hook,
             # so its definition must be hook-free.
             records = (slot.type,)
-        elif shape.holding is MIRHolding.CURSOR or slot.shape.whole_container:
-            pass
         elif shape.cls is MIRClass.OPTIONAL and shape.payload.scalar_by_value:
             pass
         elif slot.shape.record_payload:
@@ -359,14 +343,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             records = (lent_record(shape).type,)
         else:
             return MIRSummaryResult.opaque("summary storage or value shape")
-        if shape.cls in CONTAINER_CLASSES:
-            # A record element is destroyed and copied by the container.
-            records = tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
-        for typ in records:
-            try:
-                definitions.get(declaration, typ)
-            except MIRUnsupported as failure:
-                return MIRSummaryResult.opaque(f"summary record: {failure.reason}")
+        verified.update(dict.fromkeys(records))
     for consumed in body.call_summaries:
         global_reads.update(consumed.global_reads)
     dependencies = dependency_facts()
@@ -390,11 +367,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             # layout of the storage its hop reads.
             index = parameters[origin.place.root]
             place = whole_wrapper_field(origin.place)
-            write = MIRParameterWrite(index, summary_path(place))
-            if write_problem(write, tuple(bindings)) is not None:
-                return "summary unsupported write origin"
-            if not _path_in_layouts(declaration, definitions, bindings[index], write.path, place):
-                return "summary write field differs from definition"
+            write = MIRParameterWrite(index, summary_path(place.projections))
+            problem = write_problem(write, tuple(bindings), definitions.layouts)
+            if problem is not None:
+                return f"summary unsupported write origin: {problem}"
             writes.add(write)
         return None
 
@@ -427,11 +403,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # chain through its inline members, under the one grammar
                     # and endpoint rule a caller checks the origin by; each field
                     # must be a member of the layout of the storage its hop reads.
-                    returned = MIRReturnOrigin(index, summary_path(origin.place))
-                    if return_origin_problem(returned, result, tuple(bindings)) is not None:
-                        return MIRSummaryResult.opaque("summary unsupported return origin")
-                    if not _path_in_layouts(declaration, definitions, bindings[index], returned.path, origin.place):
-                        return MIRSummaryResult.opaque("summary return field differs from definition")
+                    returned = MIRReturnOrigin(index, summary_path(origin.place.projections))
+                    problem = return_origin_problem(returned, result, tuple(bindings), definitions.layouts)
+                    if problem is not None:
+                        return MIRSummaryResult.opaque(f"summary unsupported return origin: {problem}")
                     returns.add(returned)
         for index, stmt in enumerate(block.statements):
             state = dependencies.referents.get(MIRPoint(block.id, index), {})
@@ -466,14 +441,14 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             origins = (resolve_referents(stmt.target, state, slots, record_layouts) if stmt.target.projections
                        else frozenset())
             # A whole record replaced through a holder of the body's private storage (a reseat).
-            private_target = (stmt.target.projections == (MIRDeref(),) and bool(origins)
+            private_target = (stmt.target.projections == object_prefix(target.shape, payload=False) and bool(origins)
                               and all(not o.external and not o.place.projections
                                       and o.place.root in private_records() for o in origins))
             # An inline record member replaced whole: published as a write of
             # the member under a parameter, nothing under private storage.
-            member = _record_member(stmt.target, slots, private_records())
+            member = _record_member(stmt.target, slots, private_records(), record_layouts)
             # An Optional record field replaced whole: published like a member.
-            wrapper = _optional_place(stmt.target, slots, private_records())
+            wrapper = _optional_place(stmt.target, slots, private_records(), record_layouts)
             if stmt.storage_write is not None and not (
                     leaf_place or own_storage or elements or private_target or member or wrapper):
                 return MIRSummaryResult.opaque("summary storage operation")
@@ -491,11 +466,13 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # A record holder of the body's private storage.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
-                                                  and payload_record_path(source, slots) == ()):
+                                                  and slots[source.root].shape.record_payload
+                                                  and under_object(source, slots, payload=True) == ()):
                     # A record holder of what an Optional holder's payload points at.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
-                                                  and _record_member(source, slots, private_records())):
+                                                  and _record_member(source, slots, private_records(),
+                                                                     record_layouts)):
                     # A record holder of an inline member: the dependency pass
                     # tracks it to the member's place, so a write through it is
                     # published (or kept private) by its origin, and a returned
@@ -505,7 +482,8 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # A record copied into the body's private storage.
                     pass
                 case MIRCopy(source=source) if member and (
-                        source.projections in ((), (MIRDeref(),)) or _record_member(source, slots, private_records())
+                        source.projections in ((), object_prefix(slots[source.root].shape, payload=False))
+                        or _record_member(source, slots, private_records(), record_layouts)
                         or _container_access(source, target, slots)):
                     # A record copied into a member: a read of the body's own
                     # storage, of what a holder points at, of another member or
@@ -531,9 +509,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                             slots[source.root].shape.payload.scalar_by_value):
                         # A scalar Optional's payload, under its presence proof.
                         pass
-                    elif path and not (_member_chain(source, slots, private_records())
-                                       and value_class(path[-1].type) is MIRClass.LEAF):
-                        return MIRSummaryResult.opaque("summary unsupported read projection")
+                    elif path:
+                        end = _member_chain(source, slots, private_records(), record_layouts)
+                        if end is None or end.cls is not MIRClass.LEAF:
+                            return MIRSummaryResult.opaque("summary unsupported read projection")
                 case MIRAlias():
                     if not target.shape.borrow_holder:
                         return MIRSummaryResult.opaque("summary unsupported alias")
@@ -550,34 +529,43 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # A holder rebound, or a field emptied or engaged with a
                     # temporary moved into the payload.
                     pass
-                case MIROptionalCopy(source=source) if wrapper and _optional_place(source, slots, private_records()):
+                case MIROptionalCopy(source=source) if wrapper and _optional_place(
+                        source, slots, private_records(), record_layouts):
                     # Another Optional's payload copied in, or a holder rebound.
                     pass
-                case MIRIsPresent(source=source) if _optional_place(source, slots, private_records()):
+                case MIRIsPresent(source=source) if _optional_place(source, slots, private_records(),
+                                                                    record_layouts):
                     pass
                 case _:
                     return MIRSummaryResult.opaque("summary unsupported operation")
     transfers = _transfers(body, dependencies, parameters)
     if isinstance(transfers, str):
         return MIRSummaryResult.opaque(transfers)
-    for transfer in transfers:
-        if not _transfer_in_layouts(declaration, definitions, tuple(bindings), transfer, callee.signature.return_type):
-            return MIRSummaryResult.opaque("summary transfer field differs from definition")
     summary = MIRCallSummary(callee, tuple(bindings),
                              frozenset(range(len(bindings))), frozenset(writes), frozenset(),
                              frozenset(returns), transfers, not body.exceptional_exits,
                              frozenset(global_reads))
-    obligations = _obligations(declaration, body, definitions, summary, liveness, dependencies)
+    obligations = _obligations(body, definitions, summary, liveness, dependencies)
     if isinstance(obligations, str):
         return MIRSummaryResult.opaque(obligations)
     summary = replace(summary, obligations=obligations)
-    problem = summary_problem(summary)
+    walks: MIRPathWalks = {}
+    problem = summary_problem(summary, definitions.layouts, walks)
     if problem is not None:
         return MIRSummaryResult.opaque(problem)
+    # A layout alone, which a refused definition keeps, publishes no path
+    # through the record.
+    verified.update(dict.fromkeys(hop.holder.type for walked in walks.values() for hop in walked.hops
+                                  if isinstance(hop.projection, MIRField)))
+    for typ in verified:
+        try:
+            definitions.get(declaration, typ)
+        except MIRUnsupported as failure:
+            return MIRSummaryResult.opaque(f"summary record: {failure.reason}")
     return MIRSummaryResult(MIRSummaryState.KNOWN, summary=summary)
 
 
-def _obligations(declaration: th.THIRFunction, body: MIRFunction, definitions: MIRDefinitions,
+def _obligations(body: MIRFunction, definitions: MIRDefinitions,
                  summary: MIRCallSummary, liveness: MIRLiveness, dependencies: MIRDependencies
                  ) -> frozenset[MIRAliasObligation] | str:
     """The no-alias obligations the body's retention conflicts between two
@@ -593,9 +581,7 @@ def _obligations(declaration: th.THIRFunction, body: MIRFunction, definitions: M
     found: set[MIRAliasObligation] = set()
     for conflict in retention.conflicts:
         obligation = alias_obligation(conflict, parameters)
-        if (obligation is None or obligation_problem(obligation, summary) is not None
-                or not _path_in_layouts(declaration, definitions, summary.parameters[obligation.parameter],
-                                        obligation.path, whole_wrapper_field(conflict.retained.place))):
+        if obligation is None or obligation_problem(obligation, summary, definitions.layouts) is not None:
             continue
         found.add(obligation)
     return frozenset(found)

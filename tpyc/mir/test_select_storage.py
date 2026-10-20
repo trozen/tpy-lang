@@ -13,10 +13,11 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionTy
 from . import lower as lowering
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRead,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRTupleConstruct, MIRTupleIndex, MIRUnionConstruct, MIRUnionPayload,
+    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIROptionalConstruct, MIRPlace, MIRRead, MIRRecordStorageInit,
+    MIRRecordStorageKind, MIRRecordWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRTupleConstruct, MIRUnionConstruct,
 )
+from .shapes import MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
 from .value import MIRShape
 from .region_flow import MIRRegionFlow
 from .storage_adapter import certify_thir_storage

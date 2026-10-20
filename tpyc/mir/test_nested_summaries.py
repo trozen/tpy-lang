@@ -13,17 +13,17 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import INT32, NominalType
-from .call_contract import MIRSummaryState
+from .call_contract import MIRSummaryState, summary_problem
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import analyze_dependencies
 from .dump import _write_step
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstruct, MIRContainerElements, MIRDeref, MIRFunction, MIRMove, MIROptionalPayload,
-    MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBorrow, MIRConstruct, MIRFunction, MIRMove, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .value import MIRField, MIRFieldId
+from .shapes import MIRContainerElements, MIRDeref, MIROptionalPayload
+from .value import MIRField, MIRFieldId, MIRValidationError
 from .summaries import _member_chain, _private_records, summarize_function
 from .validate import validate_function
 from .testutil import borrowed_shape, leaf_shape
@@ -189,7 +189,6 @@ def shelf_point(s: Shelf) -> readonly[Point]:
 def whole_line(f: Frame) -> Line:
     return f.line
 
-
 def make(x: int32) -> Own[Point]:
     return Point(x, "m")
 
@@ -341,6 +340,38 @@ def test_an_inherited_member_hop_reads_the_parameter_storage_layout(active) -> N
     assert result.state is MIRSummaryState.KNOWN, result.reason
     (write,) = result.summary.writes
     assert [f.owner.name for f in write.path] == ["Base", "Point"]
+    # The contract admits the inherited field with the definitions' layouts;
+    # with none, Base::a is no field Derived itself declares.
+    assert summary_problem(result.summary, active.definitions.layouts) is None
+    assert summary_problem(result.summary, {}) == "field owner mismatch"
+
+
+@pytest.mark.parametrize("name", ["write_scalar", "write_deep", "write_name"])
+def test_a_path_through_a_refused_definition_never_publishes(active, name: str) -> None:
+    # Point's definition refused, its held layout kept: the path walks, and
+    # the summary refuses it for the record its field is read from.
+    point = next(t for t in active.definitions.records if t.name == "Point")
+    refused = object.__new__(MIRDefinitions)
+    object.__setattr__(refused, "records", {**active.definitions.records, point: "refused for the test"})
+    object.__setattr__(refused, "layouts", active.definitions.layouts)
+    assert point in refused.layouts
+    result = summarize_function(active.functions[name], _lowered(active, name), refused)
+    assert result.state is MIRSummaryState.OPAQUE
+    assert result.reason == "summary record: refused for the test"
+
+
+def test_a_return_origin_through_a_refused_definition_never_publishes(active) -> None:
+    # `return ln.a` (`leak`) with Line refused. The record a lent slot holds
+    # is checked first; a second hop's record, which only the path's check
+    # reaches, is pinned by the write cases above (THIR returns no deeper
+    # member yet).
+    assert _spelled(active.verdicts["leak"].summary.summary.returns) == {"param0.a"}
+    line = next(t for t in active.definitions.records if t.name == "Line")
+    refused = object.__new__(MIRDefinitions)
+    object.__setattr__(refused, "records", {**active.definitions.records, line: "refused for the test"})
+    object.__setattr__(refused, "layouts", active.definitions.layouts)
+    result = summarize_function(active.functions["leak"], _lowered(active, "leak"), refused)
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary record: refused for the test"
 
 
 class _Without:
@@ -350,13 +381,18 @@ class _Without:
     def __init__(self, inner: MIRDefinitions, typ_name: str, field: str) -> None:
         self.inner, self.typ_name, self.field = inner, typ_name, field
 
+    def _without(self, typ, layout):
+        if not (isinstance(typ, NominalType) and typ.name == self.typ_name):
+            return layout
+        return replace(layout, fields=tuple(f for f in layout.fields if f.id.name != self.field))
+
     def get(self, node, typ):
         definition = self.inner.get(node, typ)
-        if not (isinstance(typ, NominalType) and typ.name == self.typ_name):
-            return definition
-        layout = definition.layout
-        return replace(definition, layout=replace(
-            layout, fields=tuple(f for f in layout.fields if f.id.name != self.field)))
+        return replace(definition, layout=self._without(typ, definition.layout))
+
+    @property
+    def layouts(self):
+        return {typ: self._without(typ, layout) for typ, layout in self.inner.layouts.items()}
 
 
 @pytest.mark.parametrize(("name", "record", "field"), [
@@ -371,7 +407,8 @@ class _Without:
 def test_a_write_field_missing_from_its_hop_layout_is_refused(active, name: str, record: str, field: str) -> None:
     fn = _lowered(active, name)
     result = summarize_function(active.functions[name], fn, _Without(active.definitions, record, field))
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary write field differs from definition"
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == (
+        "summary unsupported write origin: field missing from record layout")
 
 
 def test_a_returned_member_holder_meets_the_return_rule(active) -> None:
@@ -422,7 +459,8 @@ def test_a_return_field_missing_from_its_hop_layout_is_refused(active, name: str
                                                                 field: str) -> None:
     fn = _lowered(active, name)
     result = summarize_function(active.functions[name], fn, _Without(active.definitions, record, field))
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary return field differs from definition"
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == (
+        "summary unsupported return origin: field missing from record layout")
 
 
 _COVERED = (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED)
@@ -499,7 +537,7 @@ def test_member_chains_admitted(active, shape: str) -> None:
     a, x = MIRField(MIRFieldId(line, "a"), point), MIRField(MIRFieldId(point, "x"), INT32)
     place = {"borrowed": MIRPlace(holder.id, (MIRDeref(), a)), "private": MIRPlace(storage, (a,)),
              "deep": MIRPlace(holder.id, (MIRDeref(), a, x))}[shape]
-    assert _member_chain(place, slots, private)
+    assert _member_chain(place, slots, private, fn.record_layouts) is not None
 
 
 @pytest.mark.parametrize("shape", [
@@ -525,7 +563,13 @@ def test_member_chains_refused(active, shape: str) -> None:
         "payload": MIRPlace(holder.id, (MIRDeref(), a, MIROptionalPayload())),
         "projection": MIRPlace(holder.id, (MIRDeref(), a, MIRContainerElements())),
     }[shape]
-    assert not _member_chain(place, slots, frozenset() if shape == "foreign_root" else private)
+    chain = (place, slots, frozenset() if shape == "foreign_root" else private, fn.record_layouts)
+    if shape in ("scalar_hop", "payload", "projection"):
+        # A hop the place's own walk refuses: no body holds such a place.
+        with pytest.raises(MIRValidationError):
+            _member_chain(*chain)
+    else:
+        assert _member_chain(*chain) is None
 
 
 # --- record temporaries moved into a construct ------------------------------------

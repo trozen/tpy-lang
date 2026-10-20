@@ -15,11 +15,12 @@ from .dependencies import _dependencies
 from .liveness import _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
-    MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRPoint, MIRRead,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
+    MIRFunction, MIRGoto, MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit,
+    MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
+    MIRSlotKind, MIRStorageDuration,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage_evidence import (

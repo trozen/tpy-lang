@@ -14,29 +14,30 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..type_def_registry import ParamPassing
-from ..typesys import NominalType, OwnType
+from ..typesys import INT32, STRVIEW, NominalType, OwnType, ReadonlyType, TupleType
 from .call_contract import (
-    MIR_RESULT, MIR_STATIC, MIRAliasObligation, MIRLoanTransfer, MIRParameterWrite,
-    MIRSummaryState, summary_problem, transfer_problem,
+    MIR_RESULT, MIR_STATIC, MIRAliasObligation, MIRLoanTransfer, MIRParameterWrite, MIRSummaryState, summary_problem,
+    transfer_problem, path_step, summary_path,
 )
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import (
-    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, path_step, record_fill,
+    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, record_fill, resolve_referents,
     seeded_loan, written_record,
 )
+from .shapes import MIRContainerStructure, MIRDeref, MIRTupleIndex
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIRDeref, MIREdge, MIRFunction, MIRPlace,
-    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRTupleIndex,
+    MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIREdge, MIRFunction, MIRPlace,
+    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .value import MIRField, MIRValidationError
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .retention import analyze_retention
 from .storage import analyze_storage, owned_field
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
 from .summaries import summarize_function
 from .validate import validate_function
-from .testutil import bind_parameters, bound, reaccess, reslot
+from .testutil import bind_parameters, borrowed_shape, bound, leaf_shape, reaccess, reslot, tuple_shape
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -223,6 +224,21 @@ def wrapped(k: int32) -> int32:
     t = Tok(b.text, 1)
     w = Wrap(copy(t))
     return len(w.t.s) + t.n
+
+
+class Views:
+    s: StrView
+    views: list[StrView]
+    ns: list[int32]
+
+    def __init__(self, s: StrView, views: list[StrView], ns: list[int32]) -> None:
+        self.s = s
+        self.views = copy(views)
+        self.ns = copy(ns)
+
+
+def views_of(v: Views, views: list[StrView], ns: list[int32]) -> None:
+    pass
 """
 
 
@@ -444,13 +460,18 @@ class _Without:
     def __init__(self, inner: MIRDefinitions, typ_name: str, field: str) -> None:
         self.inner, self.typ_name, self.field = inner, typ_name, field
 
+    def _without(self, typ, layout):
+        if not (isinstance(typ, NominalType) and typ.name == self.typ_name):
+            return layout
+        return replace(layout, fields=tuple(f for f in layout.fields if f.id.name != self.field))
+
     def get(self, node, typ):
         definition = self.inner.get(node, typ)
-        if not (isinstance(typ, NominalType) and typ.name == self.typ_name):
-            return definition
-        layout = definition.layout
-        return replace(definition, layout=replace(
-            layout, fields=tuple(f for f in layout.fields if f.id.name != self.field)))
+        return replace(definition, layout=self._without(typ, definition.layout))
+
+    @property
+    def layouts(self):
+        return {typ: self._without(typ, layout) for typ, layout in self.inner.layouts.items()}
 
 
 @pytest.mark.parametrize("name", ["literal", "ident"])
@@ -458,28 +479,99 @@ def test_a_transfer_field_missing_from_its_layout_is_refused(program: _Program, 
     result = summarize_function(program.functions[name], _lowered(program, name),
                                 _Without(program.definitions, "Tok", "s"))
     assert result.state is MIRSummaryState.OPAQUE
-    assert result.reason == "summary transfer field differs from definition"
+    assert result.reason == "field missing from record layout"
 
 
 def test_transfer_contract_validation(program: _Program) -> None:
     copied = _summary(program, "write_copy")
     path = _path(copied, 0)
     params, result = copied.parameters, copied.callee.signature.return_type
-    assert all(transfer_problem(t, params, result) is None for t in copied.transfers)
+    assert all(transfer_problem(t, params, result, {}) is None for t in copied.transfers)
     holder = "invalid loan transfer holder"
     source = "invalid loan transfer source"
     # The holder ends at a view member of a record lent mutably, or of the owned result.
-    assert transfer_problem(MIRLoanTransfer(0, (), 2), params, result) == holder
-    assert transfer_problem(MIRLoanTransfer(2, path, 1), params, result) == holder
+    assert transfer_problem(MIRLoanTransfer(0, (), 2), params, result, {}) == holder
+    assert transfer_problem(MIRLoanTransfer(2, path, 1), params, result, {}) == holder
     readonly = (reaccess(params[0], True), *params[1:])
-    assert transfer_problem(MIRLoanTransfer(0, path, 2), readonly, result) == holder
-    assert transfer_problem(MIRLoanTransfer(MIR_RESULT, path, 2), params, params[0].type) == holder
+    assert transfer_problem(MIRLoanTransfer(0, path, 2), readonly, result, {}) == holder
+    assert transfer_problem(MIRLoanTransfer(MIR_RESULT, path, 2), params, params[0].type, {}) == holder
     # The source is static storage, a lent leaf of the family, or a view member's loan.
-    assert transfer_problem(MIRLoanTransfer(0, path, MIR_STATIC, path), params, result) == source
-    assert transfer_problem(MIRLoanTransfer(0, path, 1), params, result) == source
+    assert transfer_problem(MIRLoanTransfer(0, path, MIR_STATIC, path), params, result, {}) == source
+    assert transfer_problem(MIRLoanTransfer(0, path, 1), params, result, {}) == source
     owned = (*params[:2], bound(OwnType(params[2].type), ParamPassing.VALUE))
-    assert transfer_problem(MIRLoanTransfer(0, path, 2), owned, result) == source
-    assert summary_problem(replace(copied, transfers=frozenset({MIRLoanTransfer(0, (), 2)}))) == holder
+    assert transfer_problem(MIRLoanTransfer(0, path, 2), owned, result, {}) == source
+    assert summary_problem(replace(copied, transfers=frozenset({MIRLoanTransfer(0, (), 2)})), {}) == holder
+
+
+def test_the_contract_records_a_walk_of_every_path_with_a_field(program: _Program) -> None:
+    # `store` writes `param2.text` and its transfer holds at `param0.s`; an
+    # obligation to keep `param0.n` apart from that write is added. The
+    # walks a call reads are exactly the paths with a field, every kind.
+    stored = _summary(program, "store")
+    write, = stored.writes
+    kept = MIRAliasObligation(0, (_identity(_field(program, "Tok", "n")),), write)
+    summary = replace(stored, obligations=frozenset({kept}))
+    assert len(_checked_walks(program, summary)) == 3
+    # `put_read` returns `b.s` (a return origin) and `write_copy` hands
+    # `b.s`'s loan to the owned result's `s` (a source path and the result
+    # holder): each kind must be walked and recorded too.
+    read, copied = _summary(program, "put_read"), _summary(program, "write_copy")
+    (origin,) = read.returns
+    assert (origin.parameter, origin.path) in _checked_walks(program, read)
+    copy_walks = _checked_walks(program, copied)
+    assert any(t.holder == MIR_RESULT and (MIR_RESULT, t.path) in copy_walks for t in copied.transfers)
+    assert any(t.source_path and (t.source, t.source_path) in copy_walks for t in copied.transfers)
+
+
+def _checked_walks(program: _Program, summary) -> dict:
+    """The walks `summary_problem` records for `summary`, asserted to be
+    exactly the summary's paths with a field, of every kind."""
+    walks: dict = {}
+    assert summary_problem(summary, program.definitions.layouts, walks) is None
+    paths = {(w.parameter, w.path) for w in summary.writes}
+    paths |= {(r.parameter, r.path) for r in summary.returns}
+    paths |= {(t.holder, t.path) for t in summary.transfers}
+    paths |= {(t.source, t.source_path) for t in summary.transfers if t.source_path}
+    paths |= {(o.parameter, o.path) for o in summary.obligations}
+    assert set(walks) == {(end, path) for end, path in paths if path}
+    return walks
+
+
+def _retyped_field(layouts, field: MIRField, typ) -> tuple[MIRField, dict]:
+    """`field` declared at `typ` in its owner's layout."""
+    owner = field.id.owner
+    retyped = replace(field, type=typ)
+    layout = layouts[owner]
+    return retyped, {**layouts, owner: replace(layout, fields=tuple(
+        retyped if f == field else f for f in layout.fields))}
+
+
+def test_no_transfer_rebinds_a_member_declared_readonly(program: _Program) -> None:
+    # A transfer is a store into its holder's view member (`store_problem`):
+    # never through a `readonly[R]` record member. A `readonly[StrView]`
+    # member is no field the walk reaches at all (MIR models no such type).
+    filled = _summary(program, "nested_fill")
+    (transfer,), layouts = filled.transfers, program.definitions.layouts
+    params, result = filled.parameters, filled.callee.signature.return_type
+    assert transfer_problem(transfer, params, result, layouts) is None
+    inner, s = (path_step(item) for item in transfer.path)
+    for member, typ, reason in ((inner, ReadonlyType(inner.type), "invalid loan transfer holder"),
+                                (s, ReadonlyType(s.type), "unsupported field type")):
+        retyped, laid = _retyped_field(layouts, member, typ)
+        path = summary_path(tuple(retyped if p == member else p for p in (inner, s)))
+        assert transfer_problem(replace(transfer, path=path), params, result, laid) == reason, member
+
+
+def test_a_transfer_through_a_refused_definition_never_publishes(program: _Program) -> None:
+    # `o.inner.s = s`: the transfer's second field is read from an R, which
+    # no slot of the body holds; R's definition refused, its layout kept.
+    assert _summary(program, "nested_fill").transfers
+    r = next(t for t in program.definitions.records if t.name == "R")
+    refused = object.__new__(MIRDefinitions)
+    object.__setattr__(refused, "records", {**program.definitions.records, r: "refused for the test"})
+    object.__setattr__(refused, "layouts", program.definitions.layouts)
+    result = summarize_function(program.functions["nested_fill"], _lowered(program, "nested_fill"), refused)
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary record: refused for the test"
 
 
 # --- the caller ---------------------------------------------------------------------------
@@ -602,12 +694,36 @@ def test_a_loan_holding_write_no_entry_keys_refuses(program: _Program) -> None:
     inner, buf = _field(program, "Holder", "inner"), _field(program, "R", "buf")
     assert written_record(MIRPlace(o.root, (MIRDeref(), inner)), slots, records) == inner.type
     assert written_record(MIRPlace(o.root, (MIRDeref(), inner, buf)), slots, records) is None
+    pair = MIRSlotId(fn.id, len(fn.slots))
+    slots[pair] = MIRSlot(pair, tuple_shape(TupleType((slots[o.root].type, INT32)),
+                                            (slots[o.root].shape, leaf_shape(INT32))), MIRSlotKind.LOCAL)
     with pytest.raises(_DependencyRefusal, match="loan-holding write under an unmodeled place"):
-        written_record(MIRPlace(o.root, (MIRTupleIndex(0),)), slots, records)
+        written_record(MIRPlace(pair, (MIRTupleIndex(0),)), slots, records)
     # A value naming no stored loan refuses the fill, whatever the statement.
     layouts = {r.type: r for r in fn.records}
     with pytest.raises(MIRUnseededLoan, match="record storage filled with no stored loan"):
         record_fill(MIRPlace(o.root, (inner,)), inner.type, MIRConstant(1), {}, slots, layouts)
+
+
+def test_a_place_ending_at_a_containers_structure(program: _Program) -> None:
+    # `(*v).ns[structure]` under a loan-holding record: the referent is the
+    # field's region under the caller's object, and a write there replaces
+    # no record whole. `(*v).views[structure]`, a container of loans, refuses:
+    # no stored-loan entry keys its elements.
+    holder, views_type, ns_type = (p.type.wrapped for p in program.functions["views_of"].params)
+    s, views, ns = (MIRField(MIRFieldId(holder, name), typ)
+                    for name, typ in (("s", STRVIEW), ("views", views_type), ("ns", ns_type)))
+    records = {holder: MIRRecordLayout(holder, (s, views, ns), True, True)}
+    body = MIRBodyId("view_field_stores", "views")
+    v = MIRSlot(MIRSlotId(body, 0), borrowed_shape(holder), MIRSlotKind.PARAMETER)
+    slots, structure = {v.id: v}, MIRContainerStructure()
+    state = {MIRPlace(v.id): frozenset({MIRReferent(MIRPlace(v.id), True)})}
+    field_structure = MIRPlace(v.id, (MIRDeref(), ns, structure))
+    assert resolve_referents(field_structure, state, slots, records) == {
+        MIRReferent(MIRPlace(v.id, (ns, structure)), True)}
+    assert written_record(field_structure, slots, records) is None
+    with pytest.raises(_DependencyRefusal, match="loan-holding write under an unmodeled place"):
+        written_record(MIRPlace(v.id, (MIRDeref(), views, structure)), slots, records)
 
 
 def test_a_member_replacement_through_a_parameter_joins_and_transfers(program: _Program) -> None:
@@ -634,7 +750,7 @@ def test_a_nested_member_write_through_a_parameter_transfers(program: _Program) 
     summary = _summary(program, "nested_fill")
     transfer = MIRLoanTransfer(0, (_identity(inner), _identity(s)), 1)
     assert summary.transfers == frozenset({transfer})
-    assert transfer_problem(transfer, summary.parameters, summary.callee.signature.return_type) is None
+    assert transfer_problem(transfer, summary.parameters, summary.callee.signature.return_type, {}) is None
     assert program.verdicts["nested_fill"].conflicts == ()
 
 

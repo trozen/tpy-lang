@@ -15,8 +15,8 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import (
-    BOOL, INT32, STR, NominalType, OwnType, TpyType, VoidType, make_list, make_span, return_representation,
-    unwrap_readonly, unwrap_ref_type,
+    BOOL, INT32, STR, NominalType, OwnType, ReadonlyType, TpyType, VoidType, make_list, make_span,
+    return_representation, unwrap_readonly, unwrap_ref_type,
 )
 from .call_contract import MIRCallSummary
 from ..thir.scalar_leaves import MIRClass, declared_members, native_container_type
@@ -25,10 +25,11 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRContainerElements, MIRCopy,
-    MIRDeref, MIRFunction, MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMove, MIRNotCovered,
-    MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRStorageDuration,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
+    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
+    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotKind, MIRStorageDuration,
 )
+from .shapes import MIRContainerElements, MIRDeref, object_prefix
 from .value import MIRHolding, MIRValidationError, container_members, with_access
 from .testutil import (
     ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape, repass, reslot,
@@ -381,8 +382,8 @@ def _elements(place: MIRPlace) -> bool:
 def test_a_record_element_is_borrowed_from_the_region_after_its_index(active) -> None:
     fn = _fn(active, "first")
     lines = _lines(fn)
-    assert "%0: list[Point] container-ref readonly element=Point:record:readonly parameter ps" in lines
-    assert lines.index("%1 = 0") < lines.index("%2 = borrow %0[elements] may-raise")
+    assert "%0: list[Point] readonly-ref element=Point:record:readonly parameter ps" in lines
+    assert lines.index("%1 = 0") < lines.index("%2 = borrow (*%0)[elements] may-raise")
     assert any(line.startswith("%2: Point readonly-ref local p") for line in lines)
     cell = next(r.fields[0].id for r in fn.records if r.type.name == "Point")
     heap = {1: {cell: 3}, 2: {cell: 5}}
@@ -392,14 +393,14 @@ def test_a_record_element_is_borrowed_from_the_region_after_its_index(active) ->
 def test_a_scalar_element_is_read_after_its_index(active) -> None:
     fn = _fn(active, "at")
     lines = _lines(fn)
-    assert lines.index("%5 = read %1") < lines.index("%6 = read %0[elements] may-raise")
+    assert lines.index("%5 = read %1") < lines.index("%6 = read (*%0)[elements] may-raise")
     assert fn.exceptional_exits
     assert execute(fn, ContainerValue((3, 5)), 1) == 5
 
 
 def test_a_field_of_an_element_is_read_in_place(active) -> None:
     fn = _fn(active, "field_of")
-    assert "%2 = read %0[elements].__main__.Point::x may-raise" in _lines(fn)
+    assert "%2 = read (*%0)[elements].__main__.Point::x may-raise" in _lines(fn)
     cell = next(r.fields[0].id for r in fn.records if r.type.name == "Point")
     assert execute(fn, ContainerValue((Reference(1), Reference(2))), heap={1: {cell: 3}, 2: {cell: 5}}) == 5
 
@@ -409,9 +410,9 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
     # owns an inferred element read); an owning sink copies it.
     strs = _lines(_fn(active, "strs"))
     assert any(line.startswith("%2: StrView readonly-ref local v") for line in strs)
-    assert "%2 = borrow %0[elements] may-raise" in strs
+    assert "%2 = borrow (*%0)[elements] may-raise" in strs
     copy = _lines(_fn(active, "str_copy"))
-    assert any(re.fullmatch(r"%\d+ = copy %0\[elements\] may-raise \[initialize_once\]", line) for line in copy)
+    assert any(re.fullmatch(r"%\d+ = copy \(\*%0\)\[elements\] may-raise \[initialize_once\]", line) for line in copy)
     # Iteration reads an owned-leaf element through a view of it.
     walk = _fn(active, "walk_strs", readonly_iteration=True)
     s = _slot(walk, "s")
@@ -466,7 +467,7 @@ def test_a_span_parameter_and_result_view_a_region(active) -> None:
     lines = _lines(tail)
     assert "result borrowed readonly" in lines
     assert "%2: Span[readonly[int32]] readonly-ref element=int32:leaf:readonly temporary" in lines
-    assert "%2 = borrow %0[elements]" in lines
+    assert "%2 = borrow (*%0)[elements]" in lines
     first = _lines(_fn(active, "span_first"))
     assert "%0: Span[int32] mutable-ref element=int32:leaf parameter s" in first
     assert "%2 = read %0[elements] may-raise" in first
@@ -479,13 +480,13 @@ def test_a_span_parameter_and_result_view_a_region(active) -> None:
 
 def test_an_element_write_replaces_the_region_in_place(active) -> None:
     fn = _fn(active, "set_scalar")
-    assert "%0[elements] = read %1 [in_place]" in _lines(fn)
+    assert "(*%0)[elements] = read %1 [in_place]" in _lines(fn)
     write = next(s for b in fn.blocks for s in b.statements if _elements(s.target))
     assert write.storage_write == MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, _slot(fn, "xs").id)
     values = ContainerValue((1, 2))
     assert execute(fn, values) == 5 and values.elements == [5, 2]
     record = _fn(active, "replace_after_use")
-    assert "%0[elements] = construct (%5) [in_place]" in _lines(record)
+    assert "(*%0)[elements] = construct (%5) [in_place]" in _lines(record)
     cell = next(r.fields[0].id for r in record.records if r.type.name == "Point")
     heap = {1: {cell: 1}}
     assert execute(record, ContainerValue((Reference(1),)), heap=heap) == 1 and heap[1][cell] == 3
@@ -505,7 +506,7 @@ def test_an_element_write_without_a_reference_preserving_stub_is_the_call(active
 
 def test_an_element_write_through_a_span_or_on_an_array(active) -> None:
     lines = _lines(_fn(active, "span_set"))
-    assert "%3 = borrow %0[elements]" in lines and "%3[elements] = read %4 [in_place]" in lines
+    assert "%3 = borrow (*%0)[elements]" in lines and "%3[elements] = read %4 [in_place]" in lines
     # The Array stub does not declare that it preserves references: the stub call, a structure write.
     array = _lines(_fn(active, "array_set"))
     assert any(line.startswith("call stub tpy.Array.__setitem__[Array[int32, 3], int32, Own[int32]](%0, ")
@@ -523,13 +524,13 @@ def test_a_container_field_is_a_place_of_its_record(active) -> None:
     items = _fn(active, "items_of")
     lines = _lines(items)
     assert "result borrowed mutable" in lines
-    assert "%1: list[int32] container-ref mutable element=int32:leaf temporary" in lines
+    assert "%1: list[int32] mutable-ref element=int32:leaf temporary" in lines
     assert "%1 = borrow (*%0).__main__.Bag::items" in lines
 
 
 def test_a_local_alias_of_a_container_field_borrows_the_field(active) -> None:
     lines = _lines(_fn(active, "alias_push"))
-    assert "%2: list[int32] container-ref mutable element=int32:leaf local x" in lines
+    assert "%2: list[int32] mutable-ref element=int32:leaf local x" in lines
     assert "%2 = borrow (*%0).__main__.Bag::items" in lines
     assert any(line.startswith("call stub builtins.list.append[list[int32], Own[int32]](%2, ") for line in lines)
 
@@ -658,8 +659,14 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     # A readonly container is never written through.
     xs = _slot(first, "ps").id
     _rejects(_replace_first(first, is_borrow, lambda s: MIRAssign(
-        MIRPlace(xs, (MIRContainerElements(),)), MIRConstruct((), False), s.loc,
-        MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, xs))), "store through readonly container")
+        MIRPlace(xs, (MIRDeref(), MIRContainerElements())), MIRConstruct((), False), s.loc,
+        MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, xs))), "store through readonly reference")
+    # A whole container a pointer reaches is never replaced, as a container field is not.
+    scalar = _fn(active, "set_scalar")
+    whole = MIRAssign(MIRPlace(_slot(scalar, "xs").id, (MIRDeref(),)), MIRConstruct((), True), None,
+                      MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))
+    _rejects(replace(scalar, blocks=(replace(scalar.blocks[0], statements=(whole, *scalar.blocks[0].statements)),
+                                     *scalar.blocks[1:])), "container replacement is unsupported")
 
 
 def test_validator_rejects_damaged_element_writes(active) -> None:
@@ -683,6 +690,20 @@ def test_validator_rejects_damaged_element_writes(active) -> None:
     copy = _fn(active, "str_copy")
     _rejects(_replace_first(copy, _assign(MIRCopy), lambda s: replace(s, value=replace(s.value, may_raise=False))),
              "owned leaf copy exit fact mismatch")
+
+
+def test_a_mutable_container_replaces_a_readonly_element(active) -> None:
+    # `ps[0] = Point(3)` over `ps: list[readonly[Point]]`: the write rule
+    # keys an element's replacement on its container's access.
+    record = _fn(active, "replace_after_use")
+    ps = _slot(record, "ps")
+    point = ps.type.type_args[0]
+    frozen = NominalType("list", (ReadonlyType(point),), _module_qname="builtins.list")
+    members = container_members(frozen, False)
+    assert all(m.readonly for m in members)
+    slots = tuple(reslot(s, type=frozen, members=members) if s.id == ps.id
+                  else reslot(s, readonly=True) if s.name == "p" else s for s in record.slots)
+    validate_function(bind_parameters(replace(record, slots=slots)))
 
 
 def test_validator_rejects_damaged_container_storage(active) -> None:
@@ -730,7 +751,7 @@ def test_validator_rejects_damaged_results_and_iterators(active) -> None:
     items, tail, span_sum = _fn(active, "items_of"), _fn(active, "tail"), _fn(active, "span_sum")
     _rejects(replace(tail, borrowed_result=replace(tail.borrowed_result, readonly=False)),
              "unsupported return type or access")
-    holder = next(s for s in items.slots if s.shape.holding is MIRHolding.REGION)
+    holder = next(s for s in items.slots if s.shape.borrowed_container)
     _rejects(replace(items, slots=tuple(reslot(s, readonly=True, members=with_access(s.shape.members, True))
                                         if s is holder else s for s in items.slots)),
              "borrowed return type or access mismatch")
@@ -844,6 +865,14 @@ def pass_span(s: Span[int32]) -> int32:
     xs = [1, 2, 3]
     w = xs[0:2]
     return span_sum(w) + span_sum(s)
+
+
+def same(xs: list[int32]) -> list[int32]:
+    return xs
+
+
+def first_of(xs: list[int32]) -> int32:
+    return same(xs)[0]
 """
 
 
@@ -891,7 +920,7 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
     dumps, functions = calls
     for name in ("ro_values", "inferred_values"):
         lines = dumps[name]
-        assert ("%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly "
+        assert ("%0: dict[str, int32] readonly-ref element=str:owned_leaf:readonly "
                 "value=int32:leaf:readonly parameter d") in lines, name
         assert any(line.startswith("%1 = call stub builtins.dict.values[dict[str, int32]](%0) "
                                    "[pure, reader, returns={param0}, may-raise]") for line in lines), name
@@ -914,6 +943,18 @@ def test_a_span_holder_is_lent_at_a_span_parameter(calls) -> None:
     assert "%7: Span[int32] mutable-ref element=int32:leaf local w" in lines
     assert "%8 = call main::span_sum(%7) [reader, may-raise]" in lines
     assert "%9 = call main::span_sum(%0) [reader, may-raise]" in lines
+
+
+def test_an_element_of_a_container_a_call_returns_is_read_through_its_holder(calls) -> None:
+    # `same(xs)[0]`: the call's holder is a borrowed container; the element
+    # place is under the object it holds, whatever its holding.
+    fn = calls[1]["first_of"]
+    validate_function(fn)
+    read = next(s.value for b in fn.blocks for s in b.statements
+                if isinstance(s, MIRAssign) and isinstance(s.value, MIRRead) and _elements(s.value.source))
+    holder = next(s for s in fn.slots if s.id == read.source.root)
+    assert holder.shape.borrowed_container and holder.kind is not MIRSlotKind.PARAMETER
+    assert read.source.projections == (*object_prefix(holder.shape, payload=False), MIRContainerElements())
 
 
 def _with_summary(fn: MIRFunction, old: MIRCallSummary, new: MIRCallSummary) -> MIRFunction:

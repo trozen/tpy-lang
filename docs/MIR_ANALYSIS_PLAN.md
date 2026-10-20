@@ -2396,12 +2396,14 @@ as the corpus grows).
   ("unsupported native container element"). Holders: an owned container
   (a local `xs = [..]`, a field, an `Own[list[T]]` parameter, a result) is
   container storage held by value; a `list[T]` parameter at CONST_REF /
-  MUT_REF holds the container's region (a borrowed container) with an
-  external referent, readonly from the passing; an iterator is its
+  MUT_REF holds a POINTER at the container (a borrowed container, reached
+  through `[deref]` as a borrowed record is) with an external referent,
+  readonly from the passing; a container view (a Span, a dict view) holds
+  the region it views (`REGION`, container views only); an iterator is its
   container's cursor. Places: `MIRContainerElements` (the
   "any element" place) and `MIRContainerStructure` compose after a slot
   root, a `MIRDeref` or a `MIRField` of container type
-  (`(*%self).Bag::items[elements]`, `%xs[elements].Point::x`). A dict's
+  (`(*%self).Bag::items[elements]`, `(*%xs)[elements].Point::x` for a borrowed `xs`). A dict's
   `[elements]` is ONE region typed by what the access yields: the value at
   a subscript, the key at iteration (no key / value projection). Rvalues
   reuse the existing nodes: a scalar element is `MIRRead(xs[elements])`
@@ -2951,9 +2953,10 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   `bytes` view result views (`return self.name` at `-> StrView` ->
   `param0.name`) and an inline record member a record result of its type
   is (`return self.a` -> `param0.a`); each
-  field must belong to the certified layout of the storage its hop reads
-  ("summary return field differs from definition"). Anything else
-  refuses "summary unsupported return origin": a Span over a field
+  field must be a member of the storage its hop reads, by the walk of the
+  path over the definitions' layouts, of a verified definition. Anything else refuses
+  "summary unsupported return origin", followed by the path check's own
+  reason (a field off a layout: "field missing from record layout"): a Span over a field
   (`test_unspellable_origins_refuse`). A result rooted in a parameter that is
   no record (a container, a Span, a leaf) keeps the whole-parameter
   origin.
@@ -3073,8 +3076,8 @@ facts) and `tpyc/mir/test_inherited_records.py` (MIR).
   an inherited-field access of such a record refuses with the
   definition's reason. A summary's published write
   keeps its declaring owner (`Sub.bump_twice` writes
-  `param0.Base::n, param0.Sub::k`), `call_contract.record_field` checks it
-  structurally, and the membership check runs at the call against the
+  `param0.Base::n, param0.Sub::k`); the walk of the path checks its
+  membership in the summary contract and again at the call against the
   layout of the argument bound to the write's own parameter (a free
   function's record argument as much as a method's receiver).
 - **Binding rule** (`call_contract.binds_at(records, storage, slot)`:
@@ -3555,27 +3558,37 @@ and setter and `getter_through_field`; `mir/method_calls`
   aliases and wrapper captures keep needing a name (`reference_name`).
 - **Parameter paths** (`call_contract.py`). A `MIRParameterPath` is one or
   more fields through inline record members, then at most one container
-  projection. `path_hops(binding, path, storage)` names the record each
-  field is read from: hop 0 the record the parameter binds (at a call, the
-  record the ARGUMENT binds, which may be a descendant), hop k the previous
-  field's record; a field after a projection, a field under a binding with
-  no record, or an intermediate field that is no record is malformed.
-  `resolve_path` adds the projection and the access, readonly when the
-  parameter is or when any field on the way is `readonly[...]`. One endpoint
-  table, `endpoint_admitted`, serves writes and return origins: a write
-  needs a mutable path ending at a scalar leaf, an owned leaf, a record
-  member or a projection of a container field whose members MIR models; a
+  projection. `path_walk` walks its fields with the one place walk
+  (`shapes.walk`, from the object `path_projections` names): hop 0 reads
+  the record the parameter lends (at a call, the record the ARGUMENT binds,
+  which may be a descendant), hop k the previous field's member, each field
+  a member by the one rule (`field_member`) over the layouts the caller
+  holds; a field after a projection, a field under a binding with no
+  record, or an intermediate field that is no record is malformed.
+  `resolve_path` keeps the trailing projection beside the walk; the access
+  is the walk's end, readonly when the parameter is or when any field on
+  the way is `readonly[...]`. One endpoint table, `endpoint_admitted`,
+  serves writes and return origins over the walk's end: a write needs a
+  mutable end at a scalar leaf, an owned leaf, a record member or a
+  projection of a container field whose members MIR models (an element
+  write keys on the container's access); a
   return takes no projection and ends at an owned leaf or a view member of
   a view result's family, or at a container or record field of exactly the result's type at
   no more access. `write_problem` / `return_origin_problem` are those two
   steps ("invalid call write path" / "invalid return parameter" for a
   malformed path, "unsupported call write field or access" / "unsupported
-  return origin type or access" for its end). Layout membership is checked
-  per hop where layouts are known: at a call, in lowering and in the
-  validator, against the argument's bound record ("call write field does
-  not match record layout"), and in the summary ("summary write field
-  differs from definition", "summary return field differs from
-  definition"). The dump spells every field: `writes={param0.line.a.x}`.
+  return origin type or access" for its end), and `summary_problem` takes
+  the layouts its paths walk over (the definitions' in lowering and in
+  the summary, the body's in the validator; that a path's records verify
+  is the summary's check and, at a call, the lowering's `record_layout`);
+  a walk's own
+  refusal is the reason ("field missing from record layout"). At a call,
+  in lowering and in the validator, `call_path_problem` reads the walks the
+  contract check made and adds what only the call knows: each field is a
+  member of the layout of the storage it is read from (`layout_of`, which
+  registers), the first one of the record the argument binds ("call write
+  field does not match record layout"). The dump spells every field:
+  `writes={param0.line.a.x}`.
 - **Summaries** (`summaries.py`). A published write or return origin is
   the full field chain (`_published_path`) under the rules above. A read
   through members (`ln.a.x`, `f.line.a.x`) under a borrowed record or the
@@ -3953,18 +3966,23 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   member or element of the caller's storage, such as an owned-leaf field
   `r.buf` ("summary transfer source is a member or element": no source
   form names that storage, `store_member`), and a path off the
-  definition's layouts ("summary transfer field differs from
-  definition", reachable only with a definition the lowering did not
-  see). What a body stores in an `Own[R]` parameter's object is not
+  definitions' layouts (the walk's own refusal, "field missing from
+  record layout", reachable only with a definition the lowering did not
+  see), and one through a record whose definition is refused ("summary
+  record: <reason>", the summary's check over its paths' field holders).
+  What a body stores in an `Own[R]` parameter's object is not
   published (`own_store_param`): the argument is a temporary of the call
   the caller never reads again, which holds because a named, copied or
   moved record argument to an `Own[R]` parameter refuses ("unsupported
   record argument": `consume_named`, `private_own_alias`,
-  `own_write_transfer`). Every end of a transfer that names a path maps
-  to its hops through `call_contract.transfer_end` (under a lent record
-  from the record the argument binds, under the result or an `Own[R]`
-  parameter from its type), for `transfer_problem`, the lowering, the
-  validator and the summary's layout check alike. APPLICATION
+  `own_write_transfer`). Every end of a transfer that names a path is
+  walked once, by `transfer_problem` through `call_contract._end_walk`
+  (under a lent record parameter from the record it lends, under the
+  result or an `Own[R]` parameter from that storage; a holder end only
+  under a lent parameter or the result), and recorded with the summary
+  check's other walks; a call (the lowering, the validator) reads those
+  walks in `call_path_problem`, adding the record the argument binds and
+  each holder's layout. APPLICATION
   (`dependencies.apply_transfers`, for a `MIRCallStmt` and for an
   `MIRAssign` of a `MIRCall`): each parameter transfer joins its source's
   loans (`transfer_loans`, through `call_place`) into the entry of every
@@ -4150,7 +4168,7 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
 `tpyc/mir/test_optional_fields.py`.
 
 - **Invariant.** A wrapper's members belong to the value at a place,
-  never to the root slot alone: `shapes.place_shape(place, slots, records)`
+  never to the root slot alone: `nodes.place_shape(place, slots, records)`
   answers the value at a place (a root place: its slot's shape; a place
   ending in an Optional record field: an Optional whose payload record is
   stored inline). Every payload, element and presence operation resolves
@@ -4279,9 +4297,10 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   store under any other non-owned root keeps the summary opaque ("summary
   store under an unmodeled holder").
 - **Summary paths** carry no payload step: a path under an Optional
-  parameter is the path under its payload record, and `coverage.call_place`
-  adds the `payload, deref` prefix back at each call, for a pointer
-  payload only (a scalar payload has no place under it). Presence
+  parameter is the path under its payload record, and `nodes.call_place`
+  adds the payload record prefix (`object_prefix(..., payload=True)`)
+  back at each call, for a pointer payload only (a scalar payload has no
+  place under it). Presence
   tests, Optional copies and constructs on the parameter's holder slot are
   accepted where the field forms are (`summaries._optional_place`).
 - **Callers.** Free-function, method and constructor calls bind the argument

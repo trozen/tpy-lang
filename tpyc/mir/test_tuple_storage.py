@@ -9,11 +9,12 @@ from .dependencies import analyze_dependencies, MIRReferent
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
-    MIREdge, MIRFunction, MIRGoto, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRPoint, MIRRead, MIRRegion,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
-    MIRTupleIndex, MIRTupleInitialization, MIRUnionConstruct, MIRUnionCopy,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
+    MIRFunction, MIRGoto, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
+    MIRTupleInitialization, MIRUnionConstruct, MIRUnionCopy,
 )
+from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes

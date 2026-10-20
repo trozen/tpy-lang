@@ -23,9 +23,10 @@ from .dependencies import (
 )
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRMemberInitMode, MIRMove,
-    MIRNotCovered, MIRPlace, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode, MIRMove, MIRNotCovered,
+    MIRPlace, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRValidationError
 from .retention import affects, may_overlap
 from .validate import validate_function
@@ -478,7 +479,7 @@ def test_a_view_result_off_a_member_keeps_its_path(program: _Program) -> None:
     assert summary.summary.returns == frozenset({MIRReturnOrigin(0, path)})
     # A view member is a return endpoint, never a write endpoint.
     writing = replace(summary.summary, writes=frozenset({MIRParameterWrite(0, path)}))
-    assert summary_problem(writing) == "unsupported call write field or access"
+    assert summary_problem(writing, {}) == "unsupported call write field or access"
 
 
 # --- the validator --------------------------------------------------------------------------

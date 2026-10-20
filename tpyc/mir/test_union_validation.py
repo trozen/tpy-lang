@@ -9,8 +9,9 @@ from ..typesys import BOOL, INT32, NoneType, NominalType, OptionalType, UnionTyp
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsAlternative, MIRNot,
     MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract,
-    MIRUnionPayload, MIRDeref, MIRConstruct,
+    MIRConstruct,
 )
+from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .testutil import (
     bind_parameters, Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,

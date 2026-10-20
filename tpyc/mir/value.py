@@ -37,11 +37,11 @@ class MIRHolding(Enum):
     an iterator has its container's type."""
     # Stored here: an inert leaf, owned storage, inline members.
     VALUE = auto()
-    # A reference a `[deref]` follows: a borrowed record, an owned leaf's
-    # borrow, a view holder.
+    # A reference a `[deref]` follows: a borrowed record or container, an
+    # owned leaf's borrow, a view holder.
     POINTER = auto()
-    # A holder whose `[elements]` region is reached directly, never
-    # dereferenced: a borrowed container, a container view.
+    # A container view: a holder of another aggregate's `[elements]`
+    # region, reached directly, never dereferenced.
     REGION = auto()
     # A native iterator over its container.
     CURSOR = auto()
@@ -155,7 +155,7 @@ class MIRShape:
         """A holder typed by a container view (a Span, a dict view): it IS
         the elements region of the container it views, so its referents are
         `[elements]` places and a container projection on it is absorbed."""
-        return self.holding is MIRHolding.REGION and self.cls is MIRClass.CONTAINER_VIEW
+        return self.cls is MIRClass.CONTAINER_VIEW and self.holding is MIRHolding.REGION
 
     @property
     def is_pointer(self) -> bool:
@@ -163,21 +163,23 @@ class MIRShape:
         return self.holding is MIRHolding.POINTER
 
     @property
-    def borrowed(self) -> bool:
-        """A holder of storage elsewhere that a lent argument, a borrowed
-        result or a rebound holder is: a pointer, or a container view's region."""
-        return self.is_pointer or self.container_view_holder
-
-    @property
     def borrow_holder(self) -> bool:
-        """A holder a borrow fills -- a borrowed result, an alias: a pointer
-        or a region (a borrowed container, a container view)."""
+        """A holder of storage elsewhere that a lent argument, a borrowed
+        result, an alias or a rebound holder is: a pointer, or a container
+        view's region."""
         return self.holding in (MIRHolding.POINTER, MIRHolding.REGION)
 
     @property
     def borrowed_container(self) -> bool:
-        """A whole container held elsewhere: a borrowed container's region."""
-        return self.whole_container and not self.container_storage
+        """A pointer at a container's storage: how a container parameter,
+        alias or borrowed result is held."""
+        return self.cls is MIRClass.CONTAINER and self.is_pointer
+
+    @property
+    def borrowed_record(self) -> bool:
+        """A pointer at a record's storage: how a record parameter, alias
+        or borrowed result is held."""
+        return self.cls is MIRClass.RECORD and self.is_pointer
 
     @property
     def owned_place(self) -> bool:
@@ -187,15 +189,15 @@ class MIRShape:
 
     @property
     def whole_container(self) -> bool:
-        """A whole container object: a borrowed container or container
-        storage (an iterator is a cursor, not the object)."""
-        return self.cls is MIRClass.CONTAINER and self.holding in (MIRHolding.VALUE, MIRHolding.REGION)
+        """The object reached is a whole container: container storage or a
+        borrow of one (an iterator is a cursor, not the object)."""
+        return self.cls is MIRClass.CONTAINER and self.holding in (MIRHolding.VALUE, MIRHolding.POINTER)
 
     @property
-    def region(self) -> bool:
-        """A value whose `[elements]` region a place reaches directly:
-        container storage, a borrowed container, or a view of one."""
-        return self.cls in CONTAINER_CLASSES and self.holding in (MIRHolding.VALUE, MIRHolding.REGION)
+    def container_or_view(self) -> bool:
+        """What a whole-container operation (iteration, a builtin's read)
+        takes: a whole container or a container view holder."""
+        return self.whole_container or self.container_view_holder
 
     @property
     def owned_tuple(self) -> bool:
@@ -235,10 +237,13 @@ def lent_record(shape: MIRShape) -> MIRShape | None:
     payload is its holder's own storage, a scalar lends nothing)."""
     if shape.cls is MIRClass.OPTIONAL:
         shape = shape.payload
-    return shape if shape is not None and shape.cls is MIRClass.RECORD and shape.is_pointer else None
+    return shape if shape is not None and shape.borrowed_record else None
 
 
 _STORAGE_CLASSES = frozenset({MIRClass.OWNED_LEAF, MIRClass.RECORD, MIRClass.CONTAINER})
+# Storage with member places of its own (an owned leaf's buffer has none),
+# lent alike by a pointer at it; a source decides a loan's access.
+AGGREGATE_CLASSES = _STORAGE_CLASSES - {MIRClass.OWNED_LEAF}
 CONTAINER_CLASSES = frozenset({MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW})
 # A wrapper's or a container's members are the only ones a value carries.
 MEMBERED_CLASSES = frozenset({MIRClass.TUPLE, MIRClass.OPTIONAL, MIRClass.UNION}) | CONTAINER_CLASSES
@@ -292,7 +297,7 @@ def holding_representation(holding: MIRHolding) -> Representation:
 
 def with_access(members: tuple[MIRShape | None, ...], readonly: bool) -> tuple[MIRShape | None, ...]:
     """A holder's view of a container's members: a readonly holder reaches
-    readonly members, as `step` reaches them through it."""
+    readonly members, stored so: `step` reads them as they are."""
     return tuple(m if m is None else replace(m, readonly=m.readonly or readonly) for m in members)
 
 
@@ -393,7 +398,8 @@ def holding_of(cls: MIRClass | None, role: MIRRole) -> MIRHolding:
     members carry what it holds. A view is a loan whatever its role -- a
     leaf view a pointer, a container view the region it views -- and so is
     a protocol parameter (no class); a field stores anything else inline.
-    Any other loan of a container is its region, of a value a pointer."""
+    Any other loan -- of a record, an owned leaf or a container alike -- is
+    a pointer at the aggregate's storage."""
     if cls in WRAPPER_CLASSES:
         return MIRHolding.VALUE
     match role:
@@ -403,11 +409,8 @@ def holding_of(cls: MIRClass | None, role: MIRRole) -> MIRHolding:
             return MIRHolding.ALIAS
     if cls is MIRClass.CONTAINER_VIEW:
         return MIRHolding.REGION
-    if cls in (MIRClass.VIEW, None):
+    if cls in (MIRClass.VIEW, None) or role is MIRRole.LOAN:
         return MIRHolding.POINTER
-    match role:
-        case MIRRole.LOAN:
-            return MIRHolding.REGION if cls is MIRClass.CONTAINER else MIRHolding.POINTER
     return MIRHolding.VALUE
 
 
@@ -447,7 +450,7 @@ def value_shape(declared: TpyType, cls: MIRClass | None = None, *, access: bool 
       payload); an Optional's own slot is storage at its own access, and
       a pointer payload carries the loan's (`readonly[P] | None`);
     - at a field an Optional stores its payload record inline, at the
-      access its declaration gives it (the holder's is added by `step`);
+      field's access (its holder's, and its declaration's);
     - a container or container view takes its members from the builder
       at its access (`container_members`; `with_access`), at a field those
       `layouts` admits (`admitted_members`), none when it admits none.
@@ -475,8 +478,9 @@ def value_shape(declared: TpyType, cls: MIRClass | None = None, *, access: bool 
         case MIRClass.UNION:
             members = tuple(None if m is None else thir_member(m) for m in facts.elements)
         case MIRClass.OPTIONAL if field:
+            # The payload lies in the field: it is reached at the field's access.
             members = (value_shape(typ.inner, MIRClass.RECORD,
-                                   access=loan_access(declared, MIRClass.RECORD, Member(False))),)
+                                   access=loan_access(declared, MIRClass.RECORD, Member(access))),)
         case MIRClass.OPTIONAL:
             members = (thir_member(facts.payload),)
             # Its own slot is storage; a loan's access is its payload's, in the layout.
@@ -559,7 +563,8 @@ def member_shape(typ: TpyType, holder_readonly: bool, layouts: Records) -> MIRSh
 
 
 # The classes a holder lends a value of: a record, a container (view), a
-# view, an owned leaf, a tuple (itself).
+# view, an owned leaf, a tuple (itself) -- every holder form, not the
+# aggregates alone.
 _HOLDER_CLASSES = frozenset({MIRClass.RECORD, MIRClass.VIEW, MIRClass.OWNED_LEAF, MIRClass.TUPLE}) | CONTAINER_CLASSES
 
 
@@ -593,10 +598,6 @@ def _class_problem(shape: MIRShape, representation: Representation) -> str | Non
     return None
 
 
-# The classes a slot holds a loan of besides their storage.
-_LOANED_CLASSES = frozenset({MIRClass.RECORD, MIRClass.OWNED_LEAF, MIRClass.CONTAINER})
-
-
 def _holdings(cls: MIRClass, declared: TpyType, position: MIRPosition) -> frozenset[MIRHolding]:
     """The holdings the composer gives a value of class `cls` declared at
     `declared` where `position` holds it (`holding_of` over the roles the
@@ -609,7 +610,7 @@ def _holdings(cls: MIRClass, declared: TpyType, position: MIRPosition) -> frozen
         roles = {MIRRole.STORAGE}
     else:
         roles = {MIRRole.STORAGE}
-        if cls in _LOANED_CLASSES:
+        if cls in _STORAGE_CLASSES:
             roles.add(MIRRole.LOAN)
         if cls is MIRClass.LEAF:
             roles.add(MIRRole.ALIAS)
@@ -689,7 +690,8 @@ def _members_problem(shape: MIRShape, declared: TpyType, position: MIRPosition) 
                 return "unsupported optional layout"
             if position is MIRPosition.FIELD and shape.payload.cls is not MIRClass.RECORD:
                 return "unsupported optional payload"
-            return _member_problem(shape.payload, shape.type.inner, readonly, "optional", (holding,))
+            # An inline payload is reached at its field's access, as a container's members are.
+            return _member_problem(shape.payload, shape.type.inner, readonly or shape.readonly, "optional", (holding,))
         case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW:
             members = container_members(shape.type, shape.readonly)
             if isinstance(members, str):
@@ -737,7 +739,7 @@ def shape_problem(shape: MIRShape, declared: TpyType, position: MIRPosition = MI
         return "reference type mismatch" if shape.cls is MIRClass.RECORD else "value type mismatch"
     if shape.holding not in _holdings(shape.cls, declared, position):
         return "invalid holding"
-    # A field's member is at its holder's access (`Member`), added by `step`.
+    # A field's member is at its holder's access (`Member`), composed by `member_shape`.
     if position is MIRPosition.SLOT:
         if shape.cls in WRAPPER_CLASSES:
             if shape.readonly is not loan_access(declared, shape.cls, None):
@@ -801,11 +803,9 @@ AccessSource = Passing | Declared | Published | Local | Member
 # protocol parameter (no class). A tuple, a union and storage keep the
 # access their members carry.
 _READ_ONLY_LOANS = frozenset({MIRClass.OWNED_LEAF, MIRClass.VIEW, None})
-# The classes whose access a source decides; any other class has its own.
-_LENT_CLASSES = frozenset({MIRClass.RECORD, MIRClass.CONTAINER})
 # The classes whose loan's access a THIR fact states beside the source
 # deciding it (`fact_access_problem` checks the two agree).
-_LENT_FACT_CLASSES = _LENT_CLASSES | {MIRClass.CONTAINER_VIEW}
+_LENT_FACT_CLASSES = AGGREGATE_CLASSES | {MIRClass.CONTAINER_VIEW}
 
 
 def loan_access(declared: TpyType, cls: MIRClass | None, source: AccessSource | None) -> bool:
@@ -815,18 +815,17 @@ def loan_access(declared: TpyType, cls: MIRClass | None, source: AccessSource | 
     elements): what the class and the declaration alone give. The one site
     deciding an access: a record or container declared `readonly[...]` is
     readonly whatever its source; a container view is readonly too when
-    its elements are. The
-    callee's own storage lends nothing: its binding has no loan to ask
+    its elements are. The callee's own storage lends nothing: its binding has no loan to ask
     about."""
     bare = unwrap_readonly(unwrap_ref_type(declared))
     if cls in _LENT_FACT_CLASSES and isinstance(unwrap_ref_type(declared), ReadonlyType):
         return True
     match source:
         case Passing(passing=passing):
-            if cls in _LENT_CLASSES:
+            if cls in AGGREGATE_CLASSES:
                 return passing is ParamPassing.CONST_REF
         case Declared(readonly=readonly):
-            if cls in _LENT_CLASSES:
+            if cls in AGGREGATE_CLASSES:
                 return readonly
             if cls is MIRClass.CONTAINER_VIEW and readonly:
                 return True

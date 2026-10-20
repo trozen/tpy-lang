@@ -14,17 +14,17 @@ from ..typesys import BOOL, TpyType
 from ..identity_map import IdentityMap
 from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRDeref,
-    MIRFunction, MIRGoto, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
+    MIRGoto, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
     MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator, MIRTupleInitialization,
-    member_init_operands, source_order, statement_target,
+    member_init_operands, source_order, statement_target, place_shape,
 )
 from ..thir.scalar_leaves import MIRClass
 from .value import (
     MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, Published, holder_form, loan_access, value_shape,
 )
-from .shapes import place_shape
+from .shapes import Projection, object_prefix
 from .validate import body_may_raise, reaches_element, statement_reads, successors, validate_function
 
 
@@ -648,11 +648,10 @@ class Fragment:
         self.current = join
         return dest
 
-    def storage_steps(self, place: MIRPlace) -> tuple[MIRDeref, ...]:
+    def storage_steps(self, place: MIRPlace) -> tuple[Projection, ...]:
         """The dereference from a place to the storage its value points at:
         none for storage held in place."""
-        shape = place_shape(place, self.root.records, self.root.layouts())
-        return (MIRDeref(),) if shape.is_pointer else ()
+        return object_prefix(place_shape(place, self.root.records, self.root.layouts()), payload=False)
 
     # --- write modes and temporaries ---------------------------------------------
 

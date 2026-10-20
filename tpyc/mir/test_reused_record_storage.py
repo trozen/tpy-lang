@@ -12,11 +12,11 @@ from .definitions import MIRDefinitions
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant,
-    MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
-    MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot,
-    MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRMove,
+    MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration,
 )
+from .shapes import MIRDeref
 from .presence import MIREngagement, _analyze_presence
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage

@@ -14,10 +14,10 @@ from . import emit, lower as lowering
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto,
-    MIRPlace, MIRRecordWriteMode, MIRRegionId, MIRReturn, MIRTupleIndex, MIRUnionPayload,
-    function_body_kind,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto, MIRPlace, MIRRecordWriteMode,
+    MIRRegionId, MIRReturn, function_body_kind,
 )
+from .shapes import MIRTupleIndex, MIRUnionPayload
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage

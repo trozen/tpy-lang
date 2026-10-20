@@ -13,10 +13,10 @@ from .dependencies import MIRReferent, _dependencies
 from .liveness import _liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct,
-    MIRDeref, MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleIndex,
-    MIRTupleInitialization,
+    MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleInitialization,
 )
+from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRHolding, MIRValidationError
 from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, _borrow_evidence,

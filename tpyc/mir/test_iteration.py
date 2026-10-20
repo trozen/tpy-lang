@@ -9,10 +9,12 @@ from .dependencies import MIRReferent, analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRContainerElements,
-    MIRContainerStructure, MIRDeref, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit,
-    MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId,
-    MIROptionalConstruct, MIROptionalPayload, MIRUnionConstruct, MIRUnionPayload, MIRTupleConstruct, MIRTupleIndex,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
+    MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRReturn,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId, MIROptionalConstruct, MIRUnionConstruct, MIRTupleConstruct,
+)
+from .shapes import (
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
 )
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .retention import may_overlap
@@ -20,7 +22,7 @@ from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
 from .testutil import (
     bind_parameters, ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
-    region_shape, reslot, tuple_shape, union_shape,
+    reslot, tuple_shape, union_shape,
 )
 from .validate import validate_function
 
@@ -39,7 +41,7 @@ def assignment(target: MIRSlotId, value) -> MIRAssign:
 
 
 def fixture() -> MIRFunction:
-    container = MIRSlot(P, region_shape(LIST, members=LAYOUT), MIRSlotKind.PARAMETER)
+    container = MIRSlot(P, borrowed_shape(LIST, members=LAYOUT), MIRSlotKind.PARAMETER)
     alias = MIRSlot(FIRST, borrowed_shape(CELL), MIRSlotKind.LOCAL)
     slots = (container, replace(container, id=Q), replace(container, id=SOURCE, kind=MIRSlotKind.LOCAL),
              replace(container, id=ITER, kind=MIRSlotKind.TEMPORARY,

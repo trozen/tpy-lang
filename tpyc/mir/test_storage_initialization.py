@@ -9,14 +9,12 @@ from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge,
-    MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIROptionalConstruct,
-    MIROptionalCopy, MIRPayloadWrite,
-    MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRIsAlternative,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
+    MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit,
     MIRUnionConstruct, MIRUnionCopy,
-    MIRUnionPayload,
 )
+from .shapes import MIRUnionPayload
 from .payload_lifetime import analyze_payload_ends
 from .presence import _analyze_presence
 from .scope_lifetime import analyze_scope_ends

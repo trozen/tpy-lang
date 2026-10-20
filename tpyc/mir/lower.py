@@ -30,20 +30,19 @@ from ..typesys import (
 )
 from .nodes import (
     MIRAlias, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant,
-    MIRConstruct, MIRContainerElements, MIRDeref, MIRFunction, MIRGlobalId, MIRGoto, MIRIsAlternative,
-    MIRIsPresent, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMemberInit,
-    MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy,
-    MIROptionalPayload, MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReceiverInit,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRStorageInit, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, function_body_kind,
+    MIRConstruct, MIRFunction, MIRGlobalId, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRIteratorAdvance,
+    MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove,
+    MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWriteMode, MIRPlace, MIRPoint,
+    MIRPrint, MIRRangeAdvance, MIRRead, MIRReceiverInit, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite,
+    MIRRecordWriteMode, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRTupleConstruct,
+    MIRTupleCopy, MIRTupleInitialization, MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract, function_body_kind,
 )
 from .value import (
-    Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRole, MIRShape,
-    container_members, fact_shape, holder_form, layout_fact, loan_access, member_compatible, member_shape,
-    position_problem, shape_problem, thir_member, value_shape,
+    AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRole,
+    MIRShape, MIRValidationError, container_members, fact_shape, holder_form, layout_fact, loan_access,
+    member_compatible, position_problem, shape_problem, thir_member, value_shape,
 )
-from .coverage import PAYLOAD_RECORD, MIRUnsupported, literal_type, plain as _plain, require as _require
+from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require
 from .definitions import (
     MIRComposedConstruct, MIRConstructorDefinition, MIRContainerDefinition, MIRDefinitions, MIRFieldInitializer,
     MIRHeldLayout, MIROwnedLeafDefinition, constructor_initialization, layout_copy_may_raise,
@@ -52,9 +51,12 @@ from .emit import (
     Fragment, MIRFallthroughError, MIRRegionStorageError, MIRValue, assemble, owned_leaf_shape, scalar_shape,
     view_holder_shape,
 )
-from .shapes import inline_payload_holder, step
+from .shapes import (
+    inline_payload_holder, step, MIRContainerElements, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
+    MIRWalk, Projection, object_prefix, store_problem, walk,
+)
 from .call_contract import (
-    BORROWING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult, MIRSummaryState, binds_at,
+    BORROWING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRPathWalks, MIRSummaryResult, MIRSummaryState, binds_at,
     call_result, call_path_problem, container_fact_problem, container_read_problem, container_result,
     native_container_problem, owned_record_result, bound_params, function_binding, region_view,
     stub_protocol_argument, stub_summary, summary_problem, view_result,
@@ -223,7 +225,7 @@ _RECEIVER_REFUSALS = {_Place.FIELD: "field needs record storage", _Place.UNION_P
                       _Place.ELEMENT: "field needs record element",
                       _Place.TUPLE_MEMBER: "field needs tuple reference"}
 # A binding of these classes is its own holder (`MIRValue.held`).
-_HOLDER_BINDINGS = frozenset({MIRClass.RECORD, MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW, MIRClass.VIEW})
+_HOLDER_BINDINGS = AGGREGATE_CLASSES | {MIRClass.CONTAINER_VIEW, MIRClass.VIEW}
 
 
 def _family_view(typ: TpyType) -> TpyType | None:
@@ -346,7 +348,7 @@ class _Lowering:
     def held(self, name: str | None) -> MIRShape | None:
         """The shape of a name's slot when it holds a record: the record and the holder's access."""
         shape = self.bound(name) if name is not None else None
-        return shape if shape is not None and shape.is_pointer and shape.cls is MIRClass.RECORD else None
+        return shape if shape is not None and shape.borrowed_record else None
 
     def wraps(self, name: str, cls: MIRClass) -> bool:
         """A name bound as an Optional, a union or a tuple."""
@@ -356,7 +358,7 @@ class _Lowering:
     def borrowed_container(self, name: str) -> bool:
         """A borrowed container binding: a container parameter, a container alias."""
         shape = self.bound(name)
-        return shape is not None and shape.cls is MIRClass.CONTAINER and shape.holding is MIRHolding.REGION
+        return shape is not None and shape.borrowed_container
 
     def optional_is(self, name: str, layout: th.THIROptionalLayout) -> bool:
         """Whether binding `name` is the Optional THIR's layout fact lays out."""
@@ -534,8 +536,9 @@ class _Lowering:
         _require(expr, isinstance(summary, MIRCallSummary)
                  and callee.signature.passings == tuple(b.passing for b in summary.parameters),
                  "signature passings mismatch")
-        _require(expr, summary_problem(summary) is None and summary.callee == callee,
-                 "call summary signature or contract mismatch")
+        walks: MIRPathWalks = {}
+        _require(expr, summary_problem(summary, self.definitions.layouts, walks) is None
+                 and summary.callee == callee, "call summary signature or contract mismatch")
         result = call_result(callee, None)
         owned = owned_value_type(callee.signature.return_type)
         if result is not None and view_leaf(result.type):
@@ -552,7 +555,7 @@ class _Lowering:
         # Every path the callee writes, returns or stores a loan under names
         # fields of the layouts the arguments bind, each registered here.
         problem = call_path_problem(
-            summary, callee.signature.return_type,
+            summary, walks,
             lambda parameter: self.bound_record(arguments[parameter]) if parameter < len(arguments) else None,
             lambda record: self.record_layout(expr, record))
         _require(expr, problem is None, problem)
@@ -1320,7 +1323,7 @@ class _Lowering:
             f.write(slot, self.record_backing(f, backing, value, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE),
                                               MIRStorageDuration.BODY), loc)
         elif in_place:
-            f.write(MIRPlace(slot, PAYLOAD_RECORD), f.splice(value), loc,
+            f.write(MIRPlace(slot, object_prefix(self.mir.records[slot].shape, payload=True)), f.splice(value), loc,
                     MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, slot))
         else:
             f.write(slot, f.splice(value), loc, f.payload_write(inline_payload, MIRPayloadWriteMode.ASSIGN))
@@ -1357,7 +1360,8 @@ class _Lowering:
                 f.write(backing, written, loc, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
                 f.write(slot, MIRBorrow(MIRPlace(backing)), loc)
             else:
-                f.write(MIRPlace(slot, (MIRDeref(),)), written, loc, MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, slot))
+                f.write(MIRPlace(slot, object_prefix(self.mir.records[slot].shape, payload=True)), written, loc,
+                        MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, slot))
         return f
 
     def put_borrow_binding(self, loc: object, slot: MIRSlotId, declare: bool, source: Fragment, deref: bool,
@@ -2569,6 +2573,14 @@ class _Lowering:
         if (held := self.held(name)) is not None:
             self.held_layout(place, held.type)
 
+    def walked(self, node: object, shape: MIRShape, projections: tuple[Projection, ...], reason: str) -> MIRWalk:
+        """`projections` walked from a value of `shape` over the body's
+        layouts; a hop the walk refuses refuses `node` for `reason`."""
+        try:
+            return walk(shape, projections, self.layouts())
+        except MIRValidationError:
+            raise MIRUnsupported(node, reason) from None
+
     def held_layout(self, node: object, typ: NominalType) -> MIRRecordLayout:
         """The layout of a record the body reaches through a holder, which a
         caller need not be able to construct (`MIRDefinitions.held_layout`)."""
@@ -2679,7 +2691,7 @@ class _Lowering:
         self.writes[expr] = False
         c = self.fragment()
         holder = c.lend(call)
-        c.value = MIRValue(MIRPlace(holder), loc=expr.loc, held=holder)
+        c.value = MIRValue(MIRPlace(holder, c.storage_steps(MIRPlace(holder))), loc=expr.loc, held=holder)
         return c
 
     def element_index(self, expr: th.THIRSubscript, place: MIRShape) -> Fragment:
@@ -3213,17 +3225,14 @@ class _Lowering:
         _require(expr, not capture or expr.deref, "tuple capture needs dereferenced element")
         receiver = self.tuple_expr(expr.receiver, allow_owned=True)
         tuple_shape = receiver.shape_of()
-        layout = tuple_shape.members
         _require(expr, not tuple_shape.owned_tuple or isinstance(expr.receiver, th.THIRName),
                  "owned tuple projection needs existing local")
         index = expr.tuple_index
-        _require(expr, type(index) is int and 0 <= index < len(layout),
-                 "missing or invalid tuple index")
+        member = self.walked(expr, tuple_shape, (MIRTupleIndex(index),), "missing or invalid tuple index").end
         _require(expr, isinstance(expr.index, th.THIRLiteral)
                  and type(expr.index.value) is int and expr.index.value == index,
                  "tuple index disagreement")
         _plain(expr.index, {"value", "int_cpp"})
-        member = layout[index]
         # The render's pointer fact must agree with the layout MIR reads.
         _require(expr, not expr.elem_pointer
                  or member.cls is MIRClass.RECORD and member.is_pointer,
@@ -3284,21 +3293,21 @@ class _Lowering:
         # An identity names a declared member of any type, not only one MIR models.
         _require(expr, position_problem(fact.type, MIRPosition.FIELD) is None, "unsupported field type or form")
         # A field of a derived record is a member of its layout, keyed by its
-        # declaring owner; the layout comes along so a shadowed name is seen
-        # under both owners. A flat record's own field needs no layout, and a
-        # derived record's own field only when its definition verified (an
-        # inherited field of an unverified one refuses with its reason).
+        # declaring owner; the layout comes along so the walk sees a shadowed
+        # name under both owners. A flat record's own field needs no layout,
+        # and a derived record's own field only when its definition verified
+        # (an inherited field of an unverified one refuses with its reason).
         definition = self.definitions.records.get(reference.type)
-        derived = isinstance(definition, MIRConstructorDefinition) and bool(definition.layout.ancestors)
-        layout = (self.record_layout(expr, reference.type)
-                  if derived or fact.owner != reference.type else None)
-        _require(expr, isinstance(fact.owner, NominalType) and bool(fact.name) and (
-            fact.owner == reference.type if layout is None
-            else MIRField(MIRFieldId(fact.owner, fact.name), fact.type) in layout.fields), "field owner mismatch")
-        shape = member_shape(fact.type, reference.readonly, self.layouts())
-        readonly = shape.readonly
-        _require(expr, not (write and readonly), "readonly field store")
+        if (isinstance(definition, MIRConstructorDefinition) and definition.layout.ancestors
+                or fact.owner != reference.type):
+            self.record_layout(expr, reference.type)
         member_field = MIRField(MIRFieldId(fact.owner, fact.name), fact.type)
+        holder = base.shape_of()
+        walked = self.walked(expr, holder, (*object_prefix(holder, payload=False), member_field),
+                             "field owner mismatch")
+        shape = walked.end
+        readonly = shape.readonly
+        _require(expr, not (write and store_problem(walked)), "readonly field store")
         if shape.cls is MIRClass.CONTAINER:
             # A container field is owned storage of the record; its region is
             # reached through it, and it is never replaced whole.
@@ -4201,6 +4210,9 @@ class _Lowering:
         def check() -> Fragment:
             element = self.element_access(target)
             member = element.shape_of()
+            # Stricter than the write rule (`store_problem`), which lets a
+            # mutable container replace a readonly element: a coverage
+            # restriction (TODO.md "readonly element store").
             _require(stmt, not member.readonly, "readonly element store")
             match member.cls:
                 case MIRClass.LEAF:

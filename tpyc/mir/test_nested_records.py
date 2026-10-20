@@ -13,10 +13,10 @@ from ..thir import nodes as th
 from ..thir.scalar_leaves import record_type
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
-from ..typesys import NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
+from ..typesys import STR, NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
 from .call_contract import (
     MIRCallSummary, MIRGlobalId, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, summary_problem,
+    MIRSummaryState, call_path_problem, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .coverage import MIRUnsupported
@@ -29,10 +29,11 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRMemberInit,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInit,
     MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode,
     MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .retention import affects, analyze_retention
 from .storage import analyze_storage, storage_destination
@@ -1538,7 +1539,8 @@ def _thir_nodes(node: object) -> list[th.THIRNode]:
 
 def _summary(callee: th.THIRResolvedCallee, *, writes=(), returns=()) -> MIRSummaryResult:
     """A KNOWN summary of a method whose own summary depends on nested
-    record paths (their summaries are not published yet)."""
+    record paths (their summaries are not published yet), a contract with
+    no layout to check its fields against."""
     bindings = []
     for typ, passing in zip(callee.signature.param_types, callee.signature.passings):
         bare = unwrap_readonly(unwrap_ref_type(typ))
@@ -1549,7 +1551,7 @@ def _summary(callee: th.THIRResolvedCallee, *, writes=(), returns=()) -> MIRSumm
             bindings.append(bound(typ, passing))
     summary = MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(writes),
                              frozenset(), frozenset(returns), frozenset(), True)
-    assert summary_problem(summary) is None, summary_problem(summary)
+    assert summary_problem(summary, {}) is None, summary_problem(summary, {})
     return MIRSummaryResult(MIRSummaryState.KNOWN, summary)
 
 
@@ -1613,26 +1615,46 @@ def test_call_summaries_reach_through_members(program: _Program, name: str,
         assert not events.call_writes and not events.writes
 
 
-@pytest.mark.parametrize("path", [
-    # A second hop keyed by an owner that is not the member's record.
-    (("Line", "a"), ("Flat", "x")),
-    # A second-hop field missing from the member's layout.
-    (("Line", "a"), ("Point", "missing")),
+@pytest.mark.parametrize("name,retyped", [
+    # A second-hop field the member's layout does not carry, by name or at that type.
+    ("missing", False),
+    ("x", True),
 ])
-def test_a_call_path_hop_reads_the_previous_members_layout(program: _Program,
-                                                           path: tuple[tuple[str, str], ...]) -> None:
-    steps = [_field_identity(program, *path[0])]
-    record, name = path[1]
-    steps.append(th.THIRFieldIdentity(_record(program, record), name, _fields_of(program, "Point")["x"].type)
-                 if name == "missing" else _field_identity(program, record, name))
-    result = _with_summaries(program, "scalar_call", bump=tuple(steps))
-    assert isinstance(result, MIRNotCovered) and result.reason == "call write field does not match record layout"
-    # The validator walks the same hops.
+def test_a_call_path_hop_reads_the_previous_members_layout(program: _Program, name: str, retyped: bool) -> None:
+    # The contract with no layout admits a field Point declares by name;
+    # Point's layout refuses it.
+    typ = STR if retyped else _fields_of(program, "Point")["x"].type
+    steps = (_field_identity(program, "Line", "a"), th.THIRFieldIdentity(_record(program, "Point"), name, typ))
+    result = _with_summaries(program, "scalar_call", bump=steps)
+    assert isinstance(result, MIRNotCovered) and result.reason == "call summary signature or contract mismatch"
     fn = _with_summaries(program, "scalar_call")
     good, = fn.call_summaries
-    bad = replace(good, writes=frozenset({MIRParameterWrite(0, tuple(steps))}))
-    with pytest.raises(MIRValidationError, match="call write field does not match record layout"):
+    bad = replace(good, writes=frozenset({MIRParameterWrite(0, steps)}))
+    assert summary_problem(bad, program.definitions.layouts) == "field missing from record layout"
+    # The validator reads the layouts the body holds.
+    with pytest.raises(MIRValidationError, match="field missing from record layout"):
         validate_function(_with_call_summary(fn, good, bad))
+
+
+def test_a_call_refuses_a_deeper_field_its_layout_lacks(program: _Program) -> None:
+    # The contract with no layout walks `(Line::a, Point::missing)`; the call
+    # reads Line's layout for the first field and Point's for the second.
+    line, point = _record(program, "Line"), _record(program, "Point")
+    steps = (_field_identity(program, "Line", "a"),
+             th.THIRFieldIdentity(point, "missing", _fields_of(program, "Point")["x"].type))
+    summary = _summary(_callee(program.functions["scalar_call"], "bump"),
+                       writes=(MIRParameterWrite(0, steps),)).summary
+    walks: dict = {}
+    assert summary_problem(summary, {}, walks) is None
+    layouts = {t: _definition(program, t.name).layout for t in (line, point)}
+    asked: list = []
+
+    def layout_of(record: NominalType) -> object:
+        asked.append(record)
+        return layouts.get(record)
+    assert call_path_problem(summary, walks, lambda parameter: line, layout_of) == (
+        "call write field does not match record layout")
+    assert asked == [line, point]
 
 
 def _with_call_summary(fn: MIRFunction, good: MIRCallSummary, bad: MIRCallSummary) -> MIRFunction:
@@ -1649,20 +1671,21 @@ def _with_call_summary(fn: MIRFunction, good: MIRCallSummary, bad: MIRCallSummar
 
 @pytest.mark.parametrize("path", [
     # A first hop missing from the layout of the record the receiver binds.
-    (("Frame", "a"),),
+    (("Line", "missing"),),
     # A right first hop, then a field missing from the member's layout.
     (("Line", "a"), ("Point", "missing")),
 ])
 def test_a_call_return_path_hop_reads_the_bound_records_layout(program: _Program,
                                                                path: tuple[tuple[str, str], ...]) -> None:
-    # Every field is typed as the result, so the summary's own contract
-    # (the endpoint) admits the path and only layout membership refuses it.
+    # Every field is typed as the result, so the endpoint admits the path
+    # and only membership refuses it.
     point = _fields_of(program, "Line")["a"].type
     steps = tuple(th.THIRFieldIdentity(_record(program, record), name, point) for record, name in path)
     result = _with_summaries(program, "member_receiver", first=steps)
-    assert isinstance(result, MIRNotCovered) and result.reason == "call write field does not match record layout"
+    assert isinstance(result, MIRNotCovered) and result.reason == "call summary signature or contract mismatch"
     fn = _with_summaries(program, "member_receiver")
     good, = (s for s in fn.call_summaries if s.callee.identity.name == "first")
     bad = replace(good, returns=frozenset({MIRReturnOrigin(0, steps)}))
-    with pytest.raises(MIRValidationError, match="call write field does not match record layout"):
+    assert summary_problem(bad, program.definitions.layouts) == "field missing from record layout"
+    with pytest.raises(MIRValidationError, match="field missing from record layout"):
         validate_function(_with_call_summary(fn, good, bad))

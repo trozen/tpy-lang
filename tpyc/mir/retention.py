@@ -6,21 +6,21 @@ from dataclasses import dataclass
 from ..thir.scalar_leaves import MIRClass, value_class
 from ..typesys import TpyType
 
-from .call_contract import MIRAliasObligation, MIRParameterWrite
-from .coverage import call_place, summary_path, whole_wrapper_field
+from .call_contract import MIRAliasObligation, MIRParameterWrite, summary_path
+from .coverage import whole_wrapper_field
 from .dependencies import (
     MIRDependencies, MIRReferent, _referent, analyze_dependencies, origin_shape, resolve_referents,
 )
 from .dump import _location, _place, _write_step, obligation_text
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness
 from .nodes import (
-    MIRContainerElements, MIRContainerStructure, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordWriteMode, MIRSlot, MIRSlotId, MIRSlotKind, statement_call,
+    MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRSlot, MIRSlotId, MIRSlotKind,
+    statement_call, call_place,
 )
 from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, owned_field
 from .presence import MIREngagement
-from .shapes import walk_to
+from .shapes import walk_to, MIRContainerElements, MIRContainerStructure
 from .validate import _validated_function
 
 
@@ -309,8 +309,8 @@ def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlot
     j, i = parameters.get(write_origin.root), parameters.get(retained_origin.root)
     if i is None or j is None or i == j:
         return None
-    return MIRAliasObligation(i, summary_path(whole_wrapper_field(retained.place)),
-                              MIRParameterWrite(j, summary_path(whole_wrapper_field(written.place))))
+    return MIRAliasObligation(i, summary_path(whole_wrapper_field(retained.place).projections),
+                              MIRParameterWrite(j, summary_path(whole_wrapper_field(written.place).projections)))
 
 
 def _one_object(conflict: MIRRetentionConflict) -> bool:

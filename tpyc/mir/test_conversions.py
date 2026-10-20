@@ -360,7 +360,7 @@ def test_a_string_field_and_element_read_as_str_are_one_copy_of_the_place(dumps)
     assert _statements(dumps["field_passthrough"]) == [
         "%1 = copy (*%0).__main__.H::name may-raise [initialize_once]", "return %1"]
     assert _statements(dumps["element_passthrough"]) == [
-        "%1 = 0", "%2 = copy %0[elements] may-raise [initialize_once]", "return %2"]
+        "%1 = 0", "%2 = copy (*%0)[elements] may-raise [initialize_once]", "return %2"]
 
 
 # --- static literals, views and borrowed results ----------------------------------------
@@ -392,17 +392,17 @@ def test_a_view_result_is_passed_as_it_is(dumps) -> None:
 
 def test_an_element_copy_raises_though_its_index_is_proven(dumps) -> None:
     statements = _statements(dumps["safe_element_copy"])
-    assert "%7 = copy %0[elements] may-raise [initialize_region]" in statements
+    assert "%7 = copy (*%0)[elements] may-raise [initialize_region]" in statements
 
 
 def test_a_borrow_of_an_unproven_element_raises(dumps) -> None:
-    assert "%2 = borrow %0[elements] may-raise" in _statements(dumps["checked_element_borrow"])
+    assert "%2 = borrow (*%0)[elements] may-raise" in _statements(dumps["checked_element_borrow"])
 
 
 def test_scalar_reads_of_a_name_a_field_and_an_element(dumps) -> None:
     statements = _statements(dumps["scalar_reads"])
     assert statements[:7] == ["%3 = read %2", "%4 = read %3", "%5 = read (*%0).__main__.P::x", "%6 = read %5",
-                              "%7 = read %2", "%8 = read %1[elements] may-raise", "%9 = read %8"]
+                              "%7 = read %2", "%8 = read (*%1)[elements] may-raise", "%9 = read %8"]
 
 
 def test_a_scalar_read_lowers_its_place_once(unit, monkeypatch) -> None:
@@ -421,7 +421,7 @@ def test_a_scalar_read_lowers_its_place_once(unit, monkeypatch) -> None:
         lower_body(sources["scalar_reads"], definitions, workspace, fresh=True)
     # The name, the field and the element are each one place; only the element's read may raise.
     assert ("THIRFieldAccess", 0, ("MIRDeref", "MIRField"), False) in seen
-    assert ("THIRSubscript", 1, ("MIRContainerElements",), True) in seen
+    assert ("THIRSubscript", 1, ("MIRDeref", "MIRContainerElements"), True) in seen
     assert ("THIRName", 2, (), False) in seen
     assert {raises for kind, *_, raises in seen if kind != "THIRSubscript"} == {False}
 

@@ -19,9 +19,10 @@ from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRFunction,
-    MIRMemberInitMode, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode,
+    MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError
 from .retention import MIRRetention, affects, analyze_retention, may_overlap
 from .storage import analyze_storage, dump_storage
@@ -567,7 +568,7 @@ def test_validator_rejects_a_projection_inside_an_owned_leaf(active) -> None:
     stmt = fn.blocks[0].statements[0]
     inner = MIRField(MIRFieldId(STR, "data"), INT32)
     damaged = replace(stmt, value=MIRBorrow(MIRPlace(stmt.value.source.root, (*stmt.value.source.projections, inner))))
-    with pytest.raises(MIRValidationError, match="field projection under an opaque layout"):
+    with pytest.raises(MIRValidationError, match="field needs record storage"):
         validate_function(replace(fn, blocks=(replace(fn.blocks[0], statements=(
             damaged, *fn.blocks[0].statements[1:])),)))
 

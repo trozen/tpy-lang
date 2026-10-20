@@ -21,9 +21,10 @@ from .dump import dump_function
 from .liveness import MIRPoint
 from .lower import lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstant, MIRCopy, MIRDeref, MIRFunction, MIRPlace, MIRReturn,
-    MIRSlot, MIRSlotKind,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstant, MIRCopy, MIRFunction, MIRPlace, MIRReturn, MIRSlot,
+    MIRSlotKind,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRValidationError
 from .storage_evidence import MIRStorageConflictKind, analyze_return_escapes
 from .validate import validate_function
@@ -429,7 +430,7 @@ def test_validator_rejects_damaged_view_facts(active) -> None:
     # A field projected through a view.
     projected = _replace_first(fn, is_copy, lambda s: replace(s, value=replace(s.value, source=MIRPlace(
         view, (MIRDeref(), MIRField(MIRFieldId(STRVIEW, "size"), INT32))))))
-    with pytest.raises(MIRValidationError, match="field projection through a view"):
+    with pytest.raises(MIRValidationError, match="field needs record storage"):
         validate_function(projected)
     # A view holder taking a static literal of another family.
     with pytest.raises(MIRValidationError, match="static literal needs a borrowed holder of its type"):

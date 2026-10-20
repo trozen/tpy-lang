@@ -1,20 +1,68 @@
-"""What each projection reaches from a value MIR models (`value`):
-`step` is the one stepping table every reader of a place walks (the
-validator adds its write rules on top, `validate.place_info`)."""
+"""The projections a place takes and what each reaches from a value MIR
+models (`value`): `step` is the one stepping table every reader of a
+place walks (the validator adds its write rules on top,
+`validate.place_info`). A leaf: of the sibling `tpyc.mir` modules it
+imports only `value`."""
 
-from collections.abc import Iterator, Mapping
-from dataclasses import replace
+from dataclasses import dataclass, replace
 
 from ..thir.scalar_leaves import MIRClass
-from .call_contract import MIRContainerElements, MIRContainerStructure
-from .nodes import MIRDeref, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRTupleIndex, MIRUnionPayload
+from ..typesys import TpyType
 from .value import (
-    MIRField, MIRFieldId, MIRHolding, MIRShape, MIRValidationError, Records, holder_form, loan_field, member_shape,
-    require_valid,
+    MIRField, MIRFieldId, MIRHolding, MIRShape, MIRValidationError, Records, holder_form, member_shape, require_valid,
 )
+
+
+@dataclass(frozen=True)
+class MIRDeref:
+    pass
+
+
+@dataclass(frozen=True)
+class MIRTupleIndex:
+    index: int
+
+
+@dataclass(frozen=True)
+class MIROptionalPayload:
+    pass
+
+
+@dataclass(frozen=True)
+class MIRUnionPayload:
+    alternative: int
+
+
+@dataclass(frozen=True)
+class MIRContainerStructure:
+    """A native container's shape: its length, its buffer and the slots
+    its iterators walk."""
+
+
+@dataclass(frozen=True)
+class MIRContainerElements:
+    """Any element of a native container, as one region: element identity
+    is never tracked, so a write of one element is a write of any."""
+
 
 Projection = (MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnionPayload
               | MIRContainerStructure | MIRContainerElements)
+
+REGION_END = "summary regions are analysis places, not direct element accesses"
+
+
+def field_member(layouts: Records, holder: TpyType, owner: TpyType, name: str, typ: TpyType) -> str | None:
+    """Whether the field (`owner`, `name`, `typ`), named by a non-empty
+    string, is a member of record storage of type `holder`, keyed by its
+    declaring owner: in the holder's layout when `layouts` has one (it
+    carries its ancestors' fields); with none -- a record with no THIR
+    constructor -- a field the holder itself declares. Else the problem."""
+    if not (isinstance(name, str) and name):
+        return "field owner mismatch"
+    layout = layouts.get(holder)
+    if layout is not None:
+        return None if MIRField(MIRFieldId(owner, name), typ) in layout.fields else "field missing from record layout"
+    return None if owner == holder else "field owner mismatch"
 
 
 def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
@@ -23,13 +71,14 @@ def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
     analysis region with no value of its own: no step reaches it."""
     match projection:
         case MIRContainerStructure():
-            raise MIRValidationError("summary regions are analysis places, not direct element accesses")
+            raise MIRValidationError(REGION_END)
         case MIRContainerElements():
             # Any element: a read, borrow or in-place write of one reaches
-            # the whole region of owned or borrowed container storage.
-            require_valid(shape.region and bool(shape.members), "element projection needs container storage")
-            member = shape.subscript
-            return replace(member, readonly=shape.readonly or member.readonly)
+            # the whole region of container storage (a borrowed container's
+            # after its dereference) or of the container a view views.
+            require_valid((shape.container_storage or shape.container_view_holder) and bool(shape.members),
+                          "element projection needs container storage")
+            return shape.subscript
         case MIRUnionPayload():
             require_valid(shape.cls is MIRClass.UNION, "union projection needs union payload")
             require_valid(type(projection.alternative) is int
@@ -40,10 +89,7 @@ def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
         case MIROptionalPayload():
             require_valid(shape.cls is MIRClass.OPTIONAL and bool(shape.members),
                      "optional projection needs optional payload")
-            payload = shape.payload
-            # An inline payload is only as writable as the path to it.
-            inline = payload.cls is MIRClass.RECORD and payload.holding is MIRHolding.VALUE
-            return replace(payload, readonly=shape.readonly or payload.readonly) if inline else payload
+            return shape.payload
         case MIRTupleIndex():
             require_valid(shape.cls is MIRClass.TUPLE, "tuple projection needs tuple payload")
             require_valid(type(projection.index) is int
@@ -55,17 +101,13 @@ def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
             return replace(shape, holding=MIRHolding.VALUE)
         case MIRField():
             typ = shape.type
-            require_valid(shape.owned_place, "field needs record storage")
-            require_valid(shape.cls is not MIRClass.VIEW, "field projection through a view")
-            # An owned leaf's interior is opaque: nothing projects inside its buffer.
-            require_valid(shape.cls is not MIRClass.OWNED_LEAF and not (typ in records and records[typ].opaque),
-                     "field projection under an opaque layout")
-            # A field is keyed by its declaring owner: the storage's type, or
-            # an ancestor whose field its layout carries.
-            require_valid(isinstance(projection.id, MIRFieldId) and bool(projection.id.name) and (
-                projection.id.owner == typ
-                or typ in records and MIRField(projection.id, projection.type) in records[typ].fields),
-                "field owner mismatch")
+            # Only record storage has fields: a view, an owned leaf's buffer or a
+            # container's storage (elements only) has none, and the own-type
+            # escape of `field_member` would admit any name on it.
+            require_valid(shape.owned_place and shape.cls is MIRClass.RECORD, "field needs record storage")
+            require_valid(isinstance(projection.id, MIRFieldId), "field owner mismatch")
+            problem = field_member(records, typ, projection.id.owner, projection.id.name, projection.type)
+            require_valid(problem is None, problem)
             return member_shape(projection.type, shape.readonly, records)
     raise MIRValidationError("unsupported place projections")
 
@@ -82,47 +124,80 @@ def _enter(previous: Projection | None, holder: MIRShape) -> None:
              "projection through a view member")
 
 
-def walk(shape: MIRShape, projections: tuple[Projection, ...],
-         records: Records) -> Iterator[tuple[Projection, MIRShape, MIRShape]]:
+@dataclass(frozen=True)
+class MIRHop:
+    """One projection of a walk: the shape it applies to and the shape it
+    reaches -- None for a container's structure, the terminal region."""
+    projection: Projection
+    holder: MIRShape
+    reached: MIRShape | None
+
+
+@dataclass(frozen=True)
+class MIRWalk:
+    """A place's projections stepped from its root's shape (`walk`)."""
+    root: MIRShape
+    hops: tuple[MIRHop, ...]
+
+    @property
+    def end(self) -> MIRShape | None:
+        """What the place denotes: the last reached shape, the root for an
+        empty path; None for the terminal region (`[structure]`), whose
+        hop's holder is the container -- only a write target."""
+        return self.hops[-1].reached if self.hops else self.root
+
+
+def walk(shape: MIRShape, projections: tuple[Projection, ...], records: Records) -> MIRWalk:
     """Each projection with the shape it applies to and the shape it
-    reaches, from a value of `shape`."""
+    reaches, from a value of `shape`; raises on a hop no rule admits. A
+    container's structure is the terminal region: nothing follows it."""
+    hops: list[MIRHop] = []
+    holder: MIRShape | None = shape
     previous: Projection | None = None
     for projection in projections:
-        _enter(previous, shape)
-        reached = step(shape, projection, records)
-        yield projection, shape, reached
-        previous, shape = projection, reached
+        require_valid(not isinstance(previous, MIRContainerStructure), REGION_END)
+        _enter(previous, holder)
+        reached = None if isinstance(projection, MIRContainerStructure) else step(holder, projection, records)
+        hops.append(MIRHop(projection, holder, reached))
+        previous, holder = projection, reached
+    return MIRWalk(shape, tuple(hops))
+
+
+def object_prefix(shape: MIRShape, *, payload: bool) -> tuple[Projection, ...]:
+    """The projections from a value of `shape` to the object it holds: the
+    dereference of a pointer; with `payload`, the record an Optional
+    record's payload points at; nothing for storage or a value held in
+    place."""
+    if shape.is_pointer:
+        return (MIRDeref(),)
+    if payload and shape.record_payload:
+        return (MIROptionalPayload(), MIRDeref())
+    return ()
+
+
+def store_problem(walked: MIRWalk) -> str | None:
+    """Whether a store may write the place a walk ends at, by TPy's write
+    rule; None when it may, else the problem. Every holder on the way is
+    mutable (a pointer's access is its object's); replacing a field also
+    needs the field mutable (not declared `readonly[...]`), replacing an
+    element only its container: a `list[readonly[R]]` element is replaced,
+    never written into."""
+    for hop in walked.hops:
+        if hop.holder.readonly:
+            match hop.projection:
+                case MIRDeref():
+                    return "store through readonly reference"
+                case MIRContainerElements() | MIRContainerStructure():
+                    return "store through readonly container"
+            return "store through readonly storage"
+    last = walked.hops[-1] if walked.hops else None
+    if last is not None and isinstance(last.projection, MIRField) and last.reached.readonly:
+        return "store through readonly storage"
+    return None
 
 
 def walk_to(shape: MIRShape, projections: tuple[Projection, ...], records: Records) -> MIRShape:
     """The value `projections` reach from a value of `shape`."""
-    for _, _, shape in walk(shape, projections, records):
-        pass
-    return shape
-
-
-def prefix_shapes(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
-                  records: Records) -> Iterator[tuple[Projection, MIRShape]]:
-    """Each projection of `place` with the shape of the prefix it applies
-    to. Lazy: a projection is stepped only once the walk moves past it, so
-    a walk may stop at a projection no step reaches (a structure region)."""
-    shape = slots[place.root].shape
-    previous: Projection | None = None
-    for projection in place.projections:
-        if previous is not None:
-            shape = step(shape, previous, records)
-        _enter(previous, shape)
-        yield projection, shape
-        previous = projection
-
-
-def place_shape(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: Records) -> MIRShape:
-    """The value `place` denotes."""
-    return walk_to(slots[place.root].shape, place.projections, records)
-
-
-def view_member(place: MIRPlace) -> MIRField | None:
-    """The view member a place ends at -- the loan a record object stores,
-    read or rebound whole -- or None."""
-    last = place.projections[-1] if place.projections else None
-    return last if isinstance(last, MIRField) and loan_field(last.type) else None
+    end = walk(shape, projections, records).end
+    require_valid(end is not None, REGION_END)
+    return end

@@ -82,7 +82,8 @@ def test_for_callers_reach_valid_mir_without_copies(artifacts: Artifacts, name: 
     summary = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
     if name == "records":
         # A field write through an element of a container parameter is a write origin no summary publishes yet.
-        assert summary.state is MIRSummaryState.OPAQUE and summary.reason == "summary unsupported write origin"
+        assert summary.state is MIRSummaryState.OPAQUE and summary.reason == (
+            "summary unsupported write origin: invalid call write path")
         return
     # Each activation's argument temporary is the caller's private storage, only lent to the callee.
     assert summary.state is MIRSummaryState.KNOWN, summary

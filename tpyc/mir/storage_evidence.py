@@ -26,6 +26,7 @@ from enum import Enum, auto
 from types import MappingProxyType
 
 from ..parse import SourceLocation
+from ..thir.scalar_leaves import MIRClass
 from .call_effects import analyze_call_effects
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
@@ -35,10 +36,10 @@ from .dependencies import (
 )
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
-    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, MIRUnionPayload,
-    source_order,
+    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRRecordWrite, MIRRecordWriteMode,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, source_order,
 )
+from .shapes import MIROptionalPayload, MIRUnionPayload
 from .value import MIRField, MIRValidationError
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .presence import MIRPresenceIssueKind
@@ -176,8 +177,11 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
             continue
         operation = block.statements[point.index] if point.index < len(block.statements) else block.terminator
         match operation:
+            # Container storage evidence is not modeled: a borrowed container
+            # holder is no supported borrow, whatever its holding.
             case MIRAssign(target=target) if (not target.projections
-                    and slots[target.root].shape.borrowed):
+                    and slots[target.root].shape.borrow_holder
+                    and slots[target.root].shape.cls is not MIRClass.CONTAINER):
                 holder = target
                 state_point = MIRPoint(point.block, point.index + 1)
             case MIRReturn(value=value) if (fn.borrowed_result is not None

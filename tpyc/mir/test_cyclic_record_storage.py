@@ -10,10 +10,10 @@ from ..thir.validate import validate_function as validate_thir
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAlias, MIRBodyId, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
-    MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRStorageDuration,
-    MIRTupleConstruct,
+    MIRAlias, MIRBodyId, MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRecordWrite,
+    MIRRecordWriteMode, MIRStorageDuration, MIRTupleConstruct,
 )
+from .shapes import MIRDeref
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import CURRENT, INITIAL, LOOP, analyze, loop_function

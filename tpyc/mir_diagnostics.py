@@ -20,12 +20,9 @@ from .value_category import peel_coerce
 from .thir.lower import iter_module_callables, iter_module_constructors
 from .mir.call_contract import MIRCallSummary, MIRSummaryState
 from .mir.collect import MIRAnalyses, MIRBodySource, enumerate_body_sources, lower_and_analyze
-from .mir.coverage import call_place
+from .mir.shapes import MIRContainerElements, MIRContainerStructure
 from .mir.dependencies import MIRReferents, resolve_referents
-from .mir.nodes import (
-    MIRCall, MIRContainerElements, MIRContainerStructure, MIRFunction, MIRPlace, MIRSlotKind, source_order,
-    statement_call,
-)
+from .mir.nodes import MIRCall, MIRFunction, MIRPlace, MIRSlotKind, source_order, statement_call, call_place
 from .mir.value import MIRField
 from .mir_workspace import MIRProgram, resolved_calls
 

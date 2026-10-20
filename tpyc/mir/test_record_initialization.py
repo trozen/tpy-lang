@@ -9,12 +9,12 @@ from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
-    MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIROptionalConstruct, MIROptionalPayload, MIRTupleConstruct, MIRTupleIndex, MIRUnionConstruct,
-    MIRUnionPayload, MIRStatement,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
+    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite,
+    MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIROptionalConstruct, MIRTupleConstruct, MIRUnionConstruct, MIRStatement,
 )
+from .shapes import MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .payload_lifetime import analyze_payload_ends
 from .presence import MIREngagement, _analyze_presence

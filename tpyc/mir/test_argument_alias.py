@@ -11,10 +11,8 @@ from ..diagnostics import Diagnostic, DiagnosticLevel, insert_in_source_order
 from ..identity_map import IdentityMap
 from ..parse import SourceLocation
 from ..thir.testutil import _compile, _entry
-from .call_contract import (
-    MIRAliasObligation, MIRContainerElements, MIRContainerStructure, MIRParameterWrite, MIRSummaryState,
-    summary_problem,
-)
+from .call_contract import MIRAliasObligation, MIRParameterWrite, MIRSummaryState, summary_problem
+from .shapes import MIRContainerElements, MIRContainerStructure
 from .collect import enumerate_bodies
 from .dependencies import MIRReferent
 from .liveness import MIRPoint
@@ -148,13 +146,13 @@ def test_a_summary_cannot_publish_an_obligation_it_does_not_write(compiled) -> N
     compiler, entry, ctx = compiled
     with compiler.mir_analysis([(entry, ctx)]) as mir:
         known = next(r.summary for i, r in mir.workspace.summaries.items() if i.name == "bound")
-    assert summary_problem(known) is None
+    assert summary_problem(known, {}) is None
     unwritten = MIRAliasObligation(2, (), MIRParameterWrite(0, (MIRContainerElements(),)))
-    assert summary_problem(replace(known, obligations=frozenset({unwritten}))) == "invalid alias obligation write"
+    assert summary_problem(replace(known, obligations=frozenset({unwritten})), {}) == "invalid alias obligation write"
     itself = MIRAliasObligation(0, (), MIRParameterWrite(0, (MIRContainerStructure(),)))
-    assert summary_problem(replace(known, obligations=frozenset({itself}))) == "invalid alias obligation parameter"
+    assert summary_problem(replace(known, obligations=frozenset({itself})), {}) == "invalid alias obligation parameter"
     out_of_range = MIRAliasObligation(5, (), MIRParameterWrite(0, (MIRContainerStructure(),)))
-    assert summary_problem(replace(known, obligations=frozenset({out_of_range}))) == (
+    assert summary_problem(replace(known, obligations=frozenset({out_of_range})), {}) == (
         "invalid alias obligation parameter")
 
 

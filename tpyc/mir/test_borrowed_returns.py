@@ -19,9 +19,10 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered, MIRReturn,
-    MIRPoint, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRFunction, MIRNotCovered, MIRReturn, MIRPoint,
+    MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRValidationError
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
@@ -254,11 +255,11 @@ def test_result_contract_rejects_missing_or_wrong_origins(artifacts: Artifacts) 
         (frozenset({True}), "invalid call summary identity or facts"),
         (frozenset({0}), "invalid call summary identity or facts"),
     ):
-        assert summary_problem(replace(summary, returns=origins)) == message
+        assert summary_problem(replace(summary, returns=origins), {}) == message
     readonly = summarize_function(functions["observe"], bodies["observe"], definitions).summary
     # The readonly loan bound at the callee's own declared type.
     lent = tuple(replace(b, declared=t) for b, t in zip(readonly.parameters, summary.callee.signature.param_types))
-    assert summary_problem(replace(summary, parameters=lent)) == "unsupported return origin type or access"
+    assert summary_problem(replace(summary, parameters=lent), {}) == "unsupported return origin type or access"
 
 
 def test_return_access_is_validated_without_thir(artifacts: Artifacts) -> None:
@@ -493,7 +494,7 @@ def test_missing_actual_origin_is_not_an_empty_result(workspace: MIRCallWorkspac
 def test_scalar_summary_cannot_claim_borrowed_origins(workspace: MIRCallWorkspace) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == "readonly_binding")
     assert result.state is MIRSummaryState.KNOWN
-    assert summary_problem(replace(result.summary, returns=frozenset({MIRReturnOrigin(0)}))) == (
+    assert summary_problem(replace(result.summary, returns=frozenset({MIRReturnOrigin(0)})), {}) == (
         "missing or unexpected return origins")
 
 

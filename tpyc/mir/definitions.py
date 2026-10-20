@@ -600,6 +600,7 @@ def _member_definitions(ctor: th.THIRConstructor, layout: th.THIRRecordLayout, d
             member = definitions.get(bare, "missing constructor definition")
             if isinstance(member, str):
                 raise MIRUnsupported(ctor, f"member definition: {member}")
+        # A container has no constructor: its elements verify as it holds them.
         elif cls is MIRClass.CONTAINER:
             container_definition(ctor, bare, lambda t: definitions.get(t, "missing constructor definition"))
 
@@ -869,6 +870,7 @@ class MIRDefinitions:
         cls = value_class(typ)
         if cls is MIRClass.OWNED_LEAF:
             return MIROwnedLeafDefinition(owned_leaf_layout(typ))
+        # A container's definition derives from its type, a record's from its verified constructor.
         if cls in CONTAINER_CLASSES:
             return self.container(node, typ)
         definition = self.records.get(typ, "missing constructor definition")

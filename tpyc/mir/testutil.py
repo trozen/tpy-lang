@@ -8,13 +8,12 @@ from ..type_def_registry import int_traits_of
 from ..typesys import INT32_MIN, INT32_MAX
 
 from .nodes import (
-    MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace,
-    MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
-    MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRDeref, MIRTupleConstruct,
-    MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge, MIRIsPresent, MIROptionalConstruct, MIROptionalCopy,
-    MIROptionalPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint,
-    MIRContainerElements,
+    MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
+    MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
+    MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct, MIRTupleCopy,
+    MIRStorageInit, MIREdge, MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy,
+    MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    MIRRangeAdvance, MIROp, MIRPrint, place_shape,
 )
 from .value import Declared, MIRField, MIRFieldId, MIRHolding, MIRShape
 from .region_flow import MIRRegionFlow
@@ -23,8 +22,7 @@ from ..thir.scalar_leaves import MIRClass, value_class
 from ..type_def_registry import ParamPassing
 from ..typesys import OwnType, TpyType
 from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
-from .shapes import place_shape
-from .coverage import PAYLOAD_RECORD
+from .shapes import MIRContainerElements, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
 from .validate import statement_reads
 
 # Shapes for hand-built slots and members, one per holding: the class is
@@ -136,15 +134,11 @@ def owned_shape(typ: TpyType, readonly: bool = False, members: tuple | None = ()
 
 def borrowed_shape(typ: TpyType, readonly: bool = False, members: tuple | None = (),
                    cls: MIRClass | None = None) -> MIRShape:
-    """A holder of storage elsewhere: a pointer, or a container view's region."""
+    """A holder of storage elsewhere: a pointer (a borrowed record or
+    container among them), or a container view's region."""
     found = _class(typ, cls)
     holding = MIRHolding.REGION if found is MIRClass.CONTAINER_VIEW else MIRHolding.POINTER
     return MIRShape(typ, found, holding, readonly, members or ())
-
-
-def region_shape(typ: TpyType, readonly: bool = False, members: tuple | None = ()) -> MIRShape:
-    """A borrowed container: its elements region, reached directly."""
-    return MIRShape(typ, MIRClass.CONTAINER, MIRHolding.REGION, readonly, members or ())
 
 
 def cursor_shape(typ: TpyType, readonly: bool = False, members: tuple | None = ()) -> MIRShape:
@@ -323,7 +317,8 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     assert isinstance(value, TupleValue)
                     value = value.elements[projection.index]
                 case MIRDeref():
-                    assert isinstance(value, Reference)
+                    # A container value is shared by every holder: its own object.
+                    assert isinstance(value, (Reference, ContainerValue))
                 case MIRContainerElements():
                     assert isinstance(value, ContainerValue)
                     value = value.elements[last_index[0]]
@@ -443,12 +438,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRConstruct() if slots[stmt.target.root].shape.container_storage:
                     value = ContainerValue([values[src] for src in rhs.fields])
                 case MIRConstruct():
-                    target = slots[stmt.target.root]
-                    typ = (target.shape.payload.type
-                           if stmt.target.projections == PAYLOAD_RECORD
-                           else target.shape.subscript.type
-                           if stmt.target.projections == (MIRContainerElements(),) else target.type)
-                    layout = records[typ]
+                    layout = records[place_shape(stmt.target, slots, records).type]
                     value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
                 case MIRCopy() | MIRMove():
                     source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source

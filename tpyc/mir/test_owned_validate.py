@@ -7,8 +7,9 @@ import pytest
 from ..typesys import BOOL, INT32, NominalType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
-    MIRDeref, MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .testutil import bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
 from .validate import validate_function

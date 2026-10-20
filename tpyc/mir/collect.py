@@ -28,9 +28,8 @@ from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure, MIRCopy,
-    MIRDeref, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRTupleIndex, MIRUnionPayload, function_body_kind, source_order, statement_target,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRMemberInitMode, MIRNotCovered,
+    MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, function_body_kind, source_order, statement_target, place_shape,
 )
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRShape
 from .payload_lifetime import (
@@ -41,7 +40,10 @@ from .retention import (
     dump_retention, static_referent,
 )
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
-from .shapes import place_shape
+from .shapes import (
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
+    object_prefix,
+)
 from .storage import MIRStorageEvents, dump_storage, owned_field
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
@@ -593,7 +595,7 @@ def _value_write(shape: MIRShape) -> MIRWriteKind | None:
     of storage elsewhere (a pointer, a container view), an inert leaf."""
     if shape.is_storage:
         return MIRWriteKind.OWNED
-    if shape.borrowed:
+    if shape.borrow_holder:
         return MIRWriteKind.BORROWED
     return MIRWriteKind.SCALAR if shape.is_scalar else None
 
@@ -601,7 +603,7 @@ def _value_write(shape: MIRShape) -> MIRWriteKind | None:
 def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
                   records: Mapping[TpyType, MIRRecordLayout]) -> MIRWriteKind | None:
     match place.projections:
-        case () | (*_, MIRTupleIndex() | MIROptionalPayload()) | (MIRContainerElements(),):
+        case () | (*_, MIRTupleIndex() | MIROptionalPayload() | MIRContainerElements()):
             # A slot's own value, a wrapper's member, a container element.
             return _value_write(place_shape(place, slots, records))
         case (*_, MIRDeref()):
@@ -711,7 +713,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 if member.loc is None:
                     continue
                 lines.add(member.loc.line)
-                spelled = _spell(MIRPlace(receiver.id, (MIRDeref(), field)), named)
+                spelled = _spell(MIRPlace(receiver.id, (*object_prefix(receiver.shape, payload=False), field)), named)
                 kind = (MIRWriteKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR
                         else MIRWriteKind.BORROWED if member.mode is MIRMemberInitMode.BORROW
                         else MIRWriteKind.OWNED)
@@ -733,9 +735,9 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 leaves.setdefault(named[slot.id], []).append(leaf)
                 if leaf.projections:
                     leaves.setdefault(_spell(leaf, named), []).append(leaf)
-            if slot.shape.is_pointer and slot.shape.cls is MIRClass.RECORD:
+            if slot.shape.borrowed_record:
                 for member in view_members(layouts.get(slot.type)):
-                    place = MIRPlace(slot.id, (MIRDeref(), member))
+                    place = MIRPlace(slot.id, (*object_prefix(slot.shape, payload=False), member))
                     members[_spell(place, named)] = place
         for (line, block_id), index in last.items():
             state = dependencies.referents.get(MIRPoint(block_id, index + 1))

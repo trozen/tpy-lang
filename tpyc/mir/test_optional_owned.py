@@ -14,9 +14,9 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered,
-    MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRecordWriteMode,
+    MIRAssign, MIRBodyId, MIRConstruct, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIRPlace, MIRRecordWriteMode,
 )
+from .shapes import MIRDeref, MIROptionalPayload
 from .storage import MIRStorageEvents, analyze_storage
 from .testutil import Heap, Reference, execute, reslot
 from .validate import MIRPresenceError, validate_function

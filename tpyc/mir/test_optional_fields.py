@@ -16,15 +16,17 @@ from ..typesys import INT32, NominalType, OptionalType, ReadonlyType, TupleType
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstant, MIRDeref, MIRFunction, MIRIsPresent, MIROptionalConstruct, MIROptionalPayload,
-    MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBodyId, MIRConstant, MIRFunction, MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRRead, MIRSlot,
+    MIRSlotId, MIRSlotKind, place_shape,
 )
 from .value import MIRField, MIRFieldId
 from .coverage import MIRUnsupported
 from .definitions import constructor_initialization
 from .presence import _State, _may_hold, _reaches, _transfer
-from .shapes import place_shape
-from .testutil import borrowed_shape, cursor_shape, leaf_shape, owned_shape, tuple_shape
+from .shapes import MIRDeref, MIROptionalPayload
+from .testutil import bind_parameters, borrowed_shape, cursor_shape, leaf_shape, owned_shape, reslot, tuple_shape
+from .validate import validate_function
+from .value import MIRValidationError
 
 SOURCE = """\
 from tpy import int32, StrView, copy, readonly
@@ -417,3 +419,29 @@ def test_a_composed_payload_needs_a_movable_record(program: _Program) -> None:
     records[p] = replace(records[p], layout=replace(records[p].layout, movable=False))
     with pytest.raises(MIRUnsupported, match="constructor moves a nonmovable record"):
         constructor_initialization(program.constructors["Built"], records)
+
+
+# --- writes ---------------------------------------------------------------------------------
+
+def test_a_payload_field_write_through_a_readonly_holder_is_refused(program: _Program) -> None:
+    # `h.p.x = n` under the presence proof `read` already holds: a store
+    # into the inline payload. Through `read`'s own readonly holder it is
+    # refused for the holder's access; through a mutable one by the payload
+    # rule (lowering builds no such write: "optional field payload write").
+    fn = program.verdicts["read"].function
+    holder = next(s for s in fn.slots if s.name == "h")
+    payload_x = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p"), MIROptionalPayload(), _member(program, "P.x")))
+    blocks = list(fn.blocks)
+    index, block = next((i, b) for i, b in enumerate(blocks)
+                        if any(isinstance(s, MIRAssign) and s.value == MIRRead(payload_x) for s in b.statements))
+    read = next(s for s in block.statements if isinstance(s, MIRAssign) and s.value == MIRRead(payload_x))
+    store = MIRAssign(payload_x, MIRRead(read.target))
+    blocks[index] = replace(block, statements=(*block.statements, store))
+    written = replace(fn, blocks=tuple(blocks))
+    assert holder.readonly
+    mutable = bind_parameters(replace(written, slots=tuple(
+        reslot(s, readonly=False) if s.id == holder.id else s for s in written.slots)))
+    with pytest.raises(MIRValidationError, match="optional payload replacement is forbidden"):
+        validate_function(mutable)
+    with pytest.raises(MIRValidationError, match="^store through readonly reference$"):
+        validate_function(written)

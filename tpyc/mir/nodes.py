@@ -8,11 +8,13 @@ from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
+from ..thir.scalar_leaves import MIRClass
 from ..typesys import TpyType
-from .call_contract import (
-    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding,
+from .call_contract import MIRCallSummary, MIRGlobalId, MIRParameterBinding, path_projections
+from .shapes import (
+    MIRWalk, Projection, object_prefix, walk, walk_to,
 )
-from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError
+from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError, Records, loan_field
 
 
 @dataclass(frozen=True)
@@ -120,30 +122,37 @@ class MIRSlot:
 
 
 @dataclass(frozen=True)
-class MIRDeref:
-    pass
-
-
-@dataclass(frozen=True)
-class MIRTupleIndex:
-    index: int
-
-
-@dataclass(frozen=True)
-class MIROptionalPayload:
-    pass
-
-
-@dataclass(frozen=True)
-class MIRUnionPayload:
-    alternative: int
-
-
-@dataclass(frozen=True)
 class MIRPlace:
     root: MIRSlotId
-    projections: tuple[MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnionPayload
-                       | MIRContainerStructure | MIRContainerElements, ...] = ()
+    projections: tuple[Projection, ...] = ()
+
+
+def place_walk(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: Records) -> MIRWalk:
+    """`place`'s projections stepped from its root slot's shape."""
+    return walk(slots[place.root].shape, place.projections, records)
+
+
+def place_shape(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: Records) -> MIRShape:
+    """The value `place` denotes."""
+    return walk_to(slots[place.root].shape, place.projections, records)
+
+
+def view_member(place: MIRPlace) -> MIRField | None:
+    """The view member a place ends at -- the loan a record object stores,
+    read or rebound whole -- or None."""
+    last = place.projections[-1] if place.projections else None
+    return last if isinstance(last, MIRField) and loan_field(last.type) else None
+
+
+def under_object(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], *,
+                 payload: bool) -> tuple[Projection, ...] | None:
+    """The projections of `place` under the object its root slot holds
+    behind a pointer or an Optional record's payload (`object_prefix`), or
+    None when the place does not reach through one."""
+    prefix = object_prefix(slots[place.root].shape, payload=payload)
+    if prefix and place.projections[:len(prefix)] == prefix:
+        return place.projections[len(prefix):]
+    return None
 
 
 @dataclass(frozen=True)
@@ -193,6 +202,19 @@ class MIRCall:
             transfers=frozenset(t for t in summary.transfers if t.holder not in absent and t.source not in absent),
             obligations=frozenset(o for o in summary.obligations
                                   if o.parameter not in absent and o.written.parameter not in absent))
+
+
+def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
+               slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
+    """The caller's place a summary's parameter path names: under the
+    record a borrowed record argument points at, or directly under a
+    container argument (owned, borrowed, or a view)."""
+    argument = slots[call.arguments[parameter]]
+    # An Optional argument lends the record its payload points at; a
+    # scalar payload is the callee's own copy, under which no path lies.
+    if argument.shape.cls is MIRClass.OPTIONAL and not argument.shape.record_payload:
+        raise MIRValidationError("call path under an Optional argument with no borrowed payload")
+    return MIRPlace(argument.id, path_projections(argument.shape, path))
 
 
 @dataclass(frozen=True)

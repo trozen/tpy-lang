@@ -9,10 +9,11 @@ from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRDeref,
-    MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
+    MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot,
+    MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .testutil import bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot

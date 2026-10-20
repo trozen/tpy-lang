@@ -9,13 +9,11 @@ from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction,
-    MIRGoto, MIRIsAlternative, MIRIsPresent, MIRNotCovered, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalPayload, MIRPayloadWrite,
-    MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRUnionConstruct,
-    MIRUnionCopy, MIRUnionPayload, MIRConstant,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent,
+    MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRUnionConstruct, MIRUnionCopy, MIRConstant,
 )
+from .shapes import MIROptionalPayload, MIRUnionPayload
 from .payload_lifetime import MIRPayloadEnds, analyze_payload_ends, dump_payload_ends
 from .presence import _analyze_presence
 from .validate import validate_function

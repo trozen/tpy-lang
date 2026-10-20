@@ -10,12 +10,12 @@ from .liveness import MIRPoint, analyze_liveness, dump_liveness
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRDeref, MIRFunction, MIRGoto,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsAlternative, MIRMemberInit, MIRPlace, MIRRead, MIRReceiverInit, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRUnionExtract, MIRUnionPayload, MIRRvalue, MIRAlias, MIRConstruct, MIRCopy, MIRMove, MIRTupleConstruct,
-    MIRTupleCopy, MIRTupleIndex, MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy, MIRIsPresent,
-    MIRGlobalId,
+    MIRUnionExtract, MIRRvalue, MIRAlias, MIRConstruct, MIRCopy, MIRMove, MIRTupleConstruct, MIRTupleCopy,
+    MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy, MIRIsPresent, MIRGlobalId,
 )
+from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .validate import operands
 from .test_iteration import fixture as iteration_fixture

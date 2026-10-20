@@ -8,12 +8,12 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionTy
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
-    MIRFunction, MIRGoto, MIRIsPresent, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct, MIRUnionCopy,
-    MIRUnionPayload,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRFunction,
+    MIRGoto, MIRIsPresent, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRRead, MIRRecordWrite,
+    MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
+    MIRUnionConstruct, MIRUnionCopy,
 )
+from .shapes import MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .retention import MIRRetention, MIRRetentionConflict, analyze_retention, dump_retention, may_overlap
 from .storage import MIRStorageEvents, analyze_storage

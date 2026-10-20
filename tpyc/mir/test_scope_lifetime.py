@@ -11,13 +11,11 @@ from ..typesys import BOOL, INT32, OptionalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
-    MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered,
-    MIRIsPresent,
-    MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRRegion, MIRRegionId,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRRegion,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .shapes import MIROptionalPayload
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
 from .validate import validate_function
 from .value import MIRValidationError

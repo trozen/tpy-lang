@@ -6,9 +6,10 @@ import pytest
 
 from ..typesys import BOOL, INT32, NominalType, ReadonlyType
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRDeref, MIRFunction, MIRGoto,
-    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRPlace,
+    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError
 from .validate import validate_function
 from .testutil import bind_parameters, borrowed_shape, leaf_shape, reslot

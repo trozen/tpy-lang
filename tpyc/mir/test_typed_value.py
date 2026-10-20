@@ -15,9 +15,7 @@ from ..thir.scalar_leaves import MIRClass
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, STR, STRVIEW, NominalType, OwnType, TupleType
-from .call_contract import (
-    MIR_STATIC, MIRContainerElements, MIRLoanTransfer, MIRParameterWrite, call_path_problem,
-)
+from .call_contract import MIR_STATIC, MIRLoanTransfer, MIRParameterWrite, call_path_problem, path_walk
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
 from .definitions import MIRDefinitions
 from .emit import owned_leaf_shape, view_holder_shape
@@ -27,7 +25,7 @@ from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, holder_form,
     with_access,
 )
-from .shapes import step
+from .shapes import step, MIRContainerElements, MIRDeref
 from .testutil import bound
 from .validate import validate_function
 
@@ -159,7 +157,7 @@ def _lowered(unit, name: str):
 def test_a_container_field_is_lent_with_the_members_registered_by_then(dumps) -> None:
     # The field's shape is derived at the read, after its element record registered.
     lines = dumps["Bag.total"]
-    assert "%3: list[P] container-ref readonly element=P:record:readonly temporary" in lines
+    assert "%3: list[P] readonly-ref element=P:record:readonly temporary" in lines
     assert "%3 = borrow (*%0).__main__.Bag::pts" in lines
 
 
@@ -207,7 +205,7 @@ def test_holder_form_is_each_holder_a_value_is_lent_through() -> None:
     assert holder_form(view_holder_shape(STR)) == view_holder_shape(STR)
     members = (MIRShape(INT32, MIRClass.LEAF, readonly=True),)
     container = MIRShape(NominalType("list", (INT32,)), MIRClass.CONTAINER, readonly=True, members=members)
-    assert holder_form(container) == MIRShape(container.type, MIRClass.CONTAINER, MIRHolding.REGION, True, members)
+    assert holder_form(container) == MIRShape(container.type, MIRClass.CONTAINER, MIRHolding.POINTER, True, members)
     pair = MIRShape(TupleType((INT32, INT32)), MIRClass.TUPLE, members=(members[0], members[0]))
     assert holder_form(pair) == pair
 
@@ -215,13 +213,13 @@ def test_holder_form_is_each_holder_a_value_is_lent_through() -> None:
 def test_a_leaf_member_of_a_readonly_holder_is_readonly() -> None:
     leaf = MIRShape(INT32, MIRClass.LEAF)
     members = with_access((leaf,), True)
-    holder = MIRShape(NominalType("list", (INT32,)), MIRClass.CONTAINER, MIRHolding.REGION, True, members)
+    holder = MIRShape(NominalType("list", (INT32,)), MIRClass.CONTAINER, MIRHolding.POINTER, True, members)
     # The holder's members and the step to its element agree.
-    assert members[0].readonly and step(holder, MIRContainerElements(), {}) == members[0]
+    assert members[0].readonly and step(step(holder, MIRDeref(), {}), MIRContainerElements(), {}) == members[0]
 
 
 def test_a_leaf_element_of_a_readonly_container_reads_readonly(unit, dumps) -> None:
-    assert "%0: list[int32] container-ref readonly element=int32:leaf:readonly parameter xs" in dumps["head"]
+    assert "%0: list[int32] readonly-ref element=int32:leaf:readonly parameter xs" in dumps["head"]
     # The container's own access refuses the write with or without the leaf
     # rule; this pins that the readonly element stays unwritable.
     fn = _lowered(unit, "head")
@@ -234,7 +232,7 @@ def test_a_leaf_element_of_a_readonly_container_reads_readonly(unit, dumps) -> N
     damaged = replace(fn, blocks=tuple(
         replace(b, statements=(*b.statements[:index], write, *b.statements[index + 1:])) if b is block else b
         for b in fn.blocks))
-    with pytest.raises(MIRValidationError, match="store through readonly container"):
+    with pytest.raises(MIRValidationError, match="store through readonly reference"):
         validate_function(damaged)
 
 
@@ -251,52 +249,74 @@ def test_a_mutable_name_returned_readonly_is_its_own_holder(dumps) -> None:
     assert not any(re.match(r"%\d+: P ", line) for line in lines if "parameter" not in line)
 
 
-# --- the call write-path walk (`call_path_problem`) ----------------------------------
+# --- the call's part of a summary path (`call_path_problem`) -------------------------
 
 _R = NominalType("R", _module_qname="m.R")
+_D = NominalType("D", _module_qname="m.D")
 _V = th.THIRFieldIdentity(_R, "v", STRVIEW)
 _MISSING = th.THIRFieldIdentity(_R, "missing", STRVIEW)
 _LAYOUT = MIRRecordLayout(_R, (MIRField(MIRFieldId(_R, "v"), STRVIEW),), True, True)
+# A record deriving from R: its layout carries R's field under R.
+_DERIVED = MIRRecordLayout(_D, _LAYOUT.fields, True, True, ancestors=(_R,))
 _OWNED = bound(OwnType(_R), ParamPassing.OWN)
 _LENT = bound(_R, ParamPassing.MUT_REF, ref=th.THIRBorrowedRecord(_R, False))
 
 
-def _summary(transfers=(), writes=()) -> SimpleNamespace:
-    return SimpleNamespace(parameters=(_OWNED, _LENT), transfers=tuple(transfers), writes=frozenset(writes),
-                           returns=frozenset())
+def _summary(*paths: tuple[int, th.THIRFieldIdentity]) -> SimpleNamespace:
+    """Parameter 1's paths as writes, the owned parameter 0's as loan transfers."""
+    return SimpleNamespace(
+        parameters=(_OWNED, _LENT), returns=frozenset(),
+        writes=frozenset(MIRParameterWrite(1, (field,)) for end, field in paths if end == 1),
+        transfers=frozenset(MIRLoanTransfer(0, (field,), MIR_STATIC) for end, field in paths if end == 0))
 
 
-def _walk(summary, skip=None) -> tuple[str | None, list[tuple[str, object]]]:
+def _walks(*paths: tuple[int, th.THIRFieldIdentity]) -> dict:
+    """The walks a contract with no layout made: an own-type field passes it."""
+    roots = {0: _OWNED.value, 1: _LENT.lent_record}
+    return {(end, (field,)): path_walk(roots[end], (field,), {}) for end, field in paths}
+
+
+def _check(*paths, walks=None, skip=None, storage=_R) -> tuple[str | None, list[tuple[str, object]]]:
     log: list[tuple[str, object]] = []
+    layouts = {_R: _LAYOUT, _D: _DERIVED}
 
     def storage_of(parameter: int) -> NominalType:
         log.append(("storage", parameter))
-        return _R
+        return storage
 
-    def layout_of(record: NominalType) -> MIRRecordLayout:
+    def layout_of(record: NominalType) -> MIRRecordLayout | None:
         log.append(("layout", record))
-        return _LAYOUT
-    return call_path_problem(summary, INT32, storage_of, layout_of, skip), log
+        return layouts.get(record)
+    walks = _walks(*paths) if walks is None else walks
+    return call_path_problem(_summary(*paths), walks, storage_of, layout_of, skip), log
 
 
-def test_owned_transfer_ends_are_walked_before_any_parameter_path() -> None:
-    bad_write = MIRParameterWrite(1, (_MISSING,))
-    problem, log = _walk(_summary([MIRLoanTransfer(0, (_MISSING,), MIR_STATIC)], [bad_write]))
+def test_each_field_is_a_member_of_its_storages_layout_at_the_call() -> None:
+    # The contract's walk admitted `R.missing` (no layout); the call reads
+    # R's layout, which holds only `v`.
+    assert _check((1, _V))[0] is None
+    problem, log = _check((1, _MISSING))
+    assert problem == "call write field does not match record layout"
+    assert log == [("storage", 1), ("layout", _R)]
+
+
+def test_the_first_field_is_read_from_the_record_the_argument_binds() -> None:
+    # A derived argument: its layout is asked, and carries R's field under R.
+    problem, log = _check((1, _V), storage=_D)
+    assert problem is None and log == [("storage", 1), ("layout", _D)]
+
+
+def test_owned_storage_needs_no_argument() -> None:
+    # Under owned record storage no argument binds: the walk's own holder is read.
+    problem, log = _check((0, _MISSING))
     assert problem == "call write field does not match record layout" and log == [("layout", _R)]
-    problem, log = _walk(_summary([MIRLoanTransfer(0, (_V,), MIR_STATIC)], [bad_write]))
-    assert problem == "call write field does not match record layout"
-    assert log == [("layout", _R), ("storage", 1), ("layout", _R)]
 
 
-def test_writes_are_walked_before_lent_transfer_paths() -> None:
-    summary = _summary([MIRLoanTransfer(1, (_MISSING,), MIR_STATIC)], [MIRParameterWrite(1, (_V,))])
-    problem, log = _walk(summary)
-    assert problem == "call write field does not match record layout"
-    assert log == [("storage", 1), ("layout", _R), ("storage", 1), ("layout", _R)]
+def test_every_field_hop_needs_its_storages_layout() -> None:
+    assert _check((1, _V), storage=NominalType("E", _module_qname="m.E"))[0] == (
+        "call write field does not match record layout")
 
 
-def test_skip_passes_over_a_parameter_ended_transfer_path() -> None:
-    summary = _summary([MIRLoanTransfer(1, (_MISSING,), MIR_STATIC)])
-    assert _walk(summary)[0] == "call write field does not match record layout"
-    problem, log = _walk(summary, skip=lambda parameter, storage: parameter == 1 and storage == _R)
+def test_skip_passes_over_a_parameter_path() -> None:
+    problem, log = _check((1, _MISSING), skip=lambda parameter, storage: parameter == 1 and storage == _R)
     assert problem is None and log == [("storage", 1)]

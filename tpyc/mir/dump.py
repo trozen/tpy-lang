@@ -6,13 +6,15 @@ from ..thir.nodes import THIRStubCallee
 from ..thir.scalar_leaves import MIRClass
 from .call_contract import MIRAliasObligation, MIRResultHolder, MIRStaticLoan
 from .nodes import (
-    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRGoto, MIRFunction, MIRNot, MIROp,
-    MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit,
-    MIRMemberInitMode, MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization, MIRIsPresent, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload,
-    MIRUnionExtract, MIRContainerStructure, MIRContainerElements, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
+    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint,
+    MIRPlace, MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode,
+    MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct,
+    MIRTupleCopy, MIRTupleInitialization, MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct,
+    MIRUnionCopy, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIRSlotId,
+)
+from .shapes import (
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
 )
 from .value import MIRField, MIRHolding, MIRShape
 from .validate import validate_function
@@ -153,8 +155,8 @@ def dump_function(fn: MIRFunction) -> str:
             name = f" {slot.global_id.module}::{slot.global_id.name}"
         shape = slot.shape
         match shape.holding, shape.cls:
-            case (MIRHolding.CURSOR, _) | (MIRHolding.REGION, MIRClass.CONTAINER):
-                access = " native-iterator" if shape.holding is MIRHolding.CURSOR else " container-ref"
+            case (MIRHolding.CURSOR, _):
+                access = " native-iterator"
                 access += " readonly" if slot.readonly else " mutable"
                 access += _layout(shape)
             case (MIRHolding.POINTER | MIRHolding.REGION, _):

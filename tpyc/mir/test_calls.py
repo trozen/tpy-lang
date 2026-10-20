@@ -287,7 +287,8 @@ def test_writer_summary_requires_layout_and_mutable_actual(artifacts: Artifacts,
         replace(stmt, value=replace(stmt.value, summary=summary))
         if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall) else stmt
         for stmt in block.statements)) for block in body.blocks))
-    reason = "call write field does not match record layout" if bad_field else "call record argument mismatch"
+    # A field missing from the layout fails the walk of the summary path itself.
+    reason = "field missing from record layout" if bad_field else "call record argument mismatch"
     with pytest.raises(MIRValidationError, match=reason):
         validate_function(body)
 
@@ -364,7 +365,7 @@ def test_call_coverage_checks_selected_signature_and_contract(artifacts: Artifac
         callee = replace(call.resolved_callee, signature=replace(
             call.resolved_callee.signature, passings=None if damage == "unpublished" else (ParamPassing.MUT_REF,)))
         summary = replace(entry.summary, callee=callee)
-        assert summary_problem(summary) == reason
+        assert summary_problem(summary, {}) == reason
         entries[callee.identity] = MIRSummaryResult(MIRSummaryState.KNOWN, summary)
         fn = replace(fn, body=(replace(stmt, value=replace(call, resolved_callee=callee)),))
     else:

@@ -27,9 +27,10 @@ from .liveness import MIRPoint, analyze_liveness
 from .lower import _Lowering, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRConstruct,
-    MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRRecordWrite,
-    MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode,
+    MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRValidationError
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
@@ -956,12 +957,12 @@ def test_validator_rejects_damaged_owned_leaf_facts(lowered_active) -> None:
     view = NominalType("StrView", (), _module_qname="tpy.StrView")
     with pytest.raises(MIRValidationError, match="value class mismatch"):
         validate_function(_replace_slot(local, "total", type=view))
-    # A field projection under an opaque layout.
+    # A field projection inside an owned leaf, whose layout is opaque.
     field = MIRField(MIRFieldId(BIGINT, "digits"), INT32)
     projected = _replace_first(local, lambda s: isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy),
                                lambda s: replace(s, value=replace(s.value, source=MIRPlace(
                                    s.value.source.root, (*s.value.source.projections, field)))))
-    with pytest.raises(MIRValidationError, match="field projection under an opaque layout"):
+    with pytest.raises(MIRValidationError, match="field needs record storage"):
         validate_function(projected)
     # A write to owned storage without its storage event.
     unmarked = _replace_first(local, lambda s: isinstance(s, MIRAssign) and s.storage_write is not None,

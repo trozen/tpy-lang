@@ -13,11 +13,11 @@ from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
-    MIRDeref, MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRMove, MIRNotCovered, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct, MIRUnionCopy,
-    MIRUnionExtract, MIRUnionPayload,
+    MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRMove, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy,
+    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
+    MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract,
 )
+from .shapes import MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .validate import successors, validate_function
 from .testutil import (

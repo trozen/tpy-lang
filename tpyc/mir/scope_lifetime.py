@@ -10,12 +10,11 @@ from .dependencies import MIRDependencies, MIRReferent, _dependencies
 from .dump import _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRBlockId, MIREdge, MIRFunction,
-    MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
-    MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRUnionPayload, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRBlockId, MIREdge, MIRFunction, MIRNotCovered, MIRPayloadWrite, MIRPlace, MIRRecordWrite, MIRRegionId, MIRSlotId,
+    MIRSlotKind, MIRStorageDuration, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRTupleInitialization, statement_target,
 )
+from .shapes import MIROptionalPayload, MIRUnionPayload
 from ..thir.scalar_leaves import MIRClass
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
 from .region_flow import MIRRegionFlow, outgoing_edges

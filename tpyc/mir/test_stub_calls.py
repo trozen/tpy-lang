@@ -19,18 +19,16 @@ from ..typesys import (
     unwrap_ref_type,
 )
 from .call_contract import (
-    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
-    MIRReturnOrigin, MIRSummaryState, parameter_contract_problem, stub_protocol_argument, stub_summary,
-    summary_problem,
+    MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState,
+    parameter_contract_problem, stub_protocol_argument, stub_summary, summary_problem,
 )
+from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies
 from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
-from .nodes import (
-    MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRDeref, MIRFunction, MIRNotCovered, MIRPlace, MIRSlotKind,
-)
+from .nodes import MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRSlotKind
 from .value import Declared, MIRHolding, MIRValidationError, with_access
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
@@ -216,7 +214,7 @@ def test_admitted_stub_calls_carry_their_declared_summary(active) -> None:
     for call in calls:
         summary = call.summary
         assert isinstance(summary.callee, th.THIRStubCallee)
-        assert summary_problem(summary) is None and summary == stub_summary(summary.callee)
+        assert summary_problem(summary, {}) is None and summary == stub_summary(summary.callee)
         assert summary.reads == frozenset(range(len(summary.parameters)))
         assert not (summary.writes or summary.invalidates or summary.transfers or summary.global_reads)
         assert summary.normal_return_only is False
@@ -375,14 +373,14 @@ def test_validator_rejects_a_summary_that_disagrees_with_the_declaration(active)
     for damaged in (replace(summary, normal_return_only=True), replace(summary, returns=frozenset()),
                     replace(summary, global_reads=frozenset({MIRGlobalId("main", "G")})),
                     replace(summary, reads=frozenset({0}))):
-        assert summary_problem(damaged) == "stub summary differs from its declaration"
+        assert summary_problem(damaged, {}) == "stub summary differs from its declaration"
         body = _replace_call(fn, stmt, replace(stmt.value, summary=damaged, may_raise=not damaged.normal_return_only),
                              call_summaries=(damaged,))
         with pytest.raises(MIRValidationError, match="stub summary differs from its declaration"):
             validate_function(body)
     # A summary of a stub with no contract is no summary at all.
     unmarked = replace(summary, callee=replace(summary.callee, contract=None))
-    assert summary_problem(unmarked) == "stub declares no contract"
+    assert summary_problem(unmarked, {}) == "stub declares no contract"
     # No declaration says a stub cannot raise, so a call claiming a normal return is refused.
     with pytest.raises(MIRValidationError, match="stub call must be a possible exceptional exit"):
         validate_function(_replace_call(fn, stmt, replace(stmt.value, may_raise=False)))
@@ -499,7 +497,7 @@ def _writes(summary: MIRCallSummary) -> set[tuple[int, tuple[str, ...]]]:
 def _summary(stub: th.THIRStubCallee) -> MIRCallSummary:
     summary = stub_summary(stub)
     assert isinstance(summary, MIRCallSummary), summary
-    assert summary_problem(summary) is None
+    assert summary_problem(summary, {}) is None
     # Every method may raise and reads every parameter; a stub summary retains nothing.
     assert summary.normal_return_only is False and summary.reads == frozenset(range(len(summary.parameters)))
     assert not (summary.invalidates or summary.transfers or summary.global_reads)
@@ -613,7 +611,7 @@ def test_method_stub_summary_gates(methods) -> None:
     summary = _summary(append)
     for damaged in (replace(summary, writes=frozenset()),
                     replace(summary, writes=frozenset({MIRParameterWrite(0, (MIRContainerElements(),))}))):
-        assert summary_problem(damaged) == "stub summary differs from its declaration"
+        assert summary_problem(damaged, {}) == "stub summary differs from its declaration"
 
 
 def _user_summary(fn: th.THIRFunction, bindings: tuple[MIRParameterBinding, ...], *, writes=frozenset(),
@@ -647,7 +645,7 @@ def test_user_summaries_publish_container_writes(methods) -> None:
     for path in ((0, (structure,)), (0, (elements,)), (2, (structure,)), (3, (elements,)),
                  (5, (items, structure)), (5, (items, elements))):
         write = MIRParameterWrite(*path)
-        assert summary_problem(_user_summary(fn, bindings, writes={write})) is None, path
+        assert summary_problem(_user_summary(fn, bindings, writes={write}), {}) is None, path
     for path, reason in (
         # A readonly parameter is never written; a view never changes its container's shape.
         ((1, (structure,)), "unsupported call write field or access"),
@@ -657,11 +655,11 @@ def test_user_summaries_publish_container_writes(methods) -> None:
         ((5, (items,)), "unsupported call write field or access"),
         ((5, (structure, items)), "invalid call write path"),
         ((0, (elements, elements)), "invalid call write path"),
-        ((5, (items, items, structure)), "invalid call write path"),
+        ((5, (items, items, structure)), "field needs record storage"),
         ((0, ()), "invalid call write path"),
     ):
         write = MIRParameterWrite(*path)
-        assert summary_problem(_user_summary(fn, bindings, writes={write})) == reason, path
+        assert summary_problem(_user_summary(fn, bindings, writes={write}), {}) == reason, path
     # Bindings: a container is readonly exactly at CONST_REF; a readonly-element view is readonly.
     # A loan readonly at MUT_REF (its members with it), readonly owned storage, a readonly view made mutable.
     lent = bindings[0].value
@@ -671,7 +669,7 @@ def test_user_summaries_publish_container_writes(methods) -> None:
             (2, reaccess(bindings[2], True), "readonly owned storage"),
             (4, reaccess(bindings[4], False), "mutable loan of a readonly value")):
         broken = bindings[:index] + (damaged,) + bindings[index + 1:]
-        assert summary_problem(_user_summary(fn, broken)) == reason, index
+        assert summary_problem(_user_summary(fn, broken), {}) == reason, index
 
 
 def test_user_summaries_return_container_views_and_elements_of_parameters(methods) -> None:
@@ -682,20 +680,20 @@ def test_user_summaries_return_container_views_and_elements_of_parameters(method
     bindings = (bound(xs.type, ParamPassing.CONST_REF, True), bound(ps.type, ParamPassing.CONST_REF, True))
     rsp = next(p.type for p in methods.thir["shapes"].params if p.name == "rsp")
     sp = next(p.type for p in methods.thir["shapes"].params if p.name == "sp")
-    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={0})) is None
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={0}), {}) is None
     # A mutable view of a parameter lent readonly would write what the caller lent.
-    assert summary_problem(_user_summary(fn, bindings, ret=sp, returns={0})) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=sp, returns={0}), {}) == (
         "unsupported return origin type or access")
     # A view of another element type is no view of the parameter.
-    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={1})) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={1}), {}) == (
         "unsupported return origin type or access")
     point = ps.native_container.element.type
     element = th.THIRBorrowedRecord(point, True)
-    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=element, returns={1})) is None
-    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=element, returns={0})) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=element, returns={1}), {}) is None
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=element, returns={0}), {}) == (
         "unsupported return origin type or access")
     mutable = th.THIRBorrowedRecord(point, False)
-    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=mutable, returns={1})) == (
+    assert summary_problem(_user_summary(fn, bindings, ret=RefType(point), borrowed=mutable, returns={1}), {}) == (
         "unsupported return origin type or access")
 
 

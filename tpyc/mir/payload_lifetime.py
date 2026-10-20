@@ -8,12 +8,11 @@ from .dependencies import MIRDependencies, _dependencies
 from .dump import _location, _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy,
-    MIROptionalPayload, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionPayload,
+    MIRAssign, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode,
+    MIRPlace, MIRPoint, MIRUnionConstruct, MIRUnionCopy, place_shape,
 )
 from ..thir.scalar_leaves import MIRClass
-from .shapes import place_shape
+from .shapes import MIROptionalPayload, MIRUnionPayload
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind
 from .validate import MIRPrepared, MIRPresenceError, _prepare_function, _validated_function
 from .value import MIRValidationError

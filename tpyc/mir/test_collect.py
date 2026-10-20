@@ -14,17 +14,18 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from .call_contract import MIRSummaryState
 from ..parse import SourceLocation
-from ..typesys import BOOL, STR
+from ..typesys import BOOL, INT32, STR, make_list
 from .collect import (
     MIRBodyVerdict, MIRLineFacts, MIRLineWrite, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, MIRWriteKind,
     analyze_body,
-    dump_codegen_mir, enumerate_bodies, enumerate_body_sources, line_facts, verdict_of,
+    _written_kind, dump_codegen_mir, enumerate_bodies, enumerate_body_sources, line_facts, verdict_of,
 )
 from .definitions import MIRDefinitions
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction, MIRPlace,
     MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, function_body_kind,
 )
+from .shapes import MIRContainerElements, MIRDeref
 from .value import MIRRecordLayout
 from .testutil import bind_parameters, borrowed_shape, leaf_shape
 
@@ -558,6 +559,19 @@ def iterate(ps: list[P]) -> int32:
 def pair(a: P, b: P) -> int32:
     t = (a, b)
     return t[0].x + t[1].x
+
+class L:
+    items: list[int32]
+    def __init__(self) -> None:
+        self.items = [1]
+
+def container_alias(ys: list[int32]) -> int32:
+    r = ys
+    return r[0]
+
+def field_alias(l: L) -> int32:
+    xs = l.items
+    return xs[0]
 """
 
 
@@ -596,6 +610,12 @@ def test_a_record_alias_borrows_the_parameter(facts) -> None:
     alias = facts["alias"]
     assert alias.writes[(22, "q")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
     assert _borrows(alias, 22, "q") == [(0, {"p"})]
+
+
+def test_a_container_alias_is_a_borrowed_write(facts) -> None:
+    # A container holder is a pointer like a record's: binding it writes no storage.
+    assert facts["container_alias"].writes[(71, "r")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
+    assert facts["field_alias"].writes[(75, "xs")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
 
 
 def test_a_reassigned_str_parameter_has_two_spellings(facts) -> None:
@@ -729,6 +749,40 @@ def test_a_view_member_write_is_a_borrowed_write() -> None:
     init = next(facts for name, facts in found.items() if name.endswith("__init__"))
     assert init.writes[(8, "self.s")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
     assert found["retarget"].writes[(12, "t.s")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
+
+
+ELEMENT_WRITE_SOURCE = """\
+from tpy import int32
+
+class B:
+    items: list[int32]
+    def __init__(self) -> None:
+        self.items = [0]
+    def put(self, v: int32) -> None:
+        self.items[0] = v
+
+def put(xs: list[int32], v: int32) -> None:
+    xs[0] = v
+"""
+
+
+def test_an_element_write_is_classified_by_the_element_it_writes() -> None:
+    # A write ending at `[elements]` writes an element, whatever is above it:
+    # a container field through a pointer, a borrowed container's object.
+    compiler, modules = _compile(ELEMENT_WRITE_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                                    compiler.thir_reject_by_node, program.workspace)
+        found = {v.body.declaration.split("@")[0]: line_facts(v) for v in verdicts}
+    assert found["B.put"].writes[(8, "self.items[elements]")] == (MIRLineWrite(0, MIRWriteKind.SCALAR, False),)
+    assert found["put"].writes[(11, "xs[elements]")] == (MIRLineWrite(0, MIRWriteKind.SCALAR, False),)
+    body = MIRBodyId("main", "f@1:0")
+    xs = MIRSlot(MIRSlotId(body, 0), borrowed_shape(make_list(INT32), members=(leaf_shape(INT32),)),
+                 MIRSlotKind.PARAMETER, "xs")
+    place = MIRPlace(xs.id, (MIRDeref(), MIRContainerElements()))
+    assert _written_kind(place, {xs.id: xs}, {}) is MIRWriteKind.SCALAR
 
 
 TWINS_SOURCE = """\

@@ -16,28 +16,30 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import BOOL, INT32, STR, NominalType, OwnType, RefType, VoidType, return_representation
 from .call_contract import (
-    MIRCallSummary, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, stub_summary,
+    MIRCallSummary, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, path_walk, stub_summary, write_problem,
 )
 from .coverage import call_write_places
-from .collect import MIRBodyVerdict, MIRVerdictStatus, MIRWriteKind, analyze_body, line_facts
+from .collect import MIRBodyVerdict, MIRVerdictStatus, MIRWriteKind, analyze_body, enumerate_bodies, line_facts
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct,
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRFunction, MIRGoto, MIRIteratorAdvance,
-    MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNotCovered, MIRPlace, MIRPoint, MIRRead,
-    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct,
+    MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove,
+    MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId,
+    MIRSlotKind, MIRStorageDuration,
 )
-from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
+from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref
+from ..thir.scalar_leaves import MIRClass
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .presence import _analyze_presence
 from .retention import MIRRetention, affects, analyze_retention, may_overlap
 from .storage import analyze_storage, storage_destination
-from .storage_evidence import certify_storage_origins
+from .storage_evidence import certify_borrow_operations, certify_storage_origins
 from .summaries import summarize_function
 from .validate import MIRPresenceError, body_may_raise, validate_function
 from .testutil import (
-    bind_parameters, bindings_of, borrowed_shape, bound, cursor_shape, leaf_shape, owned_shape, region_shape,
+    bind_parameters, bindings_of, borrowed_shape, bound, cursor_shape, leaf_shape, owned_shape,
 )
 
 B = MIRBodyId("containers", "effects")
@@ -54,7 +56,7 @@ RECORD = MIRRecordLayout(CELL, (VALUE,), True, True)
 BAG_RECORD = MIRRecordLayout(BAG, (ITEMS, OTHERS), True, True)
 CELL_LAYOUT = (owned_shape(CELL),)
 INT_LAYOUT = (leaf_shape(INT32),)
-ELEMENTS, STRUCTURE = MIRContainerElements(), MIRContainerStructure()
+ELEMENTS, STRUCTURE, DEREF = MIRContainerElements(), MIRContainerStructure(), MIRDeref()
 
 SOURCE = '''from tpy import int32, Span
 
@@ -114,7 +116,7 @@ def bid(index: int) -> MIRBlockId:
 
 
 def param(index: int, typ=CELLS, layout=CELL_LAYOUT, *, readonly: bool = False, name: str | None = None) -> MIRSlot:
-    return MIRSlot(sid(index), region_shape(typ, readonly=readonly, members=layout), MIRSlotKind.PARAMETER,
+    return MIRSlot(sid(index), borrowed_shape(typ, readonly=readonly, members=layout), MIRSlotKind.PARAMETER,
                    name or f"p{index}")
 
 
@@ -245,7 +247,7 @@ def test_container_regions_of_one_origin_are_disjoint_siblings() -> None:
 # An inline record member (`OTHER`) is replaced whole in place; a scalar
 # field (`VALUE`) is overwritten, never storage a borrow points into.
 @pytest.mark.parametrize(("target", "expected"), [
-    (place(0, ELEMENTS), True), (place(0, STRUCTURE), True), (place(2, ITEMS), True),
+    (place(0, DEREF, ELEMENTS), True), (place(0, DEREF, STRUCTURE), True), (place(2, ITEMS), True),
     (place(2, ITEMS, ELEMENTS), True), (place(2, OTHER), True), (place(3, VALUE), False), (place(0), False),
 ])
 def test_storage_destination_counts_container_regions_and_fields(target: MIRPlace, expected: bool) -> None:
@@ -258,7 +260,7 @@ def test_call_write_places_follow_the_argument_holder() -> None:
     identity = th.THIRFieldIdentity(BAG, "items", CELLS)
     summary = replace(append_summary(), writes=frozenset({MIRParameterWrite(0, (STRUCTURE,))}))
     for argument, path, expected in (
-            (sid(0), (STRUCTURE,), place(0, STRUCTURE)),          # a borrowed container: directly
+            (sid(0), (STRUCTURE,), place(0, DEREF, STRUCTURE)),   # a borrowed container: its object
             (sid(1), (ELEMENTS,), place(1, ELEMENTS)),            # owned container storage: directly
             (sid(2), (identity, STRUCTURE), place(2, MIRDeref(), ITEMS, STRUCTURE)),  # through the record
             (sid(3), (ELEMENTS,), place(3, ELEMENTS))):           # a Span: its own region
@@ -276,10 +278,10 @@ def element_borrow(*tail, live_after: bool = True, container_live: bool = False,
     slots = [param(0, cells, (owned_shape(cell),), name="ps"),
              holder(1, cell, name="p"), owned(2, cell), scalar(3), scalar(4), holder(5, cell), scalar(6)]
     read = assign(4, MIRRead(place(1, MIRDeref(), value)))
-    head = (assign(1, MIRBorrow(place(0, ELEMENTS))),) + (() if live_after else (read,))
+    head = (assign(1, MIRBorrow(place(0, DEREF, ELEMENTS))),) + (() if live_after else (read,))
     use = (read,) if live_after else ()
     if container_live:
-        use += (assign(6, MIRRead(place(0, ELEMENTS, value))),)
+        use += (assign(6, MIRRead(place(0, DEREF, ELEMENTS, value))),)
     return body(slots, MIRBlock(bid(0), (*head, *tail, *use), MIRReturn(sid(4))),
                 records=(MIRRecordLayout(cell, (value,), True, True),))
 
@@ -287,7 +289,7 @@ def element_borrow(*tail, live_after: bool = True, container_live: bool = False,
 CONSTRUCT = (assign(3, MIRConstant(1)), assign(2, MIRConstruct((sid(3),)),
                                                write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)))
 APPEND = MIRCallStmt(MIRCall(append_summary(), (sid(0), sid(2)), True))
-SETITEM = assign(0, MIRMove(sid(2)), ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(0)))
+SETITEM = assign(0, MIRMove(sid(2)), DEREF, ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(0)))
 
 
 def test_element_borrow_resolves_to_the_elements_region() -> None:
@@ -299,7 +301,7 @@ def test_element_borrow_resolves_to_the_elements_region() -> None:
 def test_elements_write_is_a_weak_update() -> None:
     # `ps[0] = Cell(1)` writes under the root: the root and every other
     # holder keep their referents, and a later element borrow still resolves.
-    fn = element_borrow(*CONSTRUCT, SETITEM, assign(5, MIRBorrow(place(0, ELEMENTS))), live_after=False)
+    fn = element_borrow(*CONSTRUCT, SETITEM, assign(5, MIRBorrow(place(0, DEREF, ELEMENTS))), live_after=False)
     deps = analyze_dependencies(fn, analyze_liveness(fn))
     after = deps.referents[MIRPoint(bid(0), 6)]
     assert after[place(0)] == {ref(0)}
@@ -320,7 +322,7 @@ def span_body(*, source_param: bool) -> MIRFunction:
         first = ()
     else:
         slots = [param(0, INTS, INT_LAYOUT, name="xs")]
-        first = (assign(1, MIRBorrow(place(0, ELEMENTS))),)
+        first = (assign(1, MIRBorrow(place(0, DEREF, ELEMENTS))),)
     slots += [holder(1, SPAN, name="t"), holder(2, SPAN, name="u"),
               MIRSlot(sid(3), cursor_shape(SPAN, members=INT_LAYOUT), MIRSlotKind.TEMPORARY),
               scalar(4, BOOL), scalar(5, kind=MIRSlotKind.LOCAL)]
@@ -377,7 +379,7 @@ def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True) -> MIR
                                          passings=(ParamPassing.MUT_REF,))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("containers", "first"), signature)
     # A record argument is lent as the record it is.
-    lent = th.THIRBorrowedRecord(argument.type, False) if argument.shape.holding is MIRHolding.POINTER else None
+    lent = th.THIRBorrowedRecord(argument.type, False) if argument.shape.cls is MIRClass.RECORD else None
     summary = MIRCallSummary(callee, (bound(argument.type, ParamPassing.MUT_REF, ref=lent),),
                              frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     return body((argument, result, scalar(2)), MIRBlock(bid(0), (assign(1, MIRCall(summary, (sid(0),))),
@@ -400,7 +402,7 @@ def test_a_container_result_of_a_record_argument_stays_uncovered() -> None:
     # `xs = items_of(bag)` with a whole-record origin: the container would be
     # the record itself, whose elements resolve where no write lands. The
     # field path a body publishes names the container (test_return_origins).
-    result = MIRSlot(sid(1), region_shape(CELLS, members=CELL_LAYOUT), MIRSlotKind.LOCAL, "xs")
+    result = MIRSlot(sid(1), borrowed_shape(CELLS, members=CELL_LAYOUT), MIRSlotKind.LOCAL, "xs")
     fn = element_call(result, holder(0, BAG, MIRSlotKind.PARAMETER, name="bag"))
     with pytest.raises(MIRValidationError, match="unsupported return origin type or access"):
         analyze_dependencies(fn, analyze_liveness(fn))
@@ -414,7 +416,7 @@ def test_a_container_result_of_a_record_argument_stays_uncovered() -> None:
 
 def test_shape_write_under_a_live_element_borrow_conflicts() -> None:
     fn = element_borrow(*CONSTRUCT, APPEND)
-    assert analyze_storage(fn).call_writes == {MIRPoint(bid(0), 3): (place(0, STRUCTURE),)}
+    assert analyze_storage(fn).call_writes == {MIRPoint(bid(0), 3): (place(0, DEREF, STRUCTURE),)}
     assert conflicts(fn) == {(place(1), place(0, ELEMENTS))}
 
 
@@ -456,7 +458,7 @@ def iterate(*loop_tail) -> MIRFunction:
 INT_APPEND = (assign(3, MIRConstant(1)),
               MIRCallStmt(MIRCall(append_summary(INTS, INT32, ParamPassing.VALUE), (sid(0), sid(3)), True)))
 INT_SETITEM = (assign(3, MIRConstant(1)),
-               assign(0, MIRRead(place(3)), ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(0))))
+               assign(0, MIRRead(place(3)), DEREF, ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(0))))
 
 
 def test_shape_write_inside_a_loop_reaches_the_live_iterator() -> None:
@@ -479,7 +481,7 @@ def test_an_elements_write_through_a_span_reaches_the_live_iterator() -> None:
     # the Span views, which the cursor over `xs` retains.
     fn = iterate(assign(3, MIRConstant(1)),
                  assign(7, MIRRead(place(3)), ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(7))))
-    view = assign(7, MIRBorrow(place(0, ELEMENTS)))
+    view = assign(7, MIRBorrow(place(0, DEREF, ELEMENTS)))
     fn = replace(fn, slots=(*fn.slots, holder(7, SPAN, name="s")),
                  blocks=(replace(fn.blocks[0], statements=(view, *fn.blocks[0].statements)), *fn.blocks[1:]))
     assert conflicts(fn) == {(place(5), place(0, ELEMENTS))}
@@ -487,7 +489,7 @@ def test_an_elements_write_through_a_span_reaches_the_live_iterator() -> None:
 
 def bag_body(*, sibling: bool) -> MIRFunction:
     """`q = bag.others[0]` (or `q = bag.items[0]`); `bag.items.append(..)`; `q.value`."""
-    temp = MIRSlot(sid(6), region_shape(CELLS, members=CELL_LAYOUT), MIRSlotKind.TEMPORARY)
+    temp = MIRSlot(sid(6), borrowed_shape(CELLS, members=CELL_LAYOUT), MIRSlotKind.TEMPORARY)
     slots = (holder(0, BAG, MIRSlotKind.PARAMETER, name="bag"), holder(1, name="q"), owned(2), scalar(3),
              scalar(4), holder(5), temp)
     source = place(0, MIRDeref(), OTHERS, ELEMENTS) if sibling else place(0, MIRDeref(), ITEMS, ELEMENTS)
@@ -499,7 +501,7 @@ def bag_body(*, sibling: bool) -> MIRFunction:
 
 def test_a_field_shape_write_spares_the_sibling_field() -> None:
     assert analyze_storage(bag_body(sibling=True)).call_writes == {
-        MIRPoint(bid(0), 4): (place(6, STRUCTURE),)}
+        MIRPoint(bid(0), 4): (place(6, DEREF, STRUCTURE),)}
     assert not conflicts(bag_body(sibling=True))
     assert conflicts(bag_body(sibling=False)) == {(place(1), place(0, ITEMS, ELEMENTS))}
 
@@ -508,11 +510,11 @@ def two_lists(*, element: bool) -> MIRFunction:
     """`q = ys[0]` (or nothing); `xs.append(..)`; `ys` and `q` read after."""
     slots = (param(0, name="xs"), param(1, name="ys"), owned(2), scalar(3), scalar(4), holder(5, name="q"),
              scalar(6))
-    head = (assign(5, MIRBorrow(place(1, ELEMENTS))),) if element else ()
+    head = (assign(5, MIRBorrow(place(1, DEREF, ELEMENTS))),) if element else ()
     tail = (assign(4, MIRRead(place(5, MIRDeref(), VALUE))),) if element else (assign(4, MIRConstant(0)),)
     append = MIRCallStmt(MIRCall(append_summary(), (sid(0), sid(2)), True))
     return body(slots, MIRBlock(bid(0), (*head, *CONSTRUCT, append, *tail,
-                                         assign(6, MIRRead(place(1, ELEMENTS, VALUE)))), MIRReturn(sid(4))))
+                                         assign(6, MIRRead(place(1, DEREF, ELEMENTS, VALUE)))), MIRReturn(sid(4))))
 
 
 def test_external_roots_may_alias_but_a_whole_container_is_never_an_element() -> None:
@@ -563,7 +565,7 @@ def grow_body(compiled) -> MIRFunction:
     container = decl.params[0].native_container
     cell = container.element.type
     record = MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True)
-    ps = MIRSlot(sid(0), region_shape(container.type, readonly=container.readonly, members=(owned_shape(cell),)),
+    ps = MIRSlot(sid(0), borrowed_shape(container.type, readonly=container.readonly, members=(owned_shape(cell),)),
                  MIRSlotKind.PARAMETER, "ps")
     slots = (ps, owned(1, cell), scalar(2))
     call = MIRCall(append_summary(container.type, cell), (sid(0), sid(1)), True)
@@ -620,11 +622,11 @@ def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
     decl = declared(compiled, "first")
     container = decl.params[0].native_container
     cell = container.element.type
-    ps = MIRSlot(sid(0), region_shape(container.type, readonly=container.readonly, members=(owned_shape(cell),)),
+    ps = MIRSlot(sid(0), borrowed_shape(container.type, readonly=container.readonly, members=(owned_shape(cell),)),
                  MIRSlotKind.PARAMETER, "ps")
     result_slot = MIRSlot(sid(1), borrowed_shape(cell), MIRSlotKind.TEMPORARY)
     returned = decl.resolved_callee.signature.return_type
-    fn = MIRFunction(B, returned, (ps, result_slot), (MIRBlock(bid(0), (assign(1, MIRBorrow(place(0, ELEMENTS))),),
+    fn = MIRFunction(B, returned, (ps, result_slot), (MIRBlock(bid(0), (assign(1, MIRBorrow(place(0, DEREF, ELEMENTS))),),
                                                      MIRReturn(sid(1))),), bid(0),
                      records=(MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True),),
                      borrowed_result=decl.resolved_callee.signature.borrowed_result,
@@ -639,17 +641,18 @@ def test_an_element_field_write_keeps_the_summary_opaque(compiled) -> None:
     decl = declared(compiled, "first")
     container = decl.params[0].native_container
     cell = container.element.type
-    ps = MIRSlot(sid(0), region_shape(container.type, members=(owned_shape(cell),)), MIRSlotKind.PARAMETER, "ps")
+    ps = MIRSlot(sid(0), borrowed_shape(container.type, members=(owned_shape(cell),)), MIRSlotKind.PARAMETER, "ps")
     field = MIRField(MIRFieldId(cell, "value"), INT32)
     result_slot = MIRSlot(sid(1), borrowed_shape(cell), MIRSlotKind.TEMPORARY)
     returned = decl.resolved_callee.signature.return_type
     fn = MIRFunction(B, returned, (ps, result_slot, scalar(2)), (MIRBlock(bid(0), (
-        assign(2, MIRConstant(3)), assign(0, MIRRead(place(2)), ELEMENTS, field),
-        assign(1, MIRBorrow(place(0, ELEMENTS)))), MIRReturn(sid(1))),), bid(0),
+        assign(2, MIRConstant(3)), assign(0, MIRRead(place(2)), DEREF, ELEMENTS, field),
+        assign(1, MIRBorrow(place(0, DEREF, ELEMENTS)))), MIRReturn(sid(1))),), bid(0),
         records=(MIRRecordLayout(cell, (field,), True, True),), exceptional_exits=True,
         borrowed_result=decl.resolved_callee.signature.borrowed_result, parameter_bindings=bindings_of(decl))
     result = summarize_function(decl, fn, definitions(compiled))
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary unsupported write origin"
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == (
+        "summary unsupported write origin: invalid call write path")
 
 
 class _WithBag:
@@ -664,6 +667,10 @@ class _WithBag:
             return MIROwnedLeafDefinition(self.layout)
         return self.inner.get(node, typ)
 
+    @property
+    def layouts(self):
+        return {**self.inner.layouts, self.layout.type: self.layout}
+
 
 def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> None:
     decl = declared(compiled, "push")
@@ -673,7 +680,7 @@ def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> 
     items = MIRField(MIRFieldId(bag, "items"), cells)
     layout = (owned_shape(cell),)
     b = MIRSlot(sid(0), borrowed_shape(bag), MIRSlotKind.PARAMETER, "b")
-    temp = MIRSlot(sid(3), region_shape(cells, members=layout), MIRSlotKind.TEMPORARY)
+    temp = MIRSlot(sid(3), borrowed_shape(cells, members=layout), MIRSlotKind.TEMPORARY)
     call = MIRCall(append_summary(cells, cell), (sid(3), sid(1)), True)
     record = MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True)
     fn = MIRFunction(B, VoidType(), (b, owned(1, cell), scalar(2), temp), (MIRBlock(bid(0), (
@@ -689,7 +696,8 @@ def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> 
     # A field the definition does not declare is refused.
     other = _WithBag(definitions(compiled), MIRRecordLayout(bag, (), True, True))
     result = summarize_function(decl, fn, other)
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary write field differs from definition"
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == (
+        "summary unsupported write origin: field missing from record layout")
 
 
 # --- line facts ---------------------------------------------------------------------
@@ -746,3 +754,115 @@ def test_a_container_holder_without_members_is_refused() -> None:
     for slot in (param(0, INTS, ()), MIRSlot(sid(0), cursor_shape(INTS), MIRSlotKind.TEMPORARY)):
         with pytest.raises(MIRValidationError, match="container members disagree with its type"):
             validate_function(body([slot], MIRBlock(bid(0), (), MIRReturn(None))))
+
+
+def test_no_field_is_read_through_a_borrowed_container() -> None:
+    # `(*xs).fabricated` on a `list[int32]`: a container's object has elements, not fields.
+    xs = param(0, INTS, INT_LAYOUT)
+    fake = MIRField(MIRFieldId(INTS, "fabricated"), INT32)
+    fn = body([xs, scalar(1)], MIRBlock(bid(0), (assign(1, MIRRead(place(0, DEREF, fake))),), MIRReturn(sid(1))),
+              records=())
+    with pytest.raises(MIRValidationError, match="field needs record storage"):
+        validate_function(fn)
+    # A summary path walks through the same step.
+    assert path_walk(xs.shape, (th.THIRFieldIdentity(INTS, "fabricated", INT32),), {}) == "field needs record storage"
+    # A summary path's fields are read from a record parameter only: a
+    # container parameter's never reaches the walk.
+    write = MIRParameterWrite(0, (th.THIRFieldIdentity(INTS, "fabricated", INT32),))
+    assert write_problem(write, (bound(INTS, ParamPassing.MUT_REF),), {}) == "invalid call write path"
+
+
+def test_no_field_is_read_from_a_container_field() -> None:
+    # `b.items.fabricated`, the field owned by the container's own type.
+    items = th.THIRFieldIdentity(BAG, ITEMS.id.name, CELLS)
+    path = (items, th.THIRFieldIdentity(CELLS, "fabricated", INT32))
+    layouts = {BAG: BAG_RECORD}
+    assert path_walk(borrowed_shape(BAG), path, layouts) == "field needs record storage"
+    write = MIRParameterWrite(0, path)
+    binding = bound(BAG, ParamPassing.MUT_REF, ref=th.THIRBorrowedRecord(BAG, False))
+    assert write_problem(write, (binding,), layouts) == "field needs record storage"
+
+
+def test_a_borrowed_container_holder_is_no_demanded_record_borrow() -> None:
+    # `r = ys` demanded as a borrow: container storage evidence is not modeled.
+    holder = MIRSlot(sid(1), borrowed_shape(INTS, members=INT_LAYOUT), MIRSlotKind.LOCAL, "r")
+    fn = body([param(0, INTS, INT_LAYOUT, name="ys"), holder, scalar(2)],
+              MIRBlock(bid(0), (assign(1, MIRAlias(sid(0))), assign(2, MIRConstant(0))), MIRReturn(sid(2))),
+              records=())
+    evidence = certify_borrow_operations(fn, frozenset({MIRPoint(bid(0), 0)}), frozenset(), MIRDefinitions(()))
+    assert "demanded operation is not a supported record borrow" in [g.reason for g in evidence.gaps]
+
+
+# --- borrowed containers from source: the verdicts each shape keeps ------------------
+
+BORROWED = '''from tpy import int32
+
+class Point:
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+class Copied:
+    def __init__(self, xs: list[int32]) -> None:
+        self.items = xs
+
+class Grower:
+    items: list[int32]
+    def __init__(self, xs: list[int32]) -> None:
+        self.items = xs
+    def grow(self) -> None:
+        for x in self.items:
+            self.items.append(x)
+
+def alias_other(xs: list[int32], ys: list[int32], flag: bool) -> int32:
+    r = ys
+    if flag:
+        xs.append(1)
+    return r[0]
+
+def return_other(xs: list[int32], ys: list[int32], flag: bool) -> list[int32]:
+    if flag:
+        xs.append(1)
+    return ys
+
+def same(ps: list[Point]) -> list[Point]:
+    return ps
+
+def grow_held(flag: bool) -> int32:
+    a = [Point(1)]
+    p = a[0]
+    ys = same(a)
+    if flag:
+        ys.append(Point(2))
+    return p.x
+
+def grow_iterated(xs: list[int32]) -> None:
+    for x in xs:
+        xs.append(x)
+'''
+
+
+@pytest.fixture(scope="module")
+def borrowed_verdicts():
+    compiler, modules = _compile(BORROWED)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                                    compiler.thir_reject_by_node, program.workspace)
+    return {v.body.declaration.split("@")[0]: v for v in verdicts}
+
+
+@pytest.mark.parametrize(("name", "expected"), [
+    # Two container parameters: growing one leaves a borrow of the other alone.
+    ("alias_other", ()), ("return_other", ()),
+    # A borrowed result of an owned list, grown while an element is held.
+    ("grow_held", ("replacement",)),
+    # Iterator invalidation over a borrowed parameter and a borrowed field.
+    ("grow_iterated", ("replacement",)), ("Grower.grow", ("replacement",)),
+    # The constructor copies a borrowed list into its field.
+    ("Copied.__init__", ()),
+])
+def test_borrowed_container_verdicts(borrowed_verdicts, name: str, expected: tuple) -> None:
+    verdict = borrowed_verdicts[name]
+    assert verdict.status is MIRVerdictStatus.COVERED, verdict.reason
+    assert verdict.conflicts == expected

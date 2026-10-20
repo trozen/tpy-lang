@@ -14,9 +14,10 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRDeref, MIRFunction, MIROptionalConstruct, MIROptionalPayload, MIRPlace,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct, MIRUnionPayload,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRFunction, MIROptionalConstruct, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRUnionConstruct,
 )
+from .shapes import MIRDeref, MIROptionalPayload, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRValidationError
 from .retention import analyze_retention
 from .storage import analyze_storage

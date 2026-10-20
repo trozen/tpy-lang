@@ -11,7 +11,8 @@ from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRContainerElements, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn
+from .shapes import MIRContainerElements
 from .value import MIRHolding
 from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
@@ -201,8 +202,8 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
 
 @pytest.mark.parametrize(("typ", "line"), [
     # An owned-leaf element or key is walked through a readonly borrow of it.
-    ("list[str]", "%0: list[str] container-ref readonly element=str:owned_leaf:readonly parameter xs"),
-    ("dict[str, int32]", "%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly "
+    ("list[str]", "%0: list[str] readonly-ref element=str:owned_leaf:readonly parameter xs"),
+    ("dict[str, int32]", "%0: dict[str, int32] readonly-ref element=str:owned_leaf:readonly "
                          "value=int32:leaf:readonly parameter xs"),
 ])
 def test_owned_leaf_elements_lower(typ: str, line: str) -> None:

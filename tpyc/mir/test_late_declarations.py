@@ -9,10 +9,10 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
-    MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIRReturn,
-    MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIRReturn,
+    MIROptionalConstruct, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .shapes import MIROptionalPayload
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
 from .testutil import bind_parameters, Reference, execute, leaf_shape

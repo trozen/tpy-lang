@@ -12,9 +12,10 @@ from ..thir.scalar_leaves import (  # noqa: F401
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
 )
-from .call_contract import MIRContainerElements, MIRContainerStructure, MIRParameterBinding
-from .nodes import MIRCall, MIRDeref, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId
-from .value import holding_representation, MIRField, MIRFieldId, MIRValidationError
+from .call_contract import MIRParameterBinding
+from .shapes import MIROptionalPayload
+from .nodes import MIRCall, MIRPlace, MIRSlot, MIRSlotId, call_place
+from .value import holding_representation
 
 
 def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyType:
@@ -46,16 +47,6 @@ def slot_representation(slot: MIRSlot, bindings: Mapping[MIRSlotId, MIRParameter
     return holding_representation(slot.shape.holding)
 
 
-def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
-    """One item of a summary's parameter path as a MIR projection."""
-    match item:
-        case th.THIRFieldIdentity(owner=owner, name=name, type=typ):
-            return MIRField(MIRFieldId(owner, name), typ)
-        case MIRContainerStructure() | MIRContainerElements():
-            return item
-    raise MIRValidationError("unknown call path item")
-
-
 def whole_wrapper_field(place: MIRPlace) -> MIRPlace:
     """A place under an Optional record field's payload, published as the
     whole field: summary paths have no payload selector, and replacing the
@@ -64,30 +55,6 @@ def whole_wrapper_field(place: MIRPlace) -> MIRPlace:
         if isinstance(projection, MIROptionalPayload):
             return MIRPlace(place.root, place.projections[:index])
     return place
-
-
-def summary_path(place: MIRPlace) -> tuple[object, ...]:
-    """The projections of a place under a parameter, spelled as a summary
-    path (`path_step` reads it back): each field by its THIR identity, any
-    other step as it is (the path grammar refuses what it does not admit)."""
-    return tuple(th.THIRFieldIdentity(p.id.owner, p.id.name, p.type) if isinstance(p, MIRField) else p
-                 for p in place.projections)
-
-
-def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
-               slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
-    """The caller's place a summary's parameter path names: under the
-    record a borrowed record argument points at, or directly under a
-    container argument (owned, borrowed, or a view)."""
-    argument = slots[call.arguments[parameter]]
-    through = argument.shape.is_pointer
-    if argument.shape.cls is MIRClass.OPTIONAL:
-        # An Optional argument lends the record its payload points at; a
-        # scalar payload is the callee's own copy, under which no path lies.
-        if not argument.shape.record_payload:
-            raise MIRValidationError("call path under an Optional argument with no borrowed payload")
-        return MIRPlace(argument.id, PAYLOAD_RECORD + tuple(map(path_step, path)))
-    return MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(path_step, path)))
 
 
 def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
@@ -114,18 +81,6 @@ def primitive_operand(slot: MIRSlot) -> bool:
     if slot.shape.leaf_borrow:
         return primitive_owned_leaf(read_leaf(slot))
     return slot.shape.is_scalar and primitive_leaf(slot.type)
-
-
-# The steps from an Optional record holder to the record its payload points at.
-PAYLOAD_RECORD = (MIROptionalPayload(), MIRDeref())
-
-
-def payload_record_path(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[object, ...] | None:
-    """The projections under the record an Optional record holder's payload
-    points at (`payload, deref, ...`), or None for any other place."""
-    if slots[place.root].shape.record_payload and place.projections[:2] == PAYLOAD_RECORD:
-        return place.projections[2:]
-    return None
 
 
 class MIRUnsupported(Exception):

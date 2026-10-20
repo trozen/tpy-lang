@@ -457,13 +457,13 @@ def test_a_stub_binds_at_its_declared_access(active: _Program) -> None:
 
 def test_a_forged_stub_access_differs_from_its_declaration(active: _Program) -> None:
     summary = _stub(active, "grow")
-    assert summary_problem(summary) is None
+    assert summary_problem(summary, {}) is None
     # The stub's bindings are re-derived from its declaration, never from their passing alone.
     receiver = summary.parameters[0]
     for forged in (reaccess(receiver, not receiver.readonly),
                    reaccess(replace(receiver, passing=ParamPassing.CONST_REF), True)):
         damaged = replace(summary, parameters=(forged, *summary.parameters[1:]))
-        assert summary_problem(damaged) == "stub summary differs from its declaration"
+        assert summary_problem(damaged, {}) == "stub summary differs from its declaration"
 
 
 # --- the access twin, constructors -----------------------------------------------------
@@ -554,7 +554,7 @@ def test_a_container_fact_of_another_container_is_refused(active: _Program) -> N
     binding = _binding(active, "container")
     bad = replace(binding, value=value_shape(wrong.type, access=binding.readonly, role=MIRRole.LOAN))
     assert _contract(bad) == "value type mismatch"
-    assert summary_problem(replace(_summary(active, "container"), parameters=(bad,))) == "value type mismatch"
+    assert summary_problem(replace(_summary(active, "container"), parameters=(bad,)), {}) == "value type mismatch"
 
 
 @pytest.mark.parametrize("fact", [True, False])
@@ -716,7 +716,7 @@ def test_a_forged_payload_access_is_refused_at_the_contract_and_the_summary(acti
             assert _contract(forged) is None
             continue
         assert _contract(forged) == "invalid value access"
-        assert summary_problem(replace(summary, parameters=(forged,))) == "invalid value access"
+        assert summary_problem(replace(summary, parameters=(forged,)), {}) == "invalid value access"
     declared = _binding(active, "maybe")
     mutable = replace(declared, value=replace(declared.value, members=(replace(declared.value.payload,
                                                                                readonly=False),)))
@@ -740,10 +740,10 @@ def test_a_container_view_thir_published_no_fact_for_is_refused(active: _Program
 def test_a_summary_binding_declares_the_signature_type(active: _Program) -> None:
     summary = _summary(active, "record")
     binding, = summary.parameters
-    assert summary_problem(summary) is None
+    assert summary_problem(summary, {}) is None
     # The declared type is the contract's input: one other than the signature's does not pass.
     other = _param(active, "readonly_record").type
-    assert summary_problem(replace(summary, parameters=(replace(binding, declared=other),))) == (
+    assert summary_problem(replace(summary, parameters=(replace(binding, declared=other),)), {}) == (
         "call parameter binding declares another type")
 
 
