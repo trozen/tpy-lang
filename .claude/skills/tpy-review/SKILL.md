@@ -1,6 +1,6 @@
 ---
 name: tpy-review
-description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) and the cross-check (Codex and Gemini) in parallel and aggregates findings into a unified report.
+description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) and the Codex cross-check in parallel and aggregates findings into a unified report.
 ---
 
 # /tpy-review
@@ -69,13 +69,13 @@ Skip a specialist when its scope is empty:
 | `runtime-cpp-correctness` | `runtime-cpp` non-empty |
 | `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
 | `docs-sync` | always (cheap) |
-| cross-check: Codex and Gemini (CLAUDE.md "Orchestration") | always |
+| cross-check: Codex (CLAUDE.md "Orchestration") | always |
 
 **Re-derive the buckets from the CURRENT diff on every round.** A review's fix commit routinely moves code into a bucket that was empty at the previous classification (a runtime helper added to `runtime/cpp/`, a harness change to `tests/conftest.py`); the specialist for that bucket must run. Never drop a specialist because it came back clean last round.
 
 ### 4. Fan out specialists IN PARALLEL
 
-Send **one message with multiple Agent tool calls** -- one per dispatched specialist -- and, in the same message, the two cross-check reviewers, each in its own background shell. Do NOT serialize.
+Send **one message with multiple Agent tool calls** -- one per dispatched specialist -- and, in the same message, the Codex cross-check in a background shell. Do NOT serialize.
 
 Each prompt should include:
 - The base SHA resolved in step 1
@@ -84,7 +84,7 @@ Each prompt should include:
 
 Never pass the implementer's report, the branch summary or this conversation: reviewers judge the code at the sha, not claims about it. The approved design (its `design.md`) may go along.
 
-The cross-check's prompt file (one file, given to both reviewers; launch, directories and exit codes per CLAUDE.md "Orchestration") names the repo path, the base sha, `HEAD` and the approved design, asks for defects only (wrong C++, silent divergence from CPython, a missed sibling position, a parallel implementation of an existing decision, a missing test), each with `file:line`, in the same Critical / Warning / Suggestion sections. A reviewer still unavailable after that is named in the report header with its reason.
+The cross-check's prompt file (launch, directories and exit codes per CLAUDE.md "Orchestration") names the repo path, the base sha, `HEAD` and the approved design, asks for defects only (wrong C++, silent divergence from CPython, a missed sibling position, a parallel implementation of an existing decision, a missing test), each with `file:line`, in the same Critical / Warning / Suggestion sections. If Codex is still unavailable after that, it is named in the report header with its reason.
 
 Example prompt skeleton:
 
@@ -102,7 +102,7 @@ Follow your documented process and output format. Do NOT run pytest or update_sn
 Once all specialists return, synthesize a unified report. Be terse -- one bullet per finding, a single short sentence. NO code excerpts, NO "Fix:" sub-bullets. The user will ask for details on any finding they want to drill into; surfacing every detail up front is noise.
 
 - **Dedupe**: when multiple specialists flag the same `file:line` with related issues, merge into one entry crediting all contributing specialists.
-- **Mark cross-family agreement**: a finding a cross-check reviewer and a specialist both raised, or both cross-check reviewers raised, is tagged `[both]` -- the strongest signal in the report; name the sources (`[both: codex, safety-model]`). A cross-check-only finding gets no extra weight: it goes through the same severity and confidence handling as a specialist's.
+- **Mark cross-family agreement**: a finding the cross-check and a specialist both raised is tagged `[both]` -- the strongest signal in the report; name the specialist (`[both: codex, safety-model]`). A cross-check-only finding gets no extra weight: it goes through the same severity and confidence handling as a specialist's.
 - **Group by severity**: Critical first, then Warning, then Suggestion.
 - **Silent CPython divergence outranks**: a `cpython-parity` finding that TPy behaves differently from CPython with no warning and no source-level spelling is a Critical, whatever `no_cpython.txt` says (except the known, postponed divergences the parity reviewer lists, graded as it says) -- keep it Critical even if it would otherwise read as a minor cost. A divergence that is warned or spelled is fine as a Suggestion. This is principle #2 (`docs/PRINCIPLES.md`); do not downgrade a silent divergence to a perf nit.
 - **Filter noise**: if Suggestions total > 10 across all specialists, drop the lowest-signal ones (vague, duplicative of a Warning at the same location).
@@ -122,7 +122,7 @@ Severity carries the action. Make it explicit in the section headers so the user
 # /tpy-review report
 
 Base: <SHA> | <diff --stat one-liner>
-Dispatched: <list> | Clean: <list> | Cross-check: Codex ran / unavailable, Gemini ran / unavailable
+Dispatched: <list> | Clean: <list> | Cross-check: ran / unavailable
 
 ## Must fix (Critical, <N>)
 - short description [<specialist>] (file:line if specific)
