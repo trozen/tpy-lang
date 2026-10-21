@@ -561,6 +561,13 @@ The per-element rule covers every reference leaf, not only a pointer one:
   (a, 2)`, warns the copy of element 0 the back edge makes (*'t' is bound to
   existing storage at line N*); the lowering still rejects that yield
   (`BUGS.md#yield-tuple-name-own-element`).
+- A **yield** is the same owning result sink as the return, at
+  `Iterator[Own[tuple[A, int32]]]` too: a live or parameter member of a
+  yielded literal warns *copies A into owned storage (tuple element 0)*, a
+  last-use member or tuple name moves, a name bound to a lending call's
+  result warns per element, and an `Own`-marked nested member warns per
+  leaf (*(tuple element 0.0)*). The `Own[tuple[...]]` yield does not build
+  yet (`BUGS.md#own-tuple-yield-member-unchecked`).
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that

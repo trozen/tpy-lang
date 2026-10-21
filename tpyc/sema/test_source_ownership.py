@@ -173,18 +173,14 @@ _KNOWN_DISAGREEMENTS: dict[tuple[str, str], str] = {
     # Undecided leaves no diagnostic tells, outside the blockers: a walrus
     # and a borrowing call into `Any`, a module loop variable rebound to
     # borrowed storage, a lambda's borrowed parameter at an `Own` result,
-    # an open `T` member of a tuple literal held by a list literal, the
-    # members of an `Own`-marked nested tuple at a yield, a walrus-bound
-    # literal returned (the walrus target has no verdict).
+    # an open `T` member of a tuple literal held by a list literal, a
+    # walrus-bound literal returned (the walrus target has no verdict).
     ("def borrow(h: H) -> A:", "h.b = (w := a)"):
         "BUGS.md#any-store-walrus-copies-silently",
     ("def borrow(h: H) -> A:", "h.b = borrow(h)"):
         "BUGS.md#any-store-walrus-copies-silently",
     ("def box[T](x: T) -> Own[list[tuple[T, int32]]]:", "return [(x, 1)]"):
         "BUGS.md#generic-tuple-member-list-literal-unhedged",
-    ("def nested_yield(a: A, b: B) -> "
-     "Iterator[tuple[Own[tuple[A, B]], int32]]:", "yield ((a, b), 1)"):
-        "BUGS.md#own-tuple-yield-member-unchecked",
     ("def ret() -> tuple[Own[A], int32]:", "return (t := (A(1), 2))"):
         "BUGS.md#walrus-tuple-owning-sink-rejects",
     ("for a in mk():\n    a = b\n", "out.append(a)"):
@@ -1178,7 +1174,7 @@ def g() -> int32:
     assert _perms(records[(2, "TpyTupleLiteral")]) == {(0,): P.WARNED}
     assert _perms(records[(8, "TpyTupleLiteral")]) == {(0,): P.WARNED}
     assert warnings == [
-        "copies tuple[A, IntLiteral(1)] into owned storage; use copy() to "
+        "copies tuple[A, int32] into owned storage; use copy() to "
         "make this explicit",
         "copies A into owned storage (tuple element 0); use copy() to make "
         "this explicit"]
@@ -1571,16 +1567,15 @@ def vals(a: tuple[int32, int32], b: tuple[int32, int32], xs: list[tuple[int32, i
     assert warnings == []
 
 
-def test_nested_yield_member_of_stamped_call_publishes_no_record() -> None:
-    # Known gap: a yield at `Iterator[Own[tuple[...]]]` runs no per-member
-    # check (BUGS.md#own-tuple-yield-member-unchecked), so the lending
-    # call's member leaf gets no record.
+def test_nested_yield_member_of_stamped_call_is_hedged() -> None:
+    # A yield at `Iterator[Own[tuple[...]]]` checks its literal's members as
+    # the return does: the lending call's open `T` member leaf is hedged.
     records, _warnings, _ctx = _leaf_records(LENDING_DECLS + """\
 def nyield[T](a: tuple[T, int32], b: tuple[T, int32]) -> Iterator[Own[tuple[tuple[T, int32], int32]]]:
     yield (min(a, b, key=lambda p: p[1]), 1)
 """)
     line = _LENDING_LINES + 2
-    assert not any(k[0] == line for k in records), records
+    assert _perms(records[(line, "TpyTupleLiteral")]) == {(0, 0): P.HEDGED}
 
 
 def test_name_record_is_settled_by_a_loop_back_edge() -> None:
@@ -1954,6 +1949,43 @@ def c(a: A) -> None:
         "make this explicit",
         "copies A into owned storage (tuple element 0.1); use copy() to "
         "make this explicit"]
+
+
+def test_captured_tuple_name_into_own_argument_copies_once() -> None:
+    records, warnings, _e = _probe("""\
+def take(t: Own[tuple[A, int32]]) -> int32:
+    return t[0].v
+def take2(t: tuple[Own[A], int32]) -> int32:
+    return t[0].v
+def outer(p: A) -> int32:
+    t = (A(1), 3)
+    u = (p, 4)
+    def f() -> int32:
+        a = take(t)
+        b = take2(t)
+        c = take(u)
+        d = take2(u)
+        return a + b + c + d
+    return f() + t[0].v + u[0].v
+""")
+    # An owned (`t`) and a borrowed (`u`) capture read in place: the owned
+    # leaf copies at both slot spellings, warned once per argument -- per
+    # leaf at `Own[tuple[...]]`, whole at the `&&` parameter.
+    for line in (9, 10, 11, 12):
+        assert _leaves(records[(line, "TpyName")]) == {
+            (0,): (True, True, P.WARNED)}
+    ctx = _e.analyzer.ctx
+    assert [(d.loc.line - _LEAF_LINES, d.message) for d in ctx.diagnostics
+            if d.level.value == "warning" and d.loc is not None
+            and d.loc.line - _LEAF_LINES > 4] == [
+        (9, "copies A into owned storage (tuple element 0); use copy() to "
+            "make this explicit"),
+        (10, "copies tuple[A, int32] into owned storage; use copy() to make "
+             "this explicit"),
+        (11, "copies A into owned storage (tuple element 0); use copy() to "
+             "make this explicit"),
+        (12, "copies tuple[A, int32] into owned storage; use copy() to make "
+             "this explicit")]
 
 
 def _registrations(source: str) -> list[tuple[int, str, object, str]]:
@@ -2429,10 +2461,9 @@ def elem_nested(a: A) -> None:
     assert _perms(records[(12, "TpyTupleLiteral")]) == {
         (0,): P.MOVE, (1, 0): P.WARNED}
     # The members of an `Own`-marked nested tuple member of a yield are
-    # unchecked, where the return twin warns each: undecided (the lowering
-    # refuses the yield, BUGS.md#own-tuple-yield-member-unchecked).
+    # each warned, as the return twin's are.
     assert _perms(records[(15, "TpyTupleLiteral")]) == {
-        (0, 0): P.UNDECIDED, (0, 1): P.UNDECIDED}
+        (0, 0): P.WARNED, (0, 1): P.WARNED}
     # The field stores a copy of the borrowed `Send[Own[T]]` member, yet the
     # field's check does not see it as owned and warns nothing: undecided
     # (BUGS.md#send-own-tuple-leaf-copy-unwarned).
@@ -2444,7 +2475,200 @@ def elem_nested(a: A) -> None:
         (0,): (False, True, P.MOVE), (1, 0): (True, False, P.PASS)}
     assert _copy_warnings(ctx) == [
         (7, "copies tuple[A, B] into owned storage"),
-        (12, "copies B into owned storage (tuple element 1.0)")]
+        (12, "copies B into owned storage (tuple element 1.0)"),
+        (15, "copies A into owned storage (tuple element 0.0)"),
+        (15, "copies B into owned storage (tuple element 0.1)")]
+
+
+def test_own_tuple_yield_takes_the_return_rule() -> None:
+    # A yield at `Iterator[Own[tuple[...]]]` is the same owning result sink
+    # as the return: a literal's members, a tuple name and a lending call
+    # take the rule of the `tuple[Own[A], ...]` twin, per leaf.
+    records, _w, ctx = _leaf_records("""\
+from typing import Iterator
+def ot_live() -> Iterator[Own[tuple[A, int32]]]:
+    a = A(1)
+    yield (a, 3)
+    a.v = 7
+def ot_dead() -> Iterator[Own[tuple[A, int32]]]:
+    a = A(1)
+    yield (a, 3)
+def ot_param(p: A) -> Iterator[Own[tuple[A, int32]]]:
+    yield (p, 3)
+def oaa_live(p: A) -> Iterator[Own[tuple[A, A]]]:
+    a = A(1)
+    yield (a, p)
+    print(a.v)
+def ot_name() -> Iterator[Own[tuple[A, int32]]]:
+    t = (A(1), 3)
+    yield t
+    u = (A(2), 4)
+    print(t[1])
+    yield u
+def lend(p: A) -> tuple[A, int32]:
+    return (p, 3)
+def ot_borrowed(p: A) -> Iterator[Own[tuple[A, int32]]]:
+    t = lend(p)
+    yield t
+def to_borrowed(p: A) -> Iterator[tuple[Own[A], int32]]:
+    t = lend(p)
+    yield t
+def owned() -> Own[tuple[A, int32]]:
+    return (A(1), 3)
+def ot_results() -> Iterator[Own[tuple[A, int32]]]:
+    yield owned()
+    t = (A(2), 4)
+    yield copy(t)
+    print(t[1])
+def to_walrus(a: A) -> Iterator[tuple[Own[A], int32]]:
+    yield (t := (a, 3))
+    print(t[1])
+""")
+    assert _perms(records[(4, "TpyTupleLiteral")]) == {(0,): P.WARNED}
+    assert _perms(records[(8, "TpyTupleLiteral")]) == {(0,): P.MOVE}
+    assert _perms(records[(10, "TpyTupleLiteral")]) == {(0,): P.WARNED}
+    assert _perms(records[(13, "TpyTupleLiteral")]) == {
+        (0,): P.WARNED, (1,): P.WARNED}
+    # A live tuple name copies, its last use moves.
+    assert _perms(records[(17, "TpyName")]) == {(0,): P.WARNED}
+    assert _perms(records[(20, "TpyName")]) == {(0,): P.MOVE}
+    # A name bound to a lending call's result copies what it borrows, at
+    # its last use too.
+    assert _perms(records[(25, "TpyName")]) == {(0,): P.WARNED}
+    assert _perms(records[(28, "TpyName")]) == {(0,): P.WARNED}
+    assert _perms(records[(32, "TpyCall")]) == {(0,): P.MOVE}
+    assert _perms(records[(34, "TpyCall")]) == {(0,): P.EXPLICIT}
+    assert _perms(records[(37, "TpyTupleLiteral")]) == {(0,): P.WARNED}
+    assert _copy_warnings(ctx) == [
+        (4, "copies A into owned storage (tuple element 0)"),
+        (10, "copies A into owned storage (tuple element 0)"),
+        (13, "copies A into owned storage (tuple element 0)"),
+        (13, "copies A into owned storage (tuple element 1)"),
+        (17, "copies A into owned storage (tuple element 0)"),
+        (25, "copies A into owned storage (tuple element 0)"),
+        (28, "copies A into owned storage (tuple element 0)"),
+        # One warning for the walrus's one copied leaf, its type spelled
+        # as the program does.
+        (37, "copies tuple[A, int32] into owned storage")]
+
+
+def test_nullable_own_tuple_yield_takes_the_return_rule() -> None:
+    # `X | None` takes its non-None value as `X` does, at a yield as at the
+    # return, in both `Own` spellings.
+    records, _w, ctx = _leaf_records("""\
+from typing import Iterator
+def g1(p: A) -> Iterator[Own[tuple[A, int32]] | None]:
+    yield (p, 3)
+def g2(p: A) -> Iterator[tuple[Own[A], int32] | None]:
+    yield (p, 3)
+def r1(p: A) -> Own[tuple[A, int32]] | None:
+    return (p, 3)
+def r2(p: A) -> tuple[Own[A], int32] | None:
+    return (p, 3)
+""")
+    for line in (3, 5, 7, 9):
+        assert _perms(records[(line, "TpyTupleLiteral")]) == {
+            (0,): P.WARNED}, line
+    assert _copy_warnings(ctx) == [
+        (line, "copies A into owned storage (tuple element 0)")
+        for line in (3, 5, 7, 9)]
+
+
+def test_own_tuple_yield_live_names_and_positions() -> None:
+    # A live tuple name at `Own[tuple[A, A]]` copies each leaf; a method
+    # generator's and a `try` body's yield take the free function's rule:
+    # a live member copies, a last-use one moves.
+    records, _w, ctx = _leaf_records("""\
+from typing import Iterator
+def oaa_name() -> Iterator[Own[tuple[A, A]]]:
+    t = (A(1), A(2))
+    yield t
+    print(t[1].v)
+class G:
+    k: int32
+    def __init__(self) -> None:
+        self.k = 1
+    def live(self) -> Iterator[Own[tuple[A, int32]]]:
+        a = A(1)
+        yield (a, 3)
+        a.v = 7
+    def dead(self) -> Iterator[Own[tuple[A, int32]]]:
+        a = A(1)
+        yield (a, 3)
+def tf_live() -> Iterator[Own[tuple[A, int32]]]:
+    a = A(1)
+    try:
+        yield (a, 3)
+        a.v = 7
+    finally:
+        print("done")
+def tf_dead() -> Iterator[Own[tuple[A, int32]]]:
+    try:
+        a = A(1)
+        yield (a, 3)
+    finally:
+        print("done")
+""")
+    assert _perms(records[(4, "TpyName")]) == {(0,): P.WARNED,
+                                               (1,): P.WARNED}
+    assert _perms(records[(12, "TpyTupleLiteral")]) == {(0,): P.WARNED}
+    assert _perms(records[(16, "TpyTupleLiteral")]) == {(0,): P.MOVE}
+    assert _perms(records[(20, "TpyTupleLiteral")]) == {(0,): P.WARNED}
+    assert _perms(records[(27, "TpyTupleLiteral")]) == {(0,): P.MOVE}
+    # Methods are analyzed after the free functions: compare by line.
+    assert sorted(_copy_warnings(ctx)) == [
+        (4, "copies A into owned storage (tuple element 0)"),
+        (4, "copies A into owned storage (tuple element 1)"),
+        (12, "copies A into owned storage (tuple element 0)"),
+        (20, "copies A into owned storage (tuple element 0)")]
+
+
+def test_live_nocopy_tuple_name_yield_errors() -> None:
+    # The yield's frame keeps a live name, so its non-copyable leaf would be
+    # copied: an error, as at the `tuple[Own[N], ...]` twin.
+    with pytest.raises(SemanticError,
+                       match=r"cannot copy non-copyable type 'N' into owned "
+                             r"storage \(tuple element 0\)"):
+        _compile(LEAF_PRELUDE + """\
+from typing import Iterator
+def gen() -> Iterator[Own[tuple[N, int32]]]:
+    t = (N(1), 3)
+    yield t
+    print(t[1])
+""")
+
+
+def test_nested_own_member_at_return_and_arg() -> None:
+    # An `Own`-marked nested member owns each of its literal's leaves, at
+    # the return and at the argument alike.
+    records, _w, ctx = _leaf_records("""\
+def ret_nested(a: A, b: B) -> tuple[Own[tuple[A, B]], int32]:
+    return ((a, b), 1)
+def take_nested(t: tuple[Own[tuple[A, B]], int32]) -> int32:
+    return t[1]
+def arg_nested(a: A, b: B) -> int32:
+    return take_nested(((a, b), 1))
+""")
+    for line in (2, 6):
+        assert _perms(records[(line, "TpyTupleLiteral")]) == {
+            (0, 0): P.WARNED, (0, 1): P.WARNED}, line
+    assert _copy_warnings(ctx) == [
+        (2, "copies A into owned storage (tuple element 0.0)"),
+        (2, "copies B into owned storage (tuple element 0.1)"),
+        (6, "copies A into owned storage (argument 't' tuple element 0.0)"),
+        (6, "copies B into owned storage (argument 't' tuple element 0.1)")]
+
+
+@pytest.mark.parametrize("body", [
+    "    x: A = (A(1), 3)\n",
+    "    if (t := (A(1), 3)):\n        x: A = t\n",
+])
+def test_type_mismatch_spells_a_literal_bound_tuple(body: str) -> None:
+    # A literal's and a walrus-bound literal's tuple type is spelled as the
+    # program does, not with its literal element types.
+    with pytest.raises(SemanticError,
+                       match=r"expected A, got tuple\[A, int32\]$"):
+        _compile(LEAF_PRELUDE + "def f() -> None:\n" + body)
 
 
 # -- scalar sources: a scalar is a one-leaf tuple ------------------------------
@@ -4244,9 +4468,7 @@ def gen() -> Iterator[tuple[Own[N], int32]]:
         with pytest.raises(SemanticError,
                            match="Generator cannot yield non-copyable"):
             _compile(LEAF_PRELUDE + "from typing import Iterator\n" + body)
-    # The `Own[tuple[...]]` yield runs no member check, so it pins that sema
-    # accepts the program, not a move (BUGS.md#own-tuple-yield-member-unchecked).
-    _compile(LEAF_PRELUDE + """\
+    records, _w, _ctx = _leaf_records("""\
 from typing import Iterator
 def gen() -> Iterator[Own[tuple[N, int32]]]:
     n = N(1)
@@ -4256,6 +4478,18 @@ def take_n(p: tuple[Own[N], int32]) -> int32:
 def arg() -> int32:
     n = N(1)
     return take_n((n, 3))
+""")
+    assert _perms(records[(4, "TpyTupleLiteral")]) == {(0,): P.MOVE}
+    # A live one would copy it, as the `Own`-marked member's twin would.
+    with pytest.raises(SemanticError,
+                       match=r"cannot copy non-copyable type 'N' into owned "
+                             r"storage \(tuple element 0\)"):
+        _compile(LEAF_PRELUDE + """\
+from typing import Iterator
+def gen() -> Iterator[Own[tuple[N, int32]]]:
+    n = N(1)
+    yield (n, 3)
+    print(n.v)
 """)
 
 

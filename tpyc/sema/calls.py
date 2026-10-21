@@ -18,7 +18,7 @@ from ..typesys import (
     declares_no_writes, param_may_be_written,
     any_default_suppressed,
     default_emittable_at,
-    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
+    TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
     deref_dispatch_inner,
     IntLiteralType, resolve_int_literals,
@@ -47,7 +47,7 @@ from ..parse import (
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral, lambda_of,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
-    TpyGeneratorExpression, TpyNamedExpr, TpyStmt, TupleElemCapture,
+    TpyGeneratorExpression, TpyStmt, TupleElemCapture,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind, NameBinding
@@ -3497,87 +3497,46 @@ class CallAnalyzer:
             if (isinstance(bare, TupleType)
                     or (own is not None and own.wrapped.is_value_type())):
                 self.ctx.all_last_uses.discard(arg)
-        # tuple[Own[T_ref], ...] with a literal source: per-element ownership
-        # check. Two shapes reach this -- `Own[tuple[T,...]]` (unwrapped to
-        # the inner tuple below) and the canonical per-element form
-        # `tuple[Own[T], ...]` which users may write directly. Dispatch
-        # before unwrap_optional_own because the second shape has no outer
-        # Own to unwrap.
-        peeled_ptype = unwrap_readonly(ptype)
-        # A walrus is its target name's read, not the literal's.
         passed = peel_coerce(arg)
-        if (isinstance(peeled_ptype, TupleType)
-                and isinstance(passed, TpyTupleLiteral)
-                and (any(isinstance(et, OwnType)
-                         for et in peeled_ptype.element_types)
-                     # An `Own` marker nested a level down owns its leaf.
-                     or owned_slot_paths(peeled_ptype))):
-            self._check_own_tuple_literal_arg(passed, peeled_ptype, pname)
-            self._warn_unnecessary_copy(arg)
-            return
-        # A walrus is its target name's read, its warnings the argument
-        # coercion's; its record is the name's.
-        if isinstance(arg, TpyNamedExpr):
-            name_target = own_tuple_target(ptype)
-            if (name_target is not None
-                    and any(isinstance(et, OwnType)
-                            for et in name_target.element_types)):
-                self.compat.register_sink(arg, ptype, TupleSink.ARG,
-                                          per_leaf=True)
-        # A tuple LOCAL passed by NAME into a tuple param with Own slots: the
-        # literal element check above never ran, so consult the
-        # construction-time plain-borrow-into-Own hazard per Own slot.
-        if isinstance(arg, TpyName):
-            name_target = own_tuple_target(ptype)
-            if (name_target is not None
-                    and any(isinstance(et, OwnType)
-                            for et in name_target.element_types)):
-                self.compat.check_name_borrow_into_own(
-                    arg.name, name_target, arg, arg_slot=ptype)
-                # The `std::tuple<...>&&` param binds only an rvalue, so a
-                # movable owned-tuple source NOT at its last use can't move in:
-                # a @nocopy tuple is a clean use-after-move error, a copyable one
-                # warns and is auto-copied (mirrors the scalar Own[T] arg).
-                bare = unwrap_readonly(ptype)
-                if (isinstance(bare, TupleType) and param_takes_ownership(ptype)
-                        and self.compat._is_owned_var(arg.name)
-                        # A negative use: the copy path; a move is
-                        # `check_name_borrow_into_own`'s record.
-                        and not self.compat.is_last_use_move_candidate(arg)):
-                    if self.ctx.is_type_non_copyable(arg_type):
-                        reason = (self.ctx.nocopy_reason(arg_type)
-                                  or f"owned tuple '{arg.name}'")
-                        raise self.ctx.error(
-                            f"{reason} is used after this point and cannot be "
-                            f"moved into '{pname}'. Remove later uses or use "
-                            f"copy().", arg)
-                    # A mixed slot's owned element is warned by the
-                    # element-wise check the argument coercion runs.
-                    if bare.is_owned_movable():
-                        self.ctx.copy_warning(
-                            f"copies {bare} into owned storage; use "
-                            f"copy() to make this explicit", arg, arg)
-                        # Declared to the lowering, which builds only
-                        # declared copies of a name holding a reference. The
-                        # whole owned tuple is copied, so no MIXED mark.
-                        self.compat.record_tuple_copy(arg, None,
-                                                      mark_mixed=False)
-            elif owned_slot_paths(ptype):
-                # A slot that owns only nested elements (`Own[tuple[tuple[A,
-                # int32], int32]]`) takes the name whole all the same: its
-                # record is the name's, at the declared slot's paths.
-                self.compat.register_sink(arg, ptype, TupleSink.ARG,
-                                          per_leaf=True)
         own_ptype = unwrap_optional_own(ptype)
+        # A parameter owning a leaf is an owning result sink, as a return
+        # or a yield is: one check per source.
+        if param_takes_ownership(ptype) or owned_slot_paths(ptype):
+            self.compat.check_tuple_result(arg, ptype, TupleSink.ARG,
+                                           pname=pname)
+        bare = unwrap_readonly(ptype)
+        if (isinstance(arg, TpyName) and isinstance(bare, TupleType)
+                and param_takes_ownership(ptype)
+                and self.compat._is_owned_var(arg.name)
+                # A negative use: the copy path; a move is
+                # `check_name_borrow_into_own`'s record.
+                and not self.compat.is_last_use_move_candidate(arg)):
+            # The `std::tuple<...>&&` param binds only an rvalue, so a
+            # movable owned-tuple source NOT at its last use can't move in:
+            # a @nocopy tuple is a clean use-after-move error, a copyable one
+            # warns and is auto-copied (mirrors the scalar Own[T] arg).
+            if self.ctx.is_type_non_copyable(arg_type):
+                reason = (self.ctx.nocopy_reason(arg_type)
+                          or f"owned tuple '{arg.name}'")
+                raise self.ctx.error(
+                    f"{reason} is used after this point and cannot be "
+                    f"moved into '{pname}'. Remove later uses or use "
+                    f"copy().", arg)
+            # A mixed slot's owned element is warned by the
+            # element-wise check the argument coercion runs.
+            if bare.is_owned_movable():
+                self.ctx.copy_warning(
+                    f"copies {bare} into owned storage; use "
+                    f"copy() to make this explicit", arg, arg)
+                # Declared to the lowering, which builds only
+                # declared copies of a name holding a reference. The
+                # whole owned tuple is copied, so no MIXED mark.
+                self.compat.record_tuple_copy(arg, None, mark_mixed=False)
         if own_ptype is None:
             return
         self.compat.register_owned_result(arg, own_ptype, TupleSink.ARG)
-        # Own[tuple[T,...]] with a literal source: same per-element check via
-        # own_tuple_target's synthesis (lvalue-tuple sources keep today's
-        # silent-copy behaviour; the check applies to literal sources only).
-        if (isinstance(own_ptype.wrapped, TupleType)
-                and isinstance(passed, TpyTupleLiteral)):
-            self._check_own_tuple_literal_arg(passed, own_ptype, pname)
+        if (isinstance(passed, TpyTupleLiteral)
+                and isinstance(own_ptype.wrapped, TupleType)):
             # The parameter OWNS the tuple like a field: every member is held
             # by value (a last-use owned one moved in, a borrowed one copied
             # -- both decided by the member check above).
@@ -3619,33 +3578,6 @@ class CallAnalyzer:
             self.deduction.mark_container_param_context(arg, arg_type, ptype)
         if isinstance(arg_type, PendingViewType):
             self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
-
-    def _check_own_tuple_literal_arg(
-        self, literal: 'TpyTupleLiteral',
-        ptype: 'OwnType | TupleType', pname: str,
-    ) -> None:
-        """Per-element Own check for a tuple literal passed to a param with
-        per-element Own slots.
-
-        Accepts either form of the param type:
-          * `Own[tuple[T, ...]]` -- own_tuple_target synthesizes the
-            per-element Own wrap for non-value elements.
-          * `tuple[Own[T], T_value, ...]` -- the canonical per-element form
-            (also what sema lowers Own[tuple[...]] to internally). Passed
-            through unchanged by own_tuple_target.
-
-        Each Own-wrapped element must be at last use, an explicit copy(),
-        a fresh rvalue (literal/constructor), or None. Mirrors the
-        per-element check the return path applies via own_tuple_target; a
-        member of a nested value tuple is owned storage inside the owned
-        argument, so it takes the storage copy warning.
-        """
-        target = own_tuple_target(ptype)
-        if target is None:
-            return
-        self.compat.check_owned_tuple_sink(
-            literal, ptype, "owned storage", literal, sink=TupleSink.ARG,
-            pname=pname)
 
     def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
         """Derive per-argument type hints from __init__ param types.

@@ -3078,6 +3078,9 @@ class TypeCompatibility:
         if isinstance(t, PendingNumType):
             # A dict's or set's leaf: the type it has so far.
             return self.pend.known_type(t)
+        if isinstance(t, TupleType):
+            # A literal-bound tuple's elements are still literal types.
+            return elem(t)
         return t.map_inner_types(self.diag_type)
 
     def is_last_use_move_candidate(self, expr: 'TpyExpr | None') -> bool:
@@ -5309,7 +5312,8 @@ class TypeCompatibility:
         if own is None:
             return self._check_nested_tuple_member(
                 m, nested, nested_member_sink(sink, owned, whole), dest,
-                f"{path}.", pname, whole=whole)
+                f"{path}.", pname,
+                whole=member_owns_every_leaf(sink, owned, whole))
         nested_own = self._own_tuple_member(m, et)
         if isinstance(nested_own, TpyTupleLiteral):
             # An `Own[tuple[...]]` member owns each leaf of its literal's
@@ -5746,6 +5750,43 @@ class TypeCompatibility:
         per_leaf = (bare_tuple(bare) is not None and not isinstance(
             peel_coerce(source), (TpyTupleLiteral, TpyName, TpyNamedExpr)))
         self.register_sink(source, bare, sink, per_leaf=per_leaf)
+
+    def check_tuple_result(self, value: TpyExpr, slot: TpyType,
+                           sink: 'TupleSink', *, pname: str = "") -> None:
+        """The copy check of a tuple `value` at the declared tuple `slot`
+        of an owning sink -- `Own[tuple[...]]` included, which owns every
+        leaf, and `X | None`, whose non-None value it is -- one dispatch
+        per source: a literal's members take their scalar's rule at `sink`
+        (`pname` naming an ARG sink's parameter), a NAME its binding facts
+        (`check_name_borrow_into_own`), a closure's capture read in place.
+        A walrus is its target name's read, whose copies the coercion
+        declares as a live name's. Any other source's copies are the
+        coercion's."""
+        slot = unwrap_readonly(slot)
+        if isinstance(slot, OptionalType):
+            slot = unwrap_readonly(slot.inner)
+        target = own_tuple_target(slot)
+        if target is None:
+            return
+        read = peel_coerce(value)
+        if isinstance(read, TpyTupleLiteral):
+            self.check_owned_tuple_sink(read, slot, "owned storage", read,
+                                        sink=sink, pname=pname)
+        elif isinstance(read, TpyNamedExpr):
+            self.register_sink(read, slot, sink, per_leaf=True)
+        elif isinstance(read, TpyName):
+            self.check_name_borrow_into_own(read.name, target, read, slot,
+                                            sink)
+
+    def reads_capture(self, name: str) -> bool:
+        """Whether `name` read in this body is a nested def's capture of
+        its enclosing scope's binding (a nested def cannot bind an
+        enclosing name of its own without `nonlocal`). Read off the
+        enclosing scope's names: the def's `captured_names` are set only
+        once its whole body is analyzed."""
+        fs = self.ctx.func
+        return (fs.in_nested_def and name in fs.outer_scope_locals
+                and name not in fs.current_param_names)
 
     def holds_reference_leaf(self, slot: TpyType) -> bool:
         """Whether an owning slot of type `slot` holds a reference leaf, so
@@ -6198,40 +6239,33 @@ class TypeCompatibility:
             self.ctx.own_element_mixed.add(expr)
 
     def check_name_borrow_into_own(self, name: str, tuple_type: TupleType,
-                                   expr: TpyExpr, *,
-                                   return_slot: TpyType | None = None,
-                                   arg_slot: TpyType | None = None,
-                                   captured: bool = False) -> None:
+                                   expr: TpyExpr, slot: TpyType,
+                                   sink: TupleSink) -> None:
         """Warn when a tuple NAME referenced by `name` feeds a borrowed
         element into an `Own[T]` slot of the contextual `tuple_type` -- the
         implicit copy the scalar `Own[T]` and the literal-tuple forms declare
-        the same way -- and record it. A name lends every reference element;
-        which it copies follows its binding facts (`copy_into_own_idxs`),
-        or a parameter's, loop variable's or global's declared type; a
-        name a closure returns from its enclosing scope (`captured`) is
-        read in place. `return_slot` is the declared return slot of a
-        returned name, whose `Own[tuple[...]]` owns nested elements
-        `tuple_type` leaves plain; `arg_slot` an argument's declared
-        parameter type, the same for an argument's record."""
-        self.register_sink(
-            expr, (return_slot if return_slot is not None
-                   else arg_slot if arg_slot is not None else tuple_type),
-            TupleSink.RETURN if return_slot is not None else TupleSink.ARG,
-            per_leaf=True)
-        if captured:
-            self._check_captured_tuple_return(name, tuple_type, expr,
-                                              return_slot)
+        the same way -- and record it at `sink`. A name lends every
+        reference element; which it copies follows its binding facts
+        (`copy_into_own_idxs`), or a parameter's, loop variable's or
+        global's declared type; a nested def's capture of its enclosing
+        scope (`reads_capture`) is read in place. `slot` is the declared
+        slot (an `Own[tuple[...]]` owns nested elements `tuple_type` leaves
+        plain)."""
+        # An `Own` argument copies a capture whole, as any name its read
+        # outlives (the argument's own check declares that copy).
+        if sink is not TupleSink.ARG and self.reads_capture(name):
+            self.check_captured_tuple_read(name, tuple_type, expr, slot, sink)
             return
+        self.register_sink(expr, slot, sink, per_leaf=True)
         copied: set[int] = set()
-        # An argument the tuple outlives is copied whole -- the
-        # ownership-transfer parameter binds only an rvalue -- and the
-        # argument coercion's warning names each element it copies. Only the
-        # warning's text: the move is recorded below (`TupleNameMove`).
-        declared_whole = (return_slot is None
+        # A name the read outlives is copied whole -- the ownership-transfer
+        # parameter binds only an rvalue, a yield's frame keeps the name --
+        # and the coercion's warning names each element it copies; a return
+        # always hands its name over. Only the warning's text: the move is
+        # recorded below (`TupleNameMove`).
+        declared_whole = (sink is not TupleSink.RETURN
                           and not self.is_last_use_move_candidate(expr))
-        for path in sorted(self.name_copied_paths(
-                name, tuple_type,
-                return_slot if return_slot is not None else tuple_type)):
+        for path in sorted(self.name_copied_paths(name, tuple_type, slot)):
             if self._name_leaf_copy(tuple_type, path, expr,
                                     warn=not declared_whole):
                 copied.add(path[0])
@@ -6292,19 +6326,19 @@ class TypeCompatibility:
             return frozenset()
         return reference_paths(dt) - owned_slot_paths(dt)
 
-    def _check_captured_tuple_return(self, name: str, tuple_type: TupleType,
-                                     expr: TpyExpr,
-                                     return_slot: TpyType | None) -> None:
-        """A closure returning a tuple name it captured reads the capture in
-        place: every reference leaf arrives borrowed -- one its declaration
-        marks `Own` too, which the closure never owns -- so the slot copies
-        each leaf it owns, as the scalar capture's return does. No read of a
-        capture moves."""
+    def check_captured_tuple_read(self, name: str, tuple_type: TupleType,
+                                  expr: TpyExpr, slot: TpyType,
+                                  sink: TupleSink) -> None:
+        """A closure reading a tuple name it captured into an owning slot at
+        `sink` reads the capture in place: every reference leaf arrives
+        borrowed -- one its declaration marks `Own` too, which the closure
+        never owns -- so the slot copies each leaf it owns, as the scalar
+        capture's return does. No read of a capture moves."""
+        self.register_sink(expr, slot, sink, per_leaf=True)
         scope = self.ctx.func.current_scope
         dt = bare_tuple(scope.lookup(name) if scope is not None else None)
         if dt is None or len(dt.element_types) != len(tuple_type.element_types):
             return
-        slot = return_slot if return_slot is not None else tuple_type
         owned = owned_slot_paths(slot)
         refs = reference_paths(dt)
         copied = self._warn_tuple_path_copies(

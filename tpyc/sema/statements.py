@@ -138,7 +138,7 @@ if TYPE_CHECKING:
 
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, stamp_bind_kind,
-                           owned_slot_paths, stamp_unpack_rebinds)
+                           stamp_unpack_rebinds)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
@@ -1101,16 +1101,6 @@ class StatementAnalyzer:
             f"{self.compat.copy_remedy(value)}", value, value)
         return True
 
-    def _reads_capture(self, name: str) -> bool:
-        """Whether `name` read in this body is a nested def's capture of
-        its enclosing scope's binding (a nested def cannot bind an
-        enclosing name of its own without `nonlocal`). Read off the
-        enclosing scope's names: the def's `captured_names` are set only
-        once its whole body is analyzed."""
-        fs = self.ctx.func
-        return (fs.in_nested_def and name in fs.outer_scope_locals
-                and name not in fs.current_param_names)
-
     def _note_live_name_copy(self, value: TpyExpr) -> None:
         """Record the returned NAME a closure still reads as a read the
         lowering must copy: C++ would move a bare `return x;`."""
@@ -1178,9 +1168,10 @@ class StatementAnalyzer:
             # would move a whole name out; an `Own` argument copies a
             # captured name as any name it outlives, and a nested def
             # cannot yield.
-            captured_tuple = (isinstance(returned_name, TpyName)
-                              and own_tuple_target(own_expected) is not None
-                              and self._reads_capture(returned_name.name))
+            captured_tuple = (
+                isinstance(returned_name, TpyName)
+                and own_tuple_target(own_expected) is not None
+                and self.compat.reads_capture(returned_name.name))
             if isinstance(own_expected, OwnType) and not captured_tuple:
                 own_source = erased_source(stmt.value)
                 self.compat.register_owned_result(own_source, own_expected,
@@ -1196,33 +1187,20 @@ class StatementAnalyzer:
             # `-> X | None` returns its non-None value exactly as `-> X` does.
             tuple_slot = (expected.inner if isinstance(expected, OptionalType)
                           else expected)
-            # Check Own[T] elements in tuple literals. A walrus is its target
-            # name's read, which no name check below takes up.
             returned = peel_coerce(stmt.value)
-            if isinstance(returned, TpyTupleLiteral):
-                tuple_target = own_tuple_target(tuple_slot)
-                if tuple_target is not None:
-                    # The Own-element checks, then the per-element
-                    # capture mode (ref/value/const_ref).
-                    self._annotate_tuple_elem_capture(
-                        returned, tuple_target, sink=TupleSink.RETURN,
-                        sink_slot=tuple_slot,
-                        return_slot=(expected if tuple_slot is not expected
-                                     else None))
-            elif isinstance(returned, TpyNamedExpr):
-                if own_tuple_target(tuple_slot) is not None:
-                    self.compat.register_sink(returned, tuple_slot,
-                                              TupleSink.RETURN, per_leaf=True)
-            # A tuple LOCAL returned by name: the literal-element check
-            # above never ran, so consult the construction-time
-            # plain-borrow-into-Own hazard for each Own slot.
-            elif isinstance(returned, TpyName):
-                tuple_target = own_tuple_target(tuple_slot)
-                if tuple_target is not None:
-                    self.compat.check_name_borrow_into_own(
-                        returned.name, tuple_target, returned,
-                        return_slot=tuple_slot,
-                        captured=self._reads_capture(returned.name))
+            self.compat.check_tuple_result(stmt.value, expected,
+                                           TupleSink.RETURN)
+            tuple_target = own_tuple_target(tuple_slot)
+            if (isinstance(returned, TpyTupleLiteral)
+                    and tuple_target is not None):
+                # The per-element capture mode (ref/value/const_ref) of the
+                # literal a return hands out in borrow form.
+                self._annotate_tuple_elem_capture(
+                    returned, tuple_target, sink=TupleSink.RETURN,
+                    sink_slot=tuple_slot,
+                    return_slot=(expected if tuple_slot is not expected
+                                 else None),
+                    members_checked=True)
             # A tuple name with a borrowed element has its copy declared per
             # element just above.
             if (not isinstance(own_expected, OwnType)
@@ -1683,9 +1661,10 @@ class StatementAnalyzer:
                 `tuple_type` when not given.
             return_slot: The declared nullable return `tuple_type` is the
                 non-None value of, named as such in a remedy.
-            members_checked: A walrus bound the literal, so its members
-                took the local's copy rule and the sink copies the name's
-                read (`check_owned_tuple_sink` on the walrus).
+            members_checked: The members took their copy rule already: a
+                walrus bound the literal (the local's rule, the sink copying
+                the name's read), or the result check ran it
+                (`check_tuple_result`).
         """
         if sink is TupleSink.LOCAL and not members_checked:
             self.compat.check_tuple_literal_members(
@@ -5602,31 +5581,12 @@ class StatementAnalyzer:
         # The coercion compares the literal against the declared tuple as a
         # whole, so an `Own` element's scalar `T -> Own[T]` copy rule never
         # runs per member -- apply it here.
-        yielded = peel_value_wrappers(stmt.value)
-        yield_bare = unwrap_readonly(unwrap_ref_type(elem_type))
-        read = peel_coerce(stmt.value)
-        if not isinstance(yield_bare, TupleType):
-            # An owned element is an owning sink whatever the source.
-            self.compat.register_owned_result(stmt.value, yield_bare,
-                                              TupleSink.YIELD)
-        elif isinstance(read, TpyNamedExpr):
-            # A walrus is its target name's read, whose record is the name's;
-            # its literal's members keep their copy rule.
-            if isinstance(yielded, TpyTupleLiteral):
-                self.compat.check_tuple_literal_members(
-                    yielded, yield_bare, TupleSink.YIELD, "owned storage")
-            self.compat.register_sink(read, yield_bare, TupleSink.YIELD,
-                                      per_leaf=True)
-        elif isinstance(yielded, TpyTupleLiteral):
-            self.compat.check_owned_tuple_sink(
-                yielded, yield_bare, "owned storage", yielded,
-                sink=TupleSink.YIELD)
-        elif isinstance(read, TpyName) and owned_slot_paths(yield_bare):
-            # The yield moves the elements a last-use local owns, read as
-            # every owning sink's tuple read is (settled with the body).
-            self.compat.claim_name_move(read, OwnType(yield_bare))
-            self.compat.register_sink(read, yield_bare, TupleSink.YIELD,
-                                      per_leaf=True)
+        yield_slot = unwrap_ref_type(elem_type)
+        # An owned element is an owning sink whatever the source.
+        self.compat.register_owned_result(stmt.value, yield_slot,
+                                          TupleSink.YIELD)
+        self.compat.check_tuple_result(stmt.value, yield_slot,
+                                       TupleSink.YIELD)
         # Re-yielding an ephemeral borrow onward (consumed from an inner
         # generator/iterator) past its iteration step would let the outer
         # consumer read a stale slot -- reject unless copied out. EXCEPTION:

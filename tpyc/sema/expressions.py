@@ -6546,9 +6546,9 @@ class ExpressionAnalyzer:
         tuple_target = own_tuple_target(fn_type.return_type)
         if (isinstance(body_value, TpyName) and tuple_target is not None
                 and body_value.name in expr.captured_names):
-            self.compat.check_name_borrow_into_own(
+            self.compat.check_captured_tuple_read(
                 body_value.name, tuple_target, body_value,
-                return_slot=fn_type.return_type, captured=True)
+                fn_type.return_type, TupleSink.RETURN)
         elif (isinstance(body_value, TpyName) and tuple_target is not None
               and body_value.name in expr.param_names):
             # A returned parameter hands over what its declared type owns.
