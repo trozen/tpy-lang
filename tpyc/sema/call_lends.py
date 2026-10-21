@@ -921,7 +921,7 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
     if fi.is_constructor:
         return True
     if (isinstance(call, TpyCallLike)
-            and call.result_form is not ResultForm.NOT_DECLARED):
+            and call.result_form.is_declared):
         return False
     ret = unwrap_readonly(fi.return_type) if fi.return_type else None
     if isinstance(ret, OwnType):
@@ -1346,7 +1346,7 @@ class MustLend(CallPolicy):
             return None
         lend = callee_lend_fact(call)
         if (isinstance(call, TpyCallLike)
-                and call.result_form is not ResultForm.NOT_DECLARED):
+                and call.result_form.is_declared):
             if call.result_form is not ResultForm.BORROW:
                 return None
         elif not isinstance(call, (TpyCall, TpyMethodCall)):

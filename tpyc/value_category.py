@@ -455,7 +455,7 @@ def declared_call_const(analyzer: ValueCategoryAnalyzer,
     signature say nothing about a result that may be an argument
     (`ro.pick(x)` is as mutable as `x`)."""
     if not (isinstance(expr, TpyCallLike)
-            and expr.result_form is not ResultForm.NOT_DECLARED):
+            and expr.result_form.is_declared):
         return None
     return isinstance(analyzer.get_expr_type(expr), ReadonlyType)
 
@@ -712,7 +712,7 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, TpyMethodCall):
         # A declared-borrow method's call: sema decided, as for a free
         # binding's call below.
-        if expr.result_form is not ResultForm.NOT_DECLARED:
+        if expr.result_form.is_declared:
             return expr.result_form is not ResultForm.BORROW
         terms = _accessor_terms(analyzer, expr)
         if terms is not None:
@@ -740,7 +740,7 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
             return True
         # A declared-borrow binding's call: sema decided, from its lent
         # arguments, whether it hands back one of them or a fresh value.
-        if expr.result_form is not ResultForm.NOT_DECLARED:
+        if expr.result_form.is_declared:
             return expr.result_form is not ResultForm.BORROW
         # Record constructors -> rvalue
         if analyzer.registry.get_record(expr.func_name):

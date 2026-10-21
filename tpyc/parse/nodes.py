@@ -383,6 +383,13 @@ class ResultForm(Enum):
     VALUE = "value"
 
     @property
+    def is_declared(self) -> bool:
+        """Sema stamped the form from the callee's lend contract
+        (`CallAnalyzer.stamp_result_borrow`), which then says what the
+        result lends rather than the declared return alone."""
+        return self is not ResultForm.NOT_DECLARED
+
+    @property
     def is_fresh(self) -> bool:
         """The result is a fresh value to every holder."""
         return self in (ResultForm.REFERENCE_VALUE, ResultForm.COPY,

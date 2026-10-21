@@ -32,7 +32,8 @@ from ..typesys import (
     unwrap_qualifiers,
     ConcreteCoroType,
     GenExprType, PendingNumType,
-    global_binds_by_reference, own_tuple_target)
+    global_binds_by_reference, own_tuple_target,
+    param_has_mutable_borrow_surface)
 from .. import qnames
 from ..identity_map import IdentityMap
 from ..value_category import (
@@ -41,7 +42,8 @@ from ..value_category import (
     peel_coerce, peel_value_wrappers, const_place,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
-from .alias_rebind import (ElemPath, bare_tuple, owned_slot_paths,
+from .alias_rebind import (ElemPath, bare_tuple, declared_call_paths,
+                           owned_slot_paths,
                            peel_slot, pointer_tuple_names, reference_paths,
                            top_level, tuple_borrowed_paths, tuple_elem_owned,
                            tuple_source_elem_owned)
@@ -70,8 +72,8 @@ from .dyn_erasure import dyn_erasure_coercion
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value
 from ..modules import get_span_return_type
 from .call_lends import (
-    CalleeFact, EveryTempLend, Lent, MayLend, ReturnLend,
-    borrowing_ctor_arg, callee_lend_fact, escaping_borrow_tuple,
+    EveryTempLend, Lent, MayLend, ReturnLend,
+    borrowing_ctor_arg, escaping_borrow_tuple,
     every_lent_operand,
 )
 from .context import (
@@ -5046,9 +5048,8 @@ class TypeCompatibility:
                                     source_expr)
         if self.per_leaf_source(source_expr):
             return top_level(owned)
-        # A lending call's open `T` leaf is not decided here: the
-        # element-wise recursion keeps the source, so the whole-tuple hedge
-        # declares that copy.
+        # A name read behind a wrapper keeps its open `T` leaf for the
+        # element-wise recursion, whose whole-tuple hedge declares that copy.
         open_leaf = top_level(p for p in owned if not TupleType
                               ._element_is_pointer_repr(_element_at(expected, p)))
         return top_level(owned) - open_leaf
@@ -5066,28 +5067,12 @@ class TypeCompatibility:
         """Whether a tuple source takes the per-leaf copy rule at an owning
         sink: every reference leaf it lends -- a union leaf and an open `T`
         leaf included -- is warned (or hedged) on its own. Not a NAME
-        (`tuple_name_source`), nor a call whose result lends by a callee
-        contract rather than an analyzed body: the lending fact does not say
-        which result leaf it lends yet
-        (BUGS.md#tuple-lending-call-result-paths)."""
+        (`tuple_name_source`), whose copies follow its binding facts."""
         if self.tuple_name_source(expr):
             return False
         operands = ternary_operands(expr)
-        if len(operands) == 1 and self.tuple_name_source(operands[0]):
-            return False
-        return not any(self._lending_call(op) for op in operands)
-
-    def _lending_call(self, expr: TpyExpr) -> bool:
-        """A call whose result lends per its callee's contract: a stub that
-        records no borrow fact, or a declared `borrows=` / `element_of=`
-        verdict relating the result to the operands. An explicit `copy()`
-        lends nothing."""
-        inner = peel_value_wrappers(expr)
-        if (not isinstance(inner, (TpyCall, TpyMethodCall))
-                or self.is_copy_call(inner)):
-            return False
-        return (callee_lend_fact(inner).kind is CalleeFact.STUB
-                or inner.result_form.from_operand)
+        return not (len(operands) == 1
+                    and self.tuple_name_source(operands[0]))
 
     def check_owned_tuple_sink(self, source_expr: TpyExpr, slot: TpyType,
                                dest: str, loc_node: TpyExpr | TpyStmt, *,
@@ -5141,8 +5126,6 @@ class TypeCompatibility:
             tt, (lent & owned_slot_paths(slot)) - moved, dest, loc_node,
             elem_path, source=source_expr, union_leaves=per_leaf,
             hedge_open=per_leaf))
-        # A lending call's copies wait for its lent paths
-        # (BUGS.md#tuple-lending-call-result-paths).
         if copied and per_leaf and not elem_path:
             self.record_tuple_copy(source_expr, copied)
         return copied
@@ -5152,9 +5135,45 @@ class TypeCompatibility:
         """The element paths a tuple source lends as it ARRIVES at an owning
         sink (`tuple_borrowed_paths`' incoming question): a literal member
         lends what it does itself (`member_lends`), however its literal
-        captures it."""
+        captures it, and a call -- or an element read off one -- what its
+        result does (`call_lent_paths`)."""
         return tuple_borrowed_paths(self.ctx, expr, slot, prefix,
-                                    member_lends=self.member_lends)
+                                    incoming=self)
+
+    def call_lent_paths(self, call: TpyCall | TpyMethodCall,
+                        slot: TupleType,
+                        prefix: ElemPath = ()) -> frozenset[ElemPath]:
+        """The paths of tuple `slot` at `prefix` a CALL's result lends as
+        it arrives at an owning sink: the leaves the sink copies. A call with
+        a lend contract (`borrows=` / `element_of=`, which
+        `stamp_result_borrow` stamps) lends its declared return's paths
+        (`declared_call_paths`) exactly when the scalar twin's result would
+        be a borrowed source (`returns_borrow`: a copy of an operand the
+        program still reaches), and nothing otherwise; a call without one
+        lends per its declared return. An open `T` leaf among them takes
+        the sink's per-leaf hedge."""
+        if (call.result_form.is_declared
+                and not returns_borrow(self.ctx, call)):
+            return frozenset()
+        return declared_call_paths(call, slot, prefix)
+
+    def warn_argument_tuple_copies(self, call: TpyCallLike, slot: TupleType,
+                                   dest: str) -> None:
+        """A tuple argument that is a stamped call's COPY result
+        (`CallAnalyzer.defer_argument_copies`): each leaf the call lends
+        (`tuple_lent_paths`) at an element whose slot is a mutable borrow
+        surface takes its scalar twin's argument check. Only an open `T`
+        leaf reaches here -- `stamp_result_borrow` refuses a tuple holding a
+        class instance -- so each is the hedge, at declaration time as the
+        scalar's is."""
+        paths = [p for p in self.tuple_lent_paths(call, slot) or ()
+                 if param_has_mutable_borrow_surface(_element_at(slot, p))]
+        # A concrete reference leaf would need the scalar's WARNED check,
+        # not the hedge: this holds only while that refusal stands.
+        assert all(open_tuple_leaf(_element_at(slot, p)) for p in paths), (
+            slot, paths)
+        self._warn_tuple_path_copies(slot, paths, dest, call, source=call,
+                                     hedge_open=True)
 
     def member_lends(self, m: TpyExpr) -> bool:
         """Whether one scalar member of a tuple literal arrives borrowed:
@@ -5303,8 +5322,8 @@ class TypeCompatibility:
             # that slot does.
             return bool(self.check_owned_tuple_sink(
                 m, et, dest, m, elem_path=f"{path}."))
-        # A lending call's leaves are not placed yet
-        # (BUGS.md#tuple-lending-call-result-paths): the slot's rule whole.
+        # A name read behind a wrapper (`per_leaf_source`): the slot's
+        # rule whole.
         return self.check_own_lvalue_into_own(et, m, own[0], action=own[1],
                                               whole_slot=False)
 
@@ -5314,7 +5333,7 @@ class TypeCompatibility:
         hands to an `Own[tuple[...]]` element checked per leaf: the nested
         literal (checked per member), or a source that takes the per-leaf
         rule (`per_leaf_source`); None for a scalar element, and for a name
-        (its binding facts') or a lending call."""
+        (its binding facts')."""
         if bare_tuple(et) is None:
             return None
         inner = peel_value_wrappers(m)
@@ -5333,8 +5352,7 @@ class TypeCompatibility:
         (`warn_storage_tuple_copy`). At a return, a yield and an argument a
         literal's members take the declared slot's `Own` markers -- every
         leaf under an `Own[tuple[...]]` slot (`whole`) -- and another
-        source the owned tuple sink's decision; a lending call's is not
-        placed yet."""
+        source the owned tuple sink's decision."""
         if sink is TupleSink.CONTAINER:
             return self.warn_storage_tuple_copy(m, nested, dest, path)
         peeled = peel_value_wrappers(m)
@@ -5866,8 +5884,7 @@ class TypeCompatibility:
         `_name_leaves`), a `copy()` copies every leaf explicitly; every other
         source -- a select included -- copies each owned leaf it lends
         (`tuple_lent_paths`) and moves the rest. A select of arms that each
-        copy a leaf explicitly copies it explicitly; a lending call's lent
-        leaves are not placed yet (BUGS.md#tuple-lending-call-result-paths).
+        copy a leaf explicitly copies it explicitly.
         `chain` holds each source node above the leaf with the length of
         its path prefix: the nodes whose copy declarations tell the leaf."""
         paths = self._record_paths(tt, prefix)

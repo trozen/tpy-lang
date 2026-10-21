@@ -488,9 +488,15 @@ The per-element rule covers every reference leaf, not only a pointer one:
   0) if not a value type*, a nested result names `(tuple element 0.0)`, and
   `out.append(ps[0])` over `ps: list[tuple[T, int32]]` hedges as its
   monomorphic twin warns. A tuple NAME keeps its own text (a generic tuple
-  parameter is hedged for the whole tuple and per element), and a call that
-  lends by a native's or a declared `borrows=` contract (`min(a, b,
-  key=...)`) keeps the whole-tuple hedge.
+  parameter is hedged for the whole tuple and per element). A call that
+  lends by a declared `borrows=` / `element_of=` contract (`min(a, b,
+  key=...)`, `d.get(k, fb)`) hedges per leaf too, wherever its scalar twin
+  would: `return min(a, b, key=lambda p: p[1])` at `Own[tuple[T, int32]]`
+  warns *may copy T into owned storage (tuple element 0)*. A call with no
+  contract (one-argument `next(it)`) lends what its declared return says:
+  `xs.append(next(it))` over `Iterator[tuple[A, int32]]` warns *copies A
+  into owned storage (tuple element 0)*, over `Iterator[tuple[T, int32]]`
+  it takes the per-leaf hedge.
 - A **captured** tuple returned by a nested def or a lambda is read in place
   by the closure, so it lends every reference leaf, one its declaration
   marks `Own` included: `return t` of an enclosing `t = (A(1), 3)` at

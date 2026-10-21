@@ -6,3 +6,4 @@ b 1
 1 c
 min: b 1
 max: a 3
+rebound: 3 1

@@ -32,7 +32,6 @@ from ..sema.alias_rebind import (bare_tuple, direct_elements, owned_slot_paths,
 from ..sema import analyzer as analyzer_module
 from ..sema.compatibility import TupleSink, TypeCompatibility
 from ..sema.context import NonOwningBind, SemanticContext
-from ..sema.storage_walk import ternary_operands
 from ..sema.source_records import (LeafPermission, SourceRecord,
                                    source_record)
 from ..thir.testutil import _compile as _compile_program, _entry
@@ -48,6 +47,11 @@ _WHOLE_IN_WARNING = re.compile(r"^(?:copies|may copy) tuple\[")
 # A scalar source's copy into an owning slot: it speaks for its one leaf.
 _SCALAR_IN_WARNING = re.compile(r"^(?:copies|may copy) (?!tuple\[)"
                                 r"(?!.*tuple element).* into ")
+# A copy into a call's temporary argument (the deferred argument check,
+# `CallAnalyzer.defer_argument_copies`): a sink that keeps no record, even
+# where its operand lies inside a source's span.
+_TEMP_ARG_WARNING = re.compile(r" into argument (?:'[^']*'|[0-9]+) "
+                               r"of '[^']*\(\.\.\.\)'")
 
 # Lines whose record is known to disagree with its warnings or with the copy
 # the lowering makes, keyed by a snippet the program must contain (which
@@ -310,23 +314,6 @@ def _under_name(compat: TypeCompatibility, src: TpyExpr,
     return False
 
 
-def _under_lending_call(compat: TypeCompatibility, src: TpyExpr,
-                        path: tuple[int, ...]) -> bool:
-    """Whether the leaf at `path` of `src` is held by a lending call -- the
-    source, or a literal member on the way to the leaf -- whose result paths
-    are not placed yet (BUGS.md#tuple-lending-call-result-paths)."""
-    node = src
-    for depth in range(len(path) + 1):
-        if any(compat._lending_call(op) for op in ternary_operands(node)):
-            return True
-        lit = peel_value_wrappers(node)
-        if not (depth < len(path) and isinstance(lit, TpyTupleLiteral)
-                and path[depth] < len(lit.elements)):
-            return False
-        node = lit.elements[path[depth]]
-    return False
-
-
 def _silent_leaf(ctx: SemanticContext, src: TpyExpr,
                  path: tuple[int, ...]) -> bool:
     """Whether the leaf at `path` of `src` is a union or `Send[T]` one, which
@@ -433,13 +420,12 @@ def _assert_records_agree_with_warnings(
     name, a whole-tuple copy warning naming every leaf the record copies
     (and requiring one, or an undecided leaf), a scalar's copy warning its
     one leaf at `()`; an explicit `copy()` leaf is named by none, a
-    `copy()` source's owned leaves are EXPLICIT, and a warning may name a
-    leaf only the record leaves undecided (a lending call's). Whatever the
-    source kind, a leaf is undecided only nested under a tuple name, under a
-    lending call, or as a union or `Send[T]` leaf. LOCKSTEP holds
-    (`_assert_lockstep`). A leaf under a tuple name member of a literal
-    moves only on a `_MEMBER_RENDER_COPIES` row. Lines matching any other
-    `_KNOWN_DISAGREEMENTS` key are skipped."""
+    `copy()` source's owned leaves are EXPLICIT, and a warning names only
+    leaves the record copies. Whatever the source kind, a leaf is undecided
+    only nested under a tuple name, or as a union or `Send[T]` leaf.
+    LOCKSTEP holds (`_assert_lockstep`). A leaf under a tuple name member
+    of a literal moves only on a `_MEMBER_RENDER_COPIES` row. Lines
+    matching any other `_KNOWN_DISAGREEMENTS` key are skipped."""
     ctx = entry.analyzer.ctx
     compat = entry.analyzer.compat
     lines = source.splitlines()
@@ -469,6 +455,8 @@ def _assert_records_agree_with_warnings(
         m = _LEAF_IN_WARNING.search(d.message)
         scalar = _SCALAR_IN_WARNING.search(d.message)
         if not (m or scalar or _WHOLE_IN_WARNING.search(d.message)):
+            continue
+        if _TEMP_ARG_WARNING.search(d.message):
             continue
         if excluded(d.loc.line):
             continue
@@ -506,17 +494,12 @@ def _assert_records_agree_with_warnings(
             assert copied | undecided, (where, perms)
             mine = mine | copied
         assert copied <= mine, (where, copied, mine)
-        # A warned leaf without a verdict is one known gap: a lending
-        # call's (BUGS.md#tuple-lending-call-result-paths).
-        lending = any(compat._lending_call(op) for op in ternary_operands(e))
-        unplaced = {p for p in undecided if lending}
-        assert mine <= copied | unplaced, (where, copied, mine)
+        assert mine <= copied, (where, copied, mine)
         # Every source's leaf has a verdict but one nested under a tuple
-        # name (the source or a literal member of it), a union or `Send[T]`
-        # leaf (a copy no diagnostic tells) and a lending call's; any other
-        # undecided leaf is a row.
+        # name (the source or a literal member of it) and a union or
+        # `Send[T]` leaf (a copy no diagnostic tells); any other undecided
+        # leaf is a row.
         assert all(_under_name(compat, e, p) or _silent_leaf(ctx, e, p)
-                   or _under_lending_call(compat, e, p)
                    for p in undecided), (where, perms)
         # A scalar's one leaf always has a verdict, so its warning makes it
         # WARNED or HEDGED.
@@ -1256,7 +1239,7 @@ def f() -> int32:
     assert "auto-move" not in msg and "copy()" not in msg
 
 
-def test_nested_name_leaf_is_told_and_lending_call_leaf_undecided() -> None:
+def test_nested_name_leaf_is_told_and_lending_call_leaf_hedged() -> None:
     records, _warnings_, _ctx = _leaf_records("""\
 def nested(t: tuple[tuple[A, int32], int32]) -> Own[tuple[tuple[A, int32], int32]]:
     return t
@@ -1266,8 +1249,338 @@ def lending[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
     # A borrowed parameter's nested leaf copies, and the return's warning
     # tells it at its path.
     assert _perms(records[(2, "TpyName")]) == {(0, 0): P.WARNED}
-    # A native lending call's result paths are not placed yet.
-    assert _perms(records[(4, "TpyCall")]) == {(0,): P.UNDECIDED}
+    # A lending call's open `T` leaf takes the scalar twin's hedge.
+    assert _perms(records[(4, "TpyCall")]) == {(0,): P.HEDGED}
+
+
+LENDING_DECLS = """\
+from typing import Iterator
+from tpy import NativeIterable, pure, readonly
+from tpy.extern import native
+@native(borrows=("a", "b"))
+def upick[T](a: tuple[T, int32], b: tuple[T, int32]) -> tuple[T, int32]: ...
+@native(element_of=("items",))
+def ufirst[T](items: list[tuple[T, int32]]) -> tuple[T, int32]: ...
+@native("::Bag", elements=True)
+class Bag[T](NativeIterable[T]):
+    def __init__(self) -> None: ...
+    @native("tpy::__iter__", function=True)
+    @pure
+    @readonly
+    def __iter__(self) -> Iterator[T]: ...
+    @native("first", element_of=("self",))
+    @readonly
+    def first(self) -> T: ...
+class HT[T]:
+    p: tuple[T, int32]
+    def __init__(self, p: Own[tuple[T, int32]]) -> None:
+        self.p = p
+def gtake[T](p: Own[tuple[T, int32]]) -> int32:
+    return p[1]
+"""
+_LENDING_LINES = LENDING_DECLS.count("\n")
+
+_HEDGE_0 = ("may copy T into owned storage (tuple element 0) if not a value "
+            "type; use copy() to make this explicit")
+
+
+@pytest.mark.parametrize("call, params", [
+    ("min(a, b, key=lambda p: p[1])",
+     "a: tuple[T, int32], b: tuple[T, int32]"),
+    ('d.get("k", a)', "d: dict[str, tuple[T, int32]], a: tuple[T, int32]"),
+    ("upick(a, b)", "a: tuple[T, int32], b: tuple[T, int32]"),
+    ("ufirst(items)", "items: list[tuple[T, int32]]"),
+    ("bag.first()", "bag: Bag[tuple[T, int32]]"),
+])
+def test_stamped_generic_lending_call_hedges_each_leaf(call: str,
+                                                       params: str) -> None:
+    # A call with a lend contract (`borrows=` / `element_of=`, a builtin's
+    # or a user binding's) hands its open `T` leaf to every owning sink as
+    # its scalar twin does: hedged per leaf, never undecided.
+    arg = ("" if call.startswith("min(") else
+           f"def arg[T]({params}) -> int32:\n    return gtake({call})\n")
+    records, warnings, _ctx = _leaf_records(LENDING_DECLS + f"""\
+def app[T]({params}, xs: list[tuple[T, int32]]) -> None:
+    xs.append({call})
+def fld[T]({params}, h: HT[T]) -> None:
+    h.p = {call}
+def ret[T]({params}) -> Own[tuple[T, int32]]:
+    return {call}
+def lit[T]({params}, xs: list[tuple[tuple[T, int32], int32]]) -> None:
+    xs.append(({call}, 1))
+def gen[T]({params}) -> Iterator[Own[tuple[T, int32]]]:
+    yield {call}
+def comp[T]({params}) -> Own[list[tuple[T, int32]]]:
+    return [{call} for i in range(2)]
+""" + arg)
+    base = _LENDING_LINES
+    kind = "TpyMethodCall" if call.startswith(("d.", "bag.")) else "TpyCall"
+    assert _perms(records[(base + 2, kind)]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 4, kind)]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 6, kind)]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 8, "TpyTupleLiteral")]) == {
+        (0, 0): P.HEDGED}
+    # A yield and a comprehension element are owning sinks too.
+    assert _perms(records[(base + 10, kind)]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 12, kind)]) == {(0,): P.HEDGED}
+    if arg:
+        assert _perms(records[(base + 14, kind)]) == {(0,): P.HEDGED}
+    hedges = [w for w in warnings if w.startswith("may copy")]
+    assert hedges == [
+        _HEDGE_0,
+        _HEDGE_0.replace("owned storage", "field"),
+        _HEDGE_0,
+        _HEDGE_0.replace("element 0)", "element 0.0)"),
+        _HEDGE_0,
+        _HEDGE_0,
+    ] + ([_HEDGE_0] if arg else [])
+
+
+def test_stamped_lending_call_nested_leaf_hedges_at_its_path() -> None:
+    records, warnings, _ctx = _leaf_records("""\
+def nest[T](a: tuple[tuple[T, int32], int32],
+            b: tuple[tuple[T, int32], int32],
+            xs: list[tuple[tuple[T, int32], int32]]) -> Own[tuple[tuple[T, int32], int32]]:
+    xs.append(min(a, b, key=lambda p: p[1]))
+    return min(a, b, key=lambda p: p[1])
+def fresh[T](x: T, y: T) -> Own[tuple[T, int32]]:
+    return min(mk(x), mk(y), key=lambda p: p[1])
+""")
+    assert _perms(records[(4, "TpyCall")]) == {(0, 0): P.HEDGED}
+    assert _perms(records[(5, "TpyCall")]) == {(0, 0): P.HEDGED}
+    # The operands lend `x` / `y` through `mk`'s analyzed bodies.
+    assert _perms(records[(7, "TpyCall")]) == {(0,): P.HEDGED}
+    assert warnings == [_HEDGE_0.replace("element 0)", "element 0.0)")] * 2 + [
+        _HEDGE_0]
+
+
+def test_uncontracted_iterator_step_takes_the_per_leaf_rule() -> None:
+    # One-argument `next(it)` declares no lend contract: its declared return
+    # says what it lends, and each leaf takes the per-leaf rule -- a concrete
+    # reference leaf is warned, an open `T` leaf hedged.
+    records, warnings, _ctx = _leaf_records("""\
+from typing import Iterator
+def capp(it: Iterator[tuple[A, int32]], xs: list[tuple[A, int32]]) -> None:
+    try:
+        xs.append(next(it))
+    except StopIteration:
+        pass
+def gapp[T](it: Iterator[tuple[T, int32]], xs: list[tuple[T, int32]]) -> None:
+    try:
+        xs.append(next(it))
+    except StopIteration:
+        pass
+def gret[T](it: Iterator[tuple[T, int32]]) -> Own[tuple[T, int32]]:
+    try:
+        return next(it)
+    except StopIteration:
+        raise ValueError("empty")
+def vapp(it: Iterator[tuple[int32, int32]], xs: list[tuple[int32, int32]]) -> None:
+    try:
+        xs.append(next(it))
+    except StopIteration:
+        pass
+""")
+    assert _perms(records[(4, "TpyCall")]) == {(0,): P.WARNED}
+    assert _perms(records[(9, "TpyCall")]) == {(0,): P.HEDGED}
+    assert _perms(records[(14, "TpyCall")]) == {(0,): P.HEDGED}
+    copies = [w for w in warnings if "cop" in w]
+    assert copies == [
+        "copies A into owned storage (tuple element 0); use copy() to make "
+        "this explicit", _HEDGE_0, _HEDGE_0]
+
+
+_COPIES_A_0 = ("copies A into owned storage (tuple element 0); use copy() to "
+               "make this explicit")
+
+
+def test_uncontracted_next_method_and_native_take_the_per_leaf_rule() -> None:
+    # `it.__next__()` and an `@native` declaring no lend contract lend per
+    # their declared return, each leaf decided by the per-leaf rule.
+    records, warnings, _ctx = _leaf_records(LENDING_DECLS + """\
+@native
+def cnat(a: A) -> tuple[A, int32]: ...
+@native
+def gnat[T](a: T) -> tuple[T, int32]: ...
+def nxt(it: Iterator[tuple[A, int32]], xs: list[tuple[A, int32]]) -> None:
+    try:
+        xs.append(it.__next__())
+    except StopIteration:
+        pass
+def gnxt[T](it: Iterator[tuple[T, int32]], xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
+    try:
+        xs.append(it.__next__())
+        return it.__next__()
+    except StopIteration:
+        raise ValueError("empty")
+def unat(a: A, xs: list[tuple[A, int32]]) -> Own[tuple[A, int32]]:
+    xs.append(cnat(a))
+    return cnat(a)
+def gunat[T](a: T, xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
+    xs.append(gnat(a))
+    return gnat(a)
+""")
+    base = _LENDING_LINES
+    assert _perms(records[(base + 7, "TpyMethodCall")]) == {(0,): P.WARNED}
+    assert _perms(records[(base + 12, "TpyMethodCall")]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 13, "TpyMethodCall")]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 17, "TpyCall")]) == {(0,): P.WARNED}
+    assert _perms(records[(base + 18, "TpyCall")]) == {(0,): P.WARNED}
+    assert _perms(records[(base + 20, "TpyCall")]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 21, "TpyCall")]) == {(0,): P.HEDGED}
+    assert [w for w in warnings if "cop" in w] == [
+        _COPIES_A_0, _HEDGE_0, _HEDGE_0, _COPIES_A_0, _COPIES_A_0,
+        _HEDGE_0, _HEDGE_0]
+
+
+def test_stamped_call_of_fresh_operands_moves() -> None:
+    # A stamped call whose lent operands are fresh owners copies nothing an
+    # owning sink could tell (`returns_borrow` False): its leaves MOVE, and
+    # so do those of an element read off it (`call(...)[0]`); a borrowed
+    # operand's projection still hedges.
+    records, warnings, _ctx = _leaf_records(LENDING_DECLS + """\
+@native
+def own_a[T](x: T) -> Own[tuple[T, int32]]: ...
+@native
+def fresh2[T](x: T) -> Own[tuple[tuple[T, int32], int32]]: ...
+@native(borrows=("a", "b"))
+def choose[T](a: tuple[tuple[T, int32], int32], b: tuple[tuple[T, int32], int32]) -> tuple[tuple[T, int32], int32]: ...
+def fresh_ops[T](x: T, y: T, xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
+    xs.append(min(own_a(x), own_a(y), key=lambda p: p[1]))
+    return min(own_a(x), own_a(y), key=lambda p: p[1])
+def direct[T](x: T, y: T) -> Own[tuple[tuple[T, int32], int32]]:
+    return choose(fresh2(x), fresh2(y))
+def projected[T](x: T, y: T, xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
+    xs.append(choose(fresh2(x), fresh2(y))[0])
+    return choose(fresh2(x), fresh2(y))[0]
+def held[T](x: T, y: T) -> int32:
+    t = choose(fresh2(x), fresh2(y))[0]
+    return t[1]
+def pborrowed[T](a: tuple[tuple[T, int32], int32], b: tuple[tuple[T, int32], int32]) -> Own[tuple[T, int32]]:
+    return choose(a, b)[0]
+""")
+    base = _LENDING_LINES
+    assert _perms(records[(base + 8, "TpyCall")]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 9, "TpyCall")]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 11, "TpyCall")]) == {(0, 0): P.MOVE}
+    assert _perms(records[(base + 13, "TpySubscript")]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 14, "TpySubscript")]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 19, "TpySubscript")]) == {(0,): P.HEDGED}
+    # The local holds a copy nothing else reaches (`value_call_copy_message`
+    # reads the same stamp through the projection): silent.
+    assert [w for w in warnings if "cop" in w] == [_HEDGE_0]
+
+
+def test_nested_stamped_call_operand_hedges_at_the_arguments() -> None:
+    # A stamped call's COPY result passed on as a tuple argument takes its
+    # scalar twin's argument check per leaf; the outer call's sink copies
+    # nothing more, as the scalar's does not.
+    records, warnings, _ctx = _leaf_records("""\
+def nestret[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
+    return min(max(a, b, key=lambda p: p[1]), max(b, a, key=lambda p: p[1]), key=lambda p: p[1])
+def scal[T](a: T, b: T) -> Own[T]:
+    return min(max(a, b, key=lambda p: 0), max(b, a, key=lambda p: 0), key=lambda p: 0)
+""")
+    assert _perms(records[(2, "TpyCall")]) == {(0,): P.MOVE}
+    assert _perms(records[(4, "TpyCall")]) == {(): P.MOVE}
+    arg = ("may copy T into argument '{}' of 'min(...)'{} if not a value "
+           "type; use copy() to make this explicit")
+    assert warnings == [arg.format("a", " (tuple element 0)"),
+                        arg.format("b", " (tuple element 0)"),
+                        arg.format("a", ""), arg.format("b", "")]
+
+
+def test_projections_of_calls_take_the_calls_incoming_answer() -> None:
+    # A read off a call's result -- an element of an uncontracted call, a
+    # field of a record result, an element of a select of stamped calls --
+    # lends what the call lends at the read's component.
+    records, warnings, _ctx = _leaf_records(LENDING_DECLS + """\
+class R:
+    pair: tuple[A, int32]
+    def __init__(self, a: Own[A]) -> None:
+        self.pair = (a, 1)
+@native
+def make(a: A) -> Own[tuple[tuple[A, int32], int32]]: ...
+@native
+def peek(a: A) -> tuple[tuple[A, int32], int32]: ...
+@native
+def gmake[T](a: T) -> Own[tuple[tuple[T, int32], int32]]: ...
+@native
+def gpeek[T](a: T) -> tuple[tuple[T, int32], int32]: ...
+@native
+def mkr(a: A) -> Own[R]: ...
+@native
+def lookr(a: A) -> R: ...
+@native
+def mkr2(a: A) -> Own[tuple[R, int32]]: ...
+@native
+def fresh2[T](x: T) -> Own[tuple[tuple[T, int32], int32]]: ...
+@native(borrows=("a", "b"))
+def choose[T](a: tuple[tuple[T, int32], int32], b: tuple[tuple[T, int32], int32]) -> tuple[tuple[T, int32], int32]: ...
+def app(a: A, xs: list[tuple[A, int32]]) -> Own[tuple[A, int32]]:
+    xs.append(make(a)[0])
+    xs.append(peek(a)[0])
+    return make(a)[0]
+def ret_peek(a: A) -> Own[tuple[A, int32]]:
+    return peek(a)[0]
+def gapp[T](a: T, xs: list[tuple[T, int32]]) -> Own[tuple[T, int32]]:
+    xs.append(gmake(a)[0])
+    xs.append(gpeek(a)[0])
+    return gmake(a)[0]
+def gret_peek[T](a: T) -> Own[tuple[T, int32]]:
+    return gpeek(a)[0]
+def fld(a: A, xs: list[tuple[A, int32]]) -> Own[tuple[A, int32]]:
+    xs.append(mkr(a).pair)
+    xs.append(lookr(a).pair)
+    return mkr2(a)[0].pair
+def sel[T](x: T, y: T, c: bool) -> Own[tuple[T, int32]]:
+    return (choose(fresh2(x), fresh2(y)) if c else choose(fresh2(y), fresh2(x)))[0]
+def sel_lent[T](a: tuple[tuple[T, int32], int32], x: T, c: bool) -> Own[tuple[T, int32]]:
+    return (choose(fresh2(x), fresh2(x)) if c else choose(a, a))[0]
+""")
+    base = _LENDING_LINES
+    sub, fa = "TpySubscript", "TpyFieldAccess"
+    assert _perms(records[(base + 24, sub)]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 25, sub)]) == {(0,): P.WARNED}
+    assert _perms(records[(base + 26, sub)]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 28, sub)]) == {(0,): P.WARNED}
+    assert _perms(records[(base + 30, sub)]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 31, sub)]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 32, sub)]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 34, sub)]) == {(0,): P.HEDGED}
+    assert _perms(records[(base + 36, fa)]) == {(0,): P.MOVE}
+    assert _perms(records[(base + 37, fa)]) == {(0,): P.WARNED}
+    assert _perms(records[(base + 38, fa)]) == {(0,): P.MOVE}
+    # Both arms' calls have fresh operands: nothing an owner could tell.
+    assert _perms(records[(base + 40, sub)]) == {(0,): P.MOVE}
+    # One arm lends a parameter: the read hedges, as that arm alone would.
+    assert _perms(records[(base + 42, sub)]) == {(0,): P.HEDGED}
+    assert [w for w in warnings if "cop" in w] == [
+        _COPIES_A_0, _COPIES_A_0, _HEDGE_0, _HEDGE_0, _COPIES_A_0,
+        _HEDGE_0]
+
+
+def test_value_tuple_through_a_stamped_call_is_silent() -> None:
+    records, warnings, _ctx = _leaf_records("""\
+def vals(a: tuple[int32, int32], b: tuple[int32, int32], xs: list[tuple[int32, int32]]) -> Own[tuple[int32, int32]]:
+    xs.append(min(a, b, key=lambda p: p[1]))
+    return min(a, b, key=lambda p: p[1])
+""")
+    # No reference leaf: nothing to record, nothing to tell.
+    assert (2, "TpyCall") not in records and (3, "TpyCall") not in records
+    assert warnings == []
+
+
+def test_nested_yield_member_of_stamped_call_publishes_no_record() -> None:
+    # Known gap: a yield at `Iterator[Own[tuple[...]]]` runs no per-member
+    # check (BUGS.md#own-tuple-yield-member-unchecked), so the lending
+    # call's member leaf gets no record.
+    records, _warnings, _ctx = _leaf_records(LENDING_DECLS + """\
+def nyield[T](a: tuple[T, int32], b: tuple[T, int32]) -> Iterator[Own[tuple[tuple[T, int32], int32]]]:
+    yield (min(a, b, key=lambda p: p[1]), 1)
+""")
+    line = _LENDING_LINES + 2
+    assert not any(k[0] == line for k in records), records
 
 
 def test_name_record_is_settled_by_a_loop_back_edge() -> None:
@@ -1357,8 +1670,8 @@ def field(h: H) -> tuple[tuple[Own[A], int32], int32]:
     # An `Own[tuple[...]]` member owns every leaf it holds.
     assert _perms(records[(6, "TpyTupleLiteral")]) == {(0, 0): P.MOVE}
     assert _perms(records[(10, "TpyTupleLiteral")]) == {(0, 0): P.MOVE}
-    # A nested source other than a name or a lending call takes the owned
-    # tuple sink's decision: a fresh element moves, a field's copies.
+    # A nested source other than a name takes the owned tuple sink's
+    # decision: a fresh element moves, a field's copies.
     assert _perms(records[(14, "TpyTupleLiteral")]) == {(0, 0): P.MOVE}
     assert _perms(records[(16, "TpyTupleLiteral")]) == {(0, 0): P.WARNED}
     assert warnings == ["copies A into owned storage (tuple element 0.0); "

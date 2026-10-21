@@ -15,6 +15,8 @@ namespace tpyapp::main {
 //     print("min:", sk, sn)
 //     lk, ln = larger(("a", 3), ("b", 1))
 //     print("max:", lk, ln)
+//     print("rebound:", rebound(("a", 3), ("b", 1), True),
+//           rebound(("a", 3), ("b", 1), False))
 void main() {
     std::vector<std::tuple<std::string, int32_t>> ps = {std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, std::tuple<std::string, int32_t>{"c", 2}};
     auto __obj_0 = ::tpyapp::main::ranked<std::string>(ps);
@@ -46,6 +48,7 @@ void main() {
     std::string lk = std::move(std::get<0>(__tup_4));
     int32_t ln = std::get<1>(__tup_4);
     std::cout << "max:" << " " << lk << " " << ln << "\n" << ::tpy::check_signals;
+    std::cout << "rebound:" << " " << ::tpyapp::main::rebound<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, true) << " " << ::tpyapp::main::rebound<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -965,12 +965,21 @@ class CallAnalyzer:
             if not 0 <= idx < len(params):
                 continue
             ptype = params[idx].type
-            if (isinstance(ptype, ReadonlyType)
-                    or not param_has_mutable_borrow_surface(ptype)):
+            if isinstance(ptype, ReadonlyType):
                 continue
             callee = (call.func.name if isinstance(call, TpyCall)
                       and isinstance(call.func, TpyName) else fi.name)
             dest = f"{temp_arg_spelling(fi, idx)} of '{callee}(...)'"
+            tuple_slot = unwrap_ref_type(ptype)
+            if isinstance(tuple_slot, TupleType):
+                # A tuple is a set of scalars: each leaf takes the check its
+                # scalar twin's argument does, which the whole tuple's
+                # mutable-borrow surface (no open `T` slot) does not answer.
+                self.compat.warn_argument_tuple_copies(inner, tuple_slot,
+                                                       dest)
+                continue
+            if not param_has_mutable_borrow_surface(ptype):
+                continue
             found = value_call_copy_message(self.ctx, inner, dest)
             if found is not None:
                 self.pending_argument_copies.append(

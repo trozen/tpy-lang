@@ -13,14 +13,25 @@ def by_name[T](pairs: list[tuple[T, str]]) -> Own[list[tuple[T, str]]]:
     return sorted(pairs, key=lambda p: p[1])
 
 
-# the owned return copies the winning tuple, and with it a class T that
-# CPython would hand back itself
+# the owned return copies the winning tuple's T element, a class T that
+# CPython would hand back itself: hedged per element, as a scalar T is
 def smaller[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
-    return min(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\]/)
+    return min(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 
 
 def larger[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
-    return max(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\]/)
+    return max(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
+
+
+# local: the fresh min result bound, then rebound to a borrowed parameter;
+# the binding holds a copy, hedged whole at the local
+# (per element waits on the binding facts: BUGS.md#generic-lending-local-copies-unwarned;
+# T = str only: a class T fails the C++ build, BUGS.md#generic-tuple-local-lending-call-no-lift)
+def rebound[T](a: tuple[T, int32], b: tuple[T, int32], c: bool) -> int32:
+    t = min(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy tuple\[T, int32\] into local 't'/)
+    if c:
+        t = a
+    return t[1]
 
 
 def main() -> None:
@@ -34,6 +45,8 @@ def main() -> None:
     print("min:", sk, sn)
     lk, ln = larger(("a", 3), ("b", 1))
     print("max:", lk, ln)
+    print("rebound:", rebound(("a", 3), ("b", 1), True),
+          rebound(("a", 3), ("b", 1), False))
 
 
 main()
