@@ -381,7 +381,7 @@ Phase 2 trace, function names, file dumps) are not -- the user will ask
 if they want that depth. An open decision is never buried in the
 bullets: present each on its own, one at a time -- the Python shape,
 the C++ each option yields, labelled options with consequences,
-recommendation first, and the cross-check's verdict last.
+recommendation first, and each cross-check reviewer's verdict last.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 

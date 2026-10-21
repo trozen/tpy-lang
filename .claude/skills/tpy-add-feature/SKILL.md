@@ -340,7 +340,7 @@ Flag this as a design-level question rather than force-fitting.
 
 Before the user sees the design, attack it. The user reviews three
 things -- the generated C++, the language behavior, the architecture --
-and each gets a critic, plus the other harness as a cross-family read.
+and each gets a critic, plus the cross-check (Codex and Gemini) as cross-family reads.
 `/tpy-fix-bug` runs this same step on its analysis.
 
 1. Write the draft exactly as it will be presented (the code-first
@@ -353,10 +353,10 @@ and each gets a critic, plus the other harness as a cross-family read.
    | `cpython-parity` | language behavior: CPython's result for every shape, rejections of valid Python, diagnostic text | when accepted behavior, acceptance or a diagnostic changes | always (TPy-only surfaces excepted, see Phase 5) |
    | `codegen-correctness` | generated C++: is the promised render what the mechanism yields, hidden copies / allocations / checks, form at each position | when the render changes | always |
    | `architecture-fit` | architecture: existing generic path vs special case, a parallel implementation, the fact's home, scaling | when a mechanism or fact is added | always |
-   | cross-check (CLAUDE.md "Orchestration") | the whole design, from the other model family | always | always |
+   | cross-check (CLAUDE.md "Orchestration") | the whole design, from two other model families | always | always |
 
-3. Launch them in ONE turn: the critic agents, and the cross-check in
-   a background shell. Each critic's prompt starts with `DESIGN MODE`
+3. Launch them in ONE turn: the critic agents, and the two cross-check
+   reviewers, each in its own background shell. Each critic's prompt starts with `DESIGN MODE`
    (its definition's "Design mode" section holds its questions) and
    carries this protocol: nothing is implemented yet; read `design.md`,
    the probes it cites and the base sha; there is no diff, so ask your
@@ -365,13 +365,14 @@ and each gets a critic, plus the other harness as a cross-family read.
    has been built); probe the base sha as your Process does when a
    finding depends on what the compiler does today, remove the probe's
    `__tpyc__`, never edit the repo; output your usual format headed
-   `## <name> design findings`. The cross-check runs in a background
-   shell with a prompt file asking for: a wrong invariant or layer,
+   `## <name> design findings`. Both cross-check reviewers get one
+   prompt file (launched per CLAUDE.md "Orchestration") asking for: a wrong invariant or layer,
    a missed sibling position, an existing helper that already does
    this, a stated render or behavior that is wrong, a decision that is
    not really open. Nobody gets this conversation.
-4. Merge the findings and tag each `[both]` (the cross-check and a
-   critic raised it -- the strong signal), `[cross-check]` or
+4. Merge the findings and tag each `[both]` (a cross-check reviewer and
+   a critic, or both reviewers, raised it -- the strong signal; name the
+   sources, `[both: gemini, architecture-fit]`), `[codex]`, `[gemini]` or
    `[critic]`. Verify each against the code or a probe; fix the design
    for every confirmed one. A finding that changes something the user
    decides becomes one of the standalone decisions, not a silent edit.
@@ -440,7 +441,8 @@ exhaustive sibling-survey results and design-doc-style elaboration are
 not -- the user will ask if they want depth. An open decision is never
 buried in the bullets: present each on its own, one at a time -- the
 Python shape, the C++ each option yields, labelled options with
-consequences, recommendation first, and the cross-check's verdict last.
+consequences, recommendation first, and each cross-check reviewer's
+verdict last.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 
