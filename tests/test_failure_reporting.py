@@ -63,11 +63,12 @@ def _alive(pid: int) -> bool:
         os.kill(pid, 0)
     except ProcessLookupError:
         return False
-    # A killed process not yet reaped by its (also killed) parent is a zombie.
+    # A killed process not yet reaped by its (also killed) parent is a zombie;
+    # one reaped since the kill probe fails open() or, mid-read, read().
     try:
         with open(f"/proc/{pid}/stat") as f:
             return f.read().rsplit(")", 1)[1].split()[0] != "Z"
-    except FileNotFoundError:
+    except (FileNotFoundError, ProcessLookupError):
         return False
 
 
