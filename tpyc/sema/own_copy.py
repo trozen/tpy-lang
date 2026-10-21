@@ -47,7 +47,7 @@ from ..identity_map import IdentityMap
 from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpySubscript, is_property_getter_read)
 from ..typesys import (INT32, NominalType, ReadonlyType, TpyType, TypeParamRef,
-                       unwrap_qualifiers,
+                       is_indirection_type, unwrap_qualifiers,
                        substitute_type_params_simple, unwrap_readonly,
                        unwrap_ref_type)
 
@@ -128,7 +128,8 @@ class OwnCopyEdge:
 
 
 def contains_reference_type(typ: TpyType, *,
-                            open_params_as_values: bool = False) -> bool:
+                            open_params_as_values: bool = False,
+                            held_only: bool = False) -> bool:
     """True when copying `typ` copies a reference type -- the copy question.
 
     Recursive, because a structural type answers `is_value_type()` for its
@@ -142,6 +143,10 @@ def contains_reference_type(typ: TpyType, *,
     turn out to be (`tuple[T, Box]` copies a `Box` at every instantiation;
     `tuple[T, int32]` only maybe).
 
+    `held_only` asks what the copy holds by value: an indirection (`Ptr`,
+    `Span`, a view) copies the reference, never its referent, so it holds
+    no reference type whatever it points at.
+
     Owned by this module rather than by `compatibility.py` so the sink that
     RECORDS the obligation and the discharge that ANSWERS it ask one
     question; a second predicate would let the two disagree.
@@ -154,9 +159,12 @@ def contains_reference_type(typ: TpyType, *,
         if names:
             typ = substitute_type_params_simple(typ,
                                                 dict.fromkeys(names, INT32))
+    if held_only and is_indirection_type(typ):
+        return False
     if not typ.is_value_type():
         return True
-    return any(contains_reference_type(inner) for inner in typ.inner_types())
+    return any(contains_reference_type(inner, held_only=held_only)
+               for inner in typ.inner_types())
 
 
 def holds_only_values(typ: TpyType) -> bool:

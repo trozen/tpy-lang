@@ -248,8 +248,7 @@ no-internal-names-in-diagnostics, reject-valid-python-only-as-documented-diverge
 and no-warning-on-valid-code require byte-identical existing C++/diagnostics:
 metadata absence cannot become a source diagnostic.
 
-Known boundaries already tracked: BUGS.md#escaping-capture-mutation-snapshot,
-BUGS.md#nesteddef-copy-capture-uncheckable,
+Known boundaries already tracked: BUGS.md#nesteddef-copy-capture-uncheckable,
 BUGS.md#escaping-capture-of-narrowed-subject,
 BUGS.md#nested-lambda-no-transitive-capture,
 BUGS.md#fn-slot-closure-stored-by-callee and

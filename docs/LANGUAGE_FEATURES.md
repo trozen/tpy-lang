@@ -506,8 +506,8 @@ The per-element rule covers every reference leaf, not only a pointer one:
   spells the copy and warns nothing; in a lambda body, or of a captured
   parameter, that `copy()` does not compile yet
   (`BUGS.md#captured-tuple-copy-return-rejects`). A lambda at a `Callable`
-  slot also copies its captures when it is created
-  (`BUGS.md#callable-local-lambda-copies-capture-silently`).
+  slot also copies its captures when it is created, warned as in
+  "Closure captures copy".
 - A select of tuple literals copies only what its arms lend, each member
   as it arrives: `return (A(1), 2) if c else (A(2), 3)` and `(copy(x), 1)
   if c else (copy(y), 2)` warn nothing (an `A | None` member under `copy()`
@@ -9369,10 +9369,64 @@ Send/Sync rules for built-in types:
   their annotated callable context. These use the existing `Callable` capture
   and conversion rules. Generic context can supply an open parameter type, but
   lambdas with open type parameters still encounter the existing THIR gate.
-  Captured loop variables retain the existing by-value snapshot behavior;
-  see BUGS.md's "Loop-variable capture into an escaping closure" entry for
-  the known difference from CPython's shared closure cell.
+  Captured loop variables retain the by-value snapshot behavior, warned as
+  in "Closure captures copy" below.
 - **Working**: Capturing lambdas -- `Fn` captures by reference (non-escaping, template-based), `Callable` captures by value (safe for escaping via `std::function`). Exception: a captured `self` is always the `this` pointer (alias, never a copy) -- an escaping self-capturing `Callable` is not tied to the receiver's lifetime (see BUGS.md), and its frame classifies non-Send. Inside a generator / `async def`, a captured name the resumable frame holds as a MEMBER has no variable form to name, so the entry NAMES it in a C++ init-capture -- but the mode is the sync one, so the same source gets the same binding whether or not the enclosing body suspends: `Callable` snapshots the member (`[n = n]`, which is what lets such a lambda be handed to a callee that stores it) and `Fn` binds a reference to it (`[&xs = xs]`, so a mutation through the closure reaches the caller's object exactly as in the sync twin). The receiver is a handle either way (`[&__self = __self]`, the frame's own `self` reference). Two members have no entry: one whose read spelling is not the bare name (a reference-type frame LOCAL lives in a `tpy::frame_slot<T>` and reads `(*ys)`), and, at the by-value mode only, one C++ cannot copy (`Own[T]` peeled to its payload first) -- both reject rather than render.
+- **Working (declared divergence)**: Closure captures copy. A `Callable` lambda, and a nested
+  `def` that escapes, copies each capture when it is created (`[xs]`); a Python closure reads
+  the variable itself. Every such copy warns at the closure:
+  - a reference-type object the capture holds by value: *lambda at line N copies the object
+    'xs' refers to when it is created; changes to that object after this are not seen by it
+    (a Python closure sees them)* -- for a local bound once, a parameter, an alias
+    (`ys = xs`), a container element (`p = ps[0]`), an iteration or comprehension variable,
+    an enclosing lambda's parameter, and a tuple that is an iteration or comprehension
+    variable over a list or dict;
+  - where the C++ may share the object instead (an Optional or union of reference types, a
+    rebound or hoisted local, any other tuple holding a reference type, a binding of an
+    `@error_return` call's result, a type holding an open `T`): *lambda at line N may keep
+    its own copy of 'x'; changes made after it is created may not be seen*;
+  - an expensive immutable value (an owned `str`, an `int`, an `int | None`, an
+    `int32 | str`, a tuple holding one): *lambda at line N copies 's' when it is created* (a
+    parameter passed as a view -- `str` / `bytes` the body does not rebind, an Optional one
+    included -- warns nothing; so does a `StrView` local);
+  - a `Ptr` or a view (`Span[P]`, `StrView`) holds no object of its own: its capture copies
+    the reference and the closure sees later changes, as CPython's does -- no warning; a
+    captured `Callable` hedges, since the object it holds may keep state the copy then
+    advances on its own;
+  - a module-level variable is read in place, as CPython's closure reads it: no warning,
+    whether the module changes the object or binds the name again. A name bound in a
+    module-level loop or `if` body is a local of the module's init code instead, and warns
+    as a function's local does;
+  - a value capture narrowed where the closure is written (`isinstance(v, float64)` over a
+    `float64 | str`) copies the narrowed member: a cheap one warns nothing;
+  - a capture a later statement binds again: *Escaping closure captures local 'p' by value,
+    but 'p' is reassigned after the closure is created; ...*;
+  - a capture an enclosing loop binds again: for the loop target, a comprehension variable,
+    a value local the loop binds, or a loop-body local whose object the closure certainly
+    copies (the first bullet), *'k' is bound again on each iteration; the lambda keeps
+    the value from its own iteration, while a Python closure called after the loop sees the
+    last one*; for any other reference-type or Optional local the loop binds, which C++ may keep in
+    one slot every pass writes in place (each closure then sees the last value, as in
+    CPython) or point at a new object each pass (each keeps its own), *'p' may be bound
+    again on each iteration; the lambda may keep the value from its own iteration, while a
+    Python closure called after the loop sees the last one*. Not for a loop-body local kept
+    past its iteration (every iteration's closure reads it through one slot, as CPython's
+    do).
+  A nested def names itself (*nested function 'g' copies the object ...*) and keeps its
+  move-analysis reasons (*Escaping closure 'g' copies local 'xs' (used after closure
+  definition, preventing move)* / *... which aliases storage it does not own*). The
+  remedies, each matching CPython:
+  - the closure does not escape: a nested `def` called in the body, or a lambda passed to
+    an `Fn` parameter, reads the variable in place (`[&xs]`, no copy);
+  - the callback signature can take it: `read: Callable[[list[int32]], int32] = lambda ys:
+    len(ys)`, called as `read(xs)` -- no copy;
+  - a snapshot is wanted, of a list, dict or record: `snap = copy(xs)` and an escaping
+    nested `def` over `snap`, returned directly, with the def at `snap`'s last use at the
+    function's top level -- the def moves `snap` (`[snap = std::move(snap)]`), one spelled
+    copy. Not for a tuple of records (the def copies it again,
+    `BUGS.md#nested-def-tuple-capture-not-moved`), nor inside a loop.
+  A lambda has no inline acknowledgement: `lambda snap=copy(xs): ...` is refused (lambda
+  defaults are not supported; TODO.md "Closure defaults evaluated at creation").
 - **Working**: `Fn` in method parameters -- generates per-method template with `requires` constraint.
 - **Working**: `Callable[[A, B], R]` type -- type-erased callable (`std::function`). Valid in all positions: the callable itself binds as `const std::function<...>&` (params), or by value in fields/returns/containers/locals. The `std::function`'s own param types (`A`, `B`) spell mutable by default for non-value types -- see the callable-value-call bullet above for the mutability contract. `Callable | None` maps to `std::optional<std::function<...>>` with `is not None` narrowing for both fields and parameters; a lambda literal, a function by name, or `None` may be passed directly to a `Callable[...] | None` parameter (the optional wrapper is unwrapped to recover the callable shape for arg inference, then the value coerces back into the optional slot).
   ```python
@@ -9500,8 +9554,8 @@ Send/Sync rules for built-in types:
   compile error; call it directly. Because an escaping closure
   freezes its captures by value (CPython late-binds via a cell), the compiler warns when a
   captured local is reassigned after the closure is created -- the divergent case; bind a fresh
-  `snap = x` (or `copy()`) to acknowledge the snapshot. In-place mutation of a captured object
-  is not yet warned (tracked in `BUGS.md`).
+  `snap = x` (or `copy()`) to acknowledge the snapshot. A copied reference-type capture, whose
+  in-place mutation the closure does not see, warns as well ("Closure captures copy").
   ```python
   def make_adder(n: int32) -> Callable[[int32], int32]:
       def add(x: int32) -> int32:

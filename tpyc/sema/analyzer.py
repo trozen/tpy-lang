@@ -103,6 +103,7 @@ from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
 from .source_records import finalize_source_records
 from .binding_ownership import record_body_ownership
+from .capture_copies import CopyReason, warn_closure_captures
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
 from .pending_num import PendingNums
@@ -115,7 +116,7 @@ from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
 from ..prescan import (ScanResult, scan_reassigned_vars, liveness_alias_sources,
-                       collect_fact_kills, collect_in_place_writes)
+                       collect_in_place_writes)
 from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_finally_return_candidates)
 from .alias_rebind import (decide_rebind_storage,
@@ -1801,7 +1802,6 @@ class SemanticAnalyzer:
 
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
-        self._warn_stale_value_captures()
         finalize_pointer_tuples(self.ctx, func, nested=False,
                                 compat=self.compat)
 
@@ -2043,6 +2043,8 @@ class SemanticAnalyzer:
         # Get the enclosing function body for "used after" analysis
         body = self.ctx.func.current_function.body if self.ctx.func.current_function else []
         escaping_locals: set[str] = set()
+        # Why each escaping def copies a capture it does not move.
+        def_reasons: IdentityMap = IdentityMap()
         for name in self.ctx.func.nested_def_escapes:
             node = self.ctx.func.nested_def_nodes.get(name)
             if node is None:
@@ -2057,6 +2059,7 @@ class SemanticAnalyzer:
                     node)
             # Collect names referenced after the nested def for move analysis
             names_used_after = self._names_used_after(body, node)
+            copy_reasons = def_reasons.setdefault(node, {})
             # Per-capture analysis: determine ref vs value vs move capture mode
             for cap_name in node.captured_names:
                 if cap_name == "self" and self.ctx.receiver_self_in_scope():
@@ -2099,23 +2102,14 @@ class SemanticAnalyzer:
                         # Moving a local that aliases other storage (`x = a`,
                         # a select alias, a borrow-call result) would steal
                         # that storage: the closure owns a copy.
-                        self.ctx.warning(
-                            f"Escaping closure '{name}' copies local"
-                            f" '{cap_name}', which aliases storage it does"
-                            f" not own; use copy() to make the copy explicit",
-                            node)
+                        copy_reasons[cap_name] = CopyReason.ALIASES
                     elif should_move and cap_name not in names_used_after:
                         # Last use -- move into the closure, no warning
                         node.move_captures.add(cap_name)
                     elif should_move:
                         # Used after the closure -- must copy, warn
-                        self.ctx.warning(
-                            f"Escaping closure '{name}' copies local"
-                            f" '{cap_name}' (used after closure definition,"
-                            f" preventing move). Reorder code so the closure"
-                            f" is the last use, or use copy() to make the"
-                            f" copy explicit",
-                            node)
+                        copy_reasons[cap_name] = CopyReason.USED_AFTER
+        warn_closure_captures(self.ctx, body, def_reasons)
         # An escaping lambda copies its captures like an escaping def does.
         for lam, _ in value_capture_lambdas(body, nested=True):
             escaping_locals.update(n for n in lam.body_captures
@@ -2203,64 +2197,6 @@ class SemanticAnalyzer:
             for sib in newly:
                 merged.add(sib)
                 names.update(sib.captured_names)
-
-    def _warn_stale_value_captures(self) -> None:
-        """Warn on an escaping by-value closure whose captured local is
-        rebound at a later top-level statement.
-
-        An escaping closure owns its captures by value (a by-reference
-        capture would dangle), freezing the value at creation; CPython
-        late-binds via a cell and observes later rebindings, so the
-        divergence is silent until the captured local is rebound after the
-        closure -- warn exactly there. Out of scope: in-place mutation of a
-        captured object (an untracked fact) and loop-var rebinding.
-        """
-        func = self.ctx.func.current_function
-        if func is None:
-            return
-        body = func.body
-        # (stmt index, warn-at node, by-value captured names)
-        closures: list[tuple[int, TpyExpr | TpyNestedDef, list[str]]] = []
-        rebound_per_stmt: list[set[str]] = []
-        # Top-level body index of each nested def, by name; a def bound deeper
-        # has no position here and is skipped below.
-        nd_index: dict[str, int] = {}
-        for idx, stmt in enumerate(body):
-            rebound_per_stmt.append(collect_fact_kills([stmt]).names)
-            if isinstance(stmt, TpyNestedDef):
-                nd_index.setdefault(stmt.func.name, idx)
-                continue  # separate scope; no this-scope lambdas inside
-            for lam, _ in value_capture_lambdas([stmt]):
-                if lam.captured_names:
-                    closures.append((idx, lam, list(lam.captured_names)))
-        for name in self.ctx.func.nested_def_escapes:
-            node = self.ctx.func.nested_def_nodes.get(name)
-            idx = nd_index.get(name)
-            if node is None or idx is None:
-                continue  # not a top-level escaping def -- position-conservative
-            by_value = [n for n in node.captured_names
-                        if n not in node.ref_captures
-                        and n not in node.move_captures]
-            if by_value:
-                closures.append((idx, node, by_value))
-        if not closures:
-            return
-        for stmt_idx, node, names in closures:
-            rebound_after: set[str] = set()
-            for j in range(stmt_idx + 1, len(body)):
-                rebound_after |= rebound_per_stmt[j]
-            stale = [n for n in names if n in rebound_after]
-            if not stale:
-                continue
-            first = stale[0]
-            self.ctx.warning(
-                f"Escaping closure captures local '{first}' by value, but"
-                f" '{first}' is reassigned after the closure is created; the"
-                f" closure keeps the value from capture time (CPython would"
-                f" observe the later value). Capture a fresh local that is"
-                f" not reassigned (e.g. `snap = {first}`), or use copy() to"
-                f" make the snapshot explicit.",
-                node)
 
     def _register_functions_with_overloads(self, functions: list[TpyFunction]) -> None:
         """Register functions, grouping @overload stubs with their implementations.
@@ -3019,7 +2955,6 @@ class SemanticAnalyzer:
 
             # Finalize nested def escape analysis (same as _analyze_function)
             self._finalize_nested_def_escapes()
-            self._warn_stale_value_captures()
 
             # Warn if __next__ has no raise StopIteration (likely infinite loop)
             # Skip for native methods (cpp_template set) -- StopIteration handled in C++
@@ -3513,6 +3448,7 @@ class SemanticAnalyzer:
         self.ctx.current_module_stmt = None
         self.deduction.resolve_all()
         self.compat.drain_deferred_escape_checks()
+        warn_closure_captures(self.ctx, stmts)
         # No module-level read waits for settlement; its iteration binders'
         # ownership is written as every body's is.
         record_body_ownership(self.ctx, stmts)

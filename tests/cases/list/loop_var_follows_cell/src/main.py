@@ -203,7 +203,9 @@ def captures() -> None:
         def show() -> None:
             print("capture", y)
         show()
-        f: Callable[[], int64] = lambda: y + 1
+        # each iteration's lambda keeps its own `y`; called at once, it prints
+        # the same as CPython's
+        f: Callable[[], int64] = lambda: y + 1  # tpyc: warning(/'y' is bound again on each iteration/)
         print("lambda", f())
     ys.append(3)
     print("captures", t, ys)

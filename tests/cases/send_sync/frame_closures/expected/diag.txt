@@ -1,0 +1,1 @@
+main.py:24: warning: lambda at line 24 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

@@ -2991,7 +2991,9 @@ def gen(a: A) -> Iterator[Own[A]]:
     perms = _scalar_perms(records)
     assert perms[5] == perms[9] == [P.EXPLICIT]
     assert perms[6] == perms[10] == [P.MOVE]
-    assert not warnings
+    # The closure's capture of `a` is its own copy, not the result's.
+    assert [w.split(";")[0] for w in warnings] == [
+        "lambda at line 31 copies the object 'a' refers to when it is created"]
 
 
 def test_scalar_sources_at_every_position() -> None:
@@ -3661,6 +3663,8 @@ def test_blocker_rows_are_recorded() -> None:
         assert got == ([] if want is None else [want]), line
     assert [w.split(";")[0] for w in warnings] == [
         "copies P into owned storage", "copies P into field",
+        "lambda at line 53 copies the object 'r' refers to when it is created",
+        "lambda at line 95 copies the object 'a' refers to when it is created",
         "copies P into owned storage (tuple element 1)",
         "copies P into owned storage (tuple element 1)",
         "copies P into field (tuple element 0)",

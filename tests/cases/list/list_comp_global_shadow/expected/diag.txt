@@ -1,0 +1,1 @@
+main.py:133: warning: lambda at line 133 copies the object 'rows' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

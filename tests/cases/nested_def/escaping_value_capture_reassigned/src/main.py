@@ -73,11 +73,11 @@ def reassign_before_capture() -> None:
     print(f())
 
 def loop_capture_no_warn() -> None:
-    # Loop-var capture is the deferred case (rebinding is the loop edge, not a
-    # later statement) -- no warning today; each closure runs before the next
-    # iteration so TPy and CPython still agree here.
+    # Loop-var capture: the loop rebinds 'k' on each iteration, so the loop
+    # warning fires; each closure runs before the next iteration, so TPy and
+    # CPython still agree here.
     for k in range(3):
-        f = hold(lambda: k)  # tpyc: ok
+        f = hold(lambda: k)  # tpyc: warning(/'k' is bound again on each iteration/)
         print(f())
 
 def main() -> None:

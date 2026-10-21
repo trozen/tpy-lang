@@ -531,13 +531,13 @@ The compiler warns at the closure when a captured local is **reassigned** after 
 capture point (`_warn_stale_value_captures` in `tpyc/sema/analyzer.py`, covering both
 escaping lambdas and escaping nested defs). The acknowledgment is to capture a fresh,
 non-reassigned local (`snap = k`, optionally via `copy()`), which eliminates the
-divergence. Two sibling cases are not yet warned (both tracked in `BUGS.md`): **in-place
-mutation** of a captured container/record (`BUGS.md#escaping-capture-mutation-snapshot`;
-in-place writes inside the nested def are recorded (`prescan.closure_exports`), but the
-missing fact is relating a later in-place write in the ENCLOSING body to an escaping
-capture taken before it), and **loop-variable capture** (`for k in ...: append(lambda: k)`),
-whose rebinding is the loop back-edge rather than a later statement. Both hold in a
-resumable frame as well as a sync body.
+divergence. The two sibling cases warn too (`tpyc/sema/capture_copies.py`): an
+escaping closure that copies a reference-type object warns at its creation whatever
+mutates the object later (*lambda at line N copies the object 'xs' refers to when it is
+created; changes to that object after this are not seen by it*, or *may keep its own
+copy* where the C++ may share it), and a capture an enclosing loop binds again warns
+*'k' is bound again on each iteration*. Both hold in a resumable frame as well as a
+sync body; `docs/LANGUAGE_FEATURES.md` "Closure captures copy" lists the remedies.
 
 ### Dangling Reference Prevention
 

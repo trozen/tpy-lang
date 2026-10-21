@@ -193,6 +193,14 @@ class Scope:
                                        compare=False)
     lambda_node: object = field(default=None, repr=False, compare=False)
     function_root: bool = False
+    # A nested def's root: the enclosing function and the names its body
+    # declares `global` and binds, against which a read past the root
+    # resolves the binding it captures.
+    outer_function: object = field(default=None, repr=False, compare=False)
+    outer_globals: frozenset[str] = field(default=frozenset(), repr=False,
+                                          compare=False)
+    outer_bound: frozenset[str] = field(default=frozenset(), repr=False,
+                                        compare=False)
 
     def __post_init__(self) -> None:
         self.depth = (self.parent.depth + 1) if self.parent else 0

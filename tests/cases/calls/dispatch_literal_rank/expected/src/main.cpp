@@ -356,7 +356,8 @@ std::string run(const std::function<std::string()>& f) {
 // def lambda_body() -> None:
 //     v = V()
 //     # Inside a lambda body.
-//     print("lambda:", run(lambda: v.opt(3) + " " + num(2)))  # tpyc: ok
+//     # the lambda copies `v`; nothing mutates it, so the output matches
+//     print("lambda:", run(lambda: v.opt(3) + " " + num(2)))  # tpyc: warning(/copies the object 'v'/)
 void lambda_body() {
     V v = V();
     std::cout << "lambda:" << " " << ::tpyapp::main::run([v]() -> std::string { return (::tpy::str_concat((::tpy::str_concat(v.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(3))), " ")), ::tpyapp::main::num__int(::tpy::BigInt(2)))); }) << "\n" << ::tpy::check_signals;

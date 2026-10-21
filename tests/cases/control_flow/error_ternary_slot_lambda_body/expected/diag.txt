@@ -1,1 +1,2 @@
+main.py:23: warning: lambda at line 23 copies the object 'a' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
 main.py:23: error: in function 'lam': this construct is not yet supported by C++ code generation (expr.lambda:lambda.body:expr.ifexpr)

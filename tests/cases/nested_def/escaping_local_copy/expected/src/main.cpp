@@ -108,9 +108,8 @@ std::function<int32_t()> make_if_arm_sibling() {
 //         return len(data)
 //     # a lambda body is its own scope, but its read still reaches the local --
 //     # and it is the only read after the closure, so it is what produces the
-//     # warning. The lambda copies the local too, with no diagnostic of its own
-//     # (BUGS.md#callable-local-lambda-copies-capture-silently)
-//     read: Callable[[], int32] = lambda: len(data)
+//     # warning. The lambda copies the local too, and says so
+//     read: Callable[[], int32] = lambda: len(data)  # tpyc: warning(/lambda at line 76 copies the object 'data'/)
 //     print("lambda:", read())
 //     return size
 std::function<int32_t()> make_lambda_reader() {

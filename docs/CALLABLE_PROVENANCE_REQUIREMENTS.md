@@ -790,8 +790,9 @@ Three known gaps that none of the rules above closes.
 - **Loop-variable capture.** A closure capturing a loop variable snapshots it per
   iteration, so a list of such closures prints `0 1 2` where CPython prints
   `2 2 2` (late binding). Rule 13 keeps the by-value snapshot, so nothing here
-  changes it, and the existing parity row covers only "a mutable local reassigned
-  later". It is a separate divergence, pre-existing and unrelated to provenance.
+  changes it; the loop-rebinding warning (`docs/LANGUAGE_FEATURES.md` "Closure
+  captures copy") declares it. It is a separate divergence, unrelated to
+  provenance.
 
 ## Review history
 

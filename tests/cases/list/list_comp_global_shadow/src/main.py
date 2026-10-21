@@ -129,7 +129,8 @@ def in_lambda(rows: list[int]) -> None:
     # A lambda body's comprehension.
     with Items(1) as xs:
         ys = xs
-    f: Callable[[], int] = lambda: len([ys for ys in rows])  # tpyc: ok
+    # the lambda copies `rows`; nothing mutates it after, so the output matches
+    f: Callable[[], int] = lambda: len([ys for ys in rows])  # tpyc: warning(/copies the object 'rows'/)
     ys.append(3)
     print("in_lambda:", f(), ys, xs)
 

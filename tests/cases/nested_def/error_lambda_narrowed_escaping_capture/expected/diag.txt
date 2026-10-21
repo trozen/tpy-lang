@@ -1,1 +1,2 @@
+main.py:31: warning: lambda at line 31 may keep its own copy of 'x'; changes made after it is created may not be seen
 main.py:31: error: in function 'run': this construct is not yet supported by C++ code generation (expr.lambda:lambda.capture_narrowed_reference)

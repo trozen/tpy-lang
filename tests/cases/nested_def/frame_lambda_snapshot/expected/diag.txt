@@ -1,1 +1,2 @@
 main.py:17: warning: Escaping closure captures local 'step' by value, but 'step' is reassigned after the closure is created; the closure keeps the value from capture time (CPython would observe the later value). Capture a fresh local that is not reassigned (e.g. `snap = step`), or use copy() to make the snapshot explicit.
+main.py:30: warning: lambda at line 30 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

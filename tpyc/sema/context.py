@@ -2729,6 +2729,9 @@ class SemanticContext:
     # Every name read's binding identity (`binding_ownership.ReadBinding`),
     # recorded where the read is analyzed.
     read_bindings: IdentityMap = field(default_factory=IdentityMap)
+    # The closure-capture warnings emitted, by source position and text
+    # (`capture_copies.warn_once`).
+    capture_warnings: set[tuple[int, int, str]] = field(default_factory=set)
     # The comprehension variable reads their clause moves
     # (`TypeCompatibility.comp_elem_moves`), each with how it decided
     # (`binding_ownership.CompMove`): the source record and the lowering

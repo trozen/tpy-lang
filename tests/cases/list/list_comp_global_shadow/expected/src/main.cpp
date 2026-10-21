@@ -307,7 +307,8 @@ void array_source(const std::array<::tpy::BigInt, 3>& a) {
 //     # A lambda body's comprehension.
 //     with Items(1) as xs:
 //         ys = xs
-//     f: Callable[[], int] = lambda: len([ys for ys in rows])  # tpyc: ok
+//     # the lambda copies `rows`; nothing mutates it after, so the output matches
+//     f: Callable[[], int] = lambda: len([ys for ys in rows])  # tpyc: warning(/copies the object 'rows'/)
 //     ys.append(3)
 //     print("in_lambda:", f(), ys, xs)
 void in_lambda(const std::vector<::tpy::BigInt>& rows) {

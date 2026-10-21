@@ -62,7 +62,8 @@ class Items:
 
 async def later_item_lambda() -> int:
     # A later item's manager is a lambda reading an earlier item's target.
-    with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
+    # the lambda copies the int `n` holds; nothing rebinds it, so the output matches
+    with Count(7) as n, Cb(lambda: n) as result:  # tpyc: warning(/copies 'n' when it is created/)
         await value(0)
         return n * 1000 + result
 

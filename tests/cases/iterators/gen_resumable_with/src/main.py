@@ -40,7 +40,8 @@ class Cb:
 
 def gen_with() -> Iterator[int]:
     # A later item's manager is a lambda reading an earlier item's target.
-    with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
+    # the lambda copies the int `n` holds; nothing rebinds it, so the output matches
+    with Count(7) as n, Cb(lambda: n) as result:  # tpyc: warning(/copies 'n' when it is created/)
         yield n
         yield result
 
@@ -86,7 +87,8 @@ def gen_comp_lambda(rowss: list[list[int]]) -> Iterator[int]:
     with Items(1) as xs:
         ys = xs
     yield len(ys)
-    w = [call(lambda: len(ys)) for ys in rowss]  # tpyc: ok
+    # each lambda copies its own `ys`; called at once, it prints what CPython's does
+    w = [call(lambda: len(ys)) for ys in rowss]  # tpyc: warning(/copies the object 'ys'/) warning(/'ys' is bound again on each iteration/)
     yield sum(w)
     ys.append(42)
     yield ys[1] + xs[1] + len(ys)

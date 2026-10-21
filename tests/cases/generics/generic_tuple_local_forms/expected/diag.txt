@@ -1,0 +1,7 @@
+main.py:128: warning: nested function 'h' may keep its own copy of 'f'; changes made after it is created may not be seen
+main.py:128: warning: nested function 'h' may keep its own copy of 'u'; changes made after it is created may not be seen
+main.py:128: warning: nested function 'h' may keep its own copy of 'y'; changes made after it is created may not be seen
+main.py:141: warning: lambda at line 141 may keep its own copy of 'f'; changes made after it is created may not be seen
+main.py:141: warning: lambda at line 141 may keep its own copy of 'y'; changes made after it is created may not be seen
+main.py:151: warning: lambda at line 151 may keep its own copy of 'f'; changes made after it is created may not be seen
+main.py:151: warning: lambda at line 151 may keep its own copy of 'y'; changes made after it is created may not be seen

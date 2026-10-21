@@ -1,1 +1,2 @@
+main.py:19: warning: lambda at line 19 may keep its own copy of 'q'; changes made after it is created may not be seen
 main.py:19: error: in function 'f': this construct is not yet supported by C++ code generation (expr.lambda:lambda.result)

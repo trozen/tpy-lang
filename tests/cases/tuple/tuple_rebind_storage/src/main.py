@@ -879,10 +879,10 @@ def capture_copy(v: Box) -> Callable[[], int32]:
     p = make_mixed(1, v)
     p = make_mixed(2, v)
     # capture-copy: the remedy the capture reject offers compiles; the lambda
-    # holds a copy of the element by design, and of 'v' too
-    # (BUGS.md#callable-local-lambda-copies-capture-silently).
+    # holds a copy of the element by design, and of 'v' too, which the
+    # capture-copy warning names.
     p0 = copy(p[0])
-    return lambda: p0.n * 100 + v.n  # tpyc: ok
+    return lambda: p0.n * 100 + v.n  # tpyc: warning(/copies the object 'p0'/) warning(/copies the object 'v'/)
 
 
 def lambda_comprehension(v: Box, xs: list[tuple[Box, Box]]) -> None:
@@ -890,11 +890,10 @@ def lambda_comprehension(v: Box, xs: list[tuple[Box, Box]]) -> None:
     p = make_mixed(2, v)
     # lambda-comprehension: the lambda captures the comprehension's own 'p',
     # not the pointer tuple, so it is not refused; it holds a copy of that
-    # 'p' (BUGS.md#callable-local-lambda-copies-capture-silently), and each
-    # lambda keeps its own element where CPython's late-bind the last one
-    # (the "Comprehension form" face of the BUGS.md loop-variable capture
-    # entry); one element and no write keep both out of the output.
-    fs: list[Callable[[], int32]] = [lambda: p[1].n for p in xs]  # tpyc: ok
+    # 'p', and each lambda keeps its own element where CPython's late-bind
+    # the last one -- both warned; one element and no write keep both out of
+    # the output.
+    fs: list[Callable[[], int32]] = [lambda: p[1].n for p in xs]  # tpyc: warning(/copies the object 'p'/) warning(/'p' is bound again on each iteration/)
     p[0].n += 100
     print("lambda-comprehension", fs[0](), p[0].n)
 

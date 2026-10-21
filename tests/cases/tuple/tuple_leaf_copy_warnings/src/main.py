@@ -35,10 +35,10 @@ def s1b() -> None:
 
 
 # lambda returning a captured local tuple (it also copies the capture when
-# created: BUGS.md#callable-local-lambda-copies-capture-silently)
+# created, which the capture-copy warning names)
 def s1c() -> None:
     t = (A(1), 3)
-    f: Callable[[], Own[tuple[A, int32]]] = lambda: t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+    f: Callable[[], Own[tuple[A, int32]]] = lambda: t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/) warning(/may keep its own copy of 't'/)
     r = f()
     t[0].v = 10
     print("s1c", r[0].v, t[0].v)

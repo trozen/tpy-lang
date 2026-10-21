@@ -1,0 +1,3 @@
+Every section is a warned divergence: the closure copies its captures
+when it is created, so the mutation or later iteration each section
+prints is invisible to it where a CPython closure sees it.

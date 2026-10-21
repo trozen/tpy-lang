@@ -1,5 +1,6 @@
 # A lambda stored into a field by a method: the closure would copy its
-# captures silently (BUGS.md#callable-local-lambda-copies-capture-silently).
+# captures, and the store stays refused
+# (BUGS.md#callable-local-lambda-copies-capture-silently).
 from typing import Callable
 from tpy import int32
 

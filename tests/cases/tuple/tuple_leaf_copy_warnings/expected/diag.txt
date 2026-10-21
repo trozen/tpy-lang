@@ -1,6 +1,7 @@
 main.py:18: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
 main.py:30: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
 main.py:41: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:41: warning: lambda at line 41 may keep its own copy of 't'; changes made after it is created may not be seen
 main.py:51: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
 main.py:49: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
 main.py:64: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit

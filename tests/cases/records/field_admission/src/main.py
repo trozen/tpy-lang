@@ -609,7 +609,9 @@ def lambda_reads() -> None:
     xs = [1, 2, 3]
     k = Sink()
     n = k.put(xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
-    print("lambda.live", n, call_lambda(lambda: len(xs)))
+    # the Callable lambda copies `xs`; called at once, it prints the same as
+    # CPython's
+    print("lambda.live", n, call_lambda(lambda: len(xs)))  # tpyc: warning(/lambda at line 614 copies the object 'xs'/)
 
 
 def ctor_writes() -> None:

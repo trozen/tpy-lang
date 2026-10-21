@@ -481,7 +481,9 @@ void s_closure(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, __F0&& f) {
 //     y = p if flag else x  # tpyc: ok
 //     u = p  # tpyc: ok
 //
-//     def h() -> None:
+//     # the def copies its captures; over an open T the copy may share (a
+//     # copied callable holds nothing the program can reach)
+//     def h() -> None:  # tpyc: warning(/may keep its own copy of 'u'/) warning(/may keep its own copy of 'y'/)
 //         f(y[0])
 //         f(u[0])
 //     return h
@@ -506,7 +508,8 @@ std::function<void()> s_escape(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>
 //     o = mko(b)
 //     p = mk(o)
 //     y = p if flag else x  # tpyc: ok
-//     return lambda: f(y[0])
+//     # the lambda copies its captures; over an open T the copy may share
+//     return lambda: f(y[0])  # tpyc: warning(/may keep its own copy of 'y'/)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;
@@ -523,7 +526,8 @@ std::function<int32_t()> s_escape_lam(const std::tuple<::tpy::val_or_ptr_t<T>, i
 //     o = mko(b)
 //     p = mk(o)
 //     y = p if flag else x  # tpyc: ok
-//     out.append(lambda: f(y[0]))
+//     # stored, the lambda copies its captures the same way
+//     out.append(lambda: f(y[0]))  # tpyc: warning(/may keep its own copy of 'y'/)
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<int32_t>;

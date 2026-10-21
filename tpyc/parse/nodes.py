@@ -1608,6 +1608,8 @@ class TpyNestedDef(TpyStmt):
     ref_captures: set[str] = field(default_factory=set)
     # Non-value locals to move into the closure (last use, no copy needed)
     move_captures: set[str] = field(default_factory=set)
+    # Set by sema: capture-list FrameType, the def's own frame fact
+    frame_type: 'TpyType | None' = None
 
 
 # -- Pattern matching nodes --

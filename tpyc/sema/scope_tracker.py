@@ -224,7 +224,11 @@ class ScopeTracker:
         consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = False
         body_root = self.ctx.func.body_root
-        inner_scope = Scope(outer_scope, function_root=True)
+        inner_scope = Scope(
+            outer_scope, function_root=True,
+            outer_function=self.ctx.func.current_function,
+            outer_globals=frozenset(self.ctx.func.global_declarations),
+            outer_bound=self.ctx.func.body_bound_names)
         inner_ns = Namespace(parent=outer_ns) if outer_ns else None
 
         self.ctx.reset_function_tracking()

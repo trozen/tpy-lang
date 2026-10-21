@@ -1,1 +1,2 @@
+main.py:14: warning: lambda at line 14 copies the object 'self' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
 main.py:14: error: in function 'bump': this construct is not yet supported by C++ code generation (expr.lambda:lambda.self_capture)

@@ -251,7 +251,8 @@ def reads_only() -> None:
 def narrowed(o: Holder | None) -> None:
     if o is not None:
         # the lambda reads the enclosing function's narrowing of `o`
-        get: Callable[[], int32] = lambda: o.v  # tpyc: ok
+        # `o` is an Optional parameter held by pointer: the lambda may share it
+        get: Callable[[], int32] = lambda: o.v  # tpyc: warning(/may keep its own copy of 'o'/)
 
         def own(o: int32) -> int32:
             # a nested param named like the narrowed `o` is its own binding

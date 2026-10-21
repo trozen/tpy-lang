@@ -22,7 +22,8 @@ void free_fn(int32_t n) {
 //     take(lambda n: print("cap", n + k))
 //     take(free_fn)
 //     xs = [1, 2]
-//     take(lambda n: print("list", n + xs[0]))
+//     # the lambda copies `xs`; nothing mutates it, so the output matches
+//     take(lambda n: print("list", n + xs[0]))  # tpyc: warning(/copies the object 'xs'/)
 //
 //     def nested(n: int32) -> None:
 //         print("nested", n + k)

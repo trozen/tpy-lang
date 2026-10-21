@@ -78,9 +78,10 @@ __gen_gen_with_yield gen_with_yield(const std::vector<::tpy::BigInt>& xs) {
 
 // def gen_with() -> Iterator[int]:
 //     # A later item's manager is a lambda reading an earlier item's target.
-//     with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
-//         yield n                                                             # -> S_RESUME_0
-//         yield result                                                        # -> S_RESUME_1
+//     # the lambda copies the int `n` holds; nothing rebinds it, so the output matches
+//     with Count(7) as n, Cb(lambda: n) as result:  # tpyc: warning(/copies 'n' when it is created/)
+//         yield n                                                                                     # -> S_RESUME_0
+//         yield result                                                                                # -> S_RESUME_1
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with::__next__() {
     try {
     while (true) switch (__state) {
@@ -310,11 +311,12 @@ __gen_gen_hoist_ref gen_hoist_ref(const std::vector<::tpy::BigInt>& rows) {
 //     # the alias is mutated after it and seen through the with target.
 //     with Items(1) as xs:
 //         ys = xs
-//     yield len(ys)                                                           # -> S_RESUME_0
-//     w = [call(lambda: len(ys)) for ys in rowss]  # tpyc: ok
-//     yield sum(w)                                                            # -> S_RESUME_1
+//     yield len(ys)                                                                                                                            # -> S_RESUME_0
+//     # each lambda copies its own `ys`; called at once, it prints what CPython's does
+//     w = [call(lambda: len(ys)) for ys in rowss]  # tpyc: warning(/copies the object 'ys'/) warning(/'ys' is bound again on each iteration/)
+//     yield sum(w)                                                                                                                             # -> S_RESUME_1
 //     ys.append(42)
-//     yield ys[1] + xs[1] + len(ys)                                           # -> S_RESUME_2
+//     yield ys[1] + xs[1] + len(ys)                                                                                                            # -> S_RESUME_2
 std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_comp_lambda::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

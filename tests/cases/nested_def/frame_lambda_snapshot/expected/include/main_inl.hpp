@@ -38,15 +38,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_cell::__next__() {
 // # The same snapshot at an ESCAPING slot over a reference-type member: the
 // # by-value entry COPIES the borrowed list, so the element written between the
 // # two yields is invisible to the closure -- TPy reads 1 twice, CPython 1 then
-// # 99. No warning fires: the stale-capture warning covers rebinds, not in-place
-// # mutation (BUGS.md#escaping-capture-mutation-snapshot). The sync free function
-// # copies identically, so this is the frame position of one divergence, not a
+// # 99 -- and the capture-copy warning says so. The sync free function copies
+// # identically, so this is the frame position of one divergence, not a
 // # frame-only one.
 // def copied(xs: list[int32]) -> Iterator[int32]:
-//     f: Callable[[int32], int32] = lambda i: xs[i]
-//     yield apply(f, 0)                              # -> S_RESUME_0
+//     f: Callable[[int32], int32] = lambda i: xs[i]  # tpyc: warning(/copies the object 'xs'/)
+//     yield apply(f, 0)                                                                         # -> S_RESUME_0
 //     xs[0] = 99
-//     yield apply(f, 0)                              # -> S_RESUME_1
+//     yield apply(f, 0)                                                                         # -> S_RESUME_1
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_copied::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

@@ -1,0 +1,20 @@
+main.py:78: warning: lambda at line 78 may keep its own copy of 'xs'; changes made after it is created may not be seen
+main.py:91: warning: Escaping closure 'size' may keep its own copy of local 'xs' (used after closure definition, preventing move). Reorder code so the closure is the last use, or use copy() to make the copy explicit
+main.py:100: warning: lambda at line 100 may keep its own copy of 'o'; changes made after it is created may not be seen
+main.py:106: warning: lambda at line 106 may keep its own copy of 't'; changes made after it is created may not be seen
+main.py:118: warning: 'keep' will not keep the object it was given -- 'x' is rebound on each iteration and both names share its storage; use copy(x) for an independent value
+main.py:119: warning: lambda at line 119 may keep its own copy of 'x'; changes made after it is created may not be seen
+main.py:136: warning: lambda at line 136 copies 'k' when it is created
+main.py:151: warning: lambda at line 151 copies 's' when it is created
+main.py:161: warning: lambda at line 161 may keep its own copy of 'u'; changes made after it is created may not be seen
+main.py:172: warning: lambda at line 172 may keep its own copy of 'p'; changes made after it is created may not be seen
+main.py:172: warning: 'p' may be bound again on each iteration; the lambda may keep the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:181: warning: lambda at line 181 may keep its own copy of 'xs'; changes made after it is created may not be seen
+main.py:181: warning: 'xs' may be bound again on each iteration; the lambda may keep the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:190: warning: lambda at line 190 may keep its own copy of 'p'; changes made after it is created may not be seen
+main.py:190: warning: 'p' may be bound again on each iteration; the lambda may keep the value from its own iteration, while a Python closure called after the loop sees the last one
+main.py:198: warning: lambda at line 198 copies 's' when it is created
+main.py:204: warning: lambda at line 204 copies 't' when it is created
+main.py:212: warning: lambda at line 212 copies 'k' when it is created
+main.py:220: warning: lambda at line 220 may keep its own copy of 'mk'; changes made after it is created may not be seen
+main.py:229: warning: Escaping closure 'get' may keep its own copy of local 'o', which aliases storage it does not own; use copy() to make the copy explicit

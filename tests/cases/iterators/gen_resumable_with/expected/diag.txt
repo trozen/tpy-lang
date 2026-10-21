@@ -1,0 +1,3 @@
+main.py:44: warning: lambda at line 44 copies 'n' when it is created
+main.py:91: warning: lambda at line 91 copies the object 'ys' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:91: warning: 'ys' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one

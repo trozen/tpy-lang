@@ -233,7 +233,8 @@ def comprehension() -> None:
 def lam() -> None:
     v = L()
     xs = [1, 2]
-    g: Callable[[], int32] = lambda: v + xs  # tpyc: ok
+    # the lambda copies `v` and `xs`; nothing mutates them, so the output matches
+    g: Callable[[], int32] = lambda: v + xs  # tpyc: warning(/copies the object 'v'/) warning(/copies the object 'xs'/)
     print("lambda:", g())
 
 

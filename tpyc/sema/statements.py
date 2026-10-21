@@ -136,6 +136,8 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
     from ..diagnostics import Scope
 
+from .capture_copies import warn_closure_captures
+from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, stamp_bind_kind,
                            stamp_unpack_rebinds)
@@ -4635,6 +4637,9 @@ class StatementAnalyzer:
             self.compat.drain_deferred_escape_checks()
             finalize_pointer_tuples(self.ctx, func, nested=True,
                                     compat=self.compat)
+            # The def's own lambdas read its function state, which the
+            # scope exit discards.
+            warn_closure_captures(self.ctx, func.body)
             # Only the scope-escape hoists: `hoisted_vars` also holds the
             # branch pre-declarations, which the closure lowering already
             # places and which need no slot.
@@ -4722,6 +4727,7 @@ class StatementAnalyzer:
              name in nonlocal_names or (name == "self" and self_is_receiver))
             for name in captured
         ]
+        stmt.frame_type = frame_type_of_function(fi)
 
         # Bind as FUNCTION in the local namespace
         if self.ctx.func.current_ns:

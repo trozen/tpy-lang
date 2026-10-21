@@ -526,7 +526,8 @@ int32_t captured_own_list(std::vector<int32_t>&& x) {
 // # call the same way (BUGS.md#nested-def-captured-own-return-copies), so a
 // # second call and a later read of the parameter see every element.
 // def captured_own_list_lambda(x: Own[list[int32]]) -> int32:  # tpyc: warning(/never consumed/)
-//     f: Callable[[], Own[list[int32]]] = lambda: x  # tpyc: ok
+//     # the lambda copies `x` when it is created; called at once, it prints the same
+//     f: Callable[[], Own[list[int32]]] = lambda: x  # tpyc: warning(/copies the object 'x'/)
 //     a = f()
 //     b = f()
 //     print("captured_own_list_lambda", len(a), len(b), len(x))

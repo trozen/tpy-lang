@@ -336,7 +336,8 @@ def run(f: Callable[[], str]) -> str:
 def lambda_body() -> None:
     v = V()
     # Inside a lambda body.
-    print("lambda:", run(lambda: v.opt(3) + " " + num(2)))  # tpyc: ok
+    # the lambda copies `v`; nothing mutates it, so the output matches
+    print("lambda:", run(lambda: v.opt(3) + " " + num(2)))  # tpyc: warning(/copies the object 'v'/)
 
 
 def main() -> None:

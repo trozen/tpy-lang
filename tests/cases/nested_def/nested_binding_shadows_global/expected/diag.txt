@@ -1,0 +1,1 @@
+main.py:255: warning: lambda at line 255 may keep its own copy of 'o'; changes made after it is created may not be seen

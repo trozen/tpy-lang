@@ -1,3 +1,4 @@
 main.py:445: warning: copies str into field; use copy() to make this explicit
 main.py:582: warning: copies str into field; use copy() to make this explicit
 main.py:611: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:614: warning: lambda at line 614 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

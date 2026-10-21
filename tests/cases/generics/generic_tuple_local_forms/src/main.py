@@ -123,7 +123,9 @@ def s_escape[T](x: tuple[T, int32], b: Own[T], flag: bool,
     y = p if flag else x  # tpyc: ok
     u = p  # tpyc: ok
 
-    def h() -> None:
+    # the def copies its captures; over an open T the copy may share (a
+    # copied callable holds nothing the program can reach)
+    def h() -> None:  # tpyc: warning(/may keep its own copy of 'u'/) warning(/may keep its own copy of 'y'/)
         f(y[0])
         f(u[0])
     return h
@@ -135,7 +137,8 @@ def s_escape_lam[T](x: tuple[T, int32], b: Own[T], flag: bool,
     o = mko(b)
     p = mk(o)
     y = p if flag else x  # tpyc: ok
-    return lambda: f(y[0])
+    # the lambda copies its captures; over an open T the copy may share
+    return lambda: f(y[0])  # tpyc: warning(/may keep its own copy of 'y'/)
 
 
 def s_escape_lam_store[T](x: tuple[T, int32], b: Own[T], flag: bool,
@@ -144,7 +147,8 @@ def s_escape_lam_store[T](x: tuple[T, int32], b: Own[T], flag: bool,
     o = mko(b)
     p = mk(o)
     y = p if flag else x  # tpyc: ok
-    out.append(lambda: f(y[0]))
+    # stored, the lambda copies its captures the same way
+    out.append(lambda: f(y[0]))  # tpyc: warning(/may keep its own copy of 'y'/)
 
 
 # @error_return body

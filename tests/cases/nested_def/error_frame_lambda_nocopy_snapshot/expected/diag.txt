@@ -1,2 +1,4 @@
+main.py:25: warning: lambda at line 25 copies the object 'g' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:26: warning: lambda at line 26 copies the object 'g' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
 main.py:24: warning: Own[Guard] param 'g' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:25: error: in function 'gen': this construct is not yet supported by C++ code generation (expr.lambda:lambda.capture_nocopy)

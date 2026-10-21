@@ -1,0 +1,24 @@
+nested_def: 2
+fn: 2
+typed_arg: 2
+snapshot: 1 2
+values: 6
+self: 7
+pointer_local: 2
+pointer_def: 2
+optional_param: 8
+borrow_tuple: 12
+hoisted_loop: 1 1 1
+ptr_span: 30
+optional_cost: False
+views: 5
+rebound_param: 3 2
+ptr_union: 8
+loop_optional: 1 1
+outer_slot: 22 22 22
+outer_slot_rec: 50 50 50
+union_param: True
+tuple_cost: False
+union_local: True
+callable: 1
+alias_opt: 7
