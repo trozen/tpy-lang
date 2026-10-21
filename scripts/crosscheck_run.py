@@ -35,7 +35,7 @@ from pathlib import Path
 CACHE_DIRS = ("~/.cache/uv", "~/.cache/tpyc", "~/.cache/ccache")
 AGY_STATE_DIR = "~/.gemini"
 # Pinned so the reviewer stays a different model family whatever agy's default is.
-AGY_MODEL = "gemini-4-argon-high"
+AGY_MODEL = "gemini-4-argon-medium"
 POLL_SECONDS = 2
 LINGER_GRACE_SECONDS = 10
 
