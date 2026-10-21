@@ -346,8 +346,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # + the alias assign (non-const slice)
     "er.bind_slot_wrapper_union",   # first-decl predecl slot spelled as a
                                     # recursive-alias wrapper struct
-    "ret.record_ref_call_storage",  # ref-returning call at the Own[record]
-                                    # STORAGE slot: bare render, slot copies
     "er.field_target_bind",         # er-assign FIELD target gate: the bind
                                     # line assigns into the rendered lvalue
     "er.bind_field_target",         # emit: `this->p = unwrap_ref_move(*tmp);`
@@ -423,16 +421,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "method.discard",               # discarded record / container /
                                     # wrapper / union method result at
                                     # stmt position: the bare call
-    "ret.own_wrapper_none",         # `return None` at Own[wrapper-union] ->
-                                    # `std::monostate{}`
     "ret.own_wrapper_literal",      # container literal at Own[wrapper-union]
                                     # -> the ru spelled render
-    "ret.own_wrapper_member",       # scalar literal / member-container name
-                                    # at Own[wrapper-union] -> bare
-    "ret.own_wrapper_call",         # `return loads(s)` -- a call already
-                                    # producing the slot's wrapper, bare
-    "ret.wrapper_borrow",           # wrapper borrow return (`Expr&`): bare
-                                    # param name / pointer deref source
     "call.wrapper_borrow_ret",      # wrapper-borrow-returning call composes
                                     # bare (`count(passthru(tree))`)
     "call.own_tuple_storage_ret",   # storage-form tuple return (any
@@ -499,8 +489,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # trimmed live `if / else if` render
     "method.literal_mangled",       # literal-overloaded member call -> the
                                     # mangled member spelling (`get__lit_age`)
-    "ret.union_owned_str_field",    # owned-str FIELD read at a union return
-                                    # -> bare render (`return this->name;`)
     "call.native_free",             # C++ @native free callee -> `::native(args)`
     "call.native_own_scalar_lvalue",  # value-scalar NAME into an Own[..] slot
                                       # of a native/template callee: the bare
@@ -828,24 +816,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # chain token reads.
     "print.kw_expr",
     # `return self` at an Optional[Self] ptr-opt return: the bare `this`.
-    "ret.ptr_opt_self",
-    "ret.ptr_opt_ptr_name",         # a Ptr[T] local at the ptr-opt return
-                                    # -> the bare pass (never addr_of)
     # copy() of a ptr-variant union binding: the to_value_variant deep
     # copy (STORAGE FormConvert on the bare name).
     "call.copy_ptr_variant",
-    # A storage-form tuple NAME at the Own-storage-tuple return: the
-    # bare name (NRVO, no lift).
-    "ret.own_storage_tuple_name",
     # A tuple LITERAL at an Own-ELEMENT tuple slot: the spelled
     # brace-init, elements against their Own-peeled by-value slots.
     "arg.own_elem_tuple_literal",
     # An assign-narrowed ptr-variant union NAME method receiver: the
     # inline bare-get read ((*std::get<M*>(c)).m()).
     "method.assign_narrowed_union",
-    # An owned-str FIELD read at the value-opt view return: the member
-    # lands bare in the optional (converting ctor).
-    "ret.value_opt_view_field",
     # A bytes ternary mixing a VIEW arm and a bytes-LITERAL arm: the raw
     # mixed render, whole-ternary BORROW (the sink copies).
     "ifexpr.bytes_view_lit",
@@ -861,8 +840,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ret.own_tuple_borrow_lift",
     "btuple.reseat_borrow_call",    # borrow-tuple name reseated from a call
                                     # returning its own pointer tuple
-    "ret.own_tuple_btuple_lift",    # borrow-form tuple name at a MIXED
-                                    # return: tuple_to_storage<{A, B*}>(t)
     # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`
     # -> `push_back(tuple_to_storage<S>(t))`).
     # F1-record element/value slot: a record RVALUE (exact or covariant
@@ -915,21 +892,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `obj.__getattr__("x")` method call
     "stmt.del_attr",                # `del obj.attr` -> the synthesized
                                     # `obj.__delattr__("attr");` statement
-    "ret.any_subscript",            # `return d[k]` at an Any return slot ->
-                                    # bare `::tpy::__getitem__(d, k)`
     "ret.void",                     # `return` / `return None` at a void
                                     # slot (-> None, unannotated, generator)
-    "ret.any_name",                 # `return a` -- a bare Any value name
-    "ret.any_wrap",                 # non-Any value at an Any return slot ->
-                                    # `return ::tpy::make_any(..);`
-                                    # (value type, returns bare, no move)
-    "ret.dyn_borrow",               # @dynamic protocol borrow return slot:
-                                    # bare param name / pointer deref source
-    "ret.dyn_own_forward",          # Own[P] return: 'forward' name/call/
-                                    # ternary passes the unique_ptr bare
-    "ret.dyn_own_wrap",             # Own[P] return: conformer ctor rvalue /
-                                    # movable name takes the make_unique /
-                                    # make_adapter wrap
     "call.dyn_own_ret",             # an Own[@dynamic P]-returning call lands
                                     # bare at a STORAGE sink (unique_ptr)
     "call.dyn_recv_ret",            # a dyn-protocol call result composing as
@@ -1177,8 +1141,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # at the decl lift's BORROW_BIND
     "method.value_union_property_ret",  # VALUE-union property getter call,
                                     # position-blind (a by-value variant)
-    "ret.union_borrow_field",       # Ref(union) property return ->
-                                    # the bare self-field read
     "narrow.multi_var",             # multi-var `&&` isinstance compound ->
                                     # composed holds tests + one branch
                                     # alias per subject
@@ -1232,40 +1194,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # Record return slots (lowering admission; the renders -- bare name / bare
     # ctor expansion -- are shared with the pass-through emits, so admission
     # is the only distinguishing site).
-    "ret.record_borrow",
     "call.borrow_ret_passthrough",  # T&-returning call bare at the
                                     # borrow-record RETURN sink only
-    "ret.record_call_storage",      # record rvalue call at the STORAGE
-                                    # return -- bare passthrough
-    "ret.record_call_borrow",       # T&-returning call at the borrow
-                                    # return -- bare passthrough
-    "ret.record_op_storage",        # Own-returning user dunder binop/unary
-                                    # at the STORAGE return -- bare
-    "ret.record_storage",
-    "ret.copy_record",              # `return copy(p)` -> `return Point(p);`
-    "ret.record_methodcall",        # method-call rvalue at the storage slot
-    "ret.record_deref_coerce",      # `return ptr` (Ptr[T] local/param) at the
-                                    # borrow return -> `deref_check(ptr)`
-    "ret.record_self",              # `return self` -> `return (*this);`
-    "ret.self_move",                # `return self` in a consuming method
-                                    # -> `return std::move((*this));`
-    "ret.owned_element_move",       # `return p[0]` of an owned tuple element
-                                    # -> `return std::move(std::get<0>(p));`
-    "ret.record_field",             # `return recv.field` at the borrow slot
-    "ret.record_subscript",         # `return c[i]` -- container record element
-    "ret.ptr_opt_field",            # `return self.f` (Optional[record] field)
-                                    # -> `optional_to_ptr(this->f)`
-    "ret.ptr_opt_field_narrowed",   # narrowed storage-Optional field at the
-                                    # ptr-opt return -> the same
-                                    # optional_to_ptr lift (declared-keyed)
-    "ret.opt_field_ref",            # @property getter `return self.f` -> bare
-                                    # `this->f` (std::optional<T>& ref return)
-    "ret.storage_opt_rvalue",       # `return Coord(0, 0)` -> bare ctor into a
-                                    # value-storage / Own Optional slot
-    "ret.storage_opt_whole_rvalue",  # `return f(x)` where f already returns
-                                    # the slot's own storage optional -- bare
-    "ret.storage_opt_own_move",     # `return x` -- an Own[P|None] param
-                                    # (std::optional<P>&&) moves out whole
+    "ret.record_copy",              # `return copy(p)` -> `return Point(p);`
+    "ret.record_copy_ctor",         # `return copy(P(1))` -> the ctor
     "decl.opt_own_param_lift",      # `y = x` off an Own[P|None] param: pure
                                     # lift, `P* y = optional_to_ptr(x);`
     "reseat.opt_own_param_lift",    # ... and the slotless reseat twin,
@@ -1276,8 +1208,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # suffix (identity<int32_t>)
     "name.async_factory_wrap",      # async-def ref at a Callable slot:
                                     # the make_adapter wrapper lambda
-    "ret.str_field",                # `return recv.field` (owned-str member,
-                                    # STORAGE) at a str-family return slot
     # The container-only SOURCE shapes of the storage reference return slot
     # (`-> Own[list/dict/set]`). Every source shape the record half also
     # carries witnesses a `ret.record_*` face: one return ladder, so the
@@ -1308,8 +1238,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # ... and the same read at a COMPOSITE open slot (`Ptr[R]` resolved
     # `Ptr[W]`), which the bare-T row above cannot reach
     "call.generic_open_slot_field_composite",
-    "ret.value_opt_view_ctor",      # StrView instantiation at the
-                                    # Optional[view] return: the folded src
     "btuple.elem_field",            # F1-record FIELD element in a borrow
                                     # tuple -> `&(<member read>)` lift
     "protoarg.copy_iter",           # copy_iter(..) rvalue at an
@@ -1317,53 +1245,21 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (a CopyIter NAME takes protoarg.bare)
     "ret.container_comp",           # `return {x for ...}` -- the decl-init
                                     # stmt-expr render at the return slot
-    "ret.closure_name",             # `return add;` -- a closure local's bare
-                                    # name at a Callable return slot
-    "ret.callable_name",            # `return f;` -- a std::function-typed
-                                    # param/local returned bare
-    # `return pet;` on an isinstance-narrowed ptr-variant union: the
-    # extraction alias returned by address (`return &(__pet);`).
-    "ret.narrowed_union_addr",
     "ret.closure_lambda",           # `return lambda x: ...;` -- a direct
                                     # escaping closure at a Callable return slot
-    "ret.closure_ref",              # `return double;` -- a bare func-ref name
-                                    # at a Callable return slot
-    "ret.tuple_call",               # `return make_pair(n);` -- bare call source
-    # `return t if f else u` -- the C++ conditional over two value tuples
-    "ret.tuple_ternary",
-    # Value-repr Optional[cheap scalar] return slot (`-> int32 | None`): the
-    # None-literal `std::nullopt` arm and the whole-optional bare param pass
-    # (deref-on-narrow stripped); other scalar sources ride the generic tail.
-    "ret.value_opt_none",
-    "ret.value_opt_name",
-    # A narrowed RECORD-kind value-opt binding at the Own[record] STORAGE
-    # return: `return std::move((*x));` (the Optional[Own[Payload]] param).
-    "ret.record_value_opt_name",
-    "ret.value_opt_field",
-    # Value-repr Optional[value tuple] return slot (`-> tuple[float, int32] |
-    # None`): `None` -> `std::nullopt`, a tuple literal spells the inner
-    # tuple's brace-init, an un-narrowed value-tuple name passes bare.
-    "ret.value_opt_tuple_none",
+    # `return None`: the slot's own empty value (LITERAL construction).
+    "ret.none_literal",
+    # A select of two stored tuple members at a binding sink: one storage
+    # lvalue the sink lifts once.
+    "ifexpr.storage_tuple_fields",
+    # An async-def factory call erased into an `Own[@dynamic P]` result:
+    # `::tpy::make_adapter<Base>(factory(args))` (sema's `into_dyn_*`).
+    "coerce.into_dyn_factory",
+    # A tuple literal at a value-repr Optional[value tuple] return slot
+    # (`-> tuple[float, int32] | None`): the inner tuple's brace-init.
     "ret.value_opt_tuple_literal",
-    "ret.value_opt_tuple_name",
-    "ret.value_opt_tuple_whole",     # the slot's own optional returned
-                                    # whole: a local or a call
-    # Value-repr Optional[view] return (str or bytes): `None` -> `std::nullopt`,
-    # a same-family Optional[view] param -> the view->owned arg-split shim
-    # (THIROptViewArg), and a str/bytes literal -> bare owned literal.
-    "ret.value_opt_view_none",
-    "ret.value_opt_view_shim",
-    "ret.value_opt_view_literal",
-    "ret.value_opt_view_slice",  # a slice source at a VIEW-inner value-opt
-                                    # return: the view render lands bare
-    "ret.value_opt_view_name",   # a str/bytes NAME whose form already
-                                    # matches the slot's inner -> bare
-    "ret.value_opt_view_materialize",  # a view->owned materializing coerce at
-                                    # an OWNED inner: the coerce owns the
-                                    # render, the optional's ctor absorbs it
     # `return o.inner.tag` -- the view-family field RESULT row granted at the
     # return sink off any receiver the field ladder admits
-    "ret.viewfam_field_recv",
 
     # Container-literal element families (lowering; the widened
     # THIRContainerLiteral slots) plus the make_vector/make_ordered_* switch
@@ -1627,7 +1523,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # spelled `std::tuple<..>{rvalues}`
     "ret.wrapper_ref_tuple",        # `return (t, 0)` at tuple[Tree, int32]
                                     # -> the spelled reference-member brace
-    "ret.tuple_name",
     "decl.tuple_literal",
     "decl.tuple_literal_wide",      # container/value-union elements at the decl
     # A VALUE-capture record/Own tuple LITERAL decl bound by value (storage
@@ -1676,23 +1571,13 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # NAME: the plain pointer-tuple copy
     "decl.btuple_literal",          # reassigned btuple decl off a REF-capture literal
     "call.btuple_slot",             # borrow-tuple call result into an `auto` decl
-    "ret.btuple_name",              # already-borrow tuple local returned bare
-    "ret.dyn_own_factory",          # return-position async-factory erasure (make_adapter wrap)
     "ret.consuming_self_field",     # consuming method: `return std::move(this->f);`
     "ret.finally_deferred_tuple",   # a tuple literal's deferred members
     "ret.finally_deferred",         # deferred return capture: auto* p before the
                                     # finally chain, move/ptr_to_optional_move after
     "ret.genrec_literal",           # Own[Tree[T]] return of a container literal:
                                     # the ru-instance spelled render
-    "ret.genrec_member",            # Own[Tree[T]] return of a scalar member value:
-                                    # bare, the converting ctor absorbs it
     "ret.btuple_literal",           # `return (n, p)` -> std::tuple<..,T*>{n, &(p)}
-    "ret.btuple_call",              # `return h.get_pair()` -- callee already
-                                    # returns borrow form, so the relay is bare
-    "ret.btuple_ternary",           # `return h.a if c else h.b` -- ONE
-                                    # tuple_to_pointer around the conditional
-    "ret.nullable_tuple_none",      # `return None` at a nullable borrow
-                                    # tuple slot -> std::nullopt
     "arg.btuple_name",             # already-borrow tuple name passed bare
     "arg.genrec_own_literal",       # container literal into an Own[genrec] slot:
                                     # the ru-instance spelled render, inline
@@ -1814,9 +1699,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # An `Own[F1-record]` RETURN element (a by-value `T` slot in the spelled
     # tuple): a ctor rvalue lands bare, an owned name moves at last use.
     "ret.tuple_own_elem",
-    # An `Own[A | B]` record-member union return slot: a member ctor rvalue
-    # returns bare into the by-value storage variant.
-    "ret.own_union_ctor",
     # Owned record local decl (lowering; the `{cpp_type} {name} = <rvalue>;`
     # plain-value render).
     "decl.owned_record",
@@ -1873,8 +1755,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.dunder_borrow_alias",     # the operator flavor: a borrow-returning
                                     # `__add__`/`__neg__` result binds the
                                     # alias -- `const Acc& c = ((a) + (b));`
-    "ret.record_ifexpr",            # lvalue ternary at a record BORROW return
-                                    # -> `return ((c) ? ((*this)) : (o));`
     # Open-T local from a T-returning call in a generic body (lowering;
     # the `::tpy::val_or_ref_t<T> item = box.get();` form-neutral bind).
     "decl.tparam_call",
@@ -1903,13 +1783,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy()` callee reaching the generic call tail at a storage / value /
     # borrow-bind sink.
     "call.copy_construct_ret",
-    # The IMPLICIT copy an owning RETURN slot performs on a borrowed source
-    # sema warned about -- the same copy-construct node, at the ladder tail.
-    "ret.borrowed_copy",
-    # ... its live-name twin at the return tail: a closure-captured name
-    # sema declared a copy of (an open `Own[T]` -> `return T(x);`, a
-    # storage tuple -> `return std::tuple<Point, int32_t>(t);`).
-    "ret.live_name_copy",
     # `copy(s)` of a str NAME -> `std::string(s)` (the explicit owned copy).
     "call.copy_str",
     # ... the non-owned-str half of that row: a VIEW-resolved str source or
@@ -2158,21 +2031,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.opt_storage_field",     # its INLINE-slot reseat twin
     "decl.opt_storage_field",       # ... and its FIELD-of-rvalue sibling
                                     # (`v = make_holder(p).value`)
-    "ret.value_ptr_opt_local",      # narrowed wide ptr-opt local at a value
-                                    # return: deref + last-use move
     "arg.wide_opt_deref_name",      # narrowed wide ptr-opt name at its
                                     # pointee's borrow slot: deref pass
     "arg.nullable_proto_addr",      # container/record name at nullable
                                     # proto slot: address-of lift
     "arg.nullproto_none",           # typed-null None at nullable proto slot
-    "ret.ptr_opt_field_addr",       # pointee-typed field at the ptr-opt
-                                    # return: `&(this->_value)` lift
     "ret.generic_tuple_literal",    # sync generic-tuple return literal:
                                     # to_val_or_ptr element wraps
-    "ret.generic_tuple_call",       # ... and the call rvalue of the SAME
-                                    # generic tuple, returned bare (no wrap)
-    "ret.ptr_opt_subscript",        # container-element subscript at the
-                                    # ptr-opt return: `&(__getitem__(..))`
     "method.container_opt_ptr_ret", # dict.get's bare `T*` result (wide
                                     # pointee): consumers own the binding
     "method.container_union_ret",   # union-element rvalue popped into a
@@ -2210,7 +2075,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ifexpr.storage_opt_tuple_arm",  # ... a value-tuple-literal arm
     "print.opt_ternary_tuple_arg",   # printed tuple literal with one
                                     # of those ternaries as an element
-    "ret.value_opt_view_ternary",   # that ternary at the opt-view return
     "name.storage_opt_whole",       # storage-optional unpack target read
                                     # whole (bare std::optional lvalue)
     "name.opt_btuple_whole",        # nullable borrow-tuple local: the bare
@@ -2221,10 +2085,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "name.opt_vtuple_deref",        # ... and the narrowed `(*t)` deref read
     "optptr.storage_name_lift",     # that name at a T* slot:
                                     # ::tpy::optional_to_ptr(p)
-    "ret.ptr_opt_ternary",          # ptr-Optional return of a ternary
     # A BORROW-returning CALL at a ptr-repr Optional return: the result
     # already IS the `T*`, so it passes through bare (`return b.opt_m();`).
-    "ret.ptr_opt_borrow_call",
     # Enum value-binding renders (lowering).
     "enum.truthy_plain",            # plain-enum truthiness -> literal `true`
     "enum.truthy_int",              # IntEnum truthiness `(static_cast<U>(x) != 0)`
@@ -2327,7 +2189,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ptr_tuple.owning_call_holder", # ... of an owning tuple call
     "move.own_tuple_ptr_lift",      # its last use at an owning slot, element
                                     # by element: S{std::move(*std::get<0>(t)), ..}
-    "ret.own_tuple_ptr_lift",       # ... at the Own[tuple] return
     "stmt.tuple_unpack.ptr_tuple_pointee_move",  # ... consumed by an unpack:
                                     # `T a = std::move(*std::get<i>(..))`
     "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
@@ -2387,6 +2248,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "return.open_tparam_param",     # `return v` of a `T` PARAM at a
                                     # `val_or_ref_t<T>` return ->
                                     # `::tpy::param_to_return<T>(v)`
+    "return.optview_shim",          # `return s` of a `str | None` PARAM at
+                                    # an owned `str | None` return: the
+                                    # view->owned shim
     "binop.identity",               # `a is b` between two objects ->
                                     # `::tpy::same_object(l, r)` over each
                                     # operand's pointer form
@@ -2482,9 +2346,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A pointer-repr tuple lambda return spells the borrow form
     # (to_cpp_return) -- the same-typed bare-call body slice.
     "lambda.btuple_ret",
-    # The generic call whose val_or_ptr_t tuple IS that closure's
-    # borrow-form return (the lambda_btuple_ret use row).
-    "call.lambda_btuple_ret",
     # An F1-record container element streams RAW at a print arg
     # (`<< ::tpy::__getitem__(d, k)`) -- the subscript sibling of
     # print.record_field.
@@ -3171,7 +3032,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # The same explicit `Ptr[record]` receiver at the STORAGE-form field
     # access (the assign-target / storage-sink arm) -- the twin of
     # `field.ptr_value`, which fires at the value read.
-    "field.ptr_value_storage",
     # `.field` auto-dereffed through a USER Deref wrapper -> `r.__deref__().x`
     # (N = deref_depth). Bare `.` receiver; read and scalar-write target alike.
     "field.user_deref_chain",
@@ -3205,9 +3065,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # chain (or its comment-only empty render); `final_skip` a `Final`
     # global, whose definition lives at namespace scope.
     "top_level.native_global_skip", # `native_global(..)` decl: emits nothing
-    "ret.record_ptr_opt_local",     # `return std::move((*p));`
-    "ret.record_ptr_local",         # plain F1 pointer-local: `return (*best);` (+ move at last use)
-    "ret.tparam_ptr_local",         # open-T `T*` local -> `return (*p);`
     "top_level.global_opt_passthrough",  # `g = <ptr-opt call>;`
     "call.ptr_opt_whole",           # ptr-opt borrow call result at a
                                     # whole-optional consumer: the bare T*
@@ -3308,17 +3165,12 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the spelled storage brace-init
     "decl.type_param_slot",         # bare open type-param decl slot
                                     # (`T newitem = ...;`): plain spelled copy
-    "ret.value_opt_view_result",    # call/method-call/subscript result at a
-                                    # value-repr Optional[view] return slot
     "decl.value_opt_tuple_slot",    # value-repr Optional[value tuple] decl
                                     # slot: plain spelled copy
     "if.narrow_elif_else_fact",     # else fact with no consumer tolerated on a
                                     # narrowing if whose else body is an elif
                                     # link -- the link seeds its own facts and
                                     # no extraction runs at this level
-    "ret.own_wrapper_ptr_opt_local",  # hoisted-optional local of the slot's
-                                    # own wrapper union at an Own[union]
-                                    # return -> `return std::move((*v));`
 })
 
 

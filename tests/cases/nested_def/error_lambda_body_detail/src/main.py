@@ -8,10 +8,12 @@ class Node:
 
 def main():
     nodes = [Node("pear"), Node("apple")]
-    # The field-result lowering gap must survive the enclosing sorted call.
+    # The body's lowering gap (a tuple literal's element read,
+    # BUGS.md#tuple-literal-subscript-rejects) must survive the enclosing
+    # sorted call.
     result = sorted(
         nodes,
-        key=lambda n: n.name,  # tpyc: error(/expr\.lambda:lambda\.body:field\.result_type/)
+        key=lambda n: (n.name, 1)[0],  # tpyc: error(/expr\.lambda:lambda\.body:subscript\.tuple_shape/)
     )
 
 

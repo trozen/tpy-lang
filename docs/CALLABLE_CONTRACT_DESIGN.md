@@ -329,7 +329,11 @@ implemented with the coupled contract in checkpoint 4.
     warned own-copy path -- what the named twin
     `def key(n) -> Own[Child]: return n.child` does today (measured: `warning:
     copies Child into owned storage; use copy() to make this explicit`, and the
-    program runs). So `key=lambda it: it.child` keeps compiling, warned, and
+    program runs). So `key=lambda it: it.child` keeps compiling, warned [NOT
+    IMPLEMENTED: a lambda result declares no copy, so the lowering refuses an
+    existing object there (`expr.lambda:lambda.result`); TODO.md "a lambda's
+    by-value record result takes an existing object only where sema declares
+    the copy"], and
     `key=lambda n: n.name` over a `str` key costs nothing at all, a `str` return
     being an owned `std::string` already (rule 4, measured). Only a `@nocopy` or
     `__del__` key payload has no copy to warn about, and there the error names the
@@ -977,8 +981,9 @@ tests cover callable parameter shapes: scalar, tuple, optional, union,
 str/bytes, Own, readonly, Ptr/Span and Box/Rc, plus an open generic parameter.
 Those checks establish context propagation without claiming new lowering for
 every callback signature. Union-of-callable ambiguity, open-parameter lambda
-lowering and `Own[Callable]` return lowering remain outside this prerequisite;
-the last is tracked by `BUGS.md#own-callable-return-rejected`.
+lowering and `Own[Callable]` return lowering remained outside this prerequisite;
+the last now lowers through the return slot's builder
+(`tests/cases/returns/return_slot_one_read`).
 
 Validation: all 14 inference checks and three new snippet cases passed. The
 full remote `--force-exec` run passed **8,005 tests, 23 skipped**, with all

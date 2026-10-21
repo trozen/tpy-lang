@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def bump(p: Point) -> readonly[Own[Point]]:
 //     return p.updated()  # tpyc: warning(/copies Point into owned storage/)
 Point bump(Point& p) {
-    return p.updated();
+    return Point(p.updated());
 }
 
 // def bump_copy(p: Point) -> readonly[Own[Point]]:

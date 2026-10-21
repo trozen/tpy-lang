@@ -1,15 +1,15 @@
-main.py:22: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:103: warning: copies A into field (tuple element 0); use copy() to make this explicit
-main.py:125: warning: copies A into field (tuple element 1); use copy() to make this explicit
-main.py:31: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:36: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:41: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:46: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:51: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:57: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:62: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:80: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:86: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:93: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:117: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
-main.py:31: error: in function 'from_call': this construct is not yet supported by C++ code generation (expr.call:call.ret_type.tuple)
+main.py:23: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:105: warning: copies A into field (tuple element 0); use copy() to make this explicit
+main.py:127: warning: copies A into field (tuple element 1); use copy() to make this explicit
+main.py:32: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:37: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:42: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:47: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:53: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:59: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:64: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:82: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:88: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:95: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:119: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:53: error: in function 'from_select_calls': this construct is not yet supported by C++ code generation (expr.call:call.ret_type.tuple)

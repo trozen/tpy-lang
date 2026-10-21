@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # Constructor receiver: `Point(n)` is a temporary, and still a borrow.
 //     return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 Point make(int32_t n) {
-    return Point(n).updated();
+    return Point(Point(n).updated());
 }
 
 // def make_copy(n: int32) -> Own[Point]:
@@ -22,7 +22,7 @@ Point make_copy(int32_t n) {
 //     # still hands back a borrow of it.
 //     return make(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 Point owned(int32_t n) {
-    return ::tpyapp::main::make(n).updated();
+    return Point(::tpyapp::main::make(n).updated());
 }
 
 // def owned_copy(n: int32) -> Own[Point]:
@@ -36,7 +36,7 @@ Point owned_copy(int32_t n) {
 //     # rvalue, which used to clear the chain and no longer does.
 //     return f.make().updated()  # tpyc: warning(/copies Point into owned storage/)
 Point owned_method(const Factory& f) {
-    return f.make().updated();
+    return Point(f.make().updated());
 }
 
 // def owned_method_copy(f: Factory) -> Own[Point]:

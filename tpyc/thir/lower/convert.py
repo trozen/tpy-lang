@@ -22,11 +22,13 @@ from dataclasses import dataclass, replace
 from typing import Iterable
 from enum import Enum, auto
 
-from ...type_def_registry import owned_from_view_explicit
+from ...sema.dyn_erasure import dyn_forward_ok
+from ...type_def_registry import has_view_param_form, owned_from_view_explicit
 from ...typesys import (
     FloatLiteralType,
     holds_borrowing_view,
     IntLiteralType,
+    is_dyn_protocol,
     is_open_type_param_return,
     lands_in_view_member,
     LiteralType,
@@ -35,6 +37,8 @@ from ...typesys import (
     OwnType,
     pointer_repr_optional,
     PtrType,
+    RecursiveAliasInstanceType,
+    Representation,
     TpyType,
     TupleType,
     TypeParamRef,
@@ -49,13 +53,13 @@ from ..nodes import (
     THIRExpr,
     THIRFormConvert,
     THIRMove,
-    THIRName,
     THIROptionalPtrArg,
     THIROptViewArg,
 )
 from ..reject import ThirUnsupported, note_detail
 from ..source import BindingRepr, Held, Source
-from .context import Slot, SlotConstruct, SlotHolds, storage_type
+from .context import (Slot, SlotConstruct, SlotHolds, SlotLifetime,
+                      lends_elements, storage_type)
 from .checks import _covariant_record_upcast_ok, _record_slice_upcast_ok
 from .predicates import (
     tuple_stores_into,
@@ -116,11 +120,9 @@ class Refuse:
 
 
 # What a reference slot may bind once the source is known not to die with
-# its statement: existing storage, a borrow of it, or a value read whose
-# referent outlives the statement -- in the corpus, only the result of a
-# callee declared to return a reference (the stamp reads it as VALUE).
-# A FRESH value is never one.
-_DURABLE_HELD = frozenset({Held.STORAGE, Held.BORROWED, Held.VALUE})
+# its statement: existing storage or a borrow of it (a call that returns
+# a reference is one). A FRESH value or a plain value never is.
+_DURABLE_HELD = frozenset({Held.STORAGE, Held.BORROWED})
 
 _FORM_WORD = {Held.BORROWED: "borrow", Held.STORAGE: "storage",
               Held.FRESH: "storage", Held.VALUE: "value"}
@@ -128,6 +130,13 @@ _FORM_WORD = {Held.BORROWED: "borrow", Held.STORAGE: "storage",
 
 def _refuse_lift(held: Held) -> Refuse:
     return Refuse("lift." + _FORM_WORD[held])
+
+
+def _copy_declared(s: Source, under: Source, explicit_copy: bool) -> bool:
+    """The copy-permission rule: a copy of an existing object into owned
+    storage is built only where `copy()` spells it or sema declared it
+    (`Source.copy_declared`) -- CPython would hand the object itself on."""
+    return explicit_copy or s.copy_declared or under.copy_declared
 
 
 # --- type relations ----------------------------------------------------------
@@ -147,6 +156,16 @@ def _record_upcast(src_t: TpyType, t: TpyType, types) -> bool:
             or _record_slice_upcast_ok(src_t, t, types))
 
 
+def _same_type(x: 'TpyType | None', y: 'TpyType | None', types) -> bool:
+    """The same type, a recursive alias's placeholder being its union."""
+    if x == y:
+        return True
+    if x is None or y is None:
+        return False
+    resolve = types.registry.resolve_recursive_refs
+    return resolve(x) == resolve(y)
+
+
 def absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
                     types) -> TpyType:
     """The part of the slot a source of type `src_t` lands in: the slot
@@ -160,10 +179,12 @@ def absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
         members: tuple = (unwrap_readonly(slot_t.inner),)
     elif isinstance(slot_t, UnionType):
         members = tuple(unwrap_readonly(m) for m in slot_t.members)
+    elif isinstance(slot_t, RecursiveAliasInstanceType):
+        members = tuple(unwrap_readonly(m) for m in slot_t.alternatives())
     else:
         return slot_t
     for m in members:
-        if src_t == m:
+        if _same_type(src_t, m, types):
             return m
     for m in members:
         if _same_viewfam(src_t, m, types) or _record_upcast(src_t, m, types):
@@ -177,13 +198,18 @@ def _absorbs(member_t: TpyType, rt: 'TpyType | None', types) -> bool:
     converting assignment), a str / bytes value into its owned twin, a
     record into its base (the assign slices -- sema warns), or a tuple
     whose still-pending literal elements take the slot's element types."""
-    if rt is None or rt == member_t:
+    if rt is None or _same_type(rt, member_t, types):
         return True
-    if isinstance(member_t, (OptionalType, UnionType)):
+    if isinstance(member_t, (OptionalType, UnionType,
+                             RecursiveAliasInstanceType)):
         return absorbed_member(member_t, rt, types) != member_t
     if _same_viewfam(rt, member_t, types):
         return True
     if _record_upcast(rt, member_t, types):
+        return True
+    if is_dyn_protocol(rt) and dyn_forward_ok(rt, member_t, types):
+        # An erased owner of a protocol inheriting the slot's converts
+        # (`unique_ptr<Child>` -> `unique_ptr<Base>`).
         return True
     if (isinstance(rt, TupleType) and isinstance(member_t, TupleType)
             and len(rt.element_types) == len(member_t.element_types)):
@@ -220,9 +246,8 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
     already in borrow form (a `T*` binding, a call handing one back) it
     passes. A `T` lvalue is borrowed by address, unless its read already
     is the raw pointer; an explicit `Ptr[T]` is the pointer itself."""
-    # A pointer-variant union result keeps its own return arms: no sink
-    # hands one to the conversion, so reaching here is a lowering bug.
-    assert isinstance(st, OptionalType), f"pointer slot {st} has no row"
+    if isinstance(st, UnionType):
+        return _to_pointer_variant(expr, s, st, rt, types)
     pointee = unwrap_readonly(st.inner)
     if isinstance(rt, OptionalType) and _binds(pointee,
                                                unwrap_readonly(rt.inner),
@@ -237,9 +262,108 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
         return Plan(expr, Effect.PASS)
     if s.pointer_held:
         return Plan(expr, Effect.PASS)
+    if s.temporary is not False or s.held not in _DURABLE_HELD:
+        # The address of a value that dies with the statement -- or whose
+        # lifetime nothing states -- would dangle.
+        return Refuse("borrow_source")
     return Plan(THIROptionalPtrArg(result_type=st, form=Form.BORROW,
                                    value=expr, addr_of=True, loc=expr.loc),
                 Effect.LIFT)
+
+
+def _to_pointer_variant(expr: THIRExpr, s: Source, st: UnionType,
+                        rt: 'TpyType | None', types) -> Plan | Refuse:
+    """A pointer-variant union slot (`Union<A*, B*>`). The union's own
+    value read in storage form (a `Union<A, B>` field) lifts to the
+    pointer variant; already in pointer form it passes. A member's object
+    is borrowed by address, as the pointer-repr Optional's pointee is."""
+    if rt == st:
+        if s.held is Held.STORAGE and not s.pointer_held:
+            return Plan(THIRFormConvert(result_type=st, value=expr,
+                                        form=Form.BORROW, is_const=s.const,
+                                        loc=expr.loc), Effect.LIFT)
+        return Plan(expr, Effect.PASS)
+    if absorbed_member(st, rt, types) == st:
+        return Refuse("borrow_source")
+    if s.pointer_held:
+        return Plan(expr, Effect.PASS)
+    if s.temporary is not False or s.held not in _DURABLE_HELD:
+        return Refuse("borrow_source")
+    return Plan(THIROptionalPtrArg(result_type=st, form=Form.BORROW,
+                                   value=expr, addr_of=True, loc=expr.loc),
+                Effect.LIFT)
+
+
+def _elems_by_pointer(s: Source, src_t: TupleType) -> list[bool]:
+    """Per element of a tuple source, whether it holds that element as a
+    pointer into an object it does not own -- or may: a read in its borrow
+    form holds an open `T` element as `val_or_ptr_t<T>`, a pointer at a
+    reference instantiation."""
+    if s.elems is not None:
+        return [el.pointer_held for el in s.elems]
+    borrow_form = s.held not in (Held.STORAGE, Held.FRESH)
+    return [(s.held is Held.BORROWED
+             and TupleType._element_is_pointer_repr(et))
+            or (borrow_form and TupleType._element_is_val_or_ptr(et))
+            for et in src_t.element_types]
+
+
+def _owned_elem_by_pointer(s: Source, src_t: 'TpyType | None',
+                           slot: Slot) -> bool:
+    """Whether a tuple source holds an element the slot owns only as a
+    pointer: a by-value tuple cannot take it as it renders."""
+    if (slot.elems is None or not isinstance(src_t, TupleType)
+            or len(src_t.element_types) != len(slot.elems)):
+        return False
+    return any(e.holds is SlotHolds.OWNS and p
+               for e, p in zip(slot.elems, _elems_by_pointer(s, src_t)))
+
+
+def _to_borrow_tuple(expr: THIRExpr, s: Source,
+                     slot: Slot) -> Plan | Refuse:
+    """A result tuple in borrow form (`std::tuple<.., T*>`), element by
+    element: a slot element that hands back a borrow takes a pointer, one
+    the result owns takes the value. A source already holding each element
+    so passes; one holding an element the result borrows inline (a storage
+    tuple lvalue) lifts to the pointers into it (`tuple_to_pointer`, const
+    where the source is); one holding an element the result owns as a
+    pointer copies its pointee in (`tuple_to_storage` of the result form,
+    the copy sema declared). A tuple that dies with the statement has
+    nothing to point into."""
+    tt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot.declared)))
+    src_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        expr.result_type)))
+    if isinstance(tt, OptionalType):
+        # A nullable result: the whole optional of that very layout passes;
+        # a tuple lands in its payload, which the optional absorbs.
+        if isinstance(src_t, OptionalType):
+            # A binding or a call holding the result's own layout; a
+            # member's storage optional holds its elements inline.
+            return (Plan(expr, Effect.PASS)
+                    if s.id_read or s.held is not Held.STORAGE
+                    else Refuse("borrow_source"))
+        tt = unwrap_readonly(tt.inner)
+    if not isinstance(tt, TupleType) or not isinstance(src_t, TupleType):
+        return Refuse("borrow_source")
+    src_ptr = _elems_by_pointer(s, src_t)
+    want_ptr = [e.holds in (SlotHolds.BORROWS, SlotHolds.POINTER)
+                for e in slot.elems]
+    lift = any(w and not p for w, p in zip(want_ptr, src_ptr))
+    own = any(e.holds is SlotHolds.OWNS and p
+              for e, p in zip(slot.elems, src_ptr))
+    if lift and own:
+        return Refuse("borrow_source")
+    if own:
+        return Plan(THIRFormConvert(result_type=tt, value=expr,
+                                    form=Form.STORAGE, param_form=True,
+                                    loc=expr.loc), Effect.COPY)
+    if not lift:
+        return Plan(expr, Effect.PASS)
+    if s.temporary is not False or s.held not in _DURABLE_HELD:
+        return Refuse("borrow_source")
+    return Plan(THIRFormConvert(result_type=tt, value=expr,
+                                form=Form.BORROW, is_const=s.const,
+                                loc=expr.loc), Effect.LIFT)
 
 
 def _lift_renders(member_t: TpyType, rt: 'TpyType | None',
@@ -270,12 +394,50 @@ def _lift_renders(member_t: TpyType, rt: 'TpyType | None',
             and not pointer_held)
 
 
-def _view_copied_owner(t: TpyType, types) -> 'TpyType | None':
-    """The owned type a VALUE slot holds when its storage takes no
-    assignment from its own view (`TypeDef.owned_from_view_explicit`)."""
+def _view_copied_owner(t: TpyType, construct: SlotConstruct,
+                       types) -> 'TpyType | None':
+    """The owned type a VALUE slot holds when its construction takes no
+    implicit conversion from its own view: a copy-initialized result takes
+    none from any owned buffer passed as a view (the view constructor is
+    explicit), an assignment none where `TypeDef.owned_from_view_explicit`."""
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     t = _resolve_pending_view(t, types) or t
+    if construct is SlotConstruct.RETURN:
+        return t if has_view_param_form(t) else None
     return t if owned_from_view_explicit(t) else None
+
+
+def view_to_owned(expr: THIRExpr, slot: Slot, types) -> 'Plan | None':
+    """A view source at a value slot holding an owned buffer whose
+    construction takes no implicit conversion from its view
+    (`_view_copied_owner`): the spelled copy (`std::string(v)`)."""
+    if slot.holds is not SlotHolds.VALUE:
+        return None
+    owner_t = _view_copied_owner(slot.type, slot.construct, types)
+    if owner_t is None or expr.source.held is not Held.BORROWED:
+        return None
+    return Plan(THIRFormConvert(result_type=owner_t, value=expr,
+                                form=Form.STORAGE, move=False, loc=expr.loc),
+                Effect.COPY)
+
+
+def open_param_result(expr: THIRExpr, slot: Slot) -> 'Plan | None':
+    """An open-`T` result (`val_or_ref_t<T>`) handed the bare read of an
+    open-`T` PARAM (`param_val_or_ref_t<T>`): the two differ at a
+    view-family instantiation, and `param_to_return<T>` owns at a
+    value-typed `T` and passes a reference-typed one through. Only a bare
+    open-`T` param (not `Own[T]`) is that read."""
+    s = expr.source
+    if slot.holds is not SlotHolds.TRAIT or not s.id_read:
+        return None
+    pt = s.param_type
+    if pt is None or not is_open_type_param_return(
+            unwrap_ref_type(unwrap_send_sync(pt))):
+        return None
+    return Plan(THIRFormConvert(result_type=slot.type, value=expr,
+                                form=Form.STORAGE, generic_return=True,
+                                loc=expr.loc),
+                Effect.LIFT, row="open_tparam_param")
 
 
 # --- the slot side of a read --------------------------------------------------
@@ -286,16 +448,20 @@ class Landing:
     source's binding and analyzed type before it is lowered (the read is
     lowered under it) and again after (`convert` reads the same rule)."""
     member: TpyType
-    # The source NAME's binding is the slot's own Optional / union: it is
-    # read whole and lifts whole, flow narrowing notwithstanding.
+    # The storage the source names (a binding, a field) is the slot's own
+    # Optional / union: it is read whole and lifts whole, flow narrowing
+    # notwithstanding.
     whole_binding: bool
 
 
-def landing(binding: BindingRepr | None, analyzed_t: 'TpyType | None',
-            slot_t: TpyType, types) -> Landing:
+def landing(binding: BindingRepr | None, named_t: 'TpyType | None',
+            analyzed_t: 'TpyType | None', slot_t: TpyType,
+            types) -> Landing:
+    """`named_t`: the declared type of the storage the source names
+    (`Source.named_type`)."""
     member = absorbed_member(slot_t, storage_type(analyzed_t), types)
-    whole = (binding is not None and binding.type is not None
-             and storage_type(binding.type) == slot_t
+    whole = (named_t is not None
+             and storage_type(named_t) == slot_t
              and isinstance(slot_t, (OptionalType, UnionType)))
     if whole:
         member = slot_t
@@ -331,17 +497,17 @@ def borrowed_path_element_message(name: str, index: int, *,
 def elementwise_tuple_storage(expr: THIRExpr, dest: TupleType, *,
                               param_form: bool = False
                               ) -> 'THIRFormConvert | None':
-    """A pointer-tuple NAME at an owning tuple slot, converted element by
-    element as the scalar at each position converts: an element the read
-    owns (sema declared no copy of it, `own_element_copies`) moves out of
-    its object at the name's last use, one some binding borrows is copied
-    in (or kept as a pointer where
-    a `param_form` destination borrows it), a value element moves with the
-    name. None for any other source -- and for a name owning nothing it can
-    move, where the whole-tuple copy (`tuple_to_storage`) is the render."""
+    """A tuple source at an owning tuple slot, converted element by element
+    as the scalar at each position converts, from its per-element facts
+    (`Source.elems`): an element the read owns (a pointer-tuple read sema
+    declared no copy of, `own_element_copies`) moves out of its object at
+    the read's last use, one some binding borrows is copied in (or kept as
+    a pointer where a `param_form` destination borrows it), a value element
+    moves with the tuple. None for a source with no element facts -- and
+    for one owning no pointee it can move, where the whole-tuple copy
+    (`tuple_to_storage`) is the render."""
     elems = expr.source.elems if expr.source is not None else None
-    if (not isinstance(expr, THIRName) or elems is None
-            or len(elems) != len(dest.element_types)):
+    if elems is None or len(elems) != len(dest.element_types):
         return None
     keeps = [param_form and not isinstance(unwrap_readonly(dt), OwnType)
              and TupleType._element_is_pointer_repr(dt)
@@ -367,6 +533,15 @@ def elementwise_tuple_storage(expr: THIRExpr, dest: TupleType, *,
                            elem_modes=tuple(modes), loc=expr.loc)
 
 
+def _storage_lift(value: THIRExpr, member: TpyType, *, move: bool = False,
+                  materialize: 'bool | None' = None,
+                  loc=None) -> THIRFormConvert:
+    """The source lifted into the storage form of `member` (`tuple_to_storage`
+    for a tuple, `ptr_to_optional` for an Optional, ...), moved or copied."""
+    return THIRFormConvert(result_type=member, value=value, form=Form.STORAGE,
+                           move=move, materialize=materialize, loc=loc)
+
+
 def convert(expr: THIRExpr, slot: Slot, types, *,
             explicit_copy: bool = False) -> Plan | Refuse:
     """The render of `expr` at `slot`. `explicit_copy`: the source is
@@ -375,9 +550,13 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
     copy (`T(x)`); a field's assignment performs it."""
     s = expr.source
     under = expr.uncoerced.source
-    st = slot.type
+    # A recursive alias the slot names by its placeholder is its union.
+    st = _resolve_plain_alias(slot.type, types)
     direct = slot.construct is SlotConstruct.DIRECT_INIT
     holds = slot.holds
+    # A result's own `return` moves an id-expression naming an object of
+    # the returning body implicitly; a capture is the enclosing body's.
+    implicit = slot.implicit_move and s.id_read and not s.captured
 
     if (under.must_copy and under.copy_type is not None
             and slot.construct is SlotConstruct.RETURN
@@ -388,23 +567,47 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
                              value=expr, form=Form.STORAGE, loc=expr.loc),
                     Effect.COPY, copy_type=under.copy_type)
 
+    value_t = expr.uncoerced.result_type
+    if (slot.lifetime is SlotLifetime.OUTLIVES_FRAME
+            and slot.representation is not Representation.VIEW
+            and lands_in_view_member(st, value_t)
+            and (_resolved_str_value(value_t, types) is not None
+                 or _resolved_bytes_value(value_t, types) is not None)):
+        # A str / bytes view the result wraps (a union's view member, an
+        # Optional's view inner) has no lifetime check: sema's covers a
+        # bare view only (BUGS.md#view-return-wrapped-slot-unchecked). A
+        # union's view member takes nothing but a literal, built by the
+        # literal arm; an Optional's takes a view, never an owned buffer.
+        if isinstance(unwrap_readonly(st), UnionType):
+            return Refuse("union_view_insert")
+        if under.held in (Held.STORAGE, Held.FRESH):
+            return Refuse("borrow_source")
+    declared = _copy_declared(s, under, explicit_copy)
+    if lends_elements(slot):
+        return _to_borrow_tuple(expr, s, slot)
     if holds is SlotHolds.VALUE:
+        if _owned_elem_by_pointer(s, storage_type(expr.result_type), slot):
+            # The tuple does not take the source as it renders: each pointee
+            # is copied in (the borrow -> storage tuple lift), where sema
+            # declared that copy.
+            if not declared:
+                return Refuse("tuple_source")
+            return Plan(_storage_lift(expr, st, loc=expr.loc), Effect.COPY)
         # A value slot's own construction / assignment takes the source as
         # it renders (an owned string assigns from a view), except an owned
         # buffer whose storage takes no view. A body write copies a
         # value-typed name even where it is movable; a member-init moves an
         # `Own` name.
-        owner_t = _view_copied_owner(st, types)
-        if owner_t is not None and s.held is Held.BORROWED:
-            return Plan(THIRFormConvert(result_type=owner_t, value=expr,
-                                        form=Form.STORAGE, move=False,
-                                        loc=expr.loc), Effect.COPY)
+        owned = view_to_owned(expr, slot, types)
+        if owned is not None:
+            return owned
         if (not explicit_copy and under.movable
                 and (direct or (slot.construct is SlotConstruct.RETURN
-                                and not s.id_read))):
+                                and not implicit))):
             # The frame's own value at its last use moves. A return moves
-            # an id-expression implicitly, so only a read of another shape
-            # (a consuming method's `(*this)`) is moved out explicitly.
+            # an id-expression implicitly, so only a read it does not move
+            # (a consuming method's `(*this)`, a staged result) is moved
+            # out explicitly.
             return Plan(THIRMove(value=expr, result_type=st,
                                  form=Form.STORAGE, loc=expr.loc),
                         Effect.MOVE)
@@ -414,7 +617,9 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
         # The erasing coerce built the boxed value already; a movable name
         # under it hands the whole box over as an rvalue (the payload is
         # still copied into the box: BUGS.md#any-field-write-copies-source).
-        if under.movable:
+        # A result is copy-initialized from the box as the rvalue it is, or
+        # from an `Any` name, which moves implicitly.
+        if under.movable and slot.construct is not SlotConstruct.RETURN:
             return Plan(THIRMove(result_type=st, value=expr,
                                  form=Form.STORAGE, loc=expr.loc),
                         Effect.MOVE)
@@ -423,32 +628,35 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
     rt_lowered = storage_type(expr.result_type)
     borrow_tuple = (s.held is Held.BORROWED
                     and isinstance(rt_lowered, TupleType))
+    b = s.binding
+    land = landing(b, s.named_type, s.analyzed_type, st, types)
+    # A source read whole as the slot's own Optional / union is that type,
+    # whatever its narrowed read would be.
+    rt_whole = st if land.whole_binding else rt_lowered
 
     if holds is SlotHolds.TRAIT:
-        # An open-`T` result (`val_or_ref_t<T>`) handed the bare read of an
-        # open-`T` PARAM (`param_val_or_ref_t<T>`): the two differ at a
-        # view-family instantiation, and `param_to_return<T>` owns at a
-        # value-typed `T` and passes a reference-typed one through. Only a
-        # bare open-`T` param (not `Own[T]`) is that read.
-        pt = s.binding.param_type if s.binding is not None else None
-        if (s.id_read and pt is not None and is_open_type_param_return(
-                unwrap_ref_type(unwrap_send_sync(pt)))):
-            return Plan(THIRFormConvert(result_type=st, value=expr,
-                                        form=Form.STORAGE,
-                                        generic_return=True, loc=expr.loc),
-                        Effect.LIFT, row="open_tparam_param")
+        lifted = open_param_result(expr, slot)
+        if lifted is not None:
+            return lifted
+        if (not explicit_copy and under.movable and not implicit
+                and slot.construct is SlotConstruct.RETURN):
+            # The frame's own value at its last use, read through a deref:
+            # a result moves it out (an id-expression moves implicitly).
+            return Plan(THIRMove(value=expr, result_type=st,
+                                 form=Form.STORAGE, loc=expr.loc),
+                        Effect.MOVE)
         return Plan(expr, Effect.PASS)
 
     if holds is SlotHolds.BORROWS:
         # A reference binds storage the caller can still reach: an object
         # of the slot's type, read as it is.
         if _ptr_opt(st) and (s.pointer_held or s.held is Held.FRESH
-                             or not _binds(st, rt_lowered, types)):
+                             or not _binds(st, rt_whole, types)):
             # A getter's storage reference fed anything but the field it
             # names still takes the pointer conversions, which its signature
             # does not spell: the C++ build refuses them
             # (BUGS.md#property-getter-pointer-optional-return).
-            return _to_pointer(expr, s, st, rt_lowered, types)
+            return _to_pointer(expr, s, st, rt_whole, types)
         if s.temporary is not False or s.held not in _DURABLE_HELD:
             # Only storage known to outlive the statement binds: a value
             # that dies with it -- or whose lifetime nothing states --
@@ -460,7 +668,7 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
         return Plan(expr, Effect.PASS)
 
     if holds is SlotHolds.POINTER:
-        return _to_pointer(expr, s, st, rt_lowered, types)
+        return _to_pointer(expr, s, st, rt_whole, types)
 
     if holds is SlotHolds.RELOCATE:
         # No conversion is known for this slot: only an owned value moves
@@ -472,38 +680,59 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
                              loc=expr.loc), Effect.MOVE)
 
     # OWNS: a storage slot.
-    b = s.binding
-    land = landing(b, s.analyzed_type, st, types)
     member = land.member
     if (member == st and not land.whole_binding
             and not (b is not None and b.pointer)):
         # A source whose analyzed type is still pending (a literal-seeded
         # local) lands in the member its LOWERED type names.
         member = absorbed_member(st, rt_lowered, types)
-    mv = not explicit_copy and under.movable
-    rt = member if land.whole_binding else rt_lowered
+    # A value the conversion of the source built is an rvalue already.
+    mv = not explicit_copy and under.movable and s.held is not Held.FRESH
+    if (not explicit_copy and slot.construct is SlotConstruct.RETURN
+            and under.id_read and not implicit
+            and (under.owned_param or under.owned_result_storage)):
+        # An `Own` parameter its own `return` would move implicitly: a
+        # result staged first spells the move. A capture reads the
+        # enclosing body's parameter: it moves only one whose binding is
+        # the result's storage itself (`std::optional<P>&&`, its payload
+        # maybe `@nocopy`); any other is copied
+        # (BUGS.md#nested-def-captured-own-return-copies).
+        mv = True
+    # A raw pointer read at a pointer-repr Optional slot is that Optional's
+    # borrow form, lifted whole.
+    rt = (member if land.whole_binding or (
+        s.pointer_held and member == st and _ptr_opt(st)) else rt_lowered)
 
     if slot.construct is SlotConstruct.RETURN:
         # A result is copy-initialized from the source: an rvalue, an
         # object a call hands back, or the binding's own name (an
         # id-expression, which moves implicitly) is taken as it renders.
         # Any other stored object is copied out explicitly -- or moved,
-        # where it is the frame's own at its last use.
+        # where it is the frame's own at its last use. A value type's
+        # copy-initialization is its copy, whatever the source.
         if (record_like(member, types) and not s.pointer_held
                 and _absorbs(member, rt, types)):
             if s.held is Held.FRESH or (not explicit_copy and (
-                    s.held is Held.VALUE or s.id_read)):
+                    s.held is Held.VALUE or implicit
+                    or (s.id_read and not mv))):
                 return Plan(expr, Effect.PASS)
             if mv:
                 return Plan(THIRMove(result_type=expr.result_type, value=expr,
                                      form=expr.form, loc=expr.loc),
                             Effect.MOVE)
+            if not explicit_copy and member.is_value_type():
+                return Plan(expr, Effect.PASS)
             if s.copy_type is not None:
+                if not declared:
+                    # A copy of an existing object no `copy()` spells and
+                    # no warning declared: CPython would hand the object
+                    # itself back.
+                    return Refuse("copy_undeclared")
                 return Plan(THIRCopy(result_type=rt_lowered, value=expr,
                                      form=Form.STORAGE, loc=expr.loc),
                             Effect.COPY, copy_type=s.copy_type)
 
-    param_t = b.param_type if b is not None else None
+    param_t = s.param_type
     if param_t is not None and _opt_view_arg_shim(param_t, st, types):
         # A borrowed `optional<view>` PARAM into an owned `optional<str>`
         # slot: the view->owned shim.
@@ -512,31 +741,42 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
                     Effect.COPY, row="optview_shim")
     if (isinstance(unwrap_readonly(st), UnionType)
             and lands_in_view_member(st, expr.uncoerced.result_type)):
-        # The view member of a union: a member-init direct-initializes it
-        # from the source; a body write from a NAME is refused
-        # (BUGS.md#record-view-field-escapes-local-buffer).
-        if direct and _absorbs(member, rt, types):
+        # The view member of a union: a member-init or a result
+        # initializes it from the source; a body write from a NAME is
+        # refused (BUGS.md#record-view-field-escapes-local-buffer).
+        initializes = direct or slot.construct is SlotConstruct.RETURN
+        if initializes and _absorbs(member, rt, types):
             return Plan(expr, Effect.PASS)
-        if not direct and under.binding is not None:
+        if not initializes and under.binding is not None:
             return _refuse_lift(s.held)
     stored = (s.held in (Held.STORAGE, Held.FRESH)
               or isinstance(rt, NoneType))
-    if rt == member and stored:
-        if mv:
+    if _same_type(rt, member, types) and stored:
+        if mv and not implicit:
             return Plan(THIRMove(value=expr, result_type=member,
                                  form=Form.STORAGE, loc=expr.loc),
                         Effect.MOVE)
+        if (s.captured and slot.construct is SlotConstruct.RETURN
+                and not declared):
+            # A result copy-initialized from the enclosing body's object
+            # copies it: not this body's to move.
+            return Refuse("copy_undeclared")
         return Plan(expr, Effect.PASS)
     ptr_union = _eligible_ptr_union(member, types) is not None
     ptr_lift = rt == member and (_ptr_opt(member) or ptr_union)
     if (mv and not ptr_lift and not borrow_tuple
+            and not (s.held is Held.BORROWED
+                     and _same_viewfam(rt, member, types))
             and not record_like(member, types)
             and not isinstance(member, TypeParamRef)
             and not s.pointer_held
             and _absorbs(member, rt, types)):
-        # An owned value-typed name at its last use moves in whole. A
-        # pointer-repr tuple is not: its borrowed element must materialize
-        # through the moving lift below.
+        # An owned value-typed name at its last use moves in whole (a view
+        # of someone else's buffer owns nothing to move). A pointer-repr
+        # tuple is not: its borrowed element must materialize through the
+        # moving lift below.
+        if implicit:
+            return Plan(expr, Effect.PASS)
         return Plan(THIRMove(value=expr, result_type=member,
                              form=Form.STORAGE, loc=expr.loc), Effect.MOVE)
     if (not mv and not ptr_lift
@@ -550,11 +790,33 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
         # assignment takes it as it is. (Inside an Optional / union the
         # borrow still converts to the member's storage.)
         return Plan(expr, Effect.PASS)
-    if direct and not mv and isinstance(member, TypeParamRef):
-        # A member-init constructs an open `T` from the param form itself.
+    if isinstance(member, TypeParamRef) and (
+            slot.construct is SlotConstruct.RETURN or (direct and not mv)):
+        # A member-init constructs an open `T` from the param form itself;
+        # a result copy-initializes its storage form from the source as it
+        # renders, a movable read that is no id-expression moved out.
+        if mv and not implicit:
+            return Plan(THIRMove(value=expr, result_type=member,
+                                 form=Form.STORAGE, loc=expr.loc),
+                        Effect.MOVE)
         return Plan(expr, Effect.PASS)
-    if not _lift_renders(member, rt, s.pointer_held, types):
+    if not _lift_renders(member, rt, s.pointer_held, types) or (
+            not mv and isinstance(member, TupleType)
+            and any(types.ctx.is_type_nocopy(storage_type(e))
+                    for e in member.element_types)):
+        # No render -- or a whole-tuple copy of an element that cannot be
+        # copied.
         return _refuse_lift(s.held)
+    if mv and isinstance(member, TupleType):
+        per_elem = elementwise_tuple_storage(expr, member)
+        if per_elem is not None:
+            return Plan(per_elem, Effect.MOVE)
+    if (slot.construct is SlotConstruct.RETURN and not declared
+            and _owned_elem_by_pointer(s, rt_lowered, slot)):
+        # The lift below copies each pointee the source holds into the
+        # result's element storage: the record row's copy, which sema
+        # declares per result read (a store's copy is its store check's).
+        return Refuse("tuple_source")
     # The union storage conversion never moves (to_value_variant
     # deref-copies the active member), so the move flag stays a real-move
     # claim. A reference-axis source is the object itself: nothing to
@@ -562,10 +824,6 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
     moves = mv and not ptr_union
     obj = record_like(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         expr.result_type))), types) if expr.result_type is not None else False
-    if mv and isinstance(member, TupleType):
-        per_elem = elementwise_tuple_storage(expr, member)
-        if per_elem is not None:
-            return Plan(per_elem, Effect.MOVE)
     value = expr
     if mv and isinstance(rt_lowered, TupleType):
         # A tuple owns only its INLINE elements; a pointer element borrows
@@ -575,9 +833,8 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
         value = THIRMove(value=expr, result_type=expr.result_type,
                          form=expr.form, loc=expr.loc)
         moves = False
-    return Plan(THIRFormConvert(result_type=member, value=value,
-                                form=Form.STORAGE, move=moves,
-                                materialize=False if obj else None,
-                                loc=expr.loc),
+    return Plan(_storage_lift(value, member, move=moves,
+                              materialize=False if obj else None,
+                              loc=expr.loc),
                 Effect.MOVE if moves or value is not expr else
                 Effect.LIFT if ptr_lift else Effect.COPY)

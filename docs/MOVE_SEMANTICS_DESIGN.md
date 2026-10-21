@@ -328,7 +328,7 @@ name in `prescan.chain_alias_sources`), all with the detach-on-reassign and
 dead-alias precision above. Borrows the map cannot represent syntactically --
 call results borrowing an argument (`return_borrows_from`), generator objects
 storing their iterable by reference -- are handled at the consume site
-instead: `compat.grant_name_move` (the recording move verdict) consults the
+instead: `compat.claim_name_move` (the recording move verdict) consults the
 BorrowTracker and demotes the move to the copy path (retracting the last-use mark so codegen agrees) when
 such a borrower exists. The for-loop iterator loan (held by the loop's
 `IterHolder`, `tpyc/holders.py`) is one of them: it expires with its loop, so it gates a consume of the iterable
@@ -360,8 +360,8 @@ fact. Every binding route records whether it makes the local refer to
 storage that already exists -- not only an lvalue (name/field/subscript) but
 a reference-returning call or a ternary of reference lvalues, which the
 prescan classifies as an rvalue because it has no type info
-(`note_nonowning_bind`, `FunctionTrackingState.nonowning_binds`, per tuple
-element). A local with such a binding anywhere in the body is non-owning for
+(`note_nonowning_bind`, into `FunctionTrackingState.nonowning_sites`, per
+tuple element; `nonowning_bind` is a LOCAL's fact). A local with such a binding anywhere in the body is non-owning for
 the whole function and leaves the movable set. Every owning-sink move out of
 a local granted before the fact is complete is recorded and settled once
 after the body (`settle_owning_reads`): a move whose local the complete fact

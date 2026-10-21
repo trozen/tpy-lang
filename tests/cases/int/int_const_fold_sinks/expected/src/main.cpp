@@ -127,7 +127,7 @@ void sinks() {
     std::cout << "elem" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__getitem__(d, "k") << "\n" << ::tpy::check_signals;
     std::cout << "global" << " " << G << "\n" << ::tpy::check_signals;
     std::cout << "gen" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_wide())) << "\n" << ::tpy::check_signals;
-    std::function<::tpy::BigInt()> f = []() -> ::tpy::BigInt { return static_cast<int64_t>(1099511627776); };
+    std::function<::tpy::BigInt()> f = []() -> ::tpy::BigInt { return ::tpy::BigInt(static_cast<int64_t>(1099511627776LL)); };
     std::cout << "lambda" << " " << f() << "\n" << ::tpy::check_signals;
     std::cout << "builtin" << " " << ::tpy::builtin_bin_bigint(::tpy::BigInt(static_cast<int64_t>(4611686018427387905LL))) << "\n" << ::tpy::check_signals;
 }

@@ -37,6 +37,7 @@ from ..type_def_registry import (
 )
 from ..typesys import is_numeric_type
 from .bound_check import find_method_class_param_bound_violation
+from .dyn_erasure import record_inherits_dynamic
 
 
 def dynamic_dispatch_type_conforms(
@@ -180,13 +181,11 @@ class ProtocolChecker:
     def directly_implements_dynamic(self, concrete: TpyType, protocol: NominalType) -> bool:
         """True iff `concrete` C++-inherits the @dynamic protocol base.
 
-        Delegates to codegen's `record_inherits_dynamic` (one verdict, no
-        drift). Called from the call-analysis path when deciding whether a
+        Delegates to `record_inherits_dynamic` (one verdict, no drift).
+        Called from the call-analysis path when deciding whether a
         structural conformer of a @dynamic bound needs Adapter substitution
         at codegen (see `TpyCall.representational_subst_params`).
         """
-        # local import: avoid a sema->codegen_cpp cycle (cf. calls.py)
-        from ..codegen_cpp.protocols import record_inherits_dynamic
         return record_inherits_dynamic(concrete, protocol, self.ctx.registry)
 
     def satisfies_bound(self, actual: TpyType, bound: TpyType) -> bool:

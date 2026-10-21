@@ -44,7 +44,7 @@ from ...identity_map import IdentityMap, IdentitySet
 from ..reject import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
 from ..faces import witness as _witness
-from ..source import Held, SelectResult
+from ..source import Held
 from ..validate import validate_resumable_body, validate_stmts
 from ..nodes import (
     THIRDynIsinstanceMulti,
@@ -132,12 +132,14 @@ from .checks import (
 )
 from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass,
                       _ExprResultUse, _ExprUse, _LowerCtx,
-                      _ONLY_BTUPLE_SLOT, _ONLY_FRAME_FACTORY, _Prescan,
+                      _ONLY_BTUPLE_SLOT, _ONLY_FRAME_FACTORY,
+                      _ONLY_SELF_TYPED, _Prescan,
                       narrow_alias_taken, SinkPos)
 from .expressions import (
     _node_moves,
     _poly_cast_checks,
     _lower_call_arg,
+    _select_result,
     _lower_expr,
     _cond_mixed_walrus_temps,
     _lower_truthy,
@@ -153,7 +155,9 @@ from .functions import (
 from . import bindings as _bindings
 from . import match as _match
 from ...typesys import polymorphic_source_inner
+from .callables import body_passings, definition_signature
 from .predicates import (
+    _owning_fi,
     _eligible_ptr_value,
     _value_record_slot,
     _narrow_alias_name,
@@ -1030,10 +1034,12 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
     # (their render is the same bare call). The setup is a statement
     # position -- arg temps (`int32_t __tmp_N = 7;` ref-slot literals of a
     # generic factory call) flush before the source capture.
+    # The frame spells the loop's fields off the source (`decltype`).
     lowered_it = _lower_expr(
         it, lc, declared, use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                        pos=SinkPos.ITER_SOURCE,
-                                       allow_temps=True))
+                                       allow_temps=True,
+                                       forms=_ONLY_SELF_TYPED))
     if _for_iterable_narrowed_optional(it, declared, analyzer):
         # The begin_end skeleton owns the narrowed value-Optional unwrap
         # (`maybe_unwrap_narrowed_optional` over the leaf render), so the
@@ -1629,12 +1635,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         rt = func.return_type if isinstance(func.return_type, TpyType) else None
         rt_inner = (unwrap_readonly(unwrap_send_sync(rt))
                     if rt is not None else None)
-        # Owned str/bytes returns ride the shared form-keyed wrap
-        # (`_wrap_view_owned_return`): the wrap fires iff the source is
-        # view-form, which the lowered value carries as its form fact -- the
-        # same wrap every sync str return takes. One render serves all
-        # three async scaffolding
-        # sites (`_async_ret_to_borrow` is a no-op for str/bytes).
+        # Owned str/bytes returns take the result slot's view->owned copy
+        # (`convert.view_to_owned`), keyed on the lowered source's facts --
+        # the row every sync str return takes. One render serves all three
+        # async scaffolding sites (`_async_ret_to_borrow` is a no-op for
+        # str/bytes).
         if not (rt is None or isinstance(rt_inner, VoidType)
                 or _res_capture_ok(rt, analyzer)
                 or _resolved_str_value(rt, analyzer) is not None
@@ -1869,6 +1874,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             if _bname in frame_fields and _btype is not None:
                 lc.frame_local_types[_bname] = unwrap_ref_type(_btype)
     lc.resumable_leaf_mode = True
+    lc.signature = definition_signature(
+        tuple(t for _, t in func.params),
+        func.return_type if isinstance(func.return_type, TpyType) else VoidType(),
+        body_passings(func, _owning_fi(func, analyzer, record_name)), analyzer,
+        getter=func.is_property_getter)
     declared: dict[str, TpyType] = {
         n: unwrap_ref_type(t) for n, t in func.params
         if isinstance(t, TpyType)}
@@ -2627,14 +2637,16 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     # branch-picked borrow (`((flag) ? ((*a)) : ((*b)))`) --
                     # one THIRIfExpr, both operands lowered as branch
                     # expressions so neither hoists a temp.
+                    y_cond = _lower_truthy(yv_src.condition, lc, declared)
+                    y_arms = (_yield_borrow_name(yv_src.then_expr),
+                              _yield_borrow_name(yv_src.else_expr))
                     yield_values[ys] = THIRIfExpr(
-                        result_type=yt_bare,
-                        cond=_lower_truthy(yv_src.condition, lc, declared),
-                        then=_yield_borrow_name(yv_src.then_expr),
-                        orelse=_yield_borrow_name(yv_src.else_expr),
+                        result_type=yt_bare, cond=y_cond,
+                        then=y_arms[0], orelse=y_arms[1],
                         form=Form.BORROW,
-                        normalized=SelectResult(Held.BORROWED,
-                                                temporary=False),
+                        normalized=_select_result(
+                            Held.BORROWED, None, lc, y_arms,
+                            temporary=False),
                         loc=getattr(yv_src, "loc", None))
                     _witness(f"res.yield_{half}_ternary")
                     return
@@ -2993,7 +3005,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         match_dispatches=match_dispatches,
         nested_def_bodies=nested_def_bodies,
         narrow_aliases=narrow_aliases,
-        deferred_returns=deferred_returns)
+        deferred_returns=deferred_returns, signature=lc.signature)
     _bindings.report_unentered(lc, cfg.decomposed)
     validate_resumable_body(func.name, res_body, lowered=True)
     return res_body

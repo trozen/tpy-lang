@@ -6,7 +6,7 @@ from __future__ import annotations
 import copy
 from collections.abc import Callable, Iterator, Set as AbstractSet
 from .storage import alias_binding, borrowed_record, full_expression_record, native_container, native_container_field, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
-from .callables import setitem_stub_callee, with_method_callee, with_method_stub
+from .callables import definition_signature, setitem_stub_callee, with_method_callee, with_method_stub
 from .captures import capture_facts
 from contextlib import contextmanager
 from dataclasses import dataclass, replace
@@ -79,8 +79,10 @@ from ...parse.nodes import (
     is_docstring,
     is_super_del_call,
 )
-from ...typesys import pointer_repr_optional, repr_shape, returns_cpp_reference_shape
+from ...typesys import (peel_binding, pointer_repr_optional, repr_shape,
+                       returns_cpp_reference_shape)
 from ...typesys import (
+    CallableType,
     is_readonly_result_type,
     unwrap_qualifiers,
     unwrap_own,
@@ -95,7 +97,6 @@ from ...typesys import (
     NominalType,
     NoneType,
     OptionalType,
-    PtrType,
     OwnType,
     PendingListType,
     PendingViewType,
@@ -132,7 +133,6 @@ from ...type_def_registry import (
     is_set,
     is_span,
     is_str_type,
-    is_str_view_type,
 )
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
@@ -148,12 +148,11 @@ from ...codegen_cpp.forms import (
     reads_storage_form_optional,
 )
 from ...codegen_cpp.protocols import (
-    classify_dyn_own_arg,
     dynamic_adapter_type,
     dynamic_base_name,
-    record_inherits_dynamic,
     protocol_param_template_name,
 )
+from ...sema.dyn_erasure import record_inherits_dynamic
 from ...codegen_cpp.context import (escape_cpp_name,
                                     ternary_iterable_lends_storage)
 from ...codegen_cpp.protocols import narrow_cast_rhs
@@ -178,7 +177,7 @@ from ...liveness import (
 )
 from ...value_category import (
     binds_owned_value, call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
-    is_rvalue_source, wants_move,
+    CONTAINER_LITERAL_NODES, is_rvalue_source, wants_move,
     property_access_returns_cpp_ref,
     async_return_form, AsyncReturnForm,
 )
@@ -197,103 +196,40 @@ from ..scalar_leaves import (
     storage_leaf,
 )
 from ..nodes import (
-    HoistDecl,
-    THIRStoragePlacement,
-    THIRHoistedBinding,
-    THIROptionalRead,
-    THIRCtorCall,
-    THIRBorrowTupleLiteral,
-    Form,
-    PrintForm,
-    PtrSlotKind,
-    THIRArgTemp,
+    HoistDecl, THIRStoragePlacement, THIRHoistedBinding, THIROptionalRead,
+    THIRCtorCall, THIRBorrowTupleLiteral, Form, PrintForm, PtrSlotKind,
+    THIRArgTemp, THIRAssert, THIRAssign, THIRBinOp, THIRBreak,
+    THIRBytesLiteral, THIRCall, THIRCoerce, THIRContainerLiteral,
+    THIRContinue, THIRCloseLocal, THIRStmtSeq, THIRDelVar, THIRDelItem,
+    THIRErrorReturnBind, THIRErrorReturnDiscard, THIRExpr, THIRExprStmt,
+    THIRFieldAccess, THIRConsumingIter, THIRBorrowedRecord, THIRForEach,
+    THIRNativeIteration, THIRForIterProto, THIRForRange, THIRFormConvert,
+    THIRIf, THIRIfExpr, THIRIsinstance, THIRAnyIsinstance, THIRDynIsinstance,
+    THIRDynIsinstanceMulti, THIRAnyNarrowAlias, THIRLiteral, THIRMethodCall,
+    THIRModuleVar, THIRMove, THIRCopy, THIRName, THIRDynNarrowAlias,
+    THIRNarrowAlias, THIRNestedDef, THIRConceptTest, THIRFoldedBlock,
+    THIRFoldedIfChain, THIRFrameNestedDef, THIRFrameSlotWrite,
+    THIRCoroHandleMove, THIRMatch, THIRImportInit, THIRNoOpStmt,
+    THIROptViewArg, THIRPrint, THIRExceptHandler, THIRPrintArg,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRRaise, THIRInplaceContainerOp,
+    THIRResumableReturn, THIRReturn, THIRFinallyDeferredReturn,
+    DeferredPartKind, DeferredTuplePart, THIRTupleLiteral,
+    THIRTupleStorageAlias, THIRSelf, THIRSetItem, THIRSubscript,
+    THIRSliceAssign, THIRStmt, THIRStrAppend, THIRStrLiteral, THIRTry,
+    THIRTupleElemTarget, THIRTupleUnpack, TupleElemBind, TupleSourceBind,
+    UnpackBind, THIRUnaryNot, THIRVarDecl, THIRWhile, THIRWith, THIRWithItem,
     THIRTempRead,
-    THIRAssert,
-    THIRAssign,
-    THIRBinOp,
-    THIRBreak,
-    THIRBytesLiteral,
-    THIRCall,
-    THIRCoerce,
-    THIRContainerLiteral,
-    THIRContinue,
-    THIRCloseLocal,
-    THIRStmtSeq,
-    THIRDelVar,
-    THIRDelItem,
-    THIRErrorReturnBind,
-    THIRErrorReturnDiscard,
-    THIRExpr,
-    THIRExprStmt,
-    THIRFieldAccess,
-    THIRConsumingIter,
-    THIRBorrowedRecord, THIRForEach, THIRNativeIteration,
-    THIRForIterProto,
-    THIRForRange,
-    THIRFormConvert,
-    THIRIf,
-    THIRIfExpr,
-    THIRIsinstance,
-    THIRAnyIsinstance,
-    THIRDynIsinstance,
-    THIRDynIsinstanceMulti,
-    THIRAnyNarrowAlias,
-    THIRLiteral,
-    THIRMethodCall,
-    THIRModuleVar,
-    THIRMove,
-    THIRCopy,
-    THIRName,
-    THIRDynNarrowAlias,
-    THIRNarrowAlias,
-    THIRNestedDef,
-    THIRConceptTest,
-    THIRFoldedBlock,
-    THIRFoldedIfChain,
-    THIRFrameNestedDef,
-    THIRFrameSlotWrite,
-    THIRCoroHandleMove,
-    THIRMatch,
-    THIRImportInit,
-    THIRNoOpStmt,
-    THIROptionalPtrArg,
-    THIROptViewArg,
-    THIRPrint,
-    THIRExceptHandler,
-    THIRPrintArg,
-    THIRPtrLocalDecl,
-    THIRPtrLocalRebind,
-    THIRRaise,
-    THIRInplaceContainerOp,
-    THIRResumableReturn,
-    THIRReturn,
-    THIRFinallyDeferredReturn,
-    DeferredPartKind,
-    DeferredTuplePart,
-    THIRTupleLiteral,
-    THIRTupleStorageAlias,
-    THIRSelf,
-    THIRSetItem,
-    THIRSubscript,
-    THIRSliceAssign,
-    THIRStmt,
-    THIRStrAppend,
-    THIRStrLiteral,
-    THIRTry,
-    THIRTupleElemTarget,
-    THIRTupleUnpack,
-    TupleElemBind,
-    TupleSourceBind,
-    UnpackBind,
-    THIRUnaryNot,
-    THIRVarDecl,
-    THIRWhile,
-    THIRWith,
-    THIRWithItem,
     WithTargetArm,
 )
 from .predicates import (
-    narrowed_ptr_opt_field,
+    _borrow_tuple_return_type,
+    _own_genrec_return,
+    _own_storage_tuple_return,
+    _own_wrapper_return,
+    _record_storage_return,
+    _value_tuple_return,
+    _viewfam_return_slots,
+    _bytes_param_view_slot,
     _alias_call_source_ok,
     overload_if_fold,
     _call_storage_optional_return,
@@ -302,7 +238,6 @@ from .predicates import (
     _record_dunder,
     copy_call_arg,
     _storage_family_ok,
-    _binding_peel,
     _narrow_alias_name,
     _fresh_narrow_local,
     _generic_value_tuple_return,
@@ -314,8 +249,6 @@ from .predicates import (
     _module_var_recv,
     _bigint_index_disposition,
     _post_if_narrow_plan,
-    _const_exact_field_receiver_ok,
-    _container_elem_lvalue_subscript,
     _opt_view_arg_shim,
     _container_enum_spell,
     _container_scalar_read,
@@ -327,7 +260,6 @@ from .predicates import (
     _eligible_enum,
     _eligible_ptr_union,
     _eligible_ptr_union_wide,
-    _span_value,
     _eligible_wrapper_union,
     _ru_elem_ok,
     _union_storage_val_cpp,
@@ -351,7 +283,6 @@ from .predicates import (
     _f1_record,
     record_like,
     _union_base_member_match,
-    _union_member_match,
     _f1_container_ref,
     _nested_container_elem_type,
     record_like,
@@ -404,7 +335,6 @@ from .predicates import (
     _nullable_static_protocol_param,
     _ptr_opt_borrow_call_ret,
     _ptr_value_field_recv_ok,
-    _resolve_plain_alias,
     _storage_optional_return_wide,
     _optional_ptr_borrow_name,
     _optional_ptr_borrow_wide,
@@ -424,26 +354,20 @@ from .predicates import (
     _value_opt_tuple_inner,
     _value_opt_tuple_copyable,
     _narrowed_value_opt_tuple_name,
-    _value_opt_bytes,
-    _value_opt_string_owned,
-    _value_opt_str,
     _opt_owned_view_elem_tuple,
     _value_opt_owned_view,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
-    _record_borrow_return,
     _resolve_pending_view,
+    _resolve_plain_alias,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
     _bytes_view_family_value,
     _coerce_disposition,
-    _str_name_form,
-    _bytes_name_form,
     _resolved_viewfam_value,
     _view_inner_value_opt,
     _value_opt_view,
-    _value_opt_view_ret_src,
     _is_range_call,
     _runtime_bigint,
     _narrow_key_type,
@@ -475,8 +399,8 @@ from .predicates import (
 from .context import (
     FrameLocalClass,
     return_slot,
+    Slot,
     SlotHolds,
-    storage_type,
     field_slot_use,
     SlotConstruct,
     _decl_slot_forms,
@@ -484,15 +408,13 @@ from .context import (
     _LEND_OK,
     _NO_FORMS,
     _ONLY_ADDR_CALL,
-    _ONLY_BORROW_RET_PASSTHROUGH,
     _ONLY_FIELD_RECV_BORROW,
     _ONLY_BTUPLE_SLOT,
-    _ONLY_FRAME_FACTORY,
     _ONLY_INDIRECT_READ,
-    _ONLY_PTR_OPT_PASSTHROUGH,
     _ONLY_SELECT_PRVALUE,
     _ONLY_SELECT_FRESH_PRVALUE,
     _ONLY_SELECT_SLOT,
+    _ONLY_SELF_TYPED,
     _ONLY_RECORD_COPY,
     _ExprUse,
     _recv_forms,
@@ -506,162 +428,67 @@ from .context import (
     nested_def_prescan,
 )
 from .checks import (
+    _storage_form_tuple_return, owned_literal_layout,
+    _declared_call_at_owning_elem, declared_call_elem_copy_ok,
+    own_element_copy_type, _chained_subscript_recv_type, _container_comp_arg,
+    _value_opt_scalar_elem_arg, copy_construct_source,
+    _print_tuple_record_elem, _borrow_tuple_local_type,
+    _container_lit_elem_ok, _assert_narrow_info, _borrow_dunder_source,
+    check_polymorphic_rvalue_opt_rebind, _bytes_aug_concat_ok,
+    _class_const_aug_assign_ok, _container_aug_setitem_ok,
+    _container_literal_decl_ok, _container_literal_shape_ok, _bytearray_recv,
+    _bytearray_value_slot_init, _container_setitem_ok, _storage_decl_src,
+    _deref_coerce_borrow_slot, _opt_ptr_addr_of_record_source,
+    _record_setitem_own_value_slot, _user_record_setitem_ok,
+    _expr_evaluation_inert, _print_kwarg_token, _record_slice_upcast_ok,
+    _setitem_widened_elem_ok, _setitem_widened_family_ok,
+    _tuple_elem_slots_ptr_optional, _field_over_call_ok, _is_builtin_print,
+    _is_len_call, _iter_proto_call_ret, _record_rvalue_source_shape,
+    _frame_factory_source, frame_object_slot, builds_named_frame,
+    _record_aug_binop_ok, _rvalue_free_call_shape, _narrow_cond_info,
+    _multi_narrow_cond_info, _or_chain_narrow_info, _any_narrow_cond_info,
+    _optional_record_field_inner, _covariant_record_upcast_ok,
+    _print_arg_form, _star_elem_print_form, _print_arg_ok,
+    _print_tuple_opt_ternary, _wrap_print_form,
+    _opt_strview_to_str_own_elem_arg, _print_optptr_form, _print_optval_form,
+    _print_optval_opt, _ptr_union_source_ok, _ctor_shape_ok,
+    _dyn_own_conformer_arg, _dyn_own_coro_factory_arg,
+    _dyn_own_forward_call_arg, _dyn_own_handle_arg, _native_ctx_manager_ok,
+    _native_record_rvalue_call_shape, _rvalue_storage_decl_call,
+    _scalar_aug_assign_ok, _str_aug_append_ok, _str_list_method_iterable_ok,
     _comp_own_container,
-    _storage_form_tuple_return,
-    owned_literal_layout,
-    own_btuple_borrow_name_arg,
-    _declared_call_at_owning_elem,
-    declared_call_elem_copy_ok,
-    own_element_copy_type,
-    _chained_subscript_recv_type,
-    _container_comp_arg,
-    _value_opt_scalar_elem_arg,
-    _borrow_form_tuple_call,
-    _storage_field_ternary,
-    copy_construct_source,
-    copy_construct_form,
-    _print_tuple_record_elem,
-    _borrow_tuple_local_type,
-    _container_lit_elem_ok,
-    _assert_narrow_info,
-    _borrow_dunder_source,
-    check_polymorphic_rvalue_opt_rebind,
-    _bytes_aug_concat_ok,
-    _class_const_aug_assign_ok,
-    _container_aug_setitem_ok,
-    _container_record_elem_subscript,
-    _container_literal_decl_ok,
-    _container_literal_shape_ok,
-    _bytearray_recv,
-    _bytearray_value_slot_init,
-    _container_setitem_ok,
-    _storage_decl_src,
-    _deref_coerce_borrow_slot,
-    _opt_ptr_addr_of_record_source,
-    _record_setitem_own_value_slot,
-    _user_record_setitem_ok,
-    _func_ref_routable,
-    _expr_evaluation_inert,
-    _print_kwarg_token,
-    _record_slice_upcast_ok,
-    _setitem_widened_elem_ok,
-    _setitem_widened_family_ok,
-    _tuple_elem_slots_ptr_optional,
-    _field_over_call_ok,
-    _is_builtin_print,
-    _is_len_call,
-    _iter_proto_call_ret,
-    _record_rvalue_source_shape, _frame_factory_source, frame_object_slot,
-    builds_named_frame,
-    _record_aug_binop_ok,
-    _rvalue_free_call_shape,
-    _narrow_cond_info,
-    _multi_narrow_cond_info,
-    _or_chain_narrow_info,
-    _any_narrow_cond_info,
-    _optional_record_field_inner,
-    _covariant_record_upcast_ok,
-    _print_arg_form,
-    _star_elem_print_form,
-    _print_arg_ok,
-    _print_tuple_opt_ternary,
-    _wrap_print_form,
-    _opt_strview_to_str_own_elem_arg,
-    _print_optptr_form,
-    _print_optval_form,
-    _print_optval_opt,
-    _ptr_union_source_ok,
-    _ctor_shape_ok,
-    _dyn_own_conformer_arg,
-    _dyn_own_coro_factory_arg,
-    _dyn_own_forward_call_arg,
-    _dyn_own_handle_arg,
-    _native_ctx_manager_ok,
-    _native_record_rvalue_call_shape,
-    _rvalue_storage_decl_call,
-    _scalar_aug_assign_ok,
-    _str_aug_append_ok,
-    _str_list_method_iterable_ok,
     _user_iterator_iterable,
 )
 from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
-                      NameFacts, SelectResult)
+                      NameFacts)
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
-from .convert import (Effect, Plan, Refuse, borrowed_path_element_message,
-                      convert, elementwise_tuple_storage, spelled)
+from .convert import (
+    Plan, Refuse, borrowed_path_element_message, convert, landing,
+    open_param_result, spelled, view_to_owned,
+)
 from .expressions import (
-    _COPY_SRC_USE,
-    _spell_brace,
-    stamped,
-    binding_of,
-    _hoisted,
+    _spell_brace, stamped, _hoisted, _select_result,
     _subscript_yields_borrow_ptr,
-    _self_capture_cpp,
-    _whole_optional_bare,
-    _is_own_param,
-    _lower_module_var,
-    _module_var_access_pair,
-    _async_factory_wrap_cpp,
-    _slice_recv_ok,
-    _slice_index_ok,
-    _lower_slice_recv,
-    _constructs_value,
-    _flush_witness,
-    _hoists_arg_temp,
-    _own_tuple_shape_match,
-    _own_tuple_borrow_lift_arg,
-    mixed_slot_btuple_name,
-    _deref_loop_source,
-    _lower_isinstance_cond,
-    _narrow_member_cpp,
-    _narrow_subject_const,
-    _narrow_subject_is_ptr,
+    _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
+    _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
+    _lower_slice_recv, _constructs_value, _flush_witness, _hoists_arg_temp,
+    _own_tuple_borrow_lift_arg, _deref_loop_source, _lower_isinstance_cond,
+    _narrow_member_cpp, _narrow_subject_const, _narrow_subject_is_ptr,
     _union_source_layout, _union_extraction, _inline_union_member,
-    _narrow_variant_cpp,
-    _poly_cast_checks,
-    _poly_cast_context,
-    _param_declared_type,
-    _is_move_source,
-    _node_moves,
-    _lower_call_arg,
+    _narrow_variant_cpp, _poly_cast_checks, _poly_cast_context,
+    _param_declared_type, _is_move_source, _node_moves, _lower_call_arg,
     _lower_char_targeted,
-    _lower_dyn_own_conformer,
-    _lower_class_const_write_target,
-    _lower_copy_record,
-    _lower_copy_special,
-    lower_copy_construct,
-    _lower_ctor_call_args,
-    _lower_container_elem,
-    _lower_elem_into_any,
-    _lower_expr,
-    _to_opt_ptr,
-    lower_print_sink,
-    _lower_field_source,
-    narrowed_opt_field_whole,
-    _lower_lambda,
-    _strip_slot_leaf_deref,
-    _strview_coerce_name,
-    _lower_truthy,
-    _cond_mixed_walrus_temps,
-    _lower_borrow_tuple_literal,
-    _lower_generic_tuple_literal,
-    _lower_ru_literal,
-    _lower_tuple_literal,
-    _rb_bytes_literal_views,
-    _retag_param_bytes_literal,
+    _lower_class_const_write_target, _lower_copy_record, _lower_copy_special,
+    lower_copy_construct, _lower_ctor_call_args, _lower_container_elem,
+    _lower_expr, _to_opt_ptr, lower_print_sink, _lower_field_source,
+    _lower_lambda, _strip_slot_leaf_deref, _strview_coerce_name,
+    _lower_truthy, _cond_mixed_walrus_temps, _lower_borrow_tuple_literal,
+    _lower_generic_tuple_literal, _lower_ru_literal, _lower_tuple_literal,
+    _rb_operand_view_slots, _rb_operand_slots, _operator_literal_pins,
+    _lower_slice_bound, _slot_literal_retype, _value_opt_scalar_binding,
+    _value_opt_binding_kind, _value_opt_view_binding,
     _record_key,
-    _record_receiver,
-    _pinned_literal_arg,
-    _operator_receiver_pinned,
-    _rb_operand_slots,
-    _operator_literal_pins,
-    _retag_bytes_literal_view,
-    _lower_slice_bound,
-    _slot_literal_retype,
-    _value_opt_scalar_binding,
-    _value_opt_binding_kind,
-    _value_opt_view_binding,
-    _value_opt_view_param,
+    _record_receiver, _pinned_literal_arg, _operator_receiver_pinned,
 )
 from . import bindings as _bindings
 from . import comprehensions as _comprehensions
@@ -2422,18 +2249,15 @@ def _frame_src_slot(stmt: TpyForEach, lc: '_LowerCtx') -> 'str | None':
 
 
 def self_typed_frame_source(iterable: 'THIRExpr', lc: '_LowerCtx') -> 'THIRExpr':
-    """A literal at a `for` head whose loop the frame spells off the source
-    expression (`decltype((...))`) renders as a value of its own type: a
-    container literal names its type (a bare brace is not an expression, and
-    a `frame_slot` cannot deduce one either), and a `str` literal is the
-    view over its static storage (its own type is a char array, which
-    iterates the NUL as well)."""
+    """A container literal at a `for` head whose loop the frame spells off
+    the source expression (`decltype((...))`) names its type: a bare brace
+    is not an expression, and a `frame_slot` cannot deduce one either. (A
+    `str` literal there takes its own view render from the same slot,
+    `SinkForm.SELF_TYPED`.)"""
     if (isinstance(iterable, THIRContainerLiteral)
             and iterable.typed_brace_cpp is None):
         return replace(iterable,
                        typed_brace_cpp=lc.render_type(iterable.result_type))
-    if isinstance(iterable, THIRStrLiteral):
-        return replace(iterable, form=Form.BORROW)
     return iterable
 
 
@@ -3715,25 +3539,6 @@ def _value_capture_needs_storage(et: 'TpyType') -> bool:
     return not et.is_value_type() and TupleType._element_is_pointer_repr(et)
 
 
-def _ptr_tuple_last_use(source: TpyExpr, dest: 'TupleType', lc: '_LowerCtx',
-                        declared: dict[str, TpyType], *,
-                        moves_only: bool = False) -> 'THIRExpr | None':
-    """A rebound pointer-tuple NAME at its last use, converted element by
-    element into the owning `dest` (`elementwise_tuple_storage`); None for
-    any other source. `moves_only`: a destination that owns every
-    reference element takes only objects the name owns on every path."""
-    if not (isinstance(source, TpyName)
-            and lc.binding(source.name).ptr_tuple is not None
-            and source.name not in lc.narrow.narrowed
-            and _is_move_source(source, lc)):
-        return None
-    conv = elementwise_tuple_storage(
-        _lower_expr(source, lc, declared, allow_unrouted_name=True), dest)
-    if conv is not None and moves_only and "copy_pointee" in conv.elem_modes:
-        return None
-    return conv
-
-
 def _reject_value_elem_at_borrow_tuple(stmt: TpyStmt, name: str,
                                        lit: TpyTupleLiteral,
                                        bt: 'TupleType') -> None:
@@ -4284,7 +4089,8 @@ def _error_return_alias_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
             init, lc, declared, error_return_raw=True,
             use=_ExprUse(allow_temps=True))
         return THIRErrorReturnBind(name=name, call=call_node,
-                                   alias_bind=True, loc=loc)
+                                   alias_bind=True,
+                                   staged=lc.exit_staged, loc=loc)
     # A first declaration pre-declares the pointer and takes the address
     # (`T* v;` + `v = &(::tpy::unwrap_ref(*tmp));`). A const slot (its
     # record's verdict) rejects: the const pointer spelling is not rendered
@@ -4303,7 +4109,8 @@ def _error_return_alias_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
             _witness("er.alias_first_decl")
             return THIRErrorReturnBind(
                 name=name, call=call_node,
-                decl_cpp=f"{lc.render_type(bare)}*", alias_bind=True, loc=loc)
+                decl_cpp=f"{lc.render_type(bare)}*", alias_bind=True,
+                staged=lc.exit_staged, loc=loc)
     note_detail("error_return.alias_bind")
     raise ThirUnsupported(stmt_reject_reason(stmt))
 
@@ -4399,7 +4206,8 @@ def _error_return_value_bind(stmt, name: str, init: TpyExpr, er_fi, vtype,
     return THIRErrorReturnBind(
         name=name, call=call, decl_cpp=decl_cpp, decl_type=decl_type,
         ptr_rebind=ptr_rebind,
-        rebind_storage=storage, slot_cpp=slot_cpp, loc=loc)
+        rebind_storage=storage, slot_cpp=slot_cpp,
+        staged=lc.exit_staged, loc=loc)
 
 def _owned_record_decl_ok(stmt: TpyVarDecl, vtype: 'TpyType | None',
                           prescan: _Prescan,
@@ -5894,7 +5702,7 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
     `self_captured` keeps the receiver alive for a lambda whose capture list
     spells `this`."""
     saved = (lc.func, lc.prescan, lc.self_receiver, dict(lc.inline_narrowed),
-             lc.in_nested_def)
+             lc.in_nested_def, lc.signature, lc.staged_results)
     # The hoist-residue bookkeeping is per-function: seed the NESTED
     # function's own hoist facts (its try lowering drains them;
     # `_lower_nested_def` residue-checks after the body, mirroring
@@ -5908,6 +5716,15 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
     lc.in_nested_def = True
     lc.func = func
     lc.prescan = prescan
+    # The nested def returns from its own frame: no enclosing finally /
+    # `with` runs at its `return`.
+    lc.staged_results = 0
+    # A lambda's parameter passing is its resolver spelling's, not
+    # published here.
+    lc.signature = definition_signature(
+        tuple(t for _, t in func.params),
+        func.return_type if isinstance(func.return_type, TpyType) else VoidType(),
+        None, lc.analyzer)
     # The receiver survives ONLY when the capture list carries it: a captured
     # `self` renders `this->` inside the lambda exactly as in the enclosing
     # method body (the name render is scope-independent). Without the
@@ -5921,9 +5738,8 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
     # would emit a move/deref the plain lambda param cannot take. The param
     # shapes that would NEED seeding (Optional / Own /
     # value-opt) are rejected by `_lower_nested_def`'s param gate.
-    # NB `function_movable_locals` holds NO entries for nested funcs (sema's
-    # nested_def_scope discards the nested body's facts unstored); the
-    # scope-escape hoists are the one fact it keeps, in
+    # NB sema's nested_def_scope discards the nested body's facts unstored;
+    # the scope-escape hoists are the one fact it keeps, in
     # `function_hoisted_vars` like any other function's.
     lc.inline_narrowed = {}
     try:
@@ -5931,7 +5747,7 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
             yield
     finally:
         (lc.func, lc.prescan, lc.self_receiver, lc.inline_narrowed,
-         lc.in_nested_def) = saved
+         lc.in_nested_def, lc.signature, lc.staged_results) = saved
         lc.unhandled_hoists = saved_hoists
 
 
@@ -6622,54 +6438,6 @@ def _owned_view_opt_decl_src(stmt: TpyVarDecl, vtype: 'TpyType | None',
         # A whole-optional source is `_owned_view_opt_whole_src`'s bare copy.
         return False
     return _resolved_viewfam_value(st, analyzer) is not None
-
-
-def _viewfam_name_fits_opt_slot(e: TpyExpr, slot: 'OptionalType',
-                                lc: _LowerCtx,
-                                declared: dict[str, TpyType],
-                                narrowed, pointers) -> bool:
-    """A str/bytes NAME whose bare read already has the slot's inner C++
-    shape, so it lands in a value-repr `Optional[view-family]` return
-    through the optional's converting ctor.
-
-    The form axis is what decides it, and it comes from the same
-    `_str_name_form` / `_bytes_name_form` rules the name READ arm uses: an
-    OWNED-inner slot (`std::optional<std::string>`) takes a STORAGE name
-    (an owned local, an `Own[str]` param) and a VIEW-inner slot
-    (`std::optional<std::string_view>`) takes a BORROW one. The crossed
-    pair is excluded in both directions -- a view into an owned inner does
-    not convert at all, and an owned local into a view inner would hand
-    back a dangling view.
-
-    An IDENTITY coerce over the name is seen through -- sema attaches
-    `string_to_str` to an owned local at a `str` slot and it renders as a
-    passthrough. A MATERIALIZING coerce is not: its render is the
-    view->owned wrap, which the bare name does not carry.
-
-    Narrowed occurrences and pointer locals are excluded: their reads
-    render a deref, not the bare name."""
-    analyzer = lc.analyzer
-    if (isinstance(e, TpyCoerce)
-            and _coerce_disposition(e) == "identity"):
-        e = e.expr
-    if not (isinstance(e, TpyName) and e.name in declared
-            and e.name not in narrowed and e.name not in pointers):
-        return False
-    t = analyzer.get_expr_type(e)
-    view_inner = _view_inner_value_opt(slot)
-    st = _resolved_str_value(t, analyzer)
-    if st is not None:
-        if _value_opt_str(slot, analyzer) is None:
-            return False
-        form = _str_name_form(e.name, st, lc.prescan.param_names,
-                              lc.prescan.owned_viewfam_params)
-    else:
-        bt = _resolved_bytes_value(t, analyzer)
-        if bt is None or _value_opt_bytes(slot, analyzer) is None:
-            return False
-        form = _bytes_name_form(e.name, bt, lc.prescan.param_names,
-                                lc.prescan.owned_viewfam_params)
-    return (form is Form.BORROW) == view_inner
 
 
 def _lower_scoped_stmts(body, lc: _LowerCtx,
@@ -7526,50 +7294,207 @@ def _leaf_finally_crossing_loop(stmt: TpyTry) -> bool:
     return False
 
 
-def _return_plan(value: THIRExpr, lc: '_LowerCtx',
-                 stmt: 'TpyReturn | None', *, explicit_copy: bool = False,
-                 detail: 'Callable[[], str] | None' = None) -> Plan:
-    """How the body's result slot takes the lowered return value
-    (`convert`). A pair with no conversion rejects the statement under the
-    return's own reason: the row's detail where it has one, else
-    `return.<refusal>`."""
+def result_plan(value: THIRExpr, slot: 'Slot', lc: '_LowerCtx',
+                reason: 'Callable[[], str]', *, explicit_copy: bool = False,
+                detail: 'Callable[[], str] | None' = None) -> Plan:
+    """How a body's result slot takes the lowered value it hands back
+    (`convert`). A pair with no conversion rejects under `reason()`
+    (asked once the detail is noted): the row's detail where it has one,
+    else `return.<refusal>`."""
     # A read built beside `_lower_expr` (a field source, the receiver as
     # an object) is stamped here: what it IS still rides the node.
-    plan = convert(stamped(value, lc), return_slot(lc), lc.analyzer,
+    plan = convert(stamped(value, lc), slot, lc.analyzer,
                    explicit_copy=explicit_copy)
     if isinstance(plan, Refuse):
         note_detail(detail() if detail is not None
                     else "return." + plan.key)
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+        raise ThirUnsupported(reason())
     if plan.row is not None:
         _witness("return." + plan.row)
     return replace(plan, expr=spelled(plan, lc.render_type))
 
 
-def _return_converted(value: THIRExpr, lc: '_LowerCtx', stmt: TpyReturn, *,
-                      explicit_copy: bool = False,
-                      detail: 'Callable[[], str] | None' = None) -> THIRExpr:
-    return _return_plan(value, lc, stmt, explicit_copy=explicit_copy,
-                        detail=detail).expr
+def lower_result(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
+                 declared: dict[str, TpyType], reason: 'Callable[[], str]', *,
+                 detail: 'Callable[[], str] | None' = None) -> THIRExpr:
+    """THE value a body hands back -- a `return`'s or a lambda body's:
+    the stored read of its source for the result slot (`read_stored`),
+    taken to the slot (`convert`)."""
+    # A result has no statement of its own to demote to: it takes a
+    # temporary exactly where its region hosts one.
+    read = _field_write.read_stored(v, slot, lc, declared,
+                                    allow_temps=lc.may_hoist)
+    if read.row is not None:
+        _witness("ret." + read.row)
+    # A folded literal renders against the result type (literal
+    # construction).
+    value = _slot_literal_retype(read.expr, slot.declared, lc)
+    return result_plan(_flush_witness("flush.return", value), slot, lc,
+                       reason, explicit_copy=read.explicit_copy,
+                       detail=detail).expr
 
 
-def _wrap_view_owned_return(value: 'THIRExpr | None', lc: '_LowerCtx',
-                            loc) -> 'THIRExpr | None':
-    """The return boundary's flavor of `_wrap_view_owned_sink`. The ONE wrap
-    decision for both return sinks: the sync return tail and the resumable
-    return-value leaf (`_async_return_value_cpp` renders the same wrap at all
-    three async scaffolding sites, and `_async_ret_to_borrow` is a no-op for
-    str/bytes)."""
-    slot = _owned_viewfam_slot(lc.prescan.ret_str, lc.prescan.ret_bytes)
-    ret = return_slot(lc)
-    if (slot is None and ret is not None and ret.holds is SlotHolds.TRAIT
-            and value is not None):
-        # An open-`T` result: the one tail row that converts here (an
-        # open-`T` PARAM's form is not the result's, `convert`). `Own[T]`
-        # is an owned slot: `own_param_t<T>` and `own_return_t<T>` are
-        # both the storage form, so the bare move stands.
-        value = _return_plan(value, lc, None).expr
-    return _wrap_view_owned_sink(value, slot, loc)
+def _return_tuple_literal(stmt: TpyReturn, ret_slot: 'Slot', lc: '_LowerCtx',
+                          declared: dict[str, TpyType], scope: '_LowerScope',
+                          loc) -> 'THIRExpr | None':
+    """LITERAL construction of a tuple literal at a tuple result slot: the
+    spelled brace-init against the slot, each element landing in its
+    element slot. None for a slot no tuple builder spells (the generic
+    literal render takes it)."""
+    analyzer = lc.analyzer
+    v = stmt.value
+    rdecl = ret_slot.declared
+
+    def lowered(slot_t: TupleType) -> THIRExpr:
+        try:
+            # The return is a statement flush point, so an element's call
+            # may hoist its `__tmp_N` decl ahead of the return.
+            return _lower_tuple_literal(v, slot_t, lc, declared,
+                                        use=_ExprUse(allow_temps=True))
+        except ThirUnsupported as ex:
+            raise ex.with_context(stmt_reject_reason(
+                stmt, f"return.tuple_source:{ex.reason}")) from None
+
+    ret_nt = (unwrap_readonly(unwrap_send_sync(rdecl))
+              if _optional_borrow_tuple(rdecl, analyzer) is not None
+              else None)
+    ret_tuple = _borrow_tuple_return_type(
+        ret_nt.inner if ret_nt is not None else rdecl, analyzer)
+    if ret_tuple is not None:
+        # The borrow tuple built in place: the per-element `&(...)` and the
+        # spelled `std::tuple<...>` prefix; a declared readonly result
+        # spells const element pointers.
+        value = _lower_borrow_tuple_literal(
+            v, ret_tuple, lc, declared, target_readonly=ret_slot.const)
+        _witness("ret.btuple_literal")
+        return value
+    ret_vot = _value_opt_tuple(rdecl, analyzer)
+    if ret_vot is not None:
+        # A value-repr Optional[value tuple]: the brace-init of the INNER
+        # tuple, which the optional's converting ctor absorbs.
+        value = lowered(_value_opt_tuple_inner(ret_vot, analyzer))
+        _witness("ret.value_opt_tuple_literal")
+        return value
+    ret_vt = (_value_tuple_return(rdecl, analyzer)
+              or _union_elem_value_tuple(rdecl, analyzer))
+    if ret_vt is not None:
+        value = lowered(ret_vt)
+        _witness("ret.tuple_literal")
+        return value
+    ret_wrt = _wrapper_ref_tuple_return(rdecl, analyzer)
+    if ret_wrt is not None:
+        # The REFERENCE-element tuple (`return (t, 0)` at `-> tuple[
+        # Tree[int32], int32]` -> `std::tuple<Tree<int32_t>&, int32_t>{t,
+        # 0}`): wrapper members are plain lvalue NAMES rendered bare (the
+        # reference member binds the lvalue), scalar members ride the
+        # container-elem rows. The spelling is the borrow form.
+        ok = len(v.elements) == len(ret_wrt.element_types)
+        if ok:
+            for i, sub in enumerate(v.elements):
+                eslot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    ret_wrt.element_types[i])))
+                if _wrapper_union_like(eslot, analyzer) is not None:
+                    if not (isinstance(sub, TpyName)
+                            and sub.name in declared
+                            and sub.name not in scope.admission_pointers()
+                            and sub.name not in lc.narrow.narrowed
+                            and unwrap_readonly(unwrap_ref_type(
+                                unwrap_send_sync(declared[sub.name])))
+                            == eslot):
+                        ok = False
+                        break
+                elif not _container_lit_elem_ok(
+                        sub, ret_wrt.element_types[i], declared, analyzer,
+                        threaded=True, forced=True,
+                        pointers=scope.admission_pointers()):
+                    ok = False
+                    break
+        if not ok:
+            note_detail("return.wrapper_ref_tuple_source")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _witness("ret.wrapper_ref_tuple")
+        return THIRBorrowTupleLiteral(
+            result_type=ret_wrt, spelled_cpp=ret_wrt.to_cpp_return(),
+            elements=tuple(
+                _lower_container_elem(v.elements[i],
+                                      ret_wrt.element_types[i], lc, declared,
+                                      tuple_elem=True)
+                if _wrapper_union_like(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                        ret_wrt.element_types[i]))), analyzer) is None
+                else _lower_expr(v.elements[i], lc, declared)
+                for i in range(len(v.elements))),
+            addr_of=(False,) * len(v.elements), form=Form.BORROW, loc=loc)
+    ret_ost = _own_storage_tuple_return(rdecl, analyzer)
+    if ret_ost is not None:
+        # The Own[tuple] STORAGE result (`-> Own[tuple[str, Resource]]`):
+        # the spelled brace-init of storage-direct members, each lowered
+        # through the container-element rows against its slot; a
+        # non-value member must be an rvalue, a movable name at its last
+        # use, or a borrow sema declared a copy of.
+        ok = len(v.elements) == len(ret_ost.element_types)
+        if ok:
+            for i, sub in enumerate(v.elements):
+                mslot = _unwrap_own(ret_ost.element_types[i])
+                mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    mslot)))
+                if sub in analyzer.ctx.own_element_copies:
+                    if own_element_copy_type(sub, analyzer) != mbare:
+                        note_detail("return.own_element_copy_source")
+                        ok = False
+                        break
+                    continue
+                if (not mbare.is_value_type()
+                        and not is_rvalue_source(analyzer, sub)
+                        and not (isinstance(sub, TpyName)
+                                 and _is_move_source(sub, lc))):
+                    ok = False
+                    break
+                if not _container_lit_elem_ok(
+                        sub, mslot, declared, analyzer, threaded=True,
+                        forced=True, allow_record=True, allow_nested=True,
+                        allow_optional=True,
+                        pointers=scope.admission_pointers()):
+                    ok = False
+                    break
+        if not ok:
+            note_detail("return.tuple_source")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _witness("ret.own_storage_tuple")
+        return THIRTupleLiteral(
+            result_type=ret_ost,
+            elements=tuple(
+                _lower_copy_special(
+                    v.elements[i], "copy", _unwrap_own(
+                        ret_ost.element_types[i]), lc, declared,
+                    getattr(v.elements[i], "loc", None))
+                if v.elements[i] in analyzer.ctx.own_element_copies
+                else _lower_container_elem(
+                    v.elements[i], _unwrap_own(ret_ost.element_types[i]),
+                    lc, declared, tuple_elem=True)
+                for i in range(len(v.elements))),
+            loc=loc)
+    ret_sgt = _generic_value_tuple_return(rdecl, analyzer)
+    if ret_sgt is not None:
+        # The generic tuple: per-element `to_val_or_ptr` wraps (the
+        # resumable arm's exact builder).
+        _witness("ret.generic_tuple_literal")
+        return _lower_generic_tuple_literal(v, ret_sgt, lc, declared)
+    return None
+
+
+_RETURN_LITERALS = (TpyNoneLiteral, TpyIntLiteral, TpyFloatLiteral,
+                    TpyBoolLiteral, TpyStrLiteral, TpyBytesLiteral,
+                    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
+                    TpyListRepeat, TpyTupleLiteral)
+
+
+def _return_read(v: TpyExpr, ret_slot: 'Slot', lc: '_LowerCtx',
+                 declared: dict[str, TpyType], stmt: TpyReturn, *,
+                 detail: 'Callable[[], str] | None' = None) -> THIRExpr:
+    """A non-literal return value: `lower_result` at this body's slot."""
+    return lower_result(v, ret_slot, lc, declared,
+                        lambda: stmt_reject_reason(stmt), detail=detail)
 
 
 def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
@@ -7582,12 +7507,13 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     -- so a literal at a wider slot stays bare `42`, NOT the sync-return
     arm's target-typed `::tpy::BigInt(42)`. Lower the value directly,
     bypassing `_lower_stmt`'s return-coercion arm. Two exceptions render
-    target-typed anyway: the owned str/bytes slot's view->owned copy, shared
-    with the sync return tail (`_wrap_view_owned_return`), and value-tuple /
+    target-typed anyway: the owned str/bytes slot's view->owned copy, the
+    result slot's row (`convert.view_to_owned`), and value-tuple /
     generic-tuple literals (the tuple-literal-targeted arm)."""
-    if lc.prescan.ret_char and isinstance(ret.value, TpyStrLiteral):
+    rslot = return_slot(lc)
+    if _eligible_char(rslot.type) and isinstance(ret.value, TpyStrLiteral):
         raise ThirUnsupported(stmt_reject_reason(ret))
-    if (lc.prescan.ret_res_container is not None
+    if (record_like(rslot.type, lc.analyzer)
             and isinstance(ret.value, (TpyArrayLiteral, TpyDictLiteral,
                                        TpySetLiteral))
             and not ret.value.children()):
@@ -7599,7 +7525,7 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         # opposite rule.
         note_detail("return.empty_container_literal")
         raise ThirUnsupported(stmt_reject_reason(ret))
-    ret_vopt = lc.prescan.ret_value_opt
+    ret_vopt = _value_opt_return(rslot, lc.analyzer)
     if ret_vopt is not None:
         # Value-repr Optional[scalar] slot (`std::optional<T>
         # __tpy_async_ret = ...`): None spells the STORAGE literal
@@ -7626,7 +7552,8 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
                      is ValueOptKind.SCALAR)):
             note_detail("return.optval_coerced_param")
             raise ThirUnsupported(stmt_reject_reason(ret))
-    ret_vt = lc.prescan.ret_value_tuple
+    ret_vt = (_value_tuple_return(rslot.declared, lc.analyzer)
+              or _union_elem_value_tuple(rslot.declared, lc.analyzer))
     if ret_vt is not None and isinstance(ret.value, TpyTupleLiteral):
         # A value-tuple literal renders the spelled brace-init against the
         # return slot (the sync return arm's render: value-opt element
@@ -7647,7 +7574,7 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
         # tuple does not convert to the storage one.
         _witness("ret.own_tuple_borrow_lift")
         return _own_tuple_name_copy(ret.value, ret_vt, lc, declared)
-    ret_gt = lc.prescan.ret_generic_tuple
+    ret_gt = _generic_value_tuple_return(rslot.declared, lc.analyzer)
     if ret_gt is not None and isinstance(ret.value, TpyTupleLiteral):
         # A generic tuple literal renders the spelled brace-init with
         # per-element `to_val_or_ptr` wraps (the val_or_ptr form under the
@@ -7664,7 +7591,8 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # read the sync return tail prechecks -- the frame's receiver respelling
     # is the receiver machinery's job, not this arm's.
     res_str_field = (isinstance(ret.value, TpyFieldAccess)
-                     and lc.prescan.ret_str is not None
+                     and _viewfam_return_slots(
+                         rslot.declared, lc.analyzer)[0] is not None
                      and _str_field_value_read(ret.value, declared,
                                                lc.analyzer)
                      and _witness("res.return_str_field"))
@@ -7675,7 +7603,8 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # excluded-source set, NOT the sync sink's narrower admission_pointers
     # override (preserved there verbatim for a filed defect).
     if (ret.value is not None
-            and lc.prescan.ret_record_storage is not None):
+            and _record_storage_return(rslot.declared,
+                                       lc.analyzer) is not None):
         copy_row = _lower_copy_record(ret.value, lc, declared,
                                       loc=getattr(ret, "loc", None))
         if copy_row is not None:
@@ -7740,7 +7669,13 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
                                          forms=(_NO_FORMS
                                                 if form is AsyncReturnForm.BORROW
                                                 else _ONLY_SELECT_PRVALUE)))
-    value = _wrap_view_owned_return(raw_value, lc, getattr(ret, "loc", None))
+    # The result slot's own conversions the payload takes so far: a view
+    # source's owned copy and the open-`T` param lift.
+    plan = (view_to_owned(raw_value, rslot, lc.analyzer)
+            or open_param_result(raw_value, rslot))
+    value = raw_value if plan is None else plan.expr
+    if plan is not None and plan.row is not None:
+        _witness("return." + plan.row)
     if form is AsyncReturnForm.BORROW:
         # Pointer-payload family (bare reference-type returns): the SELF
         # rung -- `return self` lifts the receiver lvalue
@@ -8410,8 +8345,8 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
         value = _lower_borrow_tuple_literal(
             stmt.init, declared[stmt.name], lc, declared)
     elif isinstance(stmt.init, (TpyName, TpyIfExpr)):
-        # Key on the LOWERED form fact (the _wrap_view_owned_return
-        # precedent) rather than the source shape: a storage-form source
+        # Key on the LOWERED form fact rather than the source shape: a
+        # storage-form source
         # would need the wrap. A ternary qualifies because its lowering
         # propagates its arms' form for tuple results.
         value = _lower_expr(stmt.init, lc, declared)
@@ -8831,6 +8766,20 @@ def _fn_return_type(lc: _LowerCtx) -> 'TpyType | None':
             if isinstance(lc.func.return_type, TpyType) else None)
 
 
+def _value_opt_return(slot: 'Slot', analyzer) -> 'OptionalType | None':
+    """A value-repr `Optional` result slot over a cheap scalar, a value
+    record or a value-bound type parameter (`std::optional<T>`): `None` is
+    the empty optional, a value-opt name passes whole."""
+    rt = slot.declared
+    vopt = _value_opt_scalar(rt, analyzer) or _value_opt_record(rt)
+    if vopt is None:
+        u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+        if (isinstance(u, OptionalType) and not u.uses_pointer_repr()
+                and _is_type_param_slot(unwrap_readonly(u.inner))):
+            vopt = u
+    return vopt
+
+
 def _return_carries_value(stmt: TpyReturn, lc: _LowerCtx) -> bool:
     """Whether a return renders an operand. The parser canonicalizes the
     bare `return` to `return None`, so the void form is decided here, once:
@@ -9227,7 +9176,8 @@ def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
         method_cpp=binding.method_cpp,
         native_function_name=binding.native_function_name,
         cpp_template=binding.cpp_template, args=args, loc=loc)
-    return with_method_callee(with_method_stub(call, fi), fi, lc.analyzer,
+    return with_method_callee(with_method_stub(call, fi, lc.analyzer), fi,
+                              lc.analyzer,
                               lambda: receiver_is_const(sub.obj, lc))
 
 
@@ -11940,10 +11890,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     and isinstance(src, TpyName)
                     and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         declared.get(src.name)))) == _tgt_u)
+                # The init renders against the binding it lands in: on a
+                # reassign that is the DECLARED local / param type
+                # (`_var_decl_type` falls back to the init's own type
+                # there, which for a bytes literal is owned `bytes`).
                 init = (_flush_witness(
                             "flush.vardecl",
                             _lower_char_targeted(
-                                src, vtype, lc, declared,
+                                src, decl_tgt, lc, declared,
                                 use=_ExprUse(
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True,
@@ -11982,14 +11936,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         bytes_t = _resolved_bytes_value(vtype, analyzer)
         if bytes_t is not None:
             vtype = bytes_t
-        # A bytes-literal init renders per the binding: a view binding takes the
-        # static-storage span. On a reassign the binding is the DECLARED
-        # local/param type (`_var_decl_type` falls back to the init's own type
-        # there, which for a literal is owned `bytes`).
-        init = _retag_bytes_literal_view(
-            init,
-            _resolved_bytes_value(declared[stmt.name], analyzer)
-            if stmt.name in declared else bytes_t)
         # The parser emits TpyVarDecl for every `name = expr`; a write to an
         # already-declared name is a reassignment, not a re-declaration, so a
         # first decl emits `T x = ...` and a reassignment emits `x = ...`.
@@ -12137,7 +12083,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     use=_ExprUse(allow_temps=True))
                 _witness("er.field_target_bind")
                 return THIRErrorReturnBind(name="", call=call_node,
-                                           target=tgt, loc=loc)
+                                           target=tgt,
+                                           staged=lc.exit_staged, loc=loc)
             if (not isinstance(stmt.target, TpyName)
                     or stmt.target.name not in declared
                     or stmt.target.name in narrowed
@@ -12308,18 +12255,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             value = _pinned_literal_arg(stmt.value, setitem.params[-1].type,
                                         setitem, lc, declared)
             if value is None:
+                # The value lands in `__setitem__`'s PARAM, so a bytes
+                # value is read through the view there.
                 value = _slot_literal_retype(
                     _flush_witness(
                         "flush.assign",
                         _lower_expr(stmt.value, lc, declared,
                                     use=_ExprUse(
                                         result=_ExprResultUse.STORAGE,
-                                        allow_temps=True))),
+                                        allow_temps=True,
+                                        slot_target=_bytes_param_view_slot(
+                                            setitem.root.params[-1].type)))),
                     elem_t, lc)
-                # The value lands in `__setitem__`'s PARAM, so a bytes
-                # literal takes the static span there.
-                value = _retag_param_bytes_literal(
-                    value, setitem.root.params[-1].type)
             _witness("setitem.user_record")
             return _record_store_call(stmt.target, target, value, lc, loc)
         if isinstance(stmt.target, TpySubscript):
@@ -12906,7 +12853,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         native_function_name=_inp_bc.native_function_name,
                         cpp_template=_inp_bc.cpp_template,
                         args=(val,),
-                        loc=loc), _inp_fi), _inp_fi, analyzer,
+                        loc=loc), _inp_fi, analyzer), _inp_fi, analyzer,
                         lambda: receiver_is_const(stmt.target, lc)),
                     loc=loc)
         if not aug_ok:
@@ -13012,11 +12959,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                              else _ExprUse())
             _, aug_pin = _operator_literal_pins(
                 stmt.resolved_binop, None, stmt.value, lc, declared)
-            _, aug_right = _rb_bytes_literal_views(
-                stmt.resolved_binop, left,
-                aug_pin or _slot_literal_retype(
-                    _lower_expr(stmt.value, lc, declared, use=aug_value_use),
-                    aug_rslot, lc))
+            _, aug_rview = _rb_operand_view_slots(stmt.resolved_binop)
+            aug_right = aug_pin or _slot_literal_retype(
+                _lower_expr(stmt.value, lc, declared,
+                            use=replace(aug_value_use, slot_target=aug_rview)),
+                aug_rslot, lc)
             left, aug_right = _operator_receiver_pinned(stmt.resolved_binop,
                                                         left, aug_right, lc)
             binop = THIRBinOp(
@@ -13069,10 +13016,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
     if isinstance(stmt, TpyReturn):
         begin_stmt()
         if lc.overload_stub_return is not None:
+            # Sema analyzes an `@overload` body once, against the impl's
+            # return; each stub's specialization exists only while lowering.
             stmt = _overload_adjusted_return(stmt, lc)
+        # Inside a finally / `with` region the result lands in a temporary
+        # before the region's exits run, and is returned from there.
+        staged = lc.exit_staged
         if not _return_carries_value(stmt, lc):
             _witness("ret.void")
-            return THIRReturn(value=None, loc=loc)
+            return THIRReturn(staged=staged, value=None, loc=loc)
+        ret_slot = return_slot(lc, implicit_move=not staged)
+        rh, rst, rdecl = ret_slot.holds, ret_slot.type, ret_slot.declared
         if (isinstance(stmt.value, TpyFieldAccess)
                 and stmt.value.consuming_move):
             # A consuming method's `self` is an rvalue ref (`&&`), so returning
@@ -13137,7 +13091,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             return THIRReturn(
                 value=THIRMove(result_type=src.result_type, value=src,
                                form=src.form, loc=loc),
-                loc=loc)
+                staged=staged, loc=loc)
         if (stmt.finally_deferred_capture and stmt.finally_deferred_leaves
                 and not deferred_tuple_eager):
             return _lower_deferred_tuple_return(stmt, scope, lc, declared,
@@ -13181,1802 +13135,110 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                         result=_ExprResultUse.STORAGE,
                                         allow_temps=True),
                                     error_return_raw=True)),
-                    loc=loc)
-        if stmt.value is not None and not lc.prescan.ret_supported:
-            # An `Any` return slot (`::tpy::Any` by value) has exactly one
-            # routed source: an Any-valued dict subscript read
-            # (`return self._data[name];` -> the bare checked
-            # `::tpy::__getitem__(recv, k)` rvalue, no wrap -- both slot and
-            # value are already Any, so no coercion can fire).
-            ret_t = _fn_return_type(lc)
-            if (_is_any_type(ret_t)
-                    and isinstance(stmt.value, TpySubscript)
-                    and _is_any_type(analyzer.get_expr_type(stmt.value))
-                    and _any_dict_subscript_shape_ok(
-                        stmt.value, declared, scope.admission_pointers(),
-                        lc.narrow.narrowed.keys(), analyzer)):
-                _witness("ret.any_subscript")
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        allow_temps=True),
-                                    subscript_prechecked=True)),
-                    loc=loc)
-            # A bare Any NAME (`return a`): the Any cell is a value type, so it
-            # returns bare (NRVO / value copy), no wrap and no last-use move
-            # (value types are never move sources at returns).
-            if (_is_any_type(ret_t)
-                    and isinstance(stmt.value, TpyName)
-                    and stmt.value.name in declared
-                    and stmt.value.name not in scope.admission_pointers()
-                    and stmt.value.name not in lc.narrow.narrowed
-                    and _is_any_type(declared.get(stmt.value.name))):
-                _witness("ret.any_name")
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        allow_temps=True))),
-                    loc=loc)
-            # A non-Any value RETURNED at the Any slot wraps `make_any(..)`
-            # exactly like a container element into Any (`return 7` ->
-            # `return ::tpy::make_any(::tpy::BigInt(7));`); sema's Any
-            # coerce is peeled so the literal override applies. Containers
-            # keep the elem row's brace-prefix reject; a bare None return
-            # stays out (its Any render is unwitnessed).
-            if _is_any_type(ret_t):
-                any_src = stmt.value
-                while isinstance(any_src, TpyCoerce):
-                    any_src = any_src.expr
-                st = analyzer.get_expr_type(any_src)
-                sb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
-                      if st is not None else None)
-                if (not isinstance(any_src, TpyNoneLiteral)
-                        and not (is_list(sb) or is_dict(sb) or is_set(sb))):
-                    _witness("ret.any_wrap")
-                    return THIRReturn(
-                        value=_flush_witness(
-                            "flush.return",
-                            _lower_elem_into_any(any_src, ret_t, lc,
-                                                 declared)),
-                        loc=loc)
+                    staged=staged, loc=loc)
+        if rh is SlotHolds.RELOCATE:
+            # A result slot no conversion is known for.
             note_detail("return.slot_type")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        pointers = scope.admission_pointers()
-        narrowed = lc.narrow.narrowed.keys()
-        ret_slot = return_slot(lc)
-        ret_dynb = lc.prescan.ret_dyn_borrow
-        if stmt.value is not None and ret_dynb is not None:
-            # A @dynamic protocol borrow return (`P&` / `const P&`): NAME
-            # sources only -- a borrow param/erased ref returns bare, a
-            # pointer-local/global derefs (`return (*global_pet);`), the
-            # indirect-name arm. No last-use move: the deref'd
-            # protocol lvalue is a borrow alias, never a movable local.
-            src = _lower_ptr_name_src(stmt.value, lc, declared)
-            if src is None:
-                note_detail("return.dyn_borrow_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.dyn_borrow")
-            return THIRReturn(value=src, loc=loc)
-        ret_dyno = lc.prescan.ret_dyn_own
-        if stmt.value is not None and ret_dyno is not None:
-            v = stmt.value
-            verdict = classify_dyn_own_arg(
-                v, ret_dyno,
-                declared.get(v.name) if isinstance(v, TpyName) else None,
-                analyzer)
-            if verdict == "forward":
-                # Bare pass-through, no wrap and no spelled move: C++
-                # implicit-moves a named local/param on a by-value return
-                # (a `std::move` would be -Wredundant-move), and a call /
-                # ternary result is already an rvalue. A ternary of Own[P]
-                # calls classifies 'forward' via the verdict's
-                # is_dyn_protocol fallback (sema strips OwnType from the
-                # ternary itself).
-                if (isinstance(v, TpyName) and v.name in declared
-                        and v.name not in narrowed
-                        and v.name not in pointers):
-                    _witness("ret.dyn_own_forward")
-                    return THIRReturn(value=_lower_expr(v, lc, declared),
-                                      loc=loc)
-                if isinstance(v, (TpyCall, TpyIfExpr)):
-                    _witness("ret.dyn_own_forward")
-                    return THIRReturn(
-                        value=_flush_witness(
-                            "flush.return",
-                            _lower_expr(v, lc, declared,
-                                        use=_ExprUse(
-                                            result=_ExprResultUse.STORAGE,
-                                            allow_temps=True))),
-                        loc=loc)
-                note_detail("return.dyn_own_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            # The RETURN erasure of a direct async-def factory call
-            # (`return add_one(n)` at Own[Cancellable[T]]): the same
-            # `make_adapter<Base>(factory(args))` wrap as the call-arg
-            # row, Base spelled from the SLOT protocol.
-            _rd_raw = (lc.func.return_type
-                       if isinstance(lc.func.return_type, TpyType) else None)
-            coro_proto = _dyn_own_coro_factory_arg(v, _rd_raw, analyzer)
-            if coro_proto is not None:
-                inner = _lower_expr(
-                    v, lc, declared,
-                    use=_ExprUse(pos=SinkPos.RETURN, forms=_ONLY_FRAME_FACTORY,
-                                 allow_temps=True))
-                _witness("ret.dyn_own_factory")
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        THIRCoerce(
-                            result_type=unwrap_send_sync(_rd_raw),
-                            expr=inner, coercion_name="dyn_own_adapter",
-                            wrap=("::tpy::make_adapter<"
-                                  + dynamic_base_name(coro_proto, analyzer)
-                                  + ">({0})"),
-                            form=inner.form, loc=loc)),
-                    loc=loc)
-            conf = _dyn_own_conformer_arg(v, _fn_return_type(lc), declared,
-                                          analyzer)
-            if conf is None:
-                # coro_handle / async_factory verdicts and out-of-slice
-                # conformer shapes (non-F1 inherit, non-ctor rvalues).
-                note_detail("return.dyn_own_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.dyn_own_wrap")
-            return THIRReturn(
-                value=_flush_witness(
-                    "flush.return",
-                    _lower_dyn_own_conformer(v, _fn_return_type(lc), conf,
-                                             lc, declared, temp_args=True)),
-                loc=loc)
-        ret_tuple = lc.prescan.ret_borrow_tuple
-        ret_nt = lc.prescan.ret_nullable_tuple
-        if stmt.value is not None and ret_tuple is not None:
-            if ret_nt is not None and isinstance(stmt.value, TpyNoneLiteral):
-                _witness("ret.nullable_tuple_none")
-                return THIRReturn(
-                    value=THIRLiteral(result_type=ret_nt, value=None,
-                                      form=Form.STORAGE, loc=loc), loc=loc)
-            # Lift a storage tuple lvalue into the borrow-form tuple return via
-            # `tuple_to_pointer` (F3). The element pointers' const-ness tracks the
-            # source, like the F1 OPTIONAL_TO_PTR const bump; sema forces a
-            # mutable source when the return borrows mutably, so the const arm only
-            # fires for a const source returning a const-element tuple. The source is
-            # a storage-tuple alias local (`return t`) or a field read (`return h.pair`).
-            if isinstance(stmt.value, TpyName):
-                if _unlifted_declared_copy(stmt.value, lc):
-                    # A MIXED return slot owns an element the name borrows:
-                    # a borrow-form name whose copy sema declared lifts into
-                    # the slot's own layout (`tuple_to_storage<std::tuple<
-                    # Box, Box*>>(t)`), as it does at the mixed argument.
-                    if mixed_slot_btuple_name(stmt.value, ret_tuple, declared,
-                                              narrowed):
-                        _witness("ret.own_tuple_btuple_lift")
-                        return THIRReturn(
-                            value=THIRFormConvert(
-                                result_type=ret_tuple,
-                                value=_lower_expr(stmt.value, lc, declared,
-                                                  allow_unrouted_name=True),
-                                form=Form.STORAGE, param_form=True, loc=loc),
-                            loc=loc)
-                    note_detail("return.own_element_copy_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                if (not lc.binding(stmt.value.name).storage_tuple
-                        # A name holding the mixed render owes a plain
-                        # borrow slot the lift to its owned element.
-                        and not (lc.binding(stmt.value.name).borrow_tuple_mixed
-                                 and not ret_tuple.is_mixed_own())):
-                    # A local already bound in BORROW form (an `auto` decl off
-                    # a ref-element tuple) needs no lift -- it returns bare.
-                    if (stmt.value.name in declared
-                            and stmt.value.name not in narrowed
-                            and (_f1_tuple(declared[stmt.value.name], analyzer)
-                                 is not None
-                                 # ... and a nullable one at the nullable
-                                 # slot, the optional returned whole.
-                                 or (ret_nt is not None
-                                     and lc.binding(stmt.value.name).optional_borrow_tuple))):
-                        _witness("ret.btuple_name")
-                        return THIRReturn(
-                            value=_lower_expr(stmt.value, lc, declared,
-                                              allow_whole_optional=True),
-                            loc=loc)
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                is_const = lc.binding(stmt.value.name).const
-                inner: THIRExpr = _lower_expr(stmt.value, lc, declared)  # STORAGE-form alias
-            elif isinstance(stmt.value, TpyTupleLiteral):
-                # `return (n, p)` builds the borrow tuple in place -- the
-                # per-element `&(...)` lift and the spelled `std::tuple<...>`
-                # prefix are the literal builder's, so no tuple_to_pointer
-                # convert wraps it. A CONST_REF element spelling comes from
-                # the readonly-ness of the RETURN type, like the arg sink's.
-                # rvalue elements stay rejected (rvalue_ok defaults False):
-                # their storage would die at the return, and sema keeps them
-                # out -- the guard is the backstop, not the diagnostic.
-                # Witness AFTER the builder returns: an element outside its
-                # slice raises, and a face counted for a rejected body would
-                # make the coverage metric lie.
-                lit = _lower_borrow_tuple_literal(
-                    stmt.value, ret_tuple, lc, declared,
-                    # A declared readonly result renders with const element
-                    # pointers, so the literal owes the same slots -- the
-                    # same fact the signature reads.
-                    target_readonly=is_readonly_result_type(_fn_return_type(lc)))
-                _witness("ret.btuple_literal")
-                return THIRReturn(value=lit, loc=loc)
-            elif (_borrow_form_tuple_call(stmt.value, analyzer)
-                  # ... and a call handing back this very nullable layout.
-                  or (ret_nt is not None
-                      and _nullable_borrow_tuple_call(stmt.value, analyzer)
-                      == ret_tuple)):
-                # `return h.get_pair()` -- the callee's F3 return is already
-                # borrow form, so `is_storage_form_source` says NO and no
-                # `tuple_to_pointer` wraps the relay. The call itself
-                # needs the borrow-tuple slot fact the DECL sink already
-                # threads, or the call arm rejects the pointer-repr result.
-                # Witness only once the call itself lowered, or a fallen-back
-                # body would count as covered.
-                relayed = _flush_witness(
-                    "flush.return",
-                    _lower_expr(stmt.value, lc, declared,
-                                use=_ExprUse(result=_ExprResultUse.VALUE,
-                                             pos=SinkPos.RETURN,
-                                             forms=_ONLY_BTUPLE_SLOT,
-                                             allow_temps=True)))
-                _witness("ret.btuple_call")
-                return THIRReturn(value=relayed, loc=loc)
-            elif (_storage_field_ternary(stmt.value, declared, analyzer)
-                  and _f1_tuple(analyzer.get_expr_type(stmt.value), analyzer)
-                  is not None):
-                # `return h.a if c else h.b` -- C++ evaluates one arm, so the
-                # conditional is itself a storage lvalue and takes ONE lift
-                # around the whole of it (arms render bare). is_const stays
-                # False: `is_const_storage_source` does not recurse into a
-                # ternary, so neither arm's receiver can bump it.
-                is_const = False
-                inner = THIRIfExpr(
-                    result_type=analyzer.get_expr_type(stmt.value),
-                    cond=_lower_truthy(stmt.value.condition, lc, declared),
-                    then=_lower_field_source(stmt.value.then_expr, lc,
-                                             declared),
-                    orelse=_lower_field_source(stmt.value.else_expr, lc,
-                                               declared),
-                    form=Form.STORAGE,
-                    normalized=SelectResult(Held.STORAGE, temporary=False),
-                    loc=loc)
-                _witness("ret.btuple_ternary")
-            else:
-                if not (_const_exact_field_receiver_ok(
-                            stmt.value, declared, analyzer)
-                        and _f1_tuple(
-                            analyzer.get_expr_type(stmt.value), analyzer)
-                        is not None):
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                recv = stmt.value.obj  # TpyName (validated by _field_receiver_ok)
-                is_const = lc.binding(recv.name).const
-                inner = _lower_field_source(stmt.value, lc, declared)
-            value: THIRExpr = THIRFormConvert(
-                result_type=ret_tuple, value=inner,
-                form=Form.BORROW, is_const=is_const, loc=loc)
-            return THIRReturn(value=value, loc=loc)
-        ret_opt = lc.prescan.ret_storage_opt
-        if stmt.value is not None and ret_opt is not None:
-            # Lift into a storage-form Optional[record] return slot. `None` lowers
-            # to a STORAGE-form None literal (`std::nullopt`, F2c); a borrow `T*`
-            # to the borrow->storage THIRFormConvert the F2b write uses --
-            # `ptr_to_optional` (copy, F2c) or `ptr_to_optional_move` when the
-            # source is an owned local at last use (move, F2e, via _is_move_source).
-            opt_inner = unwrap_readonly(_unwrap_own(unwrap_readonly(ret_opt.inner)))
-            if isinstance(stmt.value, TpyNoneLiteral):
-                value: THIRExpr = THIRLiteral(result_type=ret_opt, value=None,
-                                              form=Form.STORAGE, loc=loc)
-            elif (((_record_rvalue_source_shape(stmt.value, analyzer)
-                    or (is_rvalue_source(analyzer, stmt.value)
-                        and isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                        and _wrapper_union_like(opt_inner, analyzer)
-                        is not None))
-                    and analyzer.get_expr_type(stmt.value) == opt_inner
-                    and _witness("ret.storage_opt_rvalue"))
-                  or (isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                      and is_rvalue_source(analyzer, stmt.value)
-                      and _call_storage_optional_return(
-                          stmt.value, analyzer) == ret_opt
-                      and _witness("ret.storage_opt_whole_rvalue"))):
-                # A record RVALUE (ctor / by-value call) of the optional's
-                # inner (`return Coord(0, 0)`; an Own[wrapper]-returning call
-                # at an `Own[Optional[W]]` slot), or a call whose result IS
-                # the whole storage optional (`return Pattern(p, f).search(s)`)
-                # -- an owned rvalue the slot takes as it renders. The whole-
-                # optional guard runs the callee's DECLARED return through the
-                # fact that built this slot: sema strips `Own` off a call's
-                # result type, so comparing result types would read a
-                # ptr-repr `Optional[W]` callee as matching an
-                # `Own[Optional[W]]` slot.
-                return THIRReturn(
-                    value=_return_converted(
-                        _flush_witness(
-                            "flush.return",
-                            _lower_expr(
-                                stmt.value, lc, declared,
-                                use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                             allow_temps=True))),
-                        lc, stmt),
-                    loc=loc)
-            elif (isinstance(stmt.value, TpyName)
-                    and lc.binding(stmt.value.name).optional_storage
-                    and _own_storage_opt_param(
-                        declared.get(stmt.value.name), analyzer) is not None):
-                # An `Own[P | None]` param returned whole: the binding is
-                # already the slot's storage form (`std::optional<P>&&`), so
-                # it moves out bare -- `return std::move(x);` -- never the
-                # borrow->storage lift the pointer-local leg below builds.
-                _witness("ret.storage_opt_own_move")
-                value = THIRMove(
-                    value=_lower_expr(stmt.value, lc, declared,
-                                      allow_whole_optional=True),
-                    result_type=ret_opt, form=Form.STORAGE, loc=loc)
-            else:
-                if not _is_borrow_ptr_local(
-                        stmt.value, declared, pointers):
-                    note_detail("return.storage_opt_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                src = _lower_expr(stmt.value, lc, declared)
-                value = THIRFormConvert(result_type=ret_opt, value=src,
-                                        form=Form.STORAGE,
-                                        move=_node_moves(src), loc=loc)
-            return THIRReturn(value=value, loc=loc)
-        ret_popt = lc.prescan.ret_ptr_opt
-        if stmt.value is not None and ret_popt is not None:
-            # A pointer-repr Optional[F1-record] return (`A*` by value), or a
-            # @property getter's, which hands back the field's storage by
-            # reference (`std::optional<A>&`). `None` is the BORROW-form None
-            # literal (`nullptr`) and a ternary normalizes its arms; every
-            # other admitted source is READ by the row that admits it, and the
-            # slot decides the rest (`convert`): the storage optional lifts
-            # (`optional_to_ptr`) or binds, a pointer passes, a pointee
-            # lvalue is borrowed by address (`&(x)`).
-            v = stmt.value
-            ptr_read: 'Callable[[], THIRExpr] | None' = None
-            if isinstance(v, TpyNoneLiteral):
-                return THIRReturn(
-                    value=THIRLiteral(result_type=ret_popt, value=None,
-                                      form=Form.BORROW, loc=loc), loc=loc)
-            elif (isinstance(v, TpyFieldAccess)
-                    and (_field_receiver_ok(v, declared, analyzer)
-                         or _ptr_value_field_recv_ok(v, declared, analyzer))
-                    and _optional_ptr_borrow_wide(
-                        analyzer.get_expr_type(v), analyzer)
-                    is not None):
-                # `return self.f` over a storage Optional[F1-record] field,
-                # off a record or an explicit `Ptr[record]` receiver.
-                _witness("ret.opt_field_ref"
-                         if ret_slot.holds is SlotHolds.BORROWS
-                         else "ret.ptr_opt_field")
-
-                def ptr_read() -> THIRExpr:
-                    return _lower_field_source(v, lc, declared)
-            elif (ret_slot.holds is SlotHolds.POINTER
-                    and narrowed_ptr_opt_field(v, declared, analyzer)
-                    is not None):
-                # The sema-NARROWED flavor (`return t.o` after the None
-                # guard): the member's C++ storage stays `std::optional<T>`,
-                # so it is read WHOLE and lifts like the un-narrowed one.
-                _witness("ret.ptr_opt_field_narrowed")
-
-                def ptr_read() -> THIRExpr:
-                    return narrowed_opt_field_whole(v, lc, declared)
-            elif (isinstance(v, TpyFieldAccess)
-                    and _field_receiver_ok(v, declared, analyzer)
-                    and (_fp_t := analyzer.get_expr_type(v))
-                    is not None
-                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                        _fp_t))) == unwrap_readonly(ret_popt.inner)
-                    # The DECLARED field type must be the pointee too: a
-                    # None-NARROWED Optional field's expr type retypes to
-                    # the pointee, but its storage is std::optional<T>.
-                    and not isinstance(
-                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                            _field_decl_type(v, declared, analyzer)
-                            or _fp_t))), OptionalType)):
-                # A POINTEE-typed field read (`return self._value` at
-                # `-> T | None`), blind to the pointee's family.
-                _witness("ret.ptr_opt_field_addr")
-
-                def ptr_read() -> THIRExpr:
-                    return _lower_field_source(v, lc, declared)
-            elif (isinstance(v, TpySubscript)
-                    and not isinstance(v.index, TpySlice)
-                    and v.slice_function_info is None
-                    and not v.needs_optional_runtime_check
-                    and _subscript_container_recv_type(
-                        v.obj, declared, analyzer) is not None
-                    and (_rs_t := analyzer.get_expr_type(v))
-                    is not None
-                    and _resolve_plain_alias(
-                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                            _rs_t))), analyzer)
-                    == _resolve_plain_alias(
-                        unwrap_readonly(ret_popt.inner), analyzer)):
-                # A container-ELEMENT lvalue subscript (`return items[0]`):
-                # the arg family's 'subscript' face at the return position --
-                # same guards (lvalue container receiver, no slice, proven
-                # receiver).
-                _witness("ret.ptr_opt_subscript")
-
-                def ptr_read() -> THIRExpr:
-                    return _lower_expr(v, lc, declared,
-                                       subscript_prechecked=True)
-            elif isinstance(v, TpyIfExpr):
-                # A ternary return: bare when the ifexpr lowering already
-                # normalized each arm to the return's `T*`
-                # (`return ((flag) ? (&(p)) : (nullptr));`), the address of
-                # a pointee lvalue select otherwise. The use admits no select
-                # slot: it would die before the caller reads the pointer.
-                pvalue = _to_opt_ptr(_lower_expr(v, lc, declared),
-                                     ret_popt, analyzer, loc)
-                _witness("ret.ptr_opt_ternary")
-                return THIRReturn(value=pvalue, loc=loc)
-            elif (isinstance(v, (TpyCall, TpyMethodCall))
-                    and not is_property_getter_read(v)
-                    and _ptr_opt_borrow_call_ret(
-                        v, analyzer.get_expr_type(v))):
-                # A BORROW-returning call already hands back the `T*` this
-                # return spells (the PTR_OPT_PASSTHROUGH sink form). An
-                # `Own[...]`-declared return is excluded by the predicate (it
-                # owns a temporary the caller would leave dangling) and sema
-                # rejects the dying-receiver spelling before this. A
-                # `@property` read is held out: its convention hands back the
-                # field's whole `std::optional<T>` BY REFERENCE.
-                _witness("ret.ptr_opt_borrow_call")
-
-                def ptr_read() -> THIRExpr:
-                    return _lower_expr(
-                        v, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                     pos=SinkPos.RETURN,
-                                     forms=_ONLY_PTR_OPT_PASSTHROUGH,
-                                     allow_temps=True))
-            elif (isinstance(v, TpyName)
-                    and v.name == "self"
-                    and v.name == lc.self_receiver
-                    and lc.self_cpp == "this"
-                    and v.name not in narrowed
-                    and v.name not in lc.narrow.spelled):
-                # `return self` at `-> Optional[Self]`: the receiver is
-                # already the `T*` the slot spells (`return this;`); both
-                # auto_readonly clones render the same token. Frame-captured
-                # and poly-narrowed selves keep rejecting below.
-                _witness("ret.ptr_opt_self")
-
-                def ptr_read() -> THIRExpr:
-                    return stamped(THIRSelf(
-                        result_type=analyzer.get_expr_type(v),
-                        form=Form.BORROW, cpp="this", deref=False,
-                        pointer=True, loc=loc), lc)
-            elif (isinstance(v, TpyName)
-                    and v.name != "self"
-                    and v.name not in narrowed):
-                dt = declared.get(v.name)
-                dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                      if dt is not None else None)
-                if (_optional_ptr_borrow_name(v, declared, analyzer)
-                        is not None
-                        or _optional_ptr_borrow_wide(declared.get(v.name),
-                                                     analyzer) is not None
-                        and v.name in pointers):
-                    pass
-                elif (isinstance(dt, PtrType)
-                        and unwrap_readonly(dt.pointee)
-                        == unwrap_readonly(ret_popt.inner)):
-                    # A `Ptr[T]` local IS the `T*` the slot spells.
-                    _witness("ret.ptr_opt_ptr_name")
-                elif (isinstance(dt, OwnType)
-                        or not _opt_pointee_wide(dt, analyzer)):
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-
-                # A pointer binding, a `Ptr[T]`, or a pointee-typed name
-                # whose address the slot takes, pointee-shape-blind.
-                def ptr_read() -> THIRExpr:
-                    return _lower_expr(v, lc, declared)
-            if ptr_read is None:
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            return THIRReturn(value=_return_converted(ptr_read(), lc, stmt),
-                              loc=loc)
-        ret_vopt = lc.prescan.ret_value_opt
-        if stmt.value is not None and ret_vopt is not None:
-            # A value-repr Optional[cheap scalar] return (`std::optional<T>`).
-            # `None` -> a STORAGE-form None literal (`std::nullopt`); a value-opt
-            # param name passes the WHOLE optional bare (`return p;`), stripping
-            # the name arm's deref-on-narrow exactly as the value-optional call
-            # slot does; every other scalar source rides the generic tail below
-            # (its narrowed `(*p)` operand reads and any widening coerce render
-            # as an ordinary value read at a value-optional target).
-            if isinstance(stmt.value, TpyNoneLiteral):
-                _witness("ret.value_opt_none")
-                return THIRReturn(
-                    value=THIRLiteral(result_type=ret_vopt, value=None,
-                                      form=Form.STORAGE, loc=loc), loc=loc)
-            if (isinstance(stmt.value, TpyName)
-                    and _value_opt_binding_kind(stmt.value.name, lc)
-                    in (ValueOptKind.SCALAR, ValueOptKind.RECORD)):
-                # The binding read WHOLE: the optional, not its narrowed
-                # inner.
-                _witness("ret.value_opt_name")
-                return THIRReturn(
-                    value=_return_converted(
-                        replace(_lower_expr(stmt.value, lc, declared,
-                                            allow_whole_optional=True),
-                                deref=False),
-                        lc, stmt),
-                    loc=loc)
-            if (isinstance(stmt.value, TpyFieldAccess)
-                    and _field_receiver_ok(stmt.value, declared, analyzer)
-                    and (_value_opt_scalar(
-                            analyzer.get_expr_type(stmt.value), analyzer)
-                         is not None
-                         or _value_opt_record(
-                             analyzer.get_expr_type(stmt.value))
-                         is not None)):
-                # An un-narrowed whole value-Optional field read
-                # (`return self.f`), read whole as the print sink reads it
-                # (field_prechecked bypasses the value-position field-result
-                # gate).
-                _witness("ret.value_opt_field")
-                return THIRReturn(
-                    value=_return_converted(
-                        _lower_expr(stmt.value, lc, declared,
-                                    field_prechecked=True,
-                                    allow_whole_optional=True),
-                        lc, stmt),
-                    loc=loc)
-            peeled = _peel_coerce(stmt.value)
-            if (isinstance(peeled, TpyName)
-                    and (peeled.name in lc.prescan.value_opt_params
-                         or lc.binding(peeled.name).value_opt
-                     is ValueOptKind.SCALAR)):
-                note_detail("return.optval_coerced_param")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-        ret_vot = lc.prescan.ret_value_opt_tuple
-        if stmt.value is not None and ret_vot is not None:
-            # A value-repr Optional[value tuple] return (`std::optional<
-            # std::tuple<...>>`): `None` -> the STORAGE None literal
-            # (`std::nullopt`); a tuple LITERAL renders the spelled
-            # brace-init against the INNER tuple slot (the optional's
-            # converting ctor absorbs it, as the scalar row's bare scalar
-            # is absorbed); an un-narrowed value-tuple NAME rides the
-            # generic tail bare. The scalar value-opt row's tuple twin.
-            _vot_inner = _value_opt_tuple_inner(ret_vot, analyzer)
-            assert _vot_inner is not None
-            if isinstance(stmt.value, TpyNoneLiteral):
-                _witness("ret.value_opt_tuple_none")
-                return THIRReturn(
-                    value=THIRLiteral(result_type=ret_vot, value=None,
-                                      form=Form.STORAGE, loc=loc), loc=loc)
-            if isinstance(stmt.value, TpyTupleLiteral):
-                try:
-                    value = _lower_tuple_literal(
-                        stmt.value, _vot_inner, lc, declared,
-                        use=_ExprUse(allow_temps=True))
-                except ThirUnsupported as ex:
-                    raise ex.with_context(stmt_reject_reason(
-                        stmt, f"return.tuple_source:{ex.reason}")) from None
-                _witness("ret.value_opt_tuple_literal")
-                return THIRReturn(value=value, loc=loc)
-            src_vot = (_value_opt_tuple(declared.get(stmt.value.name), analyzer)
-                       if isinstance(stmt.value, TpyName)
-                       and stmt.value.name not in narrowed
-                       and stmt.value.name not in lc.prescan.param_names
-                       else _value_opt_tuple(
-                           stmt.value.resolved_function_info.return_type,
-                           analyzer)
-                       if isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                       and stmt.value.resolved_function_info is not None
-                       else None)
-            if src_vot is not None and src_vot == ret_vot:
-                # The slot's own optional, whole: a local (moved out at the
-                # return, as C++ does a local) or a call's prvalue.
-                _witness("ret.value_opt_tuple_whole")
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        allow_temps=True),
-                                    allow_whole_optional=True)),
-                    loc=loc)
-            if not (isinstance(stmt.value, TpyName)
-                    and stmt.value.name not in narrowed
-                    and stmt.value.name in declared
-                    and _value_tuple(declared[stmt.value.name], analyzer)
-                    is not None):
-                note_detail("return.tuple_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.value_opt_tuple_name")
-        ret_vopt_view = lc.prescan.ret_value_opt_view
-        if stmt.value is not None and ret_vopt_view is not None:
-            # `None` -> `std::nullopt` (STORAGE None literal, target-typed); a
-            # value-repr Optional[view] param name -> the view->owned shim
-            # (`x ? std::make_optional(<conv>(*x)) : std::nullopt`, family conv),
-            # passing the whole optional. A str/bytes literal rides the generic
-            # tail (the owned literal lands bare into the optional).
-            if isinstance(stmt.value, TpyNoneLiteral):
-                _witness("ret.value_opt_view_none")
-                return THIRReturn(
-                    value=THIRLiteral(result_type=ret_vopt_view, value=None,
-                                      form=Form.STORAGE, loc=loc), loc=loc)
-            if (isinstance(stmt.value, TpyName)
-                    and _value_opt_view_param(stmt.value.name, lc)):
-                _witness("ret.value_opt_view_shim")
-                return THIRReturn(
-                    value=THIROptViewArg(result_type=ret_vopt_view,
-                                         name=stmt.value.name, form=Form.VALUE,
-                                         loc=loc), loc=loc)
-            if isinstance(stmt.value, TpyIfExpr):
-                # A value-repr Optional ternary return: the ifexpr arm
-                # wrapped both arms in the spelled optional, so the lowered
-                # ternary passes bare.
-                pvalue = _lower_expr(stmt.value, lc, declared)
-                _witness("ret.value_opt_view_ternary")
-                return THIRReturn(value=pvalue, loc=loc)
-            if (isinstance(stmt.value, TpyFieldAccess)
-                    and (_rvf := _resolved_str_value(
-                        analyzer.get_expr_type(stmt.value), analyzer))
-                    is not None
-                    and is_str_type(_rvf)):
-                # An owned-str FIELD read (`return sub.value` through the
-                # narrowed ptr local -> `return sub->value;`): the owned
-                # member lands bare in the `std::optional<std::string>`
-                # return (converting ctor). The field arm gates its own
-                # receiver shapes; view fields type as views and stay out.
-                _witness("ret.value_opt_view_field")
-                return THIRReturn(
-                    value=_lower_expr(stmt.value, lc, declared,
-                                      field_owned_str_ok=True), loc=loc)
-            if (isinstance(stmt.value, TpyCall)
-                    and stmt.value.call_type is not None
-                    and is_str_view_type(unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(
-                            analyzer.get_expr_type(stmt.value)))))):
-                # `return StrView("opt-view")` at Optional[StrView]: the
-                # instantiation folds to its source render
-                # (`return "opt-view";` -- the view_ctor_value fold),
-                # implicit-converting into the value optional.
-                _witness("ret.value_opt_view_ctor")
-                return THIRReturn(
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            if (isinstance(stmt.value, TpySubscript)
-                    and isinstance(stmt.value.index, TpySlice)
-                    and _view_inner_value_opt(ret_vopt_view)
-                    and _resolved_viewfam_value(
-                        analyzer.get_expr_type(stmt.value), analyzer)
-                    is not None):
-                # A SLICE source at a VIEW-inner return (`-> StrView | None`):
-                # the slice render IS a view, so it lands bare in the
-                # `std::optional<std::string_view>` slot. The arm keys on a
-                # BARE subscript because that is the only form reaching it:
-                # at an OWNED inner (`-> str | None`) sema wraps the slice in
-                # the view->owned coercion, so the render belongs to that
-                # coercion (`std::string(::tpy::str_slice(...))`), not here.
-                _witness("ret.value_opt_view_slice")
-                return THIRReturn(
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            if _value_opt_view_ret_src(stmt.value, ret_vopt_view, analyzer):
-                # A call / method-call / subscript RESULT at the value-repr
-                # optional slot: the whole optional passes through, and an
-                # inner value of the slot's own form is absorbed by the
-                # optional's converting ctor. Either way the render is the
-                # source's own, gated at its own arms.
-                _witness("ret.value_opt_view_result")
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(allow_temps=True),
-                                    allow_whole_optional=True)),
-                    loc=loc)
-            if _viewfam_name_fits_opt_slot(stmt.value, ret_vopt_view, lc,
-                                           declared, narrowed, pointers):
-                # A str/bytes NAME whose read already has the inner's C++
-                # shape: the optional's converting ctor absorbs it, so the
-                # name returns bare. C++ implicit-moves a by-value return
-                # of a named local, so no move is spelled here either.
-                _witness("ret.value_opt_view_name")
-                return THIRReturn(
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            owned_inner = _value_opt_owned_view(ret_vopt_view, analyzer)
-            if (owned_inner is not None
-                    and stmt.value is not None
-                    and not isinstance(stmt.value, TpyCoerce)
-                    and _resolved_viewfam_value(
-                        analyzer.get_expr_type(stmt.value),
-                        analyzer) is not None):
-                # A VIEW-form source at an OWNED inner (`-> str | None`
-                # returning a `str` PARAM): `std::optional<std::string>`'s
-                # converting ctor is EXPLICIT from a view, so the copy IS the
-                # render -- the same view->owned sink the materializing
-                # coercion below takes. The sources whose read already has the
-                # inner's shape were taken by the arms above, so reaching here
-                # in BORROW form is exactly the crossed pair.
-                bsrc = _lower_expr(stmt.value, lc, declared)
-                if bsrc.form is Form.BORROW:
-                    _witness("ret.value_opt_view_materialize")
-                    return THIRReturn(
-                        value=_wrap_view_owned_sink(
-                            bsrc, unwrap_readonly(owned_inner.inner), loc),
-                        loc=loc)
-            if (owned_inner is not None
-                    and isinstance(stmt.value, TpyCoerce)
-                    and _coerce_disposition(stmt.value) == "materialize"):
-                # An OWNED inner (`-> str | None`) makes sema wrap a view
-                # source in the view->owned coercion, so the copy IS the render
-                # (`std::string(x)` / `::tpy::Bytes(x)`) and its owned
-                # result reaches the optional through the converting ctor. The
-                # copy targets the INNER slot, never the optional, so it goes
-                # through the shared view->owned sink; the source is gated at
-                # its own arms. Keyed on the coercion's own materialize
-                # verdict: one that rebuilds the whole optional instead renders
-                # nothing like this and keeps the reject below.
-                src = _lower_expr(stmt.value.expr, lc, declared)
-                if src.form is Form.BORROW:
-                    _witness("ret.value_opt_view_materialize")
-                    return THIRReturn(
-                        value=_wrap_view_owned_sink(
-                            src, unwrap_readonly(owned_inner.inner), loc),
-                        loc=loc)
-            if not isinstance(stmt.value, (TpyStrLiteral, TpyBytesLiteral)):
-                note_detail("return.opt_view_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.value_opt_view_literal")
-        if (stmt.value is not None
-                and lc.prescan.ret_record_storage is not None):
-            # `return copy(p)` (`return Point(p);`) -- the shared copy row at
-            # the storage-return slot, whose result type IS the source
-            # record's. Excluded sources follow this statement's admission
-            # set, not every pointer record.
-            copy_row = _lower_copy_record(stmt.value, lc, declared,
-                                          pointers=pointers, loc=loc)
-            if copy_row is not None:
-                _witness("ret.copy_record")
-                return THIRReturn(value=copy_row, loc=loc)
-        if (stmt.value is not None
-                and (lc.prescan.ret_record_borrow is not None
-                     or lc.prescan.ret_record_storage is not None)):
-            # The admitted source rows below say how the value is READ;
-            # what the slot does with the read -- bind it, copy it, move it
-            # -- is `convert`'s. Rows that set `record_ok` instead still
-            # ride the pointer-local arm or the generic tail.
-            record_ok = False
-            read: 'Callable[[], THIRExpr] | None' = None
-            v = stmt.value
-
-            def _read_tail() -> THIRExpr:
-                return _flush_witness("flush.return", _lower_expr(
-                    v, lc, declared, use=_ExprUse(
-                        result=_ExprResultUse.STORAGE, allow_temps=True,
-                        forms=(_ONLY_SELECT_FRESH_PRVALUE
-                               if lc.prescan.ret_record_storage is not None
-                               else None))))
-
-            def _read_passthrough() -> THIRExpr:
-                # The callee's reference result read as the object it
-                # names: RECEIVER serves the METHOD flavor, the FREE call
-                # keys on the BORROW_RET_PASSTHROUGH verdict.
-                return _lower_expr(v, lc, declared, use=_ExprUse(
-                    result=_ExprResultUse.RECEIVER, pos=SinkPos.RETURN,
-                    forms=_ONLY_BORROW_RET_PASSTHROUGH))
-
-            if _record_rvalue_source_shape(stmt.value, analyzer):
-                _witness("ret.record_storage")
-                read = _read_tail
-            elif (lc.prescan.ret_record_borrow is None
-                  and isinstance(stmt.value, TpyMethodCall)
-                  and is_rvalue_source(analyzer, stmt.value)):
-                # A method-call record rvalue at the STORAGE return slot
-                # renders the bare call (`return factory.create_point(x, y);`
-                # / `return self._shared.clone();`): the generic tail's
-                # STORAGE lowering runs the method call's own receiver / fi /
-                # arg / result gates, so admission here is shape-shallow.
-                record_ok = bool(_witness("ret.record_methodcall"))
-            elif (lc.prescan.ret_record_borrow is not None
-                  and lc.prescan.has_self
-                  and isinstance(stmt.value, TpyName)
-                  and stmt.value.name == "self"
-                  and record_like(declared.get("self"), analyzer)):
-                _witness("ret.record_self")
-
-                def read() -> THIRExpr:
-                    # The receiver as the object (`(*this)`), a value
-                    # record's `return self` rides the generic tail.
-                    return stamped(THIRSelf(
-                        result_type=analyzer.get_expr_type(v),
-                        form=Form.BORROW, cpp=lc.self_cpp,
-                        deref=lc.self_is_pointer,
-                        pointer=lc.self_is_pointer, loc=loc), lc)
-            elif (lc.prescan.ret_record_borrow is not None
-                  and isinstance(stmt.value, TpyFieldAccess)
-                  and _field_receiver_ok(stmt.value, declared, analyzer)
-                  and _record_borrow_return(
-                      analyzer.get_expr_type(stmt.value), analyzer)
-                  is not None):
-                _witness("ret.record_field")
-
-                def read() -> THIRExpr:
-                    return _lower_field_source(v, lc, declared)
-            elif (lc.prescan.ret_record_borrow is not None
-                  and isinstance(stmt.value, TpySubscript)
-                  and (_container_record_elem_subscript(
-                           stmt.value, declared, analyzer, lc.names_with("pointer"))
-                       # ... or the nested-container element lvalue
-                       # (`return self.rows[i]` at `-> list[T]`), whose
-                       # `::tpy::__getitem__` read IS the `T&` the slot
-                       # binds. A TUPLE receiver stays out at that gate: a
-                       # borrow-form tuple's `std::get<N>` hands back the
-                       # element POINTER, which no `T&` slot can bind, and the
-                       # storage-form flavour has no split of its own
-                       # (BUGS.md#tuple-elem-at-ref-borrow-return). The
-                       # element-type guard is the container arm's own.
-                       or (_container_elem_lvalue_subscript(
-                               stmt.value, declared, analyzer,
-                               lc.names_with("pointer"))
-                           and unwrap_readonly(unwrap_ref_type(
-                               unwrap_send_sync(analyzer.get_expr_type(
-                                   stmt.value))))
-                           == lc.prescan.ret_record_borrow))):
-                _witness("ret.record_subscript")
-
-                def read() -> THIRExpr:
-                    # The element lvalue (`::tpy::__getitem__(c, i)`); the
-                    # prechecked lowering skips the subscript's own gates,
-                    # so only the shape admitted here reads this way.
-                    return _lower_expr(v, lc, declared,
-                                       subscript_prechecked=True)
-            elif (lc.prescan.ret_record_borrow is not None
-                  and isinstance(stmt.value, TpyIfExpr)):
-                # `return self if self.n >= o.n else o` at a `T&` borrow
-                # slot: a same-type lvalue ternary is itself a C++ lvalue,
-                # so it returns bare through the generic tail. Admission is
-                # shape-shallow like `ret.record_methodcall` -- the arm
-                # shapes are the `ifexpr.record` gate's own business, and it
-                # rejects the prvalue-arm flavors (a ctor / by-value call)
-                # that no borrow return could bind.
-                record_ok = bool(_witness("ret.record_ifexpr"))
-            elif (isinstance(stmt.value, TpyName)
-                  and lc.binding(stmt.value.name).pointer
-                  and stmt.value.name not in narrowed
-                  and _optional_ptr_borrow_name(
-                      stmt.value, declared, analyzer) is not None):
-                # `return maybe;` -- a ptr-repr `Optional[record]` LOCAL at a
-                # record return slot. The indirect-name arm derefs the
-                # pointer (`(*p)`) and moves at a movable last use; the
-                # binding is excluded from `admission_pointers`, so it
-                # reaches the ladder as a plain name.
-                record_ok = bool(_witness("ret.record_ptr_opt_local"))
-            elif (isinstance(stmt.value, TpyName)
-                  and lc.binding(stmt.value.name).pointer
-                  and stmt.value.name not in narrowed
-                  and stmt.value.name in declared
-                  and record_like(unwrap_readonly(unwrap_ref_type(
-                      unwrap_send_sync(declared[stmt.value.name]))),
-                      analyzer)):
-                # `return best;` -- the PLAIN F1 pointer-local sibling
-                # (a `T*` alias local at a record return slot): the same
-                # is_indirect_name arm, `return (*best);` + the move at a
-                # movable last use.
-                record_ok = bool(_witness("ret.record_ptr_local"))
-            elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                  and lc.prescan.ret_record_borrow is None
-                  and is_rvalue_source(analyzer, stmt.value)):
-                # `return add_vecs(a, b)` at the Own[record] STORAGE
-                # return: the call re-validates itself during the value's
-                # lowering.
-                _witness("ret.record_call_storage")
-                read = _read_tail
-            elif (lc.prescan.ret_record_borrow is None
-                  and _rvalue_ref_init(stmt.value, None, analyzer)):
-                # `return a + b` / `return -v` / `return C(1) if c else
-                # make()` at the Own STORAGE return: a fresh operator result
-                # or all-fresh select passes through bare -- the return-slot
-                # twin of the decl's `_rvalue_ref_init` row, a select
-                # rendering its prvalue `?:` (the generic tail's
-                # SELECT_FRESH_PRVALUE). The operand renders are the binop / unary
-                # / select arms' own business.
-                record_ok = bool(_witness("ret.record_op_storage"))
-            elif (isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                  and stmt.value.resolved_function_info is not None
-                  and call_returns_cpp_ref(
-                      analyzer, stmt.value.resolved_function_info)):
-                # `return get_first(items)`: the callee's borrow, which a
-                # `T&` slot passes through (sema's return_borrows_from
-                # transitivity validated the chain) and an owning slot copies
-                # from -- the copy sema warned about, never a move out of a
-                # borrowed source.
-                _witness("ret.record_call_borrow"
-                         if lc.prescan.ret_record_borrow is not None
-                         else "ret.record_ref_call_storage")
-                read = _read_passthrough
-            elif (lc.prescan.ret_record_borrow is not None
-                  and _deref_coerce_borrow_slot(
-                      stmt.value, lc.prescan.ret_record_borrow,
-                      declared, analyzer)):
-                # `return ptr` at a record borrow slot with `ptr: Ptr[Point]`
-                # -- the deref auto-coercion's INLINE flavor
-                # (`return ::tpy::deref_check(ptr);`). Same gate as the ARG
-                # position's twin, so the two cannot drift; the null check is
-                # the coercion's own render, not something this arm adds.
-                # The record-wrapper `__deref__()` flavor hoists a slot-typed
-                # VALUE copy at the arg position and has no return-slot render,
-                # so it keeps rejecting here.
-                record_ok = bool(_witness("ret.record_deref_coerce"))
-            elif (isinstance(stmt.value, TpyName)
-                  and lc.prescan.ret_record_borrow is None
-                  and lc.binding(stmt.value.name).value_opt
-                  is ValueOptKind.RECORD):
-                # A narrowed RECORD-kind value-opt binding (`return x` on an
-                # `Optional[Own[Payload]]` param) at the Own[record] STORAGE
-                # return: its deref read (`(*x)`), moved at a movable last
-                # use.
-                _witness("ret.record_value_opt_name")
-                read = _read_tail
-            elif (isinstance(stmt.value, TpyName)
-                  and stmt.value.name != "self"
-                  and stmt.value.name not in narrowed
-                  and stmt.value.name not in pointers
-                  # Defensive: a reassigned reference binding is a rebind-slot
-                  # pointer (so it is in `pointers` already), but a future decl
-                  # widening must not ride this bare-name render. A rebound
-                  # parameter is assigned in place, its own storage still.
-                  and (stmt.value.name not in lc.prescan.reassigned
-                       or lc.binding(stmt.value.name).is_param)):
-                dt = declared.get(stmt.value.name)
-                dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-                      if dt is not None else None)
-                # A live name sema declared a copy of carries the copy on
-                # its read (`Source.must_copy`); the conversion spells it.
-                if not (lc.prescan.ret_record_borrow is not None
-                        and isinstance(dt, OwnType)):
-                    if record_like(dt, analyzer):
-                        _witness("ret.record_borrow"
-                                 if lc.prescan.ret_record_borrow is not None
-                                 else "ret.record_storage")
-                        read = _read_tail
-            elif (lc.prescan.ret_record_storage is not None
-                  and isinstance(stmt.value, (TpyArrayLiteral, TpyDictLiteral,
-                                              TpySetLiteral))):
-                # A container LITERAL at the storage slot renders
-                # position-independently (the decl-init brace-init / spelled
-                # ctor emits verbatim, the empty `std::vector<T>{}` spell
-                # included) -- the generic tail passes the slot as the target
-                # type. The literal re-checks the decl gate's element slice
-                # here; no other source shape spells its elements.
-                record_ok = bool(_container_literal_shape_ok(
-                    stmt.value, lc.prescan.ret_record_storage, analyzer)
-                    and _witness("ret.container_literal"))
-            elif (lc.prescan.ret_record_storage is not None
-                  and isinstance(stmt.value, TpyListRepeat)):
-                # `return [label] * 3` -- the repeat arm renders the
-                # from_range build target-typed by the storage slot (the
-                # untargeted resolve would demote to the Array flavor).
-                _witness("ret.container_repeat")
-                return THIRReturn(
-                    value=_lower_expr(
-                        stmt.value, lc, declared,
-                        use=_ExprUse(
-                            slot_target=lc.prescan.ret_record_storage)),
-                    loc=loc)
-            elif (lc.prescan.ret_record_storage is not None
-                  and type(stmt.value) in _comprehensions._COMP_KINDS):
-                # A comprehension source renders the same position-independent
-                # stmt-expr as the decl-init arm, target-typed by the storage
-                # slot; an out-of-slice comp raises inside the lowering and
-                # falls the body back.
-                comp = _comprehensions._lower_comprehension(
-                    stmt.value, lc.prescan.ret_record_storage, lc, declared,
-                    pointers)
-                _witness("ret.container_comp")
-                return THIRReturn(value=comp, loc=loc)
-            if read is not None:
-                return THIRReturn(
-                    value=_return_converted(
-                        read(), lc, stmt,
-                        detail=lambda: _record_source_reject_detail(
-                            v, pointers, narrowed,
-                            lc.prescan.ret_record_borrow is not None)),
-                    loc=loc)
-            if (not record_ok
-                    and lc.prescan.ret_record_storage is not None
-                    and isinstance(stmt.value, TpyName)
-                    and stmt.value.name == lc.self_receiver):
-                # `return self` at an owning slot: a CONSUMING method's
-                # receiver is this frame's own value and moves out at its
-                # last use (sema's `_is_owned_var`); any other is copied.
-                plan = _return_plan(
-                    _lower_expr(stmt.value, lc, declared, use=_COPY_SRC_USE),
-                    lc, stmt)
-                _witness("ret.self_move" if plan.effect is Effect.MOVE
-                         else "ret.borrowed_copy")
-                return THIRReturn(value=plan.expr, loc=loc)
-            if (not record_ok
-                    and lc.prescan.ret_record_storage is not None
-                    and stmt.value in analyzer.ctx.element_moves):
-                # `return p[0]` of an owned element at the tuple's last use:
-                # the element moves out (sema credits it consumed); the
-                # tuple's other elements are never read again.
-                _witness("ret.owned_element_move")
-                _ev = _lower_expr(stmt.value, lc, declared)
-                return THIRReturn(
-                    value=THIRMove(result_type=_ev.result_type, value=_ev,
-                                   form=_ev.form, loc=loc),
-                    loc=loc)
-            if (not record_ok
-                    and lc.prescan.ret_record_storage is not None
-                    and not is_rvalue_source(analyzer, stmt.value)
-                    and copy_construct_form(stmt.value, pointers, analyzer)):
-                # The IMPLICIT copy the owning return slot performs on a
-                # BORROWED source (a field read, a ternary of borrow calls):
-                # sema warned that this copies where CPython aliases, so the
-                # render is the copy it warned about, spelled as `copy()`
-                # spells it -- the conversion of a copied source. LAST in the
-                # ladder, so every source an arm above renders keeps its own
-                # spelling. The copy's type is the source's own
-                # (`Source.copy_type`); a source whose type is no record
-                # or container has no copy here.
-                cc_read = _lower_expr(stmt.value, lc, declared,
-                                      use=_COPY_SRC_USE)
-                if (record_like(storage_type(cc_read.result_type), analyzer)
-                        and cc_read.source.held is not Held.FRESH):
-                    _witness("ret.borrowed_copy")
-                    return THIRReturn(
-                        value=_return_converted(cc_read, lc, stmt,
-                                                explicit_copy=True),
-                        loc=loc)
-            if not record_ok:
+        v = stmt.value
+        lit = _peel_coerce(v)
+        if isinstance(v, TpyNoneLiteral) or (
+                isinstance(lit, TpyNoneLiteral)
+                and _own_wrapper_return(rdecl, analyzer) is not None):
+            # LITERAL construction: None as the slot's own empty value --
+            # `nullptr` where the slot is a pointer, else `std::nullopt` /
+            # the empty alternative of a union.
+            _witness("ret.none_literal")
+            return THIRReturn(staged=staged, value=THIRLiteral(
+                result_type=_resolve_plain_alias(rst, analyzer), value=None,
+                form=(Form.BORROW if rh in (SlotHolds.POINTER,
+                                            SlotHolds.BORROWS)
+                      else Form.STORAGE), loc=loc), loc=loc)
+        if rh is SlotHolds.ERASED and isinstance(lit, CONTAINER_LITERAL_NODES):
+            # LITERAL construction: a container literal's brace-init has no
+            # type to deduce inside the erasing wrap.
+            note_detail("return.slot_type")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        if isinstance(v, TpyTupleLiteral):
+            tuple_lit = _return_tuple_literal(stmt, ret_slot, lc, declared,
+                                              scope, loc)
+            if tuple_lit is not None:
+                return THIRReturn(staged=staged, value=tuple_lit, loc=loc)
+        rec_storage = (_record_storage_return(rdecl, analyzer)
+                       if rh is SlotHolds.OWNS else None)
+        if rec_storage is not None and isinstance(
+                v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+            # A container LITERAL at the storage slot renders
+            # position-independently (the decl-init brace-init / spelled
+            # ctor emits verbatim, the empty `std::vector<T>{}` spell
+            # included), the slot as its target type; the literal re-checks
+            # the decl gate's element slice.
+            if not _container_literal_shape_ok(v, rec_storage, analyzer):
                 note_detail(_record_source_reject_detail(
-                    stmt.value, pointers, narrowed,
-                    lc.prescan.ret_record_borrow is not None))
+                    v, scope.admission_pointers(), lc.narrow.narrowed.keys(),
+                    False))
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-        # An `Own[wrapper-union]` return fed by a HOISTED-optional local of
-        # the slot's own type (`std::optional<JsonValue> value;`): the same
-        # indirect-name arm, so it shares the deref+move render below rather
-        # than growing a second copy of it. The type-equality guard is what
-        # keeps a differently-shaped hoist -- which would need the converting
-        # step the bare deref omits -- on the wrapper gate's own reject.
-        _ow_ptr_local = (
-            lc.prescan.ret_own_wrapper is not None
-            and isinstance(stmt.value, TpyName)
-            and lc.binding(stmt.value.name).optional_storage
-            and stmt.value.name in declared
-            and _wrapper_union_like(declared[stmt.value.name], analyzer)
-            == lc.prescan.ret_own_wrapper)
-        # A REASSIGNED reference local is a rebind-slot pointer, so the
-        # OWNING return reads it through the same deref+move arm
-        # (`return std::move((*best));`). Both the init slot and every
-        # rebind slot are function locals, so the move cannot outlive them.
-        # Storage slot only: a `T&` borrow slot cannot bind the moved-from
-        # xvalue, and the record legs below own the borrow direction.
-        _ref_ptr_local = False
-        if (lc.prescan.ret_record_storage is not None
-                and isinstance(stmt.value, TpyName)
-                and stmt.value.name in declared):
-            _cpl_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.value.name])))
-            if isinstance(_cpl_t, OwnType):
-                _cpl_t = unwrap_readonly(_cpl_t.wrapped)
-            _ref_ptr_local = record_like(_cpl_t, analyzer)
-        if (isinstance(stmt.value, TpyName)
-                and lc.binding(stmt.value.name).pointer
-                and stmt.value.name not in narrowed
-                and (_ow_ptr_local
-                     or ((lc.prescan.ret_record_borrow is not None
-                          or lc.prescan.ret_record_storage is not None)
-                         and (_optional_ptr_borrow_name(
-                                  stmt.value, declared, analyzer) is not None
-                              or (stmt.value.name in declared
-                                  and record_like(unwrap_readonly(
-                                      unwrap_ref_type(unwrap_send_sync(
-                                          declared[stmt.value.name]))),
-                                      analyzer))))
-                     # ... and the non-record half of the axis (the ladder
-                     # above witnessed it).
-                     or _ref_ptr_local)):
-            # The deref + last-use move the ladder admitted above
-            # (`return std::move((*p));`), the indirect-name return
-            # arm -- both the ptr-repr Optional local and the plain F1
-            # pointer-local flavors. The value-opt PARAM twin lives in the
-            # generic tail.
-            if _ow_ptr_local:
-                _witness("ret.own_wrapper_ptr_opt_local")
-            ptr_val = _lower_expr(stmt.value, lc, declared,
-                                  allow_whole_optional=True)
-            if not isinstance(ptr_val, THIRName):
-                # The deref IS the render; a non-name leaf would drop it
-                # silently and emit the raw pointer into a record slot.
-                note_detail("return.ptr_opt_leaf_shape")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            ptr_val = replace(ptr_val, deref=True)
-            if _node_moves(ptr_val):
-                ptr_val = THIRMove(result_type=ptr_val.result_type,
-                                   value=ptr_val, form=ptr_val.form, loc=loc)
-            return THIRReturn(value=ptr_val, loc=loc)
-        if stmt.value is not None and lc.prescan.ret_callable:
-            # A Callable return slot: a bare closure-local name (`return add;`
-            # -- the lambda converts to std::function implicitly, the plain
-            # return tail) or a direct lambda literal (`return lambda x: ...;`
-            # -- the escaping by-value closure, _lower_lambda's captures_by_value
-            # arm). Other sources reject.
-            if isinstance(stmt.value, TpyLambda):
-                value = _lower_lambda(stmt.value, lc, declared)
-                _witness("ret.closure_lambda")
-                return THIRReturn(value=value, loc=loc)
-            if ((_func_ref_routable(stmt.value, analyzer)
-                    # ... or an `async def` factory ref at a Callable slot
-                    # returning Own[@dynamic]: the wrapper-lambda synthesis
-                    # (the name arm's async_factory_wrap row).
-                    or (isinstance(stmt.value, TpyName)
-                        and _async_factory_wrap_cpp(
-                            stmt.value, analyzer.get_expr_type(stmt.value),
-                            lc) is not None))
-                    and not (isinstance(stmt.value, TpyName)
-                             and lc.binding(stmt.value.name).nested_def)):
-                # `return double;` at a Callable slot -- the bare func-ref name
-                # converts to std::function implicitly (like the closure name).
-                # A nested-def local is also is_function_ref but must take the
-                # closure-name arm below (the func-ref intercept in _lower_expr
-                # excludes nested defs, so routing it here would reject).
-                _witness("ret.closure_ref")
-                return THIRReturn(
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            if (isinstance(stmt.value, TpyName)
-                    and stmt.value.name in declared
-                    and not lc.binding(stmt.value.name).nested_def
-                    and _callable_value(declared[stmt.value.name])):
-                # `return f;` where f is itself a `std::function` binding (a
-                # Callable param / local): the value returns bare, no
-                # conversion -- the plain-name twin of the closure-name arm.
-                _witness("ret.callable_name")
-                return THIRReturn(
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
-            if not (isinstance(stmt.value, TpyName)
-                    and lc.binding(stmt.value.name).nested_def):
-                note_detail("return.callable_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.closure_name")
-            return THIRReturn(
-                value=THIRName(result_type=analyzer.get_expr_type(stmt.value),
-                               name=stmt.value.name, form=Form.VALUE,
-                               loc=getattr(stmt.value, "loc", None)),
+            _witness("ret.container_literal")
+        elif rec_storage is not None and isinstance(v, TpyListRepeat):
+            # `return [label] * 3` -- the repeat arm renders the from_range
+            # build target-typed by the storage slot (the untargeted
+            # resolve would demote to the Array flavor).
+            _witness("ret.container_repeat")
+            return THIRReturn(staged=staged, value=_lower_expr(
+                v, lc, declared, use=_ExprUse(slot_target=rec_storage)),
                 loc=loc)
-        # A value-tuple return's literal source renders the spelled brace-init
-        # against the return slot (per-element targets ride
-        # _lower_tuple_literal); bare value-tuple names ride the generic tail.
-        ret_vt = lc.prescan.ret_value_tuple
-        if stmt.value is not None and ret_vt is not None:
-            source = stmt.value
-            per_elem = _ptr_tuple_last_use(source, ret_vt, lc, declared,
-                                           moves_only=True)
-            if per_elem is not None:
-                # A rebound pointer tuple at its own per-element-Own return:
-                # every object it owns on every reaching path moves out.
-                _witness("ret.own_tuple_ptr_lift")
-                return THIRReturn(value=per_elem, loc=loc)
-            tuple_ok = False
-            if isinstance(source, TpyTupleLiteral):
-                tuple_ok = True
-            elif isinstance(source, TpyName):
-                tuple_ok = bool(
-                    source.name not in narrowed
-                    and source.name in declared
-                    and (_value_tuple(declared[source.name], analyzer)
-                         is not None
-                         and _witness("ret.tuple_name")
-                         # A STORAGE-form Own-element tuple NAME
-                         # (`return pair;` off `auto pair =
-                         # std::tuple<Box, ...>{...}`): the binding holds
-                         # the value form the widened return slot spells,
-                         # so the bare name rides the generic tail (NRVO;
-                         # no lift). Borrow-form bindings keep rejecting.
-                         or (lc.binding(source.name).storage_tuple
-                             and _own_tuple_shape_match(
-                                 source, ret_vt, lc, declared) is not None
-                             and _witness("ret.own_storage_tuple_name"))
-                         # ... and a BORROW-form one (`auto pair =
-                         # std::tuple<Box*, int32_t>{&(b), 0}`) whose copy
-                         # sema declared: it lifts through the storage
-                         # conversion, as the same name does at an owning
-                         # argument. A rebound pointer tuple stays out: it
-                         # converts element by element, as its binding owns
-                         # each one.
-                         or (lc.binding(source.name).ptr_tuple is None
-                             and _own_tuple_borrow_lift_arg(
-                                 source, ret_vt, lc, declared))))
-            elif isinstance(source, (TpyCall, TpyMethodCall)):
-                # Free and module-qualified stub calls alike
-                # (`return math.frexp(2.0)` -- the module-attr call parses
-                # as a method call): the bare pass-through rides the
-                # generic tail, whose call gates own the result rows.
-                tuple_ok = bool(_witness("ret.tuple_call"))
-            elif isinstance(source, TpyIfExpr):
-                # A ternary over value-tuple arms (`return t if f else u`):
-                # the C++ conditional IS the render and each arm rides its
-                # own source row in the generic tail. A value tuple copies at
-                # every sink, so neither arm raises the mixed-category
-                # aliasing question a reference-typed ternary does.
-                tuple_ok = bool(_witness("ret.tuple_ternary"))
-            if not tuple_ok:
-                note_detail("return.tuple_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            if (isinstance(source, TpyName)
-                    and _own_tuple_borrow_lift_arg(
-                        source, ret_vt, lc, declared)):
-                _witness("ret.own_tuple_borrow_lift")
-                return THIRReturn(
-                    value=_own_tuple_name_copy(source, ret_vt, lc, declared),
-                    loc=loc)
-            if isinstance(source, TpyTupleLiteral):
-                try:
-                    # The return is a statement flush point, so an element's
-                    # call may hoist its `__tmp_N` decl ahead of the return
-                    # -- the grant the generic return tail already carries.
-                    value = _lower_tuple_literal(source, ret_vt, lc, declared,
-                                                 use=_ExprUse(allow_temps=True))
-                except ThirUnsupported as ex:
-                    raise ex.with_context(stmt_reject_reason(
-                        stmt, f"return.tuple_source:{ex.reason}")) from None
-                _witness("ret.tuple_literal")
-                return THIRReturn(value=value, loc=loc)
-        ret_wrt = lc.prescan.ret_wrapper_ref_tuple
-        if stmt.value is not None and ret_wrt is not None:
-            # The REFERENCE-element tuple return (`return (t, 0)` at
-            # `-> tuple[Tree[int32], int32]` -> `return std::tuple<
-            # Tree<int32_t>&, int32_t>{t, 0};`): wrapper members are plain
-            # lvalue NAMES rendered bare (the reference member binds the
-            # lvalue), scalar members ride the container-elem rows. The
-            # spelling is the borrow form (`to_cpp_return`), not
-            # result_type.to_cpp -- carried on the borrow-literal node.
-            source = stmt.value
-            wrt_ok = (isinstance(source, TpyTupleLiteral)
-                      and len(source.elements) == len(ret_wrt.element_types))
-            if wrt_ok:
-                for i, sub in enumerate(source.elements):
-                    eslot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                        ret_wrt.element_types[i])))
-                    if _wrapper_union_like(eslot, analyzer) is not None:
-                        if not (isinstance(sub, TpyName)
-                                and sub.name in declared
-                                and sub.name not in scope.admission_pointers()
-                                and sub.name not in lc.narrow.narrowed
-                                and unwrap_readonly(unwrap_ref_type(
-                                    unwrap_send_sync(declared[sub.name])))
-                                == eslot):
-                            wrt_ok = False
-                            break
-                    elif not _container_lit_elem_ok(
-                            sub, ret_wrt.element_types[i], declared, analyzer,
-                            threaded=True, forced=True,
-                            pointers=scope.admission_pointers()):
-                        wrt_ok = False
-                        break
-            if not wrt_ok:
-                note_detail("return.wrapper_ref_tuple_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.wrapper_ref_tuple")
-            return THIRReturn(
-                value=THIRBorrowTupleLiteral(
-                    result_type=ret_wrt,
-                    spelled_cpp=ret_wrt.to_cpp_return(),
-                    elements=tuple(
-                        _lower_container_elem(source.elements[i],
-                                              ret_wrt.element_types[i],
-                                              lc, declared, tuple_elem=True)
-                        if _wrapper_union_like(
-                            unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                                ret_wrt.element_types[i]))), analyzer) is None
-                        else _lower_expr(source.elements[i], lc, declared)
-                        for i in range(len(source.elements))),
-                    addr_of=(False,) * len(source.elements),
-                    form=Form.BORROW,
-                    loc=loc),
+        elif (rec_storage is not None
+              and type(v) in _comprehensions._COMP_KINDS):
+            # A comprehension renders the decl-init arm's stmt-expr,
+            # target-typed by the storage slot.
+            comp = _comprehensions._lower_comprehension(
+                v, rec_storage, lc, declared, scope.admission_pointers())
+            _witness("ret.container_comp")
+            return THIRReturn(staged=staged, value=comp, loc=loc)
+        ret_ow = _own_wrapper_return(rdecl, analyzer)
+        if (ret_ow is not None
+                and isinstance(lit, (TpyArrayLiteral, TpyDictLiteral))
+                and _ru_container_literal_ok(lit, analyzer)):
+            _witness("ret.own_wrapper_literal")
+            return THIRReturn(staged=staged, value=_flush_witness(
+                "flush.return", _lower_ru_literal(lit, ret_ow, lc, declared)),
                 loc=loc)
-        ret_ost = lc.prescan.ret_own_storage_tuple
-        # A CALL source rides the generic tail bare, exactly as the plain
-        # value-tuple return's `ret.tuple_call` arm one rung up does; the
-        # call gates there own the result rows.
-        if (stmt.value is not None and ret_ost is not None
-                and not isinstance(stmt.value, (TpyCall, TpyMethodCall))):
-            # The Own[tuple] STORAGE return (`-> Own[tuple[str, Resource]]`):
-            # a tuple LITERAL of storage-direct members returns the spelled
-            # brace-init (`return std::tuple<...>{...};` -- THIRTupleLiteral's
-            # exact render). Members lower through the container-element rows
-            # against their slots; the gate follows the storage-direct member
-            # rules (a non-value member must be an RVALUE -- a NAME member
-            # would take the borrow ladder's different render).
-            source = stmt.value
-            per_elem = _ptr_tuple_last_use(source, ret_ost, lc, declared)
-            if per_elem is not None:
-                # A rebound pointer tuple at its last use: each object it
-                # owns there moves out (the per-element `return
-                # std::move((*p))`), each borrowed one is copied in.
-                _witness("ret.own_tuple_ptr_lift")
-                return THIRReturn(value=per_elem, loc=loc)
-            if (isinstance(source, TpyName)
-                    and not lc.binding(source.name).pointer
-                    and own_btuple_borrow_name_arg(
-                        source, lc.func.return_type, declared,
-                        lc.narrow.narrowed, lc.names_with("storage_tuple"),
-                        analyzer) is not None):
-                # A borrow-form tuple NAME at the whole `Own[tuple[...]]`
-                # return: the same declared-copy lift as per-element slots.
-                _witness("ret.own_tuple_borrow_lift")
-                return THIRReturn(
-                    value=_own_tuple_name_copy(source, ret_ost, lc, declared),
-                    loc=loc)
-            ost_ok = (isinstance(source, TpyTupleLiteral)
-                      and len(source.elements) == len(ret_ost.element_types))
-            if ost_ok:
-                for i, sub in enumerate(source.elements):
-                    # A per-element-own slot carries the Own on the ELEMENT
-                    # (`tuple[Own[P | None], int32]`); peel it so the element
-                    # families gate on the stored shape (the Own[tuple[..]]
-                    # flavor already arrives element-bare).
-                    mslot = _unwrap_own(ret_ost.element_types[i])
-                    mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                        mslot)))
-                    if sub in analyzer.ctx.own_element_copies:
-                        # A borrowed member sema declared a copy of: it
-                        # builds exactly as its explicit `copy(p)` would.
-                        if own_element_copy_type(sub, analyzer) != mbare:
-                            note_detail("return.own_element_copy_source")
-                            ost_ok = False
-                            break
-                        continue
-                    if (not mbare.is_value_type()
-                            and not is_rvalue_source(analyzer, sub)
-                            # ... or a movable NAME at its last use: the
-                            # element moves into the storage slot
-                            # (`{std::move(w1), ...}`), the auto-move applied
-                            # member-wise.
-                            and not (isinstance(sub, TpyName)
-                                     and _is_move_source(sub, lc))):
-                        ost_ok = False
-                        break
-                    if not _container_lit_elem_ok(
-                            sub, mslot, declared, analyzer, threaded=True,
-                            forced=True, allow_record=True, allow_nested=True,
-                            allow_optional=True,
-                            pointers=scope.admission_pointers()):
-                        ost_ok = False
-                        break
-            if not ost_ok:
-                note_detail("return.tuple_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.own_storage_tuple")
-            return THIRReturn(
-                value=THIRTupleLiteral(
-                    result_type=ret_ost,
-                    elements=tuple(
-                        _lower_copy_special(
-                            source.elements[i], "copy",
-                            _unwrap_own(ret_ost.element_types[i]), lc,
-                            declared, getattr(source.elements[i], "loc",
-                                              None))
-                        if source.elements[i] in analyzer.ctx.own_element_copies
-                        else _lower_container_elem(source.elements[i],
-                                                   _unwrap_own(
-                                                       ret_ost.element_types[i]),
-                                                   lc, declared, tuple_elem=True)
-                        for i in range(len(source.elements))),
-                    loc=loc),
+        if (_own_genrec_return(rdecl) is not None
+                and isinstance(lit, (TpyArrayLiteral, TpyDictLiteral))
+                and _ru_instance_literal_ok(lit, analyzer)):
+            _witness("ret.genrec_literal")
+            return THIRReturn(staged=staged, value=_flush_witness(
+                "flush.return", _lower_ru_literal(
+                    lit, analyzer.get_expr_type(lit), lc, declared)),
                 loc=loc)
-        owned_str_field = False
-        if stmt.value is not None and lc.prescan.ret_union is not None:
-            source = stmt.value
-            while isinstance(source, TpyCoerce):
-                source = source.expr
-            # An owned-str FIELD read (`return self.data_name` into
-            # `int32 | str`) renders bare -- the variant constructs from the
-            # std::string lvalue directly, so no materialization is
-            # emitted. Sema types the read `str` exactly when the
-            # field's storage is owned; StrView fields (and every other
-            # view-shaped source: params, view locals, slices) type as
-            # views and keep the fence.
-            owned_str_field = (
-                isinstance(source, TpyFieldAccess)
-                and _field_receiver_ok(source, declared, analyzer)
-                and is_str_type(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(analyzer.get_expr_type(source)))))
-                and _witness("ret.union_owned_str_field"))
-            if (not isinstance(source, TpyStrLiteral)
-                    and not owned_str_field
-                    and _resolved_str_value(
-                        analyzer.get_expr_type(source), analyzer) is not None):
-                note_detail("return.union_view_insert")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-        if (lc.prescan.ret_union_borrow is not None
-                and stmt.value is not None):
-            # The Ref(union) borrow-return (a property getter's
-            # `std::variant<Circle, Square>&` slot): a bare same-union
-            # self-FIELD returns bare (`return this->_shape;`); every
-            # other source has no witnessed render.
-            _ubv = stmt.value
-            _ub_ft = (analyzer.get_expr_type(_ubv)
-                      if isinstance(_ubv, TpyFieldAccess) else None)
-            if (isinstance(_ubv, TpyFieldAccess)
-                    and isinstance(_ubv.obj, TpyName)
-                    and _ubv.obj.name == lc.self_receiver
-                    and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                        _ub_ft))) == lc.prescan.ret_union_borrow):
-                _witness("ret.union_borrow_field")
-                return THIRReturn(
-                    value=_lower_expr(
-                        _ubv, lc, declared, field_prechecked=True,
-                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-                    loc=loc)
-            note_detail("return.union_borrow")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        ret_pu = lc.prescan.ret_ptr_union
-        member_lvalue_ret = (
-            stmt.value is not None and ret_pu is not None
-            and isinstance(stmt.value, TpyName)
-            and stmt.value.name in declared
-            and stmt.value.name not in lc.narrow.narrowed
-            and not lc.binding(stmt.value.name).pointer
-            # A plain record BINDING whose type is exactly one member, or a
-            # subclass of exactly one (the variant's converting ctor binds
-            # the derived address to the base pointer): the variant holds
-            # pointers, so the return takes its address (`return &(d);`).
-            # A pointer-shaped binding already IS the pointer and rides its
-            # own row.
-            and _union_member_match(
-                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    declared[stmt.value.name]))), ret_pu.members, analyzer)
-            and record_like(declared[stmt.value.name], analyzer))
-        if (stmt.value is not None and ret_pu is not None
-                and (member_lvalue_ret
-                     or (isinstance(stmt.value, TpyName)
-                         and stmt.value.name in lc.narrow.narrowed
-                         and lc.narrow.subject_union.get(stmt.value.name)
-                         == ret_pu))):
-            # `return pet` on an isinstance-NARROWED ptr-variant union: the
-            # variant holds POINTERS and the live binding is the extraction
-            # alias (a member lvalue), so the return takes its address --
-            # `return &(__pet);`.
-            _witness("ret.narrowed_union_addr")
+        if (isinstance(v, TpyLambda) and isinstance(rdecl, CallableType)
+                and not rdecl.is_template):
+            # `return lambda x: ...` at a Callable slot: the escaping
+            # by-value closure (_lower_lambda's captures_by_value arm).
+            _witness("ret.closure_lambda")
+            return THIRReturn(staged=staged,
+                              value=_lower_lambda(v, lc, declared), loc=loc)
+        if not isinstance(lit, _RETURN_LITERALS) or (
+                rec_storage is None and isinstance(lit, (
+                    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
+                    TpyListRepeat))):
             return THIRReturn(
-                value=THIROptionalPtrArg(
-                    result_type=ret_pu,
-                    value=_lower_expr(stmt.value, lc, declared),
-                    addr_of=True, form=Form.BORROW, loc=loc),
-                loc=loc)
-        if (stmt.value is not None and ret_pu is not None
-                and not isinstance(stmt.value, TpyNoneLiteral)
-                and not _ptr_union_source_ok(
-                    stmt.value, declared, analyzer, ret_pu,
-                    allow_field=False)):
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        if (stmt.value is not None and lc.prescan.ret_char
-                and isinstance(stmt.value, TpyStrLiteral)):
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        if stmt.value is not None and lc.prescan.ret_own_union is not None:
-            # An `Own[A | B]` union return over the widened member class:
-            # every routed source returns bare into the storage variant
-            # (its converting ctor absorbs them) via the generic tail --
-            # a member-record ctor rvalue, a scalar-typed value, a
-            # container/span-member NAME (`return xs;` -- C++
-            # implicit-moves on the by-value return, no spelled move),
-            # and a slice rvalue (`return self.items[1:4];`).
-            _ou_src = analyzer.get_expr_type(stmt.value)
-            _ou_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                _ou_src))) if _ou_src is not None else None)
-            if isinstance(_ou_u, OwnType):
-                _ou_u = unwrap_readonly(_ou_u.wrapped)
-            _ou_member_name = (
-                isinstance(stmt.value, TpyName)
-                and stmt.value.name in declared
-                and stmt.value.name not in narrowed
-                and stmt.value.name not in pointers
-                and (_f1_container_ref(_ou_u) or _span_value(_ou_u)))
-            _ou_slice_rvalue = (
-                isinstance(stmt.value, TpySubscript)
-                and isinstance(stmt.value.index, TpySlice)
-                and stmt.value.slice_function_info is not None)
-            # A value-tuple LITERAL member (`return ("hi", 7)`): the spelled
-            # brace-init at the literal's OWN tuple type (int literals
-            # resolved first); the variant's converting ctor absorbs the
-            # element-wise conversion.
-            _ou_lit_t = analyzer.get_expr_type(stmt.value)
-            if _ou_lit_t is not None:
-                _ou_lit_t = resolve_int_literals(
-                    unwrap_readonly(_ou_lit_t),
-                    analyzer.ctx.default_int_for_literal)
-            _ou_tuple_literal = (
-                isinstance(stmt.value, TpyTupleLiteral)
-                and _value_tuple(_ou_lit_t, analyzer) is not None)
-            if not ((_record_rvalue_source_shape(stmt.value, analyzer)
-                     and record_like(analyzer.get_expr_type(stmt.value),
-                                    analyzer))
-                    or _resolved_scalar(analyzer.get_expr_type(stmt.value),
-                                        analyzer)
-                    or _ou_member_name
-                    or _ou_slice_rvalue
-                    or _ou_tuple_literal):
-                note_detail("return.own_union_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.own_union_ctor")
-        ret_ow = lc.prescan.ret_own_wrapper
-        if stmt.value is not None and ret_ow is not None:
-            # An `Own[V]` wrapper-union return: `None` constructs the
-            # monostate alternative (`return std::monostate{};`), a
-            # container literal takes the ru render, a member-container
-            # NAME and a scalar literal return bare through the generic
-            # tail (the wrapper's converting ctor absorbs both).
-            ow_src = stmt.value
-            while isinstance(ow_src, TpyCoerce):
-                ow_src = ow_src.expr
-            if isinstance(ow_src, TpyNoneLiteral):
-                _witness("ret.own_wrapper_none")
-                return THIRReturn(
-                    value=THIRLiteral(result_type=ret_ow, value=None,
-                                      form=Form.STORAGE, loc=loc), loc=loc)
-            if (isinstance(ow_src, (TpyArrayLiteral, TpyDictLiteral))
-                    and _ru_container_literal_ok(ow_src, analyzer)):
-                _witness("ret.own_wrapper_literal")
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        _lower_ru_literal(ow_src, ret_ow, lc, declared)),
-                    loc=loc)
-            _ow_t = analyzer.get_expr_type(ow_src)
-            _ow_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                _ow_t))) if _ow_t is not None else None)
-            if isinstance(_ow_u, OwnType):
-                _ow_u = unwrap_readonly(_ow_u.wrapped)
-            _ow_name = (isinstance(ow_src, TpyName)
-                        and ow_src.name in declared
-                        and ow_src.name not in narrowed
-                        and ow_src.name not in pointers
-                        and _f1_container_ref(_ow_u))
-            # A member-RECORD ctor rvalue (`return Lit(v)` at Own[Expr]):
-            # bare, the wrapper's converting ctor absorbs it -- the same
-            # render the plain Own[union] arm gives its ctor sources.
-            _ow_ctor = (_record_rvalue_source_shape(ow_src, analyzer)
-                        and record_like(analyzer.get_expr_type(ow_src),
-                                       analyzer))
-            # A call whose result IS the slot's wrapper (`return loads(s)`):
-            # a prvalue of the return type itself, so it forwards bare with
-            # no converting-ctor step. The rvalue test does NOT screen out a
-            # borrow-returning wrapper-union callee -- it answers "not a C++
-            # ref" for every union return, including a bare non-generic
-            # wrapper that really does hand back a reference. The bare
-            # forward stays correct only because the implicit copy happens
-            # there anyway; if that test learns to tell the two apart, this
-            # arm needs its own screen rather than inheriting one.
-            _ow_call = (isinstance(ow_src, (TpyCall, TpyMethodCall))
-                        and is_rvalue_source(analyzer, ow_src)
-                        and _wrapper_union_like(_ow_u, analyzer) == ret_ow)
-            if not (_ow_name or _ow_ctor or _ow_call
-                    or _resolved_scalar(_ow_t, analyzer)):
-                note_detail("return.own_wrapper_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.own_wrapper_call" if _ow_call
-                     else "ret.own_wrapper_member")
-        ret_wb = lc.prescan.ret_wrapper_borrow
-        if stmt.value is not None and ret_wb is not None:
-            # A wrapper BORROW return (`Expr&` / `const Expr&`): NAME
-            # sources only -- a borrow param returns bare, a pointer-local
-            # derefs; the wrapper twin of the record-borrow name row.
-            wb_src = _lower_ptr_name_src(stmt.value, lc, declared)
-            if wb_src is None:
-                note_detail("return.wrapper_borrow_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.wrapper_borrow")
-            return THIRReturn(value=wb_src, loc=loc)
-        ret_sgt = lc.prescan.ret_generic_tuple
-        if stmt.value is not None and ret_sgt is not None:
-            # The SYNC generic-tuple return: a tuple LITERAL renders the
-            # spelled brace-init with per-element `to_val_or_ptr` wraps
-            # (the resumable arm's exact builder).
-            if isinstance(stmt.value, TpyTupleLiteral):
-                _witness("ret.generic_tuple_literal")
-                return THIRReturn(
-                    value=_lower_generic_tuple_literal(stmt.value, ret_sgt, lc,
-                                                       declared),
-                    loc=loc)
-            # A CALL rvalue whose own return slot is the SAME generic tuple
-            # already carries that spelling, so no element wrap applies and
-            # it returns bare through the position-blind tail. Every other
-            # source stays a named reject (the untargeted renders differ).
-            if not (isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                    and _generic_value_tuple_return(
-                        analyzer.get_expr_type(stmt.value), analyzer)
-                    == ret_sgt):
-                note_detail("return.generic_tuple_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.generic_tuple_call")
-        if stmt.value is not None and lc.prescan.ret_genrec is not None:
-            # An `Own[Tree[int32]]` return: the wrapper struct returns by
-            # value. A container literal takes the ru-instance spelled
-            # render (`return std::vector<Tree<int32_t>>{1, 2, 3};`); a
-            # scalar member value returns bare through the generic tail
-            # (`return 7;` -- the converting ctor absorbs the target-less
-            # render). Every other source stays a named reject.
-            gr_src = stmt.value
-            while isinstance(gr_src, TpyCoerce):
-                gr_src = gr_src.expr
-            if (isinstance(gr_src, (TpyArrayLiteral, TpyDictLiteral))
-                    and _ru_instance_literal_ok(gr_src, analyzer)):
-                _witness("ret.genrec_literal")
-                gr_t = analyzer.get_expr_type(gr_src)
-                return THIRReturn(
-                    value=_flush_witness(
-                        "flush.return",
-                        _lower_ru_literal(gr_src, gr_t, lc, declared)),
-                    loc=loc)
-            if not _resolved_scalar(analyzer.get_expr_type(gr_src), analyzer):
-                note_detail("return.genrec_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.genrec_member")
-        if (stmt.value is not None and lc.prescan.ret_str is not None
-                and isinstance(stmt.value, TpyFieldAccess)):
-            if _str_field_value_read(stmt.value, declared, analyzer):
-                _witness("ret.str_field")
-            elif _field_receiver_ok(stmt.value, declared, analyzer):
-                note_detail("return.str_field_form")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-        # `return None` at a union slot -> `std::monostate{}`, target-typed
-        # (F4 U1 value / U2 pointer variant -- the monostate member renders
-        # the same in both spellings).
-        ret_any_union = lc.prescan.ret_union or lc.prescan.ret_ptr_union
-        if stmt.value is not None and ret_any_union is not None \
-                and isinstance(stmt.value, TpyNoneLiteral):
-            return THIRReturn(
-                value=THIRLiteral(result_type=ret_any_union, value=None,
-                                  form=Form.STORAGE, loc=loc), loc=loc)
-        if (isinstance(stmt.value, TpyName)
-                and lc.binding(stmt.value.name).pointer
-                and stmt.value.name not in narrowed
-                and stmt.value.name in declared
-                and _optional_ptr_borrow_wide(declared[stmt.value.name],
-                                              analyzer) is not None
-                and (_resolved_scalar(_fn_return_type(lc), analyzer)
-                     or _is_type_param_slot(_fn_return_type(lc)))):
-            # `return y;` -- a narrowed WIDE ptr-opt local (a scalar/open-T
-            # pointee) at the matching VALUE return: the
-            # indirect-name arm derefs and moves at a movable last use
-            # (`return std::move((*y));`).
-            _witness("ret.value_ptr_opt_local")
-            rv_src: THIRExpr = _lower_expr(
-                stmt.value, lc, declared,
-                use=_ExprUse(pos=SinkPos.RETURN))
-            if _node_moves(rv_src):
-                rv_src = THIRMove(result_type=rv_src.result_type,
-                                  value=rv_src, form=rv_src.form, loc=loc)
-            return THIRReturn(value=rv_src, loc=loc)
-        if (isinstance(stmt.value, TpyName)
-                and lc.binding(stmt.value.name).pointer
-                and stmt.value.name not in narrowed
-                and _is_type_param_slot(declared.get(stmt.value.name))):
-            # `return result;` where `result` is a reseatable `T*` element
-            # borrow or a hoisted `std::optional<T>` in a generic body: the
-            # indirect-name arm derefs it into the `val_or_ref_t<T>`
-            # slot and moves at a movable last use (`return (*result);` /
-            # `return std::move((*value));`). One indirect-name + move
-            # branch serves every pointer-local return, so this arm and its
-            # record twins (`ret.record_ptr_opt_local` /
-            # `ret.record_ptr_local`) must ask the move question
-            # identically; an open-T slot never reaches that ladder
-            # (`_f1_record` is False for it).
-            _witness("ret.tparam_ptr_local")
-            tp_src: THIRExpr = _lower_expr(
-                stmt.value, lc, declared,
-                use=_ExprUse(pos=SinkPos.RETURN))
-            if _node_moves(tp_src):
-                tp_src = THIRMove(result_type=tp_src.result_type,
-                                  value=tp_src, form=tp_src.form, loc=loc)
-            return THIRReturn(value=tp_src, loc=loc)
-        field_prechecked = (
-            (isinstance(stmt.value, TpyFieldAccess)
-             and lc.prescan.ret_str is not None
-             and _str_field_value_read(stmt.value, declared, analyzer))
-            # The union-return owned-str field read admitted above rides
-            # the same bare-member render.
-            or owned_str_field)
-        # The view-family result row admits the member read off ANY receiver
-        # the field ladder itself admits, so the grant is not tied to the
-        # sink's own NAME-receiver precheck: a record-element subscript
-        # (`return self._store[k].value`), a field over a field
-        # (`return o.inner.tag`) and the rest of the ladder all compose their
-        # receiver render with the same bare member tail. Only the RESULT row
-        # is granted -- the receiver still goes through the ladder, and the
-        # row itself still requires a view-family field type. Both families:
-        # `_wrap_view_owned_return` below spells the owned convert for each.
-        field_owned_str = field_prechecked or (
-            (lc.prescan.ret_str is not None
-             or lc.prescan.ret_bytes is not None)
-            and isinstance(stmt.value, TpyFieldAccess)
-            and _witness("ret.viewfam_field_recv"))
-        if _unlifted_declared_copy(stmt.value, lc):
-            note_detail("return.own_element_copy_source")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        value = (_flush_witness(
-                    "flush.return",
-                    _lower_expr(
-                        stmt.value, lc, declared,
-                        use=_ExprUse(
-                            result=_ExprResultUse.STORAGE,
-                            allow_temps=True,
-                            # An owning return direct-initializes the
-                            # result, so a fresh select renders its prvalue
-                            # `?:` there.
-                            forms=(_ONLY_SELECT_FRESH_PRVALUE
-                                   if lc.prescan.ret_record_storage
-                                   is not None else None),
-                            # A return value renders against the fn return
-                            # type, so a both-literal binop never folds
-                            # there (`return 2**40 + 1` renders the
-                            # operator chain); a container literal takes
-                            # the record-storage slot the emit spells.
-                            slot_target=(
-                                _fn_return_type(lc)
-                                if isinstance(stmt.value, TpyBinOp)
-                                else lc.prescan.ret_record_storage
-                                if isinstance(
-                                    stmt.value,
-                                    (TpyArrayLiteral, TpyDictLiteral,
-                                     TpySetLiteral))
-                                else None)),
-                        field_prechecked=field_prechecked,
-                        # The str-family member read the return slot admits is
-                        # exactly `field_prechecked`'s row, so grant the field
-                        # arm the same owned-str admission the decl / f-string
-                        # sinks already thread.
-                        field_owned_str_ok=field_owned_str))
-                 if stmt.value else None)
+                staged=staged,
+                value=_return_read(v, ret_slot, lc, declared, stmt), loc=loc)
+        # LITERAL construction: the literal renders against the result
+        # slot (a container literal spells the record-storage slot).
+        value = _flush_witness(
+            "flush.return",
+            _lower_expr(v, lc, declared, use=replace(
+                _field_write.stored_use(ret_slot, rst, analyzer),
+                slot_target=(rec_storage if isinstance(
+                    v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral))
+                    else None))))
         # A float literal returned from a float32 function takes the `f`
         # suffix (the return type threads into the render).
-        ret_t = _fn_return_type(lc)
-        value = _slot_literal_retype(value, ret_t, lc)
-        if value is not None and value.source.must_copy:
-            # Sema declared a copy of this read (a returned name a closure
-            # still reads): the bare `return x;` would move it out from
-            # under the closure. The conversion spells the copy.
-            _witness("ret.live_name_copy")
-            value = _return_converted(value, lc, stmt)
-        # An expensive-copy value-Optional PARAM (`int | None`) returned at its
-        # narrowed last use moves the unwrapped value (`return std::move((*p));`,
-        # seed_param_locals' value-optional movable face -- param-only: a
-        # sema-movable VALUE local is registered nowhere, so a value-opt
-        # LOCAL's narrowed return stays a plain `(*x)` copy). The deref
-        # guard scopes it to the narrowed `(*p)` read (an un-narrowed return
-        # renders the bare optional into an Optional slot -- a different arm).
-        if (isinstance(stmt.value, TpyName) and isinstance(value, THIRName)
-                and value.deref
-                and stmt.value.name in lc.prescan.param_names
-                and (_value_opt_scalar_binding(stmt.value.name, lc)
-                     # ... and the `Optional[String]` param: its narrowed
-                     # deref is an OWNED std::string lvalue, moved the same
-                     # way (`return std::move((*x));`). The `str | None`
-                     # VIEW param stays out (its deref is a BORROW view --
-                     # never moved).
-                     or _value_opt_string_owned(
-                         declared.get(stmt.value.name)) is not None
-                     # ... and the RECORD kind (`Optional[Own[Payload]]`
-                     # param): the same deref-move at the Own[record]
-                     # STORAGE return.
-                     or lc.binding(stmt.value.name).value_opt
-                     is ValueOptKind.RECORD)
-                and _node_moves(value)):
-            value = THIRMove(result_type=value.result_type, value=value,
-                             form=value.form, loc=loc)
-        # NB a bytes literal (or bytes value) at a BytesView return arrives
-        # wrapped in the cross-type view coercion and is rejected (the
-        # deferred coercion cell), so no view retag is needed here.
-        value = _wrap_view_owned_return(value, lc, loc)
-        return THIRReturn(value=value, loc=loc)
+        return THIRReturn(
+            value=_slot_literal_retype(value, _fn_return_type(lc), lc),
+            staged=staged, loc=loc)
     if isinstance(stmt, TpyIf):
         begin_stmt()
         folded = _lower_overload_folded_if(
@@ -15419,7 +13681,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         or name in lc.prescan.param_names
                         or name in globals_):
                     continue
-                if isinstance(_binding_peel(declared[name]),
+                if isinstance(peel_binding(declared[name]),
                               ConcreteGenType):
                     # A generator closes in place: its storage is an
                     # optional or a frame slot (`function_closed_frames`
@@ -16383,42 +14645,44 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("foreach.tuple_unpack_iter")
             else:
                 _witness("foreach.iter_proto")
+            proto_src_field = _frame_src_slot(stmt, lc)
             if isinstance(it, TpyIfExpr):
                 # The route-admitted ternary of iterator-returning calls:
                 # each arm lowers at the ITERABLE use (the same widening a
                 # direct call source gets) under the conditional-operand
                 # audit; the emit's per-arm regions defer their temps.
                 _witness("foreach.ifexpr_iterable_lower")
+                it_cond = _lower_truthy(it.condition, lc, declared,
+                                        temps_ok=True)
+                it_arms = tuple(
+                    _lower_expr(
+                        arm, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
+                                     pos=SinkPos.ITER_SOURCE,
+                                     allow_temps=True),
+                        cond_eager=True)
+                    for arm in (it.then_expr, it.else_expr))
                 proto_iterable = THIRIfExpr(
                     result_type=lc.analyzer.get_expr_type(it),
-                    cond=_lower_truthy(it.condition, lc, declared,
-                                       temps_ok=True),
-                    then=_lower_expr(
-                        it.then_expr, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                                     pos=SinkPos.ITER_SOURCE,
-                                     allow_temps=True),
-                        cond_eager=True),
-                    orelse=_lower_expr(
-                        it.else_expr, lc, declared,
-                        use=_ExprUse(result=_ExprResultUse.ITERABLE,
-                                     pos=SinkPos.ITER_SOURCE,
-                                     allow_temps=True),
-                        cond_eager=True),
+                    cond=it_cond, then=it_arms[0], orelse=it_arms[1],
                     form=Form.VALUE,
-                    normalized=SelectResult(Held.VALUE, temporary=True),
+                    normalized=_select_result(Held.VALUE, it, lc, it_arms,
+                                              temporary=True),
                     loc=getattr(it, "loc", None))
             else:
                 proto_iterable = _lower_expr(
                     it, lc, declared,
                     # The emit flushes arg temps inside the rvalue brace
                     # scope, right before the `__src` bind, so temp-hoisting
-                    # arg rows are safe here.
+                    # arg rows are safe here. A frame field holding the
+                    # source is spelled off it.
                     use=_ExprUse(result=_ExprResultUse.ITERABLE,
                                  pos=SinkPos.ITER_SOURCE,
-                                 allow_temps=True))
+                                 allow_temps=True,
+                                 forms=(_ONLY_SELF_TYPED
+                                        if proto_src_field is not None
+                                        else None)))
             proto_iterable = _deref_loop_source(proto_iterable, lc)
-            proto_src_field = _frame_src_slot(stmt, lc)
             if proto_src_field is not None:
                 proto_iterable = self_typed_frame_source(proto_iterable, lc)
             return build_loop_node(
@@ -16544,7 +14808,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                  use=_ExprUse(result=_ExprResultUse.DISCARD,
                                               allow_temps=True),
                                  error_return_raw=True),
-                loc=loc)
+                staged=lc.exit_staged, loc=loc)
         if _is_builtin_print(stmt.expr, declared, lc.analyzer):
             e = stmt.expr
             narrowed = lc.narrow.narrowed.keys()
@@ -17035,30 +15299,39 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
             _witness("try.except_finally")
     handlers: list[THIRExceptHandler] = []
     err_opt_cpp: 'str | None' = None
-    for h in _bindings.scoped(lc, stmt.handlers):
-        cpp = None
-        h_record = (handler_exception_record(
-            h, lc.analyzer.registry, lc.analyzer.ctx.module_name)
-            if h.exception_type is not None else None)
-        if h_record is not None:
-            cpp = exception_record_cpp(h_record, lc.analyzer.ctx.module_name)
-        h_declared = dict(declared)
-        if h.binding:
-            bt = _handler_binding_type(h, lc.analyzer)
-            assert bt is not None, "ineligible handler reached lowering"
-            h_declared[h.binding] = bt
-        if stmt.tier is TryTier.RETURN and h.binding:
-            # The `__err_opt_N` capture decl spells the error type.
-            err_opt_cpp = exception_record_cpp(
-                h_record, lc.analyzer.ctx.module_name)
-        _bindings.require_entered(lc, h)
-        handlers.append(THIRExceptHandler(
-            cpp_type=cpp, binding=h.binding,
-            body=_lower_scoped_stmts(
-                h.body, lc, h_declared, branch_decls_ok=True,
-                loop_depth=loop_depth),
-            source_display=(h.exception_type
-                            if stmt.tier is TryTier.RETURN else None)))
+    # The finally frame wraps the handlers, the try and the else body.
+    with lc.staged_region(bool(stmt.finally_body)):
+        for h in _bindings.scoped(lc, stmt.handlers):
+            cpp = None
+            h_record = (handler_exception_record(
+                h, lc.analyzer.registry, lc.analyzer.ctx.module_name)
+                if h.exception_type is not None else None)
+            if h_record is not None:
+                cpp = exception_record_cpp(h_record,
+                                           lc.analyzer.ctx.module_name)
+            h_declared = dict(declared)
+            if h.binding:
+                bt = _handler_binding_type(h, lc.analyzer)
+                assert bt is not None, "ineligible handler reached lowering"
+                h_declared[h.binding] = bt
+            if stmt.tier is TryTier.RETURN and h.binding:
+                # The `__err_opt_N` capture decl spells the error type.
+                err_opt_cpp = exception_record_cpp(
+                    h_record, lc.analyzer.ctx.module_name)
+            _bindings.require_entered(lc, h)
+            handlers.append(THIRExceptHandler(
+                cpp_type=cpp, binding=h.binding,
+                body=_lower_scoped_stmts(
+                    h.body, lc, h_declared, branch_decls_ok=True,
+                    loop_depth=loop_depth),
+                source_display=(h.exception_type
+                                if stmt.tier is TryTier.RETURN else None)))
+        try_body = _lower_scoped_stmts(
+            stmt.try_body, lc, dict(declared), branch_decls_ok=True,
+            loop_depth=loop_depth)
+        else_body = _lower_scoped_stmts(
+            stmt.else_body, lc, dict(declared), branch_decls_ok=True,
+            loop_depth=loop_depth)
     last = stmt.finally_body[-1] if stmt.finally_body else None
     finally_terminates = isinstance(last, (TpyRaise, TpyReturn))
     if body_terminates and stmt.finally_body:
@@ -17067,13 +15340,9 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         _witness("try.finally_terminates")
     return THIRTry(
         tier=stmt.tier,
-        try_body=_lower_scoped_stmts(
-            stmt.try_body, lc, dict(declared), branch_decls_ok=True,
-            loop_depth=loop_depth),
+        try_body=try_body,
         handlers=tuple(handlers),
-        else_body=_lower_scoped_stmts(
-            stmt.else_body, lc, dict(declared), branch_decls_ok=True,
-            loop_depth=loop_depth),
+        else_body=else_body,
         finally_body=_lower_scoped_stmts(
             stmt.finally_body, lc, dict(declared), branch_decls_ok=True,
             loop_depth=loop_depth),
@@ -17135,7 +15404,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
                          deref_depth=getattr(stmt, "deref_depth", 0), loc=loc)
     if stmt.exception_type is None:
         _witness("raise.bare")
-        return THIRRaise(loc=loc)
+        return THIRRaise(staged=lc.exit_staged, loc=loc)
     raised = lc.analyzer.registry.get_record_for_type(stmt.resolved_type)
     if raised is None:
         raise ThirUnsupported("stmt.raise")
@@ -17167,6 +15436,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
         args=tuple(lowered_args),
         via_virtual=stmt.raise_via_virtual,
         return_tier=return_tier,
+        staged=lc.exit_staged,
         loc=loc,
     )
 
@@ -17436,9 +15706,12 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                                         "with.hoist_decl")
     n_returns_before = len(lc.nested_returns)
     # Sema declares every body name in front of the block except a
-    # generator it keeps there, which nothing after the block reads.
-    body = _lower_scoped_stmts(stmt.body, lc, dict(declared),
-                               branch_decls_ok=True, loop_depth=loop_depth)
+    # generator it keeps there, which nothing after the block reads. A
+    # return the `__exit__` frame wraps stages its result first.
+    with lc.staged_region(True):
+        body = _lower_scoped_stmts(stmt.body, lc, dict(declared),
+                                   branch_decls_ok=True,
+                                   loop_depth=loop_depth)
     if resumable and len(lc.nested_returns) != n_returns_before:
         # A return nested in a resumable LEAF with renders through the ctx
         # return hook, which walks the skeleton's finally_stack -- this
@@ -17747,4 +16020,6 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         _lower_expr(a, lc, declared, use=use,
                     field_owned_str_ok=isinstance(a, TpyFieldAccess)),
         _print_arg_form(arg_type))
+
+
 

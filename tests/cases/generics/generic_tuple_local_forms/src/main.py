@@ -398,7 +398,44 @@ def c_sel_owned(flag: bool) -> None:
     print("c_sel_owned", y[0].v, y[1].v)
 
 
+# ret_borrow: an open-T tuple parameter, local, select or call-bound local
+# returned at a non-Own `tuple[T, int32]` result hands back the borrow form,
+# so the caller's element is the source's object.
+def r_param[T](x: tuple[T, int32]) -> tuple[T, int32]:
+    return x  # tpyc: ok
+
+
+def r_local[T](x: tuple[T, int32]) -> tuple[T, int32]:
+    y = x
+    return y  # tpyc: ok
+
+
+def r_sel[T](x: tuple[T, int32], z: tuple[T, int32], c: bool) -> tuple[T, int32]:
+    return x if c else z  # tpyc: ok
+
+
+def r_call_local[T](a: T) -> tuple[T, int32]:
+    c = mk(a)
+    return c  # tpyc: ok
+
+
+def s_ret_borrow() -> None:
+    a = A(1)
+    b = A(2)
+    p = r_param((a, 1))
+    p[0].v += 10
+    q = r_local((a, 1))
+    q[0].v += 10
+    s = r_sel((a, 1), (b, 2), False)
+    s[0].v += 10
+    c = r_call_local(a)
+    print("ret_borrow", a.v, b.v, p[0] is a, q[0] is a, s[0] is b, c[0] is a)
+    print("ret_borrow int", r_param((5, 1))[0], r_local((6, 1))[0],
+          r_sel((5, 1), (6, 2), True)[0], r_call_local(7)[0])
+
+
 def main() -> None:
+    s_ret_borrow()
     a = A(3)
     b = A(4)
     s_param((a, 1), bump)

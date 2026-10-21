@@ -101,6 +101,8 @@ from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
+from .source_records import finalize_source_records
+from .binding_ownership import record_body_ownership
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
 from .pending_num import PendingNums
@@ -418,9 +420,6 @@ class SemanticAnalyzer:
         # Per-function/method move-through vars (lvalue alias promoted to rvalue)
         self.function_move_through_vars: IdentityMap = IdentityMap()
         self.top_level_move_through_vars: set[str] = set()
-
-        # Per-function movable locals (owned, not hoisted/loop/lvalue-reassigned)
-        self.function_movable_locals: IdentityMap = IdentityMap()
 
         # Per-function locals an escaping closure (nested def or lambda) captures.
         self.function_escaping_captured_locals: IdentityMap = IdentityMap()
@@ -1080,6 +1079,9 @@ class SemanticAnalyzer:
         # Last diagnostic-emitting step for this analyzer, so it is where a
         # body analyzed once per clone collapses back to one report.
         self.ctx.collapse_duplicate_diagnostics()
+        # Every diagnostic has its final fate now, so each copy's
+        # declarations are read off the ones that stand.
+        finalize_source_records(self.ctx)
 
     def _normalize_function_info_refs(self) -> None:
         """Apply make_ref to all registered FunctionInfo param/return types.
@@ -1988,21 +1990,6 @@ class SemanticAnalyzer:
                 self.ctx.func.escape_hoisted_vars.copy())
         if self.ctx.func.move_through_vars:
             self.function_move_through_vars[func] = self.ctx.func.move_through_vars.copy()
-        # The movable locals: those a binding made objects of their own
-        # (ever_owned_locals survives FlowFacts restores) that the complete
-        # ownership fact keeps owning.
-        movable = set()
-        for name in self.ctx.func.ever_owned_locals:
-            if self.ctx.func.rebinds_keep_ownership(name):
-                movable.add(name)
-        # A rebind of a parameter that takes ownership copies into the
-        # parameter's own storage: the parameter stays owning.
-        movable.update(
-            name for name, ptype in func.params
-            if name in self.ctx.func.current_rebound_params
-            and func.takes_ownership_of(name, ptype))
-        if movable:
-            self.function_movable_locals[func] = movable
         if self.ctx.func.ever_owned_locals:
             self.function_ever_owned_locals[func] = self.ctx.func.ever_owned_locals.copy()
         borrow_decls = {
@@ -3526,8 +3513,10 @@ class SemanticAnalyzer:
         self.ctx.current_module_stmt = None
         self.deduction.resolve_all()
         self.compat.drain_deferred_escape_checks()
-        # No module-level read waits for settlement.
-        self.compat.build_tuple_records()
+        # No module-level read waits for settlement; its iteration binders'
+        # ownership is written as every body's is.
+        record_body_ownership(self.ctx, stmts)
+        self.compat.build_source_records()
         # A global some function rebinds through `global` can change between
         # two module-level statements: foreign storage for the replay.
         decide_rebind_storage(self.ctx, stmts, always_foreign=function_globals)

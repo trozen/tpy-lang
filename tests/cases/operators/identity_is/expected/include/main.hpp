@@ -426,7 +426,7 @@ inline A::A(const ::tpy::BigInt& n) : n(n) {}
 // def same(self, other: A) -> bool:
 //     return self is other  # tpyc: ok
 inline bool A::same(const A& other) const {
-    return ::tpy::same_object(&((*this)), &(other));
+    return ::tpy::same_object(this, &(other));
 }
 
 // def __init__(self, n: int) -> None:

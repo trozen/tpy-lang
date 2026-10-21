@@ -5,6 +5,7 @@ from __future__ import annotations
 from ..typesys import PendingViewType, TpyType, unwrap_readonly
 from ..sema.context import PENDING_CONTAINER_TYPES
 from ..sema import SemanticAnalyzer
+from ..sema.decl_types import settled_decl_type
 from ..parse import TpyVarDecl
 from .types import TypeResolver
 
@@ -22,11 +23,9 @@ def resolve_stmt_binding_type(
     Keeps lookup logic consistent across codegen paths and skips unresolved
     pending types from intermediate sema state.
     """
-    var_type = stmt.type
-    if var_type is not None or stmt.init is None:
+    var_type = settled_decl_type(stmt, analyzer.var_types)
+    if stmt.type is not None or stmt.init is None:
         return var_type
-
-    var_type = analyzer.var_types.get(stmt)
     if var_type is None or isinstance(var_type, _PENDING_TYPES):
         if include_global_binding:
             binding = analyzer.global_ns.lookup_local(stmt.name)

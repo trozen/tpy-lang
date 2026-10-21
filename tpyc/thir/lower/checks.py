@@ -51,7 +51,8 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union, repr_shape
+from ...typesys import (peel_binding, pointer_repr_optional,
+                       pointer_variant_union, repr_shape)
 from ...typesys import (
     param_may_be_written,
     ConcreteFrameType, ConcreteGenType,
@@ -135,8 +136,8 @@ from ...codegen_cpp.types import resolve_pending_container
 from ...typesys import make_list, overload_variant_cpp_name
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
-from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
-                                      resolve_own_source_type)
+from ...sema.dyn_erasure import (classify_dyn_own_arg, conformer_source,
+                                 dyn_forward_ok, resolve_own_source_type)
 from ...value_category import (
     call_hands_back_value, call_result_holdable, call_result_is_reference,
     call_result_live_in_statement, call_returns_cpp_ref,
@@ -252,7 +253,6 @@ from .predicates import (
     _enum_neg_wrap,
     _bytes_family_ref,
     _f1_container_ref,
-    _binding_peel,
     _f1_record,
     record_like,
     _method_rvalue_record_like,
@@ -2227,7 +2227,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     # opt>)`, the pointee spelled by `render_type`).
     inner = target_type.inner if isinstance(target_type, OptionalType) else None
     if record_like(inner, analyzer):
-        if _f1_container_ref(_binding_peel(inner)):
+        if _f1_container_ref(peel_binding(inner)):
             _witness("decl.opt_ptr_container")
         return binding
     return None
@@ -2238,14 +2238,14 @@ def builds_named_frame(call: TpyExpr, analyzer) -> bool:
     argument), since the frame is one object that is moved into place
     before it starts, never copied."""
     t = analyzer.get_expr_type(call)
-    return t is not None and isinstance(_binding_peel(t), ConcreteGenType)
+    return t is not None and isinstance(peel_binding(t), ConcreteGenType)
 
 
 def frame_object_slot(t: TpyType | None) -> bool:
     """A binding that holds a generator / coroutine frame object: one
     non-copyable, non-assignable frame, rebound by rebuilding its storage
     (THIRAssign.rebuild)."""
-    return t is not None and isinstance(_binding_peel(t), ConcreteFrameType)
+    return t is not None and isinstance(peel_binding(t), ConcreteFrameType)
 
 
 def _frame_factory_source(init: TpyExpr | None, target_t: TpyType | None,
@@ -9869,36 +9869,12 @@ def _dyn_own_conformer_arg(a: TpyExpr, ptype: 'TpyType | None',
     proto = u.wrapped
     if not (isinstance(proto, NominalType) and is_dyn_protocol(proto)):
         return None
-    declared = None
-    if isinstance(a, TpyName):
-        declared = locals_.get(a.name)
-    elif isinstance(a, TpyCall):
-        fi = a.resolved_function_info
-        if fi is None or not fi.is_constructor:
-            return None
-    elif isinstance(a, TpyMethodCall):
-        # An Own[record]-returning METHOD rvalue
-        # (`wait_for(loop.sock_accept(srv), ..)`): the record prvalue feeds
-        # the same make_unique/make_adapter wrap; the method call's own
-        # BORROW_BIND lowering gates receiver/args/result.
-        if (a.resolved_function_info is None
-                or not is_rvalue_source(analyzer, a)):
-            return None
-    else:
+    at_u = conformer_source(a, analyzer)
+    if at_u is None:
         return None
-    at = analyzer.get_expr_type(a)
-    at_u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-            if at is not None else None)
-    if isinstance(at_u, OwnType):
-        at_u = unwrap_readonly(at_u.wrapped)
-    # A protocol-typed source can never take the conformer wraps
-    # (Adapter<P, P> over abstract P has no sizeof) -- defensive: such
-    # sources classify 'forward' unless sema let a cross-protocol bind
-    # through, and then rejecting is the safe answer.
-    if not (isinstance(at_u, NominalType) and at_u.is_user_record
-            and not at_u.is_protocol):
-        return None
-    verdict = classify_dyn_own_arg(a, proto, declared, analyzer)
+    verdict = classify_dyn_own_arg(
+        a, proto, locals_.get(a.name) if isinstance(a, TpyName) else None,
+        analyzer)
     if verdict not in ("inherit", "structural"):
         return None
     if verdict == "inherit" and not _f1_record(at_u, analyzer):
@@ -11512,27 +11488,6 @@ def declared_name_copy(a: TpyExpr, analyzer) -> bool:
     borrow."""
     return (a in analyzer.ctx.own_element_copies
             and a not in analyzer.ctx.own_element_mixed)
-
-
-def own_btuple_borrow_name_arg(a: TpyExpr, ptype: 'TpyType | None',
-                               locals_: dict, narrowed: 'AbstractSet[str]',
-                               storage_tuple_locals: 'AbstractSet[str]',
-                               analyzer) -> 'TupleType | None':
-    """A BORROW-form tuple NAME (`t = (v, v)`, a tuple param) at a whole
-    `Own[ptr-repr tuple]` element slot (`xs.append(t)`) whose copy sema
-    declared: it lifts through the non-move `tuple_to_storage<S>(t)`, the
-    same lift a borrow-tuple-returning call takes there. Returns the slot's
-    tuple. An undeclared name keeps rejecting rather than copying unwarned."""
-    if not (isinstance(a, TpyName) and a.name in locals_
-            and a.name != "self" and a.name not in narrowed
-            and a.name not in storage_tuple_locals
-            and declared_name_copy(a, analyzer)):
-        return None
-    bare = _own_slot_ptr_repr_tuple(ptype)
-    if bare is None:
-        return None
-    au = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(locals_[a.name])))
-    return bare if au == bare else None
 
 
 def _r_own_tuple_storage(req: _ArgReq) -> bool:

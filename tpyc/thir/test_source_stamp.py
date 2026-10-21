@@ -23,12 +23,14 @@ from .lower import iter_module_callables, lower_function
 from .lower.bindings import BindingTable, _held_of, project_held
 from .lower.context import Slot, SlotConstruct, SlotHolds, _Prescan
 from .lower.convert import Refuse, convert
-from .lower.expressions import _HELD_BY_KIND, _held_from_facts, stamped
+from .lower.expressions import (_HELD_BY_KIND, _held_from_facts,
+                                element_source, stamped)
 from .nodes import (
     Form, THIRExpr, THIRFieldAccess, THIRLiteral, THIRName, THIRSelf,
     THIRSubscript,
 )
-from .source import UNBOUND, BindingForm, BindingRepr, Held, Source
+from .source import (UNBOUND, BindingForm, BindingRepr, Held, Source,
+                     TraitAbi)
 from .testutil import _compile, _entry, lower_bodies
 from .validate import _iter_children
 
@@ -120,7 +122,7 @@ def test_reference_slot_refuses_a_dying_source(held: Held,
                    source=Source(held=held, temporary=temporary))
     slot = Slot(_REC, SlotConstruct.RETURN, holds=SlotHolds.BORROWS)
     assert convert(node, slot, None) == Refuse("borrow_source")
-    lvalue = replace(node, source=Source(held=Held.VALUE))
+    lvalue = replace(node, source=Source(held=Held.BORROWED))
     assert not isinstance(convert(lvalue, slot, None), Refuse)
 
 
@@ -156,6 +158,54 @@ def test_rebuilt_name_repicks_its_held() -> None:
     whole = replace(node, deref=False)
     assert whole.source.held is Held.STORAGE
     assert replace(whole, deref=True).source.held is Held.BORROWED
+
+
+_LITERALS = '''\
+from tpy import BytesView
+
+
+def size(b: BytesView) -> int:
+    return len(b)
+
+
+def lits(raw: bytes) -> int:
+    v: BytesView = b"xy"
+    owned = b"zz"
+    s = "ab"
+    n = size(b"abc") + len(v) + len(owned) + len(s)
+    if raw == b"q":
+        n += 1
+    print(b"p", "q")
+    return n
+'''
+
+
+def test_every_literal_is_held_as_it_renders() -> None:
+    # A str / bytes literal's stamped `held` follows its render choice: the
+    # view over its static storage is a borrow, the owning buffer fresh, the
+    # char array a plain value.
+    compiler, modules = _compile(_LITERALS)
+    entry = _entry(modules)
+    func = next(f for f, _st in iter_module_callables(entry.ast,
+                                                      entry.analyzer)
+                if f.name == "lits")
+    with activate_compiler(compiler):
+        fn = lower_function(func, entry.analyzer)
+
+    def walk(node):
+        yield node
+        for child in _iter_children(node):
+            yield from walk(child)
+    # A print argument's literal is built beside the stamp and carries none.
+    lits = [n for stmt in fn.body for n in walk(stmt)
+            if isinstance(n, (th.THIRStrLiteral, th.THIRBytesLiteral))
+            and n.source is not None]
+    assert {n.static_view for n in lits} == {False, True}
+    for n in lits:
+        owned = (Held.FRESH if isinstance(n, th.THIRBytesLiteral)
+                 else Held.VALUE)
+        assert n.source.held is (Held.BORROWED if n.static_view
+                                 else owned), n.value
 
 
 def _concrete(base: type) -> set[type]:
@@ -658,3 +708,77 @@ def test_auto_readonly_clones_each_carry_their_own_tables_records() -> None:
     for name in ("Bag.at", "Bag.at[const]"):
         assert name in bodies and name in tables, name
         _assert_carries_table_records(bodies[name], tables[name])
+
+
+# --- a tuple source's leaves (`element_source`) ---------------------------
+
+_PAIR = TupleType((_REC, INT32))
+# A parent whose every fact is set, so each leaf shows which it inherits.
+_PARENT = Source(held=Held.STORAGE, const=True, movable=True,
+                 must_copy=True, captured=True, temporary=True,
+                 copy_declared=True, analyzed_type=_PAIR, named_type=_PAIR,
+                 binding=_binding("t", pointer=False))
+
+
+@pytest.mark.parametrize("layout", ["inline", "trait"])
+def test_inline_leaf_is_part_of_its_parent(layout: str) -> None:
+    # An inline element (by value, or an open `T` spelled through its
+    # trait) lives in the parent's object: const, captured and dying with
+    # it, copied where the whole must be, typed by its element.
+    trait = TraitAbi.VAL_OR_PTR if layout == "trait" else None
+    leaf = element_source(_PARENT, 0, held=Held.STORAGE, trait=trait)
+    assert (leaf.held, leaf.trait, leaf.pointer_held) == (
+        Held.STORAGE, trait, False)
+    assert leaf.const and leaf.captured and leaf.must_copy
+    assert leaf.temporary is True
+    assert leaf.analyzed_type == _REC and leaf.named_type == _REC
+    # A leaf is no NAME read of the parent's binding.
+    assert leaf.binding is None and not leaf.id_read
+
+
+def test_pointer_leaf_has_its_pointees_const_and_lifetime() -> None:
+    # A pointer element's const is its pointee's, which the layout gives;
+    # the pointee does not die with the tuple, and how long it lives is
+    # not known here.
+    mutable = element_source(_PARENT, 0, held=Held.BORROWED, pointer=True)
+    const = element_source(_PARENT, 0, held=Held.BORROWED, pointer=True,
+                           const=True)
+    assert mutable.pointer_held and not mutable.const and const.const
+    assert mutable.temporary is None
+    assert mutable.captured and mutable.must_copy
+    assert mutable.analyzed_type == _REC
+
+
+@pytest.mark.parametrize("layout", ["inline", "pointer", "trait"])
+def test_unknown_leaf_facts_grant_nothing(layout: str) -> None:
+    # The parent's whole-value move and copy permission are not a leaf's:
+    # what the layout does not state grants no move and no copy.
+    leaf = element_source(
+        _PARENT, 1, held=Held.VALUE, pointer=layout == "pointer",
+        trait=TraitAbi.VAL_OR_PTR if layout == "trait" else None)
+    assert not leaf.movable and not leaf.copy_declared
+    assert leaf.pointee_owned is None and not leaf.undeclared
+    assert leaf.analyzed_type == INT32
+
+
+def test_layout_facts_are_the_producers() -> None:
+    # What the producer states -- the occurrence's move, the pointee's
+    # ownership, an undeclared read -- is kept as stated.
+    leaf = element_source(_PARENT, 0, held=Held.BORROWED, pointer=True,
+                          movable=True, pointee_owned=True)
+    assert leaf.movable and leaf.pointee_owned is True
+    leaf = element_source(_PARENT, 0, held=Held.BORROWED, pointer=True,
+                          pointee_owned=False, undeclared=True)
+    assert not leaf.movable and leaf.pointee_owned is False
+    assert leaf.undeclared
+
+
+@pytest.mark.parametrize("pointer", [False, True])
+def test_own_expression_leaf_keeps_its_facts(pointer: bool) -> None:
+    # A literal's element is an expression with a Source of its own: the
+    # leaf is that Source, held as a pointer where the layout takes its
+    # address, never inheriting the literal's facts.
+    own = Source(held=Held.FRESH, temporary=True, movable=True,
+                 analyzed_type=_REC)
+    leaf = element_source(_PARENT, 0, own=own, pointer=pointer)
+    assert leaf == replace(own, pointer_held=pointer)

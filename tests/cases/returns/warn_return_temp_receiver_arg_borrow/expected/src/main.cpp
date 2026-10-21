@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # The receiver is a temporary, but the borrow reaches past it into `rows`.
 //     return Picker().pick(rows)  # tpyc: warning(/copies Row into owned storage/)
 Row take(std::vector<Row>& rows) {
-    return Picker().pick(rows);
+    return Row(Picker().pick(rows));
 }
 
 // def take_copy(rows: list[Row]) -> Own[Row]:

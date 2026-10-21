@@ -22,10 +22,11 @@ class Node:
 
 '''
 
+# The key body is a known reject (BUGS.md#tuple-literal-subscript-rejects).
 SORT = '''items = [Node("pear"), Node("apple")]
 result = sorted(
     items,
-    key=lambda n: n.name,
+    key=lambda n: (n.name, 1)[0],
 )
 '''
 
@@ -41,7 +42,7 @@ result = sorted(
 def test_lambda_body_reject_location(prefix: str, depth: int, suffix: str) -> None:
     source = RECORD + prefix + indent(SORT, " " * depth) + suffix
     err, _ = _strict_reject(source)
-    assert err.reason == "expr.lambda:lambda.body:field.result_type"
+    assert err.reason == "expr.lambda:lambda.body:subscript.tuple_shape"
     line = next(i for i, text in enumerate(source.splitlines(), 1)
                 if "key=lambda" in text)
     assert err.loc is not None and err.loc.line == line
@@ -171,11 +172,11 @@ def test_lambda_location_in_suspending_condition(condition: str) -> None:
     source = RECORD + f'''def run() -> Iterator[int32]:
     items = [Node("a")]
     {condition} len(sorted(items,
-                         key=lambda n: n.name)) > 0:
+                         key=lambda n: (n.name, 1)[0])) > 0:
         yield 1
 '''
     err, _ = _strict_reject(source)
-    assert err.reason == "expr.lambda:lambda.body:field.result_type"
+    assert err.reason == "expr.lambda:lambda.body:subscript.tuple_shape"
     line = next(i for i, text in enumerate(source.splitlines(), 1)
                 if "key=lambda" in text)
     assert err.loc is not None and err.loc.line == line
@@ -188,14 +189,14 @@ def test_lambda_location_in_suspending_condition(condition: str) -> None:
 def test_lambda_location_in_constructor_tuple(
         field_type: str, value: str) -> None:
     # A direct field initializer takes the MIL path rather than the body path.
-    result = "len(sorted(items,\n            key=lambda n: n.name))"
+    result = "len(sorted(items,\n            key=lambda n: (n.name, 1)[0]))"
     source = RECORD + f'''class Test:
     pair: {field_type}
     def __init__(self, items: list[Node]):
         self.pair = {value.format(result=result)}
 '''
     err, _ = _strict_reject(source)
-    assert err.reason == "expr.lambda:lambda.body:field.result_type"
+    assert err.reason == "expr.lambda:lambda.body:subscript.tuple_shape"
     line = next(i for i, text in enumerate(source.splitlines(), 1)
                 if "key=lambda" in text)
     assert err.loc is not None and err.loc.line == line
@@ -211,11 +212,11 @@ def ready(f: Fn[[Node], str]) -> Own[Ready]:
     return Ready()
 async def run() -> int32:
     return await ready(
-        lambda n: n.name,
+        lambda n: (n.name, 1)[0],
     )
 '''
     err, _ = _strict_reject(source)
-    assert err.reason == "expr.lambda:lambda.body:field.result_type"
+    assert err.reason == "expr.lambda:lambda.body:subscript.tuple_shape"
     line = next(i for i, text in enumerate(source.splitlines(), 1)
                 if "lambda n" in text)
     assert err.loc is not None and err.loc.line == line
@@ -228,10 +229,10 @@ def make(f: Fn[[Node], str]) -> Own[list[int32]]:
     return [1]
 def run():
     values = [make(
-        lambda n: n.name,
+        lambda n: (n.name, 1)[0],
     )''' + suffix + "]\n"
     err, _ = _strict_reject(source)
-    assert err.reason == "expr.lambda:lambda.body:field.result_type"
+    assert err.reason == "expr.lambda:lambda.body:subscript.tuple_shape"
     line = next(i for i, text in enumerate(source.splitlines(), 1)
                 if "lambda n" in text)
     assert err.loc is not None and err.loc.line == line

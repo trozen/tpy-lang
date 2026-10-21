@@ -41,11 +41,13 @@ from ..parse.nodes import (
 )
 from ..value_category import is_rvalue_source
 from .alias_rebind import stamp_capture_rebind
+from .scope_tracker import register_binder, unregister_binder
 from .context import record_stmt_borrow_binding, register_capture_alias_borrow
 from ..symbol_binding import SymbolKind
 from .receiver_calls import is_invalidating_method
 
 if TYPE_CHECKING:
+    from ..diagnostics import Scope
     from ..typesys import RecordInfo
     from .context import SemanticContext
     from .expressions import ExpressionAnalyzer
@@ -277,6 +279,8 @@ class MatchAnalyzer:
         arm_carried: list[set[str]] = []
 
         for case in stmt.cases:
+            # A read of a capture in its arm resolves to the case.
+            pushed: list[tuple[str, Scope, object]] = []
             if had_wildcard or saw_irrefutable_arm:
                 raise self.ctx.error(
                     "unreachable case after wildcard pattern", case.pattern
@@ -367,6 +371,9 @@ class MatchAnalyzer:
                     ty = make_readonly(ty)
                     pattern_bindings[name] = ty
                 self.ctx.func.current_scope.define(name, ty)
+                scope = self.ctx.func.current_scope
+                pushed.append((name, scope, register_binder(
+                    self.ctx, scope, name, case)))
                 self.ctx.func.nonstmt_bound_names.add(name)
                 self.stmts.init.mark_assigned(name)
                 # A capture rebinding a str/bytes view local reads the subject.
@@ -472,6 +479,8 @@ class MatchAnalyzer:
                     and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
                 self._warn_arm_subject_mutation(case, stmt.subject)
 
+            for name, scope, prev in reversed(pushed):
+                unregister_binder(scope, name, prev)
             prev_arm_captures = set(pattern_bindings)
             arm_carried.append(carried - prev_arm_captures)
             arm_states.append(self.stmts.init.save())

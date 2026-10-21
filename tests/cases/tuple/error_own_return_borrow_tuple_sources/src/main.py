@@ -1,5 +1,6 @@
 # A borrowed non-name tuple source returned into an owning tuple slot warns per
-# copied element, then rejects (BUGS.md#borrow-tuple-source-own-return-rejects).
+# copied element; a call, method call, field or element copies in, a select of
+# them still rejects (BUGS.md#borrow-tuple-source-own-return-rejects).
 from tpy import Own, int32
 
 
@@ -26,9 +27,9 @@ def mk(a: A) -> tuple[A, int32]:
     return (a, 1)
 
 
-# free function: a borrow-returning call; the first body the lowering refuses
+# free function: a borrow-returning call
 def from_call(a: A) -> Own[tuple[A, int32]]:
-    return mk(a)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/) error(/call\.ret_type\.tuple/)
+    return mk(a)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 
 
 # free function: a method call
@@ -46,9 +47,10 @@ def from_subscript(xs: list[tuple[A, int32]]) -> Own[tuple[A, int32]]:
     return xs[0]  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 
 
-# free function: a select of two borrow-returning calls
+# free function: a select of two borrow-returning calls; the first body the
+# lowering refuses
 def from_select_calls(h: H, a: A, c: bool) -> Own[tuple[A, int32]]:
-    return mk(a) if c else h.get(a)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+    return mk(a) if c else h.get(a)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/) error(/call\.ret_type\.tuple/)
 
 
 # free function: a select of a borrow-returning call and a tuple local

@@ -32,7 +32,7 @@ std::optional<P> make(int32_t v) {
 //     # a nullopt is UB and would also lose the None case.
 //     return x
 std::optional<P> passthrough(std::optional<P>&& x) {
-    return std::move(x);
+    return x;
 }
 
 // def borrow(p: P | None) -> int32:

@@ -11,7 +11,7 @@ from ...typesys import subscript_answers_as_call
 from ...typesys import (
     AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
     RecordInfo, RefType, TpyType, VoidType, contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type,
-    accessor_role, body_method_info, declares_whole_result_following,
+    accessor_role, body_method_info, declares_whole_result_following, property_getter_returns_storage_ref,
     receiver_neutral_return, return_representation, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync,
 )
@@ -20,6 +20,7 @@ from ..nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
 )
 from ..scalar_leaves import leaf_constant, native_container_subject, record_owner
+from .context import SlotPosition, slot_for
 from .predicates import param_passing
 from .storage import borrowed_record
 
@@ -127,22 +128,45 @@ def _identity_module(root: FunctionInfo, analyzer: 'SemanticAnalyzer') -> str:
     return analyzer.ctx.cpp_module_name if owner == analyzer.ctx.module_name else owner
 
 
-def _borrowed_result(fi: FunctionInfo, analyzer: 'SemanticAnalyzer',
-                     follows_receiver: bool = False, *,
-                     return_type: TpyType | None = None) -> THIRBorrowedRecord | None:
+def _borrowed_result(returned: TpyType, analyzer: 'SemanticAnalyzer',
+                     follows_receiver: bool = False) -> THIRBorrowedRecord | None:
     # Readonly exactly when the declared result is: the return type is the
     # contract. A follows-receiver callable publishes the result its
     # definition -- the const clone -- binds; a call derives its own access
     # from its receiver (`call_contract.bound_result`), since C++ picks the
     # clone by the receiver's constness.
-    returned = fi.return_type if return_type is None else return_type
     if not isinstance(returned, (RefType, ReadonlyType)):
         return None
     explicit = isinstance(unwrap_ref_type(returned), ReadonlyType)
     return borrowed_record(returned, follows_receiver or explicit, analyzer)
 
 
-def _body_passings(declaration: TpyFunction, owning: FunctionInfo | None) -> tuple[ParamPassing, ...]:
+def callable_signature(types: tuple[TpyType, ...], return_type: TpyType,
+                       borrowed_result: THIRBorrowedRecord | None,
+                       passings: tuple[ParamPassing, ...] | None, analyzer: 'SemanticAnalyzer', *,
+                       follows_receiver: bool = False, getter: bool = False) -> THIRCallableSignature:
+    """The one constructor of a callable's contract, for a definition and
+    for every call that binds one: the result's representation, its layout
+    (`result_slot`) and, for a property getter (`getter`), whether it hands
+    back its storage by reference are decided here from the return type."""
+    signature = THIRCallableSignature(
+        types, return_type, borrowed_result, passings, return_representation(return_type),
+        result_follows_receiver=follows_receiver,
+        storage_reference_result=getter and property_getter_returns_storage_ref(return_type))
+    return replace(signature, result_slot=slot_for(None, SlotPosition.RETURN, analyzer,
+                                                   signature=signature))
+
+
+def definition_signature(types: tuple[TpyType, ...], return_type: TpyType,
+                         passings: tuple[ParamPassing, ...] | None, analyzer: 'SemanticAnalyzer', *,
+                         getter: bool = False) -> THIRCallableSignature:
+    """The contract a body lowers under when no call binds it as its unique
+    target (`resolved_callee`): its own parameters and result as lowered."""
+    return callable_signature(types, return_type, _borrowed_result(return_type, analyzer), passings,
+                              analyzer, getter=getter)
+
+
+def body_passings(declaration: TpyFunction, owning: FunctionInfo | None) -> tuple[ParamPassing, ...]:
     # The body's own THIRParam passings, so the definition and every call agree.
     return tuple(param_passing(n, t, declaration, owning) for n, t in declaration.params)
 
@@ -173,9 +197,8 @@ def resolved_callee(fi: FunctionInfo | None, analyzer: 'SemanticAnalyzer',
         return None
     types = tuple(p.type for p in fi.params)
     return THIRResolvedCallee(THIRFunctionIdentity(module, root.name),
-                              THIRCallableSignature(types, fi.return_type, _borrowed_result(fi, analyzer),
-                                                    _body_passings(declaration, group[0]),
-                                                    return_representation(fi.return_type)))
+                              callable_signature(types, fi.return_type, _borrowed_result(fi.return_type, analyzer),
+                                                 body_passings(declaration, group[0]), analyzer))
 
 
 def method_receiver(func: TpyFunction, self_type: TpyType | None, analyzer: 'SemanticAnalyzer', *,
@@ -273,10 +296,10 @@ def method_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: '
         return None
     return THIRResolvedCallee(
         THIRFunctionIdentity(_identity_module(root, analyzer), root.name, root.owning_type_qname, role),
-        THIRCallableSignature(types, ret, _borrowed_result(fi, analyzer, twin, return_type=ret),
-                              (receiver_param(defined).passing,
-                               *_body_passings(body, body_method_info(declaring, body))),
-                              return_representation(ret), result_follows_receiver=twin))
+        callable_signature(types, ret, _borrowed_result(ret, analyzer, twin),
+                           (receiver_param(defined).passing,
+                            *body_passings(body, body_method_info(declaring, body))),
+                           analyzer, follows_receiver=twin, getter=role == "fget"))
 
 
 def method_definition(func: TpyFunction, receiver: THIRBorrowedRecord | None,
@@ -313,7 +336,8 @@ def _not_a_stub(fi: FunctionInfo, arity: int) -> bool:
                for f in (fi, fi.root)) or arity != len(fi.params) or fi.return_type is None
 
 
-def stub_callee(fi: FunctionInfo | None, result_type: TpyType, *, arity: int) -> THIRStubCallee | None:
+def stub_callee(fi: FunctionInfo | None, result_type: TpyType, analyzer: 'SemanticAnalyzer', *,
+                arity: int) -> THIRStubCallee | None:
     """The declared facts of a call to a `@native` / `@cpp_template` free
     function or builtin-type initializer, or None when the callee is not
     such a stub or anything about the binding is open (a type parameter,
@@ -337,8 +361,7 @@ def stub_callee(fi: FunctionInfo | None, result_type: TpyType, *, arity: int) ->
         return None
     consts = _stub_param_consts(fi)
     return THIRStubCallee(THIRStubIdentity(name, types),
-                          THIRCallableSignature(types, ret, None, signature_passings(types, consts),
-                                                return_representation(ret)),
+                          callable_signature(types, ret, None, signature_passings(types, consts), analyzer),
                           _stub_contract(fi), consts)
 
 
@@ -347,7 +370,7 @@ def _stub_contract(fi: FunctionInfo) -> THIRStubContract | None:
             else THIRStubContract.TRANSIENT if fi.is_transient else None)
 
 
-def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, *,
+def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyzer: 'SemanticAnalyzer', *,
                        arity: int) -> THIRStubCallee | None:
     """The declared facts of a call to a method stub of a native type
     (`@native` record: list, dict, Span, ...) on `receiver`, the call's
@@ -381,16 +404,17 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, *,
     consts = (fi.is_readonly, *(const or t.param_passing(False) is ParamPassing.VIEW
                                 for const, t in zip(_stub_param_consts(fi), types[1:], strict=True)))
     return THIRStubCallee(THIRStubIdentity(f"{fi.owning_type_qname}.{fi.name}", types),
-                          THIRCallableSignature(types, fi.return_type, None, signature_passings(types, consts),
-                                                return_representation(fi.return_type)),
+                          callable_signature(types, fi.return_type, None, signature_passings(types, consts),
+                                             analyzer),
                           _stub_contract(fi), consts, mutates_elements=fi.native_mutates == "elements",
                           receiver=True, bound_arguments=tuple(bound))
 
 
-def with_method_stub(node: THIRMethodCall, fi: FunctionInfo | None) -> THIRMethodCall:
+def with_method_stub(node: THIRMethodCall, fi: FunctionInfo | None,
+                     analyzer: 'SemanticAnalyzer') -> THIRMethodCall:
     """`node` carrying its callee's method stub facts, read against the
     receiver it lowered (`method_stub_callee`)."""
-    stub = method_stub_callee(fi, node.receiver.result_type, arity=len(node.args))
+    stub = method_stub_callee(fi, node.receiver.result_type, analyzer, arity=len(node.args))
     return node if stub is None else replace(node, stub_callee=stub)
 
 
@@ -436,4 +460,4 @@ def setitem_stub_callee(target: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRS
         # An int literal index converts to the fixed-int index parameter that holds it.
         if index is not None and (index == key or isinstance(key, IntLiteralType) and leaf_constant(index, key.value)):
             matches.append(method)
-    return method_stub_callee(matches[0], bare, arity=2) if len(matches) == 1 else None
+    return method_stub_callee(matches[0], bare, analyzer, arity=2) if len(matches) == 1 else None

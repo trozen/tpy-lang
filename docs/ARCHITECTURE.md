@@ -995,7 +995,11 @@ Top-level analyzers (one module each):
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
 `frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`,
-`storage_policy`, `pending_num`, `call_lends`, `tuple_records`, `context`.
+`storage_policy`, `pending_num`, `call_lends`, `dyn_erasure`,
+`source_records`, `context`.
+`dyn_erasure` decides how a source enters an `Own[@dynamic P]` slot (none,
+`make_unique`, the owning Adapter, the coroutine handle's unwrap) and, at a
+result, publishes it as one coercion per verdict (`into_dyn_*`).
 `storage_walk` is the one climb from an expression to the named storage it
 references (`storage_roots`, asked as HOLDER / PLACE / POINTEE) and the one
 routine that marks those roots mutated (`mark_roots`). Its `trace` (the
@@ -1064,20 +1068,99 @@ may write what it borrows, failing closed on anything it cannot trace -- the
 interim rule until MIR owns that hazard (docs/IR_DESIGN.md, "Loop-bound generators that borrow storage
 the loop writes").
 
-`tuple_records` holds the per-leaf ownership record of a tuple source at an
-owning sink (`TupleSourceRecord`: per reference leaf path borrowed, slot-owned
-and a permission -- PASS, MOVE, WARNED, HEDGED, EXPLICIT, UNDECIDED -- a
-select's arms with records of their own), keyed by the peeled source node;
-`tuple_source_record` is its one lookup. Each owning sink only registers its
-source and slot (`TypeCompatibility.register_tuple_sink`, from
-`check_owned_tuple_sink` and the name checks), once per source -- a
-statement's own check stands over its coercion's `Own`-slot check; one
-builder (`build_tuple_records`) runs at the end of `settle_owning_reads`, and
-once more after the module-level statements (`analyzer.py`, which leave no
-read to settle), and derives every leaf from settled facts: the source's incoming lending
-(`tuple_lent_paths`, the incoming mode of `tuple_borrowed_paths`), the slot's
-`owned_slot_paths`, and the declared verdicts (`own_element_copies`,
-`declared_tuple_reads`, last-use moves, `copy()` nodes, open `T` leaves).
+`source_records` holds the per-leaf ownership record of every source an
+owning sink checks -- a scalar is a tuple of one leaf, at path `()` --
+(`SourceRecord`: per reference leaf path borrowed, slot-owned and a
+permission -- PASS, MOVE, WARNED, HEDGED, EXPLICIT, UNDECIDED -- a select's
+arms with records of their own), keyed by the peeled source node;
+`source_record` is its one lookup. Each owning sink only registers its
+source and slot where the slot holds a reference leaf
+(`TypeCompatibility.register_sink`: the `Own` coercion, an `Own` return,
+yield, lambda result or argument, a field or container store, a store into
+`Any` with its concrete payload (a tuple payload included, its leaves a
+tuple's), a consuming receiver, `check_owned_tuple_sink` and the name
+checks), once per source -- a statement's own check stands over its
+coercion's `Own`-slot check, and a tuple registers only from its per-leaf
+check, or into `Any`; one builder (`build_source_records`) runs at the end of
+`settle_owning_reads`, and once more after the module-level statements
+(`analyzer.py`, which leave no read to settle). The builder reads only facts
+that stand once the body is settled -- nothing in the scope the sink was
+checked in, which is gone by then -- to decide whether each leaf COPIES: the
+source's incoming lending (`tuple_lent_paths`, `member_lends`), the slot's
+`owned_slot_paths`, the declared copies (`own_element_copies`,
+`owned_slot_copies` -- the copy settlement turns a move into included), element
+moves (`element_moves`), `copy()` nodes, and for a NAME read the one MOVE
+formula below. Whether
+a copy was TOLD comes from the copy diagnostics: every check that warns of a
+copy of a source into an owning slot records a `CopyDeclaration` (source,
+path, warned or hedged) linked to its `Diagnostic` by identity, in
+`ctx.copy_declarations` (`SemanticContext.copy_warning` emits the warning
+and records it together). `finalize_source_records` runs once, after the
+module's last diagnostic-emitting step (`finalize_borrow_checks`, after the
+own-copy verdicts and the duplicate collapse, which moves a dropped repeat's
+declarations to the report that stays), and resolves each copying leaf from
+the declarations whose diagnostic still stands: WARNED, HEDGED, or UNDECIDED
+for a copy nothing tells. No record means the source was never checked; no
+leaf for a `T: ValueType` element means its copy is proven harmless.
+
+A name read's MOVE side is two facts. Fact 1, `binding_ownership`
+(`BindingOwnership`), is which leaf paths of a binding's storage the binding
+owns -- value leaves included, `()` for a scalar: handed over by the caller
+(an ownership-transfer parameter's `owned_leaf_paths`, the consuming
+receiver, a lambda's ownership-transfer parameter), copied or constructed
+into it (`ever_owned_locals`; a generator object owns its frame,
+`owned_generator_locals`; a by-value Optional parameter's copy,
+`by_value_optional`; a copied iteration step; a value `with` target or
+by-value `match` capture), or transferred from an iteration (a consuming or
+`OwnIter` loop, an `Own` element, an owned loop-head target, an owning
+clause), less what a later binding borrows. Every binding to existing
+storage is noted once (`note_nonowning_bind`, into `nonowning_sites`, module
+level and parameters included): a LOCAL's entry folds its notes for the
+whole function (`nonowning_bind`), an iteration site subtracts only the ones
+inside its own loop. A declaration that binds a call's `val_or_ref_t` result
+itself owns nothing (`binds_val_or_ref`: a non-template callee returning an
+open `T`, bound once, in no slot of its own -- not reassigned, hoisted,
+moved through or a resumable frame's field, `generator_locals`); sema
+decides it once (`val_or_ref_decls`) and the planner's `decl.tparam_call`
+row reads the verdict, both sides resolving the declaration's type by one
+rule (`sema/decl_types.py`, peeled by `typesys.peel_binding`). Parameters,
+the receiver and lambda parameters are signature functions; locals are LOCAL
+entries per function node (`BodyOwnership`, with the body's generator
+objects and pointer-hoisted locals), and binding sites -- an iteration
+binder, a `with` item, an `except` handler (which owns nothing), a `match`
+case -- entries per site node; a name the body declares `global` is module
+storage, no LOCAL entry and no statement site of it owns anything; all
+written by one writer (`record_body_ownership`) at the end of
+`settle_owning_reads`, into `SemanticContext.body_ownership` /
+`site_ownership`. A read records the binding it resolves to where it is
+analyzed (`resolve_read`, into `read_bindings`: a binding site through
+`Scope.binders` -- a `with` item, handler or case for its block only --
+which every statement binder registers through `register_binder` /
+`unregister_binder` (`sema/scope_tracker.py`), the owner of the
+declared-global rule and its comprehension exception
+(`binds_module_storage`); a lambda's parameter through
+`Scope.lambda_node`; a capture past a nested def's or a lambda's root;
+module storage for a declared global, a statement's target of it included).
+Fact 2, `TypeCompatibility.name_moves`, is the record's MOVE: the binding
+owns the leaf, and the read is its final last use (`all_last_uses`, a hidden
+borrower's demotion retracted), its comprehension clause's move
+(`comp_moves`, which the lowering's last-sink move reads too) or the whole
+return of the name, and no copy fact takes it back (a pointer-hoisted
+local's told copy among them, `pointer_hoisted`). There are no move grants:
+the checks' `claim_name_move` keeps only the hidden-borrow demotion and the
+read settlement revisits. The binding planner (`thir/lower/bindings.py`)
+reads fact 1 as the base of a record's `movable`: `movable = forced(rec) or
+(owned and not exception(rec))`, each exception and forced row a named
+`MoveRow` scoped to the rows it applies to, its `slug` the BUGS.md entry
+where the row is a defect; an alias (`ALIAS`: an all-fresh Optional
+select the planner plans as a call passthrough, which the lowering refuses),
+a const pointer (`CONST_SLOT`: over an owning slot it owns a readonly
+result it does not move) and module storage (`MODULE_STORAGE`: a name the
+planner reads as a module global that sema did not declare global) are
+rows only where fact 1 says the binding owns. The copy WARNINGS do not
+read the facts yet (`_is_owned_var` answers from the facts read so far);
+where the two disagree the record's tests name the row
+(`_KNOWN_DISAGREEMENTS`).
 
 `own_copy` holds the owning-slot copy contract of a body whose payload is
 still a type parameter. The sinks warn at the body line, hedged, at

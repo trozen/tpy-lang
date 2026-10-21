@@ -1065,6 +1065,7 @@ class MethodAnalyzer:
             bare = unwrap_readonly(bare.wrapped)
         if bare is None or bare.is_value_type():
             return
+        self.compat.register_sink(recv, OwnType(bare), None)
         if binding is not None:
             gen = binding.comp.generators[binding.clause]
             if not self.compat.comp_elem_moves(gen, recv, is_last_sink=True,
@@ -1072,7 +1073,7 @@ class MethodAnalyzer:
                 self.compat.declare_receiver_copy(recv)
             return
         read = ReceiverMove(recv.name, recv)
-        if self.compat.grant_name_move(recv, read=read):
+        if self.compat.claim_name_move(recv, read=read):
             return
         if self.compat._is_owned_var(recv.name):
             # No last use (a live alias, a later read): settled after the

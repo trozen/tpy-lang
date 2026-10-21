@@ -59,7 +59,8 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
-from ...typesys import make_readonly, pointer_repr_optional, readonly_access
+from ...typesys import (make_readonly, peel_binding, pointer_repr_optional,
+                       readonly_access)
 from ...typesys import subscript_answers_as_call
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
@@ -172,7 +173,7 @@ from ...value_category import (
     materializing_temp_source,
     peel_coerce,
 )
-from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
+from ...sema.decl_types import declared_bound_type
 from ...codegen_cpp.forms import (
     is_ptr_variant_union,
     reads_storage_form_optional,
@@ -196,8 +197,8 @@ from ...codegen_cpp.protocols import (
     dynamic_adapter_type,
     dynamic_base_name,
     dynamic_ref_adapter_type,
-    record_inherits_dynamic,
 )
+from ...sema.dyn_erasure import record_inherits_dynamic
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
 from ...prescan import literal_constant, parse_deref_view_key
@@ -1064,37 +1065,6 @@ def _eligible_ptr_union_wide(t: TpyType | None,
     return t
 
 
-def _own_storage_union_return(t: TpyType | None, analyzer) -> 'UnionType | None':
-    """An `Own[A | B]` return slot over the widened member class (F1
-    records, value scalars, str, containers, value tuples, Span): a
-    by-value `std::variant<...>` (the storage form -- ownership makes the
-    union a value at the return boundary, never the pointer variant). The
-    routed sources gate at the return arm (member-record ctor rvalues,
-    scalar values, container/span names, slice rvalues), all returned bare
-    (the variant's converting ctor absorbs them). A None member keeps the
-    slot out (the monostate/None renders are the Optional families');
-    all-value-member unions ride `_eligible_value_union` at the
-    plain-union return arm."""
-    if t is None:
-        return None
-    u = unwrap_readonly(unwrap_send_sync(t))
-    if not isinstance(u, OwnType):
-        return None
-    inner = unwrap_readonly(u.wrapped)
-    if not isinstance(inner, UnionType) or inner.has_none_member():
-        return None
-    if inner.needs_wrapper():
-        # A recursive-alias WRAPPER union is `ret_own_wrapper`'s slot --
-        # the two facts are mutually exclusive so the return arm's gates
-        # cannot double-fire on one slot.
-        return None
-    if not all(_ptr_union_member_wide(unwrap_readonly(m), analyzer)
-               for m in inner.members):
-        return None
-    if not _distinct_variant_alternatives(inner):
-        return None
-    return inner
-
 def _own_wrapper_return(t: TpyType | None, analyzer) -> 'UnionType | None':
     """An `Own[V]` return slot over a recursive-alias WRAPPER union
     (`needs_wrapper()` -- `struct V { std::variant<...> value; }` by
@@ -1114,8 +1084,8 @@ def _own_wrapper_return(t: TpyType | None, analyzer) -> 'UnionType | None':
 
 def _wrapper_borrow_return(t: TpyType | None, analyzer) -> 'UnionType | None':
     """A bare wrapper-union return slot (`-> Expr` -> `Expr&` /
-    `const Expr&`): the wrapper twin of `_record_borrow_return`. NAME
-    sources gate at the return arm (a borrow param returns bare)."""
+    `const Expr&`). NAME sources gate at the return arm (a borrow param
+    returns bare)."""
     if t is None:
         return None
     u = unwrap_readonly(unwrap_send_sync(t))
@@ -1127,7 +1097,7 @@ def _wrapper_borrow_return(t: TpyType | None, analyzer) -> 'UnionType | None':
 
 def _own_genrec_return(t: TpyType | None) -> 'TpyType | None':
     """An `Own[Tree[int32]]` return slot -- the generic-instance sibling of
-    `_own_storage_union_return`: the wrapper struct returns by value
+    `_own_wrapper_return`: the wrapper struct returns by value
     (`Tree<int32_t>`), and the routed sources are the ones whose render the
     wrapper's converting ctor absorbs (a scalar member value returns bare,
     a container literal takes the ru-instance spelled render). No member
@@ -1157,11 +1127,8 @@ def _dyn_borrow_return(t: TpyType | None) -> 'NominalType | None':
 
 def _own_dyn_return(t: TpyType | None) -> 'NominalType | None':
     """The @dynamic protocol under an `Own[P]` return slot
-    (`std::unique_ptr<P>`): sources dispatch on the shared
-    `classify_dyn_own_arg` verdict at the return arm ('forward' names /
-    calls bare -- C++ implicit-moves on a by-value return -- conformer
-    ctor rvalues take the make_unique/make_adapter wrap). Keyed on the RAW
-    wrapped type: an `Own[readonly[P]]` slot never takes these renders."""
+    (`std::unique_ptr<P>`). Keyed on the RAW wrapped type: an
+    `Own[readonly[P]]` slot never takes the erasure renders."""
     if t is None:
         return None
     u = unwrap_send_sync(t)
@@ -3086,14 +3053,6 @@ def _span_open_t_value(t: TpyType | None) -> bool:
     args = getattr(u, "type_args", None)
     return bool(args) and _is_type_param_slot(unwrap_readonly(args[0]))
 
-def _span_return(t: TpyType | None) -> bool:
-    """The span RETURN slot -- see `_span_value` (the return is one of its
-    bare-render positions). A `Span[T]` / `Span[readonly[T]]` over a TYPE
-    PARAM admits too (the auto_readonly getter pair): the slot renders
-    per-instantiation and the witnessed sources are the element-blind
-    spanlike coerces (`as_span` / `as_mut_span`)."""
-    return _span_value(t) or _span_open_t_value(t)
-
 def _f1_record_type_arg_ok(a: 'TpyType | int', analyzer) -> bool:
     """A generic user-record type-arg whose lowered spelling equals the
     resolver's. The resolver recurses args via `type_to_cpp`, lowering via each
@@ -3212,17 +3171,6 @@ def _method_rvalue_record_like(init: 'TpyExpr | None', analyzer) -> bool:
             and record_like(analyzer.get_expr_type(init), analyzer)
             and is_rvalue_source(analyzer, init))
 
-def _binding_peel(t: TpyType) -> TpyType:
-    """The receiver-BINDING peel shared by the record-slice gate and the
-    declared-field lookup: strip the transparent wrappers, then `Own` -- an
-    `Own[T]` binding is by-value storage whose members read exactly like any
-    other binding's. ONE definition, because a receiver gate and a field-type
-    lookup that peel the same binding differently disagree about which
-    bindings have fields, and the gated consumers then reject silently."""
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    return t.wrapped if isinstance(t, OwnType) else t
-
-
 def _f1_record(t: TpyType | None, analyzer) -> bool:
     """The spelling-equal record slice: any concrete user record whose
     `TpyType.to_cpp()` == `TypeResolver.type_to_cpp()` and whose field /
@@ -3255,7 +3203,7 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
       name and not by whether a formatter happens to be attached."""
     if t is None:
         return False
-    t = _binding_peel(t)
+    t = peel_binding(t)
     if not isinstance(t, NominalType):
         return False
     is_builtin_record = False
@@ -3347,7 +3295,7 @@ def record_like(t: TpyType | None, analyzer) -> bool:
     none of them is one object bound `T&`."""
     if not isinstance(t, TpyType):
         return False
-    t = _binding_peel(t)
+    t = peel_binding(t)
     if not isinstance(t, NominalType):
         return False
     # A bound generator object is one frame, bound and aliased as a record.
@@ -3374,7 +3322,7 @@ def _storage_family_ok(t: TpyType | None, analyzer) -> bool:
     the spelled slot type."""
     if not record_like(t, analyzer):
         return False
-    if not _f1_container_ref(_binding_peel(t)):
+    if not _f1_container_ref(peel_binding(t)):
         return True
     return _storage_call_ret(t, analyzer) is not None
 
@@ -3706,33 +3654,6 @@ def _type_family_tag(t: 'TpyType | None', analyzer) -> str:
     # Self-describing residue: the type-class name keeps the catch-all
     # drillable without a new arm per exotic type.
     return "other_" + type(u).__name__.lower()
-
-def _record_borrow_return(t: TpyType | None, analyzer) -> 'NominalType | None':
-    """The borrow-form REFERENCE return slot (`-> Box` -> C++ `Box&` /
-    `const Box&`; `-> list[T]` -> `std::vector<T>&` the same way), or None.
-    `Own[T]` is the storage (by-value) direction (`_record_storage_return`) --
-    checked before `record_like`'s own Own-unwrap can admit it.
-
-    One slot for the whole reference axis: the return ladder's source arms
-    render the same C++ for a record and for a container (bare name, field
-    read, element lvalue, borrow-returning call), so a second container-only
-    slot would only decide which of two identical renders fires.
-
-    A value-form record is not on that axis: `-> Coord` returns by value,
-    so it takes the scalar's generic return tail (`ret_supported`)."""
-    if t is None:
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType) or _value_record_slot(t):
-        return None
-    if isinstance(t, RecursiveAliasInstanceType):
-        # A bare generic-instance slot (`-> Tree[int32]`) is the same
-        # borrow direction: `Tree<int32_t>&` off owned storage, the field
-        # read rendering `return this->t;` like any record member.
-        return t
-    if not isinstance(t, NominalType):
-        return None
-    return t if record_like(t, analyzer) else None
 
 def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     """A `Ptr[T]` value (`T*` by value -- copied around like a scalar),
@@ -5471,31 +5392,6 @@ def _view_inner_value_opt(t: 'TpyType | None') -> bool:
     inner = unwrap_readonly(tb.inner)
     return is_str_view_type(inner) or is_bytes_view_type(inner)
 
-def _value_opt_view_ret_src(e: 'TpyExpr', ret_opt: 'OptionalType',
-                            analyzer) -> bool:
-    """A call / method-call / subscript RESULT that lands bare in a value-repr
-    `Optional[view-family]` return slot.
-
-    Two ways to land bare, both leaving the render to the source's own gates:
-    the callee already hands back the SAME optional (nothing to convert), or it
-    hands back an inner value whose owned-vs-view form already matches the
-    inner's, so the optional's converting constructor absorbs it. A form
-    MISMATCH (a view result into an OWNED inner) needs a materializing copy
-    this row does not render, and sema spells that one as a coercion anyway."""
-    if not isinstance(e, (TpyCall, TpyMethodCall, TpySubscript)):
-        return False
-    st = analyzer.get_expr_type(e)
-    if not isinstance(st, TpyType):
-        return False
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
-    if isinstance(u, OptionalType):
-        return (_value_opt_view(u, analyzer) is not None
-                and u == unwrap_readonly(unwrap_send_sync(ret_opt)))
-    src_v = _resolved_viewfam_value(u, analyzer)
-    inner_v = _resolved_viewfam_value(unwrap_readonly(ret_opt.inner), analyzer)
-    return src_v is not None and src_v == inner_v
-
-
 def _value_opt_owned_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None':
     """A value-repr `Optional[view]` whose inner is an OWNED family (`str`/`bytes`,
     NOT `StrView`/`BytesView`) -- the shape a LOCAL binds `std::optional<std::string>`
@@ -6798,7 +6694,9 @@ def _container_borrow_elem(t: TpyType | None, analyzer) -> bool:
     def elem_ok(a: 'TpyType | int') -> bool:
         return (record_like(_elem_bare(a), analyzer)
                 or _eligible_wrapper_union(a, analyzer) is not None)
-    return _container_elem_family(t, analyzer, elem_ok,
+    # A view (a span, a `*args` pack) of records hands back the same
+    # element lvalue a list does.
+    return _container_elem_family(t, analyzer, elem_ok, span_elem_ok=elem_ok,
                                   dict_key_ok=_any_dict_key)
 
 
@@ -7485,7 +7383,7 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
         base = analyzer.get_expr_type(e.obj)
     if base is None:
         return None
-    rt = _binding_peel(base)
+    rt = peel_binding(base)
     if isinstance(rt, OptionalType):
         if rt.inner.is_value_type():
             return None
@@ -8756,20 +8654,37 @@ def _record_dunder_operand_pair(op: str, e: TpyBinOp, lt: TpyType | None,
     return _record_dunder_operand_slot(op, e, lt, rt, analyzer) is not None
 
 
-def _bytes_literal_view_slot(pt: 'TpyType | None') -> bool:
-    """Whether a bytes literal landing in PARAM slot `pt` takes the
-    static-storage span render (`bytes_literal`) instead of the owning vector:
-    both `bytes` and `BytesView` are view-shaped at a parameter, so the owning
-    render would build a heap vector the callee only reads through.
-    `Own[BytesView]` is the same no-op spelling over the value view. Says
-    nothing about a non-param sink -- an owned binding init / return keeps the
-    owning render, which is why the plain retag helper asks a different
-    question."""
+def _bytes_read_view_slot(e: TpyExpr, analyzer) -> 'TpyType | None':
+    """The `BytesView` a bytes operand is read through where the operation
+    compares through the view (an element compare, a transparent lookup),
+    or None for an operand of another family: the slot a bytes literal
+    there renders against -- its static span."""
+    t = analyzer.get_expr_type(e)
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if (view_family_for_type(t) is BYTES_FAMILY
+            or _resolved_bytes_value(t, analyzer) is not None):
+        return BYTES_FAMILY.view_type
+    return None
+
+
+def _bytes_param_view_slot(pt: 'TpyType | None') -> 'TpyType | None':
+    """The `BytesView` a bytes value at PARAM slot `pt` is read through,
+    or None: both `bytes` and `BytesView` are view-shaped at a parameter
+    (`Own[BytesView]` is the same no-op spelling over the value view), so a
+    bytes literal there renders against the view -- its static span, where
+    the owning render would build a heap vector the callee only reads
+    through. Says nothing about a non-param sink: an owned binding init or
+    return keeps the owning render."""
+    pt = unwrap_readonly(pt) if pt is not None else None
     if (isinstance(pt, OwnType)
             and is_bytes_view_type(unwrap_readonly(pt.wrapped))):
         pt = unwrap_readonly(pt.wrapped)
-    return isinstance(pt, TpyType) and (is_bytes_type(pt)
-                                        or is_bytes_view_type(pt))
+    if isinstance(pt, TpyType) and (is_bytes_type(pt)
+                                    or is_bytes_view_type(pt)):
+        return BYTES_FAMILY.view_type
+    return None
 
 
 def _optional_narrow_facts_ok(facts: dict[str, TpyType],
@@ -11937,14 +11852,11 @@ def _var_decl_type(stmt: TpyVarDecl, analyzer) -> TpyType | None:
     # that later stores widen -- which the init's type alone
     # (IntLiteralType) does not. Fall back to the init type, then resolve any
     # remaining int literal to the module default int.
-    target = resolve_stmt_binding_type(stmt, analyzer, include_global_binding=False)
-    if target is None and stmt.init is not None:
-        target = analyzer.get_expr_type(stmt.init)
+    target = declared_bound_type(
+        stmt, analyzer.var_types,
+        analyzer.get_expr_type(stmt.init) if stmt.init is not None else None)
     if target is None:
         return None
-    target = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target)))
-    if isinstance(target, OwnType):
-        target = target.wrapped
     # A pending container binding (an alias of a not-yet-promoted literal
     # local, `b = a`) resolves through the shared sema record, as the
     # decl-type normalizer does; an unresolved pending stays put and keeps

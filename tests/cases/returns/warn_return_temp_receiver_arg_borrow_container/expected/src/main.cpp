@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def take(h: Holder) -> Own[list[int32]]:
 //     return Finder().pick(h)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 std::vector<int32_t> take(Holder& h) {
-    return Finder().pick(h);
+    return std::vector<int32_t>(Finder().pick(h));
 }
 
 // def take_copy(h: Holder) -> Own[list[int32]]:

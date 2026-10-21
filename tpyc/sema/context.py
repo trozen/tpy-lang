@@ -18,6 +18,7 @@ from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation, TryTier, name_path
 from .. import qnames
 from . import own_copy
+from .source_records import LeafPermission, declare_copy
 from .value_range import ValueRange
 
 if TYPE_CHECKING:
@@ -1122,9 +1123,11 @@ def note_owned_local(ctx: 'SemanticContext', name: str,
     """Record that `name` owns the object it was bound to, so its last
     use may move it. A generator object never counts: its frame may have
     started by its last use, and a started frame cannot move (a second
-    name aliases it instead)."""
+    name aliases it instead). The local still owns the frame
+    (`owned_generator_locals`)."""
     if holds_generator_object(var_type):
         ctx.func.owned_locals.discard(name)
+        ctx.func.owned_generator_locals.add(name)
         return
     ctx.func.owned_locals.add(name)
     ctx.func.ever_owned_locals.add(name)
@@ -1188,7 +1191,7 @@ def direct_elements(paths: Iterable[ElemPath]) -> frozenset[int]:
 @dataclass(frozen=True, slots=True)
 class NonOwningBind:
     """What a local's bindings to storage that already exists add up to,
-    for the whole function (`FunctionTrackingState.nonowning_binds`): what
+    for the whole function (`FunctionTrackingState.nonowning_bind`): what
     they borrow -- None for the whole value, else the tuple element paths
     (`alias_rebind.ElemPath`) some binding borrows -- and the line of the
     first one borrowing the whole value or a top-level element
@@ -1221,29 +1224,48 @@ class NonOwningBind:
 def note_nonowning_bind(ctx: 'SemanticContext', name: str,
                         at: 'TpyExpr | TpyStmt | None',
                         elems: 'frozenset[ElemPath] | None' = None) -> None:
-    """The one writer of the ownership fact: a binding of local `name` that
-    makes it refer to storage that already exists, wholly (`elems` None)
-    or at those tuple element paths, makes it non-owning there for the
-    whole function. A parameter's ownership is its declared type, never a
-    binding's."""
-    if ctx.is_top_level:
-        return
+    """The one writer of the ownership fact: a binding of `name`, noted at
+    node `at`, that makes it refer to storage that already exists, wholly
+    (`elems` None) or at those tuple element paths. Every such binding is
+    kept (`nonowning_sites`): an iteration site reads the ones inside its
+    own body. A function LOCAL's entry folds them as they come, for the
+    whole function (`FunctionTrackingState.nonowning_bind`); a module's
+    names and a parameter are no LOCAL (a parameter's ownership is its
+    declared type, never a binding's)."""
     func = ctx.func.current_function
-    if not isinstance(func, TpyFunction) or any(
-            p == name for p, _ in func.params):
-        return
+    entry = ctx.func.nonowning_sites.setdefault(name, NonOwningNotes())
+    entry.notes.append((at, elems))
+    if (not ctx.is_top_level and isinstance(func, TpyFunction)
+            and not any(p == name for p, _ in func.params)):
+        entry.local = _fold_nonowning(entry.local, at, elems)
+
+
+@dataclass(slots=True)
+class NonOwningNotes:
+    """The bindings of one name to storage that already exists
+    (`note_nonowning_bind`): each one's node and the element paths it
+    borrows (None: the whole value), and what the LOCAL ones add up to
+    (`local`; None for no LOCAL binding)."""
+    notes: list[tuple[object, 'frozenset[ElemPath] | None']] = field(
+        default_factory=list)
+    local: NonOwningBind | None = None
+
+
+def _fold_nonowning(rec: NonOwningBind | None, at: object,
+                    elems: 'frozenset[ElemPath] | None') -> NonOwningBind:
+    """`rec` with one more LOCAL binding at `at`: the union of what they
+    borrow, and the line of the first one borrowing the whole value or a
+    top-level element (a binding borrowing only nested paths yields it to a
+    later one)."""
     loc = getattr(at, "loc", None)
     line = loc.line if loc is not None else None
-    prev = ctx.func.nonowning_binds.get(name)
-    if prev is not None:
-        # The line names the first binding that borrows directly; a
-        # binding borrowing only nested paths yields it to a later one.
+    if rec is not None:
         if not NonOwningBind(line, elems).borrows_direct() or (
-                prev.borrows_direct() and prev.line is not None):
-            line = prev.line
-        elems = (None if prev.elems is None or elems is None
-                 else prev.elems | elems)
-    ctx.func.nonowning_binds[name] = NonOwningBind(line, elems)
+                rec.borrows_direct() and rec.line is not None):
+            line = rec.line
+        elems = (None if rec.elems is None or elems is None
+                 else rec.elems | elems)
+    return NonOwningBind(line, elems)
 
 
 @dataclass(eq=False)
@@ -1720,9 +1742,12 @@ class FunctionTrackingState:
     rvalue_vars: set[str] = field(default_factory=set)
     owned_locals: set[str] = field(default_factory=set)
     # Accumulator: all locals that were ever owned. Survives FlowFacts
-    # save/restore (not in FlowFacts). Used to compute the exported
-    # movable_locals set at function end.
+    # save/restore (not in FlowFacts). The LOCAL entries of the ownership
+    # fact (`binding_ownership`) are drawn from it at settlement.
     ever_owned_locals: set[str] = field(default_factory=set)
+    # The generator-object locals sema made an object of their own: each
+    # owns its frame, which no use moves (`note_owned_local`).
+    owned_generator_locals: set[str] = field(default_factory=set)
     # Statement-level borrow bindings (var-decl / assign / walrus):
     # name -> any binding had a readonly/const source. A name bound ONLY
     # this way (never a fresh rvalue, no non-statement binding) takes the
@@ -1739,17 +1764,18 @@ class FunctionTrackingState:
     # ordering. Two members -- a match capture aliasing an lvalue subject, and a
     # `with` target (which borrows `__enter__()`'s result).
     nonstmt_borrow_bindings: set[str] = field(default_factory=set)
-    # The ownership fact (`note_nonowning_bind`), an accumulator like
-    # ever_owned_locals: a local named here is non-owning, wholly or at
-    # some tuple elements, for the whole function.
-    nonowning_binds: dict[str, NonOwningBind] = field(default_factory=dict)
+    # The bindings behind the ownership fact (`note_nonowning_bind`), an
+    # accumulator like ever_owned_locals, by name: a LOCAL's fact folds them (`nonowning_bind`), an iteration
+    # site reads the ones inside its own body.
+    nonowning_sites: dict[str, 'NonOwningNotes'] = field(
+        default_factory=dict)
     # The reads whose verdict is not settled yet (`OwningRead`): the
     # owning-sink moves out of locals, settled once the body's fact is
     # complete (`TypeCompatibility.settle_owning_reads`), and the loop
     # variables' copy warnings, settled when their loop's mode is decided.
     owning_reads: list[OwningRead] = field(default_factory=list)
-    # Every owning tuple sink's registration of its source and slot
-    # (`tuple_records.TupleSinkRead`), one per canonical source node: their
+    # Every owning sink's registration of its source and slot
+    # (`source_records.SinkRead`), one per canonical source node: their
     # per-leaf records are built from the settled verdicts once
     # `settle_owning_reads` ran.
     tuple_sinks: IdentityMap = field(default_factory=IdentityMap)
@@ -2128,17 +2154,23 @@ class FunctionTrackingState:
         of."""
         return name not in self.hoisted_vars and self.owns_whole(name)
 
+    def nonowning_bind(self, name: str) -> 'NonOwningBind | None':
+        """The ownership fact for LOCAL `name` as recorded so far
+        (`NonOwningNotes.local`); None where no binding borrows."""
+        entry = self.nonowning_sites.get(name)
+        return entry.local if entry is not None else None
+
     def owns_whole(self, name: str) -> bool:
         """The ownership fact for local `name` as recorded so far: no
         binding made it refer to existing storage as a whole (some tuple
         elements may still be borrowed -- `nonowning_elems`)."""
-        rec = self.nonowning_binds.get(name)
+        rec = self.nonowning_bind(name)
         return rec is None or rec.elems is not None
 
     def nonowning_elems(self, name: str, arity: int) -> frozenset[int]:
         """The elements of tuple local `name` some binding so far borrows
         (every one when a binding borrows the whole tuple)."""
-        rec = self.nonowning_binds.get(name)
+        rec = self.nonowning_bind(name)
         return rec.direct_elems(arity) if rec is not None else frozenset()
 
     def nonowning_leaves(self, name: str,
@@ -2147,7 +2179,7 @@ class FunctionTrackingState:
         borrows (`NonOwningBind.borrowed_paths`): the whole-function fact
         once the body is read, at settlement; the bindings walked so far
         before that."""
-        rec = self.nonowning_binds.get(name)
+        rec = self.nonowning_bind(name)
         return rec.borrowed_paths(paths) if rec is not None else frozenset()
 
     def nonowning_line(self, name: str,
@@ -2156,7 +2188,7 @@ class FunctionTrackingState:
         (wholly or at a top-level element; at element `path`, when given --
         the fact keeps one line, a binding borrowing deeper names it only
         when no binding borrows directly), None where it owns."""
-        rec = self.nonowning_binds.get(name)
+        rec = self.nonowning_bind(name)
         if rec is None:
             return None
         if path is not None:
@@ -2679,10 +2711,33 @@ class SemanticContext:
     # never a move out of storage that outlives the call, never an
     # undeclared copy.
     own_element_copies: IdentityMap = field(default_factory=IdentityMap)
-    # The per-leaf ownership record of every tuple source an owning sink
-    # checked (`tuple_records.TupleSourceRecord`), keyed by the peeled
-    # source node and read through `tuple_records.tuple_source_record`.
-    tuple_records: IdentityMap = field(default_factory=IdentityMap)
+    # The per-leaf ownership record of every source an owning sink checked
+    # (`source_records.SourceRecord`), keyed by the peeled source node and
+    # read through `source_records.source_record`.
+    source_records: IdentityMap = field(default_factory=IdentityMap)
+    # What each binding of the module's bodies owns
+    # (`binding_ownership.BindingOwnership`), written once per body when its
+    # owning reads settle: per function node its LOCAL entries
+    # (`BodyOwnership`), per binding site node (a for statement, a
+    # loop-head unpack, a comprehension clause, a with item, an except
+    # handler, a match case) its targets' entries.
+    body_ownership: IdentityMap = field(default_factory=IdentityMap)
+    site_ownership: IdentityMap = field(default_factory=IdentityMap)
+    # The declarations that bind a call's `val_or_ref_t` result itself
+    # (`binding_ownership.binds_val_or_ref`), decided once at settlement.
+    val_or_ref_decls: IdentitySet = field(default_factory=IdentitySet)
+    # Every name read's binding identity (`binding_ownership.ReadBinding`),
+    # recorded where the read is analyzed.
+    read_bindings: IdentityMap = field(default_factory=IdentityMap)
+    # The comprehension variable reads their clause moves
+    # (`TypeCompatibility.comp_elem_moves`), each with how it decided
+    # (`binding_ownership.CompMove`): the source record and the lowering
+    # both read it.
+    comp_moves: IdentityMap = field(default_factory=IdentityMap)
+    # Every copy diagnostic's `source_records.CopyDeclaration`, linked to
+    # its `Diagnostic` by identity: a declaration counts only while its
+    # diagnostic stands (`source_records.finalize_source_records`).
+    copy_declarations: list = field(default_factory=list)
     # Name reads that resolve to a comprehension's own variable, mapped to
     # the clause binding it (`CompTarget`): an owning sink's verdict on one
     # is its clause's, never the function's name-keyed ownership fact,
@@ -2703,6 +2758,12 @@ class SemanticContext:
     # (`returned_captured_name`) at an owning slot: sema warned the copy,
     # and the read is copied, never moved.
     live_name_copies: IdentitySet = field(default_factory=IdentitySet)
+    # Borrowed sources an owning slot copies, as sema declared the copy
+    # (`_check_own_borrowed_source`: its warning, or the bound that makes
+    # it unobservable), at the read or when a later binding settles a move
+    # into a copy: the lowering spells a copy of an existing object into a
+    # result only for these.
+    owned_slot_copies: IdentitySet = field(default_factory=IdentitySet)
     # Per call whose callable argument takes an `Own[X]` parameter fed by an
     # `Iterable[T]` argument (`map(take, ks, rows)`): argument index ->
     # the effective `Iterable[Own[X]]` slot, an owning element slot like a
@@ -3069,13 +3130,30 @@ class SemanticContext:
         """Record an error diagnostic without raising (allows continued analysis)."""
         self.diagnostics.append(Diagnostic(DiagnosticLevel.ERROR, message, self._resolve_loc(node)))
 
-    def warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> None:
+    def warning(self, message: str, node: TpyExpr | TpyStmt | TpyRecord | None = None) -> Diagnostic:
         """Record a warning diagnostic (doesn't stop compilation)."""
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, self._resolve_loc(node)))
+        diag = Diagnostic(DiagnosticLevel.WARNING, message, self._resolve_loc(node))
+        self.diagnostics.append(diag)
+        return diag
 
-    def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> None:
+    def warning_from_loc(self, message: str, loc: 'SourceLocation | None') -> Diagnostic:
         """Record a warning diagnostic from a SourceLocation."""
-        self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message, loc))
+        diag = Diagnostic(DiagnosticLevel.WARNING, message, loc)
+        self.diagnostics.append(diag)
+        return diag
+
+    def copy_warning(self, message: str,
+                     at: 'TpyExpr | TpyStmt | SourceLocation | None',
+                     source: 'TpyExpr | None',
+                     path: 'tuple[int, ...]' = ()) -> Diagnostic:
+        """Warn of a copy into an owning slot at `at` and declare it: the
+        warning tells the copy of `source`'s leaves at `path`
+        (`source_records.CopyDeclaration`)."""
+        diag = (self.warning_from_loc(message, at)
+                if isinstance(at, SourceLocation) or at is None
+                else self.warning(message, at))
+        declare_copy(self, source, path, LeafPermission.WARNED, diag)
+        return diag
 
     def type_param_bound(self, type_param_name: str) -> 'TpyType | None':
         """The declared bound for a type parameter in the current context.
@@ -3123,7 +3201,8 @@ class SemanticContext:
     def defer_own_copy_verdict(
         self, display: 'TpyType', target: 'TpyType', dest: str,
         node: 'TpyExpr | TpyStmt | None', kind: str = own_copy.KIND_SLOT,
-        hint: str = "",
+        hint: str = "", *, source: 'TpyExpr | None' = None,
+        path: 'tuple[int, ...]' = (),
     ) -> bool:
         """Record an owning-slot copy whose payload is still open.
 
@@ -3139,6 +3218,10 @@ class SemanticContext:
         Returns True without warning under a `T: ValueType` bound, which
         makes the copy unobservable. `copy()` at the site is the other
         silencer, and it is handled before the sink is reached.
+
+        The warning declares the copy of `source`'s leaves at `path`
+        (`source_records.CopyDeclaration`): a hedge, or a plain warning for
+        a reference-type head, which copies whatever its arguments are.
         """
         if not (own_copy.type_has_type_param(target)
                 or own_copy.type_has_type_param(display)):
@@ -3155,11 +3238,14 @@ class SemanticContext:
             # A reference-type head is copied whatever its arguments are.
             msg = own_copy.slot_message(head, head, dest, kind, hint,
                                         non_copyable=False)[1]
+            told = LeafPermission.WARNED
         else:
             msg = own_copy.hedge_message(display, dest, kind, hint)
+            told = LeafPermission.HEDGED
         diag = Diagnostic(DiagnosticLevel.WARNING, msg,
                           self._resolve_loc(node))
         self.diagnostics.append(diag)
+        declare_copy(self, source, path, told, diag)
         obligation = own_copy.OwnCopyObligation(
             display_type=display, target_type=target, dest=dest, kind=kind,
             hint=hint, diag=diag)
@@ -3269,18 +3355,27 @@ class SemanticContext:
         warning for `statements.py` to delete once the loop proves to move
         rather than copy). A recorder that skipped a duplicate would shift
         those positions onto unrelated diagnostics.
+
+        A dropped repeat's copy declarations move to the report that stays,
+        which tells the same copy.
         """
-        seen: set[tuple[object, ...]] = set()
+        seen: dict[tuple[object, ...], Diagnostic] = {}
         kept: list[Diagnostic] = []
+        survivor: IdentityMap = IdentityMap()
         for d in self.diagnostics:
             loc = d.loc
             key = ((d.level, d.message, loc.file, loc.line, loc.column) if loc
                    else (d.level, d.message))
             if key in seen:
+                survivor[d] = seen[key]
                 continue
-            seen.add(key)
+            seen[key] = d
             kept.append(d)
         self.diagnostics[:] = kept
+        if survivor:
+            self.copy_declarations[:] = [
+                replace(c, diag=survivor[c.diag]) if c.diag in survivor
+                else c for c in self.copy_declarations]
 
     def nocopy_reason(self, typ: TpyType) -> str:
         """Return a human-readable reason why a type is nocopy.

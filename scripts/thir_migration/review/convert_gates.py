@@ -5,7 +5,7 @@ TODO.md "One conversion boundary for every value sink": every sink hands its
 lowered source to ONE `convert(expr, slot, types)`; the sink keeps literal
 construction and its target / receiver tests, and nothing else decides a
 conversion. This script is the structural acceptance, a static AST walk that
-runs in about five seconds (it parses the whole lowering package for the
+runs in about two seconds (it parses the whole lowering package for the
 audit):
 
   (a) constructions -- THIRFormConvert / THIRMove / THIROptionalPtrArg /
@@ -51,18 +51,24 @@ rows' call sites, `convert` and the return slot builder; a callee reached
 only from a landing-2 row is listed with that reason.
 
     uv run python scripts/thir_migration/review/convert_gates.py [--json]
-        [--check]
+        [--check] [--update]
 
 `--check` compares against `convert_gates.expected.json` and exits 1 when a
-number moved the wrong way; the landing-2 counts of the return family are
-gated too, so moving code under a landing-2 key cannot take it out of the
-ratchet.
+number moved the wrong way, naming each grown key with the sites behind it;
+the landing-2 counts of the return family are gated too, so moving code
+under a landing-2 key cannot take it out of the ratchet. It fails as well
+when the instrument no longer measures what it names: an audit entry or a
+walked function that resolves to no function, a gated file or arm that is
+missing, a measured key with no budget, or a budget key never measured.
+The same `check()` runs as the unit test `tpyc/thir/test_convert_gates.py`,
+so `uv run pytest` fails as soon as a gated number grows.
 """
 import argparse
 import ast
 import json
 import os
 import sys
+from typing import NamedTuple
 
 # CONVERT_GATES_ROOT measures another checkout (a baseline export).
 REPO = os.environ.get("CONVERT_GATES_ROOT") or os.path.abspath(
@@ -80,6 +86,8 @@ LITERAL_KINDS = frozenset({
     "TpySetLiteral", "TpyListRepeat", "TpyTupleLiteral",
     "TpyListComprehension", "TpySetComprehension", "TpyDictComprehension",
     "CONTAINER_LITERAL_NODES", "THIRContainerLiteral", "THIRLiteral",
+    # The return's literal-construction kinds (statements.py).
+    "_RETURN_LITERALS",
 })
 
 # --- the field-write family -------------------------------------------------
@@ -129,8 +137,8 @@ RULE_TESTS = {
 # --- the return family -------------------------------------------------------
 
 STATEMENTS_FILE = os.path.join(LOWER, "statements.py")
-RETURN_FUNCS = ("_lower_resumable_return_value", "_wrap_view_owned_return",
-                "_return_plan", "_return_converted")
+RETURN_FUNCS = ("_lower_resumable_return_value", "_return_tuple_literal",
+                "_return_read")
 # A construction or kind test in the return arm belongs to the row whose
 # witness / reject key sits in the innermost `if` around it (test + body).
 # The rows landing 1 converts through `convert`; what is left in them is the
@@ -209,8 +217,8 @@ def landing2_reason(key):
 # --- the decision audit ------------------------------------------------------
 
 AUDIT_ENTRIES = ("lower_field_write", "lower_member_init_value", "convert",
-                 "plan_read", "stamp_source", "binding_of",
-                 "field_slot", "field_slot_use")
+                 "stamp_source", "binding_of", "field_slot_use",
+                 "slot_for")
 # Where the walk stops: the source / literal lowering entries. What they
 # decide is the source's own lowering, not the sink's conversion.
 AUDIT_BOUNDARY = frozenset({
@@ -253,6 +261,10 @@ AUDIT_STOP = {
     "copy_call_arg": "explicit `copy()` spelling (peeled by the caller)",
     "copy_ptr_optional_peel": "explicit `copy()` spelling",
     "copy_ctor_rvalue_source": "explicit `copy()` spelling",
+    # the source's own facts (the stamp's `named_type`)
+    "_narrowed_opt_field_decl": "source fact: a narrowed Optional member's "
+                                "declared whole type",
+    "_field_decl_type": "source fact: a field's declared type",
 }
 # (function, kind) -> why a kind test inside the audited graph is allowed.
 AUDIT_ALLOW_TESTS = {
@@ -266,6 +278,8 @@ AUDIT_ALLOW_TESTS = {
                            "what the stamp computes (the one writer)",
     ("binding_of", "*"): "the source's own facts: a NAME read names a "
                          "binding",
+    ("named_type_of", "*"): "the source's own facts: the declared type of "
+                            "the storage a NAME or FIELD read names",
     ("_held_from_facts", "*"): "the Source stamp: per-kind facts decide "
                                 "where the value lives",
     ("_name_held", "*"): "the Source stamp: a NAME read's record, unless "
@@ -280,9 +294,62 @@ AUDIT_ALLOW_TESTS = {
 }
 
 
+# The parsed modules of the `measure()` call in progress (None outside one):
+# its walks read the same files many times.
+_PARSED = None
+# What a measurement could not resolve (`_unresolved`), reset per measure.
+_UNRESOLVED = None
+
+
+def _unresolved(what):
+    """Record that the instrument measured nothing where it names something:
+    a gate over a renamed function or a moved file must fail, not read 0."""
+    if _UNRESOLVED is not None and what not in _UNRESOLVED:
+        _UNRESOLVED.append(what)
+
+
+def _resolved(names, known, where):
+    """`names` that are in `known`; each one that is not is unresolved."""
+    for name in names:
+        if name not in known:
+            _unresolved("%s: %s resolves to no function" % (where, name))
+    return [name for name in names if name in known]
+
+
 def _read(rel):
-    with open(os.path.join(REPO, rel)) as fh:
-        return ast.parse(fh.read())
+    if _PARSED is not None and rel in _PARSED:
+        return _PARSED[rel]
+    path = os.path.join(REPO, rel)
+    if not os.path.exists(path):
+        _unresolved("gated file missing: %s" % rel)
+        return ast.parse("")
+    with open(path) as fh:
+        tree = ast.parse(fh.read())
+    if _PARSED is not None:
+        _PARSED[rel] = tree
+    return tree
+
+
+def _site(file, line, func, what=None):
+    """One gated site: `file:line function [what]`."""
+    out = "%s:%d %s" % (os.path.basename(file), line, func)
+    return out if what is None else "%s %s" % (out, what)
+
+
+def _unit_site(label, line, what=None):
+    """A site inside a unit labelled `file:function`."""
+    file, _, func = label.partition(":")
+    return _site(file, line, func, what)
+
+
+def _line_owners(tree):
+    """line -> the top-level function holding it."""
+    out = {}
+    for node, name in _enclosing(tree).items():
+        line = getattr(node, "lineno", None)
+        if line is not None:
+            out.setdefault(line, name)
+    return out
 
 
 def _funcs(tree):
@@ -445,10 +512,10 @@ def family_numbers(units):
     conv_sites = []
     binding_sites = []
     for label, node in units:
-        binding_sites += ["%s:%d" % (label, line)
+        binding_sites += [_unit_site(label, line)
                           for line in binding_tests(node)]
         for name, line in constructions(node):
-            site = "%s:%d %s" % (label, line, name)
+            site = _unit_site(label, line, name)
             if label.split(":")[-1] in LITERAL_FUNCS:
                 lit_cons.append(site)
             else:
@@ -457,7 +524,7 @@ def family_numbers(units):
             cls = classify_test(label.split(":")[-1], kind)
             tests[cls] += 1
             if cls == "conversion":
-                conv_sites.append("%s:%d %s" % (label, line, kind))
+                conv_sites.append(_unit_site(label, line, kind))
     return {"constructions": len(cons), "construction_sites": cons,
             "literal_constructions": lit_cons,
             "kind_tests": tests, "conversion_test_sites": conv_sites,
@@ -470,9 +537,8 @@ def field_write_units():
     for name, fn in _funcs(fw).items():
         units.append(("field_write.py:" + name, fn))
     checks = _funcs(_read(os.path.join(LOWER, "checks.py")))
-    for name in FIELD_WRITE_CHECKS:
-        if name in checks:
-            units.append(("checks.py:" + name, checks[name]))
+    for name in _resolved(FIELD_WRITE_CHECKS, checks, "FIELD_WRITE_CHECKS"):
+        units.append(("checks.py:" + name, checks[name]))
     return units
 
 
@@ -500,10 +566,11 @@ def return_units():
     arm = _return_arm(st)
     if arm is not None:
         units.append(("statements.py:return_arm", arm))
+    else:
+        _unresolved("statements.py: the return arm is not found")
     funcs = _funcs(st)
-    for name in RETURN_FUNCS:
-        if name in funcs:
-            units.append(("statements.py:" + name, funcs[name]))
+    for name in _resolved(RETURN_FUNCS, funcs, "RETURN_FUNCS"):
+        units.append(("statements.py:" + name, funcs[name]))
     return units
 
 
@@ -552,11 +619,12 @@ def return_numbers():
     kind tests choose the READ), a landing-2 row (allowed, with the
     family), a literal, or unattributed (counted)."""
     out = {"a_constructions": 0, "a_sites": [], "a_landing2": 0,
+           "a_landing2_sites": [],
            "b_conversion": 0, "b_conversion_sites": [], "b_read": 0,
-           "b_read_sites": [], "b_landing2": 0, "b_literal": 0,
-           "landing2_rows": {}, "binding_test_sites": []}
+           "b_read_sites": [], "b_landing2": 0, "b_landing2_sites": [],
+           "b_literal": 0, "landing2_rows": {}, "binding_test_sites": []}
     for label, node in return_units():
-        out["binding_test_sites"] += ["%s:%d" % (label, line)
+        out["binding_test_sites"] += [_unit_site(label, line)
                                       for line in binding_tests(node)]
         # The resumable payload is landing 2's own checkpoint, whole.
         unit_key = ("res.return_value"
@@ -565,54 +633,61 @@ def return_numbers():
         for name, line in constructions(node):
             key = unit_key or _row_of(node, line)
             reason = landing2_reason(key) if key else None
+            site = _unit_site(label, line, "%s [%s]" % (name, key))
             if reason is not None:
                 out["a_landing2"] += 1
+                out["a_landing2_sites"].append(site)
                 out["landing2_rows"].setdefault(key, reason)
             else:
                 out["a_constructions"] += 1
-                out["a_sites"].append("%s:%d %s [%s]" % (label, line, name,
-                                                         key))
+                out["a_sites"].append(site)
         for kind, line in kind_tests(node):
             if kind in LITERAL_KINDS:
                 out["b_literal"] += 1
                 continue
             key = unit_key or _row_of(node, line)
             reason = landing2_reason(key) if key else None
+            site = _unit_site(label, line, "%s [%s]" % (kind, key))
             if reason is not None:
                 out["b_landing2"] += 1
+                out["b_landing2_sites"].append(site)
                 out["landing2_rows"].setdefault(key, reason)
             elif key in RETURN_MIGRATED:
                 out["b_read"] += 1
-                out["b_read_sites"].append("%s:%d %s [%s]" % (label, line,
-                                                              kind, key))
+                out["b_read_sites"].append(site)
             else:
                 out["b_conversion"] += 1
-                out["b_conversion_sites"].append(
-                    "%s:%d %s [%s]" % (label, line, kind, key))
+                out["b_conversion_sites"].append(site)
     return out
 
 
 def convert_numbers():
     rel = os.path.join(LOWER, "convert.py")
     if not os.path.exists(os.path.join(REPO, rel)):
+        _unresolved("gated file missing: %s" % rel)
         return {"present": False, "kind_tests": 0, "sinkpos_reads": 0,
                 "lc_params": 0, "sites": [], "binding_test_sites": []}
     tree = _read(rel)
-    sites = ["%d %s" % (line, k) for k, line in kind_tests(tree)]
+    owners = _line_owners(tree)
+
+    def site(line, what=None):
+        return _site(rel, line, owners.get(line, "<module>"), what)
+
+    sites = [site(line, k) for k, line in kind_tests(tree)]
     sinkpos = 0
     lc = 0
     for n in ast.walk(tree):
         if isinstance(n, ast.Name) and n.id in ("SinkPos", "SinkForm"):
             sinkpos += 1
-            sites.append("%d %s" % (n.lineno, n.id))
+            sites.append(site(n.lineno, n.id))
         if isinstance(n, ast.arg) and (
                 n.arg == "lc" or (n.annotation is not None
                                   and "_LowerCtx" in ast.unparse(n.annotation))):
             lc += 1
-            sites.append("%d param %s" % (n.lineno, n.arg))
+            sites.append(site(n.lineno, "param " + n.arg))
     return {"present": True, "kind_tests": len(kind_tests(tree)),
             "sinkpos_reads": sinkpos, "lc_params": lc, "sites": sites,
-            "binding_test_sites": ["convert.py:%d" % line
+            "binding_test_sites": [site(line)
                                    for line in binding_tests(tree)]}
 
 
@@ -688,13 +763,13 @@ def _allowed(func, kind):
             or AUDIT_ALLOW_TESTS.get((func, "*")))
 
 
-def audit(entries=AUDIT_ENTRIES, stops=None):
+def audit(entries=AUDIT_ENTRIES, stops=None, where="AUDIT_ENTRIES"):
     stops = dict(AUDIT_STOP, **(stops or {}))
     table = _all_funcs()
     known = set(table)
     seen = set()
     stopped = set()
-    todo = [e for e in entries if e in known]
+    todo = _resolved(entries, known, where)
     while todo:
         name = todo.pop()
         if name in seen or name in AUDIT_BOUNDARY:
@@ -722,9 +797,13 @@ def audit(entries=AUDIT_ENTRIES, stops=None):
                               if _allowed(name, b[0])})
             rows.append({"function": label,
                          "branches": ["%s@%d" % b for b in (bad or br)],
-                         "allowed": None if bad else "; ".join(reasons)})
+                         "allowed": None if bad else "; ".join(reasons),
+                         "site": _site(rel, fn.lineno, name)})
     return {"walked": len(seen),
             "unexplained": [r["function"] for r in rows if not r["allowed"]],
+            "unexplained_sites": [
+                "%s branches on %s" % (r["site"], " ".join(r["branches"]))
+                for r in rows if not r["allowed"]],
             "allowed": [r["function"] for r in rows if r["allowed"]],
             "rows": rows}
 
@@ -752,8 +831,8 @@ RETURN_AUDIT_STOP = {
                                  "(`Source.binding.pointer` already "
                                  "carries it; the row predates it)",
 }
-RETURN_AUDIT_ENTRIES = ("_return_plan", "_return_converted", "return_slot",
-                        "_return_holds", "_wrap_view_owned_return")
+RETURN_AUDIT_ENTRIES = ("return_slot", "slot_for", "_return_read",
+                        "read_stored", "stored_use")
 
 
 def return_audit():
@@ -783,24 +862,74 @@ def return_audit():
                     or "landing 2: the arm's unkeyed scaffolding (the "
                        "statement prologue, the pointer-local arm, the "
                        "generic tail)")
+    else:
+        _unresolved("statements.py: the return arm is not found")
+    _resolved(RETURN_AUDIT_ENTRIES, known, "RETURN_AUDIT_ENTRIES")
     stops = dict(RETURN_AUDIT_STOP)
     for name, reason in left.items():
         if name not in seeds:
             stops[name] = reason
-    return audit(entries=tuple(sorted(seeds)), stops=stops)
+    return audit(entries=tuple(sorted(seeds & known)), stops=stops)
+
+
+# The decision graphs of the sinks landing 2 moves onto `convert`, each
+# audited from its own entry with the shared stops only: the call argument,
+# the async return payload, and the generator yield value (a ladder inside
+# `_lower_resumable`, entered through the functions it calls).
+ARG_AUDIT_ENTRIES = ("_lower_call_arg_at",)
+PAYLOAD_AUDIT_ENTRIES = ("_lower_resumable_return_value",)
+RESUMABLE_FILE = os.path.join(LOWER, "resumable.py")
+
+
+def _yield_arm(tree):
+    """The `elif isinstance(t, rcfg.Yield) and is_generator:` arm of
+    `_lower_resumable`: the generator's yield value."""
+    fn = _funcs(tree).get("_lower_resumable")
+    if fn is None:
+        return None
+    for n in ast.walk(fn):
+        if not (isinstance(n, ast.If) and isinstance(n.test, ast.BoolOp)):
+            continue
+        parts = [ast.unparse(v) for v in n.test.values]
+        if "is_generator" in parts and any(
+                p.startswith("isinstance(") and p.endswith("rcfg.Yield)")
+                for p in parts):
+            return n
+    return None
+
+
+def yield_audit():
+    arm = _yield_arm(_read(RESUMABLE_FILE))
+    known = set(_all_funcs())
+    seeds = set()
+    if arm is None:
+        _unresolved("resumable.py: the generator yield arm is not found")
+    else:
+        for stmt in arm.body:
+            for n in ast.walk(stmt):
+                if isinstance(n, ast.Call):
+                    f = n.func
+                    name = (f.id if isinstance(f, ast.Name)
+                            else f.attr if isinstance(f, ast.Attribute)
+                            else None)
+                    if name in known:
+                        seeds.add(name)
+    return audit(entries=tuple(sorted(seeds)))
 
 
 # --- the Source as the one authority ------------------------------------------
 
 # The stamp: the only functions that may build or rewrite a `Source`
 # (`_lower_expr` attaches what `stamp_source` returns; `_restamp_reads`
-# keeps a rebuilt node's own read facts current).
-STAMP_FUNCS = frozenset({"stamp_source", "stamped", "_tuple_layout_elems",
+# keeps a rebuilt node's own read facts current; `element_source` builds a
+# tuple source's leaves).
+STAMP_FUNCS = frozenset({"stamp_source", "stamped", "element_source",
                          "_restamp_reads", "_lower_expr"})
 # The stamp's helpers that decide `held`: they may not read `.form`.
 HELD_FUNCS = ("stamp_source", "stamped", "_held_from_facts", "_name_held",
               "_held_of_form", "_viewfam_of", "_owned_buffer",
-              "_tuple_layout_elems", "_dies", "_temporary",
+              "_tuple_layout_elems", "element_source", "_dies",
+              "_temporary",
               # The binding table's projection (bindings.py), which the
               # name arm's `form` reads too.
               "project_held", "_value_opt_kind", "_held_of")
@@ -839,7 +968,7 @@ def source_numbers():
         for n in ast.walk(tree):
             if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef)) \
                     and n.name in FIELD_CLASSIFIERS:
-                classifiers.append("%s:%s" % (base, n.name))
+                classifiers.append(_site(base, n.lineno, n.name))
             if not isinstance(n, ast.Call):
                 continue
             fn = owner.get(n, "<module>")
@@ -850,16 +979,17 @@ def source_numbers():
             if fn not in STAMP_FUNCS and (
                     name == "Source"
                     or ("source" in kws and name == "replace")):
-                writers.append("%s:%d %s" % (base, n.lineno, fn))
+                writers.append(_site(base, n.lineno, fn))
             if "form" in kws and fn not in STAMP_FUNCS and (
                     name == "replace" or (name or "").startswith("THIR")):
-                form_kw.append("%s:%d" % (base, n.lineno))
+                form_kw.append(_site(base, n.lineno, fn, name))
         for n in ast.walk(tree):
             if (isinstance(n, ast.Attribute) and n.attr == "form"
                     and isinstance(n.ctx, ast.Load)
                     and owner.get(n) in HELD_FUNCS):
-                form_reads.append("%s:%d %s" % (base, n.lineno, owner[n]))
+                form_reads.append(_site(base, n.lineno, owner[n]))
     return {"source_writers": writers, "form_kwargs": len(form_kw),
+            "form_kwarg_sites": form_kw,
             "held_form_reads": form_reads,
             "field_classifiers": classifiers}
 
@@ -946,9 +1076,10 @@ def binding_numbers():
     for rel in _lowering_files():
         base = os.path.basename(rel)
         tree = _read(rel)
-        defined = {n.name for n in ast.walk(tree)
+        defined = {n.name: n.lineno for n in ast.walk(tree)
                    if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
-        classifiers += ["%s:%s" % (f, fn) for f, fn in BINDING_CLASSIFIERS
+        classifiers += [_site(f, defined[fn], fn)
+                        for f, fn in BINDING_CLASSIFIERS
                         if f == base and fn in defined]
         if base == "context.py":
             for n in ast.walk(tree):
@@ -957,11 +1088,14 @@ def binding_numbers():
                                 and t.id == "_BRANCH_SCOPED_SETS"
                                 for t in n.targets)
                         and isinstance(n.value, ast.Tuple)):
-                    scoped += [e.value for e in n.value.elts
+                    scoped += [_site(base, e.lineno, "_BRANCH_SCOPED_SETS",
+                                     e.value)
+                               for e in n.value.elts
                                if isinstance(e, ast.Constant)
                                and e.value not in LEDGER_ATTRS]
         if base == PLANNER_FILE:
             continue
+        owner = _enclosing(tree)
         for n in ast.walk(tree):
             hit = None
             if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
@@ -991,17 +1125,42 @@ def binding_numbers():
                         # A restore of a saved value is no new fact.
                         hit = "%s=" % a
             if hit is not None:
-                writers.append("%s:%d %s" % (base, n.lineno, hit))
+                writers.append(_site(base, n.lineno,
+                                     owner.get(n, "<module>"), hit))
     return {"writers": writers, "branch_scoped": scoped,
             "classifiers": classifiers}
 
 
 def measure():
+    global _PARSED, _UNRESOLVED
+    _PARSED = {}
+    _UNRESOLVED = []
+    try:
+        m = _measure()
+        m["unresolved"] = list(_UNRESOLVED)
+        return m
+    finally:
+        _PARSED = None
+        _UNRESOLVED = None
+
+
+def _measure():
     fw = family_numbers(field_write_units())
     ret = return_numbers()
     ret_au = return_audit()
     au = audit()
+    landing2_audits = {
+        "arg": audit(entries=ARG_AUDIT_ENTRIES,
+                     where="ARG_AUDIT_ENTRIES"),
+        "yield": yield_audit(),
+        "payload": audit(entries=PAYLOAD_AUDIT_ENTRIES,
+                         where="PAYLOAD_AUDIT_ENTRIES"),
+    }
     return {
+        "landing2_audits": {k: {"walked": a["walked"],
+                                "unexplained": a["unexplained"],
+                                "unexplained_sites": a["unexplained_sites"]}
+                            for k, a in landing2_audits.items()},
         "field_write": {
             "a_constructions": fw["constructions"],
             "b_kind_tests": fw["kind_tests"],
@@ -1012,10 +1171,12 @@ def measure():
         },
         "return": dict(ret, d_walked=ret_au["walked"],
                        d_unexplained=ret_au["unexplained"],
+                       d_unexplained_sites=ret_au["unexplained_sites"],
                        d_allowed=ret_au["allowed"]),
         "c_convert": convert_numbers(),
         "d_audit": {"walked": au["walked"],
                     "unexplained": au["unexplained"],
+                    "unexplained_sites": au["unexplained_sites"],
                     "allowed": au["allowed"]},
         "_audit_rows": au["rows"],
         "source": source_numbers(),
@@ -1055,6 +1216,10 @@ def headline(m):
                 len(m["source"]["held_form_reads"]),
                 m["source"]["form_kwargs"],
                 len(m["source"]["field_classifiers"]))
+            + "\nlanding-2 audits: " + ", ".join(
+                "%s %d walked, %d unexplained" % (
+                    k, a["walked"], len(a["unexplained"]))
+                for k, a in m["landing2_audits"].items())
             + "\nbindings: %d writers outside the planner, %d binding sets "
             "branch-scoped, %d name classifiers (%s)" % (
                 len(m["bindings"]["writers"]),
@@ -1063,33 +1228,101 @@ def headline(m):
                 ", ".join(m["bindings"]["classifiers"])))
 
 
+def _gated_sites(m):
+    """The sites behind every number `--check` ratchets (none may grow): a
+    gated number IS the count of its sites, each `file:line function`."""
+    fw = m["field_write"]
+    ret = m["return"]
+    conv = m["c_convert"]
+    src = m["source"]
+    bind = m["bindings"]
+    l2 = m["landing2_audits"]
+    return {
+        "field_write_a": fw["a_sites"],
+        "field_write_b": fw["b_conversion_sites"],
+        "convert_c": conv["sites"],
+        "audit_d": m["d_audit"]["unexplained_sites"],
+        "return_a": ret["a_sites"],
+        "return_b": ret["b_conversion_sites"],
+        "return_b_read": ret["b_read_sites"],
+        "return_d": ret["d_unexplained_sites"],
+        "return_a_landing2": ret["a_landing2_sites"],
+        "return_b_landing2": ret["b_landing2_sites"],
+        "binding_convert": conv["binding_test_sites"],
+        "binding_field_write": fw["binding_test_sites"],
+        "binding_return": ret["binding_test_sites"],
+        "source_writers": src["source_writers"],
+        "held_form_reads": src["held_form_reads"],
+        "form_kwargs": src["form_kwarg_sites"],
+        "field_classifiers": src["field_classifiers"],
+        "binding_writers": bind["writers"],
+        "binding_sets_branch_scoped": bind["branch_scoped"],
+        "binding_classifiers": bind["classifiers"],
+        # Recorded at their first measurement: the landing-2 sinks'
+        # graphs, each to fall as its slice migrates.
+        "arg_d": l2["arg"]["unexplained_sites"],
+        "yield_d": l2["yield"]["unexplained_sites"],
+        "payload_d": l2["payload"]["unexplained_sites"],
+    }
+
+
 def _gated(m):
     """The numbers `--check` ratchets: none may grow."""
-    return {
-        "field_write_a": m["field_write"]["a_constructions"],
-        "field_write_b": m["field_write"]["b_kind_tests"]["conversion"],
-        "convert_c": (m["c_convert"]["kind_tests"]
-                      + m["c_convert"]["sinkpos_reads"]
-                      + m["c_convert"]["lc_params"]),
-        "audit_d": len(m["d_audit"]["unexplained"]),
-        "return_a": m["return"]["a_constructions"],
-        "return_b": m["return"]["b_conversion"],
-        "return_b_read": m["return"]["b_read"],
-        "return_d": len(m["return"]["d_unexplained"]),
-        "return_a_landing2": m["return"]["a_landing2"],
-        "return_b_landing2": m["return"]["b_landing2"],
-        "binding_convert": len(m["c_convert"]["binding_test_sites"]),
-        "binding_field_write": len(
-            m["field_write"]["binding_test_sites"]),
-        "binding_return": len(m["return"]["binding_test_sites"]),
-        "source_writers": len(m["source"]["source_writers"]),
-        "held_form_reads": len(m["source"]["held_form_reads"]),
-        "form_kwargs": m["source"]["form_kwargs"],
-        "field_classifiers": len(m["source"]["field_classifiers"]),
-        "binding_writers": len(m["bindings"]["writers"]),
-        "binding_sets_branch_scoped": len(m["bindings"]["branch_scoped"]),
-        "binding_classifiers": len(m["bindings"]["classifiers"]),
-    }
+    return {k: len(v) for k, v in _gated_sites(m).items()}
+
+
+class Growth(NamedTuple):
+    """A gated number above its budget, with the sites now behind it."""
+    key: str
+    expected: int
+    measured: int
+    sites: list
+
+
+class Unmeasured(NamedTuple):
+    """Something the ratchet names but no longer measures: an unresolved
+    name or file, a measured key with no budget, a budget never measured."""
+    what: str
+
+
+def check(m=None):
+    """Every gated number that grew past `convert_gates.expected.json`, and
+    everything the instrument names but could not measure (measured now
+    unless `m` is given)."""
+    if m is None:
+        m = measure()
+    with open(EXPECTED) as fh:
+        want = json.load(fh)
+    sites = _gated_sites(m)
+    out = [Unmeasured(u) for u in m.get("unresolved", [])]
+    out += [Unmeasured("measured key with no budget: %s" % k)
+            for k in sorted(set(sites) - set(want))]
+    out += [Unmeasured("budget key never measured: %s" % k)
+            for k in sorted(set(want) - set(sites))]
+    return out + [Growth(k, want[k], len(sites[k]),
+                         sorted(sites[k], key=_site_order))
+                  for k in sorted(want)
+                  if k in sites and len(sites[k]) > want[k]]
+
+
+def _site_order(site):
+    file, _, rest = site.partition(":")
+    line = rest.split(" ", 1)[0]
+    return (file, int(line) if line.isdigit() else 0, site)
+
+
+def format_growth(grown):
+    lines = []
+    for g in grown:
+        if isinstance(g, Unmeasured):
+            lines.append("UNMEASURED %s" % g.what)
+            continue
+        lines.append("GREW %s: expected %d, measured %d; its sites:"
+                     % (g.key, g.expected, g.measured))
+        lines += ["  " + s for s in g.sites]
+    lines.append("Budgets only go down; fix the code, raising a budget is a "
+                 "design change.")
+    return "\n".join(lines)
 
 
 def main():
@@ -1118,12 +1351,9 @@ def main():
                                       " ".join(r["branches"][:6])))
     print(headline(m))
     if args.check:
-        with open(EXPECTED) as fh:
-            want = json.load(fh)
-        got = _gated(m)
-        worse = {k: (want[k], got[k]) for k in want if got.get(k, 0) > want[k]}
-        if worse:
-            print("GREW: %s" % worse)
+        grown = check(m)
+        if grown:
+            print(format_growth(grown))
             return 1
     return 0
 

@@ -1196,7 +1196,7 @@ def test_return_lowering_reject_falls_back_at_sync_boundary():
             _record_reject("body")
     assert fn is None
     assert _tally(compiler) == {
-        "body:stmt.return:return.opt_view_source": 1,
+        "body:stmt.return:return.borrow_source": 1,
     }
 
 

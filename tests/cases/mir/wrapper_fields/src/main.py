@@ -208,8 +208,8 @@ def written_then_read(h: H) -> int32:  # tpyc: mir(uncovered /unproven optional 
     return h.p.x  # tpyc: warning(/Potential None access/)
 
 
-# kept refusal: a copy of a narrowed payload has no copy node; the read warns (BUGS.md#optional-field-write-not-narrowing)
-def copied_then_read(a: H, b: H) -> int32:  # tpyc: mir(uncovered /optional field copy from a narrowed payload/)
+# kept refusal: the narrowed member is copied as its whole Optional, a field form MIR does not take; the read warns (BUGS.md#optional-field-write-not-narrowing)
+def copied_then_read(a: H, b: H) -> int32:  # tpyc: mir(uncovered /unsupported field type or form/)
     if b.p is not None:
         a.p = b.p  # tpyc: warning(/copies P into field/)
         return a.p.x  # tpyc: warning(/Potential None access/)

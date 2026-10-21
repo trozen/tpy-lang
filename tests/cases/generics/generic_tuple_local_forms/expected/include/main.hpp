@@ -204,6 +204,20 @@ void c_loop();
 std::tuple<A, A> mk_pair(int32_t n);
 // def c_sel_owned(flag: bool) -> None:
 void c_sel_owned(bool flag);
+// def r_param[T](x: tuple[T, int32]) -> tuple[T, int32]:
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_param(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x);
+// def r_local[T](x: tuple[T, int32]) -> tuple[T, int32]:
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_local(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x);
+// def r_sel[T](x: tuple[T, int32], z: tuple[T, int32], c: bool) -> tuple[T, int32]:
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_sel(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, bool c);
+// def r_call_local[T](a: T) -> tuple[T, int32]:
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_call_local(::tpy::param_val_or_ref_t<T> a);
+// def s_ret_borrow() -> None:
+void s_ret_borrow();
 // def main() -> None:
 void main();
 
@@ -312,7 +326,7 @@ inline A::A(int32_t v) : v(v) {}
 // def __eq__(self, other: "A") -> bool:
 //     return self is other
 inline bool A::__eq__(const A& other) const {
-    return ::tpy::same_object(&((*this)), &(other));
+    return ::tpy::same_object(this, &(other));
 }
 
 // def __init__(self, v: int32) -> None:
@@ -885,6 +899,37 @@ int32_t s_nocopy(::tpy::own_param_t<T> a) {
     std::tuple<T, int32_t> c = ::tpyapp::main::mk_own<T>(std::move(a));
     auto&& d = c;
     return std::get<1>(d);
+}
+// # ret_borrow: an open-T tuple parameter, local, select or call-bound local
+// # returned at a non-Own `tuple[T, int32]` result hands back the borrow form,
+// # so the caller's element is the source's object.
+// def r_param[T](x: tuple[T, int32]) -> tuple[T, int32]:
+//     return x  # tpyc: ok
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_param(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x) {
+    return x;
+}
+// def r_local[T](x: tuple[T, int32]) -> tuple[T, int32]:
+//     y = x
+//     return y  # tpyc: ok
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_local(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x) {
+    auto y = x;
+    return y;
+}
+// def r_sel[T](x: tuple[T, int32], z: tuple[T, int32], c: bool) -> tuple[T, int32]:
+//     return x if c else z  # tpyc: ok
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_sel(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& z, bool c) {
+    return ((c) ? (x) : (z));
+}
+// def r_call_local[T](a: T) -> tuple[T, int32]:
+//     c = mk(a)
+//     return c  # tpyc: ok
+template<typename T>
+std::tuple<::tpy::val_or_ptr_t<T>, int32_t> r_call_local(::tpy::param_val_or_ref_t<T> a) {
+    auto c = ::tpyapp::main::mk<T>(a);
+    return c;
 }
 
 void __tpy_init();

@@ -22,6 +22,18 @@ def s1a() -> None:
     print("s1a", r[0].v, t[0].v)
 
 
+# nested def returning a captured local tuple at a whole Own[tuple] result
+def s1b() -> None:
+    t = (A(1), 3)
+
+    def inner() -> Own[tuple[A, int32]]:
+        return t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+
+    r = inner()
+    t[0].v = 10
+    print("s1b", r[0].v, t[0].v)
+
+
 # lambda returning a captured local tuple (it also copies the capture when
 # created: BUGS.md#callable-local-lambda-copies-capture-silently)
 def s1c() -> None:
@@ -74,6 +86,7 @@ def s2d[T](ps: list[tuple[T, int32]], out: list[tuple[T, int32]]) -> None:
 
 def main() -> None:
     s1a()
+    s1b()
     s1c()
     s1d((A(5), 6))
     s1e(A(1))

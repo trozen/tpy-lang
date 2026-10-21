@@ -1992,7 +1992,7 @@
   ""
  ],
  "ret__opt__prop__named": [
-  "stmt.return",
+  "ok",
   ""
  ],
  "ret__opt__prop__temp": [
@@ -2300,7 +2300,7 @@
   ""
  ],
  "self_ret__opt__prop__self": [
-  "stmt.return",
+  "ok",
   ""
  ],
  "self_ret__own__meth__self": [

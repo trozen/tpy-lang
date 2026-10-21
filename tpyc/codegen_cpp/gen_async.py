@@ -2155,10 +2155,6 @@ class AsyncCoroCodegen:
         temps = UnevaluatedTemps(self.ctx)
         aliases: list[_ForSourceAlias] = []
         with self._resumable_frame_ctx(func, record_name):
-            # Seeded as the emplace-argument render is: no statement has run
-            # yet, so an owned local reads as movable here exactly as it does
-            # at its binding (see `_protocol_template_args_by_suspension`).
-            self.ctx.movable_locals |= self.ctx.sema_movable_locals
             with self._thir_leaf_scope(leaf):
                 for s, alias, held_field in loops:
                     cpp = leaf.render_for_source(s, temps=temps,
@@ -2827,7 +2823,7 @@ class AsyncCoroCodegen:
 
         Routes through the shared `setup_body_scope` primitive so async bodies
         get the same per-scope state setup as sync (reassigned_vars,
-        aliased_vars, movable_locals, etc. populated from sema scan).
+        aliased_vars, etc. populated from sema scan).
         Layers the resumable-frame fields (`generator_field_names`,
         `generator_self_ref`, etc.) plus `in_generator_body=True` on top.
         """
@@ -2843,7 +2839,6 @@ class AsyncCoroCodegen:
         old_frame_const_bindings = self.ctx.frame_const_bindings
         old_self_ref = self.ctx.generator_self_ref
         old_owned_view_params = self.ctx.owned_view_frame_params
-        old_movable_locals = self.ctx.movable_locals
         old_in_method = self.ctx.in_method
         old_method_record = self.ctx.current_method_record_type
         # `setup_body_scope` -> `reset_scope` wipes `pointer_locals` and
@@ -2917,19 +2912,6 @@ class AsyncCoroCodegen:
         for nd in collect_frame_nested_defs(func.body):
             self.ctx.nested_def_locals.add(nd.func.name)
             self.ctx.local_scope_names.add(nd.func.name)
-        # Belt-and-suspenders: `setup_body_scope` registers Own[T] params
-        # as movable when `T.is_value_type()` is False, which already
-        # covers most static-protocol shapes. Static-protocol frame
-        # fields (e.g. `coro: Own[Awaitable[T]]` stored as the deduced
-        # `T_coro`) are move-only by construction; force-register them
-        # so the call-arg generator emits `std::move(coro)` rather than
-        # a copy-into-temp + move, independent of how the protocol's
-        # `is_value_type` resolves.
-        for cparam in self._classify_params(func, record_name):
-            if cparam.kind in (_CoroParamKind.STATIC_PROTOCOL,
-                               _CoroParamKind.OWNED_VALUE,
-                               _CoroParamKind.FN):
-                self.ctx.movable_locals.add(cparam.cpp_name)
         if record_name:
             self.ctx.generator_self_ref = "__self"
             self.ctx.generator_field_names.add("__self")
@@ -2964,7 +2946,6 @@ class AsyncCoroCodegen:
             self.ctx.frame_const_bindings = old_frame_const_bindings
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.owned_view_frame_params = old_owned_view_params
-            self.ctx.movable_locals = old_movable_locals
             self.ctx.in_method = old_in_method
             self.ctx.current_method_record_type = old_method_record
             self.ctx.pointer_locals = old_pointer_locals
@@ -3184,22 +3165,6 @@ class AsyncCoroCodegen:
         what keeps `frame_field_shadows` this body's, rather than whatever the
         previously emitted body left behind.
 
-        The working movable set is seeded from the sema fact because no
-        statement has run yet: the emplace sees every frame local already
-        promoted by its declaration, while this render sees none, and an owned
-        argument would then render as a copy into a temp whose name does not
-        exist at class scope. The deduced capture type is the same either way
-        -- an `Own`-shaped param renders an rvalue whether it moves the source
-        or a materialized copy of it -- so the seed decides only whether the
-        spelling names a temp, never what the field's type comes out as.
-
-        A spelling that disagrees with the emplace fails at the C++ bind:
-        the sub-coro ctor takes `T_<pname>&&`, so a value-category flip does
-        not compile. The exception is a `T` deduced as a const reference,
-        which binds an rvalue and would capture a dangling one -- the seed
-        only ever widens toward moving, never toward borrowing, which is
-        what keeps that shape out of reach rather than any check here.
-
         Nothing is published from here: the render is discarded, so it drives
         no emitted move. The body walk renders the authoritative spelling when
         it emits the same argument at the emplace.
@@ -3217,7 +3182,6 @@ class AsyncCoroCodegen:
         leaf = self._thir_resumable_leaf_emitter(func, record_name, cfg)
         args: dict[int, list[str]] = {}
         with self._resumable_frame_ctx(func, record_name):
-            self.ctx.movable_locals |= self.ctx.sema_movable_locals
             with self._thir_leaf_scope(leaf):
                 for y in pending:
                     extra = self._extra_template_args_for_await(
@@ -7113,11 +7077,6 @@ class AsyncCoroCodegen:
         if (payload.kind is rcfg.AwaitKind.ASSIGN
                 or payload.kind is rcfg.AwaitKind.VARDECL):
             target = escape_cpp_name(payload.bind_target)
-            # This bind ASSIGNS a frame field rather than DECLARING a local, so
-            # it never reaches the var-decl promotion -- register the name
-            # here or the working set under-covers every await-bound local and
-            # its last use copies (an uncompilable copy for a @nocopy payload).
-            emit_prims.promote_movable(self.ctx, payload.bind_target)
             if payload.bind_target in self.ctx.generator_optional_fields:
                 out.write(f"{indent}{target}.emplace({moved});\n")
             else:

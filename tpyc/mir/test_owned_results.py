@@ -354,7 +354,8 @@ def test_each_branch_builds_its_own_result_slot(active) -> None:
 
 @pytest.mark.parametrize("name, reason", [
     ("reassigned", "reassigned local returned"),
-    ("from_borrow", "owned result from a borrowed call"),
+    # THIR states the copy of the borrowed result; a copy's source must be a name.
+    ("from_borrow", "reference needs local name"),
     ("from_param", "owned record return needs fixed owned local"),
     # The caller destroys the result: its definition must be hook-free.
     ("make_hooked", "custom record special member"),

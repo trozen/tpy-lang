@@ -59,7 +59,7 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 //     # Own RETURN slot, forward-declared callee.
 //     return Point(n).updated()  # tpyc: warning(/copies Point into owned storage/)
 inline Point Wrapper::build(int32_t n) const {
-    return Point(n).updated();
+    return Point(Point(n).updated());
 }
 
 // def build_copy(self, n: int32) -> Own['Point']:

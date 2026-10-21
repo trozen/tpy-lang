@@ -83,6 +83,7 @@ from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
 from .receiver_calls import call_mutates_receiver, record_truth_calls
 from .narrowing import truthy_operands
 from .scope_tracker import lend_places
+from .alias_rebind import owned_slot_paths
 from .compatibility import TupleSink
 from .alias_rebind import owned_slot_paths
 from .protocols import dynamic_dispatch_type_conforms
@@ -894,8 +895,9 @@ class CallAnalyzer:
         # A borrow-declared call whose C++ result is a copy, passed to a
         # mutable-borrow parameter: the copy is observable only if the callee
         # writes the parameter, which Phase 2 settles.
-        # Entry: (callee, param index, message, location).
-        self.pending_argument_copies: list[tuple[FunctionInfo, int, str, SourceLocation | None]] = []
+        # Entry: (callee, param index, message, location, the value copied,
+        # whose copy the warning declares).
+        self.pending_argument_copies: list[tuple[FunctionInfo, int, str, SourceLocation | None, TpyExpr]] = []
         # A method called on a call's COPY result: an error once Phase 2
         # says the method writes its receiver. Entry: (callee, copy call, site).
         self.pending_copy_receiver_calls: list = []
@@ -972,7 +974,8 @@ class CallAnalyzer:
             found = value_call_copy_message(self.ctx, inner, dest)
             if found is not None:
                 self.pending_argument_copies.append(
-                    (fi, idx, found[1], getattr(inner, 'loc', None)))
+                    (fi, idx, found[2], getattr(inner, 'loc', None),
+                     found[1]))
 
     def defer_copy_receiver_call(self, call: TpyMethodCall) -> None:
         """A method called on a call's COPY result (`max(it, key=f).inc()`)
@@ -1003,9 +1006,9 @@ class CallAnalyzer:
             self.pending_argument_copies,
             key=lambda e: ((e[3].line, e[3].column) if e[3] is not None
                            else (0, 0)))
-        for fi, idx, message, loc in pending:
+        for fi, idx, message, loc, held in pending:
             if param_may_be_written(fi, idx):
-                self.ctx.warning_from_loc(message, loc)
+                self.ctx.copy_warning(message, loc, held)
         self.pending_argument_copies.clear()
 
     def resolve_pending_match_subject_checks(self) -> None:
@@ -2375,7 +2378,7 @@ class CallAnalyzer:
         arg = expr.args[0]
         if isinstance(arg, TpyName):
             self.compat.check_own_iter_source(arg, expr)
-            if not self.compat.grant_name_move(
+            if not self.compat.claim_name_move(
                     arg, read=OwnIterMove(arg.name, arg, expr)):
                 self.ctx.warning(
                     f"own_iter() consumes '{arg.name}' -- "
@@ -3510,7 +3513,8 @@ class CallAnalyzer:
             if (name_target is not None
                     and any(isinstance(et, OwnType)
                             for et in name_target.element_types)):
-                self.compat.register_tuple_sink(arg, ptype, TupleSink.ARG)
+                self.compat.register_sink(arg, ptype, TupleSink.ARG,
+                                          per_leaf=True)
         # A tuple LOCAL passed by NAME into a tuple param with Own slots: the
         # literal element check above never ran, so consult the
         # construction-time plain-borrow-into-Own hazard per Own slot.
@@ -3520,7 +3524,7 @@ class CallAnalyzer:
                     and any(isinstance(et, OwnType)
                             for et in name_target.element_types)):
                 self.compat.check_name_borrow_into_own(
-                    arg.name, name_target, arg)
+                    arg.name, name_target, arg, arg_slot=ptype)
                 # The `std::tuple<...>&&` param binds only an rvalue, so a
                 # movable owned-tuple source NOT at its last use can't move in:
                 # a @nocopy tuple is a clean use-after-move error, a copyable one
@@ -3541,17 +3545,24 @@ class CallAnalyzer:
                     # A mixed slot's owned element is warned by the
                     # element-wise check the argument coercion runs.
                     if bare.is_owned_movable():
-                        self.ctx.warning(
-                            f"copies {bare} into owned storage; use copy() to "
-                            f"make this explicit", arg)
+                        self.ctx.copy_warning(
+                            f"copies {bare} into owned storage; use "
+                            f"copy() to make this explicit", arg, arg)
                         # Declared to the lowering, which builds only
                         # declared copies of a name holding a reference. The
                         # whole owned tuple is copied, so no MIXED mark.
                         self.compat.record_tuple_copy(arg, None,
                                                       mark_mixed=False)
+            elif owned_slot_paths(ptype):
+                # A slot that owns only nested elements (`Own[tuple[tuple[A,
+                # int32], int32]]`) takes the name whole all the same: its
+                # record is the name's, at the declared slot's paths.
+                self.compat.register_sink(arg, ptype, TupleSink.ARG,
+                                          per_leaf=True)
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return
+        self.compat.register_owned_result(arg, own_ptype, TupleSink.ARG)
         # Own[tuple[T,...]] with a literal source: same per-element check via
         # own_tuple_target's synthesis (lvalue-tuple sources keep today's
         # silent-copy behaviour; the check applies to literal sources only).

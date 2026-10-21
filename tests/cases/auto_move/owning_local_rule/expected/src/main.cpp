@@ -59,7 +59,7 @@ Box ret(Box& w, bool c) {
     if (c) {
         b = &*(__slot_1 = Box(1));
     }
-    return (*b);
+    return Box((*b));
 }
 
 // # free function: an `Own` argument
@@ -258,7 +258,7 @@ std::tuple<Box, Box> whole(Pair& h, bool c) {
     if (c) {
         p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
     }
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(p);
+    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
 }
 
 // # free function: a whole tuple a literal binding borrows and a mixed call half owns
@@ -275,7 +275,7 @@ std::tuple<Box, Box> whole_literal(Box& v, Box& w, bool c) {
         std::get<0>(p) = &*(__slot_1 = std::move(std::get<0>(__tup_1)));
         std::get<1>(p) = std::get<1>(__tup_1);
     }
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(p);
+    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
 }
 
 // # free function: a whole tuple whose borrowed Optional element copies null-checked
@@ -320,7 +320,7 @@ Box back_edge(std::vector<Box>& ws) {
     int32_t i = 0;
     while ((i < ::tpy::__len__(ws))) {
         if ((i == 1)) {
-            return (*b);
+            return Box((*b));
         }
         b = &(ws[static_cast<std::size_t>(i)]);
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -406,7 +406,7 @@ Box fin_back(std::vector<Box>& ws) {
             {
                 bool __fin_ran_1 = false;
                 try {
-                    Box __tpy_ret_0 = (*b);
+                    Box __tpy_ret_0 = Box((*b));
                     __fin_ran_1 = true;
                     std::cout << "fin_back finally" << "\n" << ::tpy::check_signals;
                     return __tpy_ret_0;
@@ -494,7 +494,7 @@ Box unpacked(const std::tuple<Box*, int32_t>& p, bool c) {
     if (c) {
         b = &*(__slot_1 = Box(2));
     }
-    return (*b);
+    return Box((*b));
 }
 
 // # for loop: a tuple head target borrows the element
@@ -612,7 +612,7 @@ Box nested(Box& w, bool c) {
         if (c) {
             b = &*(__slot_1 = Box(1));
         }
-        return (*b);
+        return Box((*b));
     };
     return inner();
 }
@@ -659,7 +659,7 @@ Box tried(Box& w, bool c) {
     {
         bool __fin_ran_3 = false;
         try {
-            Box __tpy_ret_0 = (*b);
+            Box __tpy_ret_0 = Box((*b));
             __fin_ran_3 = true;
             std::cout << "try finally" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
@@ -685,7 +685,7 @@ std::expected<Box, Fail> er(Box& w, bool c) {
     if (c) {
         b = &*(__slot_1 = Box(1));
     }
-    return (*b);
+    return Box((*b));
 }
 
 // # with body: the `as` target borrows what `__enter__` returns
@@ -864,7 +864,7 @@ __coro_async_owning async_owning() {
 Box walrus(const Holder& hd) {
     const Box* b = nullptr;
     if (::tpy::same_object(&((b = &(hd.b), *b)), &(hd.b))) {
-        return (*b);
+        return Box((*b));
     }
     return Box(0);
 }

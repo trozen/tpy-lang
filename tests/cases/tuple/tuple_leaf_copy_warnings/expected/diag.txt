@@ -1,8 +1,9 @@
 main.py:18: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:29: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:39: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:37: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:52: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:52: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
-main.py:63: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:72: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:30: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:41: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:51: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:49: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:64: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:64: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:75: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:84: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit

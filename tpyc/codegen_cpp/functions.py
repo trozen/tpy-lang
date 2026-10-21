@@ -1342,10 +1342,11 @@ class FunctionGenerator:
             self.ctx.analyzer.function_move_through_vars[synth] = (
                 self.ctx.analyzer.function_move_through_vars[impl]
             )
-        if impl in self.ctx.analyzer.function_movable_locals:
-            self.ctx.analyzer.function_movable_locals[synth] = (
-                self.ctx.analyzer.function_movable_locals[impl]
-            )
+        # The specialization lowers the impl's body: its locals own what
+        # the impl's do.
+        owned = self.ctx.analyzer.ctx.body_ownership.get(impl)
+        if owned is not None:
+            self.ctx.analyzer.ctx.body_ownership[synth] = owned
 
         # Set overload context
         self.ctx.overload_param_types = overload_types
@@ -1422,10 +1423,11 @@ class FunctionGenerator:
             self.ctx.analyzer.function_move_through_vars[synth] = (
                 self.ctx.analyzer.function_move_through_vars[impl]
             )
-        if impl in self.ctx.analyzer.function_movable_locals:
-            self.ctx.analyzer.function_movable_locals[synth] = (
-                self.ctx.analyzer.function_movable_locals[impl]
-            )
+        # The specialization lowers the impl's body: its locals own what
+        # the impl's do.
+        owned = self.ctx.analyzer.ctx.body_ownership.get(impl)
+        if owned is not None:
+            self.ctx.analyzer.ctx.body_ownership[synth] = owned
 
         # Inject literal narrowing facts
         for (pname, _), (_, stub_ptype) in zip(impl.params, stub.params):

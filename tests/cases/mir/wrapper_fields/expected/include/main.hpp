@@ -53,7 +53,7 @@ void copy_param(H& b, const P* o);
 void copy_both(H& a, H& b, const P* o, bool flag);
 // def written_then_read(h: H) -> int32:  # tpyc: mir(uncovered /unproven optional field read/)
 int32_t written_then_read(H& h);
-// def copied_then_read(a: H, b: H) -> int32:  # tpyc: mir(uncovered /optional field copy from a narrowed payload/)
+// def copied_then_read(a: H, b: H) -> int32:  # tpyc: mir(uncovered /unsupported field type or form/)
 int32_t copied_then_read(H& a, const H& b);
 // def find(x: int32) -> Own[P | None]:  # tpyc: mir(uncovered /unsupported return type/)
 std::optional<P> find(int32_t x);

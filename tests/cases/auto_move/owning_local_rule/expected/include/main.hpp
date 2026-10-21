@@ -447,7 +447,7 @@ inline Box M::ret(Box& w, bool c) const {
     if (c) {
         b = &*(__slot_1 = Box(1));
     }
-    return (*b);
+    return Box((*b));
 }
 
 // # method: an `Own` argument

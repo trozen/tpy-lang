@@ -74,7 +74,7 @@ inline Row::Row(int32_t v) : v(v) {}
 //     # Receiver is a temporary, but `Picker.pick` is not analyzed yet.
 //     return Picker().pick(rows)  # tpyc: warning(/copies Row into owned storage/)
 inline Row Holder::take(std::vector<Row>& rows) const {
-    return Picker().pick(rows);
+    return Row(Picker().pick(rows));
 }
 
 // def take_copy(self, rows: list[Row]) -> Own[Row]:

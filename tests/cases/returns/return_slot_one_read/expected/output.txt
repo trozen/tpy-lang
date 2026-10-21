@@ -1,0 +1,64 @@
+copy_narrowed 3 9
+own_callable 2
+own_closure 3
+own_nested_def 6
+getter_opt 7
+opt_call 11
+opt_method 12
+opt_property 13
+opt_walrus 14
+ref_walrus 15
+param_named_self 16
+lambda_select 1
+sorted_key ['apple', 'pear']
+none_any True False
+wrapper_local s list2
+union_view ab cd
+opt_str_select ij lit
+cross_width 3 None
+union_field_view ef
+ptr_union_member 21
+ptr_union_elem 22
+ptr_union_select 23
+ptr_union_call 24
+ptr_union_narrowed 25
+nested_self_field 26
+ptr_field_member 27
+narrowed_member 5
+ro_narrowed_member 5
+own_elem 31
+own_dict_elem 33
+own_elem_method 34
+own_tuple_name 1 1
+own_tuple_param 5 2
+own_tuple_storage_name 3 1
+own_tuple_borrowed_local 9 2
+tuple_elem_read (3, 4)
+tuple_elem_local (7, 8)
+own_tuple_backedge 4 0
+own_tuple_captured peek 1
+own_tuple_captured 3 1
+staged_own_opt finally
+staged_own_opt 1
+with_own_opt exit
+with_own_opt 2
+staged_except finally
+staged_except 3
+captured_own_opt 4
+captured_own_list 3 3 3
+captured_own_list_lambda 2 2 2
+dyn_local 3
+dyn_own_param 6
+dyn_struct_local 4
+dyn_borrowed 8
+reseated_field 2
+span_records 11 12
+gen_tuple_name 40 3
+gen_tuple_call 41 1
+gen_own_call 43 2
+gen_tuple_pair 11 2
+gen_tuple_loop 14 2
+gen_tuple_select 16 1 17 2
+own_tuple_param_lists 1 2
+borrow_tuple_call 50 1
+elem_mixed_result 3 40

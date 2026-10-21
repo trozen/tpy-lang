@@ -19,7 +19,7 @@ from .storage_walk import Place, Use, storage_roots
 
 if TYPE_CHECKING:
     from ..parse import TpyComprehensionGenerator
-    from .context import SemanticContext
+    from .context import FunctionTrackingState, SemanticContext
     from .compatibility import TypeCompatibility
 
 
@@ -40,6 +40,35 @@ def lend_places(ctx: SemanticContext, expr: TpyExpr) -> tuple[Place, ...]:
     fact the borrow tracker files the binding's loans from, never how the
     call is spelled. Empty when it builds what it yields."""
     return storage_roots(expr, Use.HOLDER, None, MayLend(ctx)).places
+
+
+def binds_module_storage(fs: 'FunctionTrackingState', name: str, *,
+                         comprehension: bool) -> bool:
+    """Whether a target `name` binds module storage: the body declares it
+    `global` -- unless it is a comprehension's variable, which is its own
+    whatever the body declares."""
+    return not comprehension and name in fs.global_declarations
+
+
+# `register_binder`'s token for a binder it did not register.
+_UNREGISTERED = object()
+
+
+def register_binder(ctx: 'SemanticContext', scope: Scope, name: str,
+                    binder: object) -> object:
+    """THE registration of binding site `binder` as what a read of target
+    `name` in `scope` resolves to (`Scope.binders`) -- none for a target
+    binding module storage (`binds_module_storage`), whose reads resolve to
+    the module. Returns the token `unregister_binder` takes."""
+    if binds_module_storage(ctx.func, name, comprehension=scope.expression):
+        return _UNREGISTERED
+    return scope.push_binder(name, binder)
+
+
+def unregister_binder(scope: Scope, name: str, token: object) -> None:
+    """End the block `register_binder` opened."""
+    if token is not _UNREGISTERED:
+        scope.pop_binder(name, token)
 
 
 class ScopeTracker:
@@ -153,9 +182,10 @@ class ScopeTracker:
                 bt.remove_borrower(IterHolder(clause))
 
     @contextmanager
-    def lambda_scope(self) -> Iterator[Scope]:
-        """Create an inner scope for a lambda body."""
+    def lambda_scope(self, lam: object = None) -> Iterator[Scope]:
+        """Create an inner scope for the body of lambda `lam`."""
         inner_scope = Scope(self.ctx.func.current_scope, expression=True)
+        inner_scope.lambda_node = lam
         old_scope = self.ctx.func.current_scope
         old_ns = self.ctx.func.current_ns
         old_assigned = self.ctx.func.definitely_assigned.copy()
@@ -194,7 +224,7 @@ class ScopeTracker:
         consuming = self.ctx.in_consuming_method
         self.ctx.in_consuming_method = False
         body_root = self.ctx.func.body_root
-        inner_scope = Scope(outer_scope)
+        inner_scope = Scope(outer_scope, function_root=True)
         inner_ns = Namespace(parent=outer_ns) if outer_ns else None
 
         self.ctx.reset_function_tracking()
@@ -214,9 +244,14 @@ class ScopeTracker:
 
     @contextmanager
     def loop_var(self, scope: Scope, name: str, var_type: TpyType,
-                 depth: int, is_foreach: bool = False) -> Iterator[None]:
-        """Bind a loop variable in scope/namespace and track its depth."""
+                 depth: int, is_foreach: bool = False,
+                 binder: object = None) -> Iterator[None]:
+        """Bind a loop variable in scope/namespace and track its depth;
+        `binder` is the for statement or comprehension clause binding it,
+        which a read of it resolves to."""
         scope.define(name, var_type)
+        if binder is not None:
+            register_binder(self.ctx, scope, name, binder)
         saved_decl = self.ctx.local_decl_of(name)
         self.ctx.declare_local(name, depth)
         # The enclosing loop / comprehension body already opened the

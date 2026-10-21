@@ -74,7 +74,7 @@ std::expected<Point, E> positive(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
 //     # slot copies it, like any other borrow-returning call.
 //     return positive(x, y).updated()  # tpyc: warning(/copies Point into owned storage/)
 std::expected<Point, E> modify(const ::tpy::BigInt& x, const ::tpy::BigInt& y) {
-    return ({ auto __er_8 = ::tpyapp::main::positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(std::move(__er_8.error())); ::tpy::unwrap_ref_move(*__er_8); }).updated();
+    return Point(({ auto __er_8 = ::tpyapp::main::positive(x, y); if (!__er_8.has_value()) return ::tpy::make_unexpected(std::move(__er_8.error())); ::tpy::unwrap_ref_move(*__er_8); }).updated());
 }
 
 // def main() -> None:

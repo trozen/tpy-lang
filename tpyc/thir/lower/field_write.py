@@ -18,6 +18,7 @@ from dataclasses import dataclass, replace
 from typing import Callable
 
 from ...parse.nodes import (
+    TpyExpr,
     TpyDictComprehension,
     TpyListComprehension,
     TpySetComprehension,
@@ -65,11 +66,11 @@ from ..nodes import (
     THIRLiteral,
 )
 from .context import (
-    _NO_FORMS, _ONLY_BTUPLE_SLOT, _ExprResultUse, _ExprUse, _LowerCtx,
+    _NO_FORMS, _ONLY_BTUPLE_SLOT, _ONLY_PTR_OPT_PASSTHROUGH, _ExprResultUse, _ExprUse, _LowerCtx, Slot,
                       _slot_lift_forms, SinkForm, SinkPos,
                       SlotConstruct, SlotHolds, SlotLifetime,
-                      SlotPlacement, FieldSlot, field_slot_class,
-                      field_slot_use, opt_callable_slot)
+                      SlotPlacement, SlotClass, field_slot_use, lends_elements,
+                      opt_callable_slot)
 from .convert import Refuse, convert, landing, spelled, storage_type
 from .checks import (
     _borrow_tuple_local_type,
@@ -126,6 +127,8 @@ from .expressions import (
     _slot_literal_retype,
     _subscript_yields_borrow_ptr,
     binding_of,
+    named_type_of,
+    stamped,
 )
 
 # Every storage slot's copy-assign takes a stored lvalue whole -- a field
@@ -290,14 +293,14 @@ def _classify_value(stmt: TpyAssign, slot: _ExprUse,
     # the residual family WITHOUT evaluating the admission predicates --
     # some fire witnesses on success, and a witness must fire at most once
     # per statement.
-    cls = field_slot_class(ftype, analyzer)
-    plain = cls is FieldSlot.PLAIN
+    cls = _slot_class(slot)
+    plain = cls is SlotClass.PLAIN
     if plain:
         plan = _ValueFieldPlan(
             ftype, owned_viewfam=False,
             witness=("field_write.opt_callable_name"
                      if opt_callable_slot(ftype) else None))
-    elif (cls is FieldSlot.VALUE_OPT
+    elif (cls is SlotClass.VALUE_OPT
           and not isinstance(stmt.value, TpyNoneLiteral)):
         plan = _ValueFieldPlan(
             ftype, owned_viewfam=False,
@@ -305,10 +308,10 @@ def _classify_value(stmt: TpyAssign, slot: _ExprUse,
                 storage_type(analyzer.get_expr_type(stmt.value)),
                 OptionalType),
             witness="field_write.value_opt_scalar")
-    elif cls is FieldSlot.OWNED_STR:
+    elif cls is SlotClass.OWNED_STR:
         plan = _ValueFieldPlan(ftype, owned_viewfam=True,
                                witness="field_write.str")
-    elif cls is FieldSlot.OWNED_BYTES:
+    elif cls is SlotClass.OWNED_BYTES:
         plan = _ValueFieldPlan(ftype, owned_viewfam=True,
                                witness="field_write.bytes")
     else:
@@ -428,7 +431,7 @@ def _classify_storage(stmt: TpyAssign, slot: _ExprUse, lc: _LowerCtx,
                       pointers: AbstractSet[str]) -> _StoragePlan | None:
     analyzer = lc.analyzer
     slot_t = _slot_type(slot)
-    if field_slot_class(slot_t, analyzer) is not FieldSlot.STORAGE:
+    if _slot_class(slot) is not SlotClass.STORAGE:
         return None
     if (slot.lifetime is SlotLifetime.OUTLIVES_STATEMENT
             and not view_slot_shape_ok(slot_t, stmt.value, analyzer)):
@@ -603,40 +606,56 @@ def _storage_tuple_literal(v: TpyTupleLiteral, st: TpyType, lc: _LowerCtx,
     return _lower_tuple_literal(v, slot_t, lc, declared)
 
 
-def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:
-    """The one use a storage slot hands its (non-literal) source. A field
-    keeps what it is handed past the statement, so the dying-source lend
-    stays refused. What the sink admits follows from the member the source
-    lands in:
+def stored_use(dest: Slot, member_t: TpyType, analyzer, *,
+               allow_temps: bool = True) -> _ExprUse:
+    """The one use a slot hands a stored (non-literal) source, read off
+    what the slot holds and the member the source lands in -- never off the
+    sink that asks:
 
-      * every member: the copy-assign takes a stored lvalue whole -- a
-        field read, a container element, a borrowed call result
-        (RECORD_COPY);
-      * every member taken as a value (not lifted): a pointer-bound source
-        reads through its deref (INDIRECT_READ);
-      * a record / container member also a select of existing objects
-        (SELECT_PRVALUE, which sema warns as a copy);
-      * a pointer-repr Optional / pointer-variant union member: the source
-        lifts WHOLE (PTR_OPT_LIFT / UNION_VALUE_LIFT) -- it is read as the
-        `T*` / pointer variant it is, never dereffed.
+      * every member: the slot takes a stored lvalue whole -- a field read,
+        a container element, a borrowed call result (RECORD_COPY);
+      * a pointer slot over a pointer-repr Optional / pointer-variant union
+        member: a pointer-form source is the pointer it binds, read as it
+        is (PTR_OPT_PASSTHROUGH);
+      * any other pointer-repr Optional / pointer-variant union member: the
+        source lifts WHOLE (PTR_OPT_LIFT / UNION_VALUE_LIFT), never
+        dereffed;
+      * every member taken as a value: a pointer-bound source reads through
+        its deref (INDIRECT_READ);
+      * a record / container member of an owning slot: a select renders
+        its prvalue, which the slot's own construction copies from
+        (SELECT_PRVALUE, sema warns the copy of an existing object);
+      * a mixed own + borrow tuple result (`std::tuple<Box, Box*>`) is
+        taken whole (BTUPLE_SLOT).
 
-    STORAGE result: the slot owns what it is handed, so a by-value call
-    result lands whole. The right to hoist an argument temp is the slot
-    contract's (`field_slot_use`), carried through unchanged."""
+    A reference / pointer slot binds the object the source names
+    (BORROW_BIND); an owning slot takes a by-value call result whole
+    (STORAGE). The slot keeps
+    what it is handed past the statement, so the dying-source lend stays
+    refused; a temporary may be hoisted before the statement (`allow_temps`,
+    the sink's grant)."""
     ptr_opt = pointer_repr_optional(member_t) is not None
     ptr_union = _eligible_ptr_union(member_t, analyzer) is not None
-    forms = _slot_lift_forms(ptr_opt, ptr_union) | _STORAGE_COPY_FORMS
-    if not (ptr_opt or ptr_union):
-        forms = forms | _VALUE_READ_FORMS
-    if record_like(member_t, analyzer):
+    if (ptr_opt or ptr_union) and dest.holds in (SlotHolds.POINTER,
+                                                 SlotHolds.BORROWS):
+        forms = _ONLY_PTR_OPT_PASSTHROUGH | _STORAGE_COPY_FORMS
+    else:
+        forms = _slot_lift_forms(ptr_opt, ptr_union) | _STORAGE_COPY_FORMS
+        if not (ptr_opt or ptr_union):
+            forms = forms | _VALUE_READ_FORMS
+    reference = (dest.holds in (SlotHolds.POINTER, SlotHolds.BORROWS)
+                 or lends_elements(dest))
+    if record_like(member_t, analyzer) and not reference:
         forms = forms | _REF_MEMBER_FORMS
     if _f1_tuple(member_t, analyzer) is not None:
-        # A mixed own + borrow tuple result (`std::tuple<Box, Box*>`) is
-        # taken whole and lifted to the storage tuple.
         forms = forms | _ONLY_BTUPLE_SLOT
-    return replace(slot, result=_ExprResultUse.STORAGE,
-                   pos=SinkPos.FIELD_WRITE, forms=forms,
-                   slot_target=member_t)
+    return _ExprUse(result=(_ExprResultUse.BORROW_BIND if reference
+                            else _ExprResultUse.STORAGE),
+                    pos=(SinkPos.RETURN
+                         if dest.construct is SlotConstruct.RETURN
+                         else SinkPos.FIELD_WRITE),
+                    forms=forms, slot_target=member_t, dest=dest,
+                    lifetime=dest.lifetime, allow_temps=allow_temps)
 
 
 def _lower_storage_field(stmt: TpyAssign, plan: _StoragePlan,
@@ -648,61 +667,82 @@ def _lower_storage_field(stmt: TpyAssign, plan: _StoragePlan,
     return value
 
 
-def _storage_source(stmt: TpyAssign, slot: _ExprUse,
-                    lc: _LowerCtx, declared: dict[str, TpyType],
-                    loc) -> THIRExpr:
-    """Lower a non-literal source ONCE, under the use the slot settles for
-    the member it lands in, and convert it (`convert`)."""
+@dataclass(frozen=True)
+class StoredRead:
+    """A stored source read for its slot: the lowered source, which
+    `convert` takes to the slot -- an explicit `copy()` construction
+    included (`row` names it)."""
+    expr: THIRExpr
+    explicit_copy: bool = False
+    row: str | None = None
+
+
+def read_stored(v: TpyExpr, dest: Slot, lc: _LowerCtx,
+                declared: dict[str, TpyType], *,
+                allow_temps: bool = True) -> StoredRead:
+    """THE read of a stored object for a slot: lower a non-literal source
+    ONCE, under the use the slot settles for the member it lands in
+    (`landing`, `stored_use`). A source naming storage of the slot's own
+    Optional / union is read whole; `copy()` is an explicit construction
+    -- a record copy-constructs its argument (`T(name)`), `copy(T(...))`
+    is the constructor itself, and a pointer-repr Optional's copy is the
+    identity, whose lift is what copies, so the peeled name never moves."""
     analyzer = lc.analyzer
-    st = slot.dest.type
-    v = stmt.value
-    record_st = record_like(st, analyzer)
+    st = dest.type
     opt_inner = (unwrap_readonly(st.inner)
                  if isinstance(st, OptionalType) else None)
-    # `copy()` is an explicit construction: a record copy-constructs its
-    # argument (`T(name)`), `copy(T(...))` is the constructor itself, and a
-    # pointer-repr Optional's copy is the identity -- whose sink lift is
-    # what copies, so the peeled name never moves.
-    copy_slot = (st if record_st
+    copy_slot = (st if record_like(st, analyzer)
                  else opt_inner if opt_inner is not None
                  and record_like(opt_inner, analyzer) else None)
     if copy_slot is not None:
         copy_row = _lower_copy_record(v, lc, declared, slot_type=copy_slot,
-                                      loc=loc)
+                                      loc=getattr(v, "loc", None))
         if copy_row is not None:
-            _witness("field_write.record_copy")
-            return copy_row
+            return StoredRead(stamped(copy_row, lc), row="record_copy")
         ctor_peel = copy_ctor_rvalue_source(v, analyzer)
         if ctor_peel is not None:
-            _witness("field_write.record_copy_ctor")
-            return _converted(
-                _lower_expr(ctor_peel, lc, declared,
-                            use=_storage_use(slot, copy_slot, analyzer)),
-                slot, lc)
+            return StoredRead(_lower_expr(
+                ctor_peel, lc, declared,
+                use=stored_use(dest, copy_slot, analyzer,
+                               allow_temps=allow_temps)),
+                row="record_copy_ctor")
     peeled = copy_ptr_optional_peel(v, analyzer)
     src = peeled if peeled is not None else v
     b = binding_of(src, lc, declared)
-    land = landing(b, analyzer.get_expr_type(src), st, analyzer)
-    use = _storage_use(slot, land.member, analyzer)
+    land = landing(b, named_type_of(src, lc, declared),
+                   analyzer.get_expr_type(src), st, analyzer)
+    use = stored_use(dest, land.member, analyzer, allow_temps=allow_temps)
     # A pointer-slot GLOBAL is read as the pointer it is: the lift takes
     # the `T*` (`h->v = ptr_to_optional(g);`), so the value-position deref
-    # every other sink applies to it must not fire.
+    # every other read applies to it must not fire.
     if (b is not None and b.global_slot
-            and not record_like(land.member, analyzer)):
+            and (pointer_repr_optional(land.member) is not None
+                 or _eligible_ptr_union(land.member, analyzer) is not None)):
         use = replace(use, result=_ExprResultUse.RECEIVER, forms=None,
                       pos=SinkPos.UNSPECIFIED)
     whole = land.member == st
-    lowered = _lower_expr(
+    return StoredRead(_lower_expr(
         src, lc, declared, use=use,
-        # An owned name's write IS its routed read -- the conversion reads
+        # An owned name's read IS its routed read -- the conversion reads
         # the node's move facts and moves it at its last use or copies it.
         allow_unrouted_name=True,
         # A source landing in the slot's own Optional / union is consumed
         # WHOLE: no narrowing deref, no member-typed divergence.
         allow_whole_optional=whole and isinstance(st, OptionalType),
-        allow_union_divergent=whole and isinstance(st, UnionType))
-    _flush_witness("flush.field_write", lowered)
-    return _converted(lowered, slot, lc, explicit_copy=peeled is not None)
+        allow_union_divergent=whole and isinstance(st, UnionType)),
+        explicit_copy=peeled is not None)
+
+
+def _storage_source(stmt: TpyAssign, slot: _ExprUse,
+                    lc: _LowerCtx, declared: dict[str, TpyType],
+                    loc) -> THIRExpr:
+    """A field write's non-literal source: the stored read, converted."""
+    read = read_stored(stmt.value, slot.dest, lc, declared)
+    if read.row is not None:
+        _witness("field_write." + read.row)
+        return _converted(read.expr, slot, lc)
+    _flush_witness("flush.field_write", read.expr)
+    return _converted(read.expr, slot, lc, explicit_copy=read.explicit_copy)
 
 
 @dataclass(frozen=True)
@@ -721,7 +761,7 @@ def _classify_any(stmt: TpyAssign, slot: _ExprUse,
                   pointers: AbstractSet[str]) -> _AnyFieldPlan | None:
     analyzer = lc.analyzer
     ftype = _slot_type(slot)
-    if field_slot_class(ftype, analyzer) is not FieldSlot.ERASED:
+    if _slot_class(slot) is not SlotClass.ERASED:
         return None
     # LITERAL construction: a container literal's brace-init has no type to
     # deduce inside the `make_any` wrap, so it stays out.
@@ -821,6 +861,12 @@ def _field_slot(stmt: TpyAssign, lc: _LowerCtx, declared: dict[str, TpyType],
         decl_slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                      if t is not None else None)
     return field_slot_use(decl_slot, construct, lc.analyzer, lc.placement)
+
+
+def _slot_class(slot: _ExprUse) -> SlotClass:
+    """The class of the declared slot every family classifies off."""
+    return (slot.dest.cls if slot.dest is not None
+            else SlotClass.UNCLASSIFIED)
 
 
 def _slot_type(slot: _ExprUse) -> 'TpyType | None':

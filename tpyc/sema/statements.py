@@ -80,6 +80,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
 from ..parse.nodes import SourceLocation, VarLinkage, op_spelling, name_path
+from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
     MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_operand_keys,
     holds_no_pointer, value_may_point,
@@ -88,7 +89,7 @@ from .context import (
     OwnSlot, PendingLocal, expr_yields_non_null_ptr, LoopClauseEdges,
     record_borrow_binding, record_stmt_borrow_binding,
     holds_generator_object, holds_frame_object, note_owned_local,
-    note_nonowning_bind, ConsumingLoop, FinallyCapture, SinkCopy,
+    note_nonowning_bind, ConsumingLoop, FinallyCapture, HeldLoopCopy, SinkCopy,
     frame_binding_calls, frame_binding_fact, record_frame_binding_roots,
 )
 from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Use,
@@ -98,7 +99,7 @@ from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Use,
                            view_leaves)
 from .flow_facts import condition_walrus_assigned, condition_walrus_targets
 from .literal_utils import is_char_literal_init
-from ..diagnostics import Diagnostic, SemanticError, NOCOPY_REMEDIATION_HINT
+from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
 from .overloads import OverloadAmbiguityError, resolve_overload
@@ -119,6 +120,7 @@ from .iter_loans import (
     iterator_advanced_twice, register_iteration_loans, temp_arg_kept_alive,
     temp_arg_spelling,
 )
+from .dyn_erasure import erased_source
 from .own_copy import (contains_reference_type, copy_result_under_write,
                        lost_write_message,
                        type_has_type_param, warn_value_call_binding)
@@ -1094,9 +1096,9 @@ class StatementAnalyzer:
                 f"{reason} is used after this point and "
                 f"cannot be moved into return type {expected}. Remove later "
                 f"uses or restructure the code.", value)
-        self.ctx.warning(
+        self.ctx.copy_warning(
             f"copies {self.compat.diag_type(t)} into owned storage; "
-            f"{self.compat.copy_remedy(value)}", value)
+            f"{self.compat.copy_remedy(value)}", value, value)
         return True
 
     def _reads_capture(self, name: str) -> bool:
@@ -1180,14 +1182,17 @@ class StatementAnalyzer:
                               and own_tuple_target(own_expected) is not None
                               and self._reads_capture(returned_name.name))
             if isinstance(own_expected, OwnType) and not captured_tuple:
-                if self.compat.is_copy_call(stmt.value):
-                    self._warn_unnecessary_return_copy(stmt.value)
+                own_source = erased_source(stmt.value)
+                self.compat.register_owned_result(own_source, own_expected,
+                                                  TupleSink.RETURN)
+                if self.compat.is_copy_call(own_source):
+                    self._warn_unnecessary_return_copy(own_source)
                 else:
                     copies = self._check_own_lvalue_return(
-                        own_expected, stmt.value, "return type")
+                        own_expected, own_source, "return type")
                     # A borrowed name's `return b;` copies in C++ already.
                     if copies:
-                        self._note_live_name_copy(stmt.value)
+                        self._note_live_name_copy(own_source)
             # `-> X | None` returns its non-None value exactly as `-> X` does.
             tuple_slot = (expected.inner if isinstance(expected, OptionalType)
                           else expected)
@@ -1206,8 +1211,8 @@ class StatementAnalyzer:
                                      else None))
             elif isinstance(returned, TpyNamedExpr):
                 if own_tuple_target(tuple_slot) is not None:
-                    self.compat.register_tuple_sink(returned, tuple_slot,
-                                                    TupleSink.RETURN)
+                    self.compat.register_sink(returned, tuple_slot,
+                                              TupleSink.RETURN, per_leaf=True)
             # A tuple LOCAL returned by name: the literal-element check
             # above never ran, so consult the construction-time
             # plain-borrow-into-Own hazard for each Own slot.
@@ -1782,7 +1787,7 @@ class StatementAnalyzer:
                 continue
             if not self.compat.is_lvalue(elem):
                 literal.elem_capture.append(V)
-            elif self.compat.grant_name_move(elem, OwnType(et),
+            elif self.compat.claim_name_move(elem, OwnType(et),
                                              f"tuple element {i}",
                                              whole_slot=False):
                 # An owned local/param at its last use MOVES into the slot, so
@@ -2661,7 +2666,8 @@ class StatementAnalyzer:
                     self.init.apply_loop_entry_facts(
                         before, kills=collect_fact_kills(
                             stmt.body, table=self.ctx.write_summaries))
-                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
+                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True,
+                                              binder=stmt):
                         for s in stmt.body:
                             self.analyze_stmt(s)
                     self._release_loop_copy_warnings(stmt.var)
@@ -2817,7 +2823,8 @@ class StatementAnalyzer:
                     self._record_for_loop_var_type(stmt, elem_type)
                     cid_floor = self.ctx.pending_num_counter
                     var_type = self._loop_var_cell_type(stmt, elem_type)
-                    with self.scopes.loop_var(inner_scope, stmt.var, var_type, iter_depth, is_foreach=True):
+                    with self.scopes.loop_var(inner_scope, stmt.var, var_type, iter_depth, is_foreach=True,
+                                              binder=stmt):
                         # Inside the declaration: the block rule reads the
                         # loop variable's own depth when it notes the binding.
                         self._note_loop_var_iteration(
@@ -2901,7 +2908,7 @@ class StatementAnalyzer:
                     if loop_read is None:
                         self.compat.retract_hidden_borrowed_last_use(
                             stmt.iterable)
-                    elif not self.compat.grant_name_move(stmt.iterable,
+                    elif not self.compat.claim_name_move(stmt.iterable,
                                                          read=loop_read):
                         consuming_fi = None
                 if consuming_fi is not None:
@@ -3635,11 +3642,15 @@ class StatementAnalyzer:
         # handler.exception_type may be module-qualified (e.g. from macros).
         prev_ns_binding = None
         ns_bound = False
+        binder_scope = self.ctx.func.current_scope
+        prev_binder = None
         if handler.binding:
             exc_record = handler_record
             if exc_record:
                 exc_type = NominalType(exc_record.name, _module_qname=exc_record.qualified_name())
                 self.ctx.func.current_scope.bindings[handler.binding] = exc_type
+                prev_binder = register_binder(
+                    self.ctx, binder_scope, handler.binding, handler)
                 self.init.mark_assigned(handler.binding)
                 if self.ctx.func.current_ns:
                     prev_ns_binding = self.ctx.func.current_ns.lookup_local(
@@ -3660,6 +3671,8 @@ class StatementAnalyzer:
 
         if handler.binding and handler.binding in self.ctx.func.current_scope.bindings:
             del self.ctx.func.current_scope.bindings[handler.binding]
+        if handler.binding and handler_record:
+            unregister_binder(binder_scope, handler.binding, prev_binder)
         self._retire_capture_binding(handler.binding, prev_ns_binding, ns_bound)
         else_state = self.init.save()
         consumed_after_else = self.ctx.func.current_consumed_own_params.copy()
@@ -3751,9 +3764,13 @@ class StatementAnalyzer:
             record = handler_records[i]
             prev_ns_binding = None
             ns_bound = False
+            binder_scope = self.ctx.func.current_scope
+            prev_binder = None
             if h.binding and record is not None:
                 exc_type = NominalType(record.name, _module_qname=record.qualified_name())
                 self.ctx.func.current_scope.bindings[h.binding] = exc_type
+                prev_binder = register_binder(
+                    self.ctx, binder_scope, h.binding, h)
                 self.init.mark_assigned(h.binding)
                 if self.ctx.func.current_ns:
                     prev_ns_binding = self.ctx.func.current_ns.lookup_local(
@@ -3770,6 +3787,8 @@ class StatementAnalyzer:
 
             if h.binding and h.binding in self.ctx.func.current_scope.bindings:
                 del self.ctx.func.current_scope.bindings[h.binding]
+            if h.binding and record is not None:
+                unregister_binder(binder_scope, h.binding, prev_binder)
             self._retire_capture_binding(h.binding, prev_ns_binding, ns_bound)
             arm_bindings.append(dict(self.ctx.func.current_scope.bindings))
 
@@ -4016,7 +4035,8 @@ class StatementAnalyzer:
             # reject does not have to remember this route.
             self._register_foreach_iter_loans(stmt, iterable_type)
             with self.scopes.loop_var(inner_scope, stmt.var, elem_type,
-                                       inner_scope.depth, is_foreach=True):
+                                       inner_scope.depth, is_foreach=True,
+                                       binder=stmt):
                 for s in stmt.body:
                     self.analyze_stmt(s)
             self._release_loop_copy_warnings(stmt.var)
@@ -4072,6 +4092,7 @@ class StatementAnalyzer:
         exit_method = "__aexit__" if stmt.is_async else "__exit__"
         kind_label = "async context manager" if stmt.is_async else "context manager"
 
+        pushed: list[tuple[str, Scope, object]] = []
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
 
@@ -4245,6 +4266,10 @@ class StatementAnalyzer:
                 self.ctx.func.with_target_names.add(item.target)
                 item.enter_type = resolved
                 self.ctx.func.current_scope.define(item.target, resolved)
+                pushed.append((item.target, self.ctx.func.current_scope,
+                               register_binder(
+                                   self.ctx, self.ctx.func.current_scope,
+                                   item.target, item)))
                 self.ctx.func.nonstmt_bound_names.add(item.target)
                 self.init.mark_assigned(item.target)
                 if self.ctx.func.current_ns:
@@ -4293,6 +4318,8 @@ class StatementAnalyzer:
 
         for s in stmt.body:
             self.analyze_stmt(s)
+        for name, scope, prev in reversed(pushed):
+            unregister_binder(scope, name, prev)
         if stmt.is_async:
             # `__aexit__` awaits before any code after the block runs.
             self.narrowing.invalidate_suspension_facts()
@@ -5387,7 +5414,7 @@ class StatementAnalyzer:
 
     def _consuming_loop_revert(self, stmt: TpyForEach, iterable_type: TpyType,
                                elem_type: TpyType,
-                               held: 'Sequence[Diagnostic]'
+                               held: 'Sequence[HeldLoopCopy]'
                                ) -> 'Callable[[], None]':
         """What turns a consuming loop back into a borrowing one once the
         ownership fact calls its iterable non-owning (`settle_owning_reads`):
@@ -5579,14 +5606,17 @@ class StatementAnalyzer:
         yield_bare = unwrap_readonly(unwrap_ref_type(elem_type))
         read = peel_coerce(stmt.value)
         if not isinstance(yield_bare, TupleType):
-            pass
+            # An owned element is an owning sink whatever the source.
+            self.compat.register_owned_result(stmt.value, yield_bare,
+                                              TupleSink.YIELD)
         elif isinstance(read, TpyNamedExpr):
             # A walrus is its target name's read, whose record is the name's;
             # its literal's members keep their copy rule.
             if isinstance(yielded, TpyTupleLiteral):
                 self.compat.check_tuple_literal_members(
                     yielded, yield_bare, TupleSink.YIELD, "owned storage")
-            self.compat.register_tuple_sink(read, yield_bare, TupleSink.YIELD)
+            self.compat.register_sink(read, yield_bare, TupleSink.YIELD,
+                                      per_leaf=True)
         elif isinstance(yielded, TpyTupleLiteral):
             self.compat.check_owned_tuple_sink(
                 yielded, yield_bare, "owned storage", yielded,
@@ -5594,8 +5624,9 @@ class StatementAnalyzer:
         elif isinstance(read, TpyName) and owned_slot_paths(yield_bare):
             # The yield moves the elements a last-use local owns, read as
             # every owning sink's tuple read is (settled with the body).
-            self.compat.grant_name_move(read, OwnType(yield_bare))
-            self.compat.register_tuple_sink(read, yield_bare, TupleSink.YIELD)
+            self.compat.claim_name_move(read, OwnType(yield_bare))
+            self.compat.register_sink(read, yield_bare, TupleSink.YIELD,
+                                      per_leaf=True)
         # Re-yielding an ephemeral borrow onward (consumed from an inner
         # generator/iterator) past its iteration step would let the outer
         # consumer read a stale slot -- reject unless copied out. EXCEPTION:
@@ -6576,7 +6607,7 @@ class StatementAnalyzer:
                 if isinstance(stmt.init, TpyName):
                     self.ctx.check_coro_move_unstarted(
                         stmt.init, f"into '{stmt.name}'")
-                    if not self.compat.grant_name_move(
+                    if not self.compat.claim_name_move(
                             stmt.init, var_type, f"'{stmt.name}'"):
                         raise self.ctx.error(
                             f"binding '{stmt.name}' moves the coroutine out of "
@@ -6835,7 +6866,7 @@ class StatementAnalyzer:
                     # A value moves through with no owning slot to record.
                     self.compat.retract_hidden_borrowed_last_use(stmt.init)
                 if (plain_bind and hands_over
-                        and self.compat.grant_name_move(
+                        and self.compat.claim_name_move(
                             stmt.init, OwnType(var_type))):
                     self.ctx.func.rvalue_vars.add(stmt.name)
                     note_owned_local(self.ctx, stmt.name, var_type)
@@ -7010,7 +7041,7 @@ class StatementAnalyzer:
             takes = any(isinstance(et, OwnType) and i not in borrowed_elems
                         for i, et in enumerate(rhs_type.element_types))
             if takes:
-                source_consumed = self.compat.grant_name_move(
+                source_consumed = self.compat.claim_name_move(
                     stmt.value,
                     read=self.compat.tuple_name_move(stmt.value, rhs_type,
                                                      warns=False))
@@ -7124,6 +7155,9 @@ class StatementAnalyzer:
                                  name, elem_type, stmt,
                                  loop_head=stmt.is_loop_head))
                 self.ctx.func.current_scope.define(name, read_type)
+                if stmt.is_loop_head:
+                    register_binder(self.ctx, self.ctx.func.current_scope,
+                                    name, stmt)
                 self.ctx.func.nonstmt_bound_names.add(name)
                 # Record scope depth so the definite-assignment read-check sees
                 # the target (mirrors the scalar var-decl): a loop-body-only
@@ -7232,6 +7266,8 @@ class StatementAnalyzer:
                 if isinstance(elem, TpyCoerce):
                     elem = elem.expr
                 if isinstance(elem, (TpyName, TpySubscript, TpyFieldAccess)):
+                    # Declares no copy (`copy_warning`): the target is a
+                    # local binding, no owning sink with a source record.
                     self.ctx.warning(
                         f"tuple-literal unpack copies reference-type element "
                         f"'{name}' instead of aliasing it (CPython aliases); "
@@ -7315,7 +7351,7 @@ class StatementAnalyzer:
                 and isinstance(stmt.value, TpyName)
                 and self.compat._is_owned_var(stmt.value.name)):
             # Consumption marks only: the unpack's move is the
-            # `grant_name_move` record taken above.
+            # `claim_name_move` record taken above.
             if self.compat.is_last_use_move_candidate(stmt.value):
                 key = self._own_consume_key(stmt.value.name)
                 if key is None or key.index is not None:
@@ -7734,12 +7770,19 @@ class StatementAnalyzer:
                 not unwrap_qualifiers(target_type).is_value_type()
                 and stripped_value is not None
                 and not unwrap_qualifiers(stripped_value).is_value_type())
+            if (stmt.loc is not None and not target_is_any
+                    and target_type is not None):
+                # A store into `Any` registers with the `Any` coercion.
+                self.compat.register_sink(
+                    stmt.value, target_type,
+                    TupleSink.FIELD if store_dest == "field"
+                    else TupleSink.CONTAINER)
             # Whether the store moves the source name in at its last use,
             # asked once for both copy rules below; the copy a later
             # binding settles is the store's, in its words.
             name_moved = (stores_reference
                           and isinstance(stmt.value, TpyName)
-                          and self.compat.grant_name_move(
+                          and self.compat.claim_name_move(
                               stmt.value, OwnType(target_type),
                               sink=SinkCopy(unwrap_qualifiers(value_type),
                                             target_type, store_dest)))
@@ -7770,7 +7813,7 @@ class StatementAnalyzer:
                     if isinstance(stmt.value, TpyName):
                         # The store moves the elements the local owns (its
                         # warning above names every reference element).
-                        self.compat.grant_name_move(
+                        self.compat.claim_name_move(
                             stmt.value, OwnType(tgt_tuple), warns=False)
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:

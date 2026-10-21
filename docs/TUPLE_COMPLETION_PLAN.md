@@ -131,7 +131,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
   (`BUGS.md#walrus-local-return-under-finally-rejects`).
   - [x] the live-source owned-call unpack copy (was HIGH, entry removed) --
     DONE on `u1-tuple-silent`: sema tags an `Own` element target owned only when
-    the unpack CONSUMES its source (`grant_name_move`, the scalar decl's
+    the unpack CONSUMES its source (`claim_name_move`, the scalar decl's
     verdict); a live source borrows through the storage lift. Cell
     `x__unpack_live_own__T` differs -> same. Also closed the owned-tuple
     PARAM's silent copy at a non-last-use unpack (unfiled; same cause) and
@@ -450,7 +450,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
     PARAMETER holding a reference is seeded movable; an owned tuple
     ELEMENT passed to `Own[T]` (`sink(p[0])`, `p: tuple[Own[Box], ..]`)
     moves at the tuple's last use through sema's one decider
-    (`grant_name_move`: last use and no hidden borrower -- a loan
+    (`claim_name_move`: last use and no hidden borrower -- a loan
     `r = ident(p[0])` or a later read demotes to the warned copy, a
     `@nocopy` element errors); the `Own[tuple]` argument LITERAL spells
     the bare storage literal (`push_back(std::tuple<Box, int32_t>{b,

@@ -31,9 +31,10 @@ from ..typesys import (INT32, FunctionInfo, MutationCallEdge,
                        PendingGenericInstanceInfo, RecordInfo, TpyType)
 from .alias_rebind import BindKind
 from .pending_num import DeferredIntOp
-from .tuple_records import TupleSinkRead
+from .source_records import SinkRead
 from .context import (BorrowTracker, CompTarget, FunctionTrackingState,
-                      PendingLocal, ReceiverMove, LIVE_HANDLE_FIELDS)
+                      NonOwningNotes, PendingLocal, ReceiverMove,
+                      LIVE_HANDLE_FIELDS)
 
 
 class _Recorder:
@@ -105,7 +106,8 @@ def _populated() -> FunctionTrackingState:
                          N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
         owning_reads=[ReceiverMove("b", N.TpyName("b"))],
-        tuple_sinks=[TupleSinkRead(N.TpyName("t"), INT32)],
+        tuple_sinks=[SinkRead(N.TpyName("t"), INT32)],
+        nonowning_sites={'a': NonOwningNotes([(N.TpyName("b"), None)])},
         comp_targets=[CompTarget("b", N.TpyName("comp"), 0, 1)],
         current_call_edges=[MutationCallEdge(
             callee_fi=FunctionInfo(name="callee", params=[], return_type=INT32),
@@ -148,7 +150,8 @@ _FIXTURE_FIELDS = {
     'pending_container_exprs', 'arm_decl_sites',
     'pending_num_deferred', 'pending_num_splices', 'awaiting_container',
     'after_list_resolution',
-    'borrow_tracker', 'owning_reads', 'tuple_sinks', 'comp_targets',
+    'borrow_tracker', 'owning_reads', 'tuple_sinks', 'nonowning_sites',
+    'comp_targets',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',
 }

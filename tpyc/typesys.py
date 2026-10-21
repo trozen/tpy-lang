@@ -2959,6 +2959,15 @@ def unwrap_ref_type(t: 'TpyType') -> 'TpyType':
     return t
 
 
+def peel_binding(t: 'TpyType') -> 'TpyType':
+    """The type a BINDING of `t` holds: the transparent wrappers stripped
+    (readonly, Ref, Send / Sync), then `Own` -- an `Own[T]` binding is
+    by-value storage whose members read exactly like any other binding's.
+    ONE definition: a receiver gate, a field-type lookup and a declaration's
+    type that peel the same binding differently disagree about it."""
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return t.wrapped if isinstance(t, OwnType) else t
+
 
 class ResultPosition(Enum):
     SYNC_CALL = "sync_call"
@@ -3635,6 +3644,11 @@ def return_representation(t: TpyType) -> Representation:
         return Representation.REFERENCE
     if isinstance(t, NominalType) and (td := type_def_of(t)) is not None and td.is_borrowing_view:
         return Representation.VIEW
+    if (isinstance(t, NominalType) and t.is_protocol
+            and not t.is_dynamic_protocol):
+        # A structural protocol result is deduced (`auto`): the callee hands
+        # back the conforming value itself.
+        return Representation.STORAGE
     return Representation.STORAGE if t.is_value_type() else Representation.REFERENCE
 
 
@@ -5519,8 +5533,7 @@ class TupleType(TpyType):
         # to `T&`, which neither a std::tuple member nor a concrete pointer-form
         # caller can satisfy.
         core = unwrap_readonly(unwrap_ref_type(t))
-        if (isinstance(core, TypeParamRef)
-                and t.value_form() in (ValueForm.TYPE_PARAM, ValueForm.BORROW_REF)):
+        if self._element_is_val_or_ptr(t):
             peeled = unwrap_ref_type(t)
             is_const = const or isinstance(peeled, ReadonlyType)
             trait = "::tpy::val_or_cptr_t" if is_const else "::tpy::val_or_ptr_t"
@@ -9314,6 +9327,27 @@ class TypeRegistry:
             if info is not None:
                 return info.body
         return self.get_type_alias(ref.name)
+
+    def resolve_recursive_refs(self, typ: 'TpyType') -> 'TpyType':
+        """`typ` with every recursive-union `AliasRef` placeholder -- bare
+        or nested inside a container -- replaced by its union, so the
+        placeholder and the resolved union compare equal. A recursive union
+        (and a generic alias instance) is opaque: its own self-references
+        stay placeholders, which keeps the expansion finite."""
+        if isinstance(typ, AliasRef):
+            alias = self.resolve_alias_ref(typ)
+            return alias if alias is not None else typ
+        if isinstance(typ, RecursiveAliasInstanceType):
+            return typ
+        if isinstance(typ, UnionType) and typ.needs_wrapper():
+            return typ
+        inner = typ.inner_types()
+        if not inner:
+            return typ
+        new_inner = tuple(self.resolve_recursive_refs(t) for t in inner)
+        if all(new is old for new, old in zip(new_inner, inner)):
+            return typ
+        return typ.with_inner_types(new_inner)
 
     def imported_record_qualification(
         self, name: str, current_module: str

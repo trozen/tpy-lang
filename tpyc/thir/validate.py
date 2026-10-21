@@ -57,7 +57,7 @@ from ..type_def_registry import (
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
     type_def_of, zero_value_of,
 )
-from ..typesys import pointer_repr_optional
+from ..typesys import pointer_repr_optional, property_getter_returns_storage_ref
 from ..typesys import (
     AnyType, NominalType, OptionalType, OwnType, PtrType, ReadonlyType, Representation,
     TupleType, receiver_neutral_return,
@@ -292,6 +292,10 @@ def _signature_problem(signature: object) -> bool:
     if passings is not None and (
             not isinstance(passings, tuple) or len(passings) != len(signature.param_types)
             or not all(isinstance(p, ParamPassing) for p in passings)):
+        return True
+    if type(signature.storage_reference_result) is not bool or (
+            signature.storage_reference_result
+            and not property_getter_returns_storage_ref(signature.return_type)):
         return True
     return (signature.return_representation is not None
             and signature.return_representation is not return_representation(signature.return_type))
@@ -1068,7 +1072,7 @@ def _borrow_legal_return(rt) -> bool:
         return True
     if not t.is_value_type():
         return True
-    if isinstance(t, TupleType) and t.has_pointer_repr_element():
+    if isinstance(t, TupleType) and t.has_pointer_or_proxy_element():
         return True
     # A REFERENCE-element tuple return (`std::tuple<Tree&, int32_t>` -- a
     # wrapper element with no Own marker): the slot itself is the borrow
@@ -1525,6 +1529,26 @@ def validate_function(fn: THIRFunction, *, lowered: bool = False) -> None:
         _LOWERED.reset(token)
 
 
+def _check_signature(fn: THIRFunction, signature: THIRCallableSignature, what: str) -> None:
+    """A contract `fn` binds is its own parameters (the receiver first) and
+    result, at the passings its parameters bind."""
+    params = effective_params(fn)
+    # The access twin binds a mutable receiver where the callable it
+    # publishes binds a const one; every other parameter is the same.
+    skip = 1 if fn.access_twin else 0
+    if (fn.receiver is not None and (
+                signature.passings is None or signature.param_types[:1] != (fn.receiver.type,)
+                or not fn.access_twin and signature.passings[0] is not params[0].passing)
+            or tuple(declared_param_type(p.type) for p in params)
+            != tuple(declared_param_type(t) for t in signature.param_types)
+            or signature.return_type not in (
+                fn.return_type, receiver_neutral_return(
+                    fn.return_type, signature.result_follows_receiver))
+            or (signature.passings is not None and all(p.passing is not None for p in params)
+                and signature.passings[skip:] != tuple(p.passing for p in params)[skip:])):
+        _fail(fn.name, fn, f"{what} disagrees with definition")
+
+
 def _validate_function(fn: THIRFunction) -> None:
     if fn.receiver is not None:
         fact = fn.receiver
@@ -1535,29 +1559,25 @@ def _validate_function(fn: THIRFunction) -> None:
             _fail(fn.name, fn, "invalid receiver fact")
     for param in fn.params:
         _check_param(fn.name, param)
-    if fn.resolved_callee is not None:
-        _check_callee(fn.name, fn, fn.resolved_callee)
-        signature = fn.resolved_callee.signature
-        owner = fn.resolved_callee.identity.owner
-        params = effective_params(fn)
-        # The access twin binds a mutable receiver where the callable it
-        # publishes binds a const one; every other parameter is the same.
-        skip = 1 if fn.access_twin else 0
+    callee = fn.resolved_callee
+    if callee is not None:
+        _check_callee(fn.name, fn, callee)
+        owner = callee.identity.owner
         if ((owner is None) != (fn.receiver is None)
-                or fn.receiver is not None and (
-                    owner != fn.receiver.type.qualified_name() or signature.passings is None
-                    or signature.param_types[:1] != (fn.receiver.type,)
-                    or not fn.access_twin and signature.passings[0] is not params[0].passing)
+                or fn.receiver is not None and owner != fn.receiver.type.qualified_name()
                 or fn.error_return_cpp is not None
-                or fn.name != fn.resolved_callee.identity.name
-                or tuple(declared_param_type(p.type) for p in params)
-                != tuple(declared_param_type(t) for t in signature.param_types)
-                or signature.return_type not in (
-                    fn.return_type, receiver_neutral_return(
-                        fn.return_type, signature.result_follows_receiver))
-                or (signature.passings is not None and all(p.passing is not None for p in params)
-                    and signature.passings[skip:] != tuple(p.passing for p in params)[skip:])):
+                or fn.name != callee.identity.name):
             _fail(fn.name, fn, "resolved callee disagrees with definition")
+        _check_signature(fn, callee.signature, "resolved callee")
+    # A lowered body lowers under its signature; with a resolved callee it
+    # publishes that very object, which the storage facts bind by identity.
+    # A body rebuilt by hand from a lowered one may leave it stale.
+    if _LOWERED.get():
+        if fn.signature is None or _signature_problem(fn.signature):
+            _fail(fn.name, fn, "lowered body without a valid signature")
+        if callee is not None and callee.signature is not fn.signature:
+            _fail(fn.name, fn, "resolved callee is not the body's signature")
+        _check_signature(fn, fn.signature, "signature")
     if type(fn.access_twin) is not bool or fn.access_twin and (
             fn.resolved_callee is None or not fn.resolved_callee.signature.result_follows_receiver
             or fn.receiver is None or fn.receiver.readonly):
@@ -1693,6 +1713,8 @@ def _validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     (the scaffolding binds it to its own `__tpy_async_ret` slot).
     `nested_def_bodies` is validated where it is lowered, under the member's
     own return type."""
+    if _LOWERED.get() and (body.signature is None or _signature_problem(body.signature)):
+        _fail(owner, body, "lowered body without a valid signature")
     for stmt in body.leaves.values():
         _walk(owner, stmt)
     for stmt in body.match_dispatches.values():

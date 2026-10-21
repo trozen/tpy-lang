@@ -9,13 +9,13 @@ Obj* G{};
 //     # The receiver dies at end-of-statement; what it hands back does not.
 //     return Wrapper(take_ptr(h.o)).get()  # tpyc: warning(/copies Obj into owned storage/)
 Obj take_field(Holder& h) {
-    return Wrapper(&h.o).get();
+    return Obj(Wrapper(&h.o).get());
 }
 
 // def take_global() -> Own[Obj]:
 //     return Wrapper(take_ptr(G)).get()  # tpyc: warning(/copies Obj into owned storage/)
 Obj take_global() {
-    return Wrapper(&(*G)).get();
+    return Obj(Wrapper(&(*G)).get());
 }
 
 // def take_field_copy(h: Holder) -> Own[Obj]:

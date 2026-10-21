@@ -2628,7 +2628,17 @@ def _er_check_inline(tmp: str, state: _EmitState) -> str:
             f'::tpy::tpy_panic("unhandled error return");')
 
 
-def _er_check_stmt(tmp: str, indent: str, state: _EmitState) -> str:
+def _staged_exit(staged: bool, state: _EmitState) -> bool:
+    """An exit's lowering verdict that it runs a finally / `__exit__`
+    chain first (`THIRReturn.staged`), checked against the chain this
+    emit holds: the two are one fact."""
+    assert staged == bool(state.finally_frames), (
+        "an exit's staged verdict disagrees with the live finally chain")
+    return staged
+
+
+def _er_check_stmt(tmp: str, indent: str, state: _EmitState,
+                   staged: bool) -> str:
     # The statement-block check line(s): the goto disposition (in a
     # return-tier try), the propagate disposition (in an @error_return body;
     # finally-aware -- active finally bodies run before the unexpected value
@@ -2642,7 +2652,7 @@ def _er_check_stmt(tmp: str, indent: str, state: _EmitState) -> str:
         return (f"{indent}if (!{tmp}.has_value()) "
                 f"goto {state.try_except_label};\n")
     if state.error_return_cpp:
-        if not state.finally_frames:
+        if not _staged_exit(staged, state):
             return (f"{indent}if (!{tmp}.has_value()) "
                     f"return ::tpy::make_unexpected(std::move({tmp}.error()));\n")
         body = io.StringIO()
@@ -4367,7 +4377,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         else:
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-        if state.finally_frames:
+        if _staged_exit(stmt.staged, state):
             _emit_finally_return(out, value_cpp, indent, state)
         elif value_cpp is None:
             out.write(f"{indent}return;\n")
@@ -4606,7 +4616,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                 value_cpp = f"::tpy::make_unexpected({stmt.cpp_type}{{}})"
                 _witness("er.raise")
             state.temps.flush(out, indent)
-            if state.finally_frames:
+            if _staged_exit(stmt.staged, state):
                 _emit_finally_return(out, value_cpp, indent, state)
             else:
                 out.write(f"{indent}return {value_cpp};\n")
@@ -4618,7 +4628,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             _witness("er.reraise")
             value_cpp = ("::tpy::make_unexpected("
                          f"std::move(*{state.try_except_err_opt}))")
-            if state.finally_frames:
+            if _staged_exit(stmt.staged, state):
                 _emit_finally_return(out, value_cpp, indent, state)
             else:
                 out.write(f"{indent}return {value_cpp};\n")
@@ -4652,7 +4662,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         inner = indent + INDENT
         out.write(f"{indent}{{\n")
         out.write(f"{inner}auto {tmp} = {call_cpp};\n")
-        out.write(_er_check_stmt(tmp, inner, state))
+        out.write(_er_check_stmt(tmp, inner, state, stmt.staged))
         if stmt.target is not None:
             tgt_cpp = _emit_expr(stmt.target, state)
             out.write(f"{inner}{tgt_cpp} = "
@@ -4684,7 +4694,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         inner = indent + INDENT
         out.write(f"{indent}{{\n")
         out.write(f"{inner}auto {tmp} = {call_cpp};\n")
-        out.write(_er_check_stmt(tmp, inner, state))
+        out.write(_er_check_stmt(tmp, inner, state, stmt.staged))
         out.write(f"{indent}}}\n")
         _witness("er.discard")
     elif isinstance(stmt, THIRParamCopy):

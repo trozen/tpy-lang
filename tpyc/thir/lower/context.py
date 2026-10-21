@@ -20,11 +20,9 @@ from ...typesys import pointer_repr_optional
 from ...type_def_registry import has_view_param_form
 from ...typesys import (
     AnyType,
-    CallableType,
     ConcreteFrameType,
     OptionalType,
     OwnType,
-    ReadonlyType,
     RecursiveAliasInstanceType,
     TpyType,
     TypeParamRef,
@@ -39,12 +37,13 @@ from ...typesys import (
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...typesys import (
     holds_borrowing_view,
-    property_getter_returns_storage_ref,
+    is_readonly_result_type,
     Representation,
+    ReturnPassing,
     return_representation,
 )
-from ..source import UNBOUND, BindingRepr, NameFacts, slot_key
-from ..nodes import (THIRAssign, THIRErrorReturnBind, THIRFormConvert,
+from ..source import UNBOUND, BindingRepr, NameFacts, TraitAbi, slot_key
+from ..nodes import (THIRAssign, THIRCallableSignature, THIRErrorReturnBind, THIRFormConvert,
                      THIRLambda, THIRNarrowedRead, THIRNestedDef, THIRNode,
                      THIRPtrLocalRebind, THIRRebindSlot,
                      THIRSelf, THIRStmt, THIRStmtSeq, THIRTupleElemTarget,
@@ -57,47 +56,18 @@ from .predicates import (
     _resolved_bytes_value,
     _resolved_str_value,
     _span_value,
-    _borrow_tuple_return_type,
-    _optional_borrow_tuple,
-    _res_container_return,
     _eligible_char,
     _eligible_enum,
-    _eligible_ptr_union,
     _eligible_ptr_value,
     _eligible_scalar,
-    _eligible_value_union,
-    _is_type_param_slot,
-    _native_iter_value_slot,
     _optional_ptr_borrow,
     _record_class_binding,
-    _optional_ptr_borrow_wide,
-    _storage_optional_return_wide,
     _own_viewfam_param,
-    _protocol_auto_slot,
-    _dyn_borrow_return,
-    _own_dyn_return,
-    _own_genrec_return,
-    _own_wrapper_return,
-    _wrapper_borrow_return,
-    _own_storage_union_return,
-    _own_type_param_slot,
-    _viewfam_return_slots,
-    _record_borrow_return,
-    _record_storage_return,
-    _value_record_slot,
-    _value_opt_record,
-    _span_return,
     _value_opt_scalar,
-    _value_opt_tuple,
-    _value_opt_view,
-    _generic_value_tuple_return,
-    _own_storage_tuple_return,
-    _wrapper_ref_tuple_return,
-    _value_tuple_return,
-    _union_elem_value_tuple,
     _storage_copy_value,
     _value_opt_owned_view,
     _value_tuple,
+    _value_tuple_element_ok,
     record_like,
 )
 
@@ -223,8 +193,6 @@ class SinkPos(Enum):
     ALIAS_BIND = auto()
     # An operand of a binop, a comparison or a value select.
     OPERAND = auto()
-    # A monomorphized lambda's body at its trailing return.
-    LAMBDA_RETURN = auto()
     # `(m = pick(nodes, i))` -- a walrus target's source.
     WALRUS_TARGET = auto()
     # A resumable frame's slot write.
@@ -297,10 +265,6 @@ class SinkForm(Enum):
     # (`ret_param_ref(shared).n` -- the temp lives to the end of the full
     # expression; nothing binds).
     FIELD_RECV_BORROW = auto()
-    # A generic call whose monomorphized val_or_ptr_t tuple IS the
-    # closure's borrow-form trailing return, so the direct `return body;`
-    # needs no element conversion.
-    LAMBDA_BTUPLE_RET = auto()
     # A BORROW-returning ptr-repr Optional result landing BARE: it already
     # IS the `T*` the slot or binding holds (`g = find(xs, k);`,
     # `Point* r1 = get_or_none(true, p);`). Every other consumer of such a
@@ -373,6 +337,11 @@ class SinkForm(Enum):
     # consumers are the transient ones -- a slot outlives any temporary --
     # which need no row of their own.
     SELECT_SLOT = auto()
+    # A slot that spells its C++ type off the source (`decltype((...))`: a
+    # resumable frame's `for` source field), so a literal there renders a
+    # value of a type of its own -- a str literal the view over its static
+    # storage rather than the char array, which iterates its NUL too.
+    SELF_TYPED = auto()
 
 
 _NO_FORMS: frozenset[SinkForm] = frozenset()
@@ -399,11 +368,10 @@ _ONLY_SELECT_PRVALUE: frozenset[SinkForm] = frozenset(
 _ONLY_SELECT_FRESH_PRVALUE: frozenset[SinkForm] = frozenset(
     {SinkForm.SELECT_FRESH_PRVALUE})
 _ONLY_SELECT_SLOT: frozenset[SinkForm] = frozenset({SinkForm.SELECT_SLOT})
+_ONLY_SELF_TYPED: frozenset[SinkForm] = frozenset({SinkForm.SELF_TYPED})
 _ONLY_UNION_SUBJECT: frozenset[SinkForm] = frozenset({SinkForm.UNION_SUBJECT})
 _ONLY_TRUTHY_DISCARD: frozenset[SinkForm] = frozenset(
     {SinkForm.TRUTHY_DISCARD})
-_ONLY_LAMBDA_BTUPLE_RET: frozenset[SinkForm] = frozenset(
-    {SinkForm.LAMBDA_BTUPLE_RET})
 _ONLY_FIELD_VALUE_TUPLE: frozenset[SinkForm] = frozenset(
     {SinkForm.FIELD_VALUE_TUPLE})
 
@@ -463,7 +431,6 @@ _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     SinkPos.UNPACK_SOURCE: _ONLY_TUPLE_SOURCE,
     SinkPos.ALIAS_BIND: _ONLY_INDIRECT_READ,
     SinkPos.OPERAND: _TRANSIENT_OK,
-    SinkPos.LAMBDA_RETURN: _ONLY_LAMBDA_BTUPLE_RET,
     SinkPos.WALRUS_TARGET: _ONLY_TUPLE_SOURCE,
     SinkPos.FRAME_SLOT_WRITE: _ONLY_TUPLE_SOURCE,
     SinkPos.PRINT_ARG: _ONLY_PTR_OPT_PASSTHROUGH | _LEND_OK,
@@ -604,6 +571,9 @@ class SlotLifetime(Enum):
     # a further obligation, the MIR's to track; it gets a member with its
     # first reader.
     OUTLIVES_STATEMENT = auto()
+    # The slot hands its view out of the body (a result): the buffer it
+    # points into must outlive the body's frame.
+    OUTLIVES_FRAME = auto()
 
 
 class SlotConstruct(Enum):
@@ -666,12 +636,47 @@ class SlotPlacement(Enum):
     NO_FLUSH_POINT = auto()
 
 
+class SlotClass(Enum):
+    """What a slot's storage type IS, read once off the type by `slot_for`
+    and carried on the slot (`Slot.cls`): it picks a field write's family
+    and, where the slot holds the type's own storage, what it holds."""
+    # A plain value whose construction / assignment takes the source as it
+    # renders: a scalar, a char, an enum, a `Ptr`, a callable (or its
+    # Optional), a span.
+    PLAIN = auto()
+    # A value-repr `Optional[scalar]`.
+    VALUE_OPT = auto()
+    # The str family's value (`str`, `StrView`, `String`).
+    OWNED_STR = auto()
+    # An owned bytes buffer: the bytes family member passed as a view of
+    # its own storage (`has_view_param_form`).
+    OWNED_BYTES = auto()
+    # Owned storage a borrow converts into: a record or container, an
+    # Optional over one (or over a type parameter, an owned str / bytes, a
+    # value tuple), a recursive-alias wrapper, a stored union or tuple.
+    STORAGE = auto()
+    # A type-erased box (`Any`).
+    ERASED = auto()
+    # No family renders this slot.
+    UNCLASSIFIED = auto()
+
+
+class SlotPosition(Enum):
+    """Where a slot sits, which decides how its type is represented there:
+    a STORE (a field, a container or tuple element, an owning argument)
+    holds the type's own storage; a RETURN hands it back as the body's
+    signature publishes it."""
+    STORE = auto()
+    RETURN = auto()
+
+
 @dataclass(frozen=True, slots=True)
 class Slot:
     """The place a value lands in -- everything `convert` may know about
-    the DESTINATION. Distinct from `_ExprUse.slot_target`, the type a
-    LITERAL renders against, which can be another type (an `Optional[C]`
-    field's literal renders against `C`) or none at all."""
+    the DESTINATION, built by `slot_for`. Distinct from
+    `_ExprUse.slot_target`, the type a LITERAL renders against, which can be
+    another type (an `Optional[C]` field's literal renders against `C`) or
+    none at all."""
     type: TpyType
     construct: SlotConstruct
     holds: SlotHolds = SlotHolds.OWNS
@@ -682,6 +687,33 @@ class Slot:
     # REGION's grant (`_LowerCtx.placement`), carried as the answer.
     placement: SlotPlacement = SlotPlacement.STATEMENT
     lifetime: SlotLifetime = SlotLifetime.NONE
+    # What the storage type is (None for a slot built by hand).
+    cls: 'SlotClass | None' = None
+    # How the position represents the value: its own storage, a distinct
+    # view, a reference / pointer into storage held elsewhere, or a
+    # template-dependent form.
+    representation: Representation = Representation.STORAGE
+    # The type as the destination declares it, `Own` / `Ref` / `readonly`
+    # kept (`type` is its storage form).
+    declared: 'TpyType | None' = None
+    # A tuple slot's element slots, each derived from its declared element
+    # before `storage_type` erases `Own` / `Ref`.
+    elems: 'tuple[Slot, ...] | None' = None
+    # The template a TRAIT slot spells its open `T` through.
+    trait: 'TraitAbi | None' = None
+    # A result its C++ `return` takes directly: an id-expression naming
+    # an object of the body moves there implicitly. Not a result staged
+    # into a temporary first (a finally / `with` body).
+    implicit_move: bool = False
+
+
+def lends_elements(slot: Slot) -> bool:
+    """A result tuple (or its Optional) handing an element back as a
+    borrow -- a reference element as its pointer: the tuple's borrow form,
+    which binds what its source names."""
+    return slot.elems is not None and any(
+        e.holds in (SlotHolds.BORROWS, SlotHolds.POINTER)
+        for e in slot.elems)
 
 
 def storage_type(t: 'TpyType | None') -> 'TpyType | None':
@@ -706,11 +738,14 @@ def storage_type(t: 'TpyType | None') -> 'TpyType | None':
     return t
 
 
-def slot_lifetime(slot: 'TpyType | None') -> SlotLifetime:
+def slot_lifetime(slot: 'TpyType | None',
+                  position: 'SlotPosition | None' = None) -> SlotLifetime:
     """The lifetime a slot of this type obliges its source to
-    (`holds_borrowing_view`)."""
-    return (SlotLifetime.OUTLIVES_STATEMENT if holds_borrowing_view(slot)
-            else SlotLifetime.NONE)
+    (`holds_borrowing_view`): a result's view outlives the frame."""
+    if not holds_borrowing_view(slot):
+        return SlotLifetime.NONE
+    return (SlotLifetime.OUTLIVES_FRAME if position is SlotPosition.RETURN
+            else SlotLifetime.OUTLIVES_STATEMENT)
 
 
 @dataclass(frozen=True, slots=True)
@@ -783,112 +818,90 @@ def opt_callable_slot(t: 'TpyType | None') -> bool:
             and _callable_value(unwrap_readonly(u.inner)))
 
 
-class FieldSlot(Enum):
-    """What a FIELD of a given type stores, which decides the field write's
-    family and the slot's `SlotHolds` -- read off the slot type once
-    (`field_slot_class`)."""
-    # A plain value whose construction / assignment takes the source as it
-    # renders: a scalar, a char, an enum, a `Ptr`, a callable (or its
-    # Optional), a span.
-    PLAIN = auto()
-    # A value-repr `Optional[scalar]`.
-    VALUE_OPT = auto()
-    # The str family's value (`str`, `StrView`, `String`).
-    OWNED_STR = auto()
-    # An owned bytes buffer: the bytes family member passed as a view of
-    # its own storage (`has_view_param_form`).
-    OWNED_BYTES = auto()
-    # Owned storage a borrow converts into: a record or container, an
-    # Optional over one (or over a type parameter, an owned str / bytes, a
-    # value tuple), a recursive-alias wrapper, a stored union or tuple.
-    STORAGE = auto()
-    # A type-erased box (`Any`).
-    ERASED = auto()
-    # No family renders this slot.
-    UNCLASSIFIED = auto()
-
-    @property
-    def holds(self) -> 'SlotHolds':
-        return _FIELD_HOLDS[self]
-
-
-_FIELD_HOLDS = {
-    FieldSlot.PLAIN: SlotHolds.VALUE,
-    FieldSlot.VALUE_OPT: SlotHolds.VALUE,
-    FieldSlot.OWNED_STR: SlotHolds.VALUE,
-    FieldSlot.OWNED_BYTES: SlotHolds.VALUE,
-    FieldSlot.STORAGE: SlotHolds.OWNS,
-    FieldSlot.ERASED: SlotHolds.ERASED,
-    # The admission's gap: no conversion is known, so only an owned value
-    # relocated whole reaches the slot (BUGS.md#field-view-escape-needs-place
-    # keeps the view-family receivers out of the families that would).
-    FieldSlot.UNCLASSIFIED: SlotHolds.RELOCATE,
-}
-
-
-def field_slot_class(t: 'TpyType | None', analyzer) -> FieldSlot:
-    """The one classification of a field slot type."""
+def _slot_class(t: 'TpyType | None', analyzer) -> SlotClass:
+    """What a slot's storage type is (`SlotClass`)."""
     if t is None:
-        return FieldSlot.UNCLASSIFIED
+        return SlotClass.UNCLASSIFIED
     if (_eligible_scalar(t) or _eligible_char(t)
             or _eligible_enum(t, analyzer) is not None
             or _eligible_ptr_value(t, analyzer)
             or _callable_value(t) or opt_callable_slot(t) or _span_value(t)):
-        return FieldSlot.PLAIN
+        return SlotClass.PLAIN
     if _value_opt_scalar(t, analyzer) is not None:
-        return FieldSlot.VALUE_OPT
+        return SlotClass.VALUE_OPT
     if _resolved_str_value(t, analyzer) is not None:
-        return FieldSlot.OWNED_STR
+        return SlotClass.OWNED_STR
     b = _resolved_bytes_value(t, analyzer)
     if b is not None and has_view_param_form(b):
-        return FieldSlot.OWNED_BYTES
+        return SlotClass.OWNED_BYTES
     if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
                   AnyType):
-        return FieldSlot.ERASED
+        return SlotClass.ERASED
     if record_like(t, analyzer):
-        return FieldSlot.STORAGE
+        return SlotClass.STORAGE
     if isinstance(t, OptionalType):
         inner = unwrap_readonly(t.inner)
         if (record_like(inner, analyzer)
                 or isinstance(inner, TypeParamRef)
                 or _value_opt_owned_view(t, analyzer) is not None
                 or _value_tuple(inner, analyzer) is not None):
-            return FieldSlot.STORAGE
+            return SlotClass.STORAGE
     if (isinstance(t, RecursiveAliasInstanceType)
             or _storage_copy_value(t, analyzer)):
-        return FieldSlot.STORAGE
-    return FieldSlot.UNCLASSIFIED
+        return SlotClass.STORAGE
+    return SlotClass.UNCLASSIFIED
 
 
-def field_slot_use(slot: 'TpyType | None', construct: SlotConstruct,
-                   analyzer, placement: SlotPlacement) -> _ExprUse:
-    """The slot a record FIELD hands its source, decided once per statement
-    from the declared slot -- a field write assigns, a member-init
-    direct-initializes. A field holds storage or a plain value, never a
-    borrow; its lifetime is the slot type's. It grants its source the
-    temporary path wherever it sits (grant vs placement: `SlotPlacement`).
-    Each site then names its sink and verdict with `dataclasses.replace`,
-    keeping the slot."""
-    lifetime = slot_lifetime(slot)
-    return _ExprUse(
-        dest=(Slot(slot, construct,
-                   holds=field_slot_class(slot, analyzer).holds,
-                   placement=placement, lifetime=lifetime)
-              if slot is not None else None),
-        lifetime=lifetime, allow_temps=True)
+# What a slot holding its type's own storage holds, by class.
+_STORED_HOLDS = {
+    SlotClass.PLAIN: SlotHolds.VALUE,
+    SlotClass.VALUE_OPT: SlotHolds.VALUE,
+    SlotClass.OWNED_STR: SlotHolds.VALUE,
+    SlotClass.OWNED_BYTES: SlotHolds.VALUE,
+    SlotClass.STORAGE: SlotHolds.OWNS,
+    SlotClass.ERASED: SlotHolds.ERASED,
+}
 
 
-def _return_holds(rt: TpyType, getter: bool, analyzer) -> SlotHolds:
-    """How a function's result is handed back, as its signature spells it
-    (`return_representation`): a reference or a pointer into storage the
-    callee does not own, an open `T` the instantiation decides, or a value
-    the slot owns. A property getter of a pointer-repr shape hands back the
-    field's storage by reference instead
-    (`property_getter_returns_storage_ref`)."""
-    if getter and property_getter_returns_storage_ref(rt):
+def _parts_classified(t: TpyType, analyzer) -> bool:
+    """Whether every part of a tuple or an Optional (its elements, its
+    inner) has a C++ layout the element rows render: a class of its own
+    (a plain value only where a value tuple holds one), an open `T`, or
+    parts that do."""
+    u = storage_type(t)
+    if isinstance(u, OptionalType):
+        parts: tuple = (u.inner,)
+    elif isinstance(u, TupleType):
+        parts = u.element_types
+    else:
+        return False
+
+    def renders(p: TpyType) -> bool:
+        if (isinstance(u, TupleType)
+                and return_representation(p) is Representation.VIEW):
+            # A tuple's view element has no row: the tuple's literal would
+            # build an owning temporary for it.
+            return False
+        cls = _slot_class(p, analyzer)
+        if cls is SlotClass.PLAIN:
+            return _value_tuple_element_ok(p, analyzer)
+        return (cls is not SlotClass.UNCLASSIFIED
+                or isinstance(p, TypeParamRef)
+                or _parts_classified(p, analyzer))
+    return all(renders(storage_type(e)) for e in parts)
+
+
+def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
+                rep: 'Representation | None', construct: SlotConstruct,
+                getter: bool, analyzer) -> SlotHolds:
+    """What a slot holds, from its class and how the position represents
+    the value: a reference or a pointer into storage held elsewhere, an
+    open `T` the instantiation decides, or the type's own storage -- or,
+    for a property getter of a pointer-repr shape, the field's storage by
+    reference (`storage_reference_result`)."""
+    if getter:
         return SlotHolds.BORROWS
-    bare = unwrap_readonly(unwrap_send_sync(rt))
-    rep = return_representation(rt)
+    bare = unwrap_readonly(unwrap_send_sync(declared))
     if rep is Representation.TRAIT:
         return (SlotHolds.OWNS if isinstance(bare, OwnType)
                 else SlotHolds.TRAIT)
@@ -899,34 +912,142 @@ def _return_holds(rt: TpyType, getter: bool, analyzer) -> SlotHolds:
                 and u.uses_pointer_repr() else SlotHolds.BORROWS)
     if rep is Representation.VIEW:
         return SlotHolds.VALUE
-    st = storage_type(rt)
-    cls = field_slot_class(st, analyzer)
-    if cls in (FieldSlot.STORAGE, FieldSlot.UNCLASSIFIED):
-        # The return builds its own result whatever the type: a value
-        # type's is a copy the construction takes as the source renders.
-        return SlotHolds.VALUE if st.is_value_type() else SlotHolds.OWNS
-    return cls.holds
+    if cls is SlotClass.UNCLASSIFIED:
+        if construct is SlotConstruct.RETURN and (
+                not st.is_value_type() or _parts_classified(st, analyzer)):
+            # A result is built by its own copy-initialization whatever
+            # the type: a value type's (a tuple or an Optional whose parts
+            # each have a class) takes the source as it renders.
+            return SlotHolds.VALUE if st.is_value_type() else SlotHolds.OWNS
+        # No conversion is known: only an owned value relocated whole
+        # reaches the slot (BUGS.md#field-view-escape-needs-place keeps the
+        # view-family receivers out of the families that would).
+        return SlotHolds.RELOCATE
+    return _STORED_HOLDS[cls]
 
 
-def return_slot(lc: '_LowerCtx') -> 'Slot | None':
-    """The slot a `return` in this body hands its value to, decided once per
-    body from the declared result type (`_Prescan.ret_type`, a per-@overload
-    stub's when one is lowered); None for a body with no result."""
-    pre = lc.prescan
-    if pre.ret_slot is not None or pre.ret_type is None:
-        return pre.ret_slot
-    rt = pre.ret_type
-    if isinstance(unwrap_readonly(unwrap_ref_type(rt)), VoidType):
+def _built_slot(declared: TpyType, st: TpyType,
+                rep: 'Representation | None', position: SlotPosition,
+                construct: SlotConstruct, analyzer, *,
+                placement: SlotPlacement = SlotPlacement.STATEMENT,
+                const: bool = False, getter: bool = False,
+                element: bool = False, stored: bool = False,
+                implicit_move: bool = False) -> Slot:
+    # `stored`: an element of a tuple the result holds as its own storage
+    # (an owned result's, at any depth), not handed back as a result.
+    cls = _slot_class(st, analyzer)
+    holds = _slot_holds(declared, st, cls, rep, construct, getter, analyzer)
+    tup = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared)))
+    owned = isinstance(tup, OwnType)
+    if owned:
+        tup = unwrap_readonly(tup.wrapped)
+    if isinstance(tup, OptionalType):
+        # An Optional's payload: the tuple it holds has the element slots.
+        tup = unwrap_readonly(tup.inner)
+    elems = None
+    if isinstance(tup, TupleType):
+        # A result tuple hands each element back as that element's own
+        # result would (a reference as a pointer); an owned or stored one
+        # holds every element's storage.
+        by_result = (position is SlotPosition.RETURN and not owned
+                     and not stored)
+        # An element of a const tuple is const.
+        elems = tuple(
+            _built_slot(e, storage_type(e) if by_result else e,
+                        return_representation(e) if by_result
+                        else Representation.STORAGE,
+                        position, construct, analyzer, placement=placement,
+                        const=const, element=True, stored=not by_result)
+            for e in tup.element_types)
+    # A tuple element holds its open `T` by value or by pointer.
+    trait = (None if holds is not SlotHolds.TRAIT
+             else TraitAbi.VAL_OR_PTR if element else TraitAbi.VAL_OR_REF)
+    return Slot(st, construct, holds=holds, const=const,
+                placement=placement,
+                lifetime=slot_lifetime(declared, position),
+                cls=cls, representation=rep or Representation.STORAGE,
+                declared=declared, elems=elems, trait=trait,
+                implicit_move=implicit_move)
+
+
+def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
+             construct: 'SlotConstruct | None' = None,
+             signature: 'THIRCallableSignature | None' = None,
+             placement: SlotPlacement = SlotPlacement.STATEMENT,
+             result_const: bool = False,
+             implicit_move: bool = False) -> 'Slot | None':
+    """THE slot builder: the complete contract of the place a value of
+    declared type `t` lands in at `position` -- what it holds, how the
+    position represents it, how it is constructed, what it obliges its
+    source to outlive, where a temporary may go, the class of its storage
+    type and, for a tuple, the slot of each element. A RETURN slot's type
+    and representation are its body's `signature`'s (None for a body with
+    no result); a STORE slot holds `t`'s own storage. None for no type."""
+    if position is SlotPosition.RETURN:
+        assert signature is not None, (
+            "a body with a result lowers under its signature")
+        rt = signature.return_type
+        if isinstance(unwrap_readonly(unwrap_ref_type(rt)), VoidType):
+            return None
+        return _built_slot(
+            rt, storage_type(rt), signature.return_representation,
+            position, SlotConstruct.RETURN, analyzer, placement=placement,
+            const=result_const or is_readonly_result_type(rt),
+            getter=signature.storage_reference_result,
+            implicit_move=implicit_move)
+    if t is None:
         return None
-    getter = bool(getattr(lc.func, "is_property_getter", False))
-    # Cached per body, so it carries nothing per region: the placement a
-    # nested region grants is the caller's to read where it lowers.
-    pre.ret_slot = Slot(
-        storage_type(rt), SlotConstruct.RETURN,
-        holds=_return_holds(rt, getter, lc.analyzer),
-        const=isinstance(unwrap_send_sync(rt), ReadonlyType),
-        lifetime=slot_lifetime(rt))
-    return pre.ret_slot
+    assert construct is not None, "a stored slot names its construction"
+    return _built_slot(t, t, Representation.STORAGE, position, construct,
+                       analyzer, placement=placement)
+
+
+def result_cpp(signature: 'THIRCallableSignature',
+               render: 'Callable[[TpyType], str]') -> str:
+    """The C++ result type a signature spells, in the form it returns its
+    result (`ReturnPassing`): a by-value or template-dependent result as
+    its storage type, spelled by the module's renderer; a reference, a
+    pointer, a tuple of element forms or a view as the type returns it,
+    const for a readonly result."""
+    rt = signature.return_type
+    if rt.return_passing() in (ReturnPassing.VALUE, ReturnPassing.TRAIT):
+        return render(storage_type(rt))
+    return (rt.to_cpp_return_const() if is_readonly_result_type(rt)
+            else rt.to_cpp_return())
+
+
+def field_slot_use(slot: 'TpyType | None', construct: SlotConstruct,
+                   analyzer, placement: SlotPlacement) -> _ExprUse:
+    """The use a STORE slot (a record field, an element, an owning
+    argument) hands its source, decided once per statement from the
+    declared slot -- a field write assigns, a member-init
+    direct-initializes. It grants its source the temporary path wherever it
+    sits (grant vs placement: `SlotPlacement`). Each site then names its
+    sink and verdict with `dataclasses.replace`, keeping the slot."""
+    return _ExprUse(
+        dest=slot_for(slot, SlotPosition.STORE, analyzer,
+                      construct=construct, placement=placement),
+        lifetime=slot_lifetime(slot), allow_temps=True)
+
+
+def return_slot(lc: '_LowerCtx', *,
+                implicit_move: bool = False) -> 'Slot | None':
+    """The slot a `return` in this body hands its value to: its type and
+    how it holds the result from the body's signature (a per-@overload
+    stub's when one is lowered); None for a body with no result. It
+    carries nothing per region: the placement a nested region grants is
+    the caller's to read where it lowers. The result is const where the
+    body's own declared result is readonly -- an `@auto_readonly` const
+    twin's, which the twins' shared signature leaves receiver-neutral.
+    `implicit_move`: the return statement's own fact (`Slot`)."""
+    declared = (lc.overload_stub_return
+                if lc.overload_stub_return is not None
+                else lc.func.return_type if lc.func is not None else None)
+    return slot_for(None, SlotPosition.RETURN, lc.analyzer,
+                    signature=lc.signature,
+                    result_const=(isinstance(declared, TpyType)
+                                  and is_readonly_result_type(declared)),
+                    implicit_move=implicit_move)
 
 
 def narrow_alias_taken(bound_names, frame_field_names, *,
@@ -1004,20 +1125,6 @@ class _Prescan:
     __slots__ = ("reassigned", "rvalue_reassigned", "nonlocal_names",
                  "hoisted", "escape_hoisted", "move_through",
                  "alias_sources", "alias_born", "owned_viewfam_params",
-                 "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
-                 "ret_nullable_tuple",
-                 "ret_record_borrow", "ret_record_storage",
-                 "ret_res_container",
-                 "ret_value_tuple", "ret_generic_tuple",
-                 "ret_own_storage_tuple", "ret_wrapper_ref_tuple",
-                 "ret_str", "ret_bytes",
-                 "ret_char", "ret_union", "ret_ptr_union", "ret_union_borrow",
-                 "ret_own_union",
-                 "ret_genrec", "ret_own_wrapper", "ret_wrapper_borrow",
-                 "ret_dyn_borrow", "ret_dyn_own",
-                 "ret_supported", "ret_callable",
-                 "ret_value_opt", "ret_value_opt_view",
-                 "ret_value_opt_tuple", "ret_type", "ret_slot",
                  "value_opt_params", "param_names", "bound_names",
                  "module_global_names",
                  "own_tuple_params",
@@ -1026,11 +1133,11 @@ class _Prescan:
                  "global_slots")
 
     def __init__(self, func: TpyFunction, analyzer,
-                 params_override=None, return_type_override=None,
+                 params_override=None,
                  scan_override=None, hoisted_override=None,
                  move_through_override=None,
                  escape_hoisted_override=None) -> None:
-        # `params_override` / `return_type_override` carry a per-@overload
+        # `params_override` carries a per-@overload
         # STUB's signature: the impl body is emitted against the stub's
         # types, so every signature-derived fact here must key on them.
         src_params = func.params if params_override is None else params_override
@@ -1115,218 +1222,6 @@ class _Prescan:
         # -- such a pointer-local may point at another local's storage).
         self.alias_sources = set(scan.alias_sources.values()) if scan else set()
         self.alias_born = scan.initial_alias_names if scan else set()
-        # F2c: the function's storage-form Optional[F1-record] return slot, if any
-        # (`Own[T] | None` -> `std::optional<T>`), so a `return None` /
-        # `return <borrow T*>` lowers to `std::nullopt` / `ptr_to_optional`. None
-        # for every other return type (the value-scalar/pointer-repr paths).
-        rt = (return_type_override
-              if return_type_override is not None
-              else (func.return_type
-                    if isinstance(func.return_type, TpyType) else None))
-        self.ret_type: TpyType | None = rt
-        # `return_slot` fills it on first use.
-        self.ret_slot: 'Slot | None' = None
-        self.ret_storage_opt = _storage_optional_return_wide(rt, analyzer)
-        # The pointer-repr Optional return slot over the WIDE pointee class
-        # (`A | None` / `T | None` / `W | None` -> a borrow `A*` returned by
-        # value): `None` -> `nullptr`, an already-pointer name -> bare, a
-        # pointee-typed name -> `&(name)` (_optional_pointer_form_value's
-        # admitted subset; every render is pointee-shape-blind).
-        self.ret_ptr_opt = _optional_ptr_borrow_wide(rt, analyzer)
-        # The value-repr Optional[cheap scalar] or Optional[value record]
-        # return slot (`-> int32 | None` / `-> Coord | None` ->
-        # `std::optional<T>`): `return None` -> `std::nullopt`, a value-opt
-        # name passes the whole optional bare, every other source rides the
-        # generic return tail (type-exact or coerce-wrapped).
-        self.ret_value_opt = _value_opt_scalar(rt, analyzer)
-        if self.ret_value_opt is None:
-            self.ret_value_opt = _value_opt_record(rt)
-        if self.ret_value_opt is None and rt is not None:
-            # A value-BOUND `Optional[T]` return in a generic body
-            # (`-> T | None` under `T: ValueType` -> `std::optional<T>`)
-            # renders like the scalar family: `return None` -> nullopt,
-            # a member/field source rides the generic tail's implicit
-            # optional conversion. Return-slot only -- bindings/args keep
-            # the scalar-keyed classification.
-            _rvb = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-            if (isinstance(_rvb, OptionalType)
-                    and not _rvb.uses_pointer_repr()
-                    and _is_type_param_slot(unwrap_readonly(_rvb.inner))):
-                self.ret_value_opt = _rvb
-        # The value-repr Optional[view] return slot -- str (`-> str | None` ->
-        # `std::optional<std::string>`) OR bytes (`-> bytes | None` ->
-        # `std::optional<std::vector<uint8_t>>`): `return None` -> `std::nullopt`,
-        # a value-repr Optional[view] param name takes the view->owned shim
-        # (`x ? std::make_optional(<conv>(*x)) : std::nullopt`, THIROptViewArg;
-        # `<conv>` = `std::string` / `::tpy::Bytes`), and a str/bytes literal
-        # lands bare (the owned literal / implicit conversion). The owned-view
-        # twin of ret_value_opt.
-        self.ret_value_opt_view = _value_opt_view(rt, analyzer)
-        # The value-repr Optional[value tuple] return slot (`-> tuple[float,
-        # int32] | None` -> `std::optional<std::tuple<...>>`): `return None`
-        # -> `std::nullopt`, a tuple literal spells the inner tuple's
-        # brace-init, an un-narrowed value-tuple name passes bare (the
-        # optional's converting ctor absorbs both). The tuple twin of
-        # ret_value_opt.
-        self.ret_value_opt_tuple = _value_opt_tuple(rt, analyzer)
-        # F3: the function's borrow-form pointer-repr tuple return slot, if any
-        # (`tuple[..., Ref]` -> `std::tuple<..., T*>`), so a `return <storage tuple
-        # lvalue>` lifts via `tuple_to_pointer`. None for every other return type.
-        # A nullable reference-tuple return keeps the tuple's return layout
-        # inside the optional (`std::optional<std::tuple<Box*, int32_t>>`),
-        # so the bare twin's fact over the inner renders the non-None value
-        # (the optional absorbs it) and `return None` is the empty optional.
-        self.ret_nullable_tuple: 'OptionalType | None' = (
-            unwrap_readonly(unwrap_send_sync(rt))
-            if _optional_borrow_tuple(rt, analyzer) is not None else None)
-        self.ret_borrow_tuple = _borrow_tuple_return_type(
-            self.ret_nullable_tuple.inner
-            if self.ret_nullable_tuple is not None else rt, analyzer)
-        # The borrow-form REFERENCE return slot (`-> Box` -> `Box&`,
-        # `-> list[T]` -> `std::vector<T>&`): a bare borrow name
-        # (`return name;`), `self` (`return (*this);`), a plain field read
-        # (`return recv.field;`), an element lvalue or a pointer-slot
-        # global; the return-stmt arm rejects every other source shape.
-        self.ret_record_borrow = _record_borrow_return(rt, analyzer)
-        # The storage-form REFERENCE return slot (`-> Own[Box]` -> `Box` by
-        # value, `-> Own[list[T]]` -> a by-value vector/map/set): bare names,
-        # rvalue ctor / by-value calls, and the container-only literal /
-        # repeat / comprehension sources return bare; every other source
-        # shape rejects.
-        self.ret_record_storage = _record_storage_return(rt, analyzer)
-        # The RESUMABLE container return slot -- wider at the `Own` axis
-        # (a coro's slot holds T by value either way); read only by the
-        # resumable return arm's empty-literal guard.
-        self.ret_res_container = _res_container_return(rt, analyzer)
-        # The value-tuple return slot (`-> tuple[int, str]` -> a by-value
-        # `std::tuple<...>`): a tuple literal renders the spelled brace-init
-        # (THIRTupleLiteral) recursively -- the return element set is widened
-        # over the narrow `_value_tuple` (nested value-tuple / value-Optional[
-        # scalar] elements). A bare value-tuple name return stays on the narrow
-        # arm (no bare-copy read arm for a widened-element receiver).
-        # The union-element widening: a VALUE tuple with a value-union
-        # element returns the same spelled brace-init (the variant
-        # element's converting ctor absorbs the member render).
-        self.ret_value_tuple = (_value_tuple_return(rt, analyzer)
-                                or _union_elem_value_tuple(rt, analyzer))
-        # The GENERIC tuple return slot (>=1 TypeParamRef element): the
-        # RESUMABLE return arm's `val_or_ptr_t` bridge AND the sync return
-        # arm's literal row (`return (tag, val)` -> the spelled brace-init
-        # with per-element `to_val_or_ptr` wraps) both consume it.
-        self.ret_generic_tuple = _generic_value_tuple_return(rt, analyzer)
-        # The Own[tuple] STORAGE return slot with a non-value member
-        # (`-> Own[tuple[str, Resource]]`): a tuple LITERAL of storage-direct
-        # members returns the spelled brace-init.
-        self.ret_own_storage_tuple = _own_storage_tuple_return(rt, analyzer)
-        # The REFERENCE-element tuple return slot (`-> tuple[Tree, int32]`
-        # -> `std::tuple<Tree&, int32_t>`): literal-of-lvalue-names sources
-        # only, gated at the return arm.
-        self.ret_wrapper_ref_tuple = _wrapper_ref_tuple_return(rt, analyzer)
-        # A view source returned into an owned str/bytes slot must copy.
-        self.ret_str, self.ret_bytes = _viewfam_return_slots(rt, analyzer)
-        # S4: a char return slot -- `return "x"` needs a target-typed char
-        # literal (`'x'`), a shape the return arm rejects.
-        self.ret_char = _eligible_char(rt)
-        # F4 U1: a value-union return slot -- `return None` renders
-        # `std::monostate{}` (target-typed); other sources return bare.
-        self.ret_union = _eligible_value_union(rt)
-        # A PROPERTY GETTER's ptr-variant union return renders the STORAGE
-        # variant by reference (`std::variant<Circle, Square>&` -- the
-        # signature layer's is_property_getter arm), NOT the ptr-variant
-        # convention -- so this fact is derived first and excludes the
-        # flavor from ret_ptr_union below. A bare same-union self-FIELD
-        # returns bare (`return this->_shape;`).
-        self.ret_union_borrow = (
-            _eligible_ptr_union(rt, analyzer)
-            if getattr(func, "is_property_getter", False) else None)
-        # F4 U2: a pointer-variant return slot -- only same-union borrow
-        # names return bare; a MEMBER record name needs an `&(...)`
-        # address-of lift, which this slice does not render.
-        self.ret_ptr_union = (None if self.ret_union_borrow is not None
-                              else _eligible_ptr_union(rt, analyzer))
-        # An `Own[A | B]` record-member union return slot (a by-value
-        # storage `std::variant<A, B>`): a member-record ctor rvalue
-        # returns bare (the converting ctor absorbs it).
-        self.ret_own_union = _own_storage_union_return(rt, analyzer)
-        # The generic-instance sibling: an `Own[Tree[int32]]` slot returns
-        # the wrapper struct by value; source rows gate at the return arm.
-        self.ret_genrec = _own_genrec_return(rt)
-        # The non-generic wrapper-union sibling (`-> Own[V]` -> `V` by
-        # value): None -> monostate, scalar literals bare, container
-        # literals via the ru render, member container names bare.
-        self.ret_own_wrapper = _own_wrapper_return(rt, analyzer)
-        # The wrapper BORROW return slot (`-> Expr` -> `Expr&`): NAME
-        # sources only, gated at the return arm.
-        self.ret_wrapper_borrow = _wrapper_borrow_return(rt, analyzer)
-        # The @dynamic-protocol BORROW return slot (`-> P` -> `P&`,
-        # `-> readonly[P]` -> `const P&`): NAME sources only (a borrow
-        # param bare, a pointer-local/global deref) -- the return arm gates.
-        self.ret_dyn_borrow = _dyn_borrow_return(rt)
-        # The `Own[@dynamic P]` return slot (`std::unique_ptr<P>`):
-        # verdict-keyed source rows at the return arm ('forward' names and
-        # Own[P]-returning calls bare, conformer ctor rvalues wrapped).
-        self.ret_dyn_own = _own_dyn_return(rt)
-        # A value-bearing return must select one of the representations the
-        # return arm consumes. Signatures are emitted by the skeleton layer;
-        # this fact is checked only when lowering reaches an actual return
-        # value.
-        # A non-template Callable return slot (`std::function<...>` by
-        # value): the only admitted source is a closure local's bare name
-        # (`return add;` -- the lambda converts implicitly).
-        self.ret_callable = bool(
-            isinstance(rt, CallableType) and not rt.is_template)
-        # `Own[T]` on a VALUE scalar is a no-op spelling (resolves to plain
-        # T -- `auto_own[int32]` returns `int32_t`); unwrap for the scalar
-        # rows only, the non-value Own families keep their own fields.
-        own_v = (unwrap_readonly(rt.wrapped)
-                 if isinstance(rt, OwnType) else None)
-        own_value_scalar = (own_v is not None
-                            and (_eligible_scalar(own_v)
-                                 or _eligible_char(own_v)
-                                 # `Own[<structural protocol>]` returns the
-                                 # same `auto` slot as the bare protocol
-                                 # (`auto_own[Iterator[T]]`); @dynamic Own
-                                 # keeps the adapter machinery out.
-                                 or _protocol_auto_slot(own_v)))
-        self.ret_supported = bool(
-            rt is None or isinstance(rt, VoidType)
-            or self.ret_callable
-            or _eligible_scalar(rt) or _eligible_char(rt)
-            # A value-form record returns by value like a scalar: every
-            # source shape rides the generic tail (`return c;`).
-            or _value_record_slot(rt)
-            or own_value_scalar
-            or _is_type_param_slot(rt) or _own_type_param_slot(rt)
-            or _eligible_enum(rt, analyzer) is not None
-            or _eligible_ptr_value(rt, analyzer)
-            or _span_return(rt)
-            # A native-iterator value return (`def __iter__ -> SpanIter[T]`)
-            # and a structural-protocol return (`-> Iterator[T]`, the C++
-            # signature already spells the concrete/auto type): the value
-            # renders bare through its own call arms.
-            or _native_iter_value_slot(rt, analyzer)
-            or _protocol_auto_slot(rt)
-            or self.ret_storage_opt is not None
-            or self.ret_ptr_opt is not None
-            or self.ret_value_opt is not None
-            or self.ret_value_opt_view is not None
-            or self.ret_value_opt_tuple is not None
-            or self.ret_borrow_tuple is not None
-            or self.ret_record_borrow is not None
-            or self.ret_union_borrow is not None
-            or self.ret_record_storage is not None
-            or self.ret_value_tuple is not None
-            or self.ret_generic_tuple is not None
-            or self.ret_own_storage_tuple is not None
-            or self.ret_wrapper_ref_tuple is not None
-            or self.ret_str is not None or self.ret_bytes is not None
-            or self.ret_union is not None or self.ret_ptr_union is not None
-            or self.ret_own_union is not None
-            or self.ret_genrec is not None
-            or self.ret_own_wrapper is not None
-            or self.ret_wrapper_borrow is not None
-            or self.ret_dyn_borrow is not None
-            or self.ret_dyn_own is not None)
 
     def binds_global(self, name: str) -> bool:
         """Does `name` read as a module GLOBAL in this body? The seeding
@@ -1645,7 +1540,7 @@ _FUNCTION_SCOPED_STATE = (
 # const sets and the alias memo stay out: a restore would discard a result
 # computed inside the scope while its computed-flag survives.
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
-    "inline_narrowed", "sema_movable_locals",
+    "inline_narrowed",
     "deref_view_spelled",
     "forwarded_map", "literal_facts",
     "frame_local_types",
@@ -1689,6 +1584,9 @@ _LC_NOT_NAME_KEYED = (
     "slot_hoist_ok", "in_container_elem", "in_finally_helper", "in_for_body",
     "top_level_scope", "global_binding_scope", "top_level_line",
     "in_nested_def",
+    # A per-body fact a nested def swaps in: how deep the statement sits in
+    # regions that stage their results.
+    "staged_results",
     # Keyed by statement id / a list of return nodes.
     "import_calls", "nested_returns",
     # The binding table's shadow check: the table models inner scopes itself.
@@ -1697,6 +1595,8 @@ _LC_NOT_NAME_KEYED = (
     "storage_slots",
     # Keyed by parse-node identity.
     "lowered_capture", "prelowered",
+    # The enclosing body's contract; a nested def swaps in its own.
+    "signature",
 )
 _LC_INHERITED_BY_DESIGN = (
     # A lazily computed body-wide memo: a restore would discard a result
@@ -1715,17 +1615,6 @@ _LC_INHERITED_BY_DESIGN = (
     "temp_read_ids",
 )
 _PRESCAN_NOT_NAME_KEYED = (
-    # Return-slot facts: a nested def swaps in its own prescan and a lambda
-    # body has no `return`.
-    "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
-    "ret_nullable_tuple", "ret_record_borrow",
-    "ret_record_storage", "ret_res_container", "ret_value_tuple",
-    "ret_generic_tuple", "ret_own_storage_tuple", "ret_wrapper_ref_tuple",
-    "ret_str", "ret_bytes", "ret_char", "ret_union", "ret_ptr_union",
-    "ret_union_borrow", "ret_own_union", "ret_genrec", "ret_own_wrapper",
-    "ret_wrapper_borrow", "ret_dyn_borrow", "ret_dyn_own", "ret_supported",
-    "ret_callable", "ret_value_opt", "ret_value_opt_view",
-    "ret_value_opt_tuple", "ret_type", "ret_slot",
     # Facts about the enclosing FUNCTION, not a name: a nested def swaps in
     # its own prescan, and a lambda parameter spelled `self` is shadowed
     # through `self_receiver` / `member_self` instead.
@@ -1801,7 +1690,6 @@ class _LowerCtx:
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "deref_view_spelled", "forwarded_map",
-                 "sema_movable_locals",
                  "params", "in_nested_def", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name",
@@ -1820,8 +1708,8 @@ class _LowerCtx:
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "member_self", "_alias_taken_memo",
                  "table", "cursor", "shadow_report", "move_region",
-                 "storage_slots", "lowered_capture", "prelowered",
-                 "temp_read_ids")
+                 "storage_slots", "lowered_capture", "signature",
+                 "staged_results", "prelowered", "temp_read_ids")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -1831,7 +1719,6 @@ class _LowerCtx:
                  self_is_pointer: bool = True,
                  render_resolve=None,
                  params_override=None,
-                 return_type_override=None,
                  render_concept=None,
                  scan_override=None,
                  hoisted_override=None,
@@ -1859,7 +1746,6 @@ class _LowerCtx:
                             else params_override)
         self.prescan = _Prescan(func, analyzer,
                                 params_override=params_override,
-                                return_type_override=return_type_override,
                                 scan_override=scan_override,
                                 hoisted_override=hoisted_override,
                                 move_through_override=move_through_override,
@@ -1956,6 +1842,9 @@ class _LowerCtx:
         # Lowering a nested def's body (a C++ lambda): its captures and
         # global bindings are the enclosing body's, never declared here.
         self.in_nested_def: bool = False
+        # The enclosing finally / `with` regions whose exits stage a result
+        # into a temporary before it is returned.
+        self.staged_results: int = 0
         # Deref-view narrowed subjects (the if-init cast local): branch-body
         # member calls carrying deref_narrowed_to read the wrapper var via
         # this spelling (`(*__b_ptr)`), never the deref chain. Registered
@@ -2010,16 +1899,6 @@ class _LowerCtx:
             analyzer.function_hoisted_vars.get(func, ())
             if hoisted_override is None else hoisted_override)
         self._alias_taken_memo: 'tuple | None' = None
-        # F2e: sema's RAW owned-locals fact, the mirror of codegen's
-        # `ctx.sema_movable_locals`. It means "sema proved this local owned",
-        # NOT "movable" -- a binding is movable only where its record says
-        # so (the planner's promoting rows); a consumer moving off this
-        # directly re-introduces the conflation that made a value-typed
-        # local (a view-promoted `str`, a BigInt) and a ptr-variant alias
-        # move where they must be copied. A reject may ask it: "sema owns
-        # this name".
-        self.sema_movable_locals: frozenset[str] = frozenset(
-            analyzer.function_movable_locals.get(func, ()))
         # U3/U4 isinstance-narrowing scope (see _NarrowScope's docstring),
         # snapshot/restored around branch and loop bodies.
         self.narrow = _NarrowScope()
@@ -2047,6 +1926,10 @@ class _LowerCtx:
         # written operand inside the conversions an enclosing arm put on it;
         # None when nothing is recorded.
         self.lowered_capture: 'IdentityMap[object, list] | None' = None
+        # The contract of the body being lowered (`THIRFunction.signature`),
+        # set by its entry before the body lowers; a nested def swaps in its
+        # own. None for a body with no result (a constructor, a constant).
+        self.signature: 'THIRCallableSignature | None' = None
         # Parse nodes a caller lowered already, which `_lower_expr` returns
         # as they are where it meets them (a value the caller evaluates
         # once, read again inside an enclosing arm); None when none is.
@@ -2101,6 +1984,23 @@ class _LowerCtx:
             self._alias_taken_memo = memo
         return (memo[1] | self.narrow.live_aliases
                 | self.narrow.persistent_aliases)
+
+    @contextmanager
+    def staged_region(self, staged: bool):
+        """A region whose exits run a finally / `__exit__` chain (`staged`):
+        a `return` inside it stages its result before the chain runs."""
+        self.staged_results += staged
+        try:
+            yield
+        finally:
+            self.staged_results -= staged
+
+    @property
+    def exit_staged(self) -> bool:
+        """An exit from here (a `return`, a return-tier raise or
+        propagation) runs a finally / `__exit__` chain first: the one
+        verdict every such statement carries as `staged`."""
+        return self.staged_results > 0
 
     @contextmanager
     def live_alias(self, name: str):
@@ -2177,6 +2077,11 @@ class _LowerCtx:
         at the cursor, and nothing else -- a miss is a name the table does
         not bind here."""
         return self.cursor[1].lookup(name)
+
+    def captures(self, name: str) -> bool:
+        """Whether `name` reads an enclosing body's binding where the walk
+        is: a nested def's or a lambda's capture."""
+        return self.cursor[1].captures(name)
 
     def declaring(self, name: str) -> BindingRepr:
         """The record the statement being lowered writes for `name`, for

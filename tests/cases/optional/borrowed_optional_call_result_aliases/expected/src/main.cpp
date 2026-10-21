@@ -368,7 +368,7 @@ void s_own_arg(const H& h) {
 R s_own_ret(H& h) {
     R* q = h.geto();
     if ((q != nullptr)) {
-        return (*q);
+        return R((*q));
     }
     return R();
 }

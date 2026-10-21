@@ -15,7 +15,7 @@ std::vector<int32_t>& first(std::vector<std::vector<int32_t>>& rows) {
 //     # slot from it is the copy the warning declares.
 //     return first(rows)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 std::vector<int32_t> take(std::vector<std::vector<int32_t>>& rows) {
-    return ::tpyapp::main::first(rows);
+    return std::vector<int32_t>(::tpyapp::main::first(rows));
 }
 
 // def take_copy(rows: list[list[int32]]) -> Own[list[int32]]:

@@ -30,9 +30,24 @@ half a verdict column cannot show: two sinks that both admit while one COPIES
 the source and the other binds a pointer to it differ silently, and that
 difference is the copy-vs-alias divergence from CPython.
 
-WHAT IT DOES NOT RECORD. Behaviour. Nothing is built or run, so the render is
-as close to copy-vs-alias as this instrument gets; the corpus cases stay the
-place that observes a mutation through an alias.
+WHAT THE TABLE DOES NOT RECORD. Behaviour. Nothing is built or run for it, so
+the render is as close to copy-vs-alias as the table gets. `--exec` is the
+behavioural half, outside the table: every cell that compiled (`ok`) of a
+kind with a write spelling, plus an ARGUMENT sink of its own (`take_arg(src)`
+into a callee that writes through its parameter), becomes a program that
+WRITES through what the boundary bound -- the caller writes through a
+`return`'s result bound to a local (`r = f(a)`) and a `yield`'s loop
+variable -- and reads the original before and
+after. Built and run under TPy (`tpyc -b`, one build at a time) and under
+CPython (`PYTHONPATH=<repo>/lib/cpy`), each cell records `alias` (the write
+reached the original), `copy` (it did not), `fresh` (no original to read:
+a temporary, or a local at its last use), or `differs: <tpy> vs <cpython>`;
+a cell the TPy build refuses records `reject:` / `build_fail:`. One program
+per (kind, position); a cell that stops its run or its build is taken out
+and the rest go again. Results are cached per cell by the hash of the cell's
+one-cell program, the tree's commit and diff, and the CPython version, under
+`<repo>/build/ref_sink_exec/cache` (`--exec-dir`), so a rerun resumes;
+`--exec -k REGEX` takes the cells whose name matches.
 
 NOT AN ARM PIN. The house rule is that a THIR lowering arm is pinned by a case
 under `tests/cases/`; this is a measurement over a generated corpus, like
@@ -58,13 +73,18 @@ the full source list would cost more than the whole rest of the table.
   python scripts/thir_migration/review/ref_sink_sweep.py --update   # rewrite
   python scripts/thir_migration/review/ref_sink_sweep.py --only rec # a slice
   python scripts/thir_migration/review/ref_sink_sweep.py --raw T.json
+  python scripts/thir_migration/review/ref_sink_sweep.py --exec \\
+      [-k REGEX] [--exec-dir DIR] [--python python3] [--jobs 2]
 """
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
+import shutil
+import subprocess
 import sys
 import tempfile
 import time
@@ -642,6 +662,567 @@ def run(work_dir: Path, names: list[str]) -> dict[str, list[str]]:
     return table
 
 
+# ---------------------------------------------------------------------------
+# Exec mode: alias or copy, against CPython.
+# ---------------------------------------------------------------------------
+
+# The argument sink exists only here: the arg sweep owns the argument
+# verdicts, this mode asks one more question of it -- whether the callee's
+# write reaches the caller's object. `take_arg` writes through its parameter.
+ARG_SINK = Sink("arg_borrow", ("take_arg(@SRC@)",), need_mut=True)
+EXEC_ONLY_SINKS = (ARG_SINK,)
+
+# Each sink's exec body: the boundary, a write through what it bound, and
+# the original read before (`@BEFORE@`) and after (`@AFTER@`). `return` and
+# `yield` hand the value out, so their write is the CALLER's (`_driver`).
+EXEC_BODY: dict[str, tuple[str, ...]] = {
+    "decl_alias": ("@BEFORE@", "x = @SRC@", "@MUT:x@", "@AFTER@"),
+    "decl_reassigned": ("@BEFORE@", "x = @SRC@", "x = s1", "@MUT:x@",
+                        "@AFTER@"),
+    "return_borrow": ("return @SRC@",),
+    "field_write": ("@BEFORE@", "h.f = @SRC@", "@MUT:h.f@", "@AFTER@"),
+    "tuple_elem": ("@BEFORE@", "t = (@SRC@, 1)", "@MUT:t[0]@", "@AFTER@"),
+    "recv_mut": ("@BEFORE@", "@MUT:SRC@", "@AFTER@"),
+    "yield_borrow": ("@BEFORE@", "yield @SRC@", "@AFTER@"),
+    "match_capture": ("@BEFORE@", "match @SRC@:", "    case v:",
+                      "        @MUT:v@", "@AFTER@"),
+    "arg_borrow": ("@BEFORE@", "take_arg(@SRC@)", "@AFTER@"),
+}
+
+# The ORIGINAL a cell observes, by source: `BACK`, except that a local is
+# read back here too (its own trailing read is not a before / after pair)
+# and a local at its last use is not -- a read after the boundary would
+# make it a live local.
+EXEC_ORIG = dict(BACK, local="s0", subclass_local="s0")
+
+# What the CALLER observes after a `return`: the object it passed in, or
+# the global. Every other borrowable source's original lives in the callee.
+RETURN_ORIG = {"param": "a", "narrowed_opt_param": "a", "global_name": "G"}
+
+ARG_DEFS = ("def take_arg(p: @TY@) -> None:", "    @MUT:p@", "", "")
+
+
+def _exec_fixture() -> list[str]:
+    """FIXTURE without its `v_opt` getter, which no source here reads and
+    whose C++ does not build (BUGS.md#property-getter-pointer-optional-return):
+    a program that only compiles never meets it, a program that runs does."""
+    i = FIXTURE.index("    def v_opt(self) -> Optional[@TY@]:")
+    return list(FIXTURE[:i - 1]) + list(FIXTURE[i + 3:])
+
+_EXEC_MARK = "@@ "
+
+
+def _exec_orig(src, sink: Sink) -> str:
+    if sink.name == "decl_reassigned":
+        return "s1"
+    return EXEC_ORIG[src.name]
+
+
+def _exec_fill(line: str, kind_name: str, src, orig: str) -> str:
+    kind = KINDS[kind_name]
+    for tag, word in (("@BEFORE@", "before"), ("@AFTER@", "after")):
+        line = line.replace(tag, "print(%s%s%s, %s)" % (
+            Q, word, Q, _obs(kind, orig)) if orig else "")
+    return _fill(line, kind_name, src, "")
+
+
+def _exec_cell_body(kind_name: str, src, sink: Sink) -> list[str]:
+    orig = _exec_orig(src, sink)
+    out = [_fill(p, kind_name, src, "") for p in src.pre]
+    out += [_fill(p, kind_name, src, "") for p in sink.pre]
+    depth = 0
+    for w in src.wrap:
+        out.append("    " * depth + _fill(w, kind_name, src, ""))
+        depth += 1
+    pad = "    " * depth
+    for line in EXEC_BODY[sink.name]:
+        filled = _exec_fill(line, kind_name, src, orig)
+        if filled.strip():
+            out.append(pad + filled)
+    out += [_fill(p, kind_name, src, "") for p in src.post]
+    return out
+
+
+def _mut(kind_name: str, target: str) -> str:
+    return MUTATIONS[kind_name].replace("@X@", target)
+
+
+def _exec_cell_def(kind_name: str, pos: Position, src, sink: Sink,
+                   tag: str) -> list[str]:
+    """The cell's definition, with its own exec body in place of the
+    survey's. A nested position's `return` is consumed -- written through
+    and observed -- inside the outer cell."""
+    kind = KINDS[kind_name]
+    body = _exec_cell_body(kind_name, src, sink)
+    params = ["pv: " + _subst(src.param_ty, kind)] if src.param else []
+    sig = ", ".join(params)
+    ret = kind.ty if sink.ret else "None"
+    if pos.ctor:
+        head = ["class Ctor_" + tag + ":", "    tag: int32", "",
+                "    def __init__(self" + ("" if not sig else ", " + sig)
+                + ") -> None:", "        self.tag = 0"]
+        return head + ["        " + b for b in body] + ["", ""]
+    if pos.name == "meth":
+        head = ["    def cell_" + tag + "(self"
+                + ("" if not sig else ", " + sig) + ") -> " + ret + ":"]
+        return head + ["        " + b for b in body] + [""]
+    if pos.name == "gen":
+        elem = kind.ty if sink.name == "yield_borrow" else "int32"
+        head = ["def cell_" + tag + "(" + sig + ") -> Iterator[" + elem + "]:"]
+        lead = [] if sink.name == "yield_borrow" else ["    yield 0"]
+        return head + lead + ["    " + b for b in body] + ["", ""]
+    if pos.name == "async":
+        head = ["async def cell_" + tag + "(" + sig + ") -> " + ret + ":"]
+        return head + ["    " + b for b in body] + ["", ""]
+    if pos.name == "nested":
+        call = "nested_inner(" + ("pv" if src.param else "") + ")"
+        if sink.ret:
+            orig = {"param": "pv", "narrowed_opt_param": "pv",
+                    "global_name": "G"}.get(src.name, "")
+            consume = _observed(kind_name, orig, _take_result(kind_name,
+                                                              call))
+        else:
+            consume = [call]
+        head = ["def cell_" + tag + "(" + sig + ") -> None:",
+                "    def nested_inner(" + sig + ") -> " + ret + ":"]
+        return (head + ["        " + b for b in body]
+                + ["    " + c for c in consume] + ["", ""])
+    head = ["def cell_" + tag + "(" + sig + ") -> " + ret + ":"]
+    return head + ["    " + b for b in body] + ["", ""]
+
+
+def _take_result(kind_name: str, call: str) -> list[str]:
+    """The caller's write through a returned value. Bound to a local first:
+    a write straight through a call result (`f(a).append(9)`) is refused
+    for the containers (`method.recv.call`), so the observation also
+    passes the caller's binding -- the `decl_alias` cell of a borrowing
+    call is that binding's own measurement."""
+    return ["r = " + call, _mut(kind_name, "r")]
+
+
+def _observed(kind_name: str, orig: str, lines: list[str]) -> list[str]:
+    """`lines` between a before and an after read of `orig`, if any."""
+    if not orig:
+        return list(lines)
+    obs = _obs(KINDS[kind_name], orig)
+    return (["print(%sbefore%s, %s)" % (Q, Q, obs)] + list(lines)
+            + ["print(%safter%s, %s)" % (Q, Q, obs)])
+
+
+def _driver(kind_name: str, pos: Position, src, sink: Sink, cell: str,
+            tag: str) -> list[str]:
+    """`drive_<tag>`: run the cell between two markers; for a `return` or a
+    `yield`, write through what came out and observe the original."""
+    kind = KINDS[kind_name]
+    lines = ["a = " + kind.seed] if src.param else []
+    args = "a" if src.param else ""
+    if pos.ctor:
+        call = "Ctor_%s(%s)" % (tag, args)
+    elif pos.name == "meth":
+        call = "Host().cell_%s(%s)" % (tag, args)
+    else:
+        call = "cell_%s(%s)" % (tag, args)
+    pre: list[str] = []
+    if pos.name == "async":
+        if sink.ret:
+            # The awaited result is written through inside a coroutine of
+            # the driver's own.
+            pre = (["async def adrive_" + tag + "() -> None:"]
+                   + ["    " + ln for ln in lines + _observed(
+                       kind_name, RETURN_ORIG.get(src.name, ""),
+                       _take_result(kind_name, "await " + call))]
+                   + ["", ""])
+            run = ["asyncio.run(adrive_%s())" % tag]
+            lines = []
+        else:
+            run = ["asyncio.run(%s)" % call]
+    elif pos.name == "gen":
+        if sink.name == "yield_borrow":
+            run = ["for r in %s:" % call, "    " + _mut(kind_name, "r")]
+        else:
+            run = ["for _r in %s:" % call, "    pass"]
+    elif pos.ctor:
+        run = ["print(%s.tag)" % call]
+    elif sink.ret and pos.name != "nested":
+        run = _observed(kind_name, RETURN_ORIG.get(src.name, ""),
+                        _take_result(kind_name, call))
+    else:
+        run = [call]
+    body = ([("print(%s%s%s%s)" % (Q, _EXEC_MARK, cell, Q))] + lines + run
+            + ["print(%s%send%s)" % (Q, _EXEC_MARK, Q)])
+    return pre + ["def drive_" + tag + "() -> None:"] + [
+        "    " + b for b in body] + ["", ""]
+
+
+def build_exec_program(kind_name: str, pos_name: str,
+                       cells: list[tuple[str, str]]) -> Built:
+    """One runnable program: the fixture, each cell's definition and its
+    driver, and a `main` that drives them in order."""
+    kind, pos = KINDS[kind_name], POSITION_BY_NAME[pos_name]
+    lines: list[str] = list(BASE_IMPORTS)
+    if pos.name == "gen":
+        lines.append("from typing import Iterator")
+    if pos.name == "async":
+        lines.append("import asyncio")
+    lines += [i for i in kind.imports if i not in lines]
+    lines += [""]
+    lines += list(BASE_DEFS) + [""]
+    lines += list(kind.defs)
+    if kind.fieldable:
+        lines += [_subst(x, kind) for x in _exec_fixture()]
+    if any(sink == "field_write" for _src, sink in cells):
+        lines += [_subst(x, kind) for x in HOLDER_DEFS]
+    if any(sink == ARG_SINK.name for _src, sink in cells):
+        lines += [_subst(x.replace("@MUT:p@", _mut(kind_name, "p")), kind)
+                  for x in ARG_DEFS]
+    sinks = {s.name: s for s in SINKS + EXEC_ONLY_SINKS}
+    # A method cell's definition sits in `Host`, away from its driver.
+    def_lines: dict[tuple[str, str], tuple[int, int]] = {}
+    if pos.name == "meth":
+        lines += ["class Host:", "    tag: int32", "",
+                  "    def __init__(self) -> None:", "        self.tag = 0",
+                  ""]
+        for source, sink in cells:
+            start = len(lines) + 1
+            lines += _exec_cell_def(kind_name, pos, SOURCE_BY_NAME[source],
+                                    sinks[sink], "%s__%s" % (source, sink))
+            def_lines[(source, sink)] = (start, len(lines))
+        lines.append("")
+    cell_lines: dict[tuple[str, str], tuple[int, int]] = {}
+    for source, sink in cells:
+        tag = "%s__%s" % (source, sink)
+        start = len(lines) + 1
+        if pos.name != "meth":
+            lines += _exec_cell_def(kind_name, pos, SOURCE_BY_NAME[source],
+                                    sinks[sink], tag)
+        lines += _driver(kind_name, pos, SOURCE_BY_NAME[source], sinks[sink],
+                         cell_name(kind_name, pos_name, source, sink), tag)
+        cell_lines[(source, sink)] = (start, len(lines))
+    lines += ["def main() -> None:"] + [
+        "    drive_%s__%s()" % c for c in cells] + (
+            [] if cells else ["    pass"]) + ["", "", "main()"]
+    return Built("\n".join(lines) + "\n", cell_lines, def_lines)
+
+
+def exec_cells(table: dict[str, list[str]]) -> list[str]:
+    """Every cell exec mode runs: each committed cell that compiled (`ok`)
+    of a kind with a write spelling, plus the argument sink over every row
+    the table keeps (a row `decl_alias` refused at sema is gone from it)."""
+    rows = {c.rsplit("__", 1)[0] for c in table}
+    out = [c for c, v in table.items()
+           if v[0] == "ok" and MUTATIONS[c.split("__")[0]]]
+    for name, kind_name, pos_name in programs():
+        if not MUTATIONS[kind_name]:
+            continue
+        pos = POSITION_BY_NAME[pos_name]
+        for source in SOURCE_NAMES:
+            if pos.frame and source not in FRAME_SOURCES:
+                continue
+            row = "%s__%s__%s" % (kind_name, pos_name, source)
+            if row in rows and _cell_ok(kind_name, pos,
+                                        SOURCE_BY_NAME[source], ARG_SINK):
+                out.append(row + "__" + ARG_SINK.name)
+    return sorted(out)
+
+
+def _fingerprint(tree: Path, python: str) -> str:
+    """What a cached result depends on besides its program: the tree's
+    commit, its uncommitted changes and the CPython that ran the twin."""
+    def out(*cmd: str) -> str:
+        return subprocess.run(list(cmd), capture_output=True, text=True,
+                              cwd=tree).stdout
+    head = out("git", "rev-parse", "HEAD")
+    diff = out("git", "diff", "HEAD", "--", "tpyc", "lib", "runtime")
+    ver = out(python, "--version")
+    return hashlib.sha256((head + diff + ver).encode()).hexdigest()
+
+
+def _sections(text: str) -> dict[str, list[str]]:
+    """{cell: the lines it printed between its markers}."""
+    out: dict[str, list[str]] = {}
+    cur = None
+    for ln in text.splitlines():
+        if ln.startswith(_EXEC_MARK):
+            name = ln[len(_EXEC_MARK):]
+            cur = None if name == "end" else name
+            if cur is not None:
+                out[cur] = []
+        elif cur is not None:
+            out[cur].append(ln)
+    return out
+
+
+def _complete(text: str) -> list[str]:
+    """The cells whose end marker printed, in order."""
+    done, cur = [], None
+    for ln in text.splitlines():
+        if ln == _EXEC_MARK + "end" and cur is not None:
+            done.append(cur)
+            cur = None
+        elif ln.startswith(_EXEC_MARK):
+            cur = ln[len(_EXEC_MARK):]
+    return done
+
+
+def _observe(lines: list[str]) -> tuple[str, list[str]]:
+    """(alias | copy | fresh | mixed:..., the lines that are not
+    observations) for one cell's output."""
+    before = [ln[len("before "):] for ln in lines if ln.startswith("before ")]
+    after = [ln[len("after "):] for ln in lines if ln.startswith("after ")]
+    rest = [ln for ln in lines if not ln.startswith(("before ", "after "))]
+    if not before and not after:
+        return "fresh", rest
+    if len(before) != len(after):
+        return "unpaired", rest
+    kinds = sorted({"copy" if b == a else "alias"
+                    for b, a in zip(before, after)})
+    return (kinds[0] if len(kinds) == 1 else "mixed:" + "+".join(kinds),
+            rest)
+
+
+def _run(cmd: list[str], cwd: Path, env: dict | None = None,
+         timeout: int = 120) -> tuple[int, str, str]:
+    try:
+        p = subprocess.run(cmd, capture_output=True, text=True, cwd=cwd,
+                           env=env, timeout=timeout)
+        return p.returncode, p.stdout, p.stderr
+    except subprocess.TimeoutExpired as exc:
+        out = exc.stdout.decode() if isinstance(exc.stdout, bytes) else (
+            exc.stdout or "")
+        return -999, out, "timeout"
+
+
+def _first_error(log: str) -> str:
+    first = next((ln.strip() for ln in log.splitlines() if "error" in ln),
+                 log.strip()[-200:])
+    return first[:200]
+
+
+_LOC_ERROR = re.compile(r"([^\s/:]+\.py):(\d+): error: (.*)$", re.M)
+
+
+class ExecRunner:
+    """Builds and runs exec programs, ONE build at a time, and keeps a
+    content-addressed result per cell under `work/cache/`."""
+
+    def __init__(self, tree: Path, work: Path, python: str, jobs: int):
+        self.tree, self.work, self.python, self.jobs = tree, work, python, jobs
+        self.cache = work / "cache"
+        self.cache.mkdir(parents=True, exist_ok=True)
+        self.fp = _fingerprint(tree, python)
+        self.seq = 0
+
+    def key(self, kind_name: str, pos_name: str, cell: tuple[str, str]) -> str:
+        text = build_exec_program(kind_name, pos_name, [cell]).text
+        return hashlib.sha256((self.fp + text).encode()).hexdigest()
+
+    def cached(self, key: str) -> dict | None:
+        path = self.cache / (key + ".json")
+        return json.loads(path.read_text()) if path.exists() else None
+
+    def store(self, key: str, result: dict) -> None:
+        (self.cache / (key + ".json")).write_text(json.dumps(result) + "\n")
+
+    def _write(self, kind_name: str, pos_name: str,
+               cells: list[tuple[str, str]]) -> tuple[Path, Built]:
+        self.seq += 1
+        d = self.work / "programs" / ("%s__%s__%d" % (kind_name, pos_name,
+                                                      self.seq))
+        d.mkdir(parents=True, exist_ok=True)
+        built = build_exec_program(kind_name, pos_name, cells)
+        path = d / "main.py"
+        path.write_text(built.text)
+        return path, built
+
+    def cpython(self, kind_name: str, pos_name: str,
+                cells: list[tuple[str, str]]) -> dict[tuple, dict]:
+        """Every cell's CPython output; a cell that raised ends the run, so
+        the rest run again without it."""
+        out: dict[tuple, dict] = {}
+        todo = list(cells)
+        env = dict(os.environ, PYTHONPATH=str(self.tree / "lib" / "cpy"))
+        while todo:
+            path, _built = self._write(kind_name, pos_name, todo)
+            rc, stdout, stderr = _run([self.python, str(path)], path.parent,
+                                      env=env, timeout=120)
+            secs = _sections(stdout)
+            done = _complete(stdout)
+            for src, sink in todo:
+                name = cell_name(kind_name, pos_name, src, sink)
+                if name in done:
+                    out[(src, sink)] = {"lines": secs.get(name) or []}
+            left = [c for c in todo if c not in out]
+            if not left:
+                break
+            # The first unfinished cell is the one that raised.
+            bad = left[0]
+            last = (stderr.strip().splitlines() or ["rc %d" % rc])[-1]
+            out[bad] = {"crash": last[:160]}
+            todo = left[1:]
+        return out
+
+    def build(self, path: Path) -> tuple[Path | None, str]:
+        out_dir = path.parent / "bin"
+        rc, stdout, stderr = _run(
+            ["uv", "run", "--project", str(self.tree), "tpyc", "-b", "-j",
+             str(self.jobs), str(path), "-o", str(out_dir)],
+            path.parent, env={k: v for k, v in os.environ.items()
+                              if k != "VIRTUAL_ENV"}, timeout=1200)
+        text = stdout + stderr
+        if rc == 0:
+            m = re.search(r"^Built: (.*)$", text, re.M)
+            if m:
+                exe = Path(m.group(1).strip())
+                return (exe if exe.is_absolute() else path.parent / exe), ""
+        (path.parent / "build.log").write_text(text)
+        return None, text
+
+    def tpy(self, kind_name: str, pos_name: str,
+            cells: list[tuple[str, str]]) -> dict[tuple, dict]:
+        """Every cell's TPy output, or why it has none: a located compile
+        error takes its cell out and the rest build again; an unlocated
+        one is halved until it names a cell; a run that stops mid-cell
+        charges that cell and runs the rest again."""
+        out: dict[tuple, dict] = {}
+        todo = [list(cells)]
+        fixture_ok = False
+        while todo:
+            group = todo.pop(0)
+            if not group:
+                continue
+            path, built = self._write(kind_name, pos_name, group)
+            exe, log = self.build(path)
+            if exe is None:
+                located = None
+                for m in _LOC_ERROR.finditer(log):
+                    if m.group(1) == path.name:
+                        located = (int(m.group(2)), m.group(3).strip())
+                        break
+                owner = (_owner(located[0], built.cell_lines)
+                         or _owner(located[0], built.family_lines)
+                         if located else None)
+                if owner is not None:
+                    out[owner] = {"reject": _tag(located[1])}
+                    todo.insert(0, [c for c in group if c != owner])
+                elif len(group) == 1:
+                    out[group[0]] = {"build_fail": _first_error(log)}
+                elif not fixture_ok:
+                    # Halving a program whose shared part does not build
+                    # costs a build per cell and names none of them.
+                    p0, _b0 = self._write(kind_name, pos_name, [])
+                    exe0, log0 = self.build(p0)
+                    if exe0 is None:
+                        for c in group + [c for g in todo for c in g]:
+                            out[c] = {"build_fail": "fixture: "
+                                      + _first_error(log0)}
+                        return out
+                    fixture_ok = True
+                    todo.insert(0, group)
+                else:
+                    half = len(group) // 2
+                    todo[:0] = [group[:half], group[half:]]
+                continue
+            rc, stdout, stderr = _run([str(exe)], path.parent, timeout=120)
+            # The program text stays for a reader; its build does not.
+            shutil.rmtree(path.parent / "bin", ignore_errors=True)
+            secs = _sections(stdout)
+            done = _complete(stdout)
+            for src, sink in group:
+                name = cell_name(kind_name, pos_name, src, sink)
+                if name in done:
+                    out[(src, sink)] = {"lines": secs.get(name) or []}
+            left = [c for c in group if c not in out]
+            if left:
+                last = (stderr.strip().splitlines() or ["rc %d" % rc])[-1]
+                out[left[0]] = {"crash": last[:160]}
+                todo.insert(0, left[1:])
+        return out
+
+
+def exec_verdict(tpy: dict, cpy: dict) -> dict:
+    """One cell's record: what each side observed and the verdict -- the
+    shared observation, or `differs: <tpy> vs <cpython>`."""
+    def side(r: dict) -> tuple[str, list[str]]:
+        if "lines" in r:
+            return _observe(r["lines"])
+        if "crash" in r:
+            return "crash: " + r["crash"], []
+        return "?", []
+    if "reject" in tpy:
+        return {"verdict": "reject: " + tpy["reject"]}
+    if "build_fail" in tpy:
+        return {"verdict": "build_fail: " + tpy["build_fail"]}
+    (t_obs, t_rest), (c_obs, c_rest) = side(tpy), side(cpy)
+    rec = {"tpy": t_obs, "cpython": c_obs}
+    if t_obs != c_obs:
+        rec["verdict"] = "differs: %s vs %s" % (t_obs, c_obs)
+    elif t_rest != c_rest:
+        rec["verdict"] = "differs: output %s vs %s" % (
+            "|".join(t_rest)[:120], "|".join(c_rest)[:120])
+    else:
+        rec["verdict"] = t_obs
+    return rec
+
+
+def run_exec(cells: list[str], runner: ExecRunner,
+             results_path: Path) -> dict[str, dict]:
+    """Run `cells`, cached ones from the cache, grouped one program per
+    (kind, position); the results file is rewritten after every group, so
+    an interrupted run resumes from the cache."""
+    results: dict[str, dict] = {}
+    groups: dict[tuple[str, str], list[tuple[str, str]]] = {}
+    for cell in cells:
+        kind_name, pos_name, source, sink = cell.split("__")
+        groups.setdefault((kind_name, pos_name), []).append((source, sink))
+    for i, ((kind_name, pos_name), group) in enumerate(sorted(groups.items())):
+        keys = {c: runner.key(kind_name, pos_name, c) for c in group}
+        todo = []
+        for c in group:
+            hit = runner.cached(keys[c])
+            if hit is not None:
+                results[cell_name(kind_name, pos_name, *c)] = hit
+            else:
+                todo.append(c)
+        t0 = time.monotonic()
+        if todo:
+            cpy = runner.cpython(kind_name, pos_name, todo)
+            tpy = runner.tpy(kind_name, pos_name, todo)
+            for c in todo:
+                rec = exec_verdict(tpy[c], cpy[c])
+                runner.store(keys[c], rec)
+                results[cell_name(kind_name, pos_name, *c)] = rec
+        print("  %d/%d %s__%s: %d cells, %d run, %.1fs" % (
+            i + 1, len(groups), kind_name, pos_name, len(group), len(todo),
+            time.monotonic() - t0), file=sys.stderr)
+        results_path.write_text(json.dumps(results, indent=1, sort_keys=True)
+                                + "\n")
+    return results
+
+
+def exec_main(args) -> int:
+    table = json.loads(EXPECTED.read_text())
+    cells = exec_cells(table)
+    if args.only:
+        cells = [c for c in cells if args.only in program_of(c)]
+    if args.k:
+        rx = re.compile(args.k)
+        cells = [c for c in cells if rx.search(c)]
+    work = (args.exec_dir or REPO / "build" / "ref_sink_exec").resolve()
+    runner = ExecRunner(Path(REPO), work, args.python, args.jobs)
+    results = run_exec(cells, runner, work / "results.json")
+    counts: dict[str, int] = {}
+    for rec in results.values():
+        key = rec["verdict"].split(":")[0]
+        counts[key] = counts.get(key, 0) + 1
+    print("%d cells: %s" % (len(results), ", ".join(
+        "%s %d" % kv for kv in sorted(counts.items()))))
+    for cell, rec in sorted(results.items()):
+        if not rec["verdict"].startswith(("alias", "copy", "fresh")):
+            print("%s: %s" % (cell, rec["verdict"]))
+    print("results: %s" % (work / "results.json"))
+    return 0
+
+
 def main() -> int:
     global REPO
     ap = argparse.ArgumentParser(description=__doc__)
@@ -655,10 +1236,28 @@ def main() -> int:
                     help="where to write the generated programs")
     ap.add_argument("--raw", type=Path, default=None,
                     help="also dump the UNPRUNED table here, for analysis")
+    ap.add_argument("--exec", action="store_true",
+                    help="build and run every compiling cell under TPy and "
+                    "CPython and record alias / copy / differs")
+    ap.add_argument("-k", default="",
+                    help="--exec: only cells whose name matches this regex")
+    ap.add_argument("--exec-dir", type=Path, default=None,
+                    help="--exec: programs, cache and results (default "
+                    "<repo>/build/ref_sink_exec)")
+    ap.add_argument("--python", default="python3",
+                    help="--exec: the CPython that runs the twin")
+    ap.add_argument("--jobs", type=int, default=2,
+                    help="--exec: C++ compile jobs per build")
     args = ap.parse_args()
     if args.repo is not None:
         REPO = args.repo.resolve()
         arg_family_sweep.REPO = REPO
+    if args.exec:
+        return exec_main(args)
+    if args.k:
+        print("-k selects exec cells; the survey takes --only",
+              file=sys.stderr)
+        return 2
 
     out_dir = args.out or Path(tempfile.mkdtemp(prefix="ref_sink_sweep_"))
     names = sorted(generate(out_dir, args.only))

@@ -38,6 +38,7 @@ if TYPE_CHECKING:
     from .storage_facts import THIRStorageFacts
     # The shared binding tags carry no runtime dependency on codegen here.
     from ..codegen_cpp.forms import LocalBinding
+    from .lower.context import Slot
 
 
 class Form(Enum):
@@ -245,6 +246,12 @@ class THIRExpr(THIRNode):
         """The read takes its binding's narrowed unwrap (the deref)."""
         return False
 
+    @property
+    def select_result(self) -> 'SelectResult | None':
+        """A select's result as its lowering normalized the arms (held,
+        lifetime, copy verdict); None for any other node."""
+        return None
+
     def _restamp_reads(self) -> None:
         # An arm that flips a read's deref (or form) with `replace` builds a
         # new node; the stamped read facts must follow it, never keep the
@@ -328,32 +335,45 @@ class THIRDefaultConstruct(THIRExpr):
 @dataclass(frozen=True)
 class THIRStrLiteral(THIRExpr):
     """A string literal, rendered via `cpp_string_literal_expr`, the single
-    quoting/escaping helper. Form stays VALUE: the emitted
-    const char[N] converts implicitly to both string_view and string slots,
-    so a literal is never wrapped by the owned-sink view->owned copy. The one
-    position that needs the literal to HAVE a type of its own -- a frame's
-    `for` source, whose fields are spelled off `decltype` of the render --
-    lowers it BORROW, the static-storage view (`std::string_view(...)`),
-    exactly as a bytes literal's view positions do."""
+    quoting/escaping helper. Its render is picked once, by the literal arm,
+    from the slot it is lowered under (literal construction), and `form`
+    carries it: BORROW is the view over its static storage
+    (`std::string_view(...)`), for the one slot that needs the literal to
+    HAVE a type of its own -- a frame's `for` source, whose fields are
+    spelled off `decltype` of the render. Otherwise VALUE, the const
+    char[N], which converts implicitly to both string_view and string
+    slots, so a literal is never wrapped by the owned-sink view->owned
+    copy."""
     value: str
     form: Form = field(default=Form.VALUE, kw_only=True)
+
+    @property
+    def static_view(self) -> bool:
+        """The render picked where the literal was built is the view over
+        its static storage."""
+        return self.form is Form.BORROW
 
 
 @dataclass(frozen=True)
 class THIRBytesLiteral(THIRExpr):
-    """A bytes literal. Unlike a str literal (a position-neutral const char[N]),
-    a bytes literal's C++ render is TARGET-dependent, so lowering decides it
-    per sink and carries the verdict on the `form` tag: STORAGE renders the
-    owning buffer (`::tpy::bytes_literal_owned(...)` / empty
-    `::tpy::Bytes{}` -- the default, matching every target-less
-    position: print args, compare operands, owned decl inits/returns), BORROW
-    the static-storage span (`::tpy::bytes_literal(...)` / empty
-    `::tpy::BytesView{}`, the view-targeted positions: view-local
-    inits/reassigns, bytes/BytesView call args). Never VALUE. The owned-sink
-    view->owned wraps still never fire on a literal: they key on an owned
-    (`bytes`) target, and a bytes-targeted literal lowers STORAGE."""
+    """A bytes literal. Unlike a str literal (a position-neutral const
+    char[N]), a bytes literal's C++ render depends on its slot, so it is
+    picked once, by the literal arm, from the slot it is lowered under
+    (literal construction), and `form` carries it: BORROW is the span over
+    its static storage (`::tpy::bytes_literal(...)` / empty
+    `::tpy::BytesView{}`) at a slot that reads it as a `BytesView` -- a
+    view binding, a `bytes` or `BytesView` parameter, a comparison or
+    lookup read through the view; STORAGE the owning buffer
+    (`::tpy::bytes_literal_owned(...)` / empty `::tpy::Bytes{}`) anywhere
+    else -- print args, owned decl inits and returns. Never VALUE."""
     value: bytes
     form: Form = field(default=Form.STORAGE, kw_only=True)
+
+    @property
+    def static_view(self) -> bool:
+        """The render picked where the literal was built is the span over
+        its static storage."""
+        return self.form is Form.BORROW
 
 
 @dataclass(frozen=True)
@@ -699,6 +719,11 @@ class THIRValueSelect(THIRExpr):
     # The lowering's normalization decision; set by every lowering site.
     normalized: SelectResult | None = field(default=None, kw_only=True)
 
+    @property
+    def select_result(self) -> 'SelectResult | None':
+        assert self.normalized is not None, "select built without its result"
+        return self.normalized
+
 
 @dataclass(frozen=True)
 class THIRSlotEmplace(THIRExpr):
@@ -965,6 +990,11 @@ class THIRIfExpr(THIRExpr):
     # The lowering's normalization decision; set by every lowering site.
     normalized: SelectResult | None = field(default=None, kw_only=True)
 
+    @property
+    def select_result(self) -> 'SelectResult | None':
+        assert self.normalized is not None, "select built without its result"
+        return self.normalized
+
 
 @dataclass(frozen=True)
 class THIRFunctionIdentity:
@@ -995,6 +1025,15 @@ class THIRCallableSignature:
     # (an `@auto_readonly` callable: its body is certified against a const
     # receiver, and C++ overload resolution picks the clone by receiver).
     result_follows_receiver: bool = False
+    # A property getter hands back its field's own storage by reference
+    # (`std::optional<T>&`, `::tpy::Union<A, B>&`) where any other callable
+    # returns the pointer form by value (`property_getter_returns_storage_ref`).
+    storage_reference_result: bool = False
+    # The result's layout as a slot (`slot_for` at RETURN, built once with
+    # the signature by `callable_signature`): what each element of a tuple
+    # result holds and how it is represented. None for a `None` result. A
+    # view of the fields above, so it takes no part in equality.
+    result_slot: 'Slot | None' = field(default=None, compare=False)
 
     def hands_over(self, result_type: TpyType) -> bool:
         """Whether a call of this signature yielding `result_type` hands the
@@ -2047,6 +2086,11 @@ class THIRFieldAccess(THIRExpr):
         assert not (self.opt_deref_check
                     and (self.deref_check or self.is_arrow
                          or self.narrowed_deref or self.deref_chain))
+        self._restamp_reads()
+
+    @property
+    def reads_unwrapped(self) -> bool:
+        return self.narrowed_deref
 
     @property
     def receiver_through_pointer(self) -> bool:
@@ -2945,6 +2989,10 @@ class THIRStrAppend(THIRStmt):
 @dataclass(frozen=True)
 class THIRReturn(THIRStmt):
     value: THIRExpr | None = None
+    # The return sits in a region whose exits run a finally / `__exit__`
+    # chain: the result lands in a temporary of the return type, the chain
+    # runs, and the temporary is returned.
+    staged: bool = False
 
 
 @dataclass(frozen=True)
@@ -3976,6 +4024,8 @@ class THIRRaise(THIRStmt):
     return_tier: bool = False
     raise_expr: 'THIRExpr | None' = None
     deref_depth: int = 0
+    # A return-tier raise or re-raise returns: `THIRReturn.staged`.
+    staged: bool = False
 
 
 @dataclass(frozen=True)
@@ -4034,6 +4084,8 @@ class THIRErrorReturnBind(THIRStmt):
     slot_cpp: 'str | None' = None
     alias_bind: bool = False
     target: 'THIRExpr | None' = None
+    # Its propagate check returns: `THIRReturn.staged`.
+    staged: bool = False
     # See THIRAssign.own_slot.
     own_slot: THIRRebindSlot | None = field(
         default=None, kw_only=True, compare=False, repr=False)
@@ -4062,6 +4114,8 @@ class THIRErrorReturnDiscard(THIRStmt):
         }
     """
     call: THIRExpr
+    # Its propagate check returns: `THIRReturn.staged`.
+    staged: bool = False
 
 
 @dataclass(frozen=True)
@@ -4536,6 +4590,9 @@ class THIRFunction:
     error_return_cpp: 'str | None' = None
     body_terminates: bool = False
     receiver: THIRBorrowedRecord | None = None
+    # The contract the body lowers under; with a `resolved_callee` it is that
+    # callee's signature object. None only for a hand-built body.
+    signature: THIRCallableSignature | None = None
     resolved_callee: THIRResolvedCallee | None = None
     # The mutable clone of an `@auto_readonly` def: it publishes the
     # identity its const clone defines, but is not that definition.
@@ -4697,6 +4754,8 @@ class THIRResumableBody:
     # when the recipe table does not cover the shape -- so the seam never
     # decides anything at emit and a missing entry is a disagreement.
     deferred_returns: 'IdentityMap' = field(default_factory=IdentityMap)
+    # The contract the body lowers under (`THIRFunction.signature`).
+    signature: THIRCallableSignature | None = None
 
 
 def hoists_declaration(node: THIRNode) -> bool:

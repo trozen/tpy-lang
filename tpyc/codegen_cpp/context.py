@@ -1471,7 +1471,6 @@ class LocalScopeSnap:
     own_borrow_tuple_locals: set[str]
     storage_form_optional_locals: set[str]
     const_storage_form_optional_locals: set[str]
-    movable_locals: set[str]
     ref_bound_locals: set[str]
     rebind_slots: dict[str, str]
     plain_rebind_slots: set[str]
@@ -1713,15 +1712,6 @@ class CodeGenContext:
     rvalue_reassigned_vars: set[str] = field(default_factory=set)
     lvalue_reassigned_vars: set[str] = field(default_factory=set)
 
-    # --- Auto-move tracking (last-use -> std::move) ---
-    # movable_locals is the WORKING set: the deliberate param seeds
-    # (seed_param_locals: Own / owned-tuple / value-opt-expensive params)
-    # plus decl-driven adds from sema_movable_locals as decls are emitted.
-    # sema_movable_locals is the RAW per-function sema fact; an
-    # assigned-never-declared frame field (await result) appears only
-    # here. Do not unify: consumers pick the set matching their site.
-    movable_locals: set[str] = field(default_factory=set)
-    sema_movable_locals: set[str] = field(default_factory=set)
     # Locals ever bound to a fresh rvalue (sema fact). A branch-declared
     # non-value local absent here is borrow-only and must not get owned
     # storage -- its decl form is a pointer that aliases the source.
@@ -2080,7 +2070,6 @@ class CodeGenContext:
         self.reassigned_vars = set()
         self.rvalue_reassigned_vars = set()
         self.lvalue_reassigned_vars = set()
-        self.movable_locals = set()
         self.ref_bound_locals = set()
         self.aliased_vars = set()
         self.alias_names = set()
@@ -2192,7 +2181,6 @@ class CodeGenContext:
             own_borrow_tuple_locals=self.own_borrow_tuple_locals.copy(),
             storage_form_optional_locals=self.storage_form_optional_locals.copy(),
             const_storage_form_optional_locals=self.const_storage_form_optional_locals.copy(),
-            movable_locals=self.movable_locals.copy(),
             ref_bound_locals=self.ref_bound_locals.copy(),
             rebind_slots=dict(self.rebind_slots),
             plain_rebind_slots=self.plain_rebind_slots.copy(),
@@ -2214,7 +2202,6 @@ class CodeGenContext:
         self.own_borrow_tuple_locals = snap.own_borrow_tuple_locals.copy()
         self.storage_form_optional_locals = snap.storage_form_optional_locals.copy()
         self.const_storage_form_optional_locals = snap.const_storage_form_optional_locals.copy()
-        self.movable_locals = snap.movable_locals.copy()
         self.ref_bound_locals = snap.ref_bound_locals.copy()
         self.rebind_slots = dict(snap.rebind_slots)
         self.plain_rebind_slots = snap.plain_rebind_slots.copy()

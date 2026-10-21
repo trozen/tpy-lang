@@ -25,6 +25,26 @@ void s1a() {
     std::cout << "s1a" << " " << std::get<0>(r).v << " " << std::get<0>(t).v << "\n" << ::tpy::check_signals;
 }
 
+// # nested def returning a captured local tuple at a whole Own[tuple] result
+// def s1b() -> None:
+//     t = (A(1), 3)
+//
+//     def inner() -> Own[tuple[A, int32]]:
+//         return t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+//
+//     r = inner()
+//     t[0].v = 10
+//     print("s1b", r[0].v, t[0].v)
+void s1b() {
+    auto t = std::tuple<A, int32_t>{A(1), 3};
+    auto inner = [&t]() -> std::tuple<A, int32_t> {
+        return t;
+    };
+    auto r = inner();
+    std::get<0>(t).v = 10;
+    std::cout << "s1b" << " " << std::get<0>(r).v << " " << std::get<0>(t).v << "\n" << ::tpy::check_signals;
+}
+
 // # lambda returning a captured local tuple (it also copies the capture when
 // # created: BUGS.md#callable-local-lambda-copies-capture-silently)
 // def s1c() -> None:
@@ -101,6 +121,7 @@ void s1f(const std::tuple<A*, int32_t>& t) {
 
 // def main() -> None:
 //     s1a()
+//     s1b()
 //     s1c()
 //     s1d((A(5), 6))
 //     s1e(A(1))
@@ -112,6 +133,7 @@ void s1f(const std::tuple<A*, int32_t>& t) {
 //     print("s2d", ps[0][0].v, out[0][0].v)
 void main() {
     ::tpyapp::main::s1a();
+    ::tpyapp::main::s1b();
     ::tpyapp::main::s1c();
     ::tpyapp::main::s1d(std::tuple<A, int32_t>{A(5), 6});
     A __tmp_1 = A(1);

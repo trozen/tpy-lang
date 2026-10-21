@@ -2177,7 +2177,7 @@ class TestSinkVocabulary:
             SinkPos.TUPLE_ELEM, SinkPos.RETURN, SinkPos.IF_EXPR_ARM,
             SinkPos.CONTAINER_ELEM, SinkPos.FIELD_WRITE, SinkPos.MIL_INIT,
             SinkPos.GLOBAL_SLOT_WRITE, SinkPos.UNPACK_SOURCE,
-            SinkPos.ALIAS_BIND, SinkPos.LAMBDA_RETURN,
+            SinkPos.ALIAS_BIND,
             SinkPos.WALRUS_TARGET, SinkPos.FRAME_SLOT_WRITE,
             SinkPos.MATCH_SUBJECT, SinkPos.WITH_MANAGER,
             SinkPos.ITER_SOURCE,

@@ -242,16 +242,19 @@ def warn_value_call_binding(ctx: 'SemanticContext', expr: TpyExpr,
     nothing."""
     found = value_call_copy_message(ctx, expr, dest)
     if found is not None:
-        ctx.warning(found[1], found[0])
+        call, held, message = found
+        ctx.copy_warning(message, call, held)
 
 
-def value_call_copy_message(ctx: 'SemanticContext', expr: TpyExpr,
-                            dest: str) -> 'tuple[TpyCallLike, str] | None':
-    """The call and the owning-slot warning for a borrow-declared call
-    stamped a fresh value whose copy into `dest` is observable, or None --
-    the call itself, or a field / element read off it (`k = next(it, d).q`
-    holds a copy of `q` as much as of the whole result). A non-copyable
-    payload is an error here: there is no copy to make."""
+def value_call_copy_message(
+        ctx: 'SemanticContext', expr: TpyExpr,
+        dest: str) -> 'tuple[TpyCallLike, TpyExpr, str] | None':
+    """The call, the value held and the owning-slot warning for a
+    borrow-declared call stamped a fresh value whose copy into `dest` is
+    observable, or None -- the value is the call itself, or a field /
+    element read off it (`k = next(it, d).q` holds a copy of `q` as much as
+    of the whole result). A non-copyable payload is an error here: there is
+    no copy to make."""
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
     held = expr
@@ -271,7 +274,8 @@ def value_call_copy_message(ctx: 'SemanticContext', expr: TpyExpr,
         # copy is the hedged generic contract (the instantiation answers a
         # non-copyable payload); `list[T]` in place of `Iterable[T]` lends.
         if expr.copy_observable:
-            ctx.defer_own_copy_verdict(payload, payload, dest, expr)
+            ctx.defer_own_copy_verdict(payload, payload, dest, expr,
+                                       source=held)
         return None
     if held is not expr and payload.is_value_type():
         return None
@@ -282,7 +286,7 @@ def value_call_copy_message(ctx: 'SemanticContext', expr: TpyExpr,
                                   KIND_SLOT, "", non_copyable=non_copyable)
     if level is DiagnosticLevel.ERROR:
         raise ctx.error(message, expr)
-    return expr, message
+    return expr, held, message
 
 
 def hedge_message(display: TpyType, dest: str, kind: str,

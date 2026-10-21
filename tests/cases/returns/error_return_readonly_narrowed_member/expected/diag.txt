@@ -1,0 +1,1 @@
+main.py:22: error: Cannot return readonly[Inner] at mutable return type 'Inner'; declare the return as 'readonly[Inner]'

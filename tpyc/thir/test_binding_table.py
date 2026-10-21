@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -19,7 +20,10 @@ from ..parse.nodes import (TpyAssign, TpyExprStmt, TpyForEach,
                            TpyFunction, TpyIf,
                            TpyLambda, TpyListComprehension, TpyMatch,
                            TpyName, TpyNestedDef,
-                           TpyReturn, TpyVarDecl, TpyWith, walk_expr_tree)
+                           TpyReturn, TpyVarDecl, TpyWith, walk_body_stmts,
+                           walk_expr_tree)
+from ..sema.binding_ownership import (NOT_OWNED, Acquired, BindingOwnership,
+                                     ReadKind, local_ownership)
 from . import nodes as th
 from .lower import bindings as _bindings
 from .lower import iter_module_callables, lower_function
@@ -33,8 +37,11 @@ from .lower.statements import _admit_hoist, _Hoist, _lower_first_decl
 from .reject import ThirUnsupported, begin_stmt
 from .source import BindingConstruct as C
 from .source import BindingForm as F
+from .source import BindingRefinement as R
 from .source import BindingRepr, Held
-from .testutil import _compile, _entry, lower_bodies
+from .source import MoveRow as M
+from .testutil import (_assert_byte_identical, _compile, _entry,
+                       lower_bodies)
 from ..typesys import (OwnType, PendingListType, TupleType, unwrap_readonly,
                        unwrap_ref_type)
 from .lower.storage import tuple_layout
@@ -83,8 +90,8 @@ def _compile_analyzer(func):
     return _ANALYZERS[id(func)]
 
 
-def _plan(source: str, name: str):
-    compiler, modules = _compile(_PRELUDE + source)
+def _plan(source: str, name: str, prelude: str = _PRELUDE):
+    compiler, modules = _compile(prelude + source)
     entry = _entry(modules)
     func = next(f for f, _st in iter_module_callables(entry.ast,
                                                       entry.analyzer)
@@ -93,8 +100,8 @@ def _plan(source: str, name: str):
         lc = _LowerCtx(func, entry.analyzer, None)
         table = plan_bindings(PlanInputs(
             func=func, analyzer=entry.analyzer, prescan=lc.prescan,
-            params=lc.params, seeds={n: t for n, t in func.params},
-            sema_movable=frozenset(lc.sema_movable_locals)), func.body)
+            params=lc.params, seeds={n: t for n, t in func.params}),
+            func.body)
     _ANALYZERS[id(func)] = (compiler, entry.analyzer)
     return func, table
 
@@ -915,7 +922,11 @@ def parts(k: int) -> int:
 
 def test_two_records_of_one_name_at_a_site_are_an_error() -> None:
     site = object()
-    table = BindingTable(ScopeNode(None))
+    _func, planned = _plan('''
+def two(k: int) -> int:
+    return k
+''', "two")
+    table = BindingTable(ScopeNode(None), planned.inp)
     one = BindingRepr(name="x", site=site, type=None, form=F.NONE)
     table.sites[site] = (one,)
     assert table.declared_by(site, "x") is one
@@ -1185,8 +1196,7 @@ def _plan_inputs(source: str, name: str, **prescan_facts):
             setattr(lc.prescan, fact, getattr(lc.prescan, fact) | names)
         inp = PlanInputs(
             func=func, analyzer=entry.analyzer, prescan=lc.prescan,
-            params=lc.params, seeds={n: t for n, t in func.params},
-            sema_movable=frozenset(lc.sema_movable_locals))
+            params=lc.params, seeds={n: t for n, t in func.params})
     return compiler, func, inp
 
 
@@ -1803,6 +1813,12 @@ def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
     compiler, func, inp = _plan_inputs(
         src, "pick", rvalue_reassigned=frozenset({"x"}),
         move_through=frozenset({"w"}), global_seeded=frozenset({"g", "h"}))
+    # The names read as module globals own nothing, as sema says of a name
+    # the body declares `global`.
+    ctx = inp.analyzer.ctx
+    body = ctx.body_ownership[func]
+    ctx.body_ownership[func] = replace(body, locals={
+        n: o for n, o in body.locals.items() if n not in ("g", "h")})
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
     try_x, if_w, if_g, while_h, _ret = func.body
@@ -2849,3 +2865,592 @@ def pick() -> int:
     t = table.declared_by(func.body[0], "t")
     assert _shape(t) == ("decl", F.VALUE, C.TUPLE_LITERAL_WIDE)
     assert not t.storage_tuple
+
+
+# -- movable: the binding's ownership less the scoped rows -----------------------
+
+def _rec(table, name: str, kind: str):
+    """The one record of `name` a site of `kind` declares."""
+    found = [r for r in table.records()
+             if r.name == name and r.site_kind == kind]
+    assert len(found) == 1, (name, kind, found)
+    return found[0]
+
+
+_SCOPED = '''
+from typing import Iterable
+def pair() -> tuple[str, int]:
+    return ("second", 1)
+def value_param(p: tuple[Own[int], int]) -> int:
+    return p[0]
+def copied_head(a: list[tuple[int, str]]) -> None:
+    for x, s in a:
+        a[0] = (50, "changed")
+        print(x, s)
+def via_closure(source: Iterable[Own[list[int]]]) -> int:
+    out: list[list[int]] = []
+    def inner() -> None:
+        for x in source:
+            out.append(x)
+    inner()
+    return len(out[0])
+def nested_unpack() -> str:
+    def inner() -> str:
+        s = "first"
+        s, n = pair()
+        return s
+    return inner()
+def hoisted_unpack(c: bool) -> str:
+    try:
+        s = "first"
+    except ValueError:
+        s = "fallback"
+    s, n = pair()
+    return s
+def promoted() -> str:
+    s = "first"
+    s, n = pair()
+    return s
+def mixed_name(o: Outer, borrowed: P) -> None:
+    xs: list[P] = [P(1)]
+    ys: list[P] = []
+    for x in xs:
+        if x.v > 0:
+            ys.append(x)
+        else:
+            o.p = x
+    x = borrowed
+    print(x.v)
+'''
+
+
+def test_a_value_tuple_ownership_transfer_parameter_moves() -> None:
+    # No value exception on a parameter row: the transfer moves.
+    func, table = _plan(_SCOPED, "value_param")
+    assert table.root.lookup("p").movable
+
+
+def test_copied_loop_head_targets_move() -> None:
+    func, table = _plan(_SCOPED, "copied_head")
+    for n in ("x", "s"):
+        rec = _rec(table, n, "unpack")
+        # A `str` copy allocates: its last use in the pass moves it; the
+        # `int` copy moves too (a BigInt).
+        assert rec.movable, n
+
+
+def test_a_nested_defs_owned_loop_variable_moves() -> None:
+    # The nested-def exception covers the rows its body's locals take,
+    # never a loop variable, whose ownership is the loop's own.
+    func, table = _plan(_SCOPED, "via_closure")
+    rec = _rec(table, "x", "loop")
+    assert rec.movable and rec.move_exception is None
+
+
+def test_an_unpack_promotes_only_an_eligible_local() -> None:
+    func, table = _plan(_SCOPED, "promoted")
+    promoted = [r for r in table.records()
+                if R.UNPACK_PROMOTE in r.refinements]
+    assert [(r.name, r.movable, r.move_forced) for r in promoted] == [
+        ("s", True, M.UNPACK_PROMOTE)]
+    # A nested def's local and a hoisted one are never promoted.
+    for name in ("nested_unpack", "hoisted_unpack"):
+        func, table = _plan(_SCOPED, name)
+        recs = [r for r in table.records() if r.name == "s"]
+        recs += [r for node in table.scope_at.values()
+                 for r in node.bindings.values() if r.name == "s"]
+        assert not any(R.UNPACK_PROMOTE in r.refinements for r in recs), name
+        assert not any(r.movable for r in recs), name
+
+
+def test_a_str_dict_key_loop_variable_moves() -> None:
+    # The case's first `for k in d:` binds `k` as an owned `str`: its
+    # record moves.
+    source = (Path(__file__).resolve().parents[2] / "tests/cases/calls"
+              / "ref_generic_tuple_return/src/main.py").read_text()
+    func, table = _plan(source, "main", prelude="")
+    loops = {r.site.loc.line: r for r in table.records()
+             if r.name == "k" and r.site_kind == "loop"}
+    assert str(loops[24].type) == "str" and loops[24].movable
+
+
+def test_a_loop_site_moves_although_a_later_local_borrows() -> None:
+    func, table = _plan(_SCOPED, "mixed_name")
+    assert _rec(table, "x", "loop").movable
+    later = _rec(table, "x", "decl")
+    assert not later.movable
+
+
+_ROWS_PROGRAM = '''
+from typing import Callable, Iterator
+from tpy import error_return, ReturnException
+class E(Exception, ReturnException):
+    pass
+class S:
+    p: P
+    o: P | None
+    u: P | Outer
+    def __init__(self) -> None:
+        self.p = P(0)
+        self.o = None
+        self.u = P(0)
+def make_opt(k: int) -> Own[P] | None:
+    if k > 0:
+        return P(k)
+    return None
+@error_return(E)
+def make_p(k: int) -> Own[P]:
+    if k < 0:
+        raise E()
+    return P(k)
+def nums(n: int) -> Iterator[int]:
+    for i in range(n):
+        yield i
+def rows(s: S, k: int, n: int | None, t: str | None) -> int:
+    if (w := P(k)).v > 0:
+        s.p = w
+    r = make_opt(k)
+    s.o = r
+    u: P | Outer = P(k)
+    if k > 2:
+        u = Outer()
+    s.u = u
+    g = nums(3)
+    c = 1
+    flag = k > 0
+    if not flag:
+        return 0
+    f: Callable[[Own[P]], int] = lambda q: q.v
+    def inner(q: Own[P]) -> int:
+        b = P(2)
+        return q.v + b.v
+    try:
+        raise ValueError("x")
+    except ValueError as e:
+        print(e)
+    for v in g:
+        c += v
+    return c + f(P(1)) + inner(P(2))
+@error_return(E)
+def er(s: S, k: int) -> None:
+    p = make_p(k)
+    s.p = p
+'''
+
+
+def test_every_exception_and_forced_row_names_its_reason() -> None:
+    func, table = _plan(_ROWS_PROGRAM, "rows")
+    want = {
+        ("w", "walrus"): (M.WALRUS, None, False),
+        ("r", "decl"): (M.OPT_RECORD_CALL, None, False),
+        ("u", "decl"): (M.PTR_VARIANT, None, False),
+        # A generator object owns its frame, which never moves once
+        # started: the concrete-generator decl row's exception.
+        ("g", "decl"): (M.GENERATOR_OBJECT, None, False),
+        ("c", "decl"): (M.OWNED_VALUE, None, False),
+        ("flag", "decl"): (M.TRIVIAL_VALUE, None, False),
+        ("n", "param"): (None, M.BY_VALUE_OPTIONAL, True),
+        ("t", "param"): (None, M.BY_VALUE_OPTIONAL, True),
+    }
+    for (name, kind), (exc, forced, movable) in want.items():
+        rec = _rec(table, name, kind)
+        assert (rec.move_exception, rec.move_forced, rec.movable) == (
+            exc, forced, movable), (name, kind)
+    lam = [r for node in table.scope_at.values()
+           for r in node.bindings.values() if r.site_kind == "lambda"]
+    assert {(r.name, r.move_exception, r.movable) for r in lam} == {
+        ("q", M.LAMBDA_PARAM, False)}
+    nested = [r for node in table.scope_at.values()
+              for r in node.bindings.values()
+              if r.site_kind == "nested_param"]
+    assert {(r.name, r.move_exception, r.movable) for r in nested} == {
+        ("q", M.NESTED_DEF, False)}
+    b = [r for r in table.records() if r.name == "b"]
+    assert [(r.move_exception, r.movable) for r in b] == [
+        (M.NESTED_DEF, False)]
+    func, table = _plan(_ROWS_PROGRAM, "er")
+    p = _rec(table, "p", "decl")
+    assert (p.move_exception, p.movable) == (M.ER_BIND, False)
+    # The rows that are defects name the entry tracking them.
+    assert M.WALRUS.slug == "walrus-owned-slot-store-copies"
+    assert M.OPT_RECORD_CALL.slug == "owned-optional-call-local-copies"
+    assert M.ER_BIND.slug == "error-return-bind-store-copies"
+    assert M.NESTED_DEF.slug == "nested-def-owned-binding-copies"
+    assert M.TRIVIAL_VALUE.slug is None and M.BY_VALUE_OPTIONAL.forced
+
+
+_ROWS_PROGRAM_3 = _PRELUDE + '''
+from typing import Iterator
+from tpy import int32, readonly
+def mk(k: int) -> Own[P]:
+    if k > 100:
+        raise ValueError("x")
+    return P(k)
+def nums(n: int) -> Iterator[int]:
+    for i in range(n):
+        yield i
+def own_loop(xs: Iterator[Own[P]]) -> Iterator[int]:
+    for a in xs:
+        yield a.v
+def consuming_loop(out: list[P]) -> Iterator[int]:
+    # Annotated: unannotated, the frame field takes another row.
+    xs: list[P] = [P(1), P(2)]
+    for a in xs:
+        yield a.v
+        out.append(a)
+def borrowed_field(o: Outer) -> Iterator[int]:
+    alias = o.p
+    yield alias.v
+def ptr_hoist(out: list[P], k: int) -> None:
+    try:
+        y = mk(k)
+    except ValueError:
+        y = P(7)
+    out.append(y)
+def loop_fresh(xs: Iterator[Own[P]], b: P, out: list[P]) -> None:
+    for a in xs:
+        a = P(4)
+        out.append(a)
+    a = b
+    print(a.v)
+def not_owned(o: Outer) -> int:
+    alias = o.p
+    def inner() -> int:
+        return 1
+    return alias.v + inner()
+def values(p: tuple[Own[int32], int32]) -> int32:
+    return p[0]
+def gen_frame() -> Iterator[int]:
+    g = nums(2)
+    for v in g:
+        yield v
+def loop_fresh_alone(xs: Iterator[Own[P]], out: list[P]) -> None:
+    for a in xs:
+        a = P(4)
+        out.append(a)
+def nested_alias() -> int:
+    def own_local() -> int:
+        inner = P(5)
+        target = inner
+        target.v += 1
+        return target.v
+    return own_local()
+def const_hoist(o: readonly[Outer], c: bool) -> int:
+    if c:
+        q = o.p
+    else:
+        q = o.p
+    return q.v
+'''
+
+
+def test_frame_hoist_and_loop_rows_pin_their_move() -> None:
+    func, table = _plan(_ROWS_PROGRAM_3 + '''
+def closed() -> int:
+    g = nums(2)
+    t = 0
+    for v in g:
+        t += v
+    del g
+    return t
+''', "closed", prelude="")
+    # A plain body's generator local a `del` closes: an optional slot that
+    # moves whatever it owns.
+    g = _rec(table, "g", "decl")
+    assert (g.move_exception, g.move_forced, g.movable) == (
+        None, M.CLOSED_FRAME, True)
+    _bodies, tables = lower_bodies(_ROWS_PROGRAM_3)
+
+    def field(fn: str, name: str) -> BindingRepr:
+        return tables[fn].root.bindings[name]
+    want = {
+        # The frame copies a step an `Own` element loop or a consuming
+        # loop takes, through its element pointer.
+        ("own_loop", "a"): (M.FRAME_OWN_LOOP_VAR, None, False),
+        ("consuming_loop", "a"): (M.FRAME_CONSUMING_LOOP_VAR, None, False),
+        # A borrowed frame field: the frame layout holds a pointer.
+        ("borrowed_field", "alias"): (M.FRAME_LAYOUT, None, False),
+        # A generator object owns its frame, which never moves.
+        ("gen_frame", "g"): (M.GENERATOR_OBJECT, None, False),
+    }
+    got = {}
+    for (fn, name), _want in want.items():
+        rec = field(fn, name)
+        got[(fn, name)] = (rec.move_exception, rec.move_forced, rec.movable)
+    assert got == want
+    func, table = _plan(_ROWS_PROGRAM_3, "ptr_hoist", prelude="")
+    # A pointer hoist is re-pointed by its binds: its read copies.
+    y = _rec(table, "y", "hoist")
+    assert (y.move_exception, y.movable) == (M.POINTER_HOIST, False)
+    func, table = _plan(_ROWS_PROGRAM_3, "loop_fresh", prelude="")
+    # The loop site owns its step, but the rebound slot moves only where
+    # the name's function-wide binding owns it (the `a = b` after the loop
+    # borrows).
+    a = _rec(table, "a", "loop")
+    assert (a.move_exception, a.movable) == (M.LOOP_REBIND_SLOT, False)
+    assert M.LOOP_REBIND_SLOT.slug == "own-loop-var-rebind-slot-copies"
+    # Without the borrowing binding after the loop the slot moves.
+    func, table = _plan(_ROWS_PROGRAM_3, "loop_fresh_alone", prelude="")
+    a = _rec(table, "a", "loop")
+    assert (a.move_exception, a.movable) == (None, True)
+    func, table = _plan(_ROWS_PROGRAM_3, "nested_alias", prelude="")
+    # A nested def's local bound at another's last use is a reference to
+    # the owner it takes over: owned, and the nested def's exception.
+    target = [r for node in table.scope_at.values()
+              for r in node.bindings.values() if r.name == "target"]
+    assert {(r.move_exception, r.movable) for r in target} == {
+        (M.NESTED_DEF, False)}
+    func, table = _plan(_ROWS_PROGRAM_3, "values", prelude="")
+    # An ownership-transfer tuple parameter moves, value leaves and all.
+    p = table.root.lookup("p")
+    assert (p.move_exception, p.move_forced, p.movable) == (None, None, True)
+
+
+def test_not_owned_representations_are_fact_one_assertions() -> None:
+    # An alias and a nested def's name own nothing in fact 1: their rows
+    # carry no exception of their own.
+    func, table = _plan(_ROWS_PROGRAM_3, "not_owned", prelude="")
+    compiler, analyzer = _ANALYZERS[id(func)]
+    ctx = analyzer.ctx
+    for name, kind in (("alias", "decl"), ("inner", "def")):
+        rec = _rec(table, name, kind)
+        assert not local_ownership(ctx, func, name), name
+        assert (rec.move_exception, rec.movable) == (None, False), name
+    # A const borrow slot, the same.
+    func, table = _plan(_ROWS_PROGRAM_3, "const_hoist", prelude="")
+    compiler, analyzer = _ANALYZERS[id(func)]
+    rec = _rec(table, "q", "hoist")
+    assert rec.const and not local_ownership(analyzer.ctx, func, "q")
+    assert (rec.move_exception, rec.movable) == (None, False)
+
+
+def test_aliases_except_targets_and_globals_own_nothing() -> None:
+    func, table = _plan('''
+G = P(9)
+def own_nothing(o: Outer) -> int:
+    alias = o.p
+    try:
+        raise ValueError("x")
+    except ValueError as e:
+        print(e)
+    return alias.v + G.v
+''', "own_nothing")
+    compiler, analyzer = _ANALYZERS[id(func)]
+    ctx = analyzer.ctx
+    assert not local_ownership(ctx, func, "alias")
+    assert not local_ownership(ctx, func, "e")
+    reads = []
+    walk_body_stmts(func.body, lambda e: walk_expr_tree(
+        e, lambda x: reads.append(x) or True), lambda s: None)
+    g = [x for x in reads if isinstance(x, TpyName) and x.name == "G"][0]
+    assert ctx.read_bindings[g].kind is ReadKind.MODULE
+    for name in ("alias", "e"):
+        assert not any(r.movable for r in table.records()
+                       if r.name == name), name
+
+
+_ROWS_PROGRAM_2 = '''
+from typing import Iterator, Protocol
+from tpy import dynamic
+@dynamic
+class Shape(Protocol):
+    def area(self) -> int: ...
+class Sq:
+    def __init__(self, n: int) -> None:
+        self.n = n
+    def area(self) -> int:
+        return self.n
+def keep(s: Own[Shape]) -> int:
+    return s.area()
+def pairs(n: int) -> Iterator[tuple[int, Own[P]]]:
+    for i in range(n):
+        yield (i, P(i))
+def nums(n: int) -> Iterator[int]:
+    for i in range(n):
+        yield i
+def rows2(o: Outer, k: int, ps: list[P]) -> int:
+    s: Shape = Sq(k)
+    t = 0
+    for i, b in pairs(2):
+        o.p = b
+    try:
+        x = P(k)
+    finally:
+        print("f")
+    o.p = x
+    name = str(k) + "x"
+    pair = (o.p, 1)
+    for q in [P(1), P(2)]:
+        pass
+    print(q.v, name, pair[1])
+    if k > 0:
+        g = nums(2)
+    else:
+        g = nums(3)
+    for v in g:
+        t += v
+    return keep(s) + t
+def comps(xs: list[P]) -> int:
+    w = P(1)
+    ys = [w for w in xs]
+    return len(ys) + w.v
+'''
+
+
+def test_more_rows_name_their_reason() -> None:
+    func, table = _plan(_ROWS_PROGRAM_2, "rows2")
+    want = {
+        ("s", "decl"): (M.DYN, None, False),
+        ("b", "unpack"): (M.FOR_UNPACK_OWN_TARGET, None, False),
+        ("x", "hoist"): (None, M.OWNED_SLOT, True),
+        ("name", "decl"): (M.VIEWFAM_VALUE, None, False),
+        ("pair", "decl"): (M.BORROW_TUPLE_LAYOUT, None, False),
+        # A branch-first generator object's hoisted pointer owns the frame,
+        # which never moves.
+        ("g", "hoist"): (M.GENERATOR_OBJECT, None, False),
+        # A loop variable read after its loop writes the hoisted slot, whose
+        # owned-slot move it inherits.
+        ("q", "loop"): (M.PASS_SLOT, M.INHERITED_OUTER, True),
+    }
+    for (name, kind), (exc, forced, movable) in want.items():
+        rec = _rec(table, name, kind)
+        assert (rec.move_exception, rec.move_forced, rec.movable) == (
+            exc, forced, movable), (name, kind, rec.move_exception,
+                                    rec.move_forced, rec.movable)
+    func, table = _plan(_ROWS_PROGRAM_2, "comps")
+    w = _rec(table, "w", "comp")
+    # The clause variable moves only at its sinks; it inherits the move of
+    # the owned local it shadows (inert: the region decides there).
+    assert (w.move_exception, w.move_forced, w.movable) == (
+        M.COMP_CLAUSE, M.INHERITED_OUTER, True)
+
+
+_ROWS_PROGRAM_4 = _PRELUDE + '''
+from typing import Iterator
+from tpy import int32, readonly
+def ident[T](x: T) -> T:
+    return x
+def mk(k: int) -> Own[P]:
+    if k > 100:
+        raise ValueError("x")
+    return P(k)
+def make() -> Own[readonly[P]]:
+    return P(1)
+def gen_slot[T](x: T, out: list[T]) -> Iterator[int32]:
+    y = ident(x)
+    out.append(y)
+    yield 1
+async def async_slot[T](x: T, out: list[T]) -> int32:
+    y = ident(x)
+    out.append(y)
+    return 1
+def gen_hoist(k: int) -> Iterator[int]:
+    try:
+        y = mk(k)
+    except ValueError:
+        y = P(7)
+    yield y.v
+def const_if(c: bool) -> int:
+    if c:
+        a = make()
+    else:
+        return 0
+    return a.v
+def const_try() -> int:
+    try:
+        a = make()
+    finally:
+        print("done")
+    return a.v
+g = "old"
+def write_global(c: bool) -> str:
+    global g
+    if c:
+        g = "new"
+    return g
+'''
+
+
+def test_frame_slots_const_hoists_and_globals_pin_their_move() -> None:
+    _bodies, tables = lower_bodies(_ROWS_PROGRAM_4)
+
+    def field(fn: str, name: str) -> tuple:
+        rec = tables[fn].root.bindings[name]
+        return (rec.move_exception, rec.move_forced, rec.movable)
+    # A generic resumable body's `y = ident(x)` holds its own frame slot,
+    # which moves: generator and coroutine alike.
+    assert field("gen_slot", "y") == (None, None, True)
+    assert field("async_slot", "y") == (None, None, True)
+    # A frame's try-hoisted local is a slot its binds re-point.
+    assert field("gen_hoist", "y") == (M.POINTER_HOIST, None, False)
+    # An owned readonly result hoisted to a const pointer over its owning
+    # slot: owned, and the const slot does not move.
+    for fn in ("const_if", "const_try"):
+        func, table = _plan(_ROWS_PROGRAM_4, fn, prelude="")
+        compiler, analyzer = _ANALYZERS[id(func)]
+        a = _rec(table, "a", "hoist")
+        assert local_ownership(analyzer.ctx, func, "a"), fn
+        assert (a.move_exception, a.movable) == (M.CONST_SLOT, False), fn
+    # A declared global is module storage: never a LOCAL, never moved.
+    func, table = _plan(_ROWS_PROGRAM_4, "write_global", prelude="")
+    compiler, analyzer = _ANALYZERS[id(func)]
+    assert not local_ownership(analyzer.ctx, func, "g")
+    assert not any(r.movable for r in table.records() if r.name == "g")
+
+
+def test_a_module_level_rebound_loop_slot_takes_the_rebind_row(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    tables: list = []
+    install = _bindings.plan_and_install
+
+    def capture(lc, body, seeds, **kwargs):
+        out = install(lc, body, seeds, **kwargs)
+        if kwargs.get("top_level"):
+            tables.append(lc.table)
+        return out
+    monkeypatch.setattr(_bindings, "plan_and_install", capture)
+    _assert_byte_identical(_PRELUDE + '''
+from typing import Iterator
+def mk() -> Iterator[Own[P]]:
+    yield P(1)
+out: list[P] = []
+for a in mk():
+    a = P(4)
+    out.append(a)
+print(len(out))
+''')
+    a, = (r for t in tables for r in t.records()
+          if r.name == "a" and r.site_kind == "loop")
+    # A module's names are module storage: the rebound slot never moves
+    # (BUGS.md#own-loop-var-rebind-slot-copies, its module-level face).
+    assert (a.move_exception, a.movable) == (M.LOOP_REBIND_SLOT, False)
+
+
+def test_an_owned_optional_select_planned_as_a_passthrough_is_an_alias() -> None:
+    # A select of fresh arms into a pointer-repr Optional is owned, and the
+    # planner plans it as a call passthrough: the scoped ALIAS row, which
+    # the lowering's `expr.ifexpr` refusal keeps out of the output.
+    func, table = _plan('''
+def pick(c: bool) -> int:
+    t = P(1) if c else None
+    if t is not None:
+        return t.v
+    return -1
+''', "pick")
+    compiler, analyzer = _ANALYZERS[id(func)]
+    t = _rec(table, "t", "decl")
+    assert local_ownership(analyzer.ctx, func, "t")
+    assert (t.move_exception, t.movable) == (M.ALIAS, False)
+
+
+def test_module_storage_that_fact_one_owns_stays_unmoved() -> None:
+    # Module storage is a row where fact 1 says the binding owns (the
+    # planner's module-global test and sema's declared globals disagree):
+    # the row stands and the name is not moved; owning nothing, it is no
+    # row.
+    rec = BindingRepr(name="g", site=None, type=None, form=F.NONE,
+                      site_kind="hoist", move_exception=M.MODULE_STORAGE)
+    owned = _bindings.with_movable(rec, BindingOwnership(Acquired.OWNED_LOCAL))
+    assert (owned.move_exception, owned.movable) == (M.MODULE_STORAGE, False)
+    plain = _bindings.with_movable(rec, NOT_OWNED)
+    assert (plain.move_exception, plain.movable) == (None, False)

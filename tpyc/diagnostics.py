@@ -182,6 +182,17 @@ class Scope:
     # A comprehension's or lambda's scope: what it binds is the
     # expression's own, never a binding of the enclosing function's body.
     expression: bool = False
+    # The binding identity a read here resolves to
+    # (`binding_ownership.resolve_read`): the binding site node of each name
+    # it binds there -- a for statement, a loop-head unpack or a
+    # comprehension clause, and for its block a `with` item, an `except`
+    # handler or a `match` case -- the lambda whose parameters it binds,
+    # and whether it is a nested def's root (a binding found past it is
+    # captured).
+    binders: dict[str, object] = field(default_factory=dict, repr=False,
+                                       compare=False)
+    lambda_node: object = field(default=None, repr=False, compare=False)
+    function_root: bool = False
 
     def __post_init__(self) -> None:
         self.depth = (self.parent.depth + 1) if self.parent else 0
@@ -208,6 +219,20 @@ class Scope:
 
     def define(self, name: str, typ: TpyType) -> None:
         self.bindings[name] = typ
+
+    def push_binder(self, name: str, binder: object) -> object:
+        """Make `binder` the site a read of `name` here resolves to; the
+        binder it replaces is returned for `pop_binder`."""
+        prev = self.binders.get(name)
+        self.binders[name] = binder
+        return prev
+
+    def pop_binder(self, name: str, prev: object) -> None:
+        """End the block `push_binder` opened: `prev` resolves again."""
+        if prev is None:
+            self.binders.pop(name, None)
+        else:
+            self.binders[name] = prev
 
     def set_existing(self, name: str, typ: TpyType) -> bool:
         """Update an existing binding at the level where it was defined.

@@ -24175,37 +24175,37 @@
   ""
  ],
  "ru_wrap__async__local__decl_alias": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](*%s0) [3] print(lit(1) [raw])"
  ],
  "ru_wrap__async__local__decl_reassigned": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] print(lit(1) [raw]) [6] print(lit(1) [raw])"
  ],
  "ru_wrap__async__local_last__decl_alias": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](*%s0)"
  ],
  "ru_wrap__async__local_last__decl_reassigned": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] print(lit(1) [raw])"
  ],
  "ru_wrap__async__param__decl_alias": [
-  "stopped:an earlier reject ended emission",
+  "reject:res.alias_bind",
   "",
   ""
  ],
  "ru_wrap__async__param__decl_reassigned": [
-  "stopped:an earlier reject ended emission",
+  "reject:res.alias_bind",
   "",
   ""
  ],
  "ru_wrap__async__param__return_borrow": [
-  "stopped:an earlier reject ended emission",
+  "reject:res.return_type",
   "",
   ""
  ],
@@ -24295,37 +24295,37 @@
   "return %pv"
  ],
  "ru_wrap__gen__local__decl_alias": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](*%s0) [3] print(lit(1) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "ru_wrap__gen__local__decl_reassigned": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] print(lit(1) [raw]) [6] print(lit(1) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "ru_wrap__gen__local_last__decl_alias": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[2] %x = form_convert[borrow](*%s0) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "ru_wrap__gen__local_last__decl_reassigned": [
-  "stopped:an earlier reject ended emission",
+  "ok",
   "",
-  ""
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] print(lit(1) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "ru_wrap__gen__param__decl_alias": [
-  "stopped:an earlier reject ended emission",
+  "reject:res.alias_bind",
   "",
   ""
  ],
  "ru_wrap__gen__param__decl_reassigned": [
-  "stopped:an earlier reject ended emission",
+  "reject:res.alias_bind",
   "",
   ""
  ],
  "ru_wrap__gen__param__yield_borrow": [
-  "stopped:an earlier reject ended emission",
+  "reject:res.yield_type",
   "",
   ""
  ],

@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     # from it is the copy the warning declares.
 //     return h.borrow()  # tpyc: warning(/copies list\[int32\] into owned storage/)
 std::vector<int32_t> take(Holder& h) {
-    return h.borrow();
+    return std::vector<int32_t>(h.borrow());
 }
 
 // def take_copy(h: Holder) -> Own[list[int32]]:

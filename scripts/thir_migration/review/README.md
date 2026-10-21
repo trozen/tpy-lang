@@ -47,7 +47,7 @@ Scripts (run from the repo root with `uv run python`):
   and the literal-construction sites are the two that legitimately stay, so a
   drop there is a regression, not progress. `--json` for a diffable dump.
 - `convert_gates.py` -- **the one-conversion-boundary ratchet** (TODO.md "One
-  conversion boundary for every value sink"). A static AST walk (~5 s, no
+  conversion boundary for every value sink"). A static AST walk (~2 s, no
   compile): per migrated sink family (the field write, the return), the
   conversion nodes built outside `tpyc/thir/lower/convert.py`, the
   expression-kind tests left in conversion code (split literal / target /
@@ -57,7 +57,9 @@ Scripts (run from the repo root with `uv run python`):
   stamp and the `Slot` builder. `uv run python
   scripts/thir_migration/review/convert_gates.py [--json] [--audit]`;
   `--check` exits 1 when a gated number in `convert_gates.expected.json`
-  grew, `--update` rewrites it.
+  grew, naming the sites behind it, `--update` rewrites it. The same
+  `check()` is the unit test `tpyc/thir/test_convert_gates.py`, so
+  `uv run pytest` fails as soon as a gated number grows.
 - `convert_matrix.py` -- **the conversion boundary's differential matrix.**
   One generated program per (source x sink x position) cell: sources
   (param, readonly param, local at its last use, a live local a closure
@@ -66,12 +68,29 @@ Scripts (run from the repo root with `uv run python`):
   consuming / not, a subclass local at a base slot; a `str` / `bytes`
   param (a view) and local (owned), the mixed selects `a if c else "lit"`
   and `a or "lit"`, a narrowed `Optional[str]` param, a `str`-returning
-  call) x sinks (`-> P`, `-> P | None`, `-> Own[P]`, `-> tuple[P, int]`,
-  `-> str`, `-> Optional[str]`; fields `P`, `Optional[P]`, `str`,
-  `str | int`, `Optional[str]`, `bytes`, and the member-init of each) x
+  call; the landing-2 families: fresh-arm and mixed record ternaries, a
+  record `or`, list / dict selects, an Optional param / field, a `P | S`
+  param, `tuple[P, int]` local and borrow-tuple param, an owning
+  `tuple[str, P]` local / `Own` param, a `@property` getter, a call
+  declaring a reference result, a pointer-bound narrowed local, a
+  `list[Own[P]]` element, a field of a narrowed Optional, a narrowed
+  Optional field, `copy(p)`, and `lambda: <src>` over nine P sources) x
+  sinks (`-> P`, `-> P | None`, `-> Own[P]`, `-> tuple[P, int]` per
+  element and whole, `-> Own[tuple[str, P]]` per element and whole,
+  `-> int | str`, `-> Any`, `-> P | S`, `-> Callable[[], P]`,
+  `-> list[P]`, `-> dict[str, P]`, `-> str`, `-> Optional[str]`; fields
+  `P`, `Optional[P]`, `str`, `str | int`, `Optional[str]`, `bytes`, and
+  the member-init of each; the call argument `take_*(<e>)` at `P`,
+  `readonly[P]`, `Own[P]`, `P | None`, `str`, `Own[str]`, `*args: P`, a
+  structural protocol, an open `T`, `list[P]`, `dict[str, P]`) x
   positions (function, method, constructor, generator, async); cells a
   position cannot spell, or whose source type the sink does not take, are
-  skipped. Each program compiles with `tpyc --dump-code` under the current
+  skipped. A (source, sink) pair sema rejects at its first position with
+  the same error on both trees is compiled there only and reported once,
+  as `<src>__<sink>__sema` (`--no-prune` compiles every position). A
+  field or member-init sink at the generator position compiles a plain
+  function (no `yield`); the argument sinks open with `yield 0` there.
+  Each program compiles with `tpyc --dump-code` under the current
   tree and under `--base <checkout>`; a cell is its verdict (the reject
   key), its warnings and its C++ (comment lines dropped), and the script
   prints every cell that differs. `--build` also compiles both sides of
@@ -88,7 +107,7 @@ Scripts (run from the repo root with `uv run python`):
   a build regressed. `uv run python
   scripts/thir_migration/review/convert_matrix.py --base ../tpy-m4
   --known scripts/thir_migration/review/convert_matrix.known.json --build
-  [--jobs 4] [-k SUBSTR]`; programs and dumps land in
+  [--jobs 4] [-k SUBSTR] [--json CELLS.json]`; programs and dumps land in
   `build/convert_matrix` (not committed). A manual instrument (tens of
   minutes at `--jobs 4`), never part of the pytest run.
 - `binding_shadow.py` -- **the binding table's shadow count** (TODO.md "One
@@ -205,6 +224,23 @@ Scripts (run from the repo root with `uv run python`):
   because the latter is an ICE on a record subject
   (`_match_record_arm_always`, `tpyc/thir/lower/match.py`, treats an
   `as`-bound wildcard as an or-pattern).
+  `--exec` is its behavioural half, outside the committed table: every
+  `ok` cell of a kind with a write spelling, plus an argument sink of its
+  own (`take_arg(src)`, a callee writing through its parameter), becomes a
+  program that writes through what the boundary bound (the caller writes
+  through a `return`'s result bound to a local, `r = f(a)`, and a
+  `yield`'s loop variable) and reads the original
+  before and after; built and run under TPy (`tpyc -b`, one build at a
+  time) and under CPython (`PYTHONPATH=lib/cpy`), each cell records
+  `alias` / `copy` / `fresh` (nothing to read back) / `differs: <tpy> vs
+  <cpython>`, or `reject:` / `build_fail:` for a cell the TPy build
+  refuses. One program per (kind, position); results cached per cell by
+  content hash (cell program, tree commit + diff, CPython version) under
+  `build/ref_sink_exec/`, so a run resumes. `uv run python
+  scripts/thir_migration/review/ref_sink_sweep.py --exec [-k REGEX]`;
+  manual, not part of the pytest run. The exec programs leave out the
+  fixture's `v_opt` getter, whose C++ does not build
+  (BUGS.md#property-getter-pointer-optional-return).
 - `field_admission_sweep.py` -- **the field-write admission verdict
   ratchet**. The matrix is (position: `ctor` member-init, `method`, `gen_method`,
   `async_method`, `local_holder` -- `hold.fld = src` in a free function --

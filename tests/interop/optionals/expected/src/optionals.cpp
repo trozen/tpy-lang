@@ -167,14 +167,14 @@ Point* never(const Point& p) {
 
 Point* origin_if(bool flag) {
     if (flag) {
-        return &((*ORIGIN));
+        return ORIGIN;
     }
     return nullptr;
 }
 
 Point* origin_ro(bool flag) {
     if (flag) {
-        return &((*ORIGIN));
+        return ORIGIN;
     }
     return nullptr;
 }

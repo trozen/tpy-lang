@@ -13,6 +13,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def s1a() -> None:
 void s1a();
+// def s1b() -> None:
+void s1b();
 // def s1c() -> None:
 void s1c();
 // def s1d(t: tuple[Own[A], int32]) -> None:  # tpyc: warning(/owned tuple param 't' is never consumed/)

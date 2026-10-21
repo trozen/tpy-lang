@@ -152,7 +152,35 @@ void c_sel_owned(bool flag) {
     std::cout << "c_sel_owned" << " " << std::get<0>(y).v << " " << std::get<1>(y).v << "\n" << ::tpy::check_signals;
 }
 
+// def s_ret_borrow() -> None:
+//     a = A(1)
+//     b = A(2)
+//     p = r_param((a, 1))
+//     p[0].v += 10
+//     q = r_local((a, 1))
+//     q[0].v += 10
+//     s = r_sel((a, 1), (b, 2), False)
+//     s[0].v += 10
+//     c = r_call_local(a)
+//     print("ret_borrow", a.v, b.v, p[0] is a, q[0] is a, s[0] is b, c[0] is a)
+//     print("ret_borrow int", r_param((5, 1))[0], r_local((6, 1))[0],
+//           r_sel((5, 1), (6, 2), True)[0], r_call_local(7)[0])
+void s_ret_borrow() {
+    A a = A(1);
+    A b = A(2);
+    auto p = ::tpyapp::main::r_param<A>(std::tuple<A*, int32_t>{&(a), 1});
+    std::get<0>(p)->v = ::tpy::add_check<int32_t>(std::get<0>(p)->v, 10);
+    auto q = ::tpyapp::main::r_local<A>(std::tuple<A*, int32_t>{&(a), 1});
+    std::get<0>(q)->v = ::tpy::add_check<int32_t>(std::get<0>(q)->v, 10);
+    auto s = ::tpyapp::main::r_sel<A>(std::tuple<A*, int32_t>{&(a), 1}, std::tuple<A*, int32_t>{&(b), 2}, false);
+    std::get<0>(s)->v = ::tpy::add_check<int32_t>(std::get<0>(s)->v, 10);
+    auto c = ::tpyapp::main::r_call_local<A>(a);
+    std::cout << "ret_borrow" << " " << a.v << " " << b.v << " " << ::tpy::print_bool(::tpy::same_object(&((*std::get<0>(p))), &(a))) << " " << ::tpy::print_bool(::tpy::same_object(&((*std::get<0>(q))), &(a))) << " " << ::tpy::print_bool(::tpy::same_object(&((*std::get<0>(s))), &(b))) << " " << ::tpy::print_bool(::tpy::same_object(&((*std::get<0>(c))), &(a))) << "\n" << ::tpy::check_signals;
+    std::cout << "ret_borrow int" << " " << std::get<0>(::tpyapp::main::r_param<int32_t>(std::tuple<int32_t, int32_t>{5, 1})) << " " << std::get<0>(::tpyapp::main::r_local<int32_t>(std::tuple<int32_t, int32_t>{6, 1})) << " " << std::get<0>(::tpyapp::main::r_sel<int32_t>(std::tuple<int32_t, int32_t>{5, 1}, std::tuple<int32_t, int32_t>{6, 2}, true)) << " " << std::get<0>(::tpyapp::main::r_call_local<int32_t>(7)) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
+//     s_ret_borrow()
 //     a = A(3)
 //     b = A(4)
 //     s_param((a, 1), bump)
@@ -228,6 +256,7 @@ void c_sel_owned(bool flag) {
 //     c_sel_owned(False)
 //     print("src", a.v, b.v)
 void main() {
+    ::tpyapp::main::s_ret_borrow();
     A a = A(3);
     A b = A(4);
     ::tpyapp::main::s_param<A>(std::tuple<A*, int32_t>{&(a), 1}, bump);

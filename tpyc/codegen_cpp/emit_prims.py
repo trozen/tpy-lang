@@ -51,7 +51,7 @@ from ..typesys import (
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
     is_protocol_type, is_void_like_type, placeholder_value_inits,
     polymorphic_source_inner, param_takes_ownership,
-    polymorphic_subclass_into_optional, unwrap_optional_own,
+    polymorphic_subclass_into_optional,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..value_category import call_result_const, receiver_const
@@ -252,24 +252,6 @@ def ptr_slot_field_type(ctx: 'CodeGenContext', init: 'TpyExpr',
     if sub is not None:
         slot_cpp = sub.name
     return f"std::optional<{slot_cpp}>"
-
-
-def promote_movable(ctx: 'CodeGenContext', name: str) -> None:
-    """Promote a sema-owned local into the body's working movable set.
-
-    `sema_movable_locals` is the RAW per-function fact ("sema proved this
-    local owned"); `movable_locals` is what the move sites actually read,
-    and a name joins it only when its declaration reaches a decl arm that
-    promotes. The arms that DON'T call this -- ptr-variant unions,
-    non-Own @dynamic protocol locals, `val_or_ref_t` TypeParamRef locals,
-    REF_ALIAS borrows, frame-promoted POINTER locals -- alias rather than
-    own, so a last-use read there must copy, not steal. Grep this function's
-    callers for the authoritative promoting-arm set: THIR's `_is_move_source`
-    must match it exactly, and a silent divergence between the two sets is a
-    move-vs-copy miscompile.
-    """
-    if name in ctx.sema_movable_locals:
-        ctx.movable_locals.add(name)
 
 
 # -- declared-type resolution ----------------------------------------------
@@ -679,7 +661,7 @@ def emit_isinstance_extractions(
 # has a demonstrated MIL-render consumer.
 PARAM_LOCAL_SET_FIELDS = (
     "pointer_locals", "const_indirect_locals", "optional_locals",
-    "ptr_variant_locals", "movable_locals", "storage_form_tuple_locals",
+    "ptr_variant_locals", "storage_form_tuple_locals",
 )
 
 
@@ -721,9 +703,7 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
         # pointer_local (for arrow access) and optional_local (so the
         # null-check dispatch picks has_value over `!= nullptr`). Rebind
         # the namespace to the bare Optional so type-aware codegen sites
-        # match the sibling pointer-repr Optional handling. movable_locals
-        # is set below via the generic `unwrap_optional_own + non-value`
-        # pass.
+        # match the sibling pointer-repr Optional handling.
         elif is_own_pointer_repr_optional(actual):
             ctx.pointer_locals.add(pname)
             ctx.optional_locals.add(pname)
@@ -740,16 +720,9 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
             if (isinstance(ptype, ReadonlyType)
                     or pname in deep_const_borrow_params):
                 ctx.const_indirect_locals.add(pname)
-        # Own[T] and Own[T] | None params are movable (caller gave up
-        # ownership), and so is an ownership-transfer tuple.
         owns = (func.takes_ownership_of(pname, ptype) if func is not None
                 else param_takes_ownership(ptype))
-        own_actual = unwrap_optional_own(actual)
-        if (owns and own_actual is not None
-                and not own_actual.wrapped.is_value_type()):
-            ctx.movable_locals.add(pname)
         if owns and isinstance(actual, TupleType):
-            ctx.movable_locals.add(pname)
             # A mixed param keeps its borrowed elements as pointers.
             if actual.is_owned_movable():
                 ctx.storage_form_tuple_locals.add(pname)
@@ -760,13 +733,6 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
             inner = unwrap_readonly(actual.wrapped)
             if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
                 ctx.storage_form_tuple_locals.add(pname)
-        # Value-optional params (std::optional<T> by value) are movable when
-        # the inner type has an expensive copy (String, BigInt, etc.).
-        # readonly params are excluded to respect the no-mutation contract.
-        elif (isinstance(actual, OptionalType) and not actual.uses_pointer_repr()
-                and not isinstance(ptype, ReadonlyType)
-                and actual.inner.is_expensive_copy()):
-            ctx.movable_locals.add(pname)
 
 
 @contextmanager
@@ -845,11 +811,10 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
         ctx.alias_names = set()
     ctx.hoisted_vars = ctx.analyzer.function_hoisted_vars.get(func, set())
     ctx.move_through_vars = ctx.analyzer.function_move_through_vars.get(func, set())
-    ctx.sema_movable_locals = ctx.analyzer.function_movable_locals.get(func, set())
     ctx.sema_ever_owned_locals = ctx.analyzer.function_ever_owned_locals.get(func, set())
     ctx.sema_stmt_borrow_decls = ctx.analyzer.function_stmt_borrow_decls.get(func, {})
     # Classify params into the pointer-form local sets (pointer_locals,
-    # ptr_variant_locals, optional_locals, movable_locals, ...) that access
+    # ptr_variant_locals, optional_locals, ...) that access
     # dispatch consults so `->` vs `.` / move / variant-form are correct.
     seed_param_locals(ctx, protocols, params, local_ns,
                       ctx.deep_const_borrow_params, func)
@@ -1435,7 +1400,6 @@ __all__ = [
     "nested_def_signature",
     "partition_optional_cases",
     "pattern_has_field_condition",
-    "promote_movable",
     "ptr_slot_field_type",
     "ptr_write_fills_slot",
     "push_finally",

@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from dataclasses import replace
 from ..storage_facts import collect_storage_facts
 from ..temp_plan import prepare_temporaries
-from .callables import method_definition, method_receiver, resolved_definition
+from .callables import definition_signature, method_definition, method_receiver, resolved_definition
 from ..scalar_leaves import record_owner
 from .storage import borrowed_record, native_container, optional_layout, record_layout, tuple_parameter_layout
 from ...identity_map import IdentityMap
@@ -112,6 +112,7 @@ from ..nodes import (
     PtrSlotKind,
     THIROverloadDefault,
     THIRParamCopy,
+    receiver_param,
 )
 from .predicates import (
     _value_record_slot,
@@ -879,11 +880,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                    render_concept=render_concept,
                    params_override=(stub.params
                                     if stub is not None and not literal_group
-                                    else None),
-                   return_type_override=(
-                       stub.return_type
-                       if stub is not None
-                       and isinstance(stub.return_type, TpyType) else None))
+                                    else None))
     if func.error_return is not None:
         lc.error_return_cpp = error_return_to_cpp(
             func.error_return, analyzer.ctx.module_name, analyzer.registry)
@@ -955,6 +952,17 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
             t, analyzer, readonly=param_recs[n].deep_const),
     ) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
+    receiver = (method_receiver(func, self_type, analyzer, stub=stub)
+                if self_receiver is not None else None)
+    defined, access_twin = (method_definition(func, receiver, analyzer)
+                            if self_type is not None or stub is not None
+                            else (resolved_definition(func, analyzer), False))
+    # A body its calls bind publishes their signature object; any other
+    # body's contract is its own parameters and result as lowered.
+    own = params if receiver is None else (receiver_param(receiver), *params)
+    lc.signature = (defined.signature if defined is not None else definition_signature(
+        tuple(p.type for p in own), rt, tuple(p.passing for p in own), analyzer,
+        getter=func.is_property_getter))
     try:
         param_copies = _param_reassign_copies(func, analyzer, params=src_params)
         if stub is not None and default_locals:
@@ -963,14 +971,10 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                             function_body=True)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")
-        receiver = (method_receiver(func, self_type, analyzer, stub=stub)
-                    if self_receiver is not None else None)
-        defined, access_twin = (method_definition(func, receiver, analyzer)
-                                if self_type is not None or stub is not None else (None, False))
         fn = THIRFunction(
             name=func.name,
-            resolved_callee=(resolved_definition(func, analyzer) if self_type is None and stub is None
-                             else defined),
+            signature=lc.signature,
+            resolved_callee=defined,
             access_twin=access_twin,
             params=params,
             return_type=rt,
@@ -2003,6 +2007,7 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                    escape_hoisted_override=(
                        analyzer.top_level_escape_hoisted_vars),
                    top_level_scope=True)
+    lc.signature = definition_signature((), VoidType(), (), analyzer)
     lc.prescan.native_globals = module_native_globals(module)
     declared: dict[str, TpyType] = {}
     own_slots: set[str] = set()
@@ -2072,7 +2077,7 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
             raise ThirUnsupported("body.hoisted_vars")
         fn = THIRFunction(name="__tpy_init", params=(),
                           return_type=VoidType(), body=body,
-                          layout=THIRFunctionLayout(),
+                          layout=THIRFunctionLayout(), signature=lc.signature,
                           storage_facts=collect_storage_facts(body, None))
         slot_node = next((n for n in _iter_thir(fn.body)
                           if _rejects_global_slot(n)), None)

@@ -21,7 +21,7 @@ class P:
 def f(p: P) -> tuple[Own[N], Own[P]]:
     t = (N(1), p)
     # Copying `t` whole would copy the N it owns, which cannot be copied.
-    return t  # tpyc: warning(/tuple element 1\)/) error(/return.tuple_source/)
+    return t  # tpyc: warning(/tuple element 1\)/) error(/return.lift.borrow/)
 
 
 def main() -> None:

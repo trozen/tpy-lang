@@ -19,6 +19,7 @@ from ...parse.nodes import (
     TpySetComprehension,
     collect_name_refs,
 )
+from ...sema.binding_ownership import CompMove
 from ...typesys import (
     IntLiteralType, body_function_info,
     NominalType,
@@ -1093,20 +1094,21 @@ def _comp_pointer_hides(init, lc) -> frozenset:
 
 
 def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
-                           body_declared: dict[str, TpyType], gen,
-                           *, is_last_sink: bool) -> 'THIRExpr':
-    """Lower one sink (list/set element, dict value) of an owned-move
-    comprehension. The move set is restricted to THIS comp's loop var
-    (the loop var is rebound each iteration, so moving it is sound; an outer
-    movable would multi-move). A bare-loop-var LAST sink moves UNCONDITIONALLY
-    (structurally the last use, sequenced after any earlier read); an
-    earlier/derived sink defers to the ordinary last-use move gate."""
+                           body_declared: dict[str, TpyType], gen
+                           ) -> 'THIRExpr':
+    """Lower one sink (list/set element, dict key or value) of an
+    owned-move comprehension. The move set is restricted to THIS comp's loop
+    var (the loop var is rebound each iteration, so moving it is sound; an
+    outer movable would multi-move). The bare-loop-var LAST sink moves
+    UNCONDITIONALLY (structurally the last use, sequenced after any earlier
+    read), as sema's clause decided it (`comp_moves`); an earlier/derived
+    sink defers to the ordinary last-use move gate."""
     with lc.moves_only({gen.var}):
         lowered = _lower_container_elem(e, slot, lc, body_declared)
     inner = e
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
-    if (is_last_sink and isinstance(inner, TpyName) and inner.name == gen.var
+    if (lc.analyzer.ctx.comp_moves.get(inner) is CompMove.LAST_SINK
             and not isinstance(lowered, THIRMove)):
         lowered = THIRMove(result_type=lowered.result_type, value=lowered,
                            form=lowered.form, loc=getattr(e, "loc", None))
@@ -1240,11 +1242,9 @@ def _build_comprehension_body(init, result_type, lc, declared,
                     # ordinary last-use gate). When the value moves, the key
                     # is sequenced into `__dk_N` first at emit.
                     key = _lower_owned_comp_sink(init.key_expr, kt, lc,
-                                                 body_declared, innermost,
-                                                 is_last_sink=False)
+                                                 body_declared, innermost)
                     value = _lower_owned_comp_sink(init.value_expr, vt, lc,
-                                                   body_declared, innermost,
-                                                   is_last_sink=True)
+                                                   body_declared, innermost)
                     value_moved = isinstance(value, THIRMove)
                 else:
                     key = _lower_container_elem(init.key_expr, kt, lc,
@@ -1254,8 +1254,7 @@ def _build_comprehension_body(init, result_type, lc, declared,
                         typed_brace=True)
         elif innermost.owns_elements:
             element = _lower_owned_comp_sink(
-                init.element_expr, elem_t, lc, body_declared, innermost,
-                is_last_sink=True)
+                init.element_expr, elem_t, lc, body_declared, innermost)
         else:
             # Element temps flush PER-ITERATION right above the insert, so
             # the list/set element is a flushable position:

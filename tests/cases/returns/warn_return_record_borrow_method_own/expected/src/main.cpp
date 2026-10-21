@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     # the copy the warning declares.
 //     return h.borrow()  # tpyc: warning(/copies Payload into owned storage/)
 Payload take(Holder& h) {
-    return h.borrow();
+    return Payload(h.borrow());
 }
 
 // def take_copy(h: Holder) -> Own[Payload]:

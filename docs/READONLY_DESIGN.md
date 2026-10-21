@@ -703,6 +703,11 @@ is `std::optional<std::tuple<const A*, B*>>`, an unmarked
   `A` (*Cannot return readonly[A] at mutable return type 'A'; declare the
   return as 'readonly[A]'*). The same holds for a `@readonly` function
   returning a parameter's storage.
+- A member narrowed out of a readonly union (`if isinstance(u, A)` over
+  `u: readonly[A | B]`) is `readonly[A]`, as a narrowed readonly Optional's
+  inner is: it returns at `-> readonly[A]`, and at `-> A` it is the same
+  error. Returned through a select or an alias it still loses the readonly
+  (`BUGS.md#narrowed-readonly-member-loses-readonly`).
 - An inferred method returning a writable borrow of its own storage is not
   const (the return grants write access); one returning a pointee is.
 - A readonly the user did not spell -- an implicitly-readonly dunder

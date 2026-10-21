@@ -82,6 +82,7 @@ from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owne
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
 from .alias_rebind import bind_kind_of, note_tuple_elem_borrows, tuple_elem_owned
+from .binding_ownership import resolve_read
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
@@ -1600,6 +1601,7 @@ class ExpressionAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
+        self.ctx.read_bindings[expr] = resolve_read(self.ctx, expr.name)
         read = self.ctx.name_read(expr.name)
         if read.comp is not None:
             self.ctx.comp_var_reads[expr] = read.comp
@@ -3816,6 +3818,15 @@ class ExpressionAnalyzer:
             bare, OwnType(bare), "container literal element",
             elem.loc, source_expr=elem)
 
+    def _register_moved_element(self, elem: TpyExpr,
+                                elem_type: TpyType) -> None:
+        """A comprehension element its clause moves warns nothing, but its
+        owning sink still has its record."""
+        self.compat.register_sink(
+            elem, OwnType(unwrap_ref_type(unwrap_own(unwrap_readonly(
+                elem_type)))),
+            TupleSink.CONTAINER, per_leaf=True)
+
     def _analyze_array_literal(
         self, expr: TpyArrayLiteral, expected: SlotHint | None = None
     ) -> TpyType:
@@ -5396,11 +5407,16 @@ class ExpressionAnalyzer:
         # for a consuming-iteration decision. Suppressed for an owned-source
         # bare-loop-var sink (the only shape codegen moves): the element
         # transfers ownership, so there is no copy to warn about. A derived sink
-        # (`x.field`, `f(x)`) is not the move, so it still warns/copies.
+        # (`x.field`, `f(x)`) is not the move, so it still warns/copies. The
+        # clause decides every sink, warned or not: the lowering reads it.
+        moves = self.compat.comp_elem_moves(expr.generators[-1],
+                                            expr.element_expr,
+                                            is_last_sink=True)
         if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
-                and not self.compat.comp_elem_moves(expr.generators[-1], expr.element_expr,
-                                                    is_last_sink=True)):
+                and not moves):
             self._warn_storage_element_copy(expr.element_expr, result_elem_type)
+        elif moves:
+            self._register_moved_element(expr.element_expr, result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
@@ -5552,12 +5568,19 @@ class ExpressionAnalyzer:
         # Key and value are suppressed independently for an owned bare-loop-var
         # sink (the one shape codegen moves) -- `{node.id: node}` moves the value
         # but still copies/warns the key.
+        key_moves = self.compat.comp_elem_moves(innermost, expr.key_expr)
+        value_moves = self.compat.comp_elem_moves(innermost, expr.value_expr,
+                                                  is_last_sink=True)
         if (expr.key_expr.loc is not None and not isinstance(expected_key, AnyType)
-                and not self.compat.comp_elem_moves(innermost, expr.key_expr)):
+                and not key_moves):
             self._warn_storage_element_copy(expr.key_expr, key_type)
+        elif key_moves:
+            self._register_moved_element(expr.key_expr, key_type)
         if (expr.value_expr.loc is not None and not isinstance(expected_value, AnyType)
-                and not self.compat.comp_elem_moves(innermost, expr.value_expr, is_last_sink=True)):
+                and not value_moves):
             self._warn_storage_element_copy(expr.value_expr, value_type)
+        elif value_moves:
+            self._register_moved_element(expr.value_expr, value_type)
 
         if expected_key is not None and key_type != expected_key:
             expr.key_expr = self.compat.coerce_expr(
@@ -5671,7 +5694,8 @@ class ExpressionAnalyzer:
             for name, typ in bindings:
                 stack.enter_context(
                     self.scopes.loop_var(inner_scope, name, typ,
-                                         inner_scope.depth, is_foreach=True))
+                                         inner_scope.depth, is_foreach=True,
+                                         binder=gen))
             self.ctx.func.comp_targets.extend(
                 CompTarget(n, expr, k, inner_scope.depth) for n in names)
             try:
@@ -6433,7 +6457,7 @@ class ExpressionAnalyzer:
         outer_locals = set(self.ctx.func.definitely_assigned)
         outer_scope = self.ctx.func.current_scope
 
-        with self.scopes.lambda_scope() as scope:
+        with self.scopes.lambda_scope(expr) as scope:
             for pname, ptype in zip(expr.param_names, fn_type.param_types):
                 scope.define(pname, ptype)
                 if self.ctx.func.current_ns:
@@ -6528,11 +6552,14 @@ class ExpressionAnalyzer:
         elif (isinstance(body_value, TpyName) and tuple_target is not None
               and body_value.name in expr.param_names):
             # A returned parameter hands over what its declared type owns.
-            self.compat.grant_name_move(body_value, OwnType(tuple_target))
-            self.compat.register_tuple_sink(
+            self.compat.claim_name_move(body_value, OwnType(tuple_target))
+            self.compat.register_sink(
                 body_value, fn_type.return_type, TupleSink.RETURN,
-                param=fn_type.param_types[
-                    expr.param_names.index(body_value.name)])
+                per_leaf=True)
+        else:
+            # An owned result is an owning sink whatever the body.
+            self.compat.register_owned_result(expr.body, fn_type.return_type,
+                                              TupleSink.RETURN)
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",

@@ -673,7 +673,6 @@ BIGINT_NARROW = Coercion(
     builds_fresh_value=True,
 )
 
-_RULES_BY_NAME = {rule.name: rule for rule in (*COERCIONS, BIGINT_NARROW)}
 
 
 def coercion_rule(name: str) -> Optional[Coercion]:
@@ -974,6 +973,34 @@ INTO_ANY = Coercion(
 )
 
 
+# T -> Own[@dynamic P]: the erasure into `std::unique_ptr<P>`, decided per
+# source by `sema/dyn_erasure.py`, one coercion per verdict -- a record
+# that C++-inherits P is `std::make_unique<T>(x)`, a structural conformer
+# the owning `make_adapter<Base>(x)` Adapter, an async-def factory call the
+# Adapter over the coroutine frame the call builds. Each spells a C++ type
+# from the program's own declarations, so the lowering renders it; each
+# builds a fresh owner.
+INTO_DYN_INHERIT = Coercion(
+    name="into_dyn_inherit",
+    from_type=_match_any_side,
+    to_type=_is(OwnType),
+    builds_fresh_value=True,
+)
+INTO_DYN_ADAPTER = Coercion(
+    name="into_dyn_adapter",
+    from_type=_match_any_side,
+    to_type=_is(OwnType),
+    builds_fresh_value=True,
+)
+INTO_DYN_FACTORY = Coercion(
+    name="into_dyn_factory",
+    from_type=_match_any_side,
+    to_type=_is(OwnType),
+    builds_fresh_value=True,
+)
+DYN_ERASURES = (INTO_DYN_INHERIT, INTO_DYN_ADAPTER, INTO_DYN_FACTORY)
+
+
 # Any -> T auto-coerce: runtime checked extraction. Target T must be a
 # concrete type (sema gates Union / Optional / generic-type-param targets
 # before reaching this codegen). When the typeid mismatches at runtime,
@@ -984,3 +1011,7 @@ FROM_ANY = Coercion(
     to_type=_match_any_side,
     codegen=lambda e, _a, b, _c: f"::tpy::any_cast_or_panic<{b.to_cpp()}>({e})",
 )
+
+
+_RULES_BY_NAME = {rule.name: rule for rule in (
+    *COERCIONS, BIGINT_NARROW, *DYN_ERASURES)}

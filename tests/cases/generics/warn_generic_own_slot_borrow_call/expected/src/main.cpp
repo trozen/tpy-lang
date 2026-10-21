@@ -15,7 +15,7 @@ void collect_twin(Twin& h, std::vector<Cell>& xs) {
 // def dup_return_twin(h: Twin) -> Own[Cell]:
 //     return h.borrow()  # tpyc: warning(/copies Cell into owned storage/)
 Cell dup_return_twin(Twin& h) {
-    return h.borrow();
+    return Cell(h.borrow());
 }
 
 // def sec_own_param() -> None:

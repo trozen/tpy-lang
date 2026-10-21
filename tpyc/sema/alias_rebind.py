@@ -38,7 +38,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Callable, Container, Iterable, Mapping, NamedTuple
+from typing import (TYPE_CHECKING, Callable, Container, Iterable, Iterator,
+                    Mapping, NamedTuple)
 
 from ..holders import Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
@@ -142,34 +143,58 @@ class BindKind(Enum):
 
 # -- sema-side stamps ---------------------------------------------------------
 
+def peel_slot(t: TpyType) -> TpyType:
+    """The payload a slot or a leaf of type `t` holds: its wrappers
+    (`Own`, `readonly`, a reference, Send/Sync) peeled."""
+    return unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(t))))
+
+
 def bare_tuple(t: TpyType | None) -> TupleType | None:
-    """`t` as a tuple, its wrappers (`Own`, `readonly`, Send/Sync) peeled;
-    None for no tuple."""
-    bare = (unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(t))))
-            if t is not None else None)
+    """`t` as a tuple, its wrappers (`peel_slot`) peeled; None for no
+    tuple."""
+    bare = peel_slot(t) if t is not None else None
     return bare if isinstance(bare, TupleType) else None
+
+
+def _leaves_at(et: TpyType, path: ElemPath
+               ) -> Iterator[tuple[ElemPath, TpyType]]:
+    """Every leaf of a value of type `et` at `path` with its payload type:
+    the members of a nested tuple, any other type itself. The one walk
+    over a tuple's leaves (`leaf_paths`, `reference_paths`)."""
+    e = peel_slot(et)
+    if isinstance(e, TupleType):
+        for i, sub in enumerate(e.element_types):
+            yield from _leaves_at(sub, path + (i,))
+    else:
+        yield path, e
+
+
+def leaf_paths(slot: TpyType | None,
+               prefix: ElemPath = ()) -> frozenset[ElemPath]:
+    """Every leaf path of a value of type `slot` -- top-level `(i,)`,
+    nested `(i, j)` through nested tuples, value leaves included -- and the
+    one path `prefix` of a value that is no tuple."""
+    if slot is None:
+        return frozenset({prefix})
+    return frozenset(p for p, _e in _leaves_at(slot, prefix))
 
 
 def _paths_at(et: TpyType, path: ElemPath) -> frozenset[ElemPath]:
     """The reference paths of a tuple element of type `et` at `path`: its
     own when it is a reference leaf (an open type parameter included: it
     may be one), its members' when it is a nested value tuple."""
-    e = unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(et))))
-    if isinstance(e, TupleType):
-        return reference_paths(e, path)
-    return frozenset() if e.is_value_type() else frozenset((path,))
+    return frozenset(p for p, e in _leaves_at(et, path)
+                     if not e.is_value_type())
 
 
 def reference_paths(slot: TpyType | None,
                     prefix: ElemPath = ()) -> frozenset[ElemPath]:
     """The element paths of tuple `slot` -- top-level `(i,)`, nested
-    `(i, j)` through value tuples -- whose leaf is a reference. Empty for
-    no tuple."""
-    bare = bare_tuple(slot)
-    out: set[ElemPath] = set()
-    for i, et in enumerate(bare.element_types if bare is not None else ()):
-        out |= _paths_at(et, prefix + (i,))
-    return frozenset(out)
+    `(i, j)` through value tuples -- whose leaf is a reference: the
+    reference projection of `leaf_paths`. Empty for no tuple."""
+    if bare_tuple(slot) is None:
+        return frozenset()
+    return _paths_at(slot, prefix)
 
 
 def _reference_elements(slot: TpyType | None) -> tuple[bool, ...] | None:
@@ -185,21 +210,23 @@ def _reference_elements(slot: TpyType | None) -> tuple[bool, ...] | None:
 
 
 def _declared_borrowed(declared: TpyType, slot: TpyType,
-                       path: ElemPath) -> frozenset[ElemPath]:
+                       path: ElemPath, paths_at: Callable[
+                           [TpyType, ElemPath], frozenset[ElemPath]]
+                       = _paths_at) -> frozenset[ElemPath]:
     """The paths at `path` a call's declared return element `declared`
     lends: an `Own[...]` marker hands its subtree over, a nested tuple
-    answers per member, anything else lends every reference path of the
-    slot there."""
+    answers per member, anything else lends every path of the slot there
+    (`paths_at`: its reference paths, or every leaf path)."""
     d = unwrap_readonly(unwrap_send_sync(declared))
     if isinstance(d, OwnType):
         return frozenset()
     dt, st = bare_tuple(d), bare_tuple(slot)
     if (dt is None or st is None
             or len(dt.element_types) != len(st.element_types)):
-        return _paths_at(slot, path)
+        return paths_at(slot, path)
     out: set[ElemPath] = set()
     for i, (de, se) in enumerate(zip(dt.element_types, st.element_types)):
-        out |= _declared_borrowed(de, se, path + (i,))
+        out |= _declared_borrowed(de, se, path + (i,), paths_at)
     return frozenset(out)
 
 
@@ -213,6 +240,17 @@ def owned_slot_paths(slot: TpyType | None) -> frozenset[ElemPath]:
         return frozenset()
     return reference_paths(bare) - _declared_borrowed(
         unwrap_ref_type(slot), bare, ())
+
+
+def owned_leaf_paths(slot: TpyType) -> frozenset[ElemPath]:
+    """`owned_slot_paths` over every leaf (`leaf_paths`), value leaves
+    included, of a slot that takes ownership: a tuple's `Own`-marked
+    leaves, a scalar's one leaf `()`."""
+    bare = bare_tuple(slot)
+    if bare is None:
+        return frozenset({()})
+    return leaf_paths(bare) - _declared_borrowed(
+        unwrap_ref_type(slot), bare, (), leaf_paths)
 
 
 def top_level(paths: Iterable[ElemPath]) -> frozenset[int]:
@@ -795,7 +833,7 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
     (`StatementAnalyzer._mark_rebound_roots`)."""
     # The ownership fact is complete once the body is: the owning-sink
     # reads it settles may declare copies the checks below read.
-    compat.settle_owning_reads()
+    compat.settle_owning_reads(func.body if func is not None else [])
     if func is None:
         return
     f = ctx.func

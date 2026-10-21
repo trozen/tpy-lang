@@ -775,7 +775,8 @@ def _signature_facts(signature: THIRCallableSignature) -> str:
     result = ("?" if signature.return_representation is None
               else signature.return_representation.value)
     follows = ", follows receiver" if signature.result_follows_receiver else ""
-    return f"({passings}) -> {result}{follows}"
+    storage = ", storage reference" if signature.storage_reference_result else ""
+    return f"({passings}) -> {result}{follows}{storage}"
 
 
 def _callee_name(identity: THIRFunctionIdentity) -> str:
@@ -813,11 +814,11 @@ def _callee_lines(fn: 'THIRFunction') -> list[str]:
     statement renders stay the arguments' lowering, which the committed sweep
     tables fingerprint."""
     lines = []
-    if fn.resolved_callee is not None:
-        identity = fn.resolved_callee.identity
-        owner = (identity.owner if identity.accessor is None or identity.owner is None
-                 else _callee_name(identity))
-        lines.append(f"  signature{'' if owner is None else ' ' + owner}{_signature_facts(fn.resolved_callee.signature)}")
+    if fn.signature is not None:
+        identity = fn.resolved_callee.identity if fn.resolved_callee is not None else None
+        owner = (None if identity is None else identity.owner
+                 if identity.accessor is None or identity.owner is None else _callee_name(identity))
+        lines.append(f"  signature{'' if owner is None else ' ' + owner}{_signature_facts(fn.signature)}")
     facts = [((node.callee or "<computed>") if isinstance(node, THIRCall) else node.method_cpp, fact)
              for stmt in fn.body for node in _walk(stmt)
              if isinstance(node, (THIRCall, THIRMethodCall)) and (fact := _callee_facts(node)) is not None]
@@ -840,6 +841,8 @@ def _resumable_lines(name: str, body: 'THIRResumableBody') -> list[str]:
     statement list -- the skeleton emits the state machine around them. Render
     each keyed group so what THIR contributed is visible per seam."""
     lines = [f"resumable {name}:"]
+    if body.signature is not None:
+        lines.append(f"  signature{_signature_facts(body.signature)}")
     groups = (
         ("leaves", body.leaves, _stmt_lines),
         ("match_dispatches", body.match_dispatches, _stmt_lines),
