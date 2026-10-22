@@ -863,10 +863,10 @@ int32_t through(__F0&& f, A& a) {
     return f(a).x;
 }
 // # gen_tuple_name: a generic tuple parameter at an owned tuple result copies
-// # each element in (the warned copy is the intended semantics; the one copy
-// # is warned twice, BUGS.md#generic-tuple-own-return-double-hedge).
+// # each element in (the warned copy is the intended semantics; one hedge per
+// # copied element).
 // def gen_tuple_name[T](x: tuple[T, int32]) -> Own[tuple[T, int32]]:
-//     return x  # tpyc: warning(/may copy tuple\[T, int32\]/) warning(/may copy T into owned storage \(tuple element 0\)/)
+//     return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
 std::tuple<T, int32_t> gen_tuple_name(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& x) {
     return ::tpy::tuple_to_storage<std::tuple<T, int32_t>>(x);
@@ -887,22 +887,22 @@ std::tuple<T, int32_t> gen_tuple_call(::tpy::param_val_or_ref_t<T> a) {
     return ::tpy::tuple_to_storage<std::tuple<T, int32_t>>(::tpyapp::main::gen_pair<T>(a));
 }
 // # gen_tuple_pair: a two-T tuple parameter copies both elements in (warned per
-// # element and whole, BUGS.md#generic-tuple-own-return-double-hedge).
+// # element).
 // def gen_tuple_pair[T](x: tuple[T, T]) -> Own[tuple[T, T]]:
-//     return x  # tpyc: warning(/may copy tuple\[T, T\]/) warning(/may copy T into owned storage \(tuple element 0\)/) warning(/may copy T into owned storage \(tuple element 1\)/)
+//     return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/) warning(/may copy T into owned storage \(tuple element 1\)/)
 template<typename T>
 std::tuple<T, T> gen_tuple_pair(const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::val_or_ptr_t<T>>& x) {
     return ::tpy::tuple_to_storage<std::tuple<T, T>>(x);
 }
 // # gen_tuple_loop: a loop variable over generic tuples, and the fallback
-// # parameter, each copied in at the owned result (warned twice each,
-// # BUGS.md#generic-tuple-own-return-double-hedge).
+// # parameter, each copied in at the owned result (hedged once per copied
+// # element).
 // def gen_tuple_loop[T](xs: list[tuple[T, int32]],
 //                       d: tuple[T, int32]) -> Own[tuple[T, int32]]:
 //     for x in xs:
 //         if x[1] > 1:
-//             return x  # tpyc: warning(/may copy tuple\[T, int32\]/) warning(/may copy T into owned storage \(tuple element 0\)/)
-//     return d  # tpyc: warning(/may copy tuple\[T, int32\]/) warning(/may copy T into owned storage \(tuple element 0\)/)
+//             return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
+//     return d  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
 std::tuple<T, int32_t> gen_tuple_loop(const std::vector<std::tuple<T, int32_t>>& xs, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& d) {
     auto& __obj_0 = xs;

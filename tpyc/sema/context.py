@@ -3306,7 +3306,7 @@ class SemanticContext:
             return self.record_ctx.type_param_bounds[type_param_name]
         return None
 
-    def _copy_is_unobservable(self, typ: 'TpyType') -> bool:
+    def copy_is_unobservable(self, typ: 'TpyType') -> bool:
         """Whether a `ValueType` bound settles the copy question for `typ`.
 
         True only when the payload's reference-ness is DERIVED from its type
@@ -3366,7 +3366,7 @@ class SemanticContext:
         # -- a side with no type params has no bound to consult and abstains.
         open_sides = [t for t in (target, display)
                       if own_copy.type_has_type_param(t)]
-        if all(self._copy_is_unobservable(t) for t in open_sides):
+        if all(self.copy_is_unobservable(t) for t in open_sides):
             return True
         if own_copy.copy_is_hedged(display, target, kind):
             msg = own_copy.hedge_message(display, dest, kind, hint)

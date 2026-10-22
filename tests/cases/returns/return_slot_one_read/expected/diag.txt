@@ -11,15 +11,11 @@ main.py:463: warning: lambda at line 463 copies the object 'x' refers to when it
 main.py:463: warning: copies list[int32] into owned storage; use copy() to make this explicit
 main.py:460: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:522: warning: copies Sq into owned storage; use copy() to make this explicit
-main.py:577: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
 main.py:577: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
 main.py:588: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:594: warning: may copy tuple[T, T] into owned storage if not a value type; use copy() to make this explicit
 main.py:594: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
 main.py:594: warning: may copy T into owned storage (tuple element 1) if not a value type; use copy() to make this explicit
-main.py:604: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
 main.py:604: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:605: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
 main.py:605: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
 main.py:612: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
 main.py:616: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit

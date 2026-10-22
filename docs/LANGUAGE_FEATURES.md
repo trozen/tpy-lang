@@ -473,16 +473,19 @@ The per-element rule covers every reference leaf, not only a pointer one:
   at the same slot: a select of union-leaf tuples returned at
   `Own[tuple[A | B, int32]]` and a field read warn *copies A | B into owned
   storage (tuple element 0)*; a `@nocopy` alternative makes it an error. A
-  tuple NAME keeps its own rule, which does not name a union leaf yet: `xs =
-  [t]` or `self.t = t` with `t: tuple[A | B, int32]` copies it unwarned
-  (`BUGS.md#tuple-name-union-leaf-copy-silent`).
+  tuple NAME's union leaf warns the same: `xs = [t]` or `self.t = t` with
+  `t: tuple[A | B, int32]` warns *copies A | B into ... (tuple element 0)*;
+  `tuple[A | T, int32]` and `tuple[T | None, int32]` take the hedge; a
+  `@nocopy` alternative is an error there too, a `return t` at
+  `Own[tuple[A | N, int32]]` or `tuple[Own[A | N], int32]` included.
 - An **open `T` leaf** of a source that is no name takes the scalar `T`'s
   hedge, once per leaf: `return mk(x)` with `mk[T] -> tuple[T, int32]` at
   `Own[tuple[T, int32]]` warns *may copy T into owned storage (tuple element
   0) if not a value type*, a nested result names `(tuple element 0.0)`, and
   `out.append(ps[0])` over `ps: list[tuple[T, int32]]` hedges as its
-  monomorphic twin warns. A tuple NAME keeps its own text (a generic tuple
-  parameter is hedged for the whole tuple and per element). A call that
+  monomorphic twin warns. A tuple NAME takes the same per-leaf hedge
+  (`xs.append(t)` with `t: tuple[T, int32]`), a returned one included
+  (`return t` at `Own[tuple[T, int32]]` hedges element 0 only). A call that
   lends by a declared `borrows=` / `element_of=` contract (`min(a, b,
   key=...)`, `d.get(k, fb)`) hedges per leaf too, wherever its scalar twin
   would: `return min(a, b, key=lambda p: p[1])` at `Own[tuple[T, int32]]`

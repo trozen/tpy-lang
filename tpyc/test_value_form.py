@@ -141,7 +141,7 @@ class TestPointerReprElement:
 
 
 class TestNestedPointerReprElement:
-    """has_nested_pointer_repr_element: the copy-diagnostic depth question."""
+    """has_nested_pointer_repr_element: the nested borrow-form question."""
 
     def test_direct_element_still_counts(self):
         assert TupleType((INT32, RECORD)).has_nested_pointer_repr_element()

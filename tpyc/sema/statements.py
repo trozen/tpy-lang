@@ -1100,6 +1100,11 @@ class StatementAnalyzer:
                 f"uses or restructure the code.", value, value)
             return
         shown = self.compat.diag_type(t)
+        # An open payload's copy is the instantiation's answer: hedged, as
+        # at every other owning sink.
+        if self.ctx.defer_own_copy_verdict(shown, t, "owned storage", value,
+                                           source=value):
+            return
         remedy = self.compat.copy_remedy(value, note="")
         self.ctx.copy_warning(
             lambda n: f"copies {shown} into owned storage; {remedy}{n}",

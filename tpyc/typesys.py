@@ -5417,14 +5417,13 @@ class TupleType(TpyType):
 
     def has_nested_pointer_repr_element(self) -> bool:
         """True if any element AT ANY DEPTH through nested value tuples is a
-        bare-pointer borrow.
-
-        The aliasing question, not the form question: storing this tuple into
-        owned storage copies a borrowed reference somewhere in its element
-        tree, so the copy diagnostics need this depth. `has_pointer_repr_element`
-        deliberately stays direct-only because the outer tuple genuinely has no
-        pointer slot of its own when the reference sits a level down -- every
-        codegen form site must keep asking that shallower question."""
+        bare-pointer borrow: a form question about the element tree, for the
+        sites that convert between a tuple's borrow and storage forms. The
+        copy diagnostics ask reference-ness instead (`reference_paths`), a
+        union leaf included. `has_pointer_repr_element` deliberately stays
+        direct-only because the outer tuple genuinely has no pointer slot of
+        its own when the reference sits a level down -- every codegen form
+        site must keep asking that shallower question."""
         return self.has_nested_element(self._element_is_pointer_repr)
 
     @staticmethod

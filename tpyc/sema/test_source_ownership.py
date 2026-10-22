@@ -45,7 +45,7 @@ from ..thir.nodes import (THIRCoerce, THIRConsumingIter, THIRFieldAccess,
                           THIRReturn, THIRSelf, THIRSubscript)
 from ..thir.testutil import _compile as _compile_program, _entry
 from ..thir.source import Held
-from ..typesys import (SendType, TpyType, TupleType, TypeParamRef, UnionType,
+from ..typesys import (SendType, TpyType, TupleType, TypeParamRef,
                        unwrap_own, unwrap_readonly)
 from ..value_category import peel_value_wrappers
 
@@ -186,29 +186,10 @@ def _leaves_under(ctx: SemanticContext,
     return None
 
 
-def _under_name(compat: TypeCompatibility, src: TpyExpr,
-                path: tuple[int, ...]) -> bool:
-    """Whether the leaf at `path` of `src` is a nested leaf under a tuple
-    name: the source itself, or a literal member above the leaf."""
-    if len(path) < 2:
-        return False
-    node = src
-    for depth in range(len(path)):
-        if compat.tuple_name_source(node):
-            return True
-        lit = peel_value_wrappers(node)
-        if not (isinstance(lit, TpyTupleLiteral)
-                and path[depth] < len(lit.elements)):
-            return False
-        node = lit.elements[path[depth]]
-    return False
-
-
 def _silent_leaf(ctx: SemanticContext, src: TpyExpr,
                  path: tuple[int, ...]) -> bool:
-    """Whether the leaf at `path` of `src` is a union or `Send[T]` one, which
-    a tuple name copies untold (BUGS.md#tuple-name-union-leaf-copy-silent,
-    BUGS.md#send-own-tuple-leaf-copy-unwarned)."""
+    """Whether the leaf at `path` of `src` is a `Send[T]` one, which some
+    sinks copy untold (BUGS.md#send-own-tuple-leaf-copy-unwarned)."""
     t: TpyType | None = ctx.get_expr_type(peel_value_wrappers(src))
     for i in path:
         tt = bare_tuple(t)
@@ -217,8 +198,7 @@ def _silent_leaf(ctx: SemanticContext, src: TpyExpr,
         t = tt.element_types[i]
     if t is None:
         return False
-    return (isinstance(peel_slot(t), UnionType)
-            or isinstance(unwrap_readonly(unwrap_own(t)), SendType))
+    return isinstance(unwrap_readonly(unwrap_own(t)), SendType)
 
 
 def _value_bound(entry: object, line: int, t: TpyType | None) -> bool:
@@ -252,8 +232,8 @@ def _assert_records_agree_with_warnings(
     the record copies (and requiring one), a scalar's copy warning its one
     leaf at `()`; an explicit `copy()` leaf is named by none, a `copy()`
     source's owned leaves are EXPLICIT, and a warning names only leaves the
-    record copies. A copied leaf no warning names is nested under a tuple
-    name, or a union or `Send[T]` leaf (filed silent copies).
+    record copies. A copied leaf no warning names is a `Send[T]` leaf (a
+    filed silent copy).
     Lines matching a
     `_DIAGNOSTIC_DISAGREEMENTS` key are skipped."""
     ctx = entry.analyzer.ctx
@@ -320,9 +300,8 @@ def _assert_records_agree_with_warnings(
             if whole[id(e)]:
                 hedges = hedges | copied
         assert mine <= copied, (where, copied, mine)
-        # A copied leaf no warning names: nested under a tuple name (the
-        # source or a literal member of it), or a union or `Send[T]` leaf.
-        assert all(_under_name(compat, e, p) or _silent_leaf(ctx, e, p)
+        # A copied leaf no warning names is a `Send[T]` leaf.
+        assert all(_silent_leaf(ctx, e, p)
                    for p in copied - mine), (where, perms, mine)
         assert all((perms[p] is LeafPermission.HEDGED) == (p in hedges)
                    for p in mine), (where, perms, hedges)
@@ -459,6 +438,18 @@ _UNLOWERED_BODIES: dict[tuple[str, str, str], tuple[str, str]] = {
      "res.btuple_yield_source"):
         ("test_yielded_name_is_settled_by_a_loop_back_edge",
          "scripts/thir_migration/review/bins_rest.json"),
+    ("def gen(t: tuple[A | B, int32]) -> Iterator[Own[tuple[A | B, int32]]]:",
+     "gen", "res.param_type:tuple"):
+        ("test_yielded_tuple_name_union_leaf_warns",
+         "BUGS.md#res-param-tuple-element-shapes"),
+    ("def gen[T](t: tuple[A | T, int32]) -> "
+     "Iterator[Own[tuple[A | T, int32]]]:", "gen", "res.param_type:tuple"):
+        ("test_open_union_leaf_of_a_name_hedges_at_a_yield",
+         "BUGS.md#res-param-tuple-element-shapes"),
+    ("async def ar(t: tuple[A | B, int32]) -> Own[tuple[A | B, int32]]:",
+     "ar", "res.param_type:tuple"):
+        ("test_async_return_of_a_union_leaf_name_warns",
+         "BUGS.md#res-param-tuple-element-shapes"),
     ("def lam() -> int32:", "lam", "stmt.return:subscript.tuple_shape"):
         ("test_owning_yield_and_lambda_parameter_names_publish_records",
          "scripts/thir_migration/review/bins_expr1.json"),
@@ -1283,12 +1274,11 @@ def r_field(u: U) -> Own[tuple[A | B, int32]]:
     assert _perms(records[(5, "TpyFieldAccess")]) == {(0,): P.WARNED}
     assert warnings.count("copies A | B into owned storage (tuple element "
                           "0); use copy() to make this explicit") == 2
-    # A NAME keeps its own rule: the prelude ctor's `self.t = t` stays
-    # silent (BUGS.md#tuple-name-union-leaf-copy-silent).
+    # The prelude ctor's `self.t = t` moves its `Own` parameter in.
     assert not [d for d in ctx.diagnostics if "into field" in d.message]
 
 
-def test_tuple_name_union_leaf_keeps_the_name_rule() -> None:
+def test_tuple_name_union_leaf_warns_as_its_plain_twin() -> None:
     records, warnings, _ctx = _leaf_records("""\
 def f(t: tuple[A | B, int32]) -> int32:
     xs: list[tuple[A | B, int32]] = [t]
@@ -1300,10 +1290,331 @@ class W:
     def store(self, t: tuple[A | B, int32]) -> None:
         self.t = t
 """)
-    # No warning (BUGS.md#tuple-name-union-leaf-copy-silent); no verdict.
-    assert not warnings
+    # The list literal and the field store each copy the union leaf, as
+    # they copy a plain `A` one.
+    assert sorted(warnings) == [
+        "copies A | B into field (tuple element 0); use copy() to make this "
+        "explicit",
+        "copies A | B into owned storage (tuple element 0); use copy() to "
+        "make this explicit"]
     assert _perms(records[(2, "TpyName")]) == {(0,): P.WARNED}
     assert _perms(records[(9, "TpyName")]) == {(0,): P.WARNED}
+
+
+def _line_warnings(ctx: SemanticContext) -> list[tuple[int, str]]:
+    """The copy warnings after the leaf prelude, by line, their remedy
+    dropped."""
+    return sorted((d.loc.line - _LEAF_LINES, d.message.split(";")[0])
+                  for d in ctx.diagnostics
+                  if d.level.value == "warning" and d.loc is not None
+                  and d.loc.line > _LEAF_LINES and "cop" in d.message)
+
+
+def test_tuple_name_union_leaf_warns_at_every_owning_position() -> None:
+    # A tuple name's union leaf copied into owned storage at each position
+    # warns as its plain-`A` twin does (most of these bodies do not lower
+    # yet; the warning is sema's).
+    _records, _w, ctx = _leaf_records("""\
+class H:
+    p: tuple[A | B, int32]
+    def __init__(self, p: tuple[A | B, int32]) -> None:
+        self.p = p
+def own_arg(p: Own[tuple[A | B, int32]]) -> int32:
+    return 7
+def app(t: tuple[A | B, int32]) -> None:
+    xs: list[tuple[A | B, int32]] = []
+    xs.append(t)
+def fld(h: H, t: tuple[A | B, int32]) -> None:
+    h.p = t
+def arg(t: tuple[A | B, int32]) -> None:
+    own_arg(t)
+def comp(ts: list[tuple[A | B, int32]]) -> None:
+    ys = [t for t in ts]
+    print(len(ys))
+def nested(t: tuple[tuple[A | B, int32], int32]) -> None:
+    zs: list[tuple[tuple[A | B, int32], int32]] = [t]
+def opt(t: tuple[A | B | None, int32]) -> None:
+    os: list[tuple[A | B | None, int32]] = [t]
+def closure(t: tuple[A | B, int32]) -> None:
+    def inner() -> None:
+        ws: list[tuple[A | B, int32]] = [t]
+    inner()
+""")
+    assert _line_warnings(ctx) == [
+        (4, "copies A | B into field (tuple element 0)"),
+        (9, "copies A | B into owned storage (tuple element 0)"),
+        (11, "copies A | B into field (tuple element 0)"),
+        (13, "copies A | B into owned storage (tuple element 0)"),
+        (15, "copies A | B into owned storage (tuple element 0)"),
+        (18, "copies A | B into owned storage (tuple element 0.0)"),
+        (20, "copies None | A | B into owned storage (tuple element 0)"),
+        (23, "copies A | B into owned storage (tuple element 0)")]
+
+
+def test_yielded_tuple_name_union_leaf_warns() -> None:
+    _records, _w, ctx = _leaf_records("""\
+from typing import Iterator
+def gen(t: tuple[A | B, int32]) -> Iterator[Own[tuple[A | B, int32]]]:
+    yield t
+""")
+    assert _line_warnings(ctx) == [
+        (3, "copies A | B into owned storage (tuple element 0)")]
+
+
+def test_tuple_name_open_union_leaf_hedges_per_leaf() -> None:
+    # A leaf whose copy an instantiation decides takes the hedge, as its
+    # scalar twin does; a reference head (`list[T]`) copies whatever `T`
+    # is, and a `T: ValueType` alternative copies nothing observable.
+    _records, _w, ctx = _leaf_records("""\
+from tpy import ValueType
+def g[T](t: tuple[A | T, int32]) -> None:
+    xs: list[tuple[A | T, int32]] = [t]
+def h[T](t: tuple[T | None, int32]) -> None:
+    xs: list[tuple[T | None, int32]] = [t]
+def k[T](t: tuple[list[T], int32]) -> None:
+    xs: list[tuple[list[T], int32]] = [t]
+def v[T: ValueType](t: tuple[T | int32, int32]) -> None:
+    xs: list[tuple[T | int32, int32]] = [t]
+def ug[T](u: A | T) -> None:
+    xs: list[A | T] = [u]
+""")
+    assert _line_warnings(ctx) == [
+        (3, "may copy A | T into owned storage (tuple element 0) if not a "
+            "value type"),
+        (5, "may copy T | None into owned storage (tuple element 0) if not a "
+            "value type"),
+        (7, "copies list[T] into owned storage (tuple element 0)"),
+        (11, "may copy A | T into owned storage if not a value type")]
+
+
+def test_open_union_leaf_of_a_name_hedges_at_every_owning_sink() -> None:
+    # An `A | T` leaf a name copies takes the hedge at a field store, an
+    # append and an `Own[tuple]` argument; the ctor's `Own` parameter moves.
+    records, _w, ctx = _leaf_records("""\
+class H[T]:
+    p: tuple[A | T, int32]
+    def __init__(self, p: Own[tuple[A | T, int32]]) -> None:
+        self.p = p
+def own_arg[T](p: Own[tuple[A | T, int32]]) -> int32:
+    return 0
+def fld[T](h: H[T], t: tuple[A | T, int32]) -> None:
+    h.p = t
+def app[T](t: tuple[A | T, int32]) -> None:
+    xs: list[tuple[A | T, int32]] = []
+    xs.append(t)
+def arg[T](t: tuple[A | T, int32]) -> None:
+    print(own_arg[T](t))
+""")
+    assert {key: _perms(rec) for key, rec in records.items()} == {
+        (4, "TpyName"): {(0,): P.MOVE}, (8, "TpyName"): {(0,): P.HEDGED},
+        (11, "TpyName"): {(0,): P.HEDGED}, (13, "TpyName"): {(0,): P.HEDGED}}
+    hedge = "if not a value type"
+    assert _line_warnings(ctx) == [
+        (8, f"may copy A | T into field (tuple element 0) {hedge}"),
+        (11, f"may copy A | T into owned storage (tuple element 0) {hedge}"),
+        (13, f"may copy A | T into owned storage (tuple element 0) {hedge}")]
+
+
+def test_open_union_leaf_of_a_name_hedges_at_a_yield() -> None:
+    _records, _w, ctx = _leaf_records("""\
+from typing import Iterator
+def gen[T](t: tuple[A | T, int32]) -> Iterator[Own[tuple[A | T, int32]]]:
+    yield t
+""")
+    assert _line_warnings(ctx) == [
+        (3, "may copy A | T into owned storage (tuple element 0) if not a "
+            "value type")]
+
+
+def test_async_return_of_a_union_leaf_name_warns() -> None:
+    _records, _w, ctx = _leaf_records("""\
+async def ar(t: tuple[A | B, int32]) -> Own[tuple[A | B, int32]]:
+    return t
+""")
+    assert _line_warnings(ctx) == [
+        (2, "copies A | B into owned storage (tuple element 0)")]
+
+
+def test_union_leaf_name_moves_at_last_use_and_a_global_warns() -> None:
+    # An owned union-leaf tuple local at its last use moves in, silently
+    # (the body does not lower yet: `decl.tuple_literal_shape`); a module
+    # global holds its elements by reference, so its read copies, warned.
+    records, _w, ctx = _leaf_records("""\
+def mv(a: A) -> None:
+    u: A | B = A(1)
+    t = (u, 2)
+    xs: list[tuple[A | B, int32]] = [t]
+    print(len(xs))
+g: tuple[A | B, int32] = (A(1), 2)
+def rg() -> None:
+    ys: list[tuple[A | B, int32]] = [g]
+    print(len(ys))
+""")
+    assert _perms(records[(4, "TpyName")]) == {(0,): P.MOVE}
+    assert _perms(records[(8, "TpyName")]) == {(0,): P.WARNED}
+    assert _line_warnings(ctx) == [
+        (8, "copies A | B into owned storage (tuple element 0)")]
+
+
+def test_value_bound_union_payload_has_no_record_leaf() -> None:
+    # `T | int32` under `T: ValueType` copies nothing observable: neither a
+    # diagnostic nor a record leaf.
+    records, _w, ctx = _leaf_records("""\
+from tpy import ValueType
+def vb[T: ValueType](t: tuple[T | int32, int32]) -> None:
+    xs: list[tuple[T | int32, int32]] = [t]
+""")
+    assert _perms(records[(3, "TpyName")]) == {}
+    assert _line_warnings(ctx) == []
+
+
+@pytest.mark.parametrize("body", [
+    """\
+def own_arg[T](p: Own[tuple[N | T, int32]]) -> int32:
+    return 0
+def arg[T](t: tuple[N | T, int32]) -> None:
+    print(own_arg[T](t))
+""",
+    """\
+def ret(t: tuple[A | N, int32]) -> Own[tuple[A | N, int32]]:
+    return t
+""",
+    """\
+def ret(t: tuple[N | A, int32]) -> tuple[Own[N | A], int32]:
+    return t
+""",
+    """\
+def ret[T](t: tuple[N | T, int32]) -> tuple[Own[N | T], int32]:
+    return t
+""",
+    """\
+def ret(t: tuple[A | N, int32]) -> tuple[Own[A | N], int32]:
+    return t
+"""], ids=["open_own_arg", "own_tuple_return", "own_element_return",
+           "open_own_element_return", "own_element_return_a_n"])
+def test_union_leaf_name_with_non_copyable_alternative_errors(
+        body: str) -> None:
+    # A non-copyable alternative leaves the copy nothing to make, at an
+    # `Own[tuple]` argument (an open alternative included) and at both
+    # return shapes.
+    with pytest.raises(SemanticError, match=r"cannot copy non-copyable type "
+                       r"'(N \| T|A \| N)' into owned storage \(tuple "
+                       r"element 0\)"):
+        _compile(LEAF_PRELUDE + body)
+
+
+def test_captured_tuple_name_return_hedges_an_open_payload() -> None:
+    # A returned name a closure captures is copied whole; an open payload's
+    # copy is hedged as at every other owning sink, the concrete one warned.
+    _records, _w, ctx = _leaf_records("""\
+def g[T](y: T) -> Own[tuple[T, int32]]:
+    t = (y, 1)
+    def f() -> int32:
+        return t[1]
+    print(f())
+    return t
+def c(y: A) -> Own[tuple[A, int32]]:
+    t = (y, 1)
+    def f() -> int32:
+        return t[1]
+    print(f())
+    return t
+""")
+    assert _copy_warnings(ctx) == [
+        (6, "may copy tuple[T, int32] into owned storage if not a value "
+         "type"),
+        (12, "copies tuple[A, int32] into owned storage")]
+
+
+def test_returned_tuple_name_takes_one_diagnostic_per_copied_leaf() -> None:
+    # A tuple name returned into an owning result is checked per leaf, a
+    # generic and a union leaf as its monomorphic twin: one hedge (or
+    # warning) per copied leaf, and no whole-tuple hedge beside it.
+    _records, _w, ctx = _leaf_records("""\
+from tpy import ValueType
+def n_elem[T](t: tuple[tuple[T, int32], int32]) -> tuple[Own[tuple[T, int32]], int32]:
+    return t
+def n_inner[T](t: tuple[tuple[T, int32], int32]) -> tuple[tuple[Own[T], int32], int32]:
+    return t
+def n_whole[T](t: tuple[tuple[T, int32], int32]) -> Own[tuple[tuple[T, int32], int32]]:
+    return t
+def own_own[T](t: tuple[T, int32]) -> Own[tuple[Own[T], int32]]:
+    return t
+def whole[T](t: tuple[T, int32]) -> Own[tuple[T, int32]]:
+    return t
+def elem[T](t: tuple[T, int32]) -> tuple[Own[T], int32]:
+    return t
+def u_elem[T](t: tuple[tuple[A | T, int32], int32]) -> tuple[Own[tuple[A | T, int32]], int32]:
+    return t
+def u_inner[T](t: tuple[tuple[A | T, int32], int32]) -> tuple[tuple[Own[A | T], int32], int32]:
+    return t
+def u_whole[T](t: tuple[A | T, int32]) -> Own[tuple[A | T, int32]]:
+    return t
+def u_own_own[T](t: tuple[A | T, int32]) -> Own[tuple[Own[A | T], int32]]:
+    return t
+def vb[T: ValueType](t: tuple[T | int32, int32]) -> tuple[Own[T | int32], int32]:
+    return t
+def c_elem(t: tuple[tuple[A, int32], int32]) -> tuple[Own[tuple[A, int32]], int32]:
+    return t
+def c_inner(t: tuple[tuple[A, int32], int32]) -> tuple[tuple[Own[A], int32], int32]:
+    return t
+def c_whole(t: tuple[tuple[A, int32], int32]) -> Own[tuple[tuple[A, int32], int32]]:
+    return t
+def c_own_own(t: tuple[A, int32]) -> Own[tuple[Own[A], int32]]:
+    return t
+def wal[T](t: tuple[T, int32]) -> Own[tuple[T, int32]]:
+    return (y := t)
+def n_wal[T](t: tuple[tuple[T, int32], int32]) -> Own[tuple[tuple[T, int32], int32]]:
+    return (y := t)
+def alias[T](t: tuple[tuple[T, int32], int32]) -> tuple[Own[tuple[T, int32]], int32]:
+    u = t
+    return u
+def own_arg[T](p: Own[tuple[T, int32]]) -> int32:
+    return 0
+def arg[T](t: tuple[T, int32]) -> None:
+    print(own_arg[T](t))
+""")
+    h = "if not a value type"
+    t_0, t_00 = (f"may copy T into owned storage (tuple element {p}) {h}"
+                 for p in ("0", "0.0"))
+    u_0, u_00 = (f"may copy A | T into owned storage (tuple element {p}) {h}"
+                 for p in ("0", "0.0"))
+    a_0, a_00 = (f"copies A into owned storage (tuple element {p})"
+                 for p in ("0", "0.0"))
+    assert _line_warnings(ctx) == [
+        (3, t_00), (5, t_00), (7, t_00), (9, t_0), (11, t_0), (13, t_0),
+        (15, u_00), (17, u_00), (19, u_0), (21, u_0),
+        (25, a_00), (27, a_00), (29, a_00), (31, a_0),
+        # A walrus is not the name's per-leaf read: its return keeps the
+        # one whole-tuple hedge.
+        (33, f"may copy tuple[T, int32] into owned storage {h}"),
+        (35, f"may copy tuple[tuple[T, int32], int32] into owned storage "
+             f"{h}"),
+        (38, t_00), (42, t_0)]
+
+
+def test_tuple_name_union_leaf_explicit_and_value_copies_stay_silent(
+        ) -> None:
+    # `copy()` declares the copy, and a value union copies no object.
+    _records, _w, ctx = _leaf_records("""\
+def explicit(t: tuple[A | B, int32]) -> None:
+    xs: list[tuple[A | B, int32]] = [copy(t)]
+def value_union(t: tuple[int32 | str, int32]) -> None:
+    xs: list[tuple[int32 | str, int32]] = [t]
+""")
+    assert _line_warnings(ctx) == []
+
+
+def test_tuple_name_union_leaf_with_open_non_copyable_alternative_errors(
+        ) -> None:
+    # A non-copyable alternative leaves no copy to make, whatever the open
+    # one turns out to be: the error, not the hedge.
+    with pytest.raises(SemanticError, match=r"cannot copy non-copyable type "
+                       r"'N \| T' into owned storage \(tuple element 0\)"):
+        _compile(LEAF_PRELUDE + """\
+def f[T](t: tuple[N | T, int32]) -> None:
+    xs: list[tuple[N | T, int32]] = [t]
+""")
 
 
 def test_union_leaf_with_non_copyable_alternative_is_rejected() -> None:
@@ -2535,9 +2846,6 @@ _W, _H = P.WARNED, P.HEDGED
 
 @pytest.mark.parametrize("leaf, records, warnings", [
     (dict(G="", L="A | B", P="A"),
-     # The name's union leaf is copied unwarned at the field store (21), the
-     # append (24) and the `Own[tuple]` argument (26): WARNED by its type,
-     # with no warning yet (BUGS.md#tuple-name-union-leaf-copy-silent).
      {(6, _L): _W, (12, _N): _W, (15, _N): _W, (16, _L): _W, (21, _N): _W,
       (22, _L): _W, (24, _N): _W, (25, _L): _W, (26, _N): _W, (27, _L): _W,
       (28, _N): _W, (29, _L): _W},
@@ -2545,8 +2853,11 @@ _W, _H = P.WARNED, P.HEDGED
       (12, "copies A | B into owned storage (tuple element 0)"),
       (15, "copies tuple[A | B, int32] into owned storage"),
       (16, "copies A | B into owned storage (tuple element 0)"),
+      (21, "copies A | B into field (tuple element 0)"),
       (22, "copies A | B into field (tuple element 0)"),
+      (24, "copies A | B into owned storage (tuple element 0)"),
       (25, "copies A into owned storage (argument 'value' tuple element 0)"),
+      (26, "copies A | B into owned storage (tuple element 0)"),
       (27, "copies A into owned storage (argument 'p' tuple element 0)"),
       (28, "copies tuple[Own[A | B], int32] into owned storage"),
       (28, "copies tuple[A | B, int32] into owned storage"),
@@ -2570,10 +2881,9 @@ _W, _H = P.WARNED, P.HEDGED
       (29, "copies A into owned storage (argument 'p' tuple element 0)")]),
     # An owned `Send[T]` leaf is neither seen as owned nor as an open `T`
     # (BUGS.md#send-own-tuple-leaf-copy-unwarned): the return of the name
-    # (12), the yielded literal (16), and the field store (21), the append
-    # (24) and the `Own[tuple]` argument (26) of the name copy with no
-    # warning or hedge, and so does the literal at the `Own`-element
-    # argument (29): each is HEDGED by its open type all the same.
+    # (12), the yielded literal (16) and the literal at the `Own`-element
+    # argument (29) copy with no hedge, each HEDGED by its open type all
+    # the same.
     (dict(G="[T]", L="Send[T]", P="Send[T]"),
      {(6, _L): _H, (12, _N): _H, (15, _N): _H, (16, _L): _H, (21, _N): _H,
       (22, _L): _H, (24, _N): _H, (25, _L): _H, (26, _N): _H, (27, _L): _H,
@@ -2582,10 +2892,16 @@ _W, _H = P.WARNED, P.HEDGED
        "type"),
       (15, "may copy tuple[Send[T], int32] into owned storage if not a value "
        "type"),
+      (21, "may copy Send[T] into field (tuple element 0) if not a value "
+       "type"),
       (22, "may copy Send[T] into field (tuple element 0) if not a value "
        "type"),
+      (24, "may copy Send[T] into owned storage (tuple element 0) if not a "
+       "value type"),
       (25, "may copy Send[T] into owned storage (argument 'value' tuple "
        "element 0) if not a value type"),
+      (26, "may copy Send[T] into owned storage (tuple element 0) if not a "
+       "value type"),
       (27, "may copy Send[T] into owned storage (argument 'p' tuple element "
        "0) if not a value type"),
       (28, "may copy tuple[Send[T], int32] into owned storage if not a value "
@@ -3477,10 +3793,9 @@ def elem_nested(a: A) -> None:
     assert not warnings
 
 
-def test_silent_union_leaf_copy_is_warned_in_its_record() -> None:
-    # A tuple name's union leaf is copied with no diagnostic: its record
-    # leaf is the copy, WARNED by its type, never a pass or a move
-    # (BUGS.md#tuple-name-union-leaf-copy-silent).
+def test_union_leaf_copy_of_a_name_is_warned_and_in_its_record() -> None:
+    # A tuple name's union leaf copied into a container: its record leaf is
+    # the copy, WARNED by its type, and its warning says so.
     records, warnings, _e = _copy_probe("""\
 def f(t: tuple[A | B, int32]) -> int32:
     xs: list[tuple[A | B, int32]] = []
@@ -3489,7 +3804,8 @@ def f(t: tuple[A | B, int32]) -> int32:
 """)
     assert _leaves(records[(3, "TpyName")]) == {
         (0,): (True, True, P.WARNED)}
-    assert not warnings
+    assert warnings == ["copies A | B into owned storage (tuple element 0); "
+                        "use copy() to make this explicit"]
 
 
 # -- blockers to rendering from the record --------------------------------------

@@ -571,10 +571,10 @@ def json_text(j: Json) -> str:
 
 
 # gen_tuple_name: a generic tuple parameter at an owned tuple result copies
-# each element in (the warned copy is the intended semantics; the one copy
-# is warned twice, BUGS.md#generic-tuple-own-return-double-hedge).
+# each element in (the warned copy is the intended semantics; one hedge per
+# copied element).
 def gen_tuple_name[T](x: tuple[T, int32]) -> Own[tuple[T, int32]]:
-    return x  # tpyc: warning(/may copy tuple\[T, int32\]/) warning(/may copy T into owned storage \(tuple element 0\)/)
+    return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 
 
 def gen_pair[T](a: T) -> tuple[T, int32]:
@@ -589,20 +589,20 @@ def gen_tuple_call[T](a: T) -> Own[tuple[T, int32]]:
 
 
 # gen_tuple_pair: a two-T tuple parameter copies both elements in (warned per
-# element and whole, BUGS.md#generic-tuple-own-return-double-hedge).
+# element).
 def gen_tuple_pair[T](x: tuple[T, T]) -> Own[tuple[T, T]]:
-    return x  # tpyc: warning(/may copy tuple\[T, T\]/) warning(/may copy T into owned storage \(tuple element 0\)/) warning(/may copy T into owned storage \(tuple element 1\)/)
+    return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/) warning(/may copy T into owned storage \(tuple element 1\)/)
 
 
 # gen_tuple_loop: a loop variable over generic tuples, and the fallback
-# parameter, each copied in at the owned result (warned twice each,
-# BUGS.md#generic-tuple-own-return-double-hedge).
+# parameter, each copied in at the owned result (hedged once per copied
+# element).
 def gen_tuple_loop[T](xs: list[tuple[T, int32]],
                       d: tuple[T, int32]) -> Own[tuple[T, int32]]:
     for x in xs:
         if x[1] > 1:
-            return x  # tpyc: warning(/may copy tuple\[T, int32\]/) warning(/may copy T into owned storage \(tuple element 0\)/)
-    return d  # tpyc: warning(/may copy tuple\[T, int32\]/) warning(/may copy T into owned storage \(tuple element 0\)/)
+            return x  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
+    return d  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 
 
 # gen_tuple_select: a select of two generic tuple parameters copies the

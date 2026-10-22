@@ -162,13 +162,16 @@ def _view_return_family(return_type: TpyType) -> tuple[str, str] | None:
 _TUPLE_ELEMENT_SUFFIX = re.compile(r" \(tuple element ([0-9.]+)\)$")
 
 
-def _element_at(t: TupleType, path: ElemPath) -> TpyType:
+def _element_at(t: TupleType, path: ElemPath, *,
+                keep_markers: bool = False) -> TpyType:
     """The element type at `path` (`reference_paths`) of tuple `t`, its
-    `Own` marker dropped."""
+    `Own` marker dropped, and its `Send` / `Sync` markers too unless
+    `keep_markers`."""
     for i in path[:-1]:
         t = unwrap_own(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             t.element_types[i]))))
-    return unwrap_own(unwrap_send_sync(t.element_types[path[-1]]))
+    leaf = t.element_types[path[-1]]
+    return unwrap_own(leaf if keep_markers else unwrap_send_sync(leaf))
 
 
 def _tuple_element_context(context: str, i: int) -> str:
@@ -460,15 +463,6 @@ def nested_member_sink(sink: 'TupleSink | None', owned: bool,
             or not member_owns_every_leaf(sink, owned, whole)):
         return sink
     return TupleSink.CONTAINER
-
-
-def name_leaf_storage_copy(slot: TpyType, path: ElemPath,
-                           leaf_t: TpyType) -> bool:
-    """Whether the owned tuple sink check (`warn_name_tuple_copy`)
-    copies the leaf at `path` (of type `leaf_t`) of a tuple NAME read
-    into `slot`, unless the read moves it: a pointer leaf the slot owns."""
-    return (path in owned_slot_paths(slot)
-            and TupleType._element_is_pointer_repr(leaf_t))
 
 
 def _declared_call_member(m: TpyExpr) -> bool:
@@ -1969,13 +1963,11 @@ class TypeCompatibility:
                 # member its source lends into owned storage where CPython
                 # aliases, even though the tuple itself is a value type.
                 self.register_sink(source_expr, expected, None)
-                # A tuple source other than a name is checked per reference
-                # leaf (`check_owned_tuple_sink`), a union or an open `T` leaf
-                # included; a name's copies are its binding facts'.
-                ptr_repr_tuple = isinstance(ew, TupleType) and (
-                    ew.has_nested_pointer_repr_element()
-                    if self.tuple_name_source(source_expr)
-                    else bool(reference_paths(ew)))
+                # A tuple source is checked per reference leaf
+                # (`check_owned_tuple_sink`), a union or an open `T` leaf
+                # included, a name's as any other's.
+                ptr_repr_tuple = (isinstance(ew, TupleType)
+                                  and bool(reference_paths(ew)))
                 ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
                 # A call that hands back a borrow is copied into the owning slot
                 # exactly as a name or a field is, so it belongs to the same
@@ -4025,11 +4017,14 @@ class TypeCompatibility:
         if raw_type is not None:
             unwrapped = unwrap_ref_type(raw_type)
             inner_after_own = unwrapped.wrapped if isinstance(unwrapped, OwnType) else unwrapped
-            # A whole tuple source other than a name is the owned tuple sink
-            # check's, per leaf (`check_owned_tuple_sink`).
+            # A whole tuple source is the owned tuple sink check's, per leaf
+            # (`check_owned_tuple_sink`), a plain name read's as any other's;
+            # a walrus and a name read behind a wrapper keep the whole-tuple
+            # hedge below.
             if (whole_slot
                     and isinstance(unwrap_readonly(inner_after_own), TupleType)
-                    and self.per_leaf_source(inner)):
+                    and (isinstance(inner, TpyName)
+                         or self.per_leaf_source(inner))):
                 return True
             if (inner_after_own.is_value_type()
                     and not (own_copy.type_param_names(inner_after_own)
@@ -5367,10 +5362,11 @@ class TypeCompatibility:
                                         "owned storage", source_expr)
         if self.per_leaf_source(source_expr):
             return top_level(owned)
-        # A name read behind a wrapper keeps its open `T` leaf for the
+        # A name read behind a wrapper keeps its HEDGED leaves for the
         # element-wise recursion, whose whole-tuple hedge declares that copy.
-        open_leaf = top_level(p for p in owned if not TupleType
-                              ._element_is_pointer_repr(_element_at(expected, p)))
+        open_leaf = top_level(
+            p for p in owned if self.copy_permission(_element_at(expected, p))
+            is LeafPermission.HEDGED)
         return top_level(owned) - open_leaf
 
     @staticmethod
@@ -5384,9 +5380,11 @@ class TypeCompatibility:
 
     def per_leaf_source(self, expr: TpyExpr) -> bool:
         """Whether a tuple source takes the per-leaf copy rule at an owning
-        sink: every reference leaf it lends -- a union leaf and an open `T`
-        leaf included -- is warned (or hedged) on its own. Not a NAME
-        (`tuple_name_source`), whose copies follow its binding facts."""
+        sink by the leaves it lends: every one -- a union leaf and an open
+        `T` leaf included -- is warned (or hedged) on its own. Not a NAME
+        (`tuple_name_source`), whose binding facts say which leaves it
+        moves in, nor a name read behind a wrapper, whose HEDGED leaves
+        take the element-wise recursion's whole-tuple hedge."""
         if self.tuple_name_source(expr):
             return False
         operands = ternary_operands(expr)
@@ -5443,8 +5441,7 @@ class TypeCompatibility:
         lent = self.tuple_lent_paths(source_expr, tt) or none
         copied = top_level(self._warn_tuple_path_copies(
             tt, (lent & owned_slot_paths(slot)) - moved, dest, loc_node,
-            elem_path, source=source_expr, union_leaves=per_leaf,
-            hedge_open=per_leaf))
+            elem_path, source=source_expr, hedge_open=per_leaf))
         return copied
 
     def tuple_lent_paths(self, expr: TpyExpr | None, slot: TpyType | None,
@@ -5505,56 +5502,64 @@ class TypeCompatibility:
                                 loc_node: TpyExpr | TpyStmt,
                                 elem_path: str = "", *,
                                 source: TpyExpr,
-                                union_leaves: bool = False,
                                 hedge_open: bool = False,
                                 nocopy_hint: str = NOCOPY_REMEDIATION_HINT,
                                 note_read: 'TpyExpr | None' = None,
+                                note_errors: bool = False,
                                 ) -> frozenset[ElemPath]:
-        """Warn the deep copy of each element path of `tt` in `paths` into
-        `dest` (an error for a non-copyable one): a pointer leaf, and a
-        union or recursive-union leaf -- a reference all the same -- where
-        `union_leaves`. An open `T` leaf takes the owning slot's hedge
-        (`defer_own_copy_verdict`) where `hedge_open`; otherwise it is the
-        caller's whole-tuple hedge. Each one declares the copy of that path
-        of `source`, the tuple `tt` types; the note on the binding of name
-        read `note_read` at the path follows each warning's remedy. Returns
-        the paths it warned or hedged."""
+        """Warn the deep copy of each reference leaf of `tt` at a path in
+        `paths` into `dest`, by the record's rule (`copy_permission`): an
+        error for a non-copyable one, the owning slot's hedge
+        (`defer_own_copy_verdict`) for a HEDGED one where `hedge_open` --
+        otherwise the caller's whole-tuple hedge -- and the copy warning for
+        a WARNED one. Each one declares the copy of that path of `source`,
+        the tuple `tt` types; the note on the binding of name read
+        `note_read` at the path follows each warning's remedy, and each
+        error's `nocopy_hint` where `note_errors`. Returns the paths it
+        warned or hedged."""
         out: set[ElemPath] = set()
         for path in sorted(paths):
             et = _element_at(tt, path)
             leaf = unwrap_readonly(unwrap_ref_type(et))
+            # A value leaf's copy, or one a `ValueType` bound settles
+            # (`T`, `T | int32`), is unobservable.
+            if (leaf.is_value_type()
+                    or self.ctx.copy_is_unobservable(peel_slot(et))):
+                continue
             shown = elem_path + ".".join(str(i) for i in path)
             where = f"{dest} (tuple element {shown})"
-            if open_tuple_leaf(leaf):
-                # A `T: ValueType` leaf's copy is proven: nothing to hedge.
-                if not hedge_open or self._is_value_type_param(
-                        unwrap_readonly(unwrap_ref_type(unwrap_own(leaf)))):
-                    continue
-                self.ctx.defer_own_copy_verdict(leaf, leaf, where, loc_node,
-                                                source=source, path=path)
-                out.add(path)
-                continue
-            if not (TupleType._element_is_pointer_repr(et)
-                    or (union_leaves and not leaf.is_value_type())):
-                continue
+            note = (self.binding_note(note_read, path=path)
+                    if note_read is not None else None)
             # A union copies the alternative it holds, so one non-copyable
-            # alternative leaves it no copy to make
-            # (BUGS.md#union-nocopy-field-store).
+            # alternative leaves it no copy to make, whatever an open
+            # alternative turns out to be (BUGS.md#union-nocopy-field-store).
             if self.ctx.is_type_non_copyable(et) or (
                     isinstance(leaf, UnionType)
                     and any(self.ctx.is_type_non_copyable(m)
                             for m in leaf.members)):
                 self.ctx.copy_error(
-                    f"cannot copy non-copyable type '{et}' into {where}"
-                    f"{nocopy_hint}", loc_node, source, path)
+                    lambda n, et=et, where=where: f"cannot copy non-copyable "
+                    f"type '{et}' into {where}{nocopy_hint}"
+                    f"{n if note_errors else ''}", loc_node, source, path,
+                    note=note)
                 out.add(path)
+                continue
+            if self.copy_permission(et) is LeafPermission.HEDGED:
+                if hedge_open:
+                    # The hedge names the element as declared, its `Send` /
+                    # `Sync` marker kept, as a literal member's does.
+                    shown_t = unwrap_readonly(unwrap_ref_type(
+                        _element_at(tt, path, keep_markers=True)))
+                    self.ctx.defer_own_copy_verdict(
+                        shown_t, shown_t, where, loc_node, source=source,
+                        path=path)
+                    out.add(path)
                 continue
             shown = self.diag_type(et)
             self.ctx.copy_warning(
                 lambda n, shown=shown, where=where: f"copies {shown} into "
                 f"{where}; use copy() to make this explicit{n}", loc_node,
-                source, path, note=(self.binding_note(note_read, path=path)
-                                    if note_read is not None else None))
+                source, path, note=note)
             out.add(path)
         return frozenset(out)
 
@@ -5740,14 +5745,12 @@ class TypeCompatibility:
                            tt: 'TupleType | None') -> bool:
         """Whether a render that copies a read into owning `slot` (`tt` its
         tuple) has a non-copyable leaf to copy: the scalar payload, or a
-        leaf of the tuple the slot owns (`name_leaf_storage_copy`) -- a
+        reference leaf of the tuple the slot owns (`owned_slot_paths`) -- a
         leaf the slot borrows is not copied."""
         if tt is None:
             return self.ctx.is_type_non_copyable(unwrap_own(slot))
-        return any(
-            self.ctx.is_type_non_copyable(_element_at(tt, p))
-            for p in reference_paths(tt)
-            if name_leaf_storage_copy(slot, p, _element_at(tt, p)))
+        return any(self.ctx.is_type_non_copyable(_element_at(tt, p))
+                   for p in owned_slot_paths(slot))
 
     def name_copied_paths(self, name: str, tt: TupleType,
                           slot: TpyType) -> frozenset[ElemPath]:
@@ -6044,9 +6047,9 @@ class TypeCompatibility:
                              nocopy_hint: str = NOCOPY_REMEDIATION_HINT
                              ) -> frozenset[int]:
         """The copy of tuple NAME read `source` into an owning `slot`: a
-        name lends every reference path, so each one the slot copies
-        (`name_leaf_storage_copy`) -- but those the read moves in (`moved`)
-        -- is warned per path (an error for a non-copyable one, naming
+        name lends every reference path, so each one the slot owns
+        (`owned_slot_paths`) -- but those the read moves in (`moved`) -- is
+        warned or hedged per path (an error for a non-copyable one, naming
         `nocopy_hint`). Returns the top-level indices copied."""
         tt = bare_tuple(slot)
         if tt is None:
@@ -6054,10 +6057,9 @@ class TypeCompatibility:
         # Every leaf the slot copies registers its copy; the record says
         # which the read moves.
         return top_level(self._warn_tuple_path_copies(
-            tt, {p for p in reference_paths(tt)
-                 if name_leaf_storage_copy(slot, p, _element_at(tt, p))},
-            dest, loc_node, elem_path, source=source,
-            nocopy_hint=nocopy_hint, note_read=source) - moved)
+            tt, owned_slot_paths(slot), dest, loc_node, elem_path,
+            source=source, hedge_open=True, nocopy_hint=nocopy_hint,
+            note_read=source) - moved)
 
     def register_sink(self, source: TpyExpr | None,
                       slot: TpyType | None, sink: 'TupleSink | None',
@@ -6187,11 +6189,11 @@ class TypeCompatibility:
     def _record_paths(self, tt: TupleType,
                       prefix: ElemPath = ()) -> frozenset[ElemPath]:
         """The reference leaf paths of tuple `tt` (at `prefix`) a record
-        gives a leaf: all but a `T: ValueType` one, whose copy is proven
-        harmless."""
+        gives a leaf: all but one a `ValueType` bound settles (`T`,
+        `T | int32`), whose copy is proven harmless."""
         return frozenset(
             p for p in reference_paths(tt, prefix)
-            if not self._is_value_type_param(
+            if not self.ctx.copy_is_unobservable(
                 peel_slot(_element_at(tt, p[len(prefix):]))))
 
     def build_source_records(self) -> list[TpyExpr]:
@@ -6266,9 +6268,10 @@ class TypeCompatibility:
         """A scalar source's one leaf (or one arm's), at path `()`: the
         rule a literal member takes (`_member_leaf`), the slot owning it
         when it is an `Own` slot; and whether it lends. No leaf for a
-        `T: ValueType` payload, whose copy is proven harmless."""
+        payload a `ValueType` bound settles (`T`, `T | int32`), whose copy
+        is proven harmless."""
         none: frozenset[ElemPath] = frozenset()
-        if self._is_value_type_param(peel_slot(reg.slot)):
+        if self.ctx.copy_is_unobservable(peel_slot(reg.slot)):
             return lambda _src: ({}, none)
         owns = isinstance(unwrap_readonly(unwrap_ref_type(reg.slot)),
                           OwnType)
@@ -6584,30 +6587,6 @@ class TypeCompatibility:
             return False
         return True
 
-    def _warn_name_element_copy(self, et: OwnType, i: int,
-                                expr: TpyExpr) -> None:
-        """Element `i` of a tuple NAME copies into its `Own` slot: the owning
-        slot's warning (deferred to the instantiation for an open payload),
-        or an error for a type with no copy to declare."""
-        payload = et.wrapped
-        if self._is_value_type_param(payload):
-            return
-        note = self.binding_note(expr, i)
-        if self.ctx.is_type_non_copyable(payload):
-            hint = self.nocopy_hint(expr, i, note="")
-            noted = not self.is_consuming_field_borrow(expr)
-            self.ctx.copy_error(
-                lambda n: f"cannot copy non-copyable type '{payload}' into "
-                f"owned storage (tuple element {i}){hint}"
-                f"{n if noted else ''}", expr, expr, (i,), note=note)
-            return
-        where = f"owned storage (tuple element {i})"
-        if not self.ctx.defer_own_copy_verdict(payload, payload, where, expr,
-                                               source=expr, path=(i,)):
-            self.ctx.copy_warning(
-                lambda n: f"copies {payload} into {where}; use copy() to "
-                f"make this explicit{n}", expr, expr, (i,), note=note)
-
     def check_name_borrow_into_own(self, name: str, tuple_type: TupleType,
                                    expr: TpyExpr, slot: TpyType,
                                    sink: TupleSink) -> None:
@@ -6655,16 +6634,19 @@ class TypeCompatibility:
         """Register the copy a read of tuple name `expr` into owned storage
         of `tt` makes of the owned leaf at `path` it does not hand over --
         a whole `Own` element as the scalar `T -> Own[T]` does, a deeper
-        pointer leaf as its tuple path -- with the binding that makes the
+        reference leaf as its tuple path -- with the binding that makes the
         name non-owning there; its record decides whether it stands."""
         i, et = path[0], tt.element_types[path[0]]
         if len(path) == 1 and isinstance(et, OwnType):
-            self._warn_name_element_copy(et, i, expr)
-        elif len(path) > 1 and TupleType._element_is_pointer_repr(
-                _element_at(tt, path)):
             self._warn_tuple_path_copies(
                 tt, (path,), "owned storage", expr, source=expr,
-                note_read=expr)
+                hedge_open=True, nocopy_hint=self.nocopy_hint(expr, i, note=""),
+                note_read=expr,
+                note_errors=not self.is_consuming_field_borrow(expr))
+        elif len(path) > 1:
+            self._warn_tuple_path_copies(
+                tt, (path,), "owned storage", expr, source=expr,
+                hedge_open=True, note_read=expr)
 
     def declared_lent_paths(self, name: str,
                             arity: int) -> frozenset[ElemPath]:
@@ -6705,8 +6687,8 @@ class TypeCompatibility:
         refs = reference_paths(dt)
         self._warn_tuple_path_copies(
             tuple_type, owned & refs & reference_paths(tuple_type),
-            "owned storage", expr, source=expr, union_leaves=True,
-            hedge_open=True, nocopy_hint=NOCOPY_CAPTURE_HINT)
+            "owned storage", expr, source=expr, hedge_open=True,
+            nocopy_hint=NOCOPY_CAPTURE_HINT)
 
     def _is_reference_tuple_global(self, name: str) -> bool:
         """A module global that is a tuple of pointer slots, read where no
