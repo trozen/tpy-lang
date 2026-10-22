@@ -28,8 +28,8 @@ from .dependencies import object_keys, origin_shape
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload, MIRWalk,
-    field_member, step, store_problem, walk, object_prefix,
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, MIRWalk, field_member, step,
+    store_problem, walk, object_prefix,
 )
 from .validate import validate_function
 
@@ -334,7 +334,7 @@ def test_the_shape_check_refuses_each_forgery_by_its_rule(program: _Program) -> 
          "tuple layout increases access"),
         (MIRShape(ro_either, MIRClass.UNION, members=(pointer, None)), ro_either,
          "union layout increases access"),
-        (MIRShape(OptionalType(ReadonlyType(p)), MIRClass.OPTIONAL, members=(pointer,)),
+        (MIRShape(OptionalType(ReadonlyType(p)), MIRClass.OPTIONAL, members=(None, pointer)),
          OptionalType(ReadonlyType(p)), "optional layout increases access"),
         # A wrapper member holds no borrow, which the wrapper would have to select.
         (MIRShape(TupleType((INT32, h)), MIRClass.TUPLE,
@@ -349,14 +349,14 @@ def test_the_shape_check_refuses_each_forgery_by_its_rule(program: _Program) -> 
         assert shape_problem(shape, declared) == reason, (shape, declared)
     # A slot's Optional record payload is a pointer, a field's stored inline.
     maybe = program.fields["H.p"]
-    inline = MIRShape(maybe, MIRClass.OPTIONAL, members=(storage,))
+    inline = MIRShape(maybe, MIRClass.OPTIONAL, members=(None, storage))
     assert shape_problem(inline, maybe) == "unsupported optional record holding"
     assert shape_problem(inline, maybe, MIRPosition.FIELD) is None
     # A field stores its record: no loan of it, and no scalar payload.
     assert shape_problem(pointer, p, MIRPosition.FIELD) == "invalid holding"
-    assert shape_problem(replace(inline, members=(pointer,)), maybe, MIRPosition.FIELD) == (
+    assert shape_problem(replace(inline, members=(None, pointer)), maybe, MIRPosition.FIELD) == (
         "unsupported optional record holding")
-    assert shape_problem(replace(inline, members=(MIRShape(INT32, MIRClass.LEAF),)), maybe, MIRPosition.FIELD) == (
+    assert shape_problem(replace(inline, members=(None, MIRShape(INT32, MIRClass.LEAF))), maybe, MIRPosition.FIELD) == (
         "unsupported optional payload")
     # A tuple or union lent at CONST_REF is held by value: no loan form to refuse.
     held = value_shape(pair, role=MIRRole.LOAN, facts=th.THIRTupleLayout((INT32, th.THIRBorrowedRecord(p, False))))
@@ -449,7 +449,7 @@ def test_fields_are_classed_by_their_declared_type(program: _Program) -> None:
         "H.v": (MIRClass.VIEW, MIRHolding.POINTER), "H.p": (MIRClass.OPTIONAL, MIRHolding.VALUE),
         "H.inner": (MIRClass.RECORD, MIRHolding.VALUE), "H.xs": (MIRClass.CONTAINER, MIRHolding.VALUE)}
     # An Optional record field stores its payload inline.
-    assert step(shapes["H.p"], MIROptionalPayload(), program.records) == MIRShape(
+    assert step(shapes["H.p"], MIRUnionPayload(1), program.records) == MIRShape(
         program.types["P"], MIRClass.RECORD, MIRHolding.VALUE)
 
 
@@ -493,12 +493,12 @@ def test_wrapper_members_are_reached_only_by_their_own_projection(program: _Prog
     assert step(union, MIRUnionPayload(0), program.records) == pointer
     with pytest.raises(MIRValidationError, match="invalid union alternative"):
         step(union, MIRUnionPayload(2), program.records)
-    with pytest.raises(MIRValidationError, match="absent union alternative has no payload"):
+    with pytest.raises(MIRValidationError, match="absent alternative has no payload"):
         step(union, MIRUnionPayload(1), program.records)
-    with pytest.raises(MIRValidationError, match="union projection needs union payload"):
+    with pytest.raises(MIRValidationError, match="payload projection needs a sum"):
         step(pair, MIRUnionPayload(0), program.records)
-    with pytest.raises(MIRValidationError, match="optional projection needs optional payload"):
-        step(pair, MIROptionalPayload(), program.records)
+    with pytest.raises(MIRValidationError, match="payload projection needs a sum"):
+        step(pair, MIRUnionPayload(1), program.records)
 
 
 def test_an_optional_fields_inline_payload_is_stored_at_the_fields_access(program: _Program) -> None:
@@ -506,7 +506,7 @@ def test_an_optional_fields_inline_payload_is_stored_at_the_fields_access(progra
     readonly = member_shape(program.fields["H.p"], True, program.records)
     mutable = member_shape(program.fields["H.p"], False, program.records)
     assert readonly.payload.readonly and not mutable.payload.readonly
-    assert step(readonly, MIROptionalPayload(), program.records) is readonly.payload
+    assert step(readonly, MIRUnionPayload(1), program.records) is readonly.payload
     holder = MIRShape(program.types["H"], MIRClass.RECORD, MIRHolding.VALUE, True)
     assert step(holder, _field(program, "H.p"), program.records) == readonly
     # The shape check holds the payload to the field's access, as a container's members.
@@ -551,14 +551,14 @@ def test_the_object_prefix_follows_the_holding(program: _Program) -> None:
     # is behind its payload's only when asked; storage is its own object.
     p = program.types["P"]
     pointer = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER)
-    optional = MIRShape(OptionalType(p), MIRClass.OPTIONAL, members=(pointer,))
+    optional = MIRShape(OptionalType(p), MIRClass.OPTIONAL, members=(None, pointer))
     storage = MIRShape(p, MIRClass.RECORD, MIRHolding.VALUE)
     assert object_prefix(pointer, payload=False) == object_prefix(pointer, payload=True) == (MIRDeref(),)
-    assert object_prefix(optional, payload=True) == (MIROptionalPayload(), MIRDeref())
+    assert object_prefix(optional, payload=True) == (MIRUnionPayload(1), MIRDeref())
     assert object_prefix(optional, payload=False) == ()
     assert object_prefix(storage, payload=False) == object_prefix(storage, payload=True) == ()
     # An Optional of a scalar lends no record.
-    scalar = MIRShape(OptionalType(INT32), MIRClass.OPTIONAL, members=(MIRShape(INT32, MIRClass.LEAF),))
+    scalar = MIRShape(OptionalType(INT32), MIRClass.OPTIONAL, members=(None, MIRShape(INT32, MIRClass.LEAF)))
     assert object_prefix(scalar, payload=True) == ()
 
 
@@ -589,7 +589,7 @@ def test_a_field_hop_holds_the_record_and_reaches_the_member(program: _Program) 
 
 def test_an_optional_payload_hop_holds_the_optional_and_reaches_its_payload(program: _Program) -> None:
     root = MIRShape(program.types["H"], MIRClass.RECORD, MIRHolding.VALUE)
-    walked = walk(root, (_field(program, "H.p"), MIROptionalPayload()), program.records)
+    walked = walk(root, (_field(program, "H.p"), MIRUnionPayload(1)), program.records)
     field = member_shape(program.fields["H.p"], False, program.records)
     assert _hops(walked)[1] == (field, field.payload)
 

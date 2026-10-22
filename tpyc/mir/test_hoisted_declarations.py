@@ -12,13 +12,13 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRStorageDuration,
+    MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRStorageDuration,
 )
 from .value import MIRHolding
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_retention import analyze
 from .test_reuse import CELL_SOURCE, source_function
-from .testutil import compiled_definitions, OptionalValue, Reference, execute
+from .testutil import compiled_definitions, optional_value, Reference, execute
 from .validate import MIRDefiniteAssignmentError, validate_function
 
 
@@ -288,9 +288,9 @@ def test_hoist_producers_preserve_results_and_shared_mutation(hoists: Hoists) ->
                 assert heap[0 if flag else 1][field] == 9
         for name in ("ptr_optional", "loop_optional"):
             heap = {0: {field: 1}}
-            assert execute(bodies[name], flag, OptionalValue(Reference(0)), heap=heap) == (9 if flag else 0)
+            assert execute(bodies[name], flag, optional_value(Reference(0)), heap=heap) == (9 if flag else 0)
             assert heap[0][field] == (9 if flag else 1)
-            assert execute(bodies[name], flag, OptionalValue(None)) == 0
+            assert execute(bodies[name], flag, optional_value(None)) == 0
         heap = {}
         execute(bodies["Observer"], Reference(0), flag, heap=heap)
         assert tuple(heap[0].values()) == (9,)
@@ -311,8 +311,8 @@ def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoi
     for name in ("record", "nested", "escaped_loop"):
         fn = bodies[name]
         writes = [(s, stmt) for b in fn.blocks for stmt in b.statements
-                  if isinstance(stmt.storage_write, MIRRecordWrite)
-                  and stmt.storage_write.mode is MIRRecordWriteMode.OWN_SITE
+                  if isinstance(stmt.storage_write, MIRStorageWrite)
+                  and stmt.storage_write.mode is MIRStorageWriteMode.OWN_SITE
                   for s in fn.slots if s.id == stmt.target.root]
         assert writes
         for backing, _ in writes:
@@ -403,8 +403,8 @@ def reuse(n: int32) -> int32:
 '''
     fn = source_function(source)
     modes = [s.storage_write.mode for b in fn.blocks for s in b.statements
-             if isinstance(s.storage_write, MIRRecordWrite)]
-    assert modes == [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.OWN_SITE]
+             if isinstance(s.storage_write, MIRStorageWrite)]
+    assert modes == [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE]
     holder = next(s for s in fn.slots if s.name == "current")
     assert holder.residence.index != 0
     heap = {}

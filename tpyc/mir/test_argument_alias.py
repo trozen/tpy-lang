@@ -226,19 +226,23 @@ def _conflict(written: MIRReferent, retained: MIRReferent) -> MIRRetentionConfli
 
 def test_only_two_parameters_external_storage_is_an_obligation() -> None:
     parameters = {P0: 0, P1: 1}
+
+    def obligation(written: MIRReferent, retained: MIRReferent) -> MIRAliasObligation | None:
+        return alias_obligation(_conflict(written, retained), parameters, {}, no_layouts())
+
     grown = MIRReferent(MIRPlace(P0, (MIRContainerStructure(),)), external=True)
     lent = MIRReferent(MIRPlace(P1), external=True)
-    assert alias_obligation(_conflict(grown, lent), parameters) == MIRAliasObligation(
+    assert obligation(grown, lent) == MIRAliasObligation(
         1, (), MIRParameterWrite(0, (MIRContainerStructure(),)))
     # One parameter's own storage: the body conflicts whatever the caller passes.
     own = MIRReferent(MIRPlace(P0, (MIRContainerElements(),)), external=True)
-    assert alias_obligation(_conflict(grown, own), parameters) is None
+    assert obligation(grown, own) is None
     # A stored loan's storage has no known place; a global is no parameter.
-    assert alias_obligation(_conflict(grown, MIRReferent(MIRPlace(P1), external=True, held=True)), parameters) is None
-    assert alias_obligation(_conflict(grown, MIRReferent(MIRPlace(G), external=True)), parameters) is None
+    assert obligation(grown, MIRReferent(MIRPlace(P1), external=True, held=True)) is None
+    assert obligation(grown, MIRReferent(MIRPlace(G), external=True)) is None
     # The body's own storage.
-    assert alias_obligation(_conflict(MIRReferent(MIRPlace(P0, (MIRContainerStructure(),))),
-                                      MIRReferent(MIRPlace(P0, (MIRContainerElements(),)))), parameters) is None
+    assert obligation(MIRReferent(MIRPlace(P0, (MIRContainerStructure(),))),
+                      MIRReferent(MIRPlace(P0, (MIRContainerElements(),)))) is None
 
 
 def test_a_mir_failure_costs_only_its_body_and_never_fails_the_compile(compiled, monkeypatch) -> None:

@@ -13,13 +13,13 @@ from ..typesys import INT32_MIN, INT32_MAX, FieldInfo, NominalType, RecordInfo
 from .nodes import (
     MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
-    MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct, MIRTupleCopy,
-    MIRStorageInit, MIREdge, MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy,
-    MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRPrint, place_shape,
+    MIRStorageWrite, MIRStorageWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct, MIRStorageInit,
+    MIREdge, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
+    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap,
 )
 from .value import (
     NO_FIELDS, Declared, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, RecordFields,
+    WRAPPER_CLASSES,
 )
 from .region_flow import MIRRegionFlow
 from ..thir import nodes as th
@@ -28,7 +28,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import OwnType, TpyType, return_representation
 from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
 from .definitions import MIRDefinitions, declared_fields
-from .shapes import MIRContainerElements, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
+from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .validate import statement_reads
 
 # The TypeDef of every hand-built record (`hand_record`): its declared
@@ -250,7 +250,7 @@ def tuple_shape(typ: TpyType, members: tuple, readonly: bool = False) -> MIRShap
 
 
 def optional_shape(typ: TpyType, payload: MIRShape, readonly: bool = False) -> MIRShape:
-    return MIRShape(typ, MIRClass.OPTIONAL, MIRHolding.VALUE, readonly, (payload,))
+    return MIRShape(typ, MIRClass.OPTIONAL, MIRHolding.VALUE, readonly, (None, payload))
 
 
 def union_shape(typ: TpyType, members: tuple, readonly: bool = False) -> MIRShape:
@@ -298,14 +298,15 @@ class TupleValue:
 
 
 @dataclass(frozen=True)
-class OptionalValue:
-    payload: int | bool | Reference | None = None
-
-
-@dataclass(frozen=True)
 class UnionValue:
+    """A sum's value: its selected alternative and that alternative's payload."""
     alternative: int
     payload: int | bool | Reference | None = None
+
+
+def optional_value(payload: int | bool | Reference | None = None) -> UnionValue:
+    """An Optional's value: the absent alternative 0, or 1 holding `payload`."""
+    return UnionValue(0) if payload is None else UnionValue(1, payload)
 
 
 @dataclass(frozen=True)
@@ -313,7 +314,7 @@ class PayloadAlias:
     place: MIRPlace
 
 
-Value = int | bool | Reference | TupleValue | OptionalValue | UnionValue | PayloadAlias | ContainerValue | IteratorValue
+Value = int | bool | Reference | TupleValue | UnionValue | PayloadAlias | ContainerValue | IteratorValue
 Record = dict[MIRFieldId | MIRTupleIndex, 'int | bool | Record']
 Heap = dict[int, Record]
 
@@ -410,9 +411,6 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     assert isinstance(value, UnionValue) and value.alternative == projection.alternative
                     value = value.payload
                     assert value is not None
-                case MIROptionalPayload():
-                    assert isinstance(value, OptionalValue) and value.payload is not None
-                    value = value.payload
                 case MIRTupleIndex():
                     assert isinstance(value, TupleValue)
                     value = value.elements[projection.index]
@@ -446,17 +444,18 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     output.append(printed)
                 continue
             if isinstance(stmt, MIRRecordStorageInit):
-                physical[stmt.target.root] = OptionalValue()
+                physical[stmt.target.root] = optional_value()
                 values.pop(stmt.target.root, None)
                 continue
             if isinstance(stmt, MIRStorageInit):
-                physical[stmt.target.root] = (OptionalValue() if slots[stmt.target.root].shape.cls is MIRClass.OPTIONAL
-                                              else UnionValue(stmt.alternative, stmt.value.value))
+                physical[stmt.target.root] = UnionValue(stmt.alternative, stmt.value.value)
                 values.pop(stmt.target.root, None)
                 continue
             assert all(sid in values or slots[sid].global_id is not None for sid in statement_reads(stmt)), \
                 "source read before assignment"
-            if isinstance(stmt.storage_write, MIRPayloadWrite) and stmt.storage_write.mode is MIRPayloadWriteMode.ASSIGN:
+            if (isinstance(stmt.storage_write, MIRStorageWrite)
+                    and stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE
+                    and not stmt.target.projections and slots[stmt.target.root].shape.scalar_wrapper):
                 assert stmt.target.root in physical, "assignment before storage initialization"
             rhs = stmt.value
             if (not stmt.target.projections
@@ -508,26 +507,17 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                         objects[next_identity] = backing
                         next_identity += 1
                     value = TupleValue(tuple(elements))
-                case MIRTupleCopy():
-                    source = values[rhs.source]
-                    assert isinstance(source, TupleValue)
-                    value = TupleValue(source.elements)
-                case MIROptionalConstruct():
-                    value = OptionalValue(read(rhs.source) if rhs.source is not None else None)
-                case MIROptionalCopy():
+                case MIRCopy() if place_shape(stmt.target, slots, records).cls in WRAPPER_CLASSES:
+                    # A wrapper copy keeps the selection and each member's value.
                     source = read(rhs.source)
-                    assert isinstance(source, OptionalValue)
-                    value = OptionalValue(source.payload)
-                case MIRIsPresent():
-                    source = read(rhs.source)
-                    assert isinstance(source, OptionalValue)
-                    value = source.payload is not None
-                case MIRUnionConstruct():
+                    match source:
+                        case TupleValue():
+                            value = TupleValue(source.elements)
+                        case _:
+                            assert isinstance(source, UnionValue)
+                            value = UnionValue(source.alternative, source.payload)
+                case MIRWrap():
                     value = UnionValue(rhs.alternative, read(rhs.source) if rhs.source is not None else None)
-                case MIRUnionCopy():
-                    source = read(rhs.source)
-                    assert isinstance(source, UnionValue)
-                    value = UnionValue(source.alternative, source.payload)
                 case MIRIsAlternative():
                     source = read(rhs.source)
                     assert isinstance(source, UnionValue)

@@ -24,7 +24,7 @@ from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRFunction, MIRNotCovered, MIRReturn, MIRPoint,
-    MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
+    MIRPlace, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRValidationError
@@ -436,7 +436,7 @@ def test_returned_holder_participates_in_storage_analysis(workspace: MIRCallWork
     # Replace storage after the call; a content write alone does not end its loans.
     blocks = tuple(replace(block, statements=tuple(
         MIRAssign(MIRPlace(local.id, (MIRDeref(),)), MIRConstruct((value.id,)),
-                  storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, local.id))
+                  storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, local.id))
         if isinstance(stmt, MIRAssign) and stmt.target.projections else stmt
         for stmt in block.statements)) for block in body.blocks)
     changed = replace(body, blocks=blocks)

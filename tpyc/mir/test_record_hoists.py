@@ -13,7 +13,7 @@ from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode,
+    MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite, MIRStorageWriteMode,
     MIRRegionId, MIRStorageDuration,
 )
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
@@ -199,7 +199,7 @@ def test_producer_and_mir_agree_with_the_existing_optional_assignment(artifacts:
         writes = [s for b in body.blocks for s in b.statements
                   if isinstance(s, MIRAssign) and s.target.root == backing.id]
         assert len(writes) == 1
-        assert writes[0].storage_write == MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN)
+        assert writes[0].storage_write == MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN)
         emitted = cpp[cpp.index(f" {name}("):]
         emitted = emitted.split("\n}\n", 1)[0]
         assert emitted.index(f"std::optional<{fact.type}> cell;") < emitted.index("cell =")

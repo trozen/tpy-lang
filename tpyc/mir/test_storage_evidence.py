@@ -17,9 +17,9 @@ from .liveness import _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
-    MIRFunction, MIRGoto, MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit,
-    MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration,
+    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite,
+    MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRWrap, MIRIsAlternative,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -303,8 +303,8 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     backing = MIRSlot(BACKING, owned_shape(cell), MIRSlotKind.LOCAL, storage_duration=INNER, residence=INNER,
                       record_storage=MIRRecordStorageKind.OPTIONAL if optional else MIRRecordStorageKind.DIRECT)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), field))))
-    construct = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)), storage_write=MIRRecordWrite(
-        MIRRecordWriteMode.OPTIONAL_ASSIGN if optional else MIRRecordWriteMode.INITIALIZE_REGION))
+    construct = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)), storage_write=MIRStorageWrite(
+        MIRStorageWriteMode.OPTIONAL_ASSIGN if optional else MIRStorageWriteMode.INITIALIZE))
     iteration = ((MIRRecordStorageInit(MIRPlace(BACKING)),) if optional else ()) + (
         construct, MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))), read)
     if not retain:
@@ -374,7 +374,7 @@ def reused(definitions: MIRDefinitions, *, retain: bool) -> MIRFunction:
     slots = tuple(replace(s, storage_duration=MIRStorageDuration.BODY, residence=ROOT) if s.id == BACKING else s
                   for s in fn.slots) + (_ref(EARLIER, cell, MIRSlotKind.LOCAL, ROOT),)
     replace_site = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)),
-                             storage_write=MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN))
+                             storage_write=MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN))
     read_earlier = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(EARLIER, (MIRDeref(), field))))
     iteration = ((MIRAssign(MIRPlace(EARLIER), MIRAlias(SAVED)),) if retain else ()) + (
         replace_site, *((read_earlier,) if retain else ()), MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))))
@@ -455,7 +455,7 @@ def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
     region = MIRRegionId(RETURN, 0)
     storage = MIRSlot(R_LOCAL, owned_shape(cell), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
                       residence=region)
-    once = MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)
+    once = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
     local_arm = MIRBorrow(MIRPlace(R_LOCAL)) if escape else MIRAlias(R_OWNER)
     return bind_parameters(MIRFunction(RETURN, ReadonlyType(cell), (
         MIRSlot(R_FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
@@ -509,8 +509,8 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
     fn = replace(fn, slots=(*fn.slots, MIRSlot(maybe, optional_shape(OptionalType(cell), borrowed_shape(cell)),
                                                MIRSlotKind.LOCAL, residence=region),
         MIRSlot(guard, leaf_shape(BOOL), MIRSlotKind.LOCAL, residence=region)), blocks=(replace(entry, statements=(
-            *entry.statements, MIRAssign(MIRPlace(maybe), MIROptionalConstruct()),
-            MIRAssign(MIRPlace(guard), MIRIsPresent(MIRPlace(maybe))))), *fn.blocks[1:]))
+            *entry.statements, MIRAssign(MIRPlace(maybe), MIRWrap(0)),
+            MIRAssign(MIRPlace(guard), MIRIsAlternative(MIRPlace(maybe), (1,))))), *fn.blocks[1:]))
     assert certify_storage_origins(fn, frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
     prepared = _prepare_function(fn)
     presence = prepared.presence
@@ -602,7 +602,7 @@ def test_stale_alias_across_scope_end_conflicts() -> None:
 def test_malformed_mir_and_requests_raise(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
     fn = activation(definitions, retain=False)
-    with pytest.raises(MIRPresenceError, match="alternative proof"):
+    with pytest.raises(MIRPresenceError, match="presence proof"):
         unchecked = MIRAssign(MIRPlace(RESULT), MIRRead(payload(False)))
         certify_storage_origins(_region(alias_function(write(False, 0), unchecked)),
                                 frozenset({CURRENT}), MIRDefinitions())

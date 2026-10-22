@@ -179,7 +179,7 @@ class MIRCall:
     site: SourceLocation | None = field(default=None, compare=False)
     bound_receiver: bool = field(default=False, compare=False)
     # The parameters whose argument is an empty Optional built for the call
-    # (`MIROptionalConstruct()`): the callee reaches nothing through them,
+    # (`MIRWrap(0)`): the callee reaches nothing through them,
     # so their summarized effects name no caller storage.
     absent: frozenset[int] = frozenset()
 
@@ -263,40 +263,12 @@ class MIRTupleConstruct:
 
 
 @dataclass(frozen=True)
-class MIRTupleCopy:
-    source: MIRSlotId
-
-
-@dataclass(frozen=True)
-class MIROptionalConstruct:
-    # The payload operand; None builds an empty wrapper.
-    source: MIRPlace | None = None
-
-
-@dataclass(frozen=True)
-class MIROptionalCopy:
-    source: MIRPlace
-    # Copying an engaged payload into inline payload storage (an Optional
-    # record field) copies the record, which may raise like any record copy
-    # (`layout_copy_may_raise`); a borrowed or scalar payload copies no buffer.
-    may_raise: bool = False
-
-
-@dataclass(frozen=True)
-class MIRIsPresent:
-    source: MIRPlace
-
-
-@dataclass(frozen=True)
-class MIRUnionConstruct:
+class MIRWrap:
+    """Select a sum's alternative (an Optional's 0 = absent, 1 = payload; a
+    union's by its layout, None first), from the payload operand; None for
+    an absent alternative."""
     alternative: int
-    # The payload operand; None selects an absent alternative.
     source: MIRPlace | None = None
-
-
-@dataclass(frozen=True)
-class MIRUnionCopy:
-    source: MIRPlace
 
 
 @dataclass(frozen=True)
@@ -312,10 +284,16 @@ class MIRUnionExtract:
 
 @dataclass(frozen=True)
 class MIRCopy:
+    """A copy of the value at `source`. A sum or a tuple copies its
+    selection and converts member by member, by what the target member
+    holds: a holder takes the source member's loan, or a loan of an inline
+    source member (`optional_to_ptr`); storage takes a copy; a scalar the
+    same value."""
     source: MIRPlace
     # The copy can exit by exception: a buffer allocation a bare `except:`
     # catches (an owned leaf's `TypeDef.copy_may_raise`; for a record, any
-    # buffer in its whole layout, `layout_copy_may_raise`).
+    # buffer in its whole layout, `layout_copy_may_raise`; for a wrapper,
+    # its storage members'), or an element access of the source.
     may_raise: bool = False
 
 
@@ -379,40 +357,31 @@ class MIRRangeAdvance:
 
 
 MIRRvalue = (MIRConstant | MIRCall | MIRRead | MIRCompare | MIRNot | MIROp | MIRAlias | MIRBorrow
-             | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct | MIRTupleCopy
-             | MIROptionalConstruct | MIROptionalCopy | MIRIsPresent
-             | MIRUnionConstruct | MIRUnionCopy | MIRIsAlternative | MIRUnionExtract
+             | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct
+             | MIRWrap | MIRIsAlternative | MIRUnionExtract
              | MIRIteratorInit | MIRIteratorHasNext | MIRIteratorRead | MIRIteratorAdvance | MIRRangeAdvance)
 
 
-class MIRRecordWriteMode(Enum):
-    INITIALIZE_ONCE = auto()
-    INITIALIZE_REGION = auto()
+class MIRStorageWriteMode(Enum):
+    # No old value: once per lifetime of the target slot's storage (the
+    # body, or each entry of its region -- `MIRSlot.storage_duration`).
+    INITIALIZE = auto()
+    # A holder's designated backing site written (it may be revisited, each
+    # loop pass) and the holder repointed to it; the former referent may
+    # stay observable.
     OWN_SITE = auto()
+    # The current value replaced in its storage: every alias sees it.
     IN_PLACE = auto()
+    # An Optional record backing filled: a replacement only if engaged.
     OPTIONAL_ASSIGN = auto()
 
 
 @dataclass(frozen=True)
-class MIRRecordWrite:
-    mode: MIRRecordWriteMode
+class MIRStorageWrite:
+    mode: MIRStorageWriteMode
+    # The holder an in-place write rebuilds the object of: it repoints to
+    # the new value, so retention does not count its own leaves.
     rebind_owner: MIRSlotId | None = None
-
-
-class MIRPayloadWriteMode(Enum):
-    INITIALIZE = auto()
-    INITIALIZE_REGION = auto()
-    ASSIGN = auto()
-
-
-@dataclass(frozen=True)
-class MIRPayloadWrite:
-    mode: MIRPayloadWriteMode
-
-
-@dataclass(frozen=True)
-class MIRTupleInitialization:
-    """Initialize inline members together, once per backing activation."""
 
 
 @dataclass(frozen=True)
@@ -420,7 +389,7 @@ class MIRAssign:
     target: MIRPlace
     value: MIRRvalue
     loc: SourceLocation | None = None
-    storage_write: MIRRecordWrite | MIRPayloadWrite | MIRTupleInitialization | None = None
+    storage_write: MIRStorageWrite | None = None
 
 
 @dataclass(frozen=True)
@@ -541,10 +510,10 @@ class MIRMemberInit:
     A container member is copied from a container parameter, or MOVEd from
     the literal its `MIRConstruct` builds over parameters and constants; a record member
     built by its own constructor is MOVEd from its `MIRMemberInits`. An
-    Optional record member is left empty (`MIROptionalConstruct()`), COPYs
+    Optional record member is left empty (`MIRWrap(0)`), COPYs
     the payload an Optional record parameter lends, or MOVEs a payload its
     own constructor builds (`MIRMemberInits`)."""
-    source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits | MIROptionalConstruct
+    source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits | MIRWrap
     mode: MIRMemberInitMode = MIRMemberInitMode.SCALAR
     # The initialization can exit by exception (`TypeDef.copy_may_raise` of a
     # COPY, a record copy's layout, a literal's allocation, some field of a

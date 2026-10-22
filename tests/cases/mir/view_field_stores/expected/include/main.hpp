@@ -19,6 +19,7 @@ struct Derived;
 struct Fixed;
 struct Kid;
 struct Shell;
+struct Items;
 
 extern std::string G;
 inline constexpr std::string_view __name__ = "__main__";
@@ -165,6 +166,8 @@ R make_r(std::string_view s);
 void member_from_call(int32_t k, bool flag);
 // def copy_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void copy_either(int32_t k, bool flag);
+// def element_view_replaced(r: Items, k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void element_view_replaced(Items& r, int32_t k, bool flag);
 // def main(flag: bool) -> None:
 void main(bool flag);
 
@@ -332,6 +335,27 @@ inline std::ostream& operator<<(std::ostream& os, const Shell& obj) {
     return os;
 }
 
+// class Items:
+struct Items {
+    // items: list[str]
+    std::vector<std::string> items;
+    // s: StrView
+    std::string_view s;
+
+    // def __init__(self, items: list[str], s: StrView) -> None:
+    Items() = default;
+    explicit Items(const std::vector<std::string>& items, std::string_view s);
+
+    // def setv(self, v: StrView) -> None:
+    void setv(std::string_view v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Items";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
+    ::tpy::print_object_default(os, "Items", obj);
+    return os;
+}
+
 // class Kid(Tok):
 struct Kid : Tok {
 
@@ -463,6 +487,19 @@ inline Base::Base(std::string_view s) : s(s) {}
 // def __init__(self, s: str) -> None:  # tpyc: mir(covered)
 //     self.inner = Tok(s, 1)
 inline Shell::Shell(std::string_view s) : inner(Tok(s, 1)) {}
+
+// def __init__(self, items: list[str], s: StrView) -> None:
+//     self.items = copy(items)
+//     self.s = s
+inline Items::Items(const std::vector<std::string>& items, std::string_view s)
+    : items(items),
+      s(s) {}
+
+// def setv(self, v: StrView) -> None:
+//     self.s = v
+inline void Items::setv(std::string_view v) {
+    this->s = v;
+}
 
 // # constructor: the base's view member stores the loan the derived constructor's parameter lends
 // def __init__(self, s: str, k: int32) -> None:  # tpyc: mir(covered)

@@ -13,7 +13,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRead, MIRPoint, MIRTupleCopy
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRead, MIRPoint, MIRCopy
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import compiled_definitions, Reference, execute
@@ -125,7 +125,7 @@ def test_aliases_share_one_backing_initialization_and_end(artifacts: Artifacts) 
         inventory = analyze_storage(body)
         assert len(inventory.member_initializations) == 1
         assert not inventory.writes
-        assert all(not isinstance(getattr(stmt, "value", None), MIRTupleCopy)
+        assert all(not isinstance(getattr(stmt, "value", None), MIRCopy)
                    for block in body.blocks for stmt in block.statements)
         ends = analyze_scope_ends(body)
         assert ends.ends

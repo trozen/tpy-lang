@@ -14,21 +14,23 @@ from .call_contract import (
 )
 from .call_effects import resolve_call_writes
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload, object_prefix,
+    MIRContainerElements, MIRContainerStructure, MIRTupleIndex, MIRUnionPayload, object_prefix, optional_payload,
 )
-from .coverage import MIRUnsupported, whole_wrapper_field
+from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
-from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents, seeded_loan
+from .dependencies import (
+    MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents, seeded_loan, whole_wrapper_field,
+)
 from .liveness import MIRLiveness, analyze_liveness
 from .retention import alias_obligation, analyze_body_retention, parameter_indices
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
-    MIRFunction, MIRIsPresent, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove,
-    MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead,
-    MIRRecordStorageInit, MIRReturn, MIRPlace, MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk,
-    under_object, view_member,
+    MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
+    MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
+    MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk, under_object, view_member, MIRWrap, MIRIsAlternative,
+    place_shape,
 )
-from .value import AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, lent_record
+from .value import AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, lent_record, WRAPPER_CLASSES
 from .validate import owned_leaf_place_type, statement_reads, validate_function
 
 # The passings that lend storage to the callee without a copy; a template
@@ -49,7 +51,8 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     KEPT: storage that never leaves the body is private when every use of
     it is the body's own -- the holder's borrow of the whole storage, a
     read, copy or borrow of one of its fields, a field write into it, a
-    whole copy out of it, or a loan at a borrowing passing (a known
+    whole copy out of it, or a loan at a borrowing passing; a copy into a
+    sum or tuple is not one yet, so it makes the storage foreign (a known
     callee keeps nothing but the loans its transfers publish; those and
     its writes reach this storage through the dependency pass). Escapes
     through a holder are the summary's own checks: a returned borrow has
@@ -82,7 +85,13 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
                         own_uses.add(stmt.target.root)
                     elif stmt.target.root in records:
                         foreign.add(stmt.target.root)
+                # A sum's or a tuple's copy is no use of its own (the summary
+                # admits only an Optional's, under `_optional_place`).
+                wrapper_copy = (isinstance(stmt.value, MIRCopy)
+                                and place_shape(stmt.target, slots, body.record_layouts).cls in WRAPPER_CLASSES)
                 match stmt.value:
+                    case MIRCopy() if wrapper_copy:
+                        pass
                     case MIRRead(source=source) | MIRCopy(source=source) | MIRBorrow(source=source) if (
                             source.projections[:1] and isinstance(source.projections[0], MIRField)):
                         own_uses.add(source.root)
@@ -91,7 +100,7 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and stmt.value.source in records:
                 transfers.append((stmt.value.source, point))
                 reads = tuple(r for r in reads if r != stmt.value.source)
-            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIROptionalConstruct)
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRWrap)
                     and stmt.value.source is not None and stmt.value.source.root in records):
                 # A temporary moved into an Optional field's payload: a transfer.
                 transfers.append((stmt.value.source.root, point))
@@ -144,14 +153,14 @@ def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: fr
         return None
     hops = place_walk(source, slots, records).hops[-len(steps):]
     for index, hop in enumerate(hops):
-        if isinstance(hop.projection, MIROptionalPayload):
+        if optional_payload(hop.holder.cls, hop.projection):
             # The payload of an Optional field, never of a wrapper member.
             if not (index and isinstance(hops[index - 1].projection, MIRField)):
                 return None
         elif not isinstance(hop.projection, MIRField):
             return None
         elif index < len(hops) - 1 and not (hop.reached.cls is MIRClass.RECORD
-                                            or isinstance(hops[index + 1].projection, MIROptionalPayload)):
+                                            or optional_payload(hop.reached.cls, hops[index + 1].projection)):
             return None
     return hops[-1].reached
 
@@ -235,7 +244,7 @@ def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, 
     path = under_object(source, slots, payload=True)
     if path is None:
         path = source.projections
-    if any(isinstance(p, (MIROptionalPayload, MIRUnionPayload, MIRTupleIndex)) for p in path):
+    if any(isinstance(p, (MIRUnionPayload, MIRTupleIndex)) for p in path):
         return False
     return (any(isinstance(p, (MIRContainerStructure, MIRContainerElements)) for p in source.projections)
             or target.shape.borrowed_aggregate)
@@ -371,7 +380,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             # rule a caller checks it by; each field must be a member of the
             # layout of the storage its hop reads.
             index = parameters[origin.place.root]
-            place = whole_wrapper_field(origin.place)
+            place = whole_wrapper_field(origin.place, slots, record_layouts)
             write = MIRParameterWrite(index, summary_path(place.projections))
             problem = write_problem(write, tuple(bindings), definitions.layouts)
             if problem is not None:
@@ -483,6 +492,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # published (or kept private) by its origin, and a returned
                     # one meets the return rule.
                     pass
+                case MIRCopy(source=source) if place_shape(stmt.target, slots, record_layouts).cls in WRAPPER_CLASSES:
+                    # Another Optional's payload copied in, or a holder
+                    # rebound; a union's or a tuple's copy has no summary form.
+                    if not (wrapper and _optional_place(source, slots, private_records(), record_layouts)):
+                        return MIRSummaryResult.opaque("summary unsupported operation")
                 case MIRCopy() if (own_storage and stmt.target.root in private_records()) or private_target:
                     # A record copied into the body's private storage.
                     pass
@@ -510,7 +524,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # record storage; wrapper extraction and other projections
                     # need more proof.
                     path = source.projections
-                    if path == (MIROptionalPayload(),) and slots[source.root].shape.cls is MIRClass.OPTIONAL and (
+                    if len(path) == 1 and optional_payload(slots[source.root].shape.cls, path[0]) and (
                             slots[source.root].shape.payload.scalar_by_value):
                         # A scalar Optional's payload, under its presence proof.
                         pass
@@ -528,17 +542,13 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     pass
                 case MIRIteratorInit() | MIRIteratorHasNext() | MIRIteratorRead() | MIRIteratorAdvance():
                     pass
-                case MIROptionalConstruct(source=source) if wrapper and (
+                case MIRWrap(source=source) if wrapper and (
                         not stmt.target.projections
                         or source is None or slots[source.root].kind is MIRSlotKind.TEMPORARY):
                     # A holder rebound, or a field emptied or engaged with a
                     # temporary moved into the payload.
                     pass
-                case MIROptionalCopy(source=source) if wrapper and _optional_place(
-                        source, slots, private_records(), record_layouts):
-                    # Another Optional's payload copied in, or a holder rebound.
-                    pass
-                case MIRIsPresent(source=source) if _optional_place(source, slots, private_records(),
+                case MIRIsAlternative(source=source) if _optional_place(source, slots, private_records(),
                                                                     record_layouts):
                     pass
                 case _:
@@ -583,9 +593,10 @@ def _obligations(body: MIRFunction, definitions: MIRDefinitions,
     if isinstance(retention, MIRNotCovered):
         return f"summary retention: {retention.reason}"
     parameters = parameter_indices(body)
+    slots = {slot.id: slot for slot in body.slots}
     found: set[MIRAliasObligation] = set()
     for conflict in retention.conflicts:
-        obligation = alias_obligation(conflict, parameters)
+        obligation = alias_obligation(conflict, parameters, slots, body.record_layouts)
         if obligation is None or obligation_problem(obligation, summary, definitions.layouts) is not None:
             continue
         found.add(obligation)

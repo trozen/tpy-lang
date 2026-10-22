@@ -20,7 +20,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
 from .value import MIRFieldId
 from .storage import MIRStorageEvents, analyze_storage
@@ -170,15 +170,15 @@ def test_storage_identity_and_mutation(artifacts: Artifacts, name: str, expected
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
     expected_modes = {
-        "shared": [MIRRecordWriteMode.INITIALIZE_ONCE],
-        "replaced": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.OWN_SITE],
-        "in_place": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.IN_PLACE],
-        "copied": [MIRRecordWriteMode.INITIALIZE_ONCE] * 2,
-        "moved": [MIRRecordWriteMode.INITIALIZE_ONCE] * 2,
+        "shared": [MIRStorageWriteMode.INITIALIZE],
+        "replaced": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE],
+        "in_place": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
+        "copied": [MIRStorageWriteMode.INITIALIZE] * 2,
+        "moved": [MIRStorageWriteMode.INITIALIZE] * 2,
     }
     assert [s.storage_write.mode for s in events.writes.values()] == expected_modes[name]
     for stmt in events.writes.values():
-        if stmt.storage_write.mode is MIRRecordWriteMode.IN_PLACE:
+        if stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE:
             assert stmt.storage_write.rebind_owner == stmt.target.root
 
 

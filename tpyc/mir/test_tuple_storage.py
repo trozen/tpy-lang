@@ -10,9 +10,8 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
-    MIRFunction, MIRGoto, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
-    MIRTupleInitialization, MIRUnionConstruct, MIRUnionCopy,
+    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
+    MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, MIRCopy,
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -38,7 +37,7 @@ BORROWED = borrowed_shape(CELL)
 LAYOUT = (OWNED, OWNED, BORROWED, leaf_shape(INT32))
 TUPLE = TupleType((CELL, CELL, CELL, INT32))
 INIT = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((MIRConstruct((VALUE,)), MIRConstruct((VALUE,)),
-                                                 EXTERNAL, VALUE)), storage_write=MIRTupleInitialization())
+                                                 EXTERNAL, VALUE)), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
 
 
 def member(index: int) -> MIRPlace:
@@ -113,14 +112,14 @@ def test_aggregate_holders_retain_inline_member_after_tuple_ends(kind: str) -> N
     match kind:
         case "tuple":
             shape = tuple_shape(TupleType((CELL,)), (BORROWED,))
-            capture, copy = MIRTupleConstruct((SAVED,)), MIRTupleCopy(holder)
+            capture, copy = MIRTupleConstruct((SAVED,)), MIRCopy(MIRPlace(holder))
         case "optional":
             shape = optional_shape(OptionalType(CELL), borrowed_shape(CELL))
-            capture, copy = MIROptionalConstruct(MIRPlace(SAVED)), MIROptionalCopy(MIRPlace(holder))
+            capture, copy = MIRWrap(1, MIRPlace(SAVED)), MIRCopy(MIRPlace(holder))
         case _:
             other = hand_record("Other", "tuple_storage.Other")
             shape = union_shape(UnionType((CELL, other)), (BORROWED, borrowed_shape(other)))
-            capture, copy = MIRUnionConstruct(0, MIRPlace(SAVED)), MIRUnionCopy(MIRPlace(holder))
+            capture, copy = MIRWrap(0, MIRPlace(SAVED)), MIRCopy(MIRPlace(holder))
     fn = function()
     fn = replace(fn, slots=(*fn.slots, *(MIRSlot(s, shape, MIRSlotKind.LOCAL, residence=ROOT)
                                        for s in (holder, copied))))
@@ -150,7 +149,7 @@ def test_skipped_initialization_and_repeated_scope_activation() -> None:
 
 @pytest.mark.parametrize("change, message", [
     ({"storage_write": None}, "initialization fact"),
-    ({"value": MIRTupleCopy(PAIR)}, "tuple construction"),
+    ({"value": MIRCopy(MIRPlace(PAIR))}, "tuple construction"),
     ({"value": MIRTupleConstruct((EXTERNAL, MIRConstruct((VALUE,)), EXTERNAL, VALUE))}, "needs constructor"),
     ({"value": MIRTupleConstruct((MIRConstruct(()), MIRConstruct((VALUE,)), EXTERNAL, VALUE))}, "mistyped tuple"),
     ({"value": MIRTupleConstruct((MIRConstruct((FLAG,)), MIRConstruct((VALUE,)), EXTERNAL, VALUE))}, "mistyped tuple"),
@@ -180,7 +179,7 @@ def test_same_activation_backedge_is_not_fresh_initialization() -> None:
 
 def test_borrow_tuple_copy_cannot_copy_an_owned_source() -> None:
     copy = MIRSlotId(BODY, 6)
-    fn = function(INIT, MIRAssign(MIRPlace(copy), MIRTupleCopy(PAIR)))
+    fn = function(INIT, MIRAssign(MIRPlace(copy), MIRCopy(MIRPlace(PAIR))))
     slot = MIRSlot(copy, tuple_shape(TUPLE, (BORROWED, BORROWED, BORROWED, leaf_shape(INT32))), MIRSlotKind.LOCAL,
                    residence=ROOT)
     fn = replace(fn, slots=(*fn.slots, slot))

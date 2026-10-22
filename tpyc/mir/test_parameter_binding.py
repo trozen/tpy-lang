@@ -713,7 +713,7 @@ def test_a_forged_payload_access_is_refused_at_the_contract_and_the_summary(acti
     summary = _summary(active, "maybe_read")
     payload = binding.value.payload
     for access in (1, False):
-        forged = replace(binding, value=replace(binding.value, members=(replace(payload, readonly=access),)))
+        forged = replace(binding, value=replace(binding.value, members=(None, replace(payload, readonly=access))))
         if access is False:
             # `P | None` lends its payload mutably where the body writes through it.
             assert _contract(forged) is None
@@ -721,8 +721,8 @@ def test_a_forged_payload_access_is_refused_at_the_contract_and_the_summary(acti
         assert _contract(forged) == "invalid value access"
         assert summary_problem(replace(summary, parameters=(forged,)), no_layouts()) == "invalid value access"
     declared = _binding(active, "maybe")
-    mutable = replace(declared, value=replace(declared.value, members=(replace(declared.value.payload,
-                                                                               readonly=False),)))
+    mutable = replace(declared, value=replace(declared.value, members=(None, replace(declared.value.payload,
+                                                                               readonly=False))))
     assert _contract(mutable) == "optional layout increases access"
 
 
@@ -772,7 +772,7 @@ def test_a_summary_refuses_a_body_binding_its_facts_do_not_derive(active: _Progr
     binding, = body.parameter_bindings
     payload = binding.value.payload
     assert payload.readonly
-    forged = replace(binding, value=replace(binding.value, members=(replace(payload, readonly=False),)))
+    forged = replace(binding, value=replace(binding.value, members=(None, replace(payload, readonly=False))))
     assert _contract(forged) is None
     slots = tuple(replace(s, shape=forged.value) if s.kind is MIRSlotKind.PARAMETER else s for s in body.slots)
     damaged = replace(body, slots=slots, parameter_bindings=(forged,))
@@ -789,7 +789,7 @@ def test_the_shape_check_refuses_a_non_bool_access(active: _Program) -> None:
     # A member's access, as the slot's.
     payload = maybe.value.payload
     assert payload.readonly is True and shape_problem(maybe.value, maybe.declared) is None
-    assert shape_problem(replace(maybe.value, members=(replace(payload, readonly=1),)), maybe.declared) == (
+    assert shape_problem(replace(maybe.value, members=(None, replace(payload, readonly=1))), maybe.declared) == (
         "invalid value access")
 
 

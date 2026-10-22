@@ -12,8 +12,8 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered, MIRPayloadWrite,
-    MIRPayloadWriteMode, MIRRegionId, MIRStorageDuration, MIRStorageInit,
+    MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWrite,
+    MIRStorageWriteMode, MIRRegionId, MIRStorageDuration, MIRStorageInit,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .testutil import compiled_definitions, Reference, execute
@@ -209,7 +209,7 @@ def test_producer_defaults_match_render_order_and_source_writes_are_assignments(
         assert isinstance(init, MIRStorageInit) and init.value.value == default.value
         writes = [s for block in bodies[name].blocks for s in block.statements
                   if isinstance(s, MIRAssign) and s.target.root == init.target.root]
-        assert writes and all(s.storage_write == MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN) for s in writes)
+        assert writes and all(s.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE) for s in writes)
         body = cpp[cpp.index(f" {name}("):].split("\n}\n", 1)[0]
         declaration = "std::optional<int32_t> current;" if first is None and fact.union_layout is None else (
             functions[name].body[0].hoist_decls[0][1] + " current;")

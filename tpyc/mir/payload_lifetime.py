@@ -8,11 +8,10 @@ from .dependencies import MIRDependencies, _dependencies
 from .dump import _location, _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode,
-    MIRPlace, MIRPoint, MIRUnionConstruct, MIRUnionCopy, place_shape,
+    MIRAssign, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, place_shape,
+    MIRWrap, MIRCopy,
 )
-from ..thir.scalar_leaves import MIRClass
-from .shapes import MIROptionalPayload, MIRUnionPayload
+from .shapes import MIRUnionPayload
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind
 from .validate import MIRPrepared, MIRPresenceError, _prepare_function, _validated_function
 from .value import MIRValidationError
@@ -40,26 +39,23 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
             if not isinstance(stmt, MIRAssign):
                 continue
             value = stmt.value
-            if not isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):
+            if not isinstance(value, (MIRWrap, MIRCopy)):
                 continue
             wrapper = stmt.target
             if not slots[wrapper.root].shape.scalar_wrapper:
                 continue
             fact = stmt.storage_write
-            if not isinstance(fact, MIRPayloadWrite):
+            if not isinstance(fact, MIRStorageWrite):
                 return MIRNotCovered(fn.id, "payload ends", "missing payload write fact", stmt.loc)
             point = MIRPoint(block.id, index)
-            if point not in presence.points or fact.mode in (
-                    MIRPayloadWriteMode.INITIALIZE, MIRPayloadWriteMode.INITIALIZE_REGION):
+            if point not in presence.points or fact.mode is MIRStorageWriteMode.INITIALIZE:
                 continue
             incoming = dict(presence.points[point])
             old = incoming.get(wrapper, presence.domains[wrapper])
             match value:
-                case MIROptionalConstruct(source=source):
-                    new = frozenset({int(source is not None)})
-                case MIRUnionConstruct(alternative=alternative):
+                case MIRWrap(alternative=alternative):
                     new = frozenset({alternative})
-                case MIROptionalCopy(source=source) | MIRUnionCopy(source=source):
+                case MIRCopy(source=source):
                     if source == wrapper:
                         continue
                     new = incoming.get(source, presence.domains[source])
@@ -68,10 +64,7 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
             for alternative in old:
                 if not new - {alternative}:
                     continue
-                if layout.cls is MIRClass.OPTIONAL:
-                    if alternative == 1:
-                        payloads.add(MIRPlace(wrapper.root, (*wrapper.projections, MIROptionalPayload())))
-                elif layout.alternatives[alternative] is not None:
+                if layout.alternatives[alternative] is not None:
                     payloads.add(MIRPlace(wrapper.root, (*wrapper.projections, MIRUnionPayload(alternative))))
             if payloads:
                 ends[point] = frozenset(payloads)

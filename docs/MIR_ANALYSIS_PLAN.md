@@ -2106,7 +2106,7 @@ as the corpus grows).
   other missing type. A `const T&` / view parameter is a readonly
   pointer holder with an external referent; a local, temporary,
   by-value parameter (entry-initialized) or result is owned storage with
-  a duration; every write to owned storage carries a `MIRRecordWrite`
+  a duration; every write to owned storage carries a `MIRStorageWrite`
   (storage events key on the DESTINATION, not the rvalue class); no
   `MIRField` projection exists under an opaque layout. A global of
   owned-leaf type is a readonly handle to the immortal external identity
@@ -2416,7 +2416,7 @@ as the corpus grows).
   is `MIRConstruct` with a container-layout target, one operand per element
   and always `may_raise` (allocation); `len(xs)` lends the container
   readonly. Writes: `xs[i] = v` is `MIRAssign(xs[elements], v,
-  MIRRecordWrite(IN_PLACE))`, a WEAK update (never a strong kill in the
+  MIRStorageWrite(IN_PLACE))`, a WEAK update (never a strong kill in the
   dependency transfer); rebinding an owned container (`xs = [..]`) builds
   the new list into storage of its own and repoints the holder, as a
   record rebind does; a whole container field write (`self.items = data`)
@@ -3317,19 +3317,19 @@ call on a call result.
   constructor paths hardcoded none: a factory writing an argument beside
   another operand that reads it refuses "order-sensitive eager operands"
   (`stamped`: `[stamp(c), stamp(c)]`). The arm is reached at an owned
-  declaration (`p = make(n)`, `INITIALIZE_ONCE`), a reseat of a
+  declaration (`p = make(n)`, `INITIALIZE`, body duration), a reseat of a
   REBIND_SLOT local (`p = make(n + 1)`, `IN_PLACE` / `OWN_SITE`, now
   inside a full-expression boundary, so a CONSTRUCTOR reseat whose
   arguments need temporaries is covered too), an element write (`ps[0] =
   make(n)`, `IN_PLACE`), a container-literal element and an argument handed
   to an owning stub parameter (`ps.append(make(n))`: MIR's own
-  `aggregate_temporary`, `INITIALIZE_REGION`, no THIR backing, as for a
+  `aggregate_temporary`, `INITIALIZE` of region-duration storage, no THIR backing, as for a
   constructor), a readonly named argument temporary (`read(make(n))`: a
   `THIRArgTemp` whose init is the call, admitted when the call writes
   nothing and its operands are stable, "named temporary needs stable
   scalar operands"), and the return arm. The validator's record-write
   carriers admit `MIRCall`; the initialization / replacement and element
-  arms take a `MIRCall` only under a `MIRRecordWrite` fact and when the
+  arms take a `MIRCall` only under a `MIRStorageWrite` fact and when the
   callee's signature hands the target type over ("call record result type
   mismatch"). Dependencies are unchanged: a
   `MIRCall` result is fresh, with no origins.
@@ -3527,7 +3527,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   read stored bare (`self.a = self.b`), an owned local stored bare (`self.b
   = t`, a copy through its holder), an `Own[R]` parameter moved at its last
   use, or a call handing over an owned result (`Holder.put`). The lowering
-  writes `MIRAssign(member place, value, MIRRecordWrite(IN_PLACE))`; the
+  writes `MIRAssign(member place, value, MIRStorageWrite(IN_PLACE))`; the
   validator requires that fact with no rebind owner, a mutable place and a
   movable member ("record member write needs a replacement fact", "store
   through readonly storage", "record member replacement needs movable
@@ -4185,8 +4185,7 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   ending in an Optional record field: an Optional whose payload record is
   stored inline). Every payload, element and presence operation resolves
   the shape of the place it operates on, and the wrapper rvalues
-  (`MIROptionalConstruct`, `MIROptionalCopy`, `MIRIsPresent` and the union
-  twins) take a `MIRPlace`. A slot's payload is an inert leaf or a pointer
+  (`MIRWrap`, `MIRCopy`, `MIRIsAlternative`) take a `MIRPlace`. A slot's payload is an inert leaf or a pointer
   at a record; an inline payload exists only at a field place. The refactor that introduced the resolver
   changed no verdict (census over the full test corpus and the stdlib:
   0 of 29713 bodies).
@@ -4199,8 +4198,8 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   type, or the payload type at an assign target inside a narrowed region)
   and a narrowed access (`narrowed_deref`, the payload type). `scalar_leaves.inline_member_type` is the record a member stores
   inline (the payload of such a field, else the member's own type).
-- **Reads.** A narrowed read `h.p.x` is the place `h.<p>.payload.x`; `is
-  None` / `is not None` on a field is `MIRIsPresent(place)`; `o = h.p`
+- **Reads.** A narrowed read `h.p.x` is the place `h.<p>.alternative[1].x`; `is
+  None` / `is not None` on a field is `MIRIsAlternative(place, (1,))`; `o = h.p`
   binds an Optional holder of the inline payload (C++
   `optional_to_ptr(h.p)`). An unproven read (`opt_deref_check`) refuses.
 - **Writes.** `h.p = None`, `h.p = P(..)`, `h.p = other.p` and `h.p = o`
@@ -4211,7 +4210,7 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   callee's published write, and through `self`. Replacement is never
   routed through payload_lifetime, which compares exact places and drops
   external referents. A whole-field write that copies a payload marks the
-  copy `MIROptionalCopy.may_raise`. A callee's write under the payload is
+  copy `MIRCopy.may_raise`. A callee's write under the payload is
   published as a write of the whole field (summaries carry no payload
   selectors).
 - **Presence kill rule** (`presence._reaches`, `_kill_field_facts`). A
@@ -4222,7 +4221,7 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   elsewhere (a pointer, a region, a cursor, a payload alias) is a rebind
   that writes no storage, and only scalar leaves, owned leaves and
   views cannot hold the member (`_may_hold`); any other type may. A read
-  after a killed fact refuses ("optional payload access without current
+  after a killed fact refuses ("payload access without current
   presence proof").
 - **Constructors.** An Optional parameter is admitted by the predicate calls
   share (`definitions.optional_parameter`, reading the value of the one
@@ -4410,6 +4409,47 @@ Generated C++ is unchanged; only the diagnostic is new. Pinned by
   `argument_alias` conflicts: the harness reads them off the verdicts, and
   a compile without a verdict pass runs `analyze_body` only on bodies
   that call a callee with obligations.
+
+#### One wrapper, one copy, one write fact
+
+An Optional is a two-alternative sum, as a union is: its members are
+`(None, payload)` (absent is alternative 0, as a union lays `None` out
+first), so `MIRShape.payload` is alternative 1 and `alternatives`,
+`scalar_wrapper` and the presence domain read both sums alike. The
+operations on a value are one node each:
+
+| Operation | Node |
+|---|---|
+| select an alternative | `MIRWrap(alternative, source \| None)` |
+| test the selection | `MIRIsAlternative(source, alternatives)` (an Optional's presence is `(1,)`) |
+| a sum's payload place | `MIRUnionPayload(alternative)` (an Optional's is `MIRUnionPayload(1)`; the dump prints `.alternative[1]`, annotations keep `o[payload]`) |
+| copy a record, a sum or a tuple | `MIRCopy(source, may_raise)` |
+| record a storage write | `MIRStorageWrite(mode, rebind_owner)` |
+
+A sum's or a tuple's `MIRCopy` keeps the selection and converts member
+by member by what the target member holds: a holder takes the source
+member's loan, or lends an inline source member (`optional_to_ptr`); a
+storage member takes a copyable copy whatever the source's access; a
+scalar the same value. The lend is the copy's alone (`member_compatible`
+is unchanged, so a construct or a call never lends raw storage).
+`may_raise` is the copy of its storage members' buffers, or an element
+access of the source.
+
+`MIRStorageWrite` modes: `INITIALIZE` (no old value; once per lifetime of
+the target slot's storage, the body or each entry of its region, read off
+`MIRSlot.storage_duration`), `OWN_SITE` (a holder's backing site written,
+possibly revisited, and the holder repointed), `IN_PLACE` (the value
+replaced in its storage; every alias sees it) and `OPTIONAL_ASSIGN` (an
+Optional record backing filled). Retention takes the writes
+`storage.storage_destination` inventories, payload ends the writes to a
+scalar sum. An in-place write's rebinding holder repoints, so retention
+skips its own dependency leaves only: a view member of the object it lends
+still retains what the write replaces
+(`BUGS.md#record-view-member-source-replaced`, `element_view_replaced`).
+
+Still separate, each with its reason: `MIRTupleConstruct`,
+`MIRUnionExtract`, `MIRRecordStorageInit` / `MIRRecordStorageKind`,
+`MIRMemberInitMode` and `MIRCall.absent` (TODO.md "[MIR] FIRST", step (1)).
 
 ## Scope matrix and remaining increments
 

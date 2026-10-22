@@ -8,16 +8,15 @@ numbers the body canonically."""
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, is_dataclass, replace
-from enum import Enum, auto
 
 from ..typesys import BOOL, Representation, TpyType
 from ..identity_map import IdentityMap
 from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
-    MIRGoto, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
-    MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot,
-    MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator, MIRTupleInitialization,
+    MIRGoto, MIRNot, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
+    MIRRecordStorageKind, MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot,
+    MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
     member_init_operands, source_order, statement_target, place_shape,
 )
 from ..thir.scalar_leaves import MIRClass
@@ -131,25 +130,6 @@ class _SlotRecord:
     @property
     def type(self) -> TpyType:
         return self.shape.type
-
-
-class _WriteRule(Enum):
-    """What decides a pending write's mode (`_PendingWrite`)."""
-    RECORD = auto()
-    PAYLOAD = auto()
-    OWNED = auto()
-
-
-@dataclass(frozen=True, eq=False)
-class _PendingWrite:
-    """A storage write whose mode assembly decides: `record` / `payload`
-    from the region the write was decided in (an initialization in a
-    nested region is per entry) -- a declaration decides it in its scope,
-    though the write runs inside its initializer's full expression --,
-    `owned` from the target's duration."""
-    rule: _WriteRule
-    region: RegionHandle | None = None
-    target: MIRSlotId | None = None
 
 
 def _extend(into: list, items: list) -> list:
@@ -418,7 +398,7 @@ class Fragment:
             self.claims.append((operation, block, stmt))
 
     def write(self, dest: MIRSlotId | MIRPlace, value: MIRRvalue, loc: object,
-              storage_write: MIRRecordWrite | MIRPayloadWrite | MIRTupleInitialization | _PendingWrite | None = None
+              storage_write: MIRStorageWrite | None = None
               ) -> None:
         target = MIRPlace(dest) if isinstance(dest, MIRSlotId) else dest
         self.append(MIRAssign(target, value, loc, storage_write))
@@ -535,7 +515,7 @@ class Fragment:
         else:
             assert temporaries, "unregistered materialized storage"
         storage = self.slot(v.shape, storage_duration=self.region)
-        self.write(storage, v.value, v.loc, MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
+        self.write(storage, v.value, v.loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         return storage
 
     def holds_region_storage(self) -> bool:
@@ -656,23 +636,10 @@ class Fragment:
 
     # --- write modes and temporaries ---------------------------------------------
 
-    def payload_write(self, inline: bool, mode: MIRPayloadWriteMode) -> MIRPayloadWrite | _PendingWrite | None:
+    def payload_write(self, inline: bool, mode: MIRStorageWriteMode) -> MIRStorageWrite | None:
         """The payload write of a wrapper holding its payload inline (a
         declaration's `shape.scalar_wrapper`, an assignment's `inline_payload`)."""
-        if not inline:
-            return None
-        if mode is MIRPayloadWriteMode.INITIALIZE:
-            return _PendingWrite(_WriteRule.PAYLOAD, self.region)
-        return MIRPayloadWrite(mode)
-
-    def initial_write(self) -> _PendingWrite:
-        """A record storage initialization: once in the body region, per
-        entry in a nested one (decided at assembly)."""
-        return _PendingWrite(_WriteRule.RECORD, self.region)
-
-    def owned_initialization(self, dest: MIRSlotId) -> _PendingWrite:
-        """Owned storage's initialization, by its duration (decided at assembly)."""
-        return _PendingWrite(_WriteRule.OWNED, target=dest)
+        return MIRStorageWrite(mode) if inline else None
 
     def initialize(self, temporaries: tuple[object, ...], *, nested: bool = False) -> None:
         """Build placed temporaries where the temporary plan initializes them;
@@ -680,8 +647,8 @@ class Fragment:
         a full expression of its own, its region ending after it."""
         for temporary in temporaries:
             # Decided in the scope the storage lives in, outside the initializer's region.
-            write = (MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN) if temporary.optional
-                     else self.initial_write())
+            write = MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN if temporary.optional
+                                    else MIRStorageWriteMode.INITIALIZE)
             if nested:
                 with self.full_expression(temporary.value):
                     self.write(temporary.storage, self.splice(temporary.value), temporary.loc, write)
@@ -833,15 +800,13 @@ class _Assembly:
         return found
 
     def remap(self, value: object) -> object:
-        """`value` under the final numbering, a pending write mode decided."""
+        """`value` under the final numbering."""
         if isinstance(value, MIRSlotId):
             return self.slot_ids[value]
         if isinstance(value, MIRBlockId):
             return self.block_ids[value]
         if isinstance(value, tuple):
             return tuple(self.remap(item) for item in value)
-        if isinstance(value, _PendingWrite):
-            return self.write_mode(value)
         if _structure(value):
             changes = {}
             for f in fields(value):
@@ -851,19 +816,6 @@ class _Assembly:
                     changes[f.name] = mapped
             return replace(value, **changes) if changes else value
         return value
-
-    def write_mode(self, pending: _PendingWrite) -> MIRRecordWrite | MIRPayloadWrite:
-        match pending.rule:
-            case _WriteRule.RECORD:
-                return MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE if pending.region.is_body
-                                      else MIRRecordWriteMode.INITIALIZE_REGION)
-            case _WriteRule.PAYLOAD:
-                return MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE if pending.region.is_body
-                                       else MIRPayloadWriteMode.INITIALIZE_REGION)
-            case _WriteRule.OWNED:
-                duration = self.emitter.records[pending.target].storage_duration
-                return MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION if isinstance(duration, RegionHandle)
-                                      else MIRRecordWriteMode.INITIALIZE_ONCE)
 
     def duration(self, duration: object) -> object:
         if not isinstance(duration, RegionHandle):
@@ -963,7 +915,7 @@ def _reachable_slots(slots: Mapping[MIRSlotId, MIRSlot], blocks: list[MIRBlock],
             if (target := statement_target(stmt)) is not None:
                 retained.add(target.root)
             retained.update(statement_reads(stmt))
-            if (isinstance(stmt, MIRAssign) and isinstance(stmt.storage_write, MIRRecordWrite)
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.storage_write, MIRStorageWrite)
                     and stmt.storage_write.rebind_owner is not None):
                 retained.add(stmt.storage_write.rebind_owner)
         match block.terminator:

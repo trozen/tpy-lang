@@ -699,6 +699,28 @@ def copy_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacemen
         src = mk(k + 1)
     print("copy_either", w.t.s)
 
+
+class Items:
+    items: list[str]
+    s: StrView
+
+    def __init__(self, items: list[str], s: StrView) -> None:
+        self.items = copy(items)
+        self.s = s
+
+    def setv(self, v: StrView) -> None:
+        self.s = v
+
+
+# free function: an element store through the record whose view member views that element; the store
+# rebinds the record's holder, but r.s still views the replaced element (BUGS.md#record-view-member-source-replaced)
+def element_view_replaced(r: Items, k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+    r.setv(r.items[0])
+    if flag:
+        r.items[0] = mk(k)  # tpyc: mir_borrows(r.s, r.items[elements]|r.s)
+    print("element_view_replaced", r.s)
+
+
 def main(flag: bool) -> None:
     retained_by_callee(1, False)
     maybe_retained(1, False)
@@ -779,6 +801,7 @@ def main(flag: bool) -> None:
     kid_temp(1, False)
     print("fixed_base", fixed_base())
     shell_temp(1, False)
+    element_view_replaced(Items([mk(1)], "static"), 2, False)
 
 
 main(False)

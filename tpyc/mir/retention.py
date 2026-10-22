@@ -7,26 +7,21 @@ from ..thir.scalar_leaves import MIRClass, value_class
 from ..typesys import TpyType
 
 from .call_contract import MIRAliasObligation, MIRParameterWrite, summary_path
-from .coverage import whole_wrapper_field
 from .dependencies import (
-    MIRDependencies, MIRReferent, _referent, analyze_dependencies, origin_shape, resolve_referents,
+    MIRDependencies, MIRReferent, _leaves, _referent, analyze_dependencies, origin_shape, resolve_referents,
+    whole_wrapper_field,
 )
 from .dump import _location, _place, _write_step, obligation_text
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness
 from .nodes import (
-    MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWrite, MIRStorageWriteMode, MIRSlot, MIRSlotId, MIRSlotKind,
     statement_call, call_place,
 )
-from .value import AGGREGATE_CLASSES, MIRField, MIRRecordLayout, MIRShape, MIRValidationError
+from .value import AGGREGATE_CLASSES, MIRField, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, owned_field
 from .presence import MIREngagement
 from .shapes import walk_to, MIRContainerElements, MIRContainerStructure
 from .validate import _validated_function
-
-
-# An initialization creates its storage, so no loan can predate it: the
-# record writes outside this set are the replacement events.
-INITIALIZING_WRITES = frozenset({MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.INITIALIZE_REGION})
 
 
 @dataclass(frozen=True)
@@ -180,10 +175,11 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
     replaced: list[tuple[MIRPoint, MIRPlace, MIRSlotId | None]] = []
     for point, stmt in events.writes.items():
         fact = stmt.storage_write
-        assert isinstance(fact, MIRRecordWrite)
-        if fact.mode in INITIALIZING_WRITES:
+        assert isinstance(fact, MIRStorageWrite)
+        if fact.mode is MIRStorageWriteMode.INITIALIZE:
+            # An initialization creates its storage, so no loan can predate it.
             continue
-        if fact.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN:
+        if fact.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN:
             engagement = prepared.presence.engagement.get(point)
             if engagement is None:
                 continue
@@ -210,8 +206,12 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         if not target.projections:
             for key in dependencies.objects[target.root]:
                 holders[key] = holders.get(key, frozenset()) | outgoing.get(key, frozenset())
+        # The rebinding holder itself repoints to the new value; any other
+        # holder rooted at its slot (a view member of the record it lends)
+        # still retains what the write replaces.
+        rebinding = frozenset(_leaves(slots[rebind_owner], slots)) if rebind_owner is not None else frozenset()
         for holder, refs in sorted(holders.items(), key=lambda item: _place(item[0])):
-            if holder.root == rebind_owner:
+            if holder in rebinding:
                 continue
             for written in sorted(affected, key=_referent_key):
                 for retained in sorted(refs, key=_referent_key):
@@ -288,8 +288,8 @@ def parameter_indices(fn: MIRFunction) -> dict[MIRSlotId, int]:
     return {slot.id: index for index, slot in enumerate(params)}
 
 
-def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlotId, int]
-                     ) -> MIRAliasObligation | None:
+def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlotId, int],
+                     slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRAliasObligation | None:
     """The one classification of a retention conflict as a no-alias
     obligation: one whose written and retained referents are both the
     caller's storage, reached from two different parameters, exists only
@@ -310,8 +310,9 @@ def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlot
     j, i = parameters.get(write_origin.root), parameters.get(retained_origin.root)
     if i is None or j is None or i == j:
         return None
-    return MIRAliasObligation(i, summary_path(whole_wrapper_field(retained.place).projections),
-                              MIRParameterWrite(j, summary_path(whole_wrapper_field(written.place).projections)))
+    retained_path = whole_wrapper_field(retained.place, slots, records).projections
+    written_path = whole_wrapper_field(written.place, slots, records).projections
+    return MIRAliasObligation(i, summary_path(retained_path), MIRParameterWrite(j, summary_path(written_path)))
 
 
 def _one_object(conflict: MIRRetentionConflict) -> bool:
@@ -345,11 +346,12 @@ class MIRRetentionClasses:
 
 def classify_retention(retention: MIRRetention, published: frozenset[MIRAliasObligation]) -> MIRRetentionClasses:
     parameters = parameter_indices(retention.function)
+    slots = {slot.id: slot for slot in retention.function.slots}
     replacements: list[MIRRetentionConflict] = []
     aliases: list[MIRRetentionConflict] = []
     obligations: list[MIRRetentionConflict] = []
     for conflict in retention.conflicts:
-        if published and alias_obligation(conflict, parameters) in published:
+        if published and alias_obligation(conflict, parameters, slots, retention.function.record_layouts) in published:
             obligations.append(conflict)
         elif conflict.call is not None and _one_object(conflict):
             aliases.append(conflict)

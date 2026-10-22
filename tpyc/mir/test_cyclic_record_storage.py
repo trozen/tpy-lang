@@ -11,8 +11,8 @@ from ..thir.validate import validate_function as validate_thir
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAlias, MIRBodyId, MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordWriteMode, MIRStorageDuration, MIRTupleConstruct,
+    MIRAlias, MIRBodyId, MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRStorageWrite,
+    MIRStorageWriteMode, MIRStorageDuration, MIRTupleConstruct,
 )
 from .shapes import MIRDeref
 from .scope_lifetime import inspect_scope_lifetimes
@@ -95,7 +95,7 @@ def test_each_activation_owns_an_independent_copy(
     fn = lower(transferred(source, move, inner_source=inner, readonly=readonly), source[1])
     writes = analyze_storage(fn).writes.values()
     transfer, = (s for s in writes if isinstance(s.value, MIRMove if move else MIRCopy))
-    assert transfer.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+    assert transfer.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     for run, stop, skip, early, copies in ((False, False, False, False, 0), (True, False, False, False, 2),
                                          (True, True, False, False, 1), (True, False, True, False, 2),
                                          (True, False, False, True, 1)):
@@ -150,7 +150,7 @@ def test_transfer_does_not_bypass_activation_rules(move: bool, fault: str, reaso
     init = replace(block.statements[0], value=MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL)))
     statements = (init, init, *block.statements[1:]) if fault == "duplicate" else (init, *block.statements[1:])
     if fault == "body":
-        statements = (replace(init, storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
+        statements = (replace(init, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                       *block.statements[1:])
         fn = replace(fn, slots=tuple(replace(s, storage_duration=MIRStorageDuration.BODY,
                                              residence=fn.blocks[0].region)
@@ -170,7 +170,7 @@ def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool
     block = fn.blocks[1]
     # Replace through current without the OWN-site reseat: prior aliases now overlap the write.
     write = replace(block.statements[point.index], target=MIRPlace(CURRENT, (MIRDeref(),)),
-                    storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, CURRENT))
+                    storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, CURRENT))
     if operation != "construct":
         write = replace(write, value=MIRCopy(MIRPlace(INITIAL)) if operation == "copy" else MIRMove(INITIAL))
     stmts = (*block.statements[:point.index], write, *block.statements[point.index + 3:])

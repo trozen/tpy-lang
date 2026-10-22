@@ -19,7 +19,7 @@ from .call_contract import MIR_STATIC, MIRLoanTransfer, MIRParameterWrite, cross
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
 from .emit import owned_leaf_shape, view_holder_shape
 from .lower import _Lowering
-from .nodes import MIRAssign, MIRConstant, MIRRead, MIRTupleCopy
+from .nodes import MIRAssign, MIRConstant, MIRRead, MIRCopy
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError, holder_form,
     with_access,
@@ -162,7 +162,7 @@ def test_a_container_field_is_lent_with_the_members_registered_by_then(dumps) ->
 
 def test_a_record_name_binds_an_optional_parameter_through_its_own_holder(dumps) -> None:
     # The name's holder is the record pointer the payload copies.
-    assert "%1 = present %0" in dumps["pass_name"]
+    assert "%1 = wrap[1] %0" in dumps["pass_name"]
 
 
 def test_assignment_targets_name_the_place_a_read_does(dumps) -> None:
@@ -170,14 +170,14 @@ def test_assignment_targets_name_the_place_a_read_does(dumps) -> None:
     assert "%2: int32 global main::g" in glob and "%2 = read %1" in glob
     local = dumps["set_local"]
     assert "%2: int32 local n" in local and local.index("%3 = read %0") + 1 == local.index("%2 = read %3")
-    assert "%2 = read (*%0.payload)" not in dumps["read_narrowed"]
-    assert any(re.fullmatch(r"%\d+ = read %0\.payload", line) for line in dumps["read_narrowed"])
+    assert "%2 = read (*%0.alternative[1])" not in dumps["read_narrowed"]
+    assert any(re.fullmatch(r"%\d+ = read %0\.alternative\[1\]", line) for line in dumps["read_narrowed"])
 
 
 def test_a_tuple_name_is_copied_into_a_fresh_holder(dumps) -> None:
     lines = dumps["copy_tuple"]
     assert "%1: tuple[int32, int32] payload(value, value) temporary" in lines
-    assert lines[lines.index("bb0:") + 1:lines.index("bb0:") + 3] == ["%1 = tuple-copy %0", "%2 = tuple-copy %1"]
+    assert lines[lines.index("bb0:") + 1:lines.index("bb0:") + 3] == ["%1 = copy %0", "%2 = copy %1"]
 
 
 @pytest.mark.parametrize("name", ["copy_tuple", "reassign_tuple"])
@@ -186,7 +186,7 @@ def test_a_tuple_copy_states_the_shape_of_the_slot_it_is_written_into(unit, monk
     whole = _Lowering.whole
 
     def spy(self, body, loc, needs_region=False):
-        if isinstance(body.value.value, MIRTupleCopy):
+        if isinstance(body.value.value, MIRCopy) and body.shape_of().cls is MIRClass.TUPLE:
             seen.append((body.shape_of(), self.bound("u")))
         return whole(self, body, loc, needs_region)
     monkeypatch.setattr(_Lowering, "whole", spy)

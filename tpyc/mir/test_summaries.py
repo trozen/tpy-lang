@@ -13,7 +13,7 @@ from .call_contract import MIRGlobalId, MIRSummaryResult, MIRSummaryState, summa
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWriteMode,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWriteMode,
     MIRStorageDuration,
 )
 from .summaries import summarize_function
@@ -182,7 +182,7 @@ def test_repeated_owned_activation_is_private_storage(artifacts: Artifacts) -> N
     assert local.shape.is_storage and local.storage_duration != MIRStorageDuration.BODY
     writes = [stmt.storage_write.mode for block in body.blocks for stmt in block.statements
               if isinstance(stmt, MIRAssign) and stmt.target.root == local.id]
-    assert writes == [MIRRecordWriteMode.INITIALIZE_REGION]
+    assert writes == [MIRStorageWriteMode.INITIALIZE]
 
 
 def test_raising_summary_covers_writes_before_the_throw(artifacts: Artifacts) -> None:

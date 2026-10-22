@@ -9,8 +9,8 @@ from .coverage import call_write_places
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAssign, MIRConstruct, MIRFunction, MIRMove, MIRNotCovered, MIRSlot, MIRSlotId, MIRRecordWrite, MIRTupleConstruct,
-    MIRPlace, statement_call,
+    MIRAssign, MIRConstruct, MIRFunction, MIRMove, MIRNotCovered, MIRSlot, MIRSlotId, MIRStorageWrite,
+    MIRTupleConstruct, MIRPlace, statement_call,
 )
 from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex
 from .value import loan_field, MIRField
@@ -63,7 +63,7 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
                 if initialized and block.id in reached:
                     members[MIRPoint(block.id, index)] = initialized
             elif storage_destination(stmt.target, slots):
-                if not isinstance(stmt.storage_write, MIRRecordWrite):
+                if not isinstance(stmt.storage_write, MIRStorageWrite):
                     return MIRNotCovered(fn.id, "storage", "missing record write fact", stmt.loc)
                 if block.id in reached:
                     writes[MIRPoint(block.id, index)] = stmt
@@ -100,7 +100,7 @@ def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
     lines = ["record writes (logical replacement; no physical lifetime-end verdict)"]
     for point, stmt in result.writes.items():
         fact = stmt.storage_write
-        assert isinstance(fact, MIRRecordWrite)
+        assert isinstance(fact, MIRStorageWrite)
         owner = f" rebind-owner=%{fact.rebind_owner.index}" if fact.rebind_owner is not None else ""
         lines.append(f"  bb{point.block.index} before {point.index}: {fact.mode.name.lower()} "
                      f"{_place(stmt.target)}{owner}{_location(stmt.loc)}")

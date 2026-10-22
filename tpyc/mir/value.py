@@ -68,9 +68,9 @@ class MIRShape:
 
     @property
     def payload(self) -> 'MIRShape':
-        """An Optional's payload."""
+        """An Optional's payload: its alternative 1, beside the absent 0."""
         assert self.cls is MIRClass.OPTIONAL
-        return self.members[0]
+        return self.members[1]
 
     @property
     def elements(self) -> 'tuple[MIRShape, ...]':
@@ -80,8 +80,9 @@ class MIRShape:
 
     @property
     def alternatives(self) -> 'tuple[MIRShape | None, ...]':
-        """A union's members, None for an absent alternative."""
-        assert self.cls is MIRClass.UNION
+        """A sum's members -- a union's, an Optional's `(None, payload)` --,
+        None for an absent alternative."""
+        assert self.cls in SUM_CLASSES
         return self.members
 
     @property
@@ -209,12 +210,7 @@ class MIRShape:
     @property
     def scalar_wrapper(self) -> bool:
         """An Optional or a union whose every payload is an inert leaf by value."""
-        match self.cls:
-            case MIRClass.OPTIONAL:
-                return self.payload.scalar_by_value
-            case MIRClass.UNION:
-                return all(m is None or m.scalar_by_value for m in self.members)
-        return False
+        return self.cls in SUM_CLASSES and all(m is None or m.scalar_by_value for m in self.members)
 
     @property
     def form(self) -> Form:
@@ -244,6 +240,8 @@ AGGREGATE_CLASSES = _STORAGE_CLASSES - {MIRClass.OWNED_LEAF}
 CONTAINER_CLASSES = frozenset({MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW})
 # A wrapper's or a container's members are the only ones a value carries.
 MEMBERED_CLASSES = frozenset({MIRClass.TUPLE, MIRClass.OPTIONAL, MIRClass.UNION}) | CONTAINER_CLASSES
+# A value with one alternative selected; an absent alternative (None) is 0.
+SUM_CLASSES = frozenset({MIRClass.OPTIONAL, MIRClass.UNION})
 
 
 @dataclass(frozen=True)
@@ -534,10 +532,10 @@ def value_shape(declared: TpyType, cls: MIRClass | None = None, *, access: bool 
             members = tuple(None if m is None else thir_member(m) for m in facts.elements)
         case MIRClass.OPTIONAL if field:
             # The payload lies in the field: it is reached at the field's access.
-            members = (value_shape(typ.inner, MIRClass.RECORD,
-                                   access=loan_access(declared, MIRClass.RECORD, Member(access))),)
+            members = (None, value_shape(typ.inner, MIRClass.RECORD,
+                                         access=loan_access(declared, MIRClass.RECORD, Member(access))))
         case MIRClass.OPTIONAL:
-            members = (thir_member(facts.payload),)
+            members = (None, thir_member(facts.payload))
             # Its own slot is storage; a loan's access is its payload's, in the layout.
             require_valid(not access, "readonly Optional slot")
         case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW if field:
@@ -746,7 +744,8 @@ def _members_problem(shape: MIRShape, declared: TpyType, position: MIRPosition) 
         case MIRClass.OPTIONAL:
             # At a slot the payload record is a pointer, at a field inline.
             holding = MIRHolding.VALUE if position is MIRPosition.FIELD else MIRHolding.POINTER
-            if shape.type.force_pointer_repr or len(shape.members) != 1 or shape.payload is None:
+            if (shape.type.force_pointer_repr or len(shape.members) != 2 or shape.members[0] is not None
+                    or shape.payload is None):
                 return "unsupported optional layout"
             if position is MIRPosition.FIELD and shape.payload.cls is not MIRClass.RECORD:
                 return "unsupported optional payload"

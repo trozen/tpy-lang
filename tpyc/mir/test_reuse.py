@@ -11,7 +11,7 @@ from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
-    MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot,
+    MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRDeref
@@ -72,7 +72,7 @@ def test_source_reuse_has_one_physical_object_per_site(optional: bool, safe: boo
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
     assert [stmt.storage_write.mode for stmt in events.writes.values()] == [
-        *([MIRRecordWriteMode.INITIALIZE_ONCE] * (1 if optional else 2)), MIRRecordWriteMode.OWN_SITE]
+        *([MIRStorageWriteMode.INITIALIZE] * (1 if optional else 2)), MIRStorageWriteMode.OWN_SITE]
     assert len({stmt.target.root for stmt in events.writes.values()}) == (2 if optional else 3)
     heap = {}
     # Fresh allocation on each iteration incorrectly makes the unsafe twin return 1.
@@ -100,7 +100,7 @@ def test_distinct_replacement_sites_do_not_share_backing() -> None:
     assert len(heap) == 4
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
-    sites = [s.target for s in events.writes.values() if s.storage_write.mode is MIRRecordWriteMode.OWN_SITE]
+    sites = [s.target for s in events.writes.values() if s.storage_write.mode is MIRStorageWriteMode.OWN_SITE]
     assert len(sites) == 2 and sites[0] != sites[1]
 
 
@@ -128,7 +128,7 @@ def test_reuse_in_methods_and_constructor_tails(optional: bool, position: str) -
         assert isinstance(fn, MIRFunction), fn
         events = analyze_storage(fn)
         assert isinstance(events, MIRStorageEvents)
-        assert [s.storage_write.mode for s in events.writes.values()].count(MIRRecordWriteMode.OWN_SITE) == 1
+        assert [s.storage_write.mode for s in events.writes.values()].count(MIRStorageWriteMode.OWN_SITE) == 1
 
 
 def test_readonly_holder_can_borrow_reused_mutable_backing() -> None:
@@ -152,7 +152,7 @@ def backing_function() -> MIRFunction:
     return bind_parameters(MIRFunction(body, INT32, slots, (
         MIRBlock(a, (), MIRGoto(loop)),
         MIRBlock(loop, (
-            MIRAssign(MIRPlace(store), MIRConstruct((n,)), storage_write=MIRRecordWrite(MIRRecordWriteMode.OWN_SITE)),
+            MIRAssign(MIRPlace(store), MIRConstruct((n,)), storage_write=MIRStorageWrite(MIRStorageWriteMode.OWN_SITE)),
             MIRAssign(MIRPlace(holder), MIRBorrow(MIRPlace(store))),
         ), MIRBranch(flag, loop, end)),
         MIRBlock(end, (MIRAssign(MIRPlace(result), MIRRead(MIRPlace(holder, (MIRDeref(), field)))),), MIRReturn(result)),
@@ -167,11 +167,11 @@ def rewrite_site(fn: MIRFunction, **changes: object) -> MIRFunction:
 
 @pytest.mark.parametrize("fact,message", [
     (None, "owning operation in cycle"),
-    (MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE), "owning operation in cycle"),
-    (MIRRecordWrite(MIRRecordWriteMode.IN_PLACE), "invalid in-place"),
-    (MIRRecordWrite("own"), "invalid record write fact"),
+    (MIRStorageWrite(MIRStorageWriteMode.INITIALIZE), "owning operation in cycle"),
+    (MIRStorageWrite(MIRStorageWriteMode.IN_PLACE), "invalid in-place"),
+    (MIRStorageWrite("own"), "invalid storage write fact"),
 ])
-def test_cycles_require_positive_reuse_fact(fact: MIRRecordWrite | None, message: str) -> None:
+def test_cycles_require_positive_reuse_fact(fact: MIRStorageWrite | None, message: str) -> None:
     fn = backing_function()
     validate_function(fn)
     with pytest.raises(MIRValidationError, match=message):
@@ -216,11 +216,11 @@ def test_in_place_owner_and_projection_must_match_exactly() -> None:
     block = fn.blocks[1]
     holder = fn.slots[2].id
     stmt = MIRAssign(MIRPlace(holder, (MIRDeref(),)), MIRConstruct((fn.slots[0].id,)),
-                     storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder))
+                     storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, holder))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(*block.statements, stmt),
                                                  terminator=MIRGoto(fn.blocks[2].id)), fn.blocks[2]))
     validate_function(fn)
-    for bad in (replace(stmt, storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, fn.slots[1].id)),
+    for bad in (replace(stmt, storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, fn.slots[1].id)),
                 replace(stmt, target=MIRPlace(holder)),
                 replace(stmt, target=MIRPlace(holder, (MIRDeref(), fn.records[0].fields[0])))):
         with pytest.raises(MIRValidationError, match="invalid in-place"):

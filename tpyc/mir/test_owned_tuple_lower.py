@@ -13,7 +13,7 @@ from ..typesys import BOOL, INT32, TpyType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRFunction, MIRNotCovered, MIRRegionId, MIRTupleInitialization,
+    MIRBodyId, MIRFunction, MIRNotCovered, MIRRegionId, MIRStorageWrite,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
@@ -140,7 +140,7 @@ def test_positive_producer_facts_and_inline_placement(artifacts: Artifacts) -> N
             assert isinstance(backing.storage_duration, MIRRegionId)
         assert analyze_scope_ends(body).ends
         assert not inspect_scope_lifetimes(body).conflicts
-        assert any(isinstance(s.storage_write, MIRTupleInitialization)
+        assert any(isinstance(s.storage_write, MIRStorageWrite)
                    for b in body.blocks for s in b.statements)
 
 

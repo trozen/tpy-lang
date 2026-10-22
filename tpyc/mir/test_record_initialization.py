@@ -10,11 +10,11 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
-    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite,
-    MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIROptionalConstruct, MIRTupleConstruct, MIRUnionConstruct, MIRStatement,
+    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite,
+    MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRTupleConstruct, MIRStatement, MIRWrap,
 )
-from .shapes import MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
+from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .payload_lifetime import analyze_payload_ends
 from .presence import MIREngagement, _analyze_presence
@@ -36,7 +36,7 @@ ENTRY, YES, NO, JOIN = (MIRBlockId(BODY, i) for i in range(4))
 ROOT, CHILD = (MIRRegionId(BODY, i) for i in range(2))
 INIT = MIRRecordStorageInit(MIRPlace(BACKING))
 WRITE = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)),
-                  storage_write=MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN))
+                  storage_write=MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN))
 BIND = MIRAssign(MIRPlace(CURRENT), MIRBorrow(MIRPlace(BACKING)))
 SAVE = MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT))
 MUTATE = MIRAssign(MIRPlace(CURRENT, (MIRDeref(), FIELD)), MIRConstant(9))
@@ -95,7 +95,7 @@ def test_replacement_preserves_physical_identity_and_reports_logical_conflict() 
     ((INIT, BIND), "read before definite assignment"),
     ((INIT, SAVE), "read before definite assignment"),
     ((INIT, replace(WRITE, storage_write=None)), "explicit assignment fact"),
-    ((INIT, replace(WRITE, storage_write=MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))), "explicit assignment fact"),
+    ((INIT, replace(WRITE, storage_write=MIRStorageWrite(MIRStorageWriteMode.OWN_SITE))), "explicit assignment fact"),
 ])
 def test_malformed_or_unavailable_storage(statements: tuple[MIRStatement, ...], message: str) -> None:
     with pytest.raises(MIRValidationError, match=message):
@@ -183,12 +183,12 @@ def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -
     elif shape == "optional":
         slot = MIRSlot(holder, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL,
                        residence=ROOT)
-        bind = MIRAssign(MIRPlace(holder), MIROptionalConstruct(MIRPlace(CURRENT)))
-        payload = MIRPlace(holder, (MIROptionalPayload(), MIRDeref()))
+        bind = MIRAssign(MIRPlace(holder), MIRWrap(1, MIRPlace(CURRENT)))
+        payload = MIRPlace(holder, (MIRUnionPayload(1), MIRDeref()))
     else:
         slot = MIRSlot(holder, union_shape(UnionType((CELL, NoneType())), (member, None)), MIRSlotKind.LOCAL,
                        residence=ROOT)
-        bind = MIRAssign(MIRPlace(holder), MIRUnionConstruct(0, MIRPlace(CURRENT)))
+        bind = MIRAssign(MIRPlace(holder), MIRWrap(0, MIRPlace(CURRENT)))
         payload = MIRPlace(holder, (MIRUnionPayload(0), MIRDeref()))
     read_holder = MIRAssign(MIRPlace(SAVED), MIRBorrow(payload))
     fn = function(MIRBlock(ENTRY, (INIT, WRITE, BIND, bind, WRITE, BIND, read_holder, MUTATE, READ),

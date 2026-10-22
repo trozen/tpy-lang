@@ -21,10 +21,10 @@ from .call_contract import (
 )
 from .coverage import MIRUnsupported, literal_type, plain, require, scalar_param
 from .value import (
-    AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, admitted_members,
-    container_members, loan_field, member_types, value_shape,
+    AGGREGATE_CLASSES, CONTAINER_CLASSES, WRAPPER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape,
+    RecordFields, admitted_members, container_members, loan_field, member_types, value_shape,
 )
-from .nodes import MIRConstant, MIRMemberInitMode, MIROptionalConstruct
+from .nodes import MIRConstant, MIRMemberInitMode, MIRWrap
 
 
 @dataclass(frozen=True)
@@ -47,9 +47,9 @@ class MIRFieldInitializer:
     # constants, one per element (a dict's keys and values alternating),
     # moved in once built;
     # a record field a construct of its own constructor; an Optional record
-    # field left empty (`MIROptionalConstruct()`) or engaged with a payload
+    # field left empty (`MIRWrap(0)`) or engaged with a payload
     # its own constructor builds.
-    source: str | MIRConstant | tuple[str | MIRConstant, ...] | MIRComposedConstruct | MIROptionalConstruct
+    source: str | MIRConstant | tuple[str | MIRConstant, ...] | MIRComposedConstruct | MIRWrap
     mode: MIRMemberInitMode
     # The copy (or a constant's materialization) can exit by exception.
     may_raise: bool
@@ -182,6 +182,18 @@ def aggregate_facts(typ: TpyType, layout_of: Callable[[NominalType], MIRRecordLa
     if layout is None:
         return None
     return MIRAggregateFacts(layout.copyable, layout.movable, layout_copy_may_raise(layout, layout_of))
+
+
+def copy_may_raise(shape: MIRShape, facts: Callable[[TpyType], MIRAggregateFacts]) -> bool:
+    """Whether copying a value of `shape` may raise: an owned leaf's
+    buffer as its type declares, a record or container by its `facts`, a
+    sum or tuple by the storage members it copies (an absent alternative,
+    an inert scalar and a holder's loan copy no buffer)."""
+    if shape.cls in WRAPPER_CLASSES:
+        return any(copy_may_raise(m, facts) for m in shape.members if m is not None and m.is_storage)
+    if shape.cls is MIRClass.OWNED_LEAF:
+        return bool(type_def_of(shape.type).copy_may_raise)
+    return facts(shape.type).copy_may_raise
 
 
 def _scalar_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding], expected: TpyType) -> TpyType:
@@ -340,7 +352,7 @@ def _optional_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBi
         case th.THIRLiteral() if expr.value is None:
             plain(expr, {"value", "none_cpp"})
             require(expr, expr.form is th.Form.STORAGE, "constructor initializer form")
-            return MIRFieldInitializer(field, MIROptionalConstruct(), MIRMemberInitMode.SCALAR, False, expr.loc)
+            return MIRFieldInitializer(field, MIRWrap(0), MIRMemberInitMode.SCALAR, False, expr.loc)
         case th.THIRCtorCall():
             return _composed_member(expr, params, field, payload, definition)
     raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
@@ -547,7 +559,7 @@ def _compose(init: MIRFieldInitializer, legs: Mapping[str, _BaseLeg], role: str 
         return replace(init, source=leg.source, loc=leg.loc)
     # A member the callee builds on its own has no line in the caller's body.
     match init.source:
-        case MIRConstant() | MIROptionalConstruct():
+        case MIRConstant() | MIRWrap():
             return replace(init, loc=None)
         case tuple():
             # A container literal over the callee's parameters copies each

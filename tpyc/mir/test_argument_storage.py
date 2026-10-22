@@ -20,12 +20,10 @@ from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall,
-    MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRNotCovered, MIRRecordStorageInit, MIRRecordStorageKind, MIRReturn,
-    MIRStorageDuration, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId,
-    MIRTupleConstruct, MIRTupleCopy,
-    MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRCopy, MIRFunction,
+    MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind, MIRNotCovered, MIRRecordStorageInit, MIRRecordStorageKind, MIRReturn,
+    MIRStorageDuration, MIRPlace, MIRStorageWrite, MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRTupleConstruct,
+    MIRWrap,
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
@@ -438,21 +436,21 @@ def test_retained_holders_observe_named_backing_scope_end(
             members = (member,) if shape == "tuple" else (member, leaf_shape(scalar.type))
             values = (source,) if shape == "tuple" else (source, scalar.id)
             shape = tuple_shape(TupleType(types), members)
-            capture, copy = MIRTupleConstruct(values), MIRTupleCopy(holder)
+            capture, copy = MIRTupleConstruct(values), MIRCopy(MIRPlace(holder))
         case "optional":
             shape = optional_shape(OptionalType(storage.type), borrowed_shape(storage.type, True))
-            capture, copy = MIROptionalConstruct(MIRPlace(source)), MIROptionalCopy(MIRPlace(holder))
+            capture, copy = MIRWrap(1, MIRPlace(source)), MIRCopy(MIRPlace(holder))
         case _:
             other = NominalType("Other", _module_qname="main.Other")
             shape = union_shape(UnionType((storage.type, other)), (member, borrowed_shape(other, True)))
-            capture, copy = MIRUnionConstruct(0, MIRPlace(source)), MIRUnionCopy(MIRPlace(holder))
+            capture, copy = MIRWrap(0, MIRPlace(source)), MIRCopy(MIRPlace(holder))
     slots = tuple(replace(slot, storage_duration=child, residence=child,
                           record_storage=MIRRecordStorageKind.OPTIONAL if optional_backing
                           else MIRRecordStorageKind.DIRECT) if slot.id == storage.id
                   else replace(slot, residence=child) if slot.id == borrowed.id else slot for slot in fn.slots)
     slots += tuple(MIRSlot(sid, shape, MIRSlotKind.LOCAL, residence=root) for sid in (holder, copied))
-    statements = tuple(replace(stmt, storage_write=MIRRecordWrite(
-        MIRRecordWriteMode.OPTIONAL_ASSIGN if optional_backing else MIRRecordWriteMode.INITIALIZE_REGION))
+    statements = tuple(replace(stmt, storage_write=MIRStorageWrite(
+        MIRStorageWriteMode.OPTIONAL_ASSIGN if optional_backing else MIRStorageWriteMode.INITIALIZE))
         if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) else stmt
         for stmt in original.statements)
     if optional_backing:

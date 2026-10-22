@@ -124,7 +124,7 @@ def owned_pair() -> int32:
 ''')
     assert re.search(r"fn .*::owned_pair@[^\n]+ ->", out)
     assert "initialize-tuple-members %2[0], %2[1]" in out
-    assert "[initialize-tuple]" in out
+    assert "[initialize]" in out
     assert "scope ends (possible normal storage ends" in out
 
 
@@ -182,8 +182,8 @@ def alias_pair() -> int32:
     body = out[out.index("::alias_pair@"):]
     body = body.split("\nfn ", 1)[0]
     assert "<MIR not covered:" not in body
-    assert body.count("[initialize-tuple]") == 1
-    assert "tuple-copy" not in body
+    assert body.count("[initialize]") == 1
+    assert " = copy " not in body
     assert "saved" not in body and "chain" not in body
 
 

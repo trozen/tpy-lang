@@ -162,7 +162,7 @@ bb1:
   %5 = borrow (*%6) @ 27:15
   %7 = 0 @ 27:21
   %8 = op getitem (%5, %7) may-raise @ 27:15
-  %9 = op coerce:char_to_str (%8) may-raise [initialize_region] @ 27:15
+  %9 = op coerce:char_to_str (%8) may-raise [initialize] @ 27:8
   return %9 @ 27:8
 bb2:
   goto bb3 @ 26:4
@@ -183,12 +183,12 @@ bb3:
   %23 = 1 @ 30:43
   %24 = op - (%22, %23) may-raise @ 30:30
   %25 = op * (%20, %24) may-raise @ 30:19
-  %26 = call stub builtins.int.__init__[float](%25) [pure, reader, may-raise] [initialize_once] @ 30:4
+  %26 = call stub builtins.int.__init__[float](%25) [pure, reader, may-raise] [initialize] @ 30:4
   %27 = borrow (*%6) @ 31:11
   %28 = borrow %26 @ 31:17
   %29 = op coerce:bigint_narrow (%28) may-raise @ 31:11
   %30 = op getitem (%27, %29) may-raise @ 31:11
-  %31 = op coerce:char_to_str (%30) may-raise [initialize_once] @ 31:11
+  %31 = op coerce:char_to_str (%30) may-raise [initialize] @ 31:4
   return %31 @ 31:4
 """
 

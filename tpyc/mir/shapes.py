@@ -9,7 +9,7 @@ from dataclasses import dataclass, replace
 from ..thir.scalar_leaves import MIRClass
 from ..typesys import TpyType
 from .value import (
-    MIRField, MIRFieldId, MIRHolding, MIRRecords, MIRShape, MIRValidationError, RecordFields, holder_form,
+    SUM_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecords, MIRShape, MIRValidationError, RecordFields, holder_form,
     member_shape, require_valid,
 )
 
@@ -25,12 +25,8 @@ class MIRTupleIndex:
 
 
 @dataclass(frozen=True)
-class MIROptionalPayload:
-    pass
-
-
-@dataclass(frozen=True)
 class MIRUnionPayload:
+    """A sum's selected payload: a union's alternative, an Optional's 1."""
     alternative: int
 
 
@@ -46,8 +42,18 @@ class MIRContainerElements:
     is never tracked, so a write of one element is a write of any."""
 
 
-Projection = (MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnionPayload
+Projection = (MIRDeref | MIRField | MIRTupleIndex | MIRUnionPayload
               | MIRContainerStructure | MIRContainerElements)
+
+# An Optional's payload: the sum's alternative beside the absent 0.
+OPTIONAL_PAYLOAD = MIRUnionPayload(1)
+
+
+def optional_payload(holder: MIRClass | None, projection: Projection) -> bool:
+    """Whether `projection`, taken from a value of class `holder`, selects
+    an Optional's payload."""
+    return holder is MIRClass.OPTIONAL and projection == OPTIONAL_PAYLOAD
+
 
 REGION_END = "summary regions are analysis places, not direct element accesses"
 
@@ -79,16 +85,12 @@ def step(shape: MIRShape, projection: Projection, records: MIRRecords) -> MIRSha
                           "element projection needs container storage")
             return shape.subscript
         case MIRUnionPayload():
-            require_valid(shape.cls is MIRClass.UNION, "union projection needs union payload")
+            require_valid(shape.cls in SUM_CLASSES and bool(shape.members), "payload projection needs a sum")
             require_valid(type(projection.alternative) is int
                      and 0 <= projection.alternative < len(shape.members), "invalid union alternative")
             member = shape.alternatives[projection.alternative]
-            require_valid(member is not None, "absent union alternative has no payload")
+            require_valid(member is not None, "absent alternative has no payload")
             return member
-        case MIROptionalPayload():
-            require_valid(shape.cls is MIRClass.OPTIONAL and bool(shape.members),
-                     "optional projection needs optional payload")
-            return shape.payload
         case MIRTupleIndex():
             require_valid(shape.cls is MIRClass.TUPLE, "tuple projection needs tuple payload")
             require_valid(type(projection.index) is int
@@ -113,7 +115,7 @@ def step(shape: MIRShape, projection: Projection, records: MIRRecords) -> MIRSha
 def inline_payload_holder(field: MIRShape, records: MIRRecords) -> MIRShape:
     """A holder of an Optional field's inline payload record, at the
     access of the place the payload lies in (`step`)."""
-    return holder_form(step(field, MIROptionalPayload(), records))
+    return holder_form(step(field, OPTIONAL_PAYLOAD, records))
 
 
 def _enter(previous: Projection | None, holder: MIRShape) -> None:
@@ -169,7 +171,7 @@ def object_prefix(shape: MIRShape, *, payload: bool) -> tuple[Projection, ...]:
     if shape.is_pointer:
         return (MIRDeref(),)
     if payload and shape.record_payload:
-        return (MIROptionalPayload(), MIRDeref())
+        return (OPTIONAL_PAYLOAD, MIRDeref())
     return ()
 
 

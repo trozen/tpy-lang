@@ -21,7 +21,7 @@ from ..thir.scalar_leaves import (
     owned_value_type, primitive_leaf, primitive_owned_leaf, record_type, storage_leaf, value_class,
     view_compatible, view_leaf,
 )
-from ..type_def_registry import ParamPassing, int_traits_of, type_def_of, zero_value_of
+from ..type_def_registry import ParamPassing, int_traits_of, zero_value_of
 from ..typesys import (
     BOOL, INT32, NominalType, TpyType,
     NoneType, OptionalType, ReadonlyType, Representation, TupleType, VoidType,
@@ -30,31 +30,30 @@ from ..typesys import (
 )
 from .nodes import (
     MIRAlias, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant,
-    MIRConstruct, MIRFunction, MIRGlobalId, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRIteratorAdvance,
-    MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove,
-    MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRPrint, MIRRangeAdvance, MIRRead, MIRReceiverInit, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite,
-    MIRRecordWriteMode, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRTupleConstruct,
-    MIRTupleCopy, MIRTupleInitialization, MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract, function_body_kind,
+    MIRConstruct, MIRFunction, MIRGlobalId, MIRGoto, MIRIsAlternative, MIRIteratorAdvance, MIRIteratorHasNext,
+    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNot, MIRNotCovered,
+    MIROp, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReceiverInit,
+    MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRStorageInit, MIRTupleConstruct, MIRUnionExtract, function_body_kind, MIRWrap, MIRCopy,
 )
 from .value import (
     AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords,
-    MIRRole,
-    MIRShape, MIRValidationError, admission_problem, lent_shape_problem, container_members, fact_shape, holder_form,
-    layout_fact, loan_access,
-    member_compatible, member_types, position_problem, shape_problem, subject_class, thir_member, value_shape,
+    MIRRole, MIRShape, MIRValidationError, admission_problem, lent_shape_problem, container_members, fact_shape,
+    holder_form, layout_fact, loan_access, member_compatible, member_types, position_problem, shape_problem,
+    subject_class, thir_member, value_shape,
 )
 from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require
 from .definitions import (
     MIRComposedConstruct, MIRConstructorDefinition, MIRContainerDefinition, MIRDefinitions, MIRFieldInitializer,
     MIRAggregateFacts, MIRHeldLayout, MIROwnedLeafDefinition, aggregate_facts, constructor_initialization,
+    copy_may_raise,
 )
 from .emit import (
     Fragment, MIRFallthroughError, MIRRegionStorageError, MIRValue, assemble, owned_leaf_shape, scalar_shape,
     view_holder_shape,
 )
 from .shapes import (
-    inline_payload_holder, step, MIRContainerElements, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
+    inline_payload_holder, step, OPTIONAL_PAYLOAD, MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload,
     MIRWalk, Projection, object_prefix, store_problem, walk,
 )
 from .call_contract import (
@@ -453,7 +452,7 @@ class _Lowering:
             case _Place.NAME | _Place.SELF:
                 name = "self" if isinstance(expr, th.THIRSelf) else expr.name
                 slot, shape = self.slot_of(name), self.bound(name)
-                root = MIRPlace(slot, (MIROptionalPayload(),) if shape.cls is MIRClass.OPTIONAL else ())
+                root = MIRPlace(slot, (OPTIONAL_PAYLOAD,) if shape.cls is MIRClass.OPTIONAL else ())
                 held = slot if shape.cls in _HOLDER_BINDINGS else None
                 storage = slot if shape.leaf_storage else None
             case _Place.UNION_PAYLOAD:
@@ -495,11 +494,13 @@ class _Lowering:
         return self.facts(typ).movable
 
     def copy_may_raise(self, shape: MIRShape) -> bool:
-        """Whether copying storage of `shape` may raise: an owned leaf's
-        buffer as its type declares, a record or container by its facts."""
-        if shape.cls is MIRClass.OWNED_LEAF:
-            return bool(type_def_of(shape.type).copy_may_raise)
-        return self.facts(shape.type).copy_may_raise
+        return copy_may_raise(shape, self.facts)
+
+    def wrapper_copy(self, source: MIRPlace, target: MIRShape) -> MIRCopy:
+        """A sum or tuple copied member by member into a value of `target`:
+        raising as copying its storage members may, or as reaching an
+        element does."""
+        return MIRCopy(source, self.copy_may_raise(target) or reaches_element(source))
 
     # --- conversions of a value ----------------------------------------------------
 
@@ -770,11 +771,15 @@ class _Lowering:
         if not view:
             return self.call_value(f, expr, summary, slots, shape.readonly, expr.loc)
         self.register_container(expr, result.type)
-        call = self.call_value(f, expr, summary, slots, shape.readonly, expr.loc)
+        return self.lent_result(expr, self.call_value(f, expr, summary, slots, shape.readonly, expr.loc))
+
+    def lent_result(self, expr: th.THIRExpr, call: Fragment) -> Fragment:
+        """A lowered call's borrowed result, lent to a holder: the place of
+        what the holder points at (or the region a view holds)."""
         self.writes[expr] = False
         c = self.fragment()
         holder = c.lend(call)
-        c.value = MIRValue(MIRPlace(holder), loc=expr.loc, held=holder)
+        c.value = MIRValue(MIRPlace(holder, c.storage_steps(MIRPlace(holder))), loc=expr.loc, held=holder)
         return c
 
     def argument(self, binding: MIRParameterBinding, arg: th.THIRExpr) -> Fragment:
@@ -1283,7 +1288,7 @@ class _Lowering:
         f = self.fragment()
         dest = f.adopt(slot, self.duration_of(f, placement))
         if value is not None:
-            fact = f.owned_initialization(dest) if placement is not None else None
+            fact = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE) if placement is not None else None
             with f.full_expression(value):
                 f.write(dest, f.splice(value), loc, fact)
         return f
@@ -1298,35 +1303,36 @@ class _Lowering:
         f = self.fragment()
         dest = f.adopt(slot, self.declared_storage(f, placement, missing))
         f.write(dest, f.splice(value), loc,
-                f.payload_write(self.mir.records[dest].shape.scalar_wrapper, MIRPayloadWriteMode.INITIALIZE))
+                f.payload_write(self.mir.records[dest].shape.scalar_wrapper, MIRStorageWriteMode.INITIALIZE))
         return f
 
     def put_union_assign(self, loc: object, slot: MIRSlotId, value: Fragment, inline_payload: bool) -> Fragment:
         f = self.fragment()
-        f.write(slot, f.splice(value), loc, f.payload_write(inline_payload, MIRPayloadWriteMode.ASSIGN))
+        f.write(slot, f.splice(value), loc, f.payload_write(inline_payload, MIRStorageWriteMode.IN_PLACE))
         return f
 
     def record_backing(self, f: Fragment, backing: tuple[object, MIRShape, MIRShape], value: Fragment,
-                       write: object, duration: object) -> MIROptionalConstruct:
+                       write: object, duration: object) -> MIRWrap:
         """An Optional's payload built into its own record storage, lent through a holder."""
         loc, storage_shape, holder_shape = backing
         storage = f.slot(storage_shape, storage_duration=duration)
         f.write(storage, f.splice(value), loc, write)
         reference = f.holder(holder_shape, MIRBorrow(MIRPlace(storage)), loc)
-        return MIROptionalConstruct(MIRPlace(reference))
+        return MIRWrap(1, MIRPlace(reference))
 
     def put_optional_declare(self, loc: object, slot: MIRSlotId, value: Fragment, placement: bool | None,
                              backing: tuple[object, MIRShape, MIRShape] | None, operation: object | None,
                              missing: object | None) -> Fragment:
         f = self.fragment()
         dest = f.adopt(slot, self.declared_storage(f, placement, missing))
-        written = (self.record_backing(f, backing, value, f.initial_write(), f.scoped_duration())
+        written = (self.record_backing(f, backing, value, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE),
+                                       f.scoped_duration())
                    if backing is not None else f.splice(value))
         if operation is not None:
             # The holder points into the field: a loan replacing the field ends.
             f.borrow_operation(operation)
         f.write(dest, written, loc,
-                f.payload_write(self.mir.records[dest].shape.scalar_wrapper, MIRPayloadWriteMode.INITIALIZE))
+                f.payload_write(self.mir.records[dest].shape.scalar_wrapper, MIRStorageWriteMode.INITIALIZE))
         return f
 
     def put_optional_assign(self, loc: object, slot: MIRSlotId, value: Fragment,
@@ -1336,13 +1342,13 @@ class _Lowering:
         built into new backing or into its payload in place."""
         f = self.fragment()
         if backing is not None:
-            f.write(slot, self.record_backing(f, backing, value, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE),
+            f.write(slot, self.record_backing(f, backing, value, MIRStorageWrite(MIRStorageWriteMode.OWN_SITE),
                                               MIRStorageDuration.BODY), loc)
         elif in_place:
             f.write(MIRPlace(slot, object_prefix(self.mir.records[slot].shape, payload=True)), f.splice(value), loc,
-                    MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, slot))
+                    MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
         else:
-            f.write(slot, f.splice(value), loc, f.payload_write(inline_payload, MIRPayloadWriteMode.ASSIGN))
+            f.write(slot, f.splice(value), loc, f.payload_write(inline_payload, MIRStorageWriteMode.IN_PLACE))
         return f
 
     def put_owned_declare(self, loc: object, slot: MIRSlotId, storage: MIRSlotId, value: Fragment,
@@ -1351,7 +1357,7 @@ class _Lowering:
         storage of a hoisted backing is initialized at its own site."""
         f = self.fragment()
         f.adopt(storage, self.declared_storage(f, placement, missing))
-        write = MIRRecordWrite(MIRRecordWriteMode.OWN_SITE) if own_site else f.initial_write()
+        write = MIRStorageWrite(MIRStorageWriteMode.OWN_SITE if own_site else MIRStorageWriteMode.INITIALIZE)
         with f.full_expression(value):
             f.write(storage, f.splice(value), loc, write)
         f.write(f.adopt(slot), MIRBorrow(MIRPlace(storage)), loc)
@@ -1361,7 +1367,7 @@ class _Lowering:
                                    value: Fragment) -> Fragment:
         """A hoisted Optional record backing filled and its holder repointed."""
         f = self.fragment()
-        f.write(storage, f.splice(value), loc, MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN))
+        f.write(storage, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN))
         f.write(slot, MIRBorrow(MIRPlace(storage)), loc)
         return f
 
@@ -1373,11 +1379,11 @@ class _Lowering:
             written = f.splice(value)
             if storage is not None:
                 backing = f.slot(storage, storage_duration=MIRStorageDuration.BODY)
-                f.write(backing, written, loc, MIRRecordWrite(MIRRecordWriteMode.OWN_SITE))
+                f.write(backing, written, loc, MIRStorageWrite(MIRStorageWriteMode.OWN_SITE))
                 f.write(slot, MIRBorrow(MIRPlace(backing)), loc)
             else:
                 f.write(MIRPlace(slot, object_prefix(self.mir.records[slot].shape, payload=True)), written, loc,
-                        MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, slot))
+                        MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
         return f
 
     def put_borrow_binding(self, loc: object, slot: MIRSlotId, declare: bool, source: Fragment, deref: bool,
@@ -1409,7 +1415,7 @@ class _Lowering:
         """A tuple local built in its own storage from its members."""
         f = self.fragment()
         dest = f.adopt(slot, f.scoped_duration())
-        f.write(dest, f.splice(value), loc, MIRTupleInitialization())
+        f.write(dest, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         return f
 
     def put_assign(self, loc: object, target: Fragment, value: Fragment, in_place: bool) -> Fragment:
@@ -1417,7 +1423,7 @@ class _Lowering:
         storage it holds is replaced in place); the place is evaluated first."""
         f = self.fragment()
         place = f.splice(target)
-        fact = MIRRecordWrite(MIRRecordWriteMode.IN_PLACE) if in_place else None
+        fact = MIRStorageWrite(MIRStorageWriteMode.IN_PLACE) if in_place else None
         with f.full_expression(value):
             f.write(place, f.splice(value), loc, fact)
         return f
@@ -1449,7 +1455,7 @@ class _Lowering:
         """The body's owned copy of a borrowed owned-leaf parameter it reassigns (`value`: the parameter sunk)."""
         f = self.fragment()
         local = f.adopt(slot, f.scoped_duration())
-        f.write(local, f.splice(value), loc, f.owned_initialization(local))
+        f.write(local, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         return f
 
     def put_append(self, loc: object, target: Fragment, typ: TpyType, value: Fragment) -> Fragment:
@@ -1460,7 +1466,7 @@ class _Lowering:
             operand = f.splice(value)
             current = f.holder(owned_leaf_shape(typ, MIRRole.LOAN), MIRBorrow(place), loc)
             f.write(place, MIROp("+=", (current, operand), may_raise=True), loc,
-                    MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))
+                    MIRStorageWrite(MIRStorageWriteMode.IN_PLACE))
         return f
 
     def put_jump(self, loc: object, head: bool) -> Fragment:
@@ -2421,9 +2427,9 @@ class _Lowering:
         if isinstance(init.source, MIRComposedConstruct):
             storage = f.materialize(self.construct(f, payload, init.source.initializers, arguments, loc))
             holder = f.holder(_loan(fact), MIRBorrow(MIRPlace(storage)), loc)
-            f.write(dest, MIROptionalConstruct(MIRPlace(holder)), loc)
+            f.write(dest, MIRWrap(1, MIRPlace(holder)), loc)
         else:
-            f.write(dest, MIROptionalConstruct(), loc)
+            f.write(dest, MIRWrap(0), loc)
         return dest
 
     def optional_operand(self, arg: th.THIRExpr, shape: MIRShape) -> Fragment:
@@ -2447,14 +2453,14 @@ class _Lowering:
             f = self.fragment()
             dest = f.slot(shape, storage_duration=f.scoped_duration())
             f.write(dest, f.splice(value), arg.loc,
-                    f.payload_write(shape.scalar_wrapper, MIRPayloadWriteMode.INITIALIZE))
+                    f.payload_write(shape.scalar_wrapper, MIRStorageWriteMode.INITIALIZE))
             f.value = MIRValue(dest, loc=arg.loc)
             return f
         f = self.fragment()
         match arg:
             case th.THIRArgTemp():
                 temporary = self.argument_temporary(arg, target, addr_of=True)
-                value: object = MIROptionalConstruct(MIRPlace(temporary.holder))
+                value: object = MIRWrap(1, MIRPlace(temporary.holder))
             case th.THIROptionalPtrArg(value=None):
                 _plain(arg, set())
                 value = None
@@ -2464,26 +2470,26 @@ class _Lowering:
                 _require(arg, found is not None and found[0].cls is MIRClass.OPTIONAL
                          and found[0].payload.cls is MIRClass.RECORD, "unsupported optional argument")
                 self.payload_compatible(arg, inline_payload_holder(found[0], self.layouts()), target)
-                value = MIROptionalCopy(f.splice(found[1]))
+                value = self.wrapper_copy(f.splice(found[1]), shape)
             case th.THIROptionalPtrArg():
                 _plain(arg, {"value", "addr_of"})
                 _require(arg, isinstance(arg.value, (th.THIRName, th.THIRSelf, th.THIRFieldAccess)),
                          "unsupported optional argument")
                 source = self.aggregate_source(arg.value, MIRClass.RECORD)
                 self.payload_compatible(arg, source.holder_shape_of(), target)
-                value = MIROptionalConstruct(MIRPlace(f.lend(source)))
+                value = MIRWrap(1, MIRPlace(f.lend(source)))
             case th.THIRName() if self.wraps(arg.name, MIRClass.OPTIONAL):
                 # A narrowed name still passes its holder's pointer.
                 extract = arg.optional_read is not None and arg.optional_read.extract
                 self.payload_compatible(arg, thir_member(self.optional_name(arg, extract=extract).payload), target)
-                value = MIROptionalCopy(MIRPlace(self.slot_of(arg.name)))
+                value = self.wrapper_copy(MIRPlace(self.slot_of(arg.name)), shape)
             case _:
                 raise MIRUnsupported(arg, "unsupported optional argument")
         _require(arg, arg.form is th.Form.BORROW, "unsupported optional argument")
         self.writes[arg] = False
         dest = f.slot(shape)
         if value is None:
-            f.write(dest, MIROptionalConstruct(), arg.loc)
+            f.write(dest, MIRWrap(0), arg.loc)
             self.mir.empty_arguments.add(dest)
         else:
             f.write(dest, value, arg.loc)
@@ -2607,7 +2613,7 @@ class _Lowering:
                 _require(value, isinstance(value.result_type, (OptionalType, NoneType, VoidType)),
                          "optional absence type")
                 self.writes[value] = False
-                f.value = MIRValue(MIROptionalConstruct(), whole, value.loc)
+                f.value = MIRValue(MIRWrap(0), whole, value.loc)
                 return f
             if isinstance(value, th.THIRFieldAccess):
                 # THIR spells a copy of a narrowed payload as a bare read of it,
@@ -2630,14 +2636,12 @@ class _Lowering:
                 # then moved into the payload.
                 temporary = self.aggregate_operand(value, payload)
                 _require(value, self.movable(payload), "optional field payload needs movable record")
-                f.value = MIRValue(MIROptionalConstruct(MIRPlace(f.splice(temporary))), whole, value.loc)
+                f.value = MIRValue(MIRWrap(1, MIRPlace(f.splice(temporary))), whole, value.loc)
                 return f
             _require(value, self.copyable(payload), "record is not copyable or copy form")
             self.writes[value] = False
             source = f.splice(place)
-            f.value = MIRValue(MIROptionalCopy(source, self.copy_may_raise(value_shape(payload))
-                                               or reaches_element(source)),
-                               whole, value.loc)
+            f.value = MIRValue(self.wrapper_copy(source, whole), whole, value.loc)
             return f
         return self.put_assign(stmt.loc, target, self.full_expression(value, check=check), True)
 
@@ -2801,11 +2805,7 @@ class _Lowering:
         # A place's operands (an index, slice bounds) are evaluated
         # before its container, so the call must not write what they read.
         _require(expr, not self.call_writes(expr), "order-sensitive eager operands")
-        self.writes[expr] = False
-        c = self.fragment()
-        holder = c.lend(call)
-        c.value = MIRValue(MIRPlace(holder, c.storage_steps(MIRPlace(holder))), loc=expr.loc, held=holder)
-        return c
+        return self.lent_result(expr, call)
 
     def element_index(self, expr: th.THIRSubscript, place: MIRShape) -> Fragment:
         """Check a subscript's index or key into a container place of shape
@@ -3070,7 +3070,7 @@ class _Lowering:
                           or not isinstance(member, th.THIRBorrowedRecord) and leaf_constant(member, literal.value)),
                      "union literal payload mismatch")
             source = None if member is None else MIRPlace(f.leaf(member, MIRConstant(literal.value), node.loc))
-            f.value = MIRValue(MIRUnionConstruct(literal.alternative, source), shape, node.loc)
+            f.value = MIRValue(MIRWrap(literal.alternative, source), shape, node.loc)
             return f
         if isinstance(expr, th.THIRName) and self.wraps(expr.name, MIRClass.UNION):
             source = self.union_name(expr)
@@ -3080,12 +3080,12 @@ class _Lowering:
                     _require(expr, src is dst, "union copy absence mismatch")
                 else:
                     self.payload_compatible(expr, thir_member(src), thir_member(dst))
-            f.value = MIRValue(MIRUnionCopy(MIRPlace(self.slot_of(expr.name))), shape, node.loc)
+            f.value = MIRValue(self.wrapper_copy(MIRPlace(self.slot_of(expr.name)), shape), shape, node.loc)
             return f
         if isinstance(expr, th.THIRLiteral) and expr.value is None:
             _plain(expr, {"value", "none_cpp"})
             _require(expr, None in target.elements, "union has no absence alternative")
-            f.value = MIRValue(MIRUnionConstruct(target.elements.index(None)), shape, node.loc)
+            f.value = MIRValue(MIRWrap(target.elements.index(None)), shape, node.loc)
             return f
         if isinstance(expr, th.THIRName) and self.holder(expr.name) is not None:
             name = self.reference_name(expr)
@@ -3094,12 +3094,12 @@ class _Lowering:
                        if isinstance(m, th.THIRBorrowedRecord) and m.type == source.type]
             _require(expr, len(matches) == 1, "union has no matching record alternative")
             self.payload_compatible(expr, source, thir_member(target.elements[matches[0]]))
-            f.value = MIRValue(MIRUnionConstruct(matches[0], MIRPlace(self.slot_of(name))), shape, node.loc)
+            f.value = MIRValue(MIRWrap(matches[0], MIRPlace(self.slot_of(name))), shape, node.loc)
             return f
         plan = self.expr(expr)
         typ = plan.shape_of().type
         _require(expr, typ in target.elements and not self.writes[expr], "unsupported union member construction")
-        f.value = MIRValue(MIRUnionConstruct(target.elements.index(typ), MIRPlace(f.splice(plan))), shape, node.loc)
+        f.value = MIRValue(MIRWrap(target.elements.index(typ), MIRPlace(f.splice(plan))), shape, node.loc)
         return f
 
     def union_extraction(self, node: object, fact: th.THIRUnionExtraction | None) -> TpyType | th.THIRBorrowedRecord:
@@ -3146,7 +3146,7 @@ class _Lowering:
         payload = shape.payload
         loc = expr.loc if expr is not None else None
         if expr is None:
-            f.value = MIRValue(MIROptionalConstruct(), shape, loc)
+            f.value = MIRValue(MIRWrap(0), shape, loc)
             return f
         node = expr
         if isinstance(expr, th.THIRLiteral) and expr.value is None:
@@ -3159,13 +3159,13 @@ class _Lowering:
             else:
                 _require(expr, isinstance(expr.result_type, (NoneType, VoidType)),
                          "optional absence type")
-            f.value = MIRValue(MIROptionalConstruct(), shape, loc)
+            f.value = MIRValue(MIRWrap(0), shape, loc)
             return f
         if isinstance(expr, th.THIRName) and self.wraps(expr.name, MIRClass.OPTIONAL) and (
                 expr.optional_read is not None and not expr.optional_read.extract):
             source = self.optional_name(expr, extract=False)
             self.payload_compatible(expr, thir_member(source.payload), payload)
-            f.value = MIRValue(MIROptionalCopy(MIRPlace(self.slot_of(expr.name))), shape, loc)
+            f.value = MIRValue(self.wrapper_copy(MIRPlace(self.slot_of(expr.name)), shape), shape, loc)
             return f
         if isinstance(expr, th.THIRFormConvert) and isinstance(expr.value, th.THIRFieldAccess):
             # A holder of an Optional record field's inline payload (`optional_to_ptr`): a borrow, no copy.
@@ -3174,7 +3174,7 @@ class _Lowering:
             _require(expr, source.cls is MIRClass.OPTIONAL and expr.form is th.Form.BORROW
                      and shape.record_payload and expr.is_const == payload.readonly, "unsupported optional field borrow")
             self.payload_compatible(expr, inline_payload_holder(source, self.layouts()), payload)
-            f.value = MIRValue(MIROptionalCopy(f.splice(place)), shape, loc)
+            f.value = MIRValue(self.wrapper_copy(f.splice(place), shape), shape, loc)
             return f
         if shape.record_payload:
             _require(expr, isinstance(expr, th.THIRName), "optional capture needs local name")
@@ -3182,7 +3182,7 @@ class _Lowering:
             source = self.holder(name)
             _require(expr, source is not None and member_compatible(source, payload),
                      "optional capture access mismatch")
-            f.value = MIRValue(MIROptionalConstruct(MIRPlace(self.slot_of(name))), shape, loc)
+            f.value = MIRValue(MIRWrap(1, MIRPlace(self.slot_of(name))), shape, loc)
             return f
         if _literal(expr):
             # Hoisted assignments contextualize the literal with the wrapper type.
@@ -3198,12 +3198,12 @@ class _Lowering:
             _require(expr, expr.form is th.Form.VALUE and typ in (payload, OptionalType(payload))
                      and leaf_constant(payload, expr.value), "optional literal payload mismatch")
             payload_slot = f.leaf(payload, MIRConstant(expr.value), node.loc)
-            f.value = MIRValue(MIROptionalConstruct(MIRPlace(payload_slot)), shape, loc)
+            f.value = MIRValue(MIRWrap(1, MIRPlace(payload_slot)), shape, loc)
             return f
         plan = self.expr(expr, payload.type)
         _require(expr, plan.shape_of().type == payload.type and not self.writes[expr],
                  "effectful or mistyped optional payload")
-        f.value = MIRValue(MIROptionalConstruct(MIRPlace(f.splice(plan))), shape, loc)
+        f.value = MIRValue(MIRWrap(1, MIRPlace(f.splice(plan))), shape, loc)
         return f
 
     def tuple_members(self, node: object, shape: MIRShape, *, allow_owned: bool = False) -> None:
@@ -3229,7 +3229,7 @@ class _Lowering:
         """A copy of tuple `value` into binding `name`, as one full expression."""
         loc = value.value.loc
         copy = self.fragment()
-        copy.value = MIRValue(MIRTupleCopy(copy.lend(value)), self.bound(name), loc)
+        copy.value = MIRValue(self.wrapper_copy(MIRPlace(copy.lend(value)), self.bound(name)), self.bound(name), loc)
         return self.whole(copy, loc)
 
     def tuple_expr(self, expr: th.THIRExpr, *, allow_owned: bool = False) -> Fragment:
@@ -3281,7 +3281,7 @@ class _Lowering:
                     elements.append(t.splice(plan))
         _require(expr, expr.form is th.Form.STORAGE if holder.owned_tuple and isinstance(expr, th.THIRName)
                  else expr.form in (th.Form.VALUE, th.Form.BORROW), "tuple form disagrees with layout")
-        t.value = MIRValue(MIRTupleCopy(self.slot_of(expr.name)) if isinstance(expr, th.THIRName)
+        t.value = MIRValue(self.wrapper_copy(MIRPlace(self.slot_of(expr.name)), holder) if isinstance(expr, th.THIRName)
                            else MIRTupleConstruct(tuple(elements)), holder, expr.loc)
         return t
 
@@ -3386,7 +3386,7 @@ class _Lowering:
                 self.reference(expr, value_shape(payload, MIRClass.RECORD, access=readonly, role=MIRRole.LOAN),
                                expr.result_type)
                 # A narrowed Optional field read names its inline payload.
-                shape = step(shape, MIROptionalPayload(), self.layouts())
+                shape = step(shape, OPTIONAL_PAYLOAD, self.layouts())
             else:
                 # An assign target keeps the narrowed type but writes the whole field.
                 result = unwrap_readonly(expr.result_type)
@@ -3417,7 +3417,7 @@ class _Lowering:
         raises = base.value.raises
         root = f.splice(base)
         f.value = MIRValue(MIRPlace(root.root, root.projections + f.storage_steps(root) + (member_field,)
-                                    + ((MIROptionalPayload(),) if expr.narrowed_deref else ())),
+                                    + ((OPTIONAL_PAYLOAD,) if expr.narrowed_deref else ())),
                            loc=expr.loc, raises=raises)
         return shape, f
 
@@ -3551,7 +3551,7 @@ class _Lowering:
                          and bool(fact.alternatives) and len(set(fact.alternatives)) == len(fact.alternatives)
                          and all(type(i) is int and 0 <= i < len(fact.layout.elements)
                                  for i in fact.alternatives), "missing or invalid union test")
-                result = self.is_alternative(f, fact.source, fact.alternatives, False, loc)
+                result = self.is_alternative(f, MIRPlace(self.slot_of(fact.source)), fact.alternatives, True, loc)
             case th.THIRMethodCall() if expr.stub_callee is not None:
                 call = self.method_call(expr)
                 result = f.leaf(typ, f.splice(call), loc)
@@ -3571,7 +3571,8 @@ class _Lowering:
                          and type(expr.negate) is bool, "unsupported union None test")
                 layout = self.union_name(expr.operand)
                 _require(expr, None in layout.elements, "union has no absence alternative")
-                result = self.is_alternative(f, expr.operand.name, (layout.elements.index(None),), expr.negate, loc)
+                result = self.is_alternative(f, MIRPlace(self.slot_of(expr.operand.name)),
+                                             (layout.elements.index(None),), not expr.negate, loc)
             case th.THIRIsNone() if isinstance(expr.operand, th.THIRFieldAccess):
                 _plain(expr, {"operand", "negate", "value_repr"})
                 # An Optional record field tested in place: `std::optional` storage.
@@ -3579,7 +3580,7 @@ class _Lowering:
                 _require(expr, typ == BOOL and type(expr.negate) is bool
                          and whole.cls is MIRClass.OPTIONAL and expr.value_repr is True,
                          "unsupported optional field test")
-                result = self.is_present(f, f.splice(place), expr.negate, loc)
+                result = self.is_alternative(f, f.splice(place), (1,), expr.negate, loc)
             case th.THIRIsNone():
                 _plain(expr, {"operand", "negate", "value_repr"})
                 _require(expr, typ == BOOL and type(expr.negate) is bool
@@ -3587,7 +3588,7 @@ class _Lowering:
                 layout = self.optional_name(expr.operand, extract=False)
                 _require(expr, expr.value_repr is (not isinstance(layout.payload, th.THIRBorrowedRecord)),
                          "optional test representation mismatch")
-                result = self.is_present(f, MIRPlace(self.slot_of(expr.operand.name)), expr.negate, loc)
+                result = self.is_alternative(f, MIRPlace(self.slot_of(expr.operand.name)), (1,), expr.negate, loc)
             case th.THIRCoerce() if expr.certified_conversion:
                 _plain(expr, {"expr", "coercion_name", "wrap"})
                 operand = self.value(expr.expr)
@@ -3685,15 +3686,12 @@ class _Lowering:
         self.writes[expr] = writing
         return f
 
-    def is_alternative(self, f: Fragment, source: str, alternatives: tuple[int, ...], negate: bool,
+    def is_alternative(self, f: Fragment, place: MIRPlace, alternatives: tuple[int, ...], holds: bool,
                        loc: object) -> MIRSlotId:
-        found = f.leaf(BOOL, MIRIsAlternative(MIRPlace(self.slot_of(source)), alternatives), loc)
-        return f.leaf(BOOL, MIRNot(found), loc) if negate else found
-
-    def is_present(self, f: Fragment, place: MIRPlace, negate: bool, loc: object) -> MIRSlotId:
-        """`negate` is THIR's `is not None`: presence itself."""
-        present = f.leaf(BOOL, MIRIsPresent(place), loc)
-        return present if negate else f.leaf(BOOL, MIRNot(present), loc)
+        """Whether the sum at `place` selects one of `alternatives` (`holds`),
+        or selects none of them."""
+        found = f.leaf(BOOL, MIRIsAlternative(place, alternatives), loc)
+        return found if holds else f.leaf(BOOL, MIRNot(found), loc)
 
     def logical(self, f: Fragment, op: str, left: Fragment, right: Fragment, loc: object) -> MIRSlotId:
         """`a && b` / `a || b`: the right operand evaluates only when it decides."""
@@ -4152,11 +4150,11 @@ class _Lowering:
         moved: list[MIRSlotId | None] = [None]
         if (typ := self.owned_aggregate_result) is not None:
             value = self.full_expression(stmt.value, check=lambda: self.owned_aggregate_source(stmt.value, typ, moved))
-            return self.owned_return(f, value, value_shape(typ), moved[0], loc, loc)
+            return self.owned_return(f, value, value_shape(typ), moved[0], loc)
         if (owned := owned_value_type(self.return_type)) is not None:
             value = self.full_expression(stmt.value, check=lambda: self.owned_leaf_source(stmt.value, moved))
             _require(stmt, value.shape_of().type == owned, "return type mismatch")
-            return self.owned_return(f, value, value_shape(owned), moved[0], loc, value.expression_loc)
+            return self.owned_return(f, value, value_shape(owned), moved[0], loc)
         value = self.full_expression(stmt.value, expected=self.return_type)
         _require(stmt, value.shape_of().type == self.return_type, "return type mismatch")
         f.end(MIRReturn(f.full_expression_value(value), loc))
@@ -4172,7 +4170,7 @@ class _Lowering:
         return f
 
     def owned_return(self, f: Fragment, value: Fragment, result: MIRShape, moved: MIRSlotId | None,
-                     loc: object, write_loc: object) -> Fragment:
+                     loc: object) -> Fragment:
         """An owned result: a binding's own storage (an aggregate's backing,
         an owned-leaf binding itself) leaves the body itself --
         the move is C++'s (or elided), not an event of the body; anything
@@ -4182,7 +4180,7 @@ class _Lowering:
             return f
         dest = f.slot(result, storage_duration=f.scoped_duration())
         with f.full_expression(value):
-            f.write(dest, f.splice(value), write_loc, f.owned_initialization(dest))
+            f.write(dest, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         f.end(MIRReturn(dest, loc))
         return f
 
@@ -4254,7 +4252,7 @@ class _Lowering:
             f = self.fragment()
             stored = f.splice(value)
             place = f.splice(element)
-            f.write(place, stored, stmt.loc, MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, place.root))
+            f.write(place, stored, stmt.loc, MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, place.root))
             return f
         return self.put_expression(stmt.loc, self.full_expression(stmt.value, check=check))
 

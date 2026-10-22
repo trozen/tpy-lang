@@ -86,7 +86,7 @@ def test_selection_error_after_freshness_failure_still_blocks_inspection() -> No
                                                        MIRPresenceIssueKind.SELECTION]
     with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
         validate_function(fn)
-    with pytest.raises(MIRPresenceError, match="current alternative proof"):
+    with pytest.raises(MIRPresenceError, match="current presence proof"):
         inspect_payload_lifetimes(fn)
 
 

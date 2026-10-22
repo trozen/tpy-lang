@@ -50,7 +50,7 @@ int32_t alias_call(H& h) {
 
 // # safe sibling: the holder is read before b.p is emptied
 // def alias_read_first(a: H, b: H) -> int32:  # tpyc: mir(covered)
-//     o = a.p  # tpyc: mir_borrows(o, a.p[payload])
+//     o = a.p  # tpyc: mir_borrows(o, a.p[payload]) mir_copy(o)
 //     r = 0
 //     if o is not None:
 //         r = o.x

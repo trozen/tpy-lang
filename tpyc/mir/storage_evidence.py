@@ -36,10 +36,10 @@ from .dependencies import (
 )
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRRecordWrite, MIRRecordWriteMode,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, source_order,
+    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRStorageWrite,
+    MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, source_order,
 )
-from .shapes import MIROptionalPayload, MIRUnionPayload
+from .shapes import MIRUnionPayload
 from .value import MIRField, MIRValidationError
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .presence import MIRPresenceIssueKind
@@ -319,8 +319,6 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 for leaf in _leaves(slots[sid], slots):
                     wrapper = MIRPlace(leaf.root, leaf.projections[:-1])
                     match leaf.projections:
-                        case (*_, MIROptionalPayload()):
-                            engaged = 1 in selected.get(wrapper, presence.domains[wrapper])
                         case (*_, MIRUnionPayload(alternative=alternative)):
                             engaged = alternative in selected.get(wrapper, presence.domains[wrapper])
                         case _:
@@ -367,7 +365,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
         else:
             for point, stmt in events.writes.items():
                 fact = stmt.storage_write
-                if (isinstance(fact, MIRRecordWrite) and fact.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+                if (isinstance(fact, MIRStorageWrite) and fact.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
                         and point in presence.points
                         and not dict(presence.engagement.get(point, frozenset())).get(stmt.target.root)):
                     gap(f"optional backing %{stmt.target.root.index} replaced without an engagement fact",

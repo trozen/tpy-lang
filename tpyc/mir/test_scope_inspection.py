@@ -9,8 +9,7 @@ from .dependencies import MIRReferent, _dependencies
 from .liveness import _liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRConstant, MIREdge, MIRFunction,
-    MIRGoto, MIRNotCovered, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
+    MIRGoto, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
 )
 from .scope_lifetime import (
@@ -34,7 +33,7 @@ def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction,
                           storage_duration=iteration if s.id == SITE else s.storage_duration) for s in fn.slots)
     body = fn.blocks[1]
     initialize, borrow, current, read, capture = body.statements
-    initialize = replace(initialize, storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
+    initialize = replace(initialize, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     statements = (initialize, borrow, current, capture, read) if reseat_first else (
         initialize, borrow, current, read, capture)
     return bind_parameters(replace(fn, slots=slots, blocks=tuple(
@@ -88,7 +87,7 @@ def stale_scalar_alias() -> MIRFunction:
     original = fn.blocks[0]
     child, after = MIRBlockId(fn.id, 1), MIRBlockId(fn.id, 2)
     root, inner = MIRRegionId(fn.id, 0), MIRRegionId(fn.id, 1)
-    init = replace(original.statements[0], storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
+    init = replace(original.statements[0], storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     slots = tuple(replace(s, residence=None if s.kind is MIRSlotKind.PARAMETER else inner if s.id == CURRENT else root,
                           storage_duration=inner if s.id == CURRENT else s.storage_duration) for s in fn.slots)
     return bind_parameters(replace(fn, slots=slots, blocks=(
@@ -120,7 +119,7 @@ def test_reentering_and_reconstructing_does_not_erase_scalar_alias_failure(physi
         init, extract = child.statements
         fn = replace(fn, blocks=(fn.blocks[0], replace(child, statements=(
             MIRStorageInit(init.target, 0, MIRConstant(None)),
-            replace(init, storage_write=MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN)), extract)), fn.blocks[2]))
+            replace(init, storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)), extract)), fn.blocks[2]))
     exit_id = MIRBlockId(fn.id, 3)
     after = fn.blocks[2]
     fn = replace(fn, blocks=(*fn.blocks[:2], replace(after, terminator=MIRBranch(
@@ -172,7 +171,7 @@ def test_inspection_still_rejects_missing_selection() -> None:
     child = fn.blocks[1]
     invalid = replace(child.statements[0], value=replace(child.statements[0].value, alternative=0, source=None))
     fn = replace(fn, blocks=(fn.blocks[0], replace(child, statements=(invalid, EXTRACT)), fn.blocks[2]))
-    with pytest.raises(MIRPresenceError, match="alternative proof"):
+    with pytest.raises(MIRPresenceError, match="presence proof"):
         inspect_scope_lifetimes(fn)
 
 

@@ -9,10 +9,10 @@ from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIRReturn,
-    MIROptionalConstruct, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIREdge, MIRFunction, MIRGoto, MIRReturn, MIRPlace, MIRRead,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap, MIRIsAlternative,
 )
-from .shapes import MIROptionalPayload
+from .shapes import MIRUnionPayload
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
 from .testutil import compiled_definitions, bind_parameters, Reference, execute, leaf_shape
@@ -208,7 +208,7 @@ def test_skipped_construction_has_no_end_but_empty_wrapper_does(absent: bool) ->
     fn = conditional_region()
     entry, iteration, after, initialize = fn.blocks
     if absent:
-        stmt = replace(initialize.statements[0], value=MIROptionalConstruct())
+        stmt = replace(initialize.statements[0], value=MIRWrap(0))
         fn = replace(fn, blocks=(entry, iteration, after, replace(initialize, statements=(stmt,))))
     validate_function(fn)
     result = analyze_scope_ends(fn)
@@ -220,7 +220,7 @@ def test_skipped_construction_has_no_end_but_empty_wrapper_does(absent: bool) ->
 def test_last_activation_does_not_definitely_initialize_the_next() -> None:
     fn = conditional_region()
     entry, iteration, after, initialize = fn.blocks
-    read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(MIRPlace(fn.slots[2].id)))
+    read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsAlternative(MIRPlace(fn.slots[2].id), (1,)))
     broken = replace(fn, blocks=(entry, replace(iteration, statements=(read,)), after, initialize))
     with pytest.raises(MIRValidationError, match="read before definite assignment"):
         validate_function(broken)
@@ -231,7 +231,7 @@ def test_optional_scalar_copy_survives_its_wrapper_end() -> None:
     entry, iteration, after, initialize = fn.blocks
     copied = MIRSlot(MIRSlotId(fn.id, 4), leaf_shape(INT32), MIRSlotKind.LOCAL, residence=entry.region)
     done = MIRBlockId(fn.id, 4)
-    read = MIRAssign(MIRPlace(copied.id), MIRRead(MIRPlace(fn.slots[2].id, (MIROptionalPayload(),))))
+    read = MIRAssign(MIRPlace(copied.id), MIRRead(MIRPlace(fn.slots[2].id, (MIRUnionPayload(1),))))
     fn = bind_parameters(replace(fn, slots=(*fn.slots, copied), blocks=(entry,
         replace(iteration, terminator=MIRBranch(fn.slots[3].id, entry.id, initialize.id)), after,
         replace(initialize, statements=(*initialize.statements, read), terminator=MIRGoto(done)),

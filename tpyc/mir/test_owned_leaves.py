@@ -27,8 +27,8 @@ from .liveness import MIRPoint, analyze_liveness
 from .lower import _Lowering, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRConstruct,
-    MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode,
-    MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRStorageWrite,
+    MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRValidationError
@@ -141,11 +141,11 @@ class _Variant:
 
     def replacement(self) -> tuple[MIRAssign, ...]:
         if self.leaf:
-            return (MIRAssign(MIRPlace(STORAGE), MIRConstant("b"), storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE)),)
+            return (MIRAssign(MIRPlace(STORAGE), MIRConstant("b"), storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)),)
         # A record is replaced through a holder that rebinds to it (the lowering's in-place form).
         return (MIRAssign(MIRPlace(WRITER), MIRBorrow(MIRPlace(STORAGE))),
                 MIRAssign(MIRPlace(WRITER, (MIRDeref(),)), MIRConstruct((FIELD_VALUE,)),
-                          storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, WRITER)))
+                          storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, WRITER)))
 
     def return_type(self):
         return BOOL if self.leaf else INT32
@@ -172,7 +172,7 @@ def scope_end_body(variant: _Variant) -> MIRFunction:
     blocks = [
         MIRBlock(_bid(0), (), MIRGoto(_bid(1)), R0),
         MIRBlock(_bid(1), (MIRAssign(MIRPlace(STORAGE), variant.init(),
-                                     storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION)),
+                                     storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                            MIRAssign(MIRPlace(HOLDER), MIRBorrow(MIRPlace(STORAGE)))), MIRGoto(_bid(2)), R1),
         MIRBlock(_bid(2), (variant.use(),), MIRReturn(RESULT), R0),
     ]
@@ -182,7 +182,7 @@ def scope_end_body(variant: _Variant) -> MIRFunction:
 def replacement_body(variant: _Variant, *, retained: bool) -> MIRFunction:
     """Body storage replaced while a holder of it is (or is not) still read."""
     slots = [_storage(variant.type, MIRStorageDuration.BODY), _holder(HOLDER, variant.type), *variant.extra_slots()]
-    init = MIRAssign(MIRPlace(STORAGE), variant.init(), storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+    init = MIRAssign(MIRPlace(STORAGE), variant.init(), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     borrow = MIRAssign(MIRPlace(HOLDER), MIRBorrow(MIRPlace(STORAGE)))
     statements = ((init, borrow, *variant.replacement(), variant.use()) if retained
                   else (init, borrow, variant.use(), *variant.replacement()))
@@ -233,8 +233,8 @@ def test_probe_replacement_answers_as_a_record(active, retained: bool) -> None:
     leaf = _answers(replacement_body(_Variant(active, True), retained=retained), active.definitions)
     record = _answers(replacement_body(_Variant(active, False), retained=retained), active.definitions)
     assert leaf == record
-    assert [mode for _, mode in leaf["storage writes"]] == [MIRRecordWriteMode.INITIALIZE_ONCE,
-                                                           MIRRecordWriteMode.IN_PLACE]
+    assert [mode for _, mode in leaf["storage writes"]] == [MIRStorageWriteMode.INITIALIZE,
+                                                           MIRStorageWriteMode.IN_PLACE]
     if retained:
         assert leaf["retention"] == [(MIRReferent(MIRPlace(STORAGE)), MIRPlace(HOLDER), MIRReferent(MIRPlace(STORAGE)))]
         assert leaf["conflicts"] == [(MIRStorageConflictKind.REPLACEMENT, MIRPlace(STORAGE), MIRPlace(HOLDER))]
@@ -255,8 +255,8 @@ def _param_borrow(sid: MIRSlotId, typ=STR) -> MIRSlot:
     return MIRSlot(sid, borrowed_shape(typ, readonly=True), MIRSlotKind.PARAMETER, "p")
 
 
-def _write(target, value, mode=MIRRecordWriteMode.INITIALIZE_ONCE) -> MIRAssign:
-    return MIRAssign(MIRPlace(target), value, storage_write=MIRRecordWrite(mode))
+def _write(target, value, mode=MIRStorageWriteMode.INITIALIZE) -> MIRAssign:
+    return MIRAssign(MIRPlace(target), value, storage_write=MIRStorageWrite(mode))
 
 
 def _compare_holder() -> MIRAssign:
@@ -283,7 +283,7 @@ def test_owned_storage_initializes_from_every_producer(active, producer: str) ->
                      _compare_holder()], slots)
     answers = _answers(fn, active.definitions)
     assert answers["verdict"] is MIRStorageVerdict.CERTIFIED, answers
-    assert answers["storage writes"] == [(0, MIRRecordWriteMode.INITIALIZE_ONCE)]
+    assert answers["storage writes"] == [(0, MIRStorageWriteMode.INITIALIZE)]
 
 
 def test_a_call_result_needs_the_bodys_own_summary(active) -> None:
@@ -303,7 +303,7 @@ def test_direct_reassignment_reading_itself_is_safe(active) -> None:
         _write(STORAGE, MIRConstant("a")),
         MIRAssign(MIRPlace(HOLDER), MIRBorrow(MIRPlace(STORAGE))),
         MIRAssign(MIRPlace(FIELD_VALUE), MIRConstant("x")),
-        _write(STORAGE, MIROp("+", (HOLDER, FIELD_VALUE), may_raise=True), MIRRecordWriteMode.IN_PLACE),
+        _write(STORAGE, MIROp("+", (HOLDER, FIELD_VALUE), may_raise=True), MIRStorageWriteMode.IN_PLACE),
         MIRAssign(MIRPlace(HOLDER), MIRBorrow(MIRPlace(STORAGE))),
         _compare_holder(),
     ], slots)
@@ -316,7 +316,7 @@ def test_direct_reassignment_reading_itself_is_safe(active) -> None:
 
 
 def test_replacement_needs_initialized_storage(active) -> None:
-    fn = _leaf_body([_write(STORAGE, MIRConstant("a"), MIRRecordWriteMode.IN_PLACE)],
+    fn = _leaf_body([_write(STORAGE, MIRConstant("a"), MIRStorageWriteMode.IN_PLACE)],
                     [_storage(STR, MIRStorageDuration.BODY), _result()], ret=STORAGE, return_type=STR)
     with pytest.raises(MIRValidationError, match="replacement before storage initialization"):
         validate_function(fn)
@@ -325,7 +325,7 @@ def test_replacement_needs_initialized_storage(active) -> None:
 @pytest.mark.parametrize("replaced", [False, True])
 def test_entry_owned_parameter_is_body_storage(active, replaced: bool) -> None:
     param = _storage(STR, MIRStorageDuration.BODY, MIRSlotKind.PARAMETER)
-    replacement = [_write(STORAGE, MIRConstant("b"), MIRRecordWriteMode.IN_PLACE)] if replaced else []
+    replacement = [_write(STORAGE, MIRConstant("b"), MIRStorageWriteMode.IN_PLACE)] if replaced else []
     fn = _leaf_body([MIRAssign(MIRPlace(HOLDER), MIRBorrow(MIRPlace(STORAGE))), *replacement, _compare_holder()],
                     [param, _holder(HOLDER, STR), _result()])
     answers = _answers(fn, active.definitions)
@@ -338,7 +338,7 @@ def test_entry_owned_parameter_is_body_storage(active, replaced: bool) -> None:
         assert answers["verdict"] is MIRStorageVerdict.CERTIFIED
 
 
-def _loop_body(mode: MIRRecordWriteMode, duration) -> MIRFunction:
+def _loop_body(mode: MIRStorageWriteMode, duration) -> MIRFunction:
     flag = MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, "flag")
     inner = R1 if isinstance(duration, MIRRegionId) else R0
     slots = [_storage(STR, duration), _holder(HOLDER, STR, residence=inner),
@@ -356,7 +356,7 @@ def _loop_body(mode: MIRRecordWriteMode, duration) -> MIRFunction:
 
 
 def test_loop_activation_initializes_each_iteration(active) -> None:
-    fn = _loop_body(MIRRecordWriteMode.INITIALIZE_REGION, R1)
+    fn = _loop_body(MIRStorageWriteMode.INITIALIZE, R1)
     answers = _answers(fn, active.definitions)
     assert answers["verdict"] is MIRStorageVerdict.CERTIFIED, answers
     # Each activation ends at the back edge.
@@ -365,7 +365,7 @@ def test_loop_activation_initializes_each_iteration(active) -> None:
 
 def test_body_storage_cannot_initialize_in_a_loop(active) -> None:
     with pytest.raises(MIRValidationError, match="owning operation in cycle"):
-        validate_function(_loop_body(MIRRecordWriteMode.INITIALIZE_ONCE, MIRStorageDuration.BODY))
+        validate_function(_loop_body(MIRStorageWriteMode.INITIALIZE, MIRStorageDuration.BODY))
 
 
 def test_opaque_definitions_are_a_builtin_certificate(active) -> None:
@@ -660,7 +660,7 @@ def test_locals_initialize_once_then_replace_in_place(lowered_active) -> None:
     assert "%0: int readonly-ref parameter n" in lines
     assert "%1: int owned-storage local total duration=body residence=r0" in lines
     # A BigInt copy cannot raise: its allocation failure is a panic.
-    assert "%1 = copy (*%0) [initialize_once]" in lines
+    assert "%1 = copy (*%0) [initialize]" in lines
     assert any(line.startswith("%1 = op * (") and line.endswith("may-raise [in_place]") for line in lines)
 
 
@@ -676,7 +676,7 @@ def test_operand_temporaries_live_in_their_full_expression(lowered_active) -> No
 
 def test_a_borrowed_return_is_copied_into_the_result(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["ret_copy"])
-    assert "%1 = copy (*%0) may-raise [initialize_once]" in lines and lines[-1] == "return %1"
+    assert "%1 = copy (*%0) may-raise [initialize]" in lines and lines[-1] == "return %1"
 
 
 def test_owned_leaf_globals_are_readonly_external_handles(lowered_active) -> None:
@@ -711,17 +711,17 @@ def test_element_reads_are_raising_operations(lowered_active) -> None:
 def test_param_copy_and_append(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["param_copy"])
     assert "%0: str readonly-ref parameter s" in lines and "%1: str owned-storage local s duration=body residence=r0" in lines
-    assert "%1 = copy (*%0) may-raise [initialize_once]" in lines
+    assert "%1 = copy (*%0) may-raise [initialize]" in lines
     assert any(line.startswith("%1 = op += (") and "[in_place]" in line for line in lines)
     appends = [line for line in _lines(lowered_active.bodies["append"]) if line.startswith("%1 = op += (")]
     assert len(appends) == 2
     # `s: str = a` is the form conversion of a borrowed read: a copy.
-    assert "%1 = copy (*%0) may-raise [initialize_once]" in _lines(lowered_active.bodies["append"])
+    assert "%1 = copy (*%0) may-raise [initialize]" in _lines(lowered_active.bodies["append"])
 
 
 def test_conversions_and_mixed_operations(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["convert"])
-    assert any("op coerce:fixed_int_to_bigint" in line and "[initialize_once]" in line for line in lines)
+    assert any("op coerce:fixed_int_to_bigint" in line and "[initialize]" in line for line in lines)
     assert any("op coerce:char_to_str" in line for line in lines)
     compare = next(s.value for b in lowered_active.bodies["mixed"].blocks for s in b.statements
                    if isinstance(s, MIRAssign) and isinstance(s.value, MIRCompare))
@@ -733,8 +733,8 @@ def test_conversions_and_mixed_operations(lowered_active) -> None:
 def test_promotion_lowers_as_a_conversion_feeding_the_operator(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["promoted"])
     assert "%3 = read %1" in lines
-    assert "%4 = op coerce:__int__ (%3) may-raise [initialize_region]" in lines
-    assert "%5 = borrow %4" in lines and "%6 = op + (%2, %5) may-raise [initialize_once]" in lines
+    assert "%4 = op coerce:__int__ (%3) may-raise [initialize]" in lines
+    assert "%5 = borrow %4" in lines and "%6 = op + (%2, %5) may-raise [initialize]" in lines
     fn = lowered_active.bodies["promoted_compare"]
     compare, = (s.value for s in _statements(fn) if isinstance(s, MIRAssign) and isinstance(s.value, MIRCompare))
     # Both operands are BigInt holders once the promotion converted the int32.
@@ -742,7 +742,7 @@ def test_promotion_lowers_as_a_conversion_feeding_the_operator(lowered_active) -
 
 
 def test_literal_return_materializes_an_owned_constant(lowered_active) -> None:
-    assert _lines(lowered_active.bodies["literal"])[-2:] == ["%0 = 'abc' [initialize_once]", "return %0"]
+    assert _lines(lowered_active.bodies["literal"])[-2:] == ["%0 = 'abc' [initialize]", "return %0"]
 
 
 def test_exit_fact_follows_allocation_and_raising_operations(lowered_active) -> None:
@@ -803,7 +803,7 @@ def test_owned_leaf_arguments_are_lent_at_a_borrowing_passing(lowered_active) ->
 
 def test_owned_leaf_arguments_are_copied_at_a_by_value_passing(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["copies"])
-    assert "%1 = copy (*%0) may-raise [initialize_region]" in lines
+    assert "%1 = copy (*%0) may-raise [initialize]" in lines
     assert any(line.startswith("%2 = call main::takes_own(%1)") for line in lines)
     fn = lowered_active.bodies["copies"]
     copy, = (s for s in fn.slots if s.shape.is_storage)
@@ -816,7 +816,7 @@ def test_literal_arguments_are_static_or_materialized(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["literal_arguments"])
     # The view parameter borrows the literal; the owning one gets a materialized buffer.
     assert any(re.fullmatch(r"%\d+ = 'lit'", line) for line in lines)
-    assert any(re.fullmatch(r"%\d+ = 'own' \[initialize_region\]", line) for line in lines)
+    assert any(re.fullmatch(r"%\d+ = 'own' \[initialize\]", line) for line in lines)
 
 
 def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
@@ -824,7 +824,7 @@ def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
     call, = (stmt for stmt in _statements(fn) if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
     result = fn.slots[call.target.root.index]
     assert result.shape.is_storage and result.kind is MIRSlotKind.TEMPORARY
-    assert call.storage_write == MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION)
+    assert call.storage_write == MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
     # The result's holder names the temporary, never the argument's parameter.
     deps = analyze_dependencies(fn, analyze_liveness(fn))
     origins = {ref for refs in deps.referents.values() for leaf, values in refs.items() for ref in values
@@ -833,7 +833,7 @@ def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
     assert call.value.may_raise and fn.exceptional_exits  # the callee's copy may raise
     local = _slot(lowered_active.bodies["result_local"], "t")
     assert local.shape.is_storage and local.kind is MIRSlotKind.LOCAL
-    assert "%2 = call main::ret_copy(%1) [reader, may-raise] [initialize_once]" in _lines(
+    assert "%2 = call main::ret_copy(%1) [reader, may-raise] [initialize]" in _lines(
         lowered_active.bodies["result_local"])
     temporary = lowered_active.bodies["temporary_argument"]
     produced, consumed = _calls(temporary)
@@ -930,8 +930,11 @@ def test_print_arguments_share_one_full_expression_region(lowered_active) -> Non
 def test_loop_temporaries_initialize_per_activation(lowered_active) -> None:
     fn = lowered_active.bodies["loop"]
     writes = analyze_storage(fn).writes
-    modes = sorted(stmt.storage_write.mode.name for stmt in writes.values())
-    assert modes.count("INITIALIZE_REGION") == 3 and modes.count("IN_PLACE") == 1
+    slots = {s.id: s for s in fn.slots}
+    # Per activation: the initialized slot's storage lives in a loop region.
+    modes = sorted((stmt.storage_write.mode.name, isinstance(slots[stmt.target.root].storage_duration, MIRRegionId))
+                   for stmt in writes.values())
+    assert modes.count(("INITIALIZE", True)) == 3 and [m for m, _ in modes].count("IN_PLACE") == 1
 
 
 # --- damage -----------------------------------------------------------------------

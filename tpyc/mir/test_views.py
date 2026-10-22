@@ -262,7 +262,7 @@ def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> Non
 
 def test_owning_sinks_copy_through_the_view(active) -> None:
     lines = _lines(_fn(active, "owned_from_view"))
-    assert "%3 = copy (*%2) may-raise [initialize_once]" in lines and lines[-1] == "return %3"
+    assert "%3 = copy (*%2) may-raise [initialize]" in lines and lines[-1] == "return %3"
 
 
 def test_a_string_bound_as_str_is_lent_or_copied(active) -> None:
@@ -272,7 +272,7 @@ def test_a_string_bound_as_str_is_lent_or_copied(active) -> None:
     assert "%1 = borrow (*%0)" in lines and any(line.startswith("%2 = call main::takes(%1)") for line in lines)
     # At an owning sink it is copied; the local owning the copy is moved out.
     sink = _lines(_fn(active, "string_as_str_sink"))
-    assert "%1 = copy (*%0) may-raise [initialize_once]" in sink
+    assert "%1 = copy (*%0) may-raise [initialize]" in sink
     assert sink[-1] == "return %1"
 
 

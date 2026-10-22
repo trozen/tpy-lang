@@ -13,13 +13,12 @@ from ..typesys import BOOL, OptionalType, TpyType, TupleType, UnionType, is_void
 from .coverage import call_write_places
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
-    statement_call, statement_target, MIRSlot, MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIRPlace,
-    MIRPoint, MIRRead, MIRSlotId, MIREdge, MIRReturn, MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign,
-    MIRRecordWrite, MIRRecordWriteMode, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape,
+    statement_call, statement_target, MIRSlot, MIRNot, MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIREdge, MIRReturn,
+    MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRStorageWrite, MIRStorageWriteMode, MIRIsAlternative,
+    MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape, MIRWrap,
 )
-from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, RecordFields
-from .shapes import MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRUnionPayload
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, RecordFields, SUM_CLASSES
+from .shapes import MIRContainerStructure, MIRDeref, MIRUnionPayload
 from .region_flow import MIRRegionFlow
 
 # Keyed by the wrapper's place (an iterator's by its slot's place).
@@ -254,10 +253,10 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
         return state
     if place.projections:
         # A wrapper field written whole selects what its value selects.
-        if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIROptionalConstruct, MIROptionalCopy))
+        if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRWrap, MIRCopy))
                 and slots is not None
                 and place_shape(place, slots, layouts).cls is MIRClass.OPTIONAL):
-            known = (frozenset({int(stmt.value.source is not None)}) if isinstance(stmt.value, MIROptionalConstruct)
+            known = (frozenset({stmt.value.alternative}) if isinstance(stmt.value, MIRWrap)
                      else dict(state.present).get(stmt.value.source))
             if known is not None:
                 return _State(state.present | {(place, known)}, state.conditions, state.valid_aliases,
@@ -266,7 +265,7 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     match stmt:
         case MIRRecordStorageInit():
             engaged = DISENGAGED
-        case MIRAssign(storage_write=MIRRecordWrite(mode=MIRRecordWriteMode.OPTIONAL_ASSIGN)):
+        case MIRAssign(storage_write=MIRStorageWrite(mode=MIRStorageWriteMode.OPTIONAL_ASSIGN)):
             engaged = frozenset({MIREngagement.ENGAGED})
         case _:
             engaged = None
@@ -277,15 +276,13 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     written = stmt.target
     present, conditions = state.present, state.conditions.copy()
     valid = state.valid_aliases
-    if isinstance(stmt, MIRStorageInit) or isinstance(
-            value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy,
-                    MIRIteratorInit, MIRIteratorAdvance)):
+    sum_copy = isinstance(value, MIRCopy) and slots is not None and slots[target].shape.cls in SUM_CLASSES
+    if isinstance(stmt, MIRStorageInit) or sum_copy or isinstance(
+            value, (MIRWrap, MIRIteratorInit, MIRIteratorAdvance)):
         match stmt if isinstance(stmt, MIRStorageInit) else value:
             case MIRStorageInit(alternative=alternative):
                 known = frozenset({alternative})
-            case MIROptionalConstruct():
-                known = frozenset({int(value.source is not None)})
-            case MIRUnionConstruct():
+            case MIRWrap():
                 known = frozenset({value.alternative})
             case MIRIteratorInit() | MIRIteratorAdvance():
                 known = None
@@ -303,10 +300,15 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
             present |= {(written, known)}
     elif target in booleans:
         match value:
-            case MIRIsPresent() | MIRIsAlternative() | MIRIteratorHasNext():
+            case MIRIsAlternative() | MIRIteratorHasNext():
                 tested = MIRPlace(value.source) if isinstance(value, MIRIteratorHasNext) else value.source
-                domain = (domains or {}).get(tested, frozenset({0, 1}))
-                selected = (frozenset({1}) if isinstance(value, (MIRIsPresent, MIRIteratorHasNext))
+                domain = (domains or {}).get(tested)
+                if domain is None:
+                    # A tested field: its sum's alternatives; a cursor has one or none.
+                    count = (len(place_shape(tested, slots, layouts).alternatives)
+                             if isinstance(value, MIRIsAlternative) and slots is not None else 2)
+                    domain = frozenset(range(count))
+                selected = (frozenset({1}) if isinstance(value, MIRIteratorHasNext)
                             else frozenset(value.alternatives))
                 outcomes = tuple(_combine(present, frozenset({(tested, members)}))
                                  if members else None for members in (domain - selected, selected))
@@ -324,8 +326,7 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     return _State(present, conditions, valid, state.engagement)
 
 
-def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId],
-             point: MIRPoint) -> list[MIRPresenceIssue]:
+def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId], point: MIRPoint) -> list[MIRPresenceIssue]:
     issues = []
     if place.root in alias_slots and place.root not in state.valid_aliases:
         issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.FRESHNESS,
@@ -333,12 +334,9 @@ def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId],
     facts = dict(state.present)
     for depth, projection in enumerate(place.projections):
         wrapper = MIRPlace(place.root, place.projections[:depth])
-        if isinstance(projection, MIROptionalPayload) and facts.get(wrapper) != frozenset({1}):
-            issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
-                                           "optional payload access without current presence proof"))
         if isinstance(projection, MIRUnionPayload) and facts.get(wrapper) != frozenset({projection.alternative}):
             issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
-                                           "union payload access without current alternative proof"))
+                                           "payload access without current presence proof"))
     return issues
 
 
@@ -354,8 +352,8 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
     domains: dict[MIRPlace, frozenset[int]] = {}
     for s in fn.slots:
         if s.shape.cls in (MIRClass.OPTIONAL, MIRClass.UNION) or s.shape.holding is MIRHolding.CURSOR:
-            domains[MIRPlace(s.id)] = (frozenset(range(len(s.shape.members))) if s.shape.cls is MIRClass.UNION
-                                       else frozenset({0, 1}))
+            domains[MIRPlace(s.id)] = (frozenset(range(len(s.shape.alternatives)))
+                                       if s.shape.holding is not MIRHolding.CURSOR else frozenset({0, 1}))
     layouts = fn.record_layouts
     alias_slots = {s.id for s in fn.slots if s.shape.holding is MIRHolding.ALIAS}
     aliases_by_wrapper: dict[MIRPlace, set[MIRSlotId]] = {}

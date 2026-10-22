@@ -15,7 +15,7 @@ from .liveness import _liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct,
     MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleInitialization,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRHolding, MIRValidationError
@@ -193,7 +193,7 @@ def test_owned_tuple_member_infers_its_local_backing(definitions: MIRDefinitions
     fn = bind_parameters(replace(fn, slots=(*fn.slots, backing, MIRSlot(result, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)),
                  blocks=(MIRBlock(ENTRY, (
                      MIRAssign(MIRPlace(pair), MIRTupleConstruct((MIRConstruct((VALUE,)), VALUE)),
-                               storage_write=MIRTupleInitialization()),
+                               storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                      MIRAssign(MIRPlace(ALIAS), MIRBorrow(member)),
                      MIRAssign(MIRPlace(result), MIRRead(MIRPlace(ALIAS, (MIRDeref(), layout.fields[0]))))),
                      MIRReturn(ALIAS if escape else result), ROOT),)))

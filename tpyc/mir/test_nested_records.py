@@ -30,8 +30,8 @@ from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
-    MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite,
-    MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite,
+    MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerStructure, MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRValidationError
@@ -1263,7 +1263,7 @@ def test_a_composed_member_is_built_then_moved_in(program: _Program) -> None:
     point, built = _record(program, "Point"), _record(program, "Built")
     member, literal = (s for s in _constructs(fn) if fn.slots[s.target.root.index].type == point)
     # The member's construct carries its copy; the outer construct only moves.
-    assert member.value.may_raise and member.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+    assert member.value.may_raise and member.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     outer = _outer(fn, built)
     assert outer.value.fields[0] == member.target.root and not outer.value.may_raise
     names = _outer(fn, _record(program, "Names"))
@@ -1427,7 +1427,7 @@ def test_a_member_write_through_another_parameter_is_an_obligation(program: _Pro
 
 def _member_writes(fn: MIRFunction) -> list[MIRAssign]:
     return [s for b in fn.blocks for s in b.statements if isinstance(s, MIRAssign) and s.target.projections
-            and isinstance(s.target.projections[-1], MIRField) and isinstance(s.storage_write, MIRRecordWrite)]
+            and isinstance(s.target.projections[-1], MIRField) and isinstance(s.storage_write, MIRStorageWrite)]
 
 
 @pytest.mark.parametrize("name,kind", [
@@ -1443,7 +1443,7 @@ def _member_writes(fn: MIRFunction) -> list[MIRAssign]:
 def test_a_member_write_is_an_in_place_replacement(program: _Program, name: str, kind: type) -> None:
     fn = _lowered(program, name)
     write, = _member_writes(fn)
-    assert write.storage_write == MIRRecordWrite(MIRRecordWriteMode.IN_PLACE) and isinstance(write.value, kind)
+    assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE) and isinstance(write.value, kind)
     assert write in analyze_storage(fn).writes.values()
     if name == "member_copy":
         assert write.value.source.projections[-1].id.name == "b" and write.value.may_raise
@@ -1596,11 +1596,11 @@ def test_member_write_validator_negatives(program: _Program) -> None:
     with pytest.raises(MIRValidationError, match=fact):
         validate_function(_with_statement(fn, write, storage_write=None))
     with pytest.raises(MIRValidationError, match=fact):
-        validate_function(_with_statement(fn, write, storage_write=MIRRecordWrite(
-            MIRRecordWriteMode.INITIALIZE_REGION)))
+        validate_function(_with_statement(fn, write, storage_write=MIRStorageWrite(
+            MIRStorageWriteMode.INITIALIZE)))
     with pytest.raises(MIRValidationError, match=fact):
-        validate_function(_with_statement(fn, write, storage_write=MIRRecordWrite(
-            MIRRecordWriteMode.IN_PLACE, write.target.root)))
+        validate_function(_with_statement(fn, write, storage_write=MIRStorageWrite(
+            MIRStorageWriteMode.IN_PLACE, write.target.root)))
     # A readonly receiver, or a member declared `readonly[...]`.
     holder = fn.slots[write.target.root.index]
     with pytest.raises(MIRValidationError, match="store through readonly"):

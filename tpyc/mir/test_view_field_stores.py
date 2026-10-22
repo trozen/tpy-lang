@@ -22,14 +22,14 @@ from .call_contract import (
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import (
-    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, record_fill, resolve_referents,
-    seeded_loan, written_record,
+    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, record_fill,
+    resolve_referents, seeded_loan, written_record,
 )
 from .shapes import MIRContainerStructure, MIRDeref, MIRTupleIndex
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIREdge, MIRFunction, MIRPlace,
-    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .value import MIRRecords, MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .retention import analyze_retention
@@ -242,6 +242,29 @@ class Views:
 
 def views_of(v: Views, views: list[StrView], ns: list[int32]) -> None:
     pass
+
+
+class E:
+    items: list[str]
+    s: StrView
+
+    def __init__(self, items: list[str], s: StrView) -> None:
+        self.items = copy(items)
+        self.s = s
+
+    def setv(self, v: StrView) -> None:
+        self.s = v
+
+
+def elem(r: E, k: int32) -> int32:
+    r.setv(r.items[0])
+    r.items[0] = mk(k)
+    return len(r.s)
+
+
+def elem_count(r: E, k: int32) -> int32:
+    r.items[0] = mk(k)
+    return len(r.items)
 """
 
 
@@ -647,8 +670,8 @@ def test_a_replacement_is_checked_against_the_state_it_leaves(program: _Program)
 
 def _in_place(fn: MIRFunction) -> tuple[MIRPoint, MIRAssign]:
     return next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
-                if isinstance(s, MIRAssign) and isinstance(s.storage_write, MIRRecordWrite)
-                and s.storage_write.mode is MIRRecordWriteMode.IN_PLACE and s.target.projections)
+                if isinstance(s, MIRAssign) and isinstance(s.storage_write, MIRStorageWrite)
+                and s.storage_write.mode is MIRStorageWriteMode.IN_PLACE and s.target.projections)
 
 
 def _field(program: _Program, record: str, name: str) -> MIRField:
@@ -783,3 +806,30 @@ def test_a_copy_handed_to_a_constructor_carries_the_source_s_loan(program: _Prog
     source = _object(state, MIRPlace(copy.value.source.root))
     assert state[MIRPlace(copy.target.root, (s,))] == state[MIRPlace(source.root, (s,))]
     assert program.verdicts["wrapped"].conflicts == ()
+
+
+# --- element stores under the rebinding holder's own object -------------------------------
+
+def test_an_element_store_is_checked_against_its_owner_s_view_members(program: _Program) -> None:
+    # `r.setv(r.items[0]); r.items[0] = mk(k)`: the rebinding holder `r`
+    # repoints, but `r.s`, a view member of the object it lends, still
+    # retains the element the store replaces.
+    fn = _lowered(program, "elem")
+    point, write = _in_place(fn)
+    r = _named(fn, "r")
+    assert write.storage_write.rebind_owner == r.root
+    items, s = _field(program, "E", "items"), _field(program, "E", "s")
+    retention = analyze_retention(fn, analyze_liveness(fn), analyze_dependencies(fn, analyze_liveness(fn)),
+                                  analyze_storage(fn))
+    element = MIRReferent(MIRPlace(r.root, (items, write.target.projections[-1])), True)
+    assert {(c.point, c.holder, c.affected) for c in retention.conflicts} == {
+        (point, MIRPlace(r.root, (s,)), element)}
+    assert element in {c.retained for c in retention.conflicts}
+    assert program.verdicts["elem"].conflicts == ("replacement",)
+
+
+def test_an_element_store_skips_only_the_rebinding_holder(program: _Program) -> None:
+    fn = _lowered(program, "elem_count")
+    _, write = _in_place(fn)
+    assert write.storage_write.rebind_owner == _named(fn, "r").root
+    assert program.verdicts["elem_count"].conflicts == ()

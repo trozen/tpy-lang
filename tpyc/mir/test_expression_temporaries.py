@@ -13,9 +13,9 @@ from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRConstruct, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRRead,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIROptionalConstruct, MIRTupleConstruct, MIRUnionConstruct,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRWrap,
 )
-from .shapes import MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
+from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRValidationError
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
@@ -179,14 +179,14 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
         case "optional":
             wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(owned.type), borrowed_shape(owned.type)),
                               MIRSlotKind.LOCAL, residence=result.region)
-            capture = (MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder))),)
-            path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
+            capture = (MIRAssign(MIRPlace(wrapper_id), MIRWrap(1, MIRPlace(holder))),)
+            path = MIRPlace(wrapper_id, (MIRUnionPayload(1),))
         case "union":
             other = hand_record("Other", "temporary.Other")
             wrapper = MIRSlot(wrapper_id,
                               union_shape(UnionType((owned.type, other)), (borrowed, borrowed_shape(other))),
                               MIRSlotKind.LOCAL, residence=result.region)
-            capture = (MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, MIRPlace(holder))),)
+            capture = (MIRAssign(MIRPlace(wrapper_id), MIRWrap(0, MIRPlace(holder))),)
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
     blocks = []
     for block in fn.blocks:

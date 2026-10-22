@@ -17,8 +17,8 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordWriteMode, MIRSlotKind,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWrite,
+    MIRStorageWriteMode, MIRSlotKind,
 )
 from .shapes import MIRContainerElements, MIRDeref
 from .value import MIRField
@@ -488,7 +488,7 @@ def test_an_owned_container_is_rebuilt_in_place_only(program: _Program) -> None:
             xs = next(s.id for s in result.slots if s.name == "xs")
             rebuilt = [stmt for b in result.blocks for stmt in b.statements
                        if isinstance(stmt, MIRAssign) and stmt.target == MIRPlace(xs, (MIRDeref(),))]
-            assert [stmt.storage_write for stmt in rebuilt] == [MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, xs)]
+            assert [stmt.storage_write for stmt in rebuilt] == [MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, xs)]
 
 
 def test_a_container_bound_to_a_temporary_owns_it(program: _Program) -> None:
@@ -502,8 +502,8 @@ def test_a_container_bound_to_a_temporary_owns_it(program: _Program) -> None:
     items = next(s.id for s in fn.slots if s.name == "items")
     writes = [stmt for b in fn.blocks for stmt in b.statements if isinstance(stmt, MIRAssign)]
     built = [stmt for stmt in writes if isinstance(stmt.value, MIRConstruct)]
-    assert [stmt.storage_write.mode for stmt in built] == [MIRRecordWriteMode.INITIALIZE_ONCE,
-                                                           MIRRecordWriteMode.OWN_SITE]
+    assert [stmt.storage_write.mode for stmt in built] == [MIRStorageWriteMode.INITIALIZE,
+                                                           MIRStorageWriteMode.OWN_SITE]
     assert [stmt.value.source for stmt in writes if stmt.target == MIRPlace(items)] == [
         MIRPlace(stmt.target.root) for stmt in built]
     assert verdict.conflicts == ()

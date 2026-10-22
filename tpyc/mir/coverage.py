@@ -13,7 +13,6 @@ from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
 )
 from .call_contract import MIRParameterBinding
-from .shapes import MIROptionalPayload
 from .nodes import MIRCall, MIRPlace, MIRSlot, MIRSlotId, call_place
 from .value import holding_representation
 
@@ -45,16 +44,6 @@ def slot_representation(slot: MIRSlot, bindings: Mapping[MIRSlotId, MIRParameter
     if slot.id in bindings:
         return passing_representation(bindings[slot.id].passing)
     return holding_representation(slot.shape.holding)
-
-
-def whole_wrapper_field(place: MIRPlace) -> MIRPlace:
-    """A place under an Optional record field's payload, published as the
-    whole field: summary paths have no payload selector, and replacing the
-    field reaches everything a payload write does."""
-    for index, projection in enumerate(place.projections):
-        if isinstance(projection, MIROptionalPayload):
-            return MIRPlace(place.root, place.projections[:index])
-    return place
 
 
 def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:

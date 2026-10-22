@@ -12,9 +12,8 @@ from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsAlternative, MIRMemberInit, MIRPlace, MIRRead, MIRReceiverInit, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRUnionExtract, MIRRvalue, MIRAlias, MIRConstruct, MIRCopy, MIRMove, MIRTupleConstruct, MIRTupleCopy,
-    MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy, MIRIsPresent, MIRGlobalId,
-    MIRStorageDuration,
+    MIRUnionExtract, MIRRvalue, MIRAlias, MIRConstruct, MIRCopy, MIRMove, MIRTupleConstruct, MIRGlobalId,
+    MIRStorageDuration, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -195,7 +194,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
         if operation == "tuple":
             value, expected = MIRTupleConstruct((P, X)), {P, X}
         elif operation == "tuple_copy":
-            value, expected = MIRTupleCopy(Y), {Y}
+            value, expected = MIRCopy(MIRPlace(Y)), {Y}
         else:
             target = MIRSlot(Z, leaf_shape(INT32), MIRSlotKind.TEMPORARY)
             value, expected = MIRRead(MIRPlace(Y, (MIRTupleIndex(1),))), {Y}
@@ -203,19 +202,19 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
         other = MIRSlot(Y, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.PARAMETER)
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
         if operation == "optional":
-            value, expected = MIROptionalConstruct(MIRPlace(P)), {P}
+            value, expected = MIRWrap(1, MIRPlace(P)), {P}
         elif operation == "optional_copy":
-            value, expected = MIROptionalCopy(MIRPlace(Y)), {Y}
+            value, expected = MIRCopy(MIRPlace(Y)), {Y}
         else:
             target = MIRSlot(Z, leaf_shape(BOOL), MIRSlotKind.TEMPORARY)
-            value, expected = MIRIsPresent(MIRPlace(Y)), {Y}
+            value, expected = MIRIsAlternative(MIRPlace(Y), (1,)), {Y}
     elif operation in ("union", "union_copy"):
         sibling = hand_record("Other", "liveness.Other")
         other = MIRSlot(Y, union_shape(UnionType((CELL, sibling)), tuple(
                             borrowed_shape(t) for t in (CELL, sibling))), MIRSlotKind.PARAMETER)
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
-        value, expected = ((MIRUnionConstruct(0, MIRPlace(P)), {P}) if operation == "union"
-                           else (MIRUnionCopy(MIRPlace(Y)), {Y}))
+        value, expected = ((MIRWrap(0, MIRPlace(P)), {P}) if operation == "union"
+                           else (MIRCopy(MIRPlace(Y)), {Y}))
     fn = bind_parameters(MIRFunction(B, VoidType(), (ref, scalar, other, target),
                      (MIRBlock(A, prefix + (MIRAssign(MIRPlace(Z), value),), MIRReturn()),), A, records=records))
     result = analyze_liveness(fn)

@@ -15,9 +15,9 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstruct, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIRPlace, MIRRecordWriteMode,
+    MIRAssign, MIRBodyId, MIRConstruct, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWriteMode, MIRWrap,
 )
-from .shapes import MIRDeref, MIROptionalPayload
+from .shapes import MIRDeref, MIRUnionPayload
 from .storage import MIRStorageEvents, analyze_storage
 from .testutil import Heap, Reference, execute, reslot
 from .validate import MIRPresenceError, validate_function
@@ -173,14 +173,14 @@ def test_optional_storage_identity(artifacts: Artifacts, name: str, expected: in
     events = analyze_storage(fn)
     assert isinstance(events, MIRStorageEvents)
     expected_modes = {
-        "retained": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.OWN_SITE],
-        "cleared": [MIRRecordWriteMode.INITIALIZE_ONCE],
-        "in_place": [MIRRecordWriteMode.INITIALIZE_ONCE, MIRRecordWriteMode.IN_PLACE],
-        "from_none": [MIRRecordWriteMode.OWN_SITE],
+        "retained": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE],
+        "cleared": [MIRStorageWriteMode.INITIALIZE],
+        "in_place": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
+        "from_none": [MIRStorageWriteMode.OWN_SITE],
     }
     assert [s.storage_write.mode for s in events.writes.values()] == expected_modes[name]
     for stmt in events.writes.values():
-        if stmt.storage_write.mode is MIRRecordWriteMode.IN_PLACE:
+        if stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE:
             assert stmt.storage_write.rebind_owner == stmt.target.root
 
 
@@ -257,7 +257,7 @@ def test_cyclic_optional_in_place_replacement(artifacts: Artifacts) -> None:
     assert isinstance(fn, MIRFunction), fn
     assert execute(fn, False) == execute(fn, True) == 0
     writes = analyze_storage(fn)
-    assert any(s.storage_write.mode is MIRRecordWriteMode.IN_PLACE for s in writes.writes.values())
+    assert any(s.storage_write.mode is MIRStorageWriteMode.IN_PLACE for s in writes.writes.values())
 
 
 @pytest.mark.parametrize("custom", ["custom_copy", "custom_move", "custom_destructor"])
@@ -277,8 +277,8 @@ def test_in_place_requires_current_presence(artifacts: Artifacts) -> None:
         statements = []
         for stmt in block.statements:
             if isinstance(stmt.value, MIRConstruct) and stmt.target.projections:
-                assert stmt.target.projections == (MIROptionalPayload(), MIRDeref())
-                statements.append(MIRAssign(MIRPlace(stmt.target.root), MIROptionalConstruct()))
+                assert stmt.target.projections == (MIRUnionPayload(1), MIRDeref())
+                statements.append(MIRAssign(MIRPlace(stmt.target.root), MIRWrap(0)))
                 changed = True
             statements.append(stmt)
         blocks.append(replace(block, statements=tuple(statements)))
@@ -290,7 +290,7 @@ def test_in_place_requires_current_presence(artifacts: Artifacts) -> None:
 def test_in_place_cannot_mutate_readonly_payload(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["in_place"], artifacts[1])
     assert isinstance(fn, MIRFunction), fn
-    slots = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
+    slots = tuple(reslot(s, members=(None, replace(s.shape.payload, readonly=True)))
                   if s.shape.cls is MIRClass.OPTIONAL else s for s in fn.slots)
     with pytest.raises(MIRValidationError, match="readonly"):
         validate_function(replace(fn, slots=slots))
@@ -299,7 +299,7 @@ def test_in_place_cannot_mutate_readonly_payload(artifacts: Artifacts) -> None:
 def test_readonly_holder_copy_retains_owned_referent(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["retained"], artifacts[1])
     assert isinstance(fn, MIRFunction), fn
-    slots = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
+    slots = tuple(reslot(s, members=(None, replace(s.shape.payload, readonly=True)))
                   if s.name == "saved" else s for s in fn.slots)
     fn = replace(fn, slots=slots)
     validate_function(fn)

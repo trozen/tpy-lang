@@ -944,6 +944,21 @@ void copy_either(int32_t k, bool flag) {
     std::cout << "copy_either" << " " << w.t.s << "\n" << ::tpy::check_signals;
 }
 
+// # free function: an element store through the record whose view member views that element; the store
+// # rebinds the record's holder, but r.s still views the replaced element (BUGS.md#record-view-member-source-replaced)
+// def element_view_replaced(r: Items, k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+//     r.setv(r.items[0])
+//     if flag:
+//         r.items[0] = mk(k)  # tpyc: mir_borrows(r.s, r.items[elements]|r.s)
+//     print("element_view_replaced", r.s)
+void element_view_replaced(Items& r, int32_t k, bool flag) {
+    r.setv(::tpy::__getitem__(r.items, 0));
+    if (flag) {
+        ::tpy::__setitem__(r.items, 0, ::tpyapp::main::mk(k));
+    }
+    std::cout << "element_view_replaced" << " " << r.s << "\n" << ::tpy::check_signals;
+}
+
 // def main(flag: bool) -> None:
 //     retained_by_callee(1, False)
 //     maybe_retained(1, False)
@@ -1024,6 +1039,7 @@ void copy_either(int32_t k, bool flag) {
 //     kid_temp(1, False)
 //     print("fixed_base", fixed_base())
 //     shell_temp(1, False)
+//     element_view_replaced(Items([mk(1)], "static"), 2, False)
 void main(bool flag) {
     ::tpyapp::main::retained_by_callee(1, false);
     ::tpyapp::main::maybe_retained(1, false);
@@ -1108,6 +1124,8 @@ void main(bool flag) {
     ::tpyapp::main::kid_temp(1, false);
     std::cout << "fixed_base" << " " << ::tpyapp::main::fixed_base() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::shell_temp(1, false);
+    Items __tmp_1 = Items({::tpyapp::main::mk(1)}, "static");
+    ::tpyapp::main::element_view_replaced(__tmp_1, 2, false);
 }
 
 // G = mk(0)

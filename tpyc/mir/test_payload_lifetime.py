@@ -9,11 +9,11 @@ from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent,
-    MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRUnionConstruct, MIRUnionCopy, MIRConstant,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative, MIRNotCovered,
+    MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration, MIRConstant, MIRWrap, MIRCopy,
 )
-from .shapes import MIROptionalPayload, MIRUnionPayload
+from .shapes import MIRUnionPayload
 from .payload_lifetime import MIRPayloadEnds, analyze_payload_ends, dump_payload_ends
 from .presence import _analyze_presence
 from .validate import validate_function
@@ -24,8 +24,8 @@ from .testutil import compiled_definitions, bind_parameters, leaf_shape, optiona
 BODY = MIRBodyId("payload_lifetime", "example")
 PARAM, CURRENT, SAVED, VALUE, FLAG, GUARD = (MIRSlotId(BODY, i) for i in range(6))
 ENTRY, YES, NO, JOIN = (MIRBlockId(BODY, i) for i in range(4))
-INIT = MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE)
-ASSIGN = MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN)
+INIT = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+ASSIGN = MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
 
 
 def wrapper_function(optional: bool, *blocks: MIRBlock) -> MIRFunction:
@@ -43,18 +43,44 @@ def wrapper_function(optional: bool, *blocks: MIRBlock) -> MIRFunction:
 
 
 def write(optional: bool, tag: int | MIRSlotId, *, target: MIRSlotId = CURRENT,
-          fact: MIRPayloadWrite | None = ASSIGN) -> MIRAssign:
+          fact: MIRStorageWrite | None = ASSIGN) -> MIRAssign:
     if isinstance(tag, MIRSlotId):
-        value = MIROptionalCopy(MIRPlace(tag)) if optional else MIRUnionCopy(MIRPlace(tag))
+        value = MIRCopy(MIRPlace(tag))
     elif optional:
-        value = MIROptionalConstruct(MIRPlace(VALUE) if tag else None)
+        value = MIRWrap(1, MIRPlace(VALUE)) if tag else MIRWrap(0)
     else:
-        value = MIRUnionConstruct(tag, None if tag == 0 else MIRPlace(FLAG) if tag == 1 else MIRPlace(VALUE))
+        value = MIRWrap(tag, None if tag == 0 else MIRPlace(FLAG) if tag == 1 else MIRPlace(VALUE))
     return MIRAssign(MIRPlace(target), value, storage_write=fact)
 
 
 def payload(optional: bool, tag: int = 2, root: MIRSlotId = CURRENT) -> MIRPlace:
-    return MIRPlace(root, (MIROptionalPayload(),) if optional else (MIRUnionPayload(tag),))
+    return MIRPlace(root, (MIRUnionPayload(1),) if optional else (MIRUnionPayload(tag),))
+
+
+def test_an_optional_and_a_union_with_none_are_one_sum() -> None:
+    # `int32 | None` as an Optional and as a union laying None out first: the
+    # same `MIRWrap` / `MIRIsAlternative` statements give the same selection
+    # and payload-end facts.
+    def facts(shape) -> tuple:
+        slots = (MIRSlot(CURRENT, shape, MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY),
+                 MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+                 MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL))
+        fn = bind_parameters(MIRFunction(BODY, INT32, slots, (
+            MIRBlock(ENTRY, (MIRAssign(MIRPlace(CURRENT), MIRWrap(1, MIRPlace(VALUE)), storage_write=INIT),
+                             MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (1,)))),
+                     MIRBranch(GUARD, YES, NO)),
+            MIRBlock(YES, (MIRAssign(MIRPlace(CURRENT), MIRWrap(0), storage_write=ASSIGN),), MIRGoto(NO)),
+            MIRBlock(NO, (), MIRReturn(VALUE))), ENTRY))
+        presence = _analyze_presence(fn)
+        ends = analyze_payload_ends(fn)
+        assert isinstance(ends, MIRPayloadEnds)
+        return dict(presence.points), dict(presence.edges), presence.domains, dict(ends.ends)
+
+    payload_shape = leaf_shape(INT32)
+    optional = facts(optional_shape(OptionalType(INT32), payload_shape))
+    union = UnionType((NoneType(), INT32))
+    assert facts(union_shape(union, (None, payload_shape))) == optional
+    assert optional[3] == {MIRPoint(YES, 0): frozenset({MIRPlace(CURRENT, (MIRUnionPayload(1),))})}
 
 
 @pytest.mark.parametrize("optional", [False, True])
@@ -100,7 +126,7 @@ def test_copy_has_independent_payload_storage(optional: bool) -> None:
 
 @pytest.mark.parametrize("optional", [False, True])
 def test_branch_selection_limits_ends_and_omits_infeasible_points(optional: bool) -> None:
-    test = MIRIsPresent(MIRPlace(CURRENT)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (2,))
+    test = MIRIsAlternative(MIRPlace(CURRENT), (1,)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (2,))
     fn = wrapper_function(optional,
         MIRBlock(ENTRY, (write(optional, PARAM, fact=INIT), MIRAssign(MIRPlace(GUARD), test)),
                  MIRBranch(GUARD, YES, NO)),
@@ -135,7 +161,7 @@ def test_missing_fact_is_uncovered_even_on_unreachable_write(optional: bool, unr
     ("assign_first", "assignment before storage initialization"),
     ("double_init", "repeated payload initialization"),
     ("cyclic_init", "payload initialization in cycle"),
-    ("bad_mode", "invalid payload write mode"),
+    ("bad_mode", "invalid storage write fact"),
 ])
 def test_invalid_initialization_contract(optional: bool, malformation: str, message: str) -> None:
     stmts = (write(optional, PARAM, fact=INIT),)
@@ -147,7 +173,7 @@ def test_invalid_initialization_contract(optional: bool, malformation: str, mess
     elif malformation == "cyclic_init":
         term = MIRGoto(ENTRY)
     else:
-        stmts = (replace(stmts[0], storage_write=MIRPayloadWrite("initialize")),)
+        stmts = (replace(stmts[0], storage_write=MIRStorageWrite("initialize")),)
     fn = wrapper_function(optional, MIRBlock(ENTRY, stmts, term))
     with pytest.raises(MIRValidationError, match=message):
         analyze_payload_ends(fn)
@@ -166,9 +192,12 @@ def test_loop_assignments_use_joined_incoming_tags(optional: bool) -> None:
 
 
 def test_payload_fact_cannot_authorize_scalar_or_parameter_writes() -> None:
-    for stmt in (MIRAssign(MIRPlace(GUARD), MIRConstant(True), storage_write=INIT),
-                 write(False, 0, target=PARAM, fact=INIT)):
-        with pytest.raises(MIRValidationError, match="payload write needs a local or temporary scalar wrapper"):
+    # A scalar leaf holds no storage the fact could name; a parameter's payload is the caller's.
+    for stmt, message in ((MIRAssign(MIRPlace(GUARD), MIRConstant(True), storage_write=INIT),
+                           "record write on non-record operation"),
+                          (write(False, 0, target=PARAM, fact=INIT),
+                           "payload write needs a local or temporary scalar wrapper")):
+        with pytest.raises(MIRValidationError, match=message):
             validate_function(wrapper_function(False, MIRBlock(ENTRY, (stmt,), MIRReturn(VALUE))))
 
 
@@ -258,9 +287,9 @@ def source_bodies(compiled) -> dict[str, MIRFunction]:
 @pytest.mark.parametrize("name", ["snapshot", "clear", "replace", "Cell", "readonly_source"])
 def test_source_producers_stamp_initialization_and_assignment(source_bodies: dict[str, MIRFunction], name: str) -> None:
     fn = source_bodies[name]
-    facts = [s.storage_write.mode for b in fn.blocks for s in b.statements if isinstance(s.storage_write, MIRPayloadWrite)]
-    assert facts == ([MIRPayloadWriteMode.INITIALIZE] * (2 if name == "clear" else 1)
-                     + [MIRPayloadWriteMode.ASSIGN])
+    facts = [s.storage_write.mode for b in fn.blocks for s in b.statements if isinstance(s.storage_write, MIRStorageWrite)]
+    assert facts == ([MIRStorageWriteMode.INITIALIZE] * (2 if name == "clear" else 1)
+                     + [MIRStorageWriteMode.IN_PLACE])
     events = analyze_payload_ends(fn)
     assert isinstance(events, MIRPayloadEnds) and len(events.ends) == 1
     affected = next(iter(events.ends.values()))
@@ -268,10 +297,20 @@ def test_source_producers_stamp_initialization_and_assignment(source_bodies: dic
     assert all(p.root == current for p in affected)
 
 
+@pytest.mark.parametrize("name", ["snapshot", "clear", "pointer_reseat"])
+def test_a_scalar_or_lending_wrapper_copy_cannot_raise(source_bodies: dict[str, MIRFunction], name: str) -> None:
+    # A union's or an Optional's copy copies no buffer: its members are
+    # inert scalars or loans of a record.
+    fn = source_bodies[name]
+    copies = [s.value for b in fn.blocks for s in b.statements
+              if isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy)]
+    assert copies and not any(c.may_raise for c in copies)
+
+
 @pytest.mark.parametrize("name", ["pointer_clear", "pointer_reseat"])
 def test_pointer_wrapper_writes_do_not_end_the_pointee(source_bodies: dict[str, MIRFunction], name: str) -> None:
     fn = source_bodies[name]
-    assert not any(isinstance(s.storage_write, MIRPayloadWrite) for b in fn.blocks for s in b.statements)
+    assert not any(isinstance(s.storage_write, MIRStorageWrite) for b in fn.blocks for s in b.statements)
     assert analyze_payload_ends(fn).ends == {}
 
 

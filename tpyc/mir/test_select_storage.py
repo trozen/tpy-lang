@@ -13,11 +13,10 @@ from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from . import lower as lowering
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIROptionalConstruct, MIRPlace, MIRRead, MIRRecordStorageInit,
-    MIRRecordStorageKind, MIRRecordWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRTupleConstruct, MIRUnionConstruct,
+    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRPlace, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRStorageWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRWrap,
 )
-from .shapes import MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
+from .shapes import MIRTupleIndex, MIRUnionPayload
 from .value import MIRShape
 from .region_flow import MIRRegionFlow
 from .storage_adapter import certify_thir_storage
@@ -157,7 +156,7 @@ def test_select_uses_actual_optional_backing(artifacts: Artifacts, name: str) ->
         assert any(isinstance(s, MIRRecordStorageInit) and s.target == place for s in statements)
         write, = (s for s in statements if isinstance(s, MIRAssign) and s.target == place)
         assert isinstance(write.value, MIRConstruct)
-        assert write.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+        assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
         assert any(isinstance(s, MIRAssign) and isinstance(s.value, MIRBorrow) and s.value.source == place
                    for s in statements)
         assert replace(backing.node) not in result.backings
@@ -405,14 +404,14 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
         elif shape == "optional":
             wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(holder.type), borrowed_shape(holder.type)),
                               MIRSlotKind.LOCAL, residence=holder.residence)
-            capture.append(MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder.id))))
-            path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
+            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRWrap(1, MIRPlace(holder.id))))
+            path = MIRPlace(wrapper_id, (MIRUnionPayload(1),))
         else:
             other = hand_record("Other", "select.Other")
             wrapper = MIRSlot(wrapper_id,
                               union_shape(UnionType((holder.type, other)), (borrowed, borrowed_shape(other))),
                               MIRSlotKind.LOCAL, residence=holder.residence)
-            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, MIRPlace(holder.id))))
+            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRWrap(0, MIRPlace(holder.id))))
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
         blocks = []
         for block in function.blocks:

@@ -18,14 +18,16 @@ from .value import MIRRecords
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstant, MIRFunction, MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRRead, MIRSlot,
-    MIRSlotId, MIRSlotKind, place_shape,
+    MIRAssign, MIRBodyId, MIRConstant, MIRFunction, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind, place_shape,
+    MIRWrap, MIRIsAlternative, MIRCopy,
 )
 from .value import MIRField, MIRFieldId
 from .coverage import MIRUnsupported
 from .definitions import constructor_initialization
-from .presence import _State, _may_hold, _reaches, _transfer
-from .shapes import MIRDeref, MIROptionalPayload
+from .dependencies import MIRReferent, analyze_dependencies
+from .liveness import MIRPoint, analyze_liveness
+from .presence import _State, _analyze_presence, _may_hold, _reaches, _transfer
+from .shapes import MIRDeref, MIRUnionPayload
 from .testutil import bind_parameters, borrowed_shape, cursor_shape, leaf_shape, owned_shape, reslot, tuple_shape
 from .validate import validate_function
 from .value import MIRValidationError
@@ -140,6 +142,50 @@ def keep_call(a: H, b: H) -> int32:
         bump_n(b)
         return a.p.x
     return 0
+
+
+def lend(h: H) -> int32:
+    o = h.p
+    if o is not None:
+        return o.x
+    return 0
+
+
+def lend_absent(h: H) -> int32:
+    h.p = None
+    o = h.p
+    if o is not None:
+        return o.x
+    return 0
+
+
+def copy_ro(dst: H, src: readonly[H]) -> None:
+    dst.p = copy(src.p)
+
+
+def lend_ro(h: readonly[H]) -> int32:
+    o = h.p
+    if o is not None:
+        return o.x
+    return 0
+
+
+class S:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class HS:
+    p: S | None
+
+    def __init__(self, p: S | None) -> None:
+        self.p = p
+
+
+def copy_s(dst: HS, src: HS) -> None:
+    dst.p = copy(src.p)
 """
 
 
@@ -243,18 +289,18 @@ def test_a_field_place_carries_an_owned_payload_layout(program: _Program) -> Non
     assert layout(readonly) == owned_shape(program.types["P"], True)
     # A scalar field, the payload itself and the root holder have no wrapper layout.
     assert layout(MIRPlace(holder.id, (MIRDeref(), _member(program, "H.n")))) is None
-    assert layout(MIRPlace(field.root, (*field.projections, MIROptionalPayload()))) is None
+    assert layout(MIRPlace(field.root, (*field.projections, MIRUnionPayload(1)))) is None
     assert layout(MIRPlace(holder.id)) is None
 
 
 @pytest.mark.parametrize("name,init", [
     ("H.__init__", "initialize-receiver %0 (copy %1, %2)"),
-    ("Empty.__init__", "initialize-receiver %0 (absent)"),
+    ("Empty.__init__", "initialize-receiver %0 (wrap[0])"),
     ("Built.__init__", "initialize-receiver %0 (move {%1})"),
 ])
 def test_the_dump_spells_each_optional_member_initializer(program: _Program, name: str, init: str) -> None:
     verdict = program.verdicts[name]
-    assert verdict.status is MIRVerdictStatus.COVERED, verdict.describe()
+    assert verdict.status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED), verdict.describe()
     assert init in dump_function(verdict.function).splitlines()
 
 
@@ -320,8 +366,8 @@ def test_a_narrowed_read_projects_into_the_payload(program: _Program) -> None:
     holder = next(s.id for s in fn.slots if s.name == "h")
     field = MIRPlace(holder, (MIRDeref(), _member(program, "H.p")))
     values = [stmt.value for block in fn.blocks for stmt in block.statements if isinstance(stmt, MIRAssign)]
-    assert MIRIsPresent(field) in values
-    payload_x = MIRPlace(holder, (*field.projections, MIROptionalPayload(), _member(program, "P.x")))
+    assert MIRIsAlternative(field, (1,)) in values
+    payload_x = MIRPlace(holder, (*field.projections, MIRUnionPayload(1), _member(program, "P.x")))
     assert MIRRead(payload_x) in values
 
 
@@ -339,10 +385,10 @@ def test_a_narrowed_read_projects_into_the_payload(program: _Program) -> None:
 def test_a_field_selection_dies_at_a_write_that_may_reach_it(program: _Program, name: str, covered: bool) -> None:
     verdict = program.verdicts[name]
     if covered:
-        assert verdict.status is MIRVerdictStatus.COVERED and not verdict.conflicts, verdict.describe()
+        assert verdict.status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED) and not verdict.conflicts, verdict.describe()
     else:
         assert verdict.status is MIRVerdictStatus.UNCOVERED
-        assert verdict.reason == "optional payload access without current presence proof"
+        assert verdict.reason == "payload access without current presence proof"
 
 
 def test_reaches_decides_overlap_on_places(program: _Program) -> None:
@@ -355,7 +401,7 @@ def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     fact = MIRPlace(a.id, (MIRDeref(), p))
     # Under one root: a prefix either way.
     assert _reaches(MIRPlace(a.id, (MIRDeref(),)), fact, slots, layouts)
-    assert _reaches(MIRPlace(a.id, (MIRDeref(), p, MIROptionalPayload())), fact, slots, layouts)
+    assert _reaches(MIRPlace(a.id, (MIRDeref(), p, MIRUnionPayload(1))), fact, slots, layouts)
     assert not _reaches(MIRPlace(a.id, (MIRDeref(), n)), fact, slots, layouts)
     # Rebinding the holder retargets the fact's place.
     assert _reaches(MIRPlace(a.id), fact, slots, layouts)
@@ -398,7 +444,7 @@ def test_a_whole_field_write_selects_what_it_writes(program: _Program) -> None:
     slots = {holder.id: holder}
     field = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p")))
     state = _State(frozenset({(field, frozenset({1}))}))
-    emptied = _transfer(state, MIRAssign(field, MIROptionalConstruct()), set(), slots=slots, layouts=_declared())
+    emptied = _transfer(state, MIRAssign(field, MIRWrap(0)), set(), slots=slots, layouts=_declared())
     assert emptied.present == frozenset({(field, frozenset({0}))})
     scalar = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.n")))
     kept = _transfer(state, MIRAssign(scalar, MIRConstant(1)), set(), slots=slots, layouts=_declared())
@@ -442,7 +488,7 @@ def test_a_payload_field_write_through_a_readonly_holder_is_refused(program: _Pr
     # rule (lowering builds no such write: "optional field payload write").
     fn = program.verdicts["read"].function
     holder = next(s for s in fn.slots if s.name == "h")
-    payload_x = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p"), MIROptionalPayload(), _member(program, "P.x")))
+    payload_x = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p"), MIRUnionPayload(1), _member(program, "P.x")))
     blocks = list(fn.blocks)
     index, block = next((i, b) for i, b in enumerate(blocks)
                         if any(isinstance(s, MIRAssign) and s.value == MIRRead(payload_x) for s in b.statements))
@@ -457,3 +503,98 @@ def test_a_payload_field_write_through_a_readonly_holder_is_refused(program: _Pr
         validate_function(mutable)
     with pytest.raises(MIRValidationError, match="^store through readonly reference$"):
         validate_function(written)
+
+
+# --- copies of an Optional field ------------------------------------------------------------
+
+def _copy(fn: MIRFunction) -> tuple[MIRPoint, MIRAssign]:
+    return next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
+                if isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy))
+
+
+def test_an_inline_field_copied_into_a_pointer_optional_lends_its_payload(program: _Program) -> None:
+    # `o = h.p`: the copy keeps the field's selection and lends its inline
+    # payload where it lies (`optional_to_ptr`), copying no record.
+    fn = program.verdicts["lend"].function
+    point, copy = _copy(fn)
+    h, o = (next(s for s in fn.slots if s.name == name) for name in ("h", "o"))
+    field = MIRPlace(h.id, (MIRDeref(), _member(program, "H.p")))
+    assert copy.value == MIRCopy(field) and copy.target == MIRPlace(o.id)
+    slots = {s.id: s for s in fn.slots}
+    assert o.shape.payload.is_pointer and place_shape(field, slots, fn.record_layouts).payload.is_storage
+    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    after = dependencies.referents[MIRPoint(point.block, point.index + 1)]
+    payload = MIRPlace(h.id, (_member(program, "H.p"), MIRUnionPayload(1)))
+    assert after[MIRPlace(o.id, (MIRUnionPayload(1),))] == frozenset({MIRReferent(payload, True)})
+    assert program.verdicts["lend"].conflicts == ()
+
+
+def test_an_absent_field_selection_stays_absent_through_the_copy(program: _Program) -> None:
+    # `h.p = None; o = h.p`: the copy selects what the field selects.
+    fn = program.verdicts["lend_absent"].function
+    point, _ = _copy(fn)
+    o = next(s for s in fn.slots if s.name == "o")
+    presence = _analyze_presence(fn)
+    assert dict(presence.points[MIRPoint(point.block, point.index + 1)]).get(MIRPlace(o.id)) == frozenset({0})
+
+
+def test_a_copy_from_a_readonly_holder_into_mutable_storage_validates(program: _Program) -> None:
+    # `dst.p = copy(src.p)` through `readonly[H]`: storage takes a copy, so
+    # no loan of the source's access reaches the target.
+    verdict = program.verdicts["copy_ro"]
+    fn = verdict.function
+    _, copy = _copy(fn)
+    src = next(s for s in fn.slots if s.name == "src")
+    assert src.readonly and copy.value.source.root == src.id and copy.target.projections
+    validate_function(fn)
+    assert verdict.status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED)
+
+
+def _with_copy(fn: MIRFunction, **changes: object) -> MIRFunction:
+    """`fn` with its one copy's value changed (`replace` of the MIRCopy)."""
+    point, copy = _copy(fn)
+    blocks = tuple(replace(b, statements=tuple(replace(s, value=replace(s.value, **changes)) if i == point.index else s
+                                               for i, s in enumerate(b.statements)))
+                   if b.id == point.block else b for b in fn.blocks)
+    return replace(fn, blocks=blocks)
+
+
+def test_a_wrapper_copy_with_a_wrong_exit_fact_is_rejected(program: _Program) -> None:
+    # `dst.p = copy(src.p)` of a loan-free `P` copies no buffer: never may-raise.
+    fn = program.verdicts["copy_ro"].function
+    assert _copy(fn)[1].value.may_raise is False
+    with pytest.raises(MIRValidationError, match="^wrapper copy exit fact mismatch$"):
+        validate_function(_with_copy(fn, may_raise=True))
+
+
+def test_a_wrapper_copy_into_storage_needs_a_copyable_member(program: _Program) -> None:
+    fn = program.verdicts["copy_ro"].function
+    p = program.types["P"]
+    forged = replace(fn, records=tuple(replace(r, copyable=False) if r.type == p else r for r in fn.records))
+    with pytest.raises(MIRValidationError, match="^wrapper copy storage member mismatch$"):
+        validate_function(forged)
+
+
+def test_a_wrapper_copy_of_a_payload_with_a_buffer_may_raise(program: _Program) -> None:
+    # `dst.p = copy(src.p)` with `S.name: str`: the payload's copy copies the
+    # string's buffer, so the copy may raise; a cleared flag is rejected.
+    verdict = program.verdicts["copy_s"]
+    fn = verdict.function
+    _, copy = _copy(fn)
+    assert copy.value.may_raise is True and copy.target.projections
+    validate_function(fn)
+    with pytest.raises(MIRValidationError, match="^wrapper copy exit fact mismatch$"):
+        validate_function(_with_copy(fn, may_raise=False))
+
+
+def test_an_inline_payload_lent_from_a_readonly_holder_stays_readonly(program: _Program) -> None:
+    # `o = h.p` with `h: readonly[H]`: the lent payload holder takes the
+    # access of the place the payload lies in; a mutable `o` is rejected.
+    fn = program.verdicts["lend_ro"].function
+    h, o = (next(s for s in fn.slots if s.name == name) for name in ("h", "o"))
+    assert h.readonly and o.shape.payload.is_pointer and o.shape.payload.readonly
+    validate_function(fn)
+    mutable = reslot(o, members=(None, replace(o.shape.payload, readonly=False)))
+    forged = replace(fn, slots=tuple(mutable if s.id == o.id else s for s in fn.slots))
+    with pytest.raises(MIRValidationError, match="^wrapper copy member type or access mismatch$"):
+        validate_function(forged)

@@ -22,7 +22,7 @@ from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstruct, MIRFunction, MIRMove, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .shapes import MIRContainerElements, MIRDeref, MIROptionalPayload
+from .shapes import MIRContainerElements, MIRDeref, MIRUnionPayload
 from .value import MIRRecords, MIRField, MIRFieldId, MIRValidationError
 from .summaries import _member_chain, _private_records, summarize_function
 from .validate import validate_function
@@ -565,7 +565,7 @@ def test_member_chains_refused(active, shape: str) -> None:
         "foreign_root": MIRPlace(storage, (a, x)),
         # A field before the last must be a record member.
         "scalar_hop": MIRPlace(holder.id, (MIRDeref(), tag, x)),
-        "payload": MIRPlace(holder.id, (MIRDeref(), a, MIROptionalPayload())),
+        "payload": MIRPlace(holder.id, (MIRDeref(), a, MIRUnionPayload(1))),
         "projection": MIRPlace(holder.id, (MIRDeref(), a, MIRContainerElements())),
     }[shape]
     chain = (place, slots, frozenset() if shape == "foreign_root" else private, fn.record_layouts)

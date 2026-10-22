@@ -232,7 +232,7 @@ def test_debug_dump_exposes_temporary_region() -> None:
                              compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
                              compiler.thir_reject_by_node)
     assert "::local@" in output and "owned-storage temporary duration=r1" in output
-    assert "initialize_region" in output and "scope ends" in output
+    assert "initialize" in output and "scope ends" in output
 
 
 def test_metadata_omitted_for_broader_shapes() -> None:

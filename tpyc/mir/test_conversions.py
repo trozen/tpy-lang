@@ -18,7 +18,7 @@ from .coverage import MIRUnsupported
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
 from .emit import Fragment, MIRValue, owned_leaf_shape, view_holder_shape
 from .lower import _Lowering
-from .nodes import MIRConstant, MIRRecordWriteMode
+from .nodes import MIRConstant, MIRStorageWriteMode
 from ..thir.scalar_leaves import MIRClass
 from .value import MIRRole, MIRShape
 
@@ -263,7 +263,7 @@ def test_an_owning_owned_leaf_argument_is_storage_the_call_takes(dumps) -> None:
     lines = dumps["owned_argument"]
     # The callee's own copy: storage of the full expression's region, passed as it is.
     assert "%1: str owned-storage temporary duration=r1 residence=r1" in lines
-    assert "%1 = copy (*%0) may-raise [initialize_region]" in lines
+    assert "%1 = copy (*%0) may-raise [initialize]" in lines
     assert "%2 = call keep(%1) [reader, may-raise]" in lines
     assert not any(" = borrow %1" in line for line in lines)
 
@@ -271,7 +271,7 @@ def test_an_owning_owned_leaf_argument_is_storage_the_call_takes(dumps) -> None:
 def test_a_record_temporary_is_storage_the_call_takes(dumps) -> None:
     lines = dumps["record_argument"]
     assert "%1: P owned-storage temporary duration=r1 residence=r1" in lines
-    assert "%1 = construct (%0) [initialize_region]" in lines
+    assert "%1 = construct (%0) [initialize]" in lines
     assert any(line.startswith("%2 = call adopt(%1) ") for line in lines)
 
 
@@ -279,7 +279,7 @@ def test_a_fresh_operand_is_materialized_then_lent(dumps) -> None:
     lines = dumps["lent_fresh"]
     assert "%3: String owned-storage temporary duration=r1 residence=r1" in lines
     body = lines[lines.index("bb1:") + 1:]
-    start = body.index("%3 = op + (%1, %2) may-raise [initialize_region]")
+    start = body.index("%3 = op + (%1, %2) may-raise [initialize]")
     # The storage, then a holder lending it, then the view the parameter takes.
     assert body[start + 1:start + 3] == ["%4 = borrow %3", "%5 = alias %4"]
 
@@ -287,16 +287,16 @@ def test_a_fresh_operand_is_materialized_then_lent(dumps) -> None:
 def test_a_fresh_value_printed_is_materialized_and_lent_but_sunk_directly(dumps) -> None:
     # Printed: an operand, so storage of the full expression lent through a holder.
     assert _statements(dumps["print_fresh"]) == [
-        "%1 = borrow (*%0)", "%2 = call fresh(%1) [reader, may-raise] [initialize_region]",
+        "%1 = borrow (*%0)", "%2 = call fresh(%1) [reader, may-raise] [initialize]",
         "%3 = borrow %2", "print (%3)", "return"]
     # Sunk: the call initializes the local itself.
     assert _statements(dumps["sink_fresh"]) == [
-        "%1 = borrow (*%0)", "%2 = call fresh(%1) [reader, may-raise] [initialize_once]", "return %2"]
+        "%1 = borrow (*%0)", "%2 = call fresh(%1) [reader, may-raise] [initialize]", "return %2"]
 
 
 def test_a_fresh_value_viewed_is_materialized_lent_and_aliased(dumps) -> None:
     statements = _statements(dumps["fresh_view"])
-    start = statements.index("%3 = op + (%1, %2) may-raise [initialize_region]")
+    start = statements.index("%3 = op + (%1, %2) may-raise [initialize]")
     assert statements[start + 1:start + 4] == ["%4 = borrow %3", "%5 = alias %4", "%6 = call vlen(%5) "
                                                "[reader, may-raise]"]
 
@@ -321,7 +321,7 @@ def test_materialize_registers_its_node_and_refuses_an_unregistered_one() -> Non
     storage = f.materialize(value, "node")
     assert root.active_temporaries == ["node"] and f.holds_region_storage()
     (write,) = f.head.statements
-    assert write.target.root == storage and write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+    assert write.target.root == storage and write.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     # A full expression holding region storage it does not say it needs is a lowering defect.
     with pytest.raises(AssertionError, match="region storage without a region need"):
         _Lowering.whole(None, f, None)
@@ -331,7 +331,7 @@ def test_materialize_registers_its_node_and_refuses_an_unregistered_one() -> Non
 # --- a String read as str (a passthrough) ------------------------------------------
 
 def test_a_string_read_as_str_is_copied_lent_and_viewed_in_place(dumps) -> None:
-    assert _statements(dumps["copy_string"]) == ["%1 = copy (*%0) may-raise [initialize_once]", "return %1"]
+    assert _statements(dumps["copy_string"]) == ["%1 = copy (*%0) may-raise [initialize]", "return %1"]
     # Lent through a holder typed by the family's view.
     assert "%1: StrView readonly-ref temporary residence=r0" in dumps["lend_string"]
     assert _statements(dumps["lend_string"])[:2] == ["%1 = borrow (*%0)", "%2 = call takes(%1) "
@@ -358,15 +358,15 @@ def test_a_lent_string_is_a_str_value_held_through_its_view(unit, monkeypatch) -
 
 def test_a_string_field_and_element_read_as_str_are_one_copy_of_the_place(dumps) -> None:
     assert _statements(dumps["field_passthrough"]) == [
-        "%1 = copy (*%0).__main__.H::name may-raise [initialize_once]", "return %1"]
+        "%1 = copy (*%0).__main__.H::name may-raise [initialize]", "return %1"]
     assert _statements(dumps["element_passthrough"]) == [
-        "%1 = 0", "%2 = copy (*%0)[elements] may-raise [initialize_once]", "return %2"]
+        "%1 = 0", "%2 = copy (*%0)[elements] may-raise [initialize]", "return %2"]
 
 
 # --- static literals, views and borrowed results ----------------------------------------
 
 def test_a_static_literal_is_sunk_and_viewed_as_the_constant(dumps) -> None:
-    assert _statements(dumps["literal_sink"])[0] == "%0 = 'abc' [initialize_region]"
+    assert _statements(dumps["literal_sink"])[0] == "%0 = 'abc' [initialize]"
     assert _statements(dumps["literal_view"])[0] == "%0 = 'abc'"
 
 
@@ -392,7 +392,7 @@ def test_a_view_result_is_passed_as_it_is(dumps) -> None:
 
 def test_an_element_copy_raises_though_its_index_is_proven(dumps) -> None:
     statements = _statements(dumps["safe_element_copy"])
-    assert "%7 = copy (*%0)[elements] may-raise [initialize_region]" in statements
+    assert "%7 = copy (*%0)[elements] may-raise [initialize]" in statements
 
 
 def test_a_borrow_of_an_unproven_element_raises(dumps) -> None:
@@ -473,7 +473,7 @@ def test_an_rvalue_without_a_stated_shape_is_a_lowering_defect() -> None:
 
 
 def test_a_construct_states_record_storage(unit, monkeypatch, dumps) -> None:
-    for body, write in (("e_construct", "initialize_once"), ("e_temporary_field", "initialize_region")):
+    for body, write in (("e_construct", "initialize]"), ("e_temporary_field", "initialize]")):
         (kind, _, shape), = _stated(unit, monkeypatch, body)
         assert kind == "construct" and shape.cls is MIRClass.RECORD and shape.is_storage, body
         assert any(line.startswith("%1 = construct (%0) [" + write) for line in _statements(dumps[body])), body
@@ -483,7 +483,7 @@ def test_a_call_states_its_result_shape(unit, monkeypatch, dumps) -> None:
     # An `Own[R]` result is record storage the caller receives.
     (_, _, shape), = _stated(unit, monkeypatch, "e_call_result")
     assert shape.cls is MIRClass.RECORD and shape.is_storage and str(shape.type) == "P"
-    assert any(line.startswith("%1 = call make_p(%0) ") and line.endswith("[initialize_once]")
+    assert any(line.startswith("%1 = call make_p(%0) ") and line.endswith("[initialize]")
                for line in _statements(dumps["e_call_result"]))
     # A scalar result is a leaf, read into the slot its consumer holds it in.
     (_, _, shape), = (s for s in _stated(unit, monkeypatch, "e_scalar_call") if s[1].callee.identity.name == "takes")
@@ -520,6 +520,6 @@ def test_a_lent_temporary_operand_ends_with_the_initialization(dumps) -> None:
     # It holds exactly the initialization: the operand, its holder, the construct; then it ends.
     block = lines[lines.index(entry + ":") + 1:]
     assert [re.sub(r"%\d+", "%", line) for line in block[:3]] == [
-        "% = 2 [initialize_region]", "% = borrow %", "% = construct (%) [initialize_region]"]
+        "% = 2 [initialize]", "% = borrow %", "% = construct (%) [initialize]"]
     assert block[2].startswith(storage[1] + " = construct") and block[3].startswith("goto ")
     assert f"{entry} edge 0: {operand[2]} {operand[1]}" in lines

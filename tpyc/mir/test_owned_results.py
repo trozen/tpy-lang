@@ -20,7 +20,7 @@ from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRCopy, MIRFunction, MIRMove,
-    MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordStorageInit, MIRRecordWriteMode, MIRReturn, MIRSlot,
+    MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRRecordStorageInit, MIRStorageWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref
@@ -300,7 +300,7 @@ def _returns(fn: MIRFunction) -> list[MIRReturn]:
 
 def _initialization(fn: MIRFunction, slot: MIRSlotId) -> MIRAssign:
     return next(s for b in fn.blocks for s in b.statements
-                if isinstance(s, MIRAssign) and s.target == MIRPlace(slot) and isinstance(s.storage_write, MIRRecordWrite))
+                if isinstance(s, MIRAssign) and s.target == MIRPlace(slot) and isinstance(s.storage_write, MIRStorageWrite))
 
 
 # --- the definition side --------------------------------------------------------------
@@ -339,7 +339,7 @@ def test_anything_else_is_built_into_a_result_slot(active, name: str, value_type
     (ret,) = _returns(fn)
     write = _initialization(fn, ret.value)
     assert isinstance(write.value, value_type)
-    assert write.storage_write == MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)
+    assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
     if value_type is MIRCopy:
         # `return copy(p)` copies through the parameter's holder: C++ `Point(p)`.
         assert write.value.source.projections == (MIRDeref(),)
@@ -350,7 +350,7 @@ def test_each_branch_builds_its_own_result_slot(active) -> None:
     returns = _returns(fn)
     assert len(returns) == 2 and len({r.value for r in returns}) == 2
     modes = {_initialization(fn, r.value).storage_write.mode for r in returns}
-    assert MIRRecordWriteMode.INITIALIZE_REGION in modes
+    assert MIRStorageWriteMode.INITIALIZE in modes
 
 
 @pytest.mark.parametrize("name, reason", [
@@ -450,7 +450,7 @@ def test_an_owned_local_takes_the_call_result(active) -> None:
     borrow = next(s for s in _writes(fn, MIRBorrow) if s.target == MIRPlace(holder.id))
     write = _initialization(fn, borrow.value.source.root)
     assert isinstance(write.value, MIRCall) and write.value.summary.callee.identity.name == "make"
-    assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_ONCE
+    assert write.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     assert write.value.may_raise is not _summary(active, "make").summary.normal_return_only
 
 
@@ -458,10 +458,10 @@ def test_a_reseat_and_an_element_write_replace_in_place(active) -> None:
     reseat = _lowered(active, "reseat")
     holder = _slot(reseat, "p").id
     (replacement,) = [s for s in _writes(reseat, MIRCall) if s.target == MIRPlace(holder, (MIRDeref(),))]
-    assert replacement.storage_write == MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder)
+    assert replacement.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, holder)
     element = _lowered(active, "element")
     (write,) = [s for s in _writes(element, MIRCall) if s.target.projections[-1:] == (MIRContainerElements(),)]
-    assert write.storage_write.mode is MIRRecordWriteMode.IN_PLACE
+    assert write.storage_write.mode is MIRStorageWriteMode.IN_PLACE
 
 
 def test_a_constructor_reseat_with_built_leaf_arguments_is_covered(active) -> None:
@@ -470,7 +470,7 @@ def test_a_constructor_reseat_with_built_leaf_arguments_is_covered(active) -> No
     fn = _lowered(active, "reseat_ctor")
     holder = _slot(fn, "m").id
     (replacement,) = [s for s in _writes(fn, MIRConstruct) if s.target == MIRPlace(holder, (MIRDeref(),))]
-    assert replacement.storage_write == MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder)
+    assert replacement.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, holder)
 
 
 def test_a_handed_over_result_is_the_full_expression_temporary(active) -> None:
@@ -480,7 +480,7 @@ def test_a_handed_over_result_is_the_full_expression_temporary(active) -> None:
     assert temporary.shape.is_storage and temporary.kind is MIRSlotKind.TEMPORARY
     write = _initialization(fn, temporary.id)
     assert isinstance(write.value, MIRCall)
-    assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+    assert write.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     # Handed over with no borrow of it: private storage, so a known summary.
     assert _summary(active, "collect").state is MIRSummaryState.KNOWN
 
@@ -502,7 +502,7 @@ def _retargeted(fn: MIRFunction, callee: str) -> MIRFunction:
     storage = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), owned_shape(point), MIRSlotKind.TEMPORARY,
                       storage_duration=MIRStorageDuration.BODY, residence=fn.regions[0].id)
     write = replace(stmt, target=MIRPlace(storage.id),
-                    storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+                    storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     blocks = tuple(replace(b, statements=tuple(write if s is stmt else s for s in b.statements)) for b in fn.blocks)
     return replace(fn, slots=(*fn.slots, storage), blocks=blocks)
 
@@ -661,7 +661,7 @@ def test_a_reseat_through_a_holder_needs_private_referents(active, through: str)
     fn = replace(fn, blocks=tuple(replace(b, statements=tuple(retarget(s) for s in b.statements))
                                   for b in fn.blocks))
     reseat = MIRAssign(MIRPlace(alias.id, (MIRDeref(),)), make_call,
-                       storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, rebind_owner=alias.id))
+                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, rebind_owner=alias.id))
     fn = _appended(fn, reseat)
     validate_function(fn)
     result = summarize_function(source, fn, active.definitions)
@@ -733,7 +733,7 @@ def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:
 
 def _temporary(fn: MIRFunction) -> MIRSlot:
     """The full-expression storage a call result is materialized in."""
-    region = MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION)
+    region = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
     (write,) = [s for s in _writes(fn, MIRCall) if s.storage_write == region]
     return fn.slots[write.target.root.index]
 

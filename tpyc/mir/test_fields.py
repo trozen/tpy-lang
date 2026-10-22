@@ -20,7 +20,7 @@ from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode,
-    MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
+    MIRNotCovered, MIRPlace, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError
@@ -356,13 +356,13 @@ def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None
     # The by-value argument is the full expression's copy, moved into the field.
     lines = _lines(_body(active, "own_local"))
     assert "%1: str owned-storage temporary duration=r1 residence=r1" in lines
-    assert "%1 = copy (*%0) may-raise [initialize_region]" in lines
-    assert "%2 = construct (%1) [initialize_once]" in lines
+    assert "%1 = copy (*%0) may-raise [initialize]" in lines
+    assert "%2 = construct (%1) [initialize]" in lines
     # A call's fresh result is lent to the member that copies it, and dies with the statement.
     fn = _body(active, "local_call")
     lines = _lines(fn)
-    assert "%2 = call main::make(%1) [reader, may-raise] [initialize_region]" in lines
-    assert "%3 = borrow %2" in lines and "%5 = construct (%3, %4) may-raise [initialize_once]" in lines
+    assert "%2 = call main::make(%1) [reader, may-raise] [initialize]" in lines
+    assert "%3 = borrow %2" in lines and "%5 = construct (%3, %4) may-raise [initialize]" in lines
     storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
     assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
@@ -370,10 +370,10 @@ def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None
 def test_a_caller_construct_copies_a_lent_argument(active) -> None:
     lines = _lines(_body(active, "local_plain"))
     assert "%1 = borrow (*%0)" in lines
-    assert "%3 = construct (%1, %2) may-raise [initialize_once]" in lines
+    assert "%3 = construct (%1, %2) may-raise [initialize]" in lines
     # A static literal is lent the same way.
     lines = _lines(_body(active, "local_literal"))
-    assert "%0 = 'lit'" in lines and "%2 = construct (%0, %1) may-raise [initialize_once]" in lines
+    assert "%0 = 'lit'" in lines and "%2 = construct (%0, %1) may-raise [initialize]" in lines
 
 
 def test_a_caller_construct_copies_through_a_view_argument(active) -> None:
@@ -381,8 +381,8 @@ def test_a_caller_construct_copies_through_a_view_argument(active) -> None:
     # own borrow: the inferred view local is lent as it is, the member init is
     # the copy.
     for name, lent, construct in (
-            ("ctor_from_view", "%2 = borrow (*%0)", "%4 = construct (%2, %3) may-raise [initialize_once]"),
-            ("ctor_from_string", "%1 = borrow (*%0)", "%3 = construct (%1, %2) may-raise [initialize_once]")):
+            ("ctor_from_view", "%2 = borrow (*%0)", "%4 = construct (%2, %3) may-raise [initialize]"),
+            ("ctor_from_string", "%1 = borrow (*%0)", "%3 = construct (%1, %2) may-raise [initialize]")):
         fn = _body(active, name)
         lines = _lines(fn)
         assert lent in lines and construct in lines, name
@@ -399,7 +399,7 @@ def test_a_field_read_borrows_or_copies_the_field_place(active) -> None:
     lines = _lines(_body(active, "read_len"))
     assert "%1 = borrow (*%0).__main__.Rec::name" in lines
     assert "%2 = call stub tpy._builtins._funcs.len[Sized](%1) [pure, reader, may-raise]" in lines
-    assert "%1 = copy (*%0).__main__.Rec::name may-raise [initialize_once]" in _lines(_body(active, "read_copy"))
+    assert "%1 = copy (*%0).__main__.Rec::name may-raise [initialize]" in _lines(_body(active, "read_copy"))
     deps = analyze_dependencies(_body(active, "read_len"), analyze_liveness(_body(active, "read_len")))
     holder = MIRPlace(_body(active, "read_len").slots[1].id)
     assert deps.referents[MIRPoint(_body(active, "read_len").blocks[0].id, 1)][holder] == frozenset({
@@ -448,7 +448,7 @@ def test_sibling_fields_and_copies_do_not_conflict(active) -> None:
     assert _retention(_body(active, "sibling")).conflicts == ()
     # The copy is the body's own: a later write to the field cannot reach it.
     fn = _body(active, "copy_then_write")
-    assert "%2 = copy (*%0).__main__.Rec::name may-raise [initialize_once]" in _lines(fn)
+    assert "%2 = copy (*%0).__main__.Rec::name may-raise [initialize]" in _lines(fn)
     assert _retention(fn).conflicts == ()
 
 
@@ -616,7 +616,7 @@ def test_validator_checks_construct_and_field_write_facts(active) -> None:
     is_write = lambda s: isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy) and s.target.projections
     with pytest.raises(MIRValidationError, match="field write needs a replacement fact"):
         validate_function(patched(is_write, lambda s: replace(
-            s, storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))))
+            s, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))))
     with pytest.raises(MIRValidationError, match="copy exit fact mismatch"):
         validate_function(patched(is_write, lambda s: replace(s, value=replace(s.value, may_raise=False))))
 

@@ -13,10 +13,10 @@ from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered,
-    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRRegion,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration, MIRWrap, MIRIsAlternative, MIRCopy,
 )
-from .shapes import MIROptionalPayload
+from .shapes import MIRUnionPayload
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
 from .validate import validate_function
 from .value import MIRValidationError
@@ -370,8 +370,8 @@ def region_fixture() -> MIRFunction:
     value, flag, local = (MIRSlotId(body, i) for i in range(3))
     entry, iteration, after = (MIRBlockId(body, i) for i in range(3))
     root, child = (MIRRegionId(body, i) for i in range(2))
-    init = MIRAssign(MIRPlace(local), MIROptionalConstruct(MIRPlace(value)),
-                     storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
+    init = MIRAssign(MIRPlace(local), MIRWrap(1, MIRPlace(value)),
+                     storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     return bind_parameters(MIRFunction(body, INT32, (
         MIRSlot(value, leaf_shape(INT32), MIRSlotKind.PARAMETER),
         MIRSlot(flag, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
@@ -389,7 +389,7 @@ def test_fresh_loop_activation_has_one_static_end() -> None:
     assert isinstance(result, MIRScopeEnds)
     assert tuple(result.ends) == (MIREdge(fn.blocks[1].id),)
     event, = result.ends[MIREdge(fn.blocks[1].id)]
-    assert event.payloads == frozenset({MIRPlace(fn.slots[2].id, (MIROptionalPayload(),))})
+    assert event.payloads == frozenset({MIRPlace(fn.slots[2].id, (MIRUnionPayload(1),))})
 
 
 @pytest.mark.parametrize("damage, message", [
@@ -398,7 +398,6 @@ def test_fresh_loop_activation_has_one_static_end() -> None:
     ("foreign", "storage region"),
     ("parent", "ancestry"),
     ("outside_read", "outside binding residence"),
-    ("wrong_mode", "activation initialization"),
     ("body_residence", "body storage has nested residence"),
     ("interior_entry", "entry into region interior"),
     ("read_before_init", "read before definite assignment"),
@@ -416,16 +415,13 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
         fn = replace(fn, regions=(fn.regions[0], replace(fn.regions[1], parent=fn.regions[1].id)))
     elif damage == "outside_read":
         fn = replace(fn, blocks=(entry, iteration, replace(after, statements=iteration.statements)))
-    elif damage == "wrong_mode":
-        stmt = replace(iteration.statements[0], storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE))
-        fn = replace(fn, blocks=(entry, replace(iteration, statements=(stmt,)), after))
     elif damage == "body_residence":
         fn = bind_parameters(replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], storage_duration=MIRStorageDuration.BODY))))
     elif damage == "interior_entry":
         interior = replace(iteration, id=MIRBlockId(fn.id, 3), statements=())
         fn = replace(fn, blocks=(replace(entry, terminator=MIRGoto(interior.id)), iteration, after, interior))
     elif damage == "read_before_init":
-        read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(MIRPlace(fn.slots[2].id)))
+        read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsAlternative(MIRPlace(fn.slots[2].id), (1,)))
         fn = replace(fn, blocks=(entry, replace(iteration, statements=(read, *iteration.statements)), after))
     with pytest.raises(MIRValidationError, match=message):
         validate_function(fn)
@@ -434,7 +430,7 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
 def test_skipped_region_and_absent_payload_are_distinct() -> None:
     fn = region_fixture()
     entry, iteration, after = fn.blocks
-    empty = replace(iteration.statements[0], value=MIROptionalConstruct())
+    empty = replace(iteration.statements[0], value=MIRWrap(0))
     absent = replace(fn, blocks=(entry, replace(iteration, statements=(empty,)), after))
     result = analyze_scope_ends(absent)
     assert len(result.ends) == 1
@@ -449,9 +445,9 @@ def test_edge_selection_survives_equal_branch_destinations() -> None:
     entry, iteration, after = fn.blocks
     parameter = replace(fn.slots[0], shape=optional_shape(OptionalType(INT32), leaf_shape(INT32)))
     guard = MIRSlot(MIRSlotId(fn.id, 3), leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=iteration.region)
-    from_source = replace(iteration.statements[0], value=MIROptionalCopy(MIRPlace(parameter.id)))
+    from_source = replace(iteration.statements[0], value=MIRCopy(MIRPlace(parameter.id)))
     fn = bind_parameters(replace(fn, return_type=BOOL, slots=(parameter, *fn.slots[1:], guard), blocks=(
-        entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsPresent(MIRPlace(fn.slots[2].id)))),
+        entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsAlternative(MIRPlace(fn.slots[2].id), (1,)))),
                        terminator=MIRBranch(guard.id, after.id, after.id)),
         replace(after, terminator=MIRReturn(fn.slots[1].id)))))
     result = analyze_scope_ends(fn)

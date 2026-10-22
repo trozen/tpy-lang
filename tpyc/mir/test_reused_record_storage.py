@@ -14,7 +14,7 @@ from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRMove,
-    MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRStorageDuration,
 )
 from .shapes import MIRDeref
@@ -49,7 +49,7 @@ def optional_transfers(fn: MIRFunction, move: bool) -> MIRFunction:
     slot = MIRSlot(source, owned_shape(optional.CELL), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
                    residence=optional.ROOT)
     init = MIRAssign(MIRPlace(source), MIRConstruct((optional.VALUE,)),
-                     storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+                     storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     blocks = tuple(replace(block, statements=tuple(
         replace(stmt, value=MIRMove(source) if move else MIRCopy(MIRPlace(source)))
         if isinstance(stmt, MIRAssign) and stmt.target == optional.WRITE.target else stmt
@@ -115,7 +115,7 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool,
     # CURRENT and SAVED both point at BACKING; root-ID inequality is not referent disjointness.
     value = MIRMove(optional.BACKING) if move else MIRCopy(MIRPlace(optional.SAVED, (MIRDeref(),)))
     write = MIRAssign(MIRPlace(optional.CURRENT, (MIRDeref(),)), value,
-                      storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, optional.CURRENT))
+                      storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, optional.CURRENT))
     fn = optional.function(MIRBlock(optional.ENTRY, (
         optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, read),
         MIRReturn(optional.RESULT), optional.ROOT))
@@ -134,13 +134,13 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool,
 @pytest.mark.parametrize("move", [False, True])
 @pytest.mark.parametrize("mode,reason", [
     (None, "unsupported record replacement"),
-    (MIRRecordWriteMode.OWN_SITE, "backing write needs private body storage"),
-    (MIRRecordWriteMode.OPTIONAL_ASSIGN, "invalid optional backing assignment"),
+    (MIRStorageWriteMode.OWN_SITE, "backing write needs private body storage"),
+    (MIRStorageWriteMode.OPTIONAL_ASSIGN, "invalid optional backing assignment"),
 ])
-def test_projected_transfer_requires_in_place_fact(move: bool, mode: MIRRecordWriteMode | None, reason: str) -> None:
+def test_projected_transfer_requires_in_place_fact(move: bool, mode: MIRStorageWriteMode | None, reason: str) -> None:
     write = MIRAssign(MIRPlace(optional.CURRENT, (MIRDeref(),)),
                       MIRMove(optional.BACKING) if move else MIRCopy(MIRPlace(optional.BACKING)),
-                      storage_write=MIRRecordWrite(mode) if mode is not None else None)
+                      storage_write=MIRStorageWrite(mode) if mode is not None else None)
     fn = optional.function(MIRBlock(optional.ENTRY, (
         optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, optional.READ),
         MIRReturn(optional.RESULT), optional.ROOT))
@@ -211,7 +211,7 @@ def test_internal_hoisted_transfer_preserves_source_read_form(hoist: tuple[th.TH
     assert isinstance(result, MIRFunction), result
     assert execute(result, False) == 0 and execute(result, True) == 3
     transfer, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, (MIRCopy, MIRMove)))
-    assert transfer.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+    assert transfer.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     bad = replace(changed, value=replace(value, form=th.Form.VALUE))
     with pytest.raises(THIRValidationError, match="invalid optional record assignment fact"):
         validate_thir(replace(fn, body=(fn.body[0], replace(branch, then_body=(bad,)), *fn.body[2:])))

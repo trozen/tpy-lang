@@ -14,11 +14,10 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPlace,
-    MIRReturn,
+    MIRAssign, MIRBlock, MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRReturn, MIRWrap, MIRCopy,
 )
 from .value import MIRFieldId, MIRValidationError
-from .testutil import bind_parameters, Heap, OptionalValue, Reference, execute, reslot
+from .testutil import bind_parameters, Heap, optional_value, Reference, execute, reslot
 from .validate import validate_function as validate_mir
 from ..thir.scalar_leaves import MIRClass
 
@@ -145,14 +144,14 @@ def test_scalar_snapshots_and_presence(artifacts: Artifacts, payload: int | None
     expected = 13 if payload is None else payload
     for name in ("scalar", "early", "narrowed_copy"):
         fn = lower(functions[name])
-        args = (OptionalValue(payload),) if name == "early" else (OptionalValue(payload), 42)
+        args = (optional_value(payload),) if name == "early" else (optional_value(payload), 42)
         assert execute(fn, *args) == expected
         assert dump_function(fn) == dump_function(lower(functions[name]))
 
 
 @pytest.mark.parametrize("payload", [None, False, True])
 def test_false_is_a_present_payload(artifacts: Artifacts, payload: bool | None) -> None:
-    assert execute(lower(artifacts[0]["boolean"]), OptionalValue(payload)) is (
+    assert execute(lower(artifacts[0]["boolean"]), optional_value(payload)) is (
         True if payload is None else payload)
 
 
@@ -162,7 +161,7 @@ def test_record_copy_does_not_follow_holder_clear(artifacts: Artifacts, identity
     member = MIRFieldId(fn.slots[0].shape.payload.type, "value")
     heap: Heap = {1: {member: 2}, 2: {member: 3}}
     payload = Reference(identity) if identity is not None else None
-    assert execute(fn, OptionalValue(payload), Reference(1), heap=heap) == (9 if identity == 1 else 2)
+    assert execute(fn, optional_value(payload), Reference(1), heap=heap) == (9 if identity == 1 else 2)
     assert heap[1][member] == (9 if identity == 1 else 2)
     assert heap[2][member] == (9 if identity == 2 else 3)
 
@@ -172,7 +171,7 @@ def test_readonly_alias_observes_mutation(artifacts: Artifacts, shared: bool) ->
     fn = lower(artifacts[0]["readonly_alias"])
     member = MIRFieldId(fn.slots[0].shape.payload.type, "value")
     heap: Heap = {1: {member: 2}, 2: {member: 3}}
-    assert execute(fn, OptionalValue(Reference(1 if shared else 2)), Reference(1), heap=heap) == (
+    assert execute(fn, optional_value(Reference(1 if shared else 2)), Reference(1), heap=heap) == (
         12 if shared else 3)
 
 
@@ -181,7 +180,7 @@ def test_loop_guard_is_retested_after_clear(artifacts: Artifacts, present: bool)
     fn = lower(artifacts[0]["loop"])
     member = MIRFieldId(fn.slots[0].shape.payload.type, "value")
     heap: Heap = {1: {member: 2}}
-    assert execute(fn, OptionalValue(Reference(1) if present else None), heap=heap) == 0
+    assert execute(fn, optional_value(Reference(1) if present else None), heap=heap) == 0
     assert heap[1][member] == (9 if present else 2)
 
 
@@ -190,9 +189,9 @@ def test_loop_guard_is_retested_after_clear(artifacts: Artifacts, present: bool)
 def test_lazy_guards_and_join(artifacts: Artifacts, flag: bool, payload: int | None) -> None:
     functions, _ = artifacts
     value = 13 if payload is None else payload
-    assert execute(lower(functions["lazy"]), OptionalValue(payload), flag) == (value if flag else 13)
-    assert execute(lower(functions["lazy_or"]), OptionalValue(payload), flag) == (13 if flag else value)
-    assert execute(lower(functions["scalar_reseat"]), OptionalValue(payload), flag) == (13 if flag else value)
+    assert execute(lower(functions["lazy"]), optional_value(payload), flag) == (value if flag else 13)
+    assert execute(lower(functions["lazy_or"]), optional_value(payload), flag) == (13 if flag else value)
+    assert execute(lower(functions["scalar_reseat"]), optional_value(payload), flag) == (13 if flag else value)
 
 
 def test_shared_parameter_and_declaration_producers(artifacts: Artifacts) -> None:
@@ -206,7 +205,7 @@ def test_shared_parameter_and_declaration_producers(artifacts: Artifacts) -> Non
     result = lower_function(method, MIRBodyId("optionals", "observe"))
     assert isinstance(result, MIRFunction)
     value = MIRFieldId(method.receiver.type, "value")
-    assert execute(result, Reference(1), OptionalValue(Reference(1)), heap={1: {value: 1}}) == 9
+    assert execute(result, Reference(1), optional_value(Reference(1)), heap={1: {value: 1}}) == 9
 
 
 def test_missing_read_or_binding_fact_is_uncovered(artifacts: Artifacts) -> None:
@@ -324,12 +323,12 @@ def test_internal_record_member_assembly(artifacts: Artifacts) -> None:
                        body=(replace(decl, init=member), *fn.body[1:])))
     field = MIRFieldId(decl.optional_layout.payload.type, "value")
     heap: Heap = {1: {field: 2}}
-    assert execute(ir, OptionalValue(None), Reference(1), heap=heap) == 9
+    assert execute(ir, optional_value(None), Reference(1), heap=heap) == 9
 
 
 def test_internal_readonly_optional_store_is_rejected(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["records"])
-    readonly = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
+    readonly = tuple(reslot(s, members=(None, replace(s.shape.payload, readonly=True)))
                      if s.shape.cls is MIRClass.OPTIONAL else s for s in fn.slots)
     from_fn = bind_parameters(replace(fn, slots=readonly))
     with pytest.raises(MIRValidationError, match="readonly reference"):
@@ -344,10 +343,10 @@ def test_optional_transfer_capabilities(artifacts: Artifacts, copy: bool,
     slots = list(fn.slots)
     source = next(s for s in slots if s.name == ("a" if copy else "other"))
     target = next(s for s in slots if s.name == "current")
-    slots[source.id.index] = (reslot(source, members=(replace(source.shape.payload, readonly=source_readonly),))
+    slots[source.id.index] = (reslot(source, members=(None, replace(source.shape.payload, readonly=source_readonly)))
                               if copy else reslot(source, readonly=source_readonly))
-    slots[target.id.index] = reslot(target, members=(replace(target.shape.payload, readonly=target_readonly),))
-    operation = MIROptionalCopy(MIRPlace(source.id)) if copy else MIROptionalConstruct(MIRPlace(source.id))
+    slots[target.id.index] = reslot(target, members=(None, replace(target.shape.payload, readonly=target_readonly)))
+    operation = MIRCopy(MIRPlace(source.id)) if copy else MIRWrap(1, MIRPlace(source.id))
     root = fn.blocks[0].region
     block = MIRBlock(fn.entry, (MIRAssign(MIRPlace(target.id), operation),), MIRReturn(), root)
     fn = bind_parameters(replace(fn, slots=tuple(replace(s, residence=root) if s.residence else s for s in slots),

@@ -11,10 +11,10 @@ from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId, MIROptionalConstruct, MIRUnionConstruct, MIRTupleConstruct,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId, MIRTupleConstruct, MIRWrap,
 )
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
 )
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .retention import may_overlap
@@ -112,13 +112,13 @@ def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> No
     match shape:
         case "optional":
             slot = MIRSlot(saved, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
-            value, projection = MIROptionalConstruct(MIRPlace(FIRST)), MIROptionalPayload()
+            value, projection = MIRWrap(1, MIRPlace(FIRST)), MIRUnionPayload(1)
         case "union":
             other = hand_record("Other", "iteration.Other")
             fn = replace(fn, records=(*fn.records, MIRRecordLayout(other, (), True, True)))
             slot = MIRSlot(saved, union_shape(UnionType((CELL, other)), (member, borrowed_shape(other))),
                            MIRSlotKind.LOCAL)
-            value, projection = MIRUnionConstruct(0, MIRPlace(FIRST)), MIRUnionPayload(0)
+            value, projection = MIRWrap(0, MIRPlace(FIRST)), MIRUnionPayload(0)
         case "tuple":
             slot = MIRSlot(saved, tuple_shape(TupleType((CELL,)), (member,)), MIRSlotKind.LOCAL)
             value, projection = MIRTupleConstruct((FIRST,)), MIRTupleIndex(0)

@@ -26,10 +26,10 @@ from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct,
-    MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove,
-    MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCallStmt, MIRConstant,
+    MIRConstruct, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead,
+    MIRMove, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
+    MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref
 from ..thir.scalar_leaves import MIRClass
@@ -138,7 +138,7 @@ def scalar(index: int, typ=INT32, kind: MIRSlotKind = MIRSlotKind.TEMPORARY) -> 
     return MIRSlot(sid(index), leaf_shape(typ), kind)
 
 
-def assign(target, value, *projections, write: MIRRecordWrite | None = None) -> MIRAssign:
+def assign(target, value, *projections, write: MIRStorageWrite | None = None) -> MIRAssign:
     return MIRAssign(MIRPlace(target if isinstance(target, MIRSlotId) else sid(target), projections),
                      value, storage_write=write)
 
@@ -294,9 +294,9 @@ def element_borrow(*tail, live_after: bool = True, container_live: bool = False,
 
 
 CONSTRUCT = (assign(3, MIRConstant(1)), assign(2, MIRConstruct((sid(3),)),
-                                               write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)))
+                                               write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)))
 APPEND = MIRCallStmt(MIRCall(append_summary(), (sid(0), sid(2)), True))
-SETITEM = assign(0, MIRMove(sid(2)), DEREF, ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(0)))
+SETITEM = assign(0, MIRMove(sid(2)), DEREF, ELEMENTS, write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, sid(0)))
 
 
 def test_element_borrow_resolves_to_the_elements_region() -> None:
@@ -372,7 +372,7 @@ def test_a_cursor_over_owned_container_storage_depends_on_its_regions() -> None:
     slots = [owned(0, INTS, INT_LAYOUT, name="xs"),
              MIRSlot(sid(1), cursor_shape(INTS, members=INT_LAYOUT), MIRSlotKind.TEMPORARY), scalar(2, BOOL),
              scalar(3)]
-    built = assign(0, MIRConstruct((), True), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
+    built = assign(0, MIRConstruct((), True), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     fn = body(slots, MIRBlock(bid(0), (built, assign(1, MIRIteratorInit(sid(0))), assign(2, MIRIteratorHasNext(sid(1))),
                                        assign(3, MIRConstant(0))), MIRReturn(sid(3))), records=())
     deps = analyze_dependencies(fn, analyze_liveness(fn))
@@ -438,7 +438,7 @@ def test_container_holder_is_never_reached_by_its_own_writes() -> None:
 def test_elements_write_under_a_live_element_borrow_conflicts() -> None:
     fn = element_borrow(*CONSTRUCT, SETITEM)
     writes = analyze_storage(fn).writes
-    assert {p for p, s in writes.items() if s.storage_write.mode is MIRRecordWriteMode.IN_PLACE} == {
+    assert {p for p, s in writes.items() if s.storage_write.mode is MIRStorageWriteMode.IN_PLACE} == {
         MIRPoint(bid(0), 3)}
     assert conflicts(fn) == {(place(1), place(0, ELEMENTS))}
 
@@ -466,7 +466,7 @@ def iterate(*loop_tail) -> MIRFunction:
 INT_APPEND = (assign(3, MIRConstant(1)),
               MIRCallStmt(MIRCall(append_summary(INTS, INT32, ParamPassing.VALUE), (sid(0), sid(3)), True)))
 INT_SETITEM = (assign(3, MIRConstant(1)),
-               assign(0, MIRRead(place(3)), DEREF, ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(0))))
+               assign(0, MIRRead(place(3)), DEREF, ELEMENTS, write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, sid(0))))
 
 
 def test_shape_write_inside_a_loop_reaches_the_live_iterator() -> None:
@@ -488,7 +488,7 @@ def test_an_elements_write_through_a_span_reaches_the_live_iterator() -> None:
     # `s = xs[0:2]; for x in xs: s[0] = 1`: the write lands in the region
     # the Span views, which the cursor over `xs` retains.
     fn = iterate(assign(3, MIRConstant(1)),
-                 assign(7, MIRRead(place(3)), ELEMENTS, write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, sid(7))))
+                 assign(7, MIRRead(place(3)), ELEMENTS, write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, sid(7))))
     view = assign(7, MIRBorrow(place(0, DEREF, ELEMENTS)))
     fn = replace(fn, slots=(*fn.slots, holder(7, SPAN, name="s")),
                  blocks=(replace(fn.blocks[0], statements=(view, *fn.blocks[0].statements)), *fn.blocks[1:]))
@@ -537,10 +537,10 @@ def moved(*, live: bool) -> MIRFunction:
     slots = (owned(0, INTS, INT_LAYOUT, name="xs"), holder(1, SPAN, name="s"),
              owned(2, INTS, INT_LAYOUT, name="ys"), scalar(3), scalar(4))
     stmts = (assign(3, MIRConstant(1)),
-             assign(0, MIRConstruct((sid(3),), True), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
+             assign(0, MIRConstruct((sid(3),), True), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
              assign(1, MIRBorrow(place(0, ELEMENTS))),
              assign(4, MIRRead(place(1, ELEMENTS))) if not live else assign(4, MIRConstant(0)),
-             assign(2, MIRMove(sid(0)), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)))
+             assign(2, MIRMove(sid(0)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)))
     if live:
         stmts += (assign(4, MIRRead(place(1, ELEMENTS))),)
     return body(slots, MIRBlock(bid(0), stmts, MIRReturn(sid(4))), records=())
@@ -579,7 +579,7 @@ def grow_body(compiled) -> MIRFunction:
     call = MIRCall(append_summary(container.type, cell), (sid(0), sid(1)), True)
     return MIRFunction(B, VoidType(), slots, (MIRBlock(bid(0), (
         assign(2, MIRConstant(1)),
-        assign(1, MIRConstruct((sid(2),)), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
+        assign(1, MIRConstruct((sid(2),)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         MIRCallStmt(call)), MIRReturn(None)),), bid(0), records=(record,), call_summaries=(call.summary,),
         exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields())
 
@@ -608,7 +608,7 @@ def test_a_private_container_write_keeps_the_summary_known(compiled) -> None:
     xs = MIRSlot(sid(4), borrowed_shape(cells, members=(owned_shape(cell),)), MIRSlotKind.LOCAL, "xs")
     call = MIRCall(append_summary(cells, cell), (sid(4), sid(1)), True)
     block = replace(fn.blocks[0], statements=(
-        assign(3, MIRConstruct((), True), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
+        assign(3, MIRConstruct((), True), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         assign(4, MIRBorrow(place(3))), *fn.blocks[0].statements[:2], MIRCallStmt(call)))
     result = summarize_function(decl, replace(fn, slots=(*fn.slots, storage, xs), blocks=(block,),
                                               call_summaries=(call.summary,), containers=(cells,)),
@@ -702,7 +702,7 @@ def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> 
     def body(field: MIRField) -> MIRFunction:
         return MIRFunction(B, VoidType(), (b, owned(1, cell), scalar(2), temp), (MIRBlock(bid(0), (
             assign(2, MIRConstant(2)),
-            assign(1, MIRConstruct((sid(2),)), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
+            assign(1, MIRConstruct((sid(2),)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
             assign(3, MIRBorrow(place(0, MIRDeref(), field))), MIRCallStmt(call)), MIRReturn(None)),), bid(0),
             records=(record, MIRRecordLayout(bag, (field,), True, True)), call_summaries=(call.summary,),
             exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields())

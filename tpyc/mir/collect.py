@@ -14,7 +14,7 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
-from ..thir.scalar_leaves import MIRClass
+from ..thir.scalar_leaves import MIRClass, value_class
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRAliasObligation, MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
@@ -29,20 +29,21 @@ from .emit import slot_occurrences
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRMemberInitMode, MIRNotCovered,
-    MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, function_body_kind, source_order, statement_target, place_shape,
+    MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
+    place_shape,
 )
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRShape
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )
 from .retention import (
-    INITIALIZING_WRITES, MIRRetention, MIRRetentionClasses, analyze_body_retention, classify_retention,
+    MIRRetention, MIRRetentionClasses, analyze_body_retention, classify_retention,
     dump_retention, static_referent,
 )
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload,
-    object_prefix,
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, object_prefix,
+    optional_payload,
 )
 from .storage import MIRStorageEvents, dump_storage, owned_field
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
@@ -590,10 +591,10 @@ class _Spelling:
                     continue
                 case MIRTupleIndex(index=index):
                     step = f"[{index}]"
-                case MIROptionalPayload():
-                    step = "[payload]"
                 case MIRUnionPayload(alternative=alternative):
-                    step = f"[alt{alternative}]"
+                    # Annotations spell an Optional's payload by its name.
+                    held = None if holder is None else value_class(unwrap_readonly(holder))
+                    step = "[payload]" if optional_payload(held, projection) else f"[alt{alternative}]"
                 case MIRContainerStructure():
                     step = "[structure]"
                 case MIRContainerElements():
@@ -622,8 +623,11 @@ def _value_write(shape: MIRShape) -> MIRWriteKind | None:
 def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
                   records: Mapping[TpyType, MIRRecordLayout]) -> MIRWriteKind | None:
     match place.projections:
-        case () | (*_, MIRTupleIndex() | MIROptionalPayload() | MIRContainerElements()):
+        case () | (*_, MIRTupleIndex() | MIRContainerElements()):
             # A slot's own value, a wrapper's member, a container element.
+            return _value_write(place_shape(place, slots, records))
+        case (*_, MIRUnionPayload() as payload) if optional_payload(
+                place_shape(MIRPlace(place.root, place.projections[:-1]), slots, records).cls, payload):
             return _value_write(place_shape(place, slots, records))
         case (*_, MIRDeref()):
             # Whole storage a holder points at: storage_destination's replacement.
@@ -701,7 +705,8 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 writes.setdefault((line, spelled), []).append(
                     MIRLineWrite(block.id.index, _written_kind(target, slots, records), copy))
             mode = modes.get(MIRPoint(block.id, index))
-            if mode is not None and mode not in INITIALIZING_WRITES and (spelled := _spell(target, storage)) is not None:
+            if (mode is not None and mode is not MIRStorageWriteMode.INITIALIZE
+                    and (spelled := _spell(target, storage)) is not None):
                 replaced.setdefault((line, spelled), []).append(mode.name.lower())
 
     if not isinstance(events, MIRNotCovered):

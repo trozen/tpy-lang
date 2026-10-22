@@ -10,9 +10,8 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRIsAlternative,
-    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit,
-    MIRUnionConstruct, MIRUnionCopy,
+    MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
+    MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRWrap, MIRCopy,
 )
 from .shapes import MIRUnionPayload
 from .payload_lifetime import analyze_payload_ends
@@ -28,7 +27,7 @@ BODY = MIRBodyId("storage_initialization", "example")
 CURRENT, VALUE, FLAG, GUARD = (MIRSlotId(BODY, i) for i in range(4))
 ENTRY, YES, NO, JOIN = (MIRBlockId(BODY, i) for i in range(4))
 ROOT, CHILD = (MIRRegionId(BODY, i) for i in range(2))
-ASSIGN = MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN)
+ASSIGN = MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
 SHAPES = ("optional_int", "optional_bool", "union_none", "union_bool", "union_int")
 
 
@@ -54,9 +53,9 @@ def initialize(shape: str) -> MIRStorageInit:
 
 def write(shape: str) -> MIRAssign:
     if shape.startswith("optional"):
-        value = MIROptionalConstruct(MIRPlace(FLAG if shape == "optional_bool" else VALUE))
+        value = MIRWrap(1, MIRPlace(FLAG if shape == "optional_bool" else VALUE))
     else:
-        value = MIRUnionConstruct(2 if shape == "union_none" else 1,
+        value = MIRWrap(2 if shape == "union_none" else 1,
                                   MIRPlace(FLAG if shape == "union_int" else VALUE))
     return MIRAssign(MIRPlace(CURRENT), value, storage_write=ASSIGN)
 
@@ -96,9 +95,9 @@ def test_first_source_write_assigns_existing_storage(shape: str) -> None:
 def test_default_tag_cannot_authorize_source_reads(optional: bool, operation: str) -> None:
     shape = "optional_int" if optional else "union_bool"
     if operation == "test":
-        stmt = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (0,)))
+        stmt = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (1,)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (0,)))
     else:
-        stmt = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(CURRENT)) if optional else MIRUnionCopy(MIRPlace(CURRENT)),
+        stmt = MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(CURRENT)) if optional else MIRCopy(MIRPlace(CURRENT)),
                          storage_write=ASSIGN)
     fn = function(shape, MIRBlock(ENTRY, (initialize(shape), stmt), MIRReturn(VALUE), ROOT))
     with pytest.raises(MIRDefiniteAssignmentError, match="read before definite assignment"):
@@ -110,7 +109,7 @@ def test_default_tag_cannot_authorize_source_reads(optional: bool, operation: st
 @pytest.mark.parametrize("shape", ["optional_int", "union_bool"])
 def test_conditional_assignment_does_not_assign_the_missing_arm(shape: str) -> None:
     optional = shape.startswith("optional")
-    test = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (0,)))
+    test = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (1,)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (0,)))
     fn = function(shape,
         MIRBlock(ENTRY, (initialize(shape),), MIRBranch(FLAG, YES, NO), ROOT),
         MIRBlock(YES, (write(shape),), MIRGoto(JOIN), ROOT),
@@ -134,7 +133,7 @@ def test_conditional_construction_is_a_may_end_but_not_a_must_write() -> None:
 
 @pytest.mark.parametrize("shape", ["optional_int", "union_bool"])
 def test_source_assignment_enables_tests_but_a_zero_trip_loop_does_not(shape: str) -> None:
-    guard = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)) if shape == "optional_int"
+    guard = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (1,)) if shape == "optional_int"
                       else MIRIsAlternative(MIRPlace(CURRENT), (1,)))
     good = function(shape, MIRBlock(ENTRY, (initialize(shape), write(shape), guard), MIRReturn(GUARD), ROOT))
     good = replace(good, return_type=BOOL)

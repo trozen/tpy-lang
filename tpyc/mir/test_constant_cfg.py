@@ -13,7 +13,7 @@ from .lower import lower_function
 from .nodes import MIRBodyId, MIRBranch, MIRFunction, MIRNotCovered, MIRReturn, MIRSlotKind
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_lower import lower
-from .testutil import compiled_definitions, OptionalValue, Reference, UnionValue, execute
+from .testutil import compiled_definitions, optional_value, Reference, UnionValue, execute
 from .validate import MIRDefiniteAssignmentError, validate_function
 
 
@@ -171,7 +171,7 @@ def test_emitted_storage_pruning_preserves_live_aliases() -> None:
         assert any(s.id.index > index for index, s in enumerate(fn.slots))
         assert len([s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]) == 4
         assert inspect_scope_lifetimes(fn).conflicts == ()
-        assert execute(fn, True, Reference(0), OptionalValue(None), UnionValue(0, 1), heap={0: {}}) == 9
+        assert execute(fn, True, Reference(0), optional_value(None), UnionValue(0, 1), heap={0: {}}) == 9
         mutable = lower(functions["mutable_loop"])
         assert any(isinstance(b.terminator, MIRBranch) for b in mutable.blocks)
         assert execute(mutable) == 4

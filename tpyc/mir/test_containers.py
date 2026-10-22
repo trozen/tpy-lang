@@ -22,12 +22,16 @@ from .call_contract import MIRCallSummary
 from ..thir.scalar_leaves import MIRClass, declared_members, native_container_type
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
+from .dependencies import analyze_dependencies
 from .dump import dump_function
+from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
+from .retention import analyze_retention
+from .storage import analyze_storage
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
     MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
-    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotKind, MIRStorageDuration,
+    MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref, object_prefix
 from .value import MIRHolding, MIRValidationError, container_members, with_access
@@ -97,6 +101,14 @@ def own() -> int32:
 def set_scalar(xs: list[int32]) -> int32:
     xs[0] = 5
     return xs[0]
+
+
+def set_under_iterator(xs: list[int32]) -> int32:
+    t = 0
+    for x in xs:
+        xs[0] = 1
+        t += x
+    return t
 
 
 def span_set(xs: list[int32]) -> int32:
@@ -424,7 +436,7 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
     assert any(line.startswith("%2: StrView readonly-ref local v") for line in strs)
     assert "%2 = borrow (*%0)[elements] may-raise" in strs
     copy = _lines(_fn(active, "str_copy"))
-    assert any(re.fullmatch(r"%\d+ = copy \(\*%0\)\[elements\] may-raise \[initialize_once\]", line) for line in copy)
+    assert any(re.fullmatch(r"%\d+ = copy \(\*%0\)\[elements\] may-raise \[initialize\]", line) for line in copy)
     # Iteration reads an owned-leaf element through a view of it.
     walk = _fn(active, "walk_strs", readonly_iteration=True)
     s = _slot(walk, "s")
@@ -440,7 +452,7 @@ def test_an_owned_container_local_is_built_from_its_literal(active) -> None:
     # The local holds its own storage through a holder, as an owned record local does.
     assert "%3: Array[int32, 3] owned-storage element=int32:leaf temporary" in lines
     assert "%4: Array[int32, 3] mutable-ref element=int32:leaf local xs" in lines
-    assert lines.index("%3 = construct (%0, %1, %2) may-raise [initialize_once]") < lines.index("%4 = borrow %3")
+    assert lines.index("%3 = construct (%0, %1, %2) may-raise [initialize]") < lines.index("%4 = borrow %3")
     # An unstepped slice reads its bounds, then borrows the whole region.
     assert "%7: Span[int32] mutable-ref element=int32:leaf local s" in lines
     assert lines.index("%6 = 3") < lines.index("%7 = borrow (*%4)[elements]")
@@ -499,7 +511,7 @@ def test_an_element_write_replaces_the_region_in_place(active) -> None:
     fn = _fn(active, "set_scalar")
     assert "(*%0)[elements] = read %1 [in_place]" in _lines(fn)
     write = next(s for b in fn.blocks for s in b.statements if _elements(s.target))
-    assert write.storage_write == MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, _slot(fn, "xs").id)
+    assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, _slot(fn, "xs").id)
     values = ContainerValue((1, 2))
     assert execute(fn, values) == 5 and values.elements == [5, 2]
     record = _fn(active, "replace_after_use")
@@ -507,6 +519,21 @@ def test_an_element_write_replaces_the_region_in_place(active) -> None:
     cell = next(r.fields[0].id for r in record.records if r.type.name == "Point")
     heap = {1: {cell: 1}}
     assert execute(record, ContainerValue((Reference(1),)), heap=heap) == 1 and heap[1][cell] == 3
+
+
+def test_a_scalar_element_write_under_a_live_iterator_is_a_replacement(active) -> None:
+    # `xs[0] = 1` in `for x in xs`: the storage-destination write is a
+    # retention event whatever the element type, and the cursor retains the region.
+    fn = _fn(active, "set_under_iterator")
+    point, write = next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
+                        if _elements(s.target))
+    assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, _slot(fn, "xs").id)
+    events = analyze_storage(fn)
+    assert point in events.writes
+    live = analyze_liveness(fn)
+    retention = analyze_retention(fn, live, analyze_dependencies(fn, live), events)
+    assert [c.point for c in retention.conflicts] == [point]
+    assert retention.conflicts[0].affected.place == MIRPlace(_slot(fn, "xs").id, (MIRContainerElements(),))
 
 
 def test_an_element_write_without_a_reference_preserving_stub_is_the_call(active) -> None:
@@ -564,8 +591,8 @@ def test_container_members_are_initialized_at_entry(active) -> None:
     # A caller's construct builds a container member's literal into storage
     # of the full expression and moves it in.
     lines = _lines(_fn(active, "build"))
-    assert lines.index("%0 = construct () may-raise [initialize_region]") < lines.index(
-        "%1 = construct (%0) [initialize_once]")
+    assert lines.index("%0 = construct () may-raise [initialize]") < lines.index(
+        "%1 = construct (%0) [initialize]")
 
 
 # --- refusals --------------------------------------------------------------------------
@@ -666,13 +693,13 @@ def test_validator_rejects_damaged_element_places(active) -> None:
         "storage borrow type mismatch")
     # A whole container field is replaced by a member write, as a record
     # member is: in place, under the record, never as a rebind of a holder.
-    def field_write(fact: MIRRecordWrite) -> MIRFunction:
+    def field_write(fact: MIRStorageWrite) -> MIRFunction:
         write = MIRAssign(items.blocks[0].statements[0].value.source, MIRConstruct((), True), None, fact)
         return replace(items, exceptional_exits=True, blocks=(replace(
             items.blocks[0], statements=(write, *items.blocks[0].statements)), *items.blocks[1:]))
-    validate_function(field_write(MIRRecordWrite(MIRRecordWriteMode.IN_PLACE)))
+    validate_function(field_write(MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
     receiver = items.blocks[0].statements[0].value.source.root
-    _rejects(field_write(MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, receiver)),
+    _rejects(field_write(MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, receiver)),
              "record member write needs a replacement fact")
     # A container field whose members MIR does not model.
     nested = make_list(make_list(INT32))
@@ -694,12 +721,12 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     xs = _slot(first, "ps").id
     _rejects(_replace_first(first, is_borrow, lambda s: MIRAssign(
         MIRPlace(xs, (MIRDeref(), MIRContainerElements())), MIRConstruct((), False), s.loc,
-        MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, xs))), "store through readonly reference")
+        MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, xs))), "store through readonly reference")
     # A whole container a pointer reaches is rebuilt in place only as its
     # holder's referent, as a record is.
     scalar = _fn(active, "set_scalar")
     whole = MIRAssign(MIRPlace(_slot(scalar, "xs").id, (MIRDeref(),)), MIRConstruct((), True), None,
-                      MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))
+                      MIRStorageWrite(MIRStorageWriteMode.IN_PLACE))
     _rejects(replace(scalar, blocks=(replace(scalar.blocks[0], statements=(whole, *scalar.blocks[0].statements)),
                                      *scalar.blocks[1:])), "invalid in-place rebind owner or target")
 
@@ -710,7 +737,7 @@ def test_validator_rejects_damaged_element_writes(active) -> None:
     validate_function(scalar)
     validate_function(record)
     _rejects(_replace_first(scalar, is_write, lambda s: replace(
-        s, storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))), "element write needs an in-place fact")
+        s, storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE))), "element write needs an in-place fact")
     _rejects(_replace_first(scalar, is_write, lambda s: replace(s, value=MIRConstant(True))),
              "constant type or range mismatch")
     _rejects(_replace_first(scalar, is_write, lambda s: replace(s, value=MIRAlias(s.target.root))),
@@ -942,7 +969,7 @@ def test_a_local_moved_into_an_own_parameter_is_replaced(calls) -> None:
     assert "%3 = borrow %2" in lines
     # The argument is the caller's storage moved into a temporary the callee owns.
     assert "%4: list[int32] owned-storage element=int32:leaf temporary" in lines
-    assert "%4 = move %2 [initialize_region]" in lines
+    assert "%4 = move %2 [initialize]" in lines
     assert "%5 = call main::consume(%4) [reader, may-raise]" in lines
     # The move empties `xs`: a replacement event on the source place, with no holder of it live.
     assert "bb1 before 0: move-out %2" in lines

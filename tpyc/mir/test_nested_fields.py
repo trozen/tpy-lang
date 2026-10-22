@@ -15,15 +15,14 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRFunction, MIROptionalConstruct, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRUnionConstruct,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRFunction, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap,
 )
-from .shapes import MIRDeref, MIROptionalPayload, MIRUnionPayload
+from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRValidationError
 from .retention import analyze_retention
 from .storage import analyze_storage
 from .testutil import (
-    bind_parameters, Heap, OptionalValue, Reference, UnionValue, borrowed_shape, execute, optional_shape, reslot,
+    bind_parameters, Heap, optional_value, Reference, UnionValue, borrowed_shape, execute, optional_shape, reslot,
     union_shape,
 )
 from .validate import MIRPresenceError, validate_function
@@ -230,8 +229,8 @@ def test_readonly_alias_and_scalar_snapshot_differ(artifacts: Artifacts) -> None
 def test_wrapper_roots_keep_selection_proofs(artifacts: Artifacts) -> None:
     functions, _ = artifacts
     _, _, _, heap = objects(functions)
-    assert execute(lower(functions["optional_root"]), OptionalValue(), heap=heap) == 0
-    assert execute(lower(functions["optional_root"]), OptionalValue(Reference(1)), heap=heap) == 20
+    assert execute(lower(functions["optional_root"]), optional_value(), heap=heap) == 0
+    assert execute(lower(functions["optional_root"]), optional_value(Reference(1)), heap=heap) == 20
     fn = lower(functions["union_root"])
     outer = functions["direct"].params[0].borrowed_record.type
     alternative = next(i for i, member in enumerate(fn.slots[0].shape.alternatives) if member.type == outer)
@@ -274,13 +273,13 @@ def test_captured_field_survives_wrapper_replacement(artifacts: Artifacts, union
         wrapper = MIRSlot(wrapper_id,
                           union_shape(UnionType((NoneType(), param.type)), (None, borrowed_shape(param.type))),
                           MIRSlotKind.LOCAL)
-        construct, clear = MIRUnionConstruct(1, MIRPlace(param.id)), MIRUnionConstruct(0)
+        construct, clear = MIRWrap(1, MIRPlace(param.id)), MIRWrap(0)
         payload = MIRUnionPayload(1)
     else:
         wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(param.type), borrowed_shape(param.type)),
                           MIRSlotKind.LOCAL)
-        construct, clear = MIROptionalConstruct(MIRPlace(param.id)), MIROptionalConstruct()
-        payload = MIROptionalPayload()
+        construct, clear = MIRWrap(1, MIRPlace(param.id)), MIRWrap(0)
+        payload = MIRUnionPayload(1)
     block = fn.blocks[0]
     borrow = block.statements[0]
     source = MIRPlace(wrapper_id, (payload, *borrow.value.source.projections))

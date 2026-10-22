@@ -11,7 +11,7 @@ from ..thir.testutil import _compile, _entry, force_in_place
 from .collect import dump_codegen_mir
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
+    MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
@@ -56,7 +56,7 @@ def replace_copy(source: Cell, n: int32) -> int32:
                         definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRCopy))
-    assert write.storage_write.mode is (MIRRecordWriteMode.OWN_SITE if retained else MIRRecordWriteMode.IN_PLACE)
+    assert write.storage_write.mode is (MIRStorageWriteMode.OWN_SITE if retained else MIRStorageWriteMode.IN_PLACE)
     assert ("current = &*(__slot_2 = Cell(source));" if retained else "(*current) = Cell(source);") in cpp
     field = fn.records[0].fields[0].id
     for n in (0, 3):
@@ -232,7 +232,7 @@ def test_produced_copy_facts_target_optional_backing(hoists: Hoists, name: str) 
     assert assignment.optional_record_assignment == th.THIRBorrowedRecord(assignment.value.result_type, False)
     fn = hoists[1][name]
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRCopy))
-    assert write.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+    assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     assert analyze(fn).conflicts == ()
     assert inspect_scope_lifetimes(fn).conflicts == ()
 
@@ -335,7 +335,7 @@ LOOP:
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
     assert assignment.optional_record_assignment is not None
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
-    assert write.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+    assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     assert analyze(fn).conflicts == ()
     assert inspect_scope_lifetimes(fn).conflicts == ()
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
@@ -377,7 +377,7 @@ def escaped(source: Cell, n: int32) -> int32:
                         definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove if move else MIRCopy))
-    assert write.storage_write.mode is MIRRecordWriteMode.OWN_SITE
+    assert write.storage_write.mode is MIRStorageWriteMode.OWN_SITE
     assert ("Cell* duplicate = &*(__slot_2 = std::move(original));" if move else
             "Cell* duplicate = &*(__slot_2 = Cell(source));") in cpp
     field = fn.records[0].fields[0].id

@@ -7,7 +7,7 @@ import pytest
 from ..typesys import BOOL, INT32, TupleType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRPlace,
-    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRTupleCopy,
+    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRCopy,
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRField, MIRFieldId, MIRValidationError
@@ -34,7 +34,7 @@ SLOTS = (
 )
 INIT = MIRAssign(MIRPlace(X), MIRConstant(1))
 MAKE = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((R, X)))
-COPY = MIRAssign(MIRPlace(SAVED), MIRTupleCopy(PAIR))
+COPY = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(PAIR)))
 RESEAT = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((A, X)))
 WRITE = MIRAssign(MIRPlace(A, (MIRDeref(), FIELD)), MIRConstant(9))
 PROJECT = MIRPlace(SAVED, (MIRTupleIndex(0), MIRDeref(), FIELD))
@@ -70,8 +70,8 @@ def test_empty_tuple_payloads_construct_and_copy() -> None:
 
 
 @pytest.mark.parametrize("statement,reason", [
-    (MIRAssign(MIRPlace(SAVED), MIRTupleCopy(A)), "tuple source"),
-    (MIRAssign(MIRPlace(X), MIRTupleCopy(PAIR)), "tuple destination"),
+    (MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(A))), "wrapper copy source mismatch"),
+    (MIRAssign(MIRPlace(X), MIRCopy(MIRPlace(PAIR))), "wrapper copy needs local wrapper destination"),
     (MIRAssign(MIRPlace(SAVED), MIRTupleConstruct((X, R))), "payload type or access"),
     (MIRAssign(MIRPlace(SAVED), MIRTupleConstruct((R,))), "payload type or access"),
     (MIRAssign(MIRPlace(SAVED), MIRTupleConstruct((PAIR, X))), "payload type or access"),
@@ -107,7 +107,7 @@ def test_readonly_cannot_be_lost_on_capture_or_copy() -> None:
     for index in (3, 4):
         slots = list(SLOTS)
         slots[index] = reslot(slots[index], members=mutable)
-        invalid(bind_parameters(replace(GOOD, slots=tuple(slots))), "payload type or access")
+        invalid(bind_parameters(replace(GOOD, slots=tuple(slots))), "type or access")
 
 
 def test_tuple_layout_validation() -> None:

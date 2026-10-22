@@ -6,13 +6,13 @@ import pytest
 
 from ..typesys import BOOL, INT32, OptionalType, ReadonlyType
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsPresent, MIRNot,
-    MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap, MIRIsAlternative, MIRCopy,
 )
-from .shapes import MIROptionalPayload
+from .shapes import MIRUnionPayload
 from .value import MIRHolding, MIRValidationError
 from .testutil import (
-    hand_record, bind_parameters, OptionalValue, execute, leaf_shape, optional_shape, owned_shape, reslot,
+    hand_record, bind_parameters, optional_value, execute, leaf_shape, optional_shape, owned_shape, reslot,
 )
 from .validate import MIRPresenceError, validate_function
 from .presence import _State, _transfer
@@ -31,10 +31,10 @@ SLOTS = (
     MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
     MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
 )
-CAPTURE = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(PARAM)))
-TEST = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)))
-CLEAR = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct())
-READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(CURRENT, (MIROptionalPayload(),))))
+CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)))
+TEST = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (1,)))
+CLEAR = MIRAssign(MIRPlace(CURRENT), MIRWrap(0))
+READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(CURRENT, (MIRUnionPayload(1),))))
 FALLBACK = MIRBlock(NO, (), MIRReturn(VALUE))
 
 
@@ -44,7 +44,7 @@ def function(*blocks: MIRBlock) -> MIRFunction:
 
 @pytest.mark.parametrize("mutation", [
     CLEAR,
-    MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(PARAM))),
+    MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM))),
     MIRAssign(MIRPlace(GUARD), MIRConstant(True)),
     MIRAssign(MIRPlace(GUARD), MIRRead(MIRPlace(FLAG))),
 ])
@@ -63,7 +63,7 @@ def test_boolean_copy_preserves_implication(negate: bool) -> None:
                   MIRBlock(YES, (READ,), MIRReturn(RESULT)), FALLBACK)
     validate_function(fn)
     for payload in (None, 0, 7):
-        assert execute(fn, OptionalValue(payload), 13, False) == (13 if payload is None else payload)
+        assert execute(fn, optional_value(payload), 13, False) == (13 if payload is None else payload)
 
 
 def test_same_branch_target_does_not_keep_one_edges_fact() -> None:
@@ -91,7 +91,7 @@ def test_loop_backedge_requires_a_new_test(fresh: bool) -> None:
         MIRBlock(YES, (READ, CLEAR), MIRGoto(LOOP)), FALLBACK)
     if fresh:
         validate_function(fn)
-        assert execute(fn, OptionalValue(0), 13, False) == 13
+        assert execute(fn, optional_value(0), 13, False) == 13
     else:
         with pytest.raises(MIRPresenceError):
             validate_function(fn)
@@ -99,13 +99,13 @@ def test_loop_backedge_requires_a_new_test(fresh: bool) -> None:
 
 @pytest.mark.parametrize("self_copy", [False, True])
 def test_construction_and_copy_establish_presence(self_copy: bool) -> None:
-    build = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(MIRPlace(VALUE)))
-    save = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(MIRPlace(CURRENT)))
-    read = replace(READ, value=MIRRead(MIRPlace(SAVED, (MIROptionalPayload(),))))
-    overwrite = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(MIRPlace(SAVED))) if self_copy else CLEAR
+    build = MIRAssign(MIRPlace(CURRENT), MIRWrap(1, MIRPlace(VALUE)))
+    save = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(CURRENT)))
+    read = replace(READ, value=MIRRead(MIRPlace(SAVED, (MIRUnionPayload(1),))))
+    overwrite = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(SAVED))) if self_copy else CLEAR
     fn = function(MIRBlock(ENTRY, (build, save, overwrite, read), MIRReturn(RESULT)))
     validate_function(fn)
-    assert execute(fn, OptionalValue(None), 0, False) == 0
+    assert execute(fn, optional_value(None), 0, False) == 0
 
 
 def test_unconditional_payload_access_is_rejected() -> None:
@@ -131,18 +131,18 @@ def test_a_slot_payload_is_never_inline_storage() -> None:
     # A slot's payload is an inert leaf or a pointer at a record; a record
     # stored inline is an Optional field's, never a slot's.
     cell = hand_record("Cell", "optional_validation.Cell")
-    inline = reslot(SLOTS[0], type=OptionalType(cell), members=(owned_shape(cell),))
+    inline = reslot(SLOTS[0], type=OptionalType(cell), members=(None, owned_shape(cell)))
     fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
     with pytest.raises(MIRValidationError, match="unsupported optional record holding"):
         validate_function(replace(fn, slots=(inline, *fn.slots[1:])))
 
 
 @pytest.mark.parametrize("stmt", [
-    MIRAssign(MIRPlace(PARAM), MIROptionalConstruct()),
-    MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(MIRPlace(FLAG))),
-    MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(VALUE))),
-    MIRAssign(MIRPlace(CURRENT, (MIROptionalPayload(),)), MIRConstant(1)),
-    MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(VALUE))),
+    MIRAssign(MIRPlace(PARAM), MIRWrap(0)),
+    MIRAssign(MIRPlace(CURRENT), MIRWrap(1, MIRPlace(FLAG))),
+    MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(VALUE))),
+    MIRAssign(MIRPlace(CURRENT, (MIRUnionPayload(1),)), MIRConstant(1)),
+    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(VALUE), (1,))),
 ])
 def test_malformed_optional_operations_are_rejected(stmt: MIRAssign) -> None:
     fn = function(MIRBlock(ENTRY, (CAPTURE, stmt), MIRReturn(VALUE)))
@@ -161,7 +161,7 @@ def test_join_recovers_conditional_proof_from_predecessor_facts() -> None:
     validate_function(fn)
     for payload in (None, 0, 7):
         for flag in (False, True):
-            assert execute(fn, OptionalValue(payload), 13, flag) == (
+            assert execute(fn, optional_value(payload), 13, flag) == (
                 payload if payload is not None and flag else 13)
 
 
@@ -170,14 +170,14 @@ def test_unrelated_boolean_results_do_not_duplicate_holder_facts() -> None:
     booleans = {MIRSlotId(BODY, i + 200) for i in range(100)}
     state = _State()
     for holder in holders:
-        state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct(MIRPlace(VALUE))), booleans)
+        state = _transfer(state, MIRAssign(MIRPlace(holder), MIRWrap(1, MIRPlace(VALUE))), booleans)
     for boolean in booleans:
         state = _transfer(state, MIRAssign(MIRPlace(boolean), MIRRead(MIRPlace(FLAG))), booleans)
     # Repeated reseats must not scan a copy of every holder fact per boolean.
     assert len(state.present) == len(holders)
     assert not state.conditions
     for holder in holders:
-        state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct()), booleans)
+        state = _transfer(state, MIRAssign(MIRPlace(holder), MIRWrap(0)), booleans)
     assert state.present == frozenset((MIRPlace(holder), frozenset({0})) for holder in holders)
 
 

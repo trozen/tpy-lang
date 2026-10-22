@@ -13,7 +13,7 @@ from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
+    MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
@@ -208,7 +208,7 @@ def test_replacement_reuses_backing_and_reads_rhs_first(artifacts: Artifacts, na
         heap = {}
         assert execute(fn, trips, heap=heap) == (2 if trips % 2 else 1)
         assert len(heap) == 1
-    assert any(s.storage_write.mode is MIRRecordWriteMode.IN_PLACE for s in analyze_storage(fn).writes.values())
+    assert any(s.storage_write.mode is MIRStorageWriteMode.IN_PLACE for s in analyze_storage(fn).writes.values())
 
 
 def test_source_mutation_does_not_reach_the_copy(artifacts: Artifacts) -> None:
@@ -226,7 +226,7 @@ def test_two_replacement_sites_share_one_live_backing(artifacts: Artifacts) -> N
         heap = {}
         assert execute(fn, trips, heap=heap) == 1
         assert len(heap) == 1
-    writes = [s for s in analyze_storage(fn).writes.values() if s.storage_write.mode is MIRRecordWriteMode.IN_PLACE]
+    writes = [s for s in analyze_storage(fn).writes.values() if s.storage_write.mode is MIRStorageWriteMode.IN_PLACE]
     assert len(writes) == 2 and writes[0].target == writes[1].target
 
 
@@ -273,7 +273,7 @@ def test_codegen_collection_includes_loop_copy() -> None:
                               compiler.thir_reject_by_node)
     copied = dumped.split(f"fn {entry.name}::copied@", 1)[1].split("\nfn ", 1)[0]
     replaced = dumped.split(f"fn {entry.name}::replaced@", 1)[1].split("\nfn ", 1)[0]
-    assert " = copy " in copied and "initialize_region" in copied
+    assert " = copy " in copied and "initialize" in copied
     assert "in_place" in replaced
 
 
@@ -311,13 +311,13 @@ def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n:
                         definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     move, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
-    assert move.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+    assert move.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     assert inspect_scope_lifetimes(fn).conflicts == ()
     entry = _entry(modules)
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
                               compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
                               compiler.thir_reject_by_node)
-    assert " = move " in dumped and "initialize_region" in dumped
+    assert " = move " in dumped and "initialize" in dumped
     for run, stop, skip, early, count in ((False, False, False, False, 0),
                                          (True, False, False, False, 2),
                                          (True, True, False, False, 1),
@@ -348,7 +348,7 @@ def moved(flag: bool) -> int32:
                             definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction), result
     write, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, MIRMove))
-    assert write.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN
+    assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
     assert assignment.optional_record_assignment is not None
     assert assignment.value.form is assignment.value.value.form

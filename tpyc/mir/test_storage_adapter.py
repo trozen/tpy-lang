@@ -14,7 +14,7 @@ from . import emit, lower as lowering
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto, MIRPlace, MIRRecordWriteMode,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto, MIRPlace, MIRStorageWriteMode,
     MIRRegionId, MIRReturn, function_body_kind,
 )
 from .shapes import MIRTupleIndex, MIRUnionPayload
@@ -221,7 +221,7 @@ def test_full_expression_backings_keep_their_actual_region(
         assert not place.projections and slot.shape.is_storage
         assert isinstance(slot.storage_duration, MIRRegionId) and slot.storage_duration.index != 0
         assert slot.storage_duration == slot.residence == block.region
-        assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
+        assert write.storage_write.mode is MIRStorageWriteMode.INITIALIZE
         assert write.loc == backing.node.loc
         assert any(event.storage == place for events in ends.ends.values() for event in events)
         assert replace(backing.node) not in result.backings
