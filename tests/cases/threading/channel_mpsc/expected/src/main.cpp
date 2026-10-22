@@ -19,8 +19,8 @@ namespace tpyapp::main {
 //     print(total)
 void main() {
     auto __tup_1 = ::tpystd::tplib::channel::channel<Item>(2);
-    ::tpystd::tplib::channel::Sender<Item> tx = std::move(std::get<0>(__tup_1));
-    ::tpystd::tplib::channel::Receiver<Item> rx = std::move(std::get<1>(__tup_1));
+    auto&& tx = std::move(std::get<0>(__tup_1));
+    auto&& rx = std::move(std::get<1>(__tup_1));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h2 = ::tpystd::tpy::thread::spawn<std::monostate, Producer>(Producer(tx.clone(), 100));
     ::tpystd::tpy::thread::JoinHandle<std::monostate> h1 = ::tpystd::tpy::thread::spawn<std::monostate, Producer>(Producer(std::move(tx), 0));
     int32_t total = 0;

@@ -140,7 +140,7 @@ from .capture_copies import warn_closure_captures
 from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, stamp_bind_kind,
-                           stamp_unpack_rebinds)
+                           stamp_unpack_rebinds, tuple_source_elem_owned)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
@@ -7070,11 +7070,29 @@ class StatementAnalyzer:
                 self.compat.retract_hidden_borrowed_last_use(stmt.value)
         # Per-element expressions for narrowing (range facts, etc.)
         has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
+        # A call source hands over each reference element its declared
+        # return lends none of -- an `Own[tuple]` result, an `Own` element
+        # marker -- as the scalar `x = call()` binds the result its own:
+        # the target owns what it is handed. Other non-name sources keep the
+        # declared-`Own` rule (BUGS.md#await-unpack-source-hands-over-unknown).
+        handed = (tuple_source_elem_owned(self.ctx, stmt.value, rhs_type)
+                  if not stmt.is_loop_head
+                  and isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                  else None)
         for i, name in enumerate(stmt.targets):
             elem_type = rhs_type.element_types[i]
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
-            owned = (isinstance(elem_type, OwnType) and source_consumed
-                     and i not in borrowed_elems)
+            if handed is not None:
+                bare_elem = unwrap_readonly(unwrap_own(elem_type))
+                # A nested value tuple holding a reference is handed over
+                # too, but binds as a value; an open T is one body for
+                # every instantiation, a value one included, so like
+                # `is_ref` below it neither aliases nor owns.
+                owned = (handed[i] and not bare_elem.is_value_type()
+                         and not isinstance(bare_elem, TypeParamRef))
+            else:
+                owned = (isinstance(elem_type, OwnType) and source_consumed
+                         and i not in borrowed_elems)
             stmt.is_owned.append(owned)
             if rhs_readonly:
                 # Asked before the Own is peeled: readonly over an owned

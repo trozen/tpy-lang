@@ -25,7 +25,7 @@ void main() {
     int32_t port = std::get<1>(srv.getsockname());
     ::tpystd::socket::socket c = ::tpystd::socket::create_connection(std::tuple<std::string, int32_t>{"127.0.0.1", port}, 2.0);
     auto __tup_1 = srv.accept();
-    ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
+    auto&& conn = std::move(std::get<0>(__tup_1));
     std::cout << "connected:" << " " << ::tpy::print_bool((c.gettimeout() == 2.0)) << "\n" << ::tpy::check_signals;
     c.sendall(::tpy::bytes_literal("ping", 4));
     ::tpy::Bytes got = conn.recv(4);

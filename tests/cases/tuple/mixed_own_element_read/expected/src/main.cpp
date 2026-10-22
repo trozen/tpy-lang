@@ -70,7 +70,7 @@ int32_t read_param(std::tuple<Box, const Box*>&& p) {
 //     return owned.val + borrowed.val
 int32_t unpack_mixed(Box& b) {
     auto __tup_1 = ::tpyapp::main::make_mixed(b);
-    Box owned = std::move(std::get<0>(__tup_1));
+    auto&& owned = std::move(std::get<0>(__tup_1));
     auto&& borrowed = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return (::tpy::add_check<int32_t>(owned.val, borrowed.val));
 }

@@ -324,7 +324,7 @@ Box ret_local() {
 //     print("unpack_call", x.n, c == Color.Blue)
 void unpack_call() {
     auto __tup_1 = ::tpyapp::main::mk(Color::Blue);
-    Box x = std::move(std::get<0>(__tup_1));
+    auto&& x = std::move(std::get<0>(__tup_1));
     Color c = std::get<1>(__tup_1);
     x.n = ::tpy::add_check<int32_t>(x.n, 5);
     std::cout << "unpack_call" << " " << x.n << " " << ::tpy::print_bool((c == Color::Blue)) << "\n" << ::tpy::check_signals;

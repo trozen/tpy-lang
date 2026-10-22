@@ -36,8 +36,8 @@ namespace tpyapp::main {
 //     b.close()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: 24\r\n\r\n{\"name\": \"t\", \"rows\": 3}", 95));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});

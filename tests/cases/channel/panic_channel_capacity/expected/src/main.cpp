@@ -8,8 +8,8 @@ namespace tpyapp::main {
 //     tx, rx = channel[int32](0)
 void main() {
     auto __tup_1 = ::tpystd::tpy::channel::channel<int32_t>(0);
-    ::tpystd::tpy::channel::Sender<int32_t> tx = std::move(std::get<0>(__tup_1));
-    ::tpystd::tpy::channel::Receiver<int32_t> rx = std::move(std::get<1>(__tup_1));
+    auto&& tx = std::move(std::get<0>(__tup_1));
+    auto&& rx = std::move(std::get<1>(__tup_1));
 }
 
 // from tpy.channel import channel

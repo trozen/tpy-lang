@@ -15,7 +15,7 @@ std::tuple<Tree<int32_t>, int32_t> make_pair() {
 //     print(n)
 void main() {
     auto __tup_1 = ::tpyapp::main::make_pair();
-    Tree<int32_t> t = std::move(std::get<0>(__tup_1));
+    auto&& t = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << n << "\n" << ::tpy::check_signals;
 }

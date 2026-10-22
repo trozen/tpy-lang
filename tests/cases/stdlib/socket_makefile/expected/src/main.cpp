@@ -28,8 +28,8 @@ namespace tpyapp::main {
 //     d.close()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
     a.close();
     ::tpystd::io::BufferedReader f = b.makefile("rb");
@@ -40,8 +40,8 @@ void main() {
     f.close();
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
+    auto&& c = std::move(std::get<0>(__tup_2));
+    auto&& d = std::move(std::get<1>(__tup_2));
     c.sendall(::tpy::bytes_literal("ping\n", 5));
     c.close();
     ::tpystd::io::BufferedReader g = d.makefile("b");

@@ -32,11 +32,11 @@ namespace tpyapp::main {
 //     return (request_line, has_body, has_content_type)
 std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
+    auto&& c = std::move(std::get<0>(__tup_2));
+    auto&& d = std::move(std::get<1>(__tup_2));
     b.sendall((::tpy::bytes_concat(status_line, ::tpy::bytes_literal("\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 40))));
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();

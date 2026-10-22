@@ -55,8 +55,8 @@ void cookies_arg_not_persisted() {
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a1 = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b1 = std::move(std::get<1>(__tup_1));
+    auto&& a1 = std::move(std::get<0>(__tup_1));
+    auto&& b1 = std::move(std::get<1>(__tup_1));
     b1.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 38));
     ::tpystd::http::client::HTTPConnection c1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c1.sock = std::move(a1);
@@ -67,8 +67,8 @@ void cookies_arg_not_persisted() {
     ::tpyapp::main::_cookie_line(b1.recv(65536));
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket b2 = std::move(std::get<1>(__tup_2));
+    auto&& a2 = std::move(std::get<0>(__tup_2));
+    auto&& b2 = std::move(std::get<1>(__tup_2));
     b2.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 38));
     ::tpystd::http::client::HTTPConnection c2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c2.sock = std::move(a2);
@@ -111,8 +111,8 @@ void main() {
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a1 = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b1 = std::move(std::get<1>(__tup_1));
+    auto&& a1 = std::move(std::get<0>(__tup_1));
+    auto&& b1 = std::move(std::get<1>(__tup_1));
     b1.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=xyz; Path=/\r\nContent-Length: 2\r\n\r\nok", 69));
     ::tpystd::http::client::HTTPConnection c1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c1.sock = std::move(a1);
@@ -122,8 +122,8 @@ void main() {
     ::tpyapp::main::_cookie_line(b1.recv(65536));
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket b2 = std::move(std::get<1>(__tup_2));
+    auto&& a2 = std::move(std::get<0>(__tup_2));
+    auto&& b2 = std::move(std::get<1>(__tup_2));
     b2.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::http::client::HTTPConnection c2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c2.sock = std::move(a2);

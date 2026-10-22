@@ -47,7 +47,7 @@ std::tuple<Tree<int32_t>, int32_t> f() {
 //     print(leaf_count(t))
 void main() {
     auto __tup_1 = ::tpyapp::main::f();
-    Tree<int32_t> t = std::move(std::get<0>(__tup_1));
+    auto&& t = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << n << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::leaf_count(t) << "\n" << ::tpy::check_signals;

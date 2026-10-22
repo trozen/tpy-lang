@@ -12,8 +12,8 @@ namespace tpyapp::main {
 //     b.recv(16)  # no data pending -> EAGAIN -> BlockingIOError
 void trigger() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.setblocking(false);
     b.recv(16);
 }

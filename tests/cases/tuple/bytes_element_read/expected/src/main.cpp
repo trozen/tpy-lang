@@ -266,7 +266,7 @@ void main() {
         std::cout << "finally" << " " << ::tpy::BytesPrinter(std::get<0>(ct)) << "\n" << ::tpy::check_signals;
     }
     auto __tup_1 = ::tpyapp::main::mkb();
-    Rec q = std::move(std::get<0>(__tup_1));
+    auto&& q = std::move(std::get<0>(__tup_1));
     ::tpy::Bytes bb = std::move(std::get<1>(__tup_1));
     q.n = 5;
     std::cout << "unpack" << " " << q.n << " " << ::tpy::BytesPrinter(bb) << "\n" << ::tpy::check_signals;

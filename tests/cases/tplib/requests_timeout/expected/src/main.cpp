@@ -18,8 +18,8 @@ namespace tpyapp::main {
 //     b.close()
 void _hang_request() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.settimeout(0.05);
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);

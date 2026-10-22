@@ -24,8 +24,8 @@ void consume(Counter&& c) {
 //     consume(b)
 void main() {
     auto __tup_1 = ::tpyapp::main::make_pair();
-    Counter a = std::move(std::get<0>(__tup_1));
-    Counter b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpyapp::main::consume(std::move(a));
     ::tpyapp::main::consume(std::move(b));
 }

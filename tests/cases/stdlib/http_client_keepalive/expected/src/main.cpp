@@ -36,8 +36,8 @@ namespace tpyapp::main {
 //     b.close()
 void keepalive_cycles() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
     conn.sock = std::move(a);
     conn.request("GET", "/one");
@@ -77,8 +77,8 @@ void keepalive_cycles() {
 //     return resp.will_close
 bool will_close_response(::tpy::BytesView response) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 8002);
     conn.sock = std::move(a);
     conn.request("GET", "/x");

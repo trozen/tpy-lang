@@ -17,8 +17,8 @@ namespace tpyapp::main {
 //     b.close()
 void _hop(::tpystd::tplib::requests::Session& s, ::tpy::BytesView response) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(response);
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);
@@ -73,8 +73,8 @@ void main() {
     std::cout << ::tpy::print_bool(s.cookies.__contains__("keep")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(s.cookies) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: tmp=y; Max-Age=0\r\nContent-Length: 0\r\n\r\n", 68));
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
     conn.sock = std::move(a);

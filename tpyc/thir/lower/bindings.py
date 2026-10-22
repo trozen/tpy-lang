@@ -2625,6 +2625,15 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     bind = (_head_unpack_bind if stmt.is_loop_head
             else _standalone_unpack_bind)(stmt, i, tt, an,
                                           rebound=storage.pointer)
+    # The statement's rvalue holder is an owned target's first storage; a
+    # module's names are module storage, which no init temporary is.
+    in_holder = (bind is BC.MOVE and unpack_holder_is_rvalue(stmt)
+                 and not (inp.top_level
+                          and (site.func or inp.func) is inp.func))
+    if in_holder and storage.pointer and not storage.hoisted:
+        # Storage standing before a loop outlives the holder, so a hoisted
+        # target keeps its slot.
+        bind = BC.PTR
     f: dict = {}
     acq = site.ownership.acquired
     if (stmt.is_loop_head and acq is not None
@@ -2648,6 +2657,10 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
         # own, which the pointer re-points away from at a rebind.
         f.update(pointer=True, rebind_slot=True,
                  storage_hoisted=storage.hoisted)
+    elif in_holder:
+        # The target holds the element in place as an owned loop step
+        # does: one move at a consuming read, none at a read-only one.
+        f["loop_binding"] = LoopBinding.OWNED
     elif not is_ref:
         vo = _declared_value_opt_kind(typ, an)
         if vo is not None:
@@ -2657,8 +2670,18 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     if bind in ELEM_POINTER_BINDS:
         f["const"] = _unpack_source_const(site, i, inp, visible)
     form = (F.POINTER if f.get("rebind_slot")
+            else _loop_form(f["loop_binding"]) if "loop_binding" in f
             else UNPACK_BINDS[bind].form if bind in UNPACK_BINDS else F.NONE)
     return _mk(site, name, typ, form, bind, **f), bind
+
+
+def unpack_holder_is_rvalue(stmt: TpyTupleUnpack) -> bool:
+    """Whether a standalone unpack may bind its source to the by-value
+    `auto __tup_N = <expr>;` holder (`TupleSourceBind.RVALUE`): any source
+    but a name. An over-approximation -- the lowering renders some other
+    sources through `STORAGE_WRAP` or `NAME_CREF` -- that the lowering's
+    refusal of a disagreeing holder (`unpack_holder_agrees`) keeps sound."""
+    return not stmt.is_loop_head and not isinstance(stmt.value, TpyName)
 
 
 def _standalone_unpack_bind(stmt: TpyTupleUnpack, i: int, tt, an, *,

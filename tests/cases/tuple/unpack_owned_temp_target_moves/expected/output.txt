@@ -1,0 +1,38 @@
+free_pop 3 x s
+free_pop 1 0 4
+free_mk 13
+free_mk 113
+ret 103
+method 15
+method 115 1
+loop 14
+loop 114 1
+loop 12
+loop 112 0
+nocopy 13
+nocopy 113 4
+rebound_sink_first 11
+rebound_sink_first 11 111
+rebound_rebind_first 51
+rebound_rebind_first 19
+rebound_rebind_first 119 2
+dict_pop 14
+dict_pop 114 1 0
+closure 9
+loop_rebound 12
+loop_rebound 2 112
+loop_rebound 11
+loop_rebound 1 111
+gen 3
+gen 21
+gen 31
+gen 131
+module_level 31 2
+read_only 1 2
+inv_name 11
+inv_name 2
+inv_lend 42 1
+inv_elem_borrow 5 2
+inv_rebind 6 2
+inv_field 1 1 2
+inv_store 1 1 2

@@ -82,8 +82,8 @@ void bundle_embedded() {
 //     print("FAIL: no verify decision")
 void default_context_rejects_self_signed() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
@@ -157,8 +157,8 @@ void default_context_rejects_self_signed() {
 //     print("FAIL: no verify decision")
 void bare_context_trusts_nothing() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::SSLContext();

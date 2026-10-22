@@ -53,8 +53,8 @@ namespace tpyapp::main {
 //         print("ConnectionError")
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 404 Not Found\r\nContent-Length: 3\r\n\r\nno!", 48));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
@@ -88,8 +88,8 @@ void main() {
         }
     }
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket p = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket q = std::move(std::get<1>(__tup_2));
+    auto&& p = std::move(std::get<0>(__tup_2));
+    auto&& q = std::move(std::get<1>(__tup_2));
     q.close();
     ::tpystd::tplib::requests::Session s2 = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("api.test", 80);

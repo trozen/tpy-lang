@@ -22,8 +22,8 @@ namespace tpyapp::main {
 //     b.close()
 void send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::string, std::string>*> data, ::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "test-agent"}});
@@ -60,11 +60,11 @@ void send(::tpy::Union<std::monostate, ::tpy::Bytes*, ::tpy::ordered_map<std::st
 //     d.close()
 void send_redirect(::tpy::ordered_map<std::string, ::tpystd::tplib::requests::FileField>& files) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
+    auto&& c = std::move(std::get<0>(__tup_2));
+    auto&& d = std::move(std::get<1>(__tup_2));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 307 Temporary Redirect\r\nLocation: /next\r\nContent-Length: 0\r\n\r\n", 71));
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();

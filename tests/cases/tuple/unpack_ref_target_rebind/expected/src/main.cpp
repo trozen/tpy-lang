@@ -85,7 +85,7 @@ void mixed() {
     Cell q = Cell(8);
     auto __tup_1 = ::tpyapp::main::split(p);
     auto* ref = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    Cell owned = std::move(std::get<1>(__tup_1));
+    auto&& owned = std::move(std::get<1>(__tup_1));
     ref = &(q);
     ref->n = 80;
     std::cout << "mixed" << " " << p.n << " " << q.n << " " << owned.n << "\n" << ::tpy::check_signals;

@@ -87,8 +87,8 @@ namespace tpyapp::main {
 //         print("KeyError")
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nX-Custom-Header: Yes\r\nX-Multi: a\r\nX-Multi: b\r\nContent-Length: 2\r\n\r\nok", 118));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);

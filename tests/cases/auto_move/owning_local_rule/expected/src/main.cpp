@@ -1218,12 +1218,12 @@ void main() {
     std::cout << "whole" << " " << ::tpyapp::main::head((*h)) << " " << ::tpy::ListPrinter(t0.xs) << "\n" << ::tpy::check_signals;
     Box __tmp_2 = Box(3);
     auto __tup_1 = ::tpyapp::main::whole_literal(__tmp_2, w, false);
-    auto&& l0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& l1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    auto&& l0 = std::move(std::get<0>(__tup_1));
+    auto&& l1 = std::move(std::get<1>(__tup_1));
     std::cout << "whole_literal" << " " << ::tpy::ListPrinter(w.xs) << " " << ::tpy::ListPrinter(l0.xs) << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::opt_whole(nullptr, true);
     Box* u0 = ::tpy::optional_to_ptr(std::get<0>(__tup_2));
-    auto&& u1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    auto&& u1 = std::move(std::get<1>(__tup_2));
     std::cout << "opt_whole" << " " << ::tpy::print_bool((u0 == nullptr)) << " " << ::tpy::ListPrinter(u1.xs) << "\n" << ::tpy::check_signals;
     std::vector<Box> __slot_10 = {Box(4), Box(5)};
     std::vector<Box>* ws = &__slot_10;
@@ -1293,7 +1293,7 @@ void main() {
     r = &*(__slot_22 = ::tpyapp::main::fin_back((*ws)));
     std::cout << "fin_back" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*ws), 0).xs) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;
     auto __tup_3 = ::tpyapp::main::fin_tup_back((*ws));
-    Box f0 = std::move(std::get<0>(__tup_3));
+    auto&& f0 = std::move(std::get<0>(__tup_3));
     int32_t fk = std::get<1>(__tup_3);
     std::cout << "fin_tup_back" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*ws), 0).xs) << " " << ::tpy::ListPrinter(f0.xs) << " " << fk << "\n" << ::tpy::check_signals;
     std::cout << "nested_receiver" << " " << ::tpyapp::main::nested_receiver().n << "\n" << ::tpy::check_signals;

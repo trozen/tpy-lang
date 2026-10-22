@@ -39,8 +39,8 @@ void main() {
     std::cout << ::tpyapp::main::consume(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::forward(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::relay(std::tuple<A, A>{A(3), A(4)});
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     std::cout << (::tpy::add_check<int32_t>(a.n, b.n)) << "\n" << ::tpy::check_signals;
 }
 

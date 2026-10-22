@@ -40,7 +40,7 @@ TermAttributes tcgetattr(int64_t fd) {
     int64_t lflag = std::get<4>(__tup_1);
     int64_t ispeed = std::get<5>(__tup_1);
     int64_t ospeed = std::get<6>(__tup_1);
-    ::tpy::ByteArray cc = std::move(std::get<7>(__tup_1));
+    auto&& cc = std::move(std::get<7>(__tup_1));
     if ((err != 0)) {
         throw error(::tpystd::termios::_message(err));
     }

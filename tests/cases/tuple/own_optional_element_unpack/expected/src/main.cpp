@@ -381,7 +381,7 @@ void discarded() {
 void mixed() {
     auto __tup_1 = ::tpyapp::main::mk3(11);
     P* o = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
-    P p = std::move(std::get<1>(__tup_1));
+    auto&& p = std::move(std::get<1>(__tup_1));
     int32_t k = std::get<2>(__tup_1);
     P* keep = o;
     std::array<P, 3> filler = {P(9), P(9), P(9)};
@@ -491,7 +491,7 @@ void callable_source(const std::function<std::tuple<std::optional<P>, int32_t>(i
 //     print("ownrec", a.n, k, len(filler))
 void own_record() {
     auto __tup_1 = ::tpyapp::main::mkp(14);
-    P a = std::move(std::get<0>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     P& keep = a;
     std::array<P, 3> filler = {P(9), P(9), P(9)};

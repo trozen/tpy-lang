@@ -21,7 +21,7 @@ std::tuple<Box, int32_t> make() {
 //     print(got.val + n)
 void main() {
     auto __tup_1 = ::tpyapp::main::make();
-    Box got = std::move(std::get<0>(__tup_1));
+    auto&& got = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << (::tpy::add_check<int32_t>(got.val, n)) << "\n" << ::tpy::check_signals;
 }

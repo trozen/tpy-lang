@@ -67,8 +67,8 @@ void write_fixtures() {
 //     return cli, srv
 std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket> handshaken_pair() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
@@ -134,8 +134,8 @@ std::tuple<::tpystd::ssl::SSLSocket, ::tpystd::ssl::SSLSocket> handshaken_pair()
 void main() {
     ::tpyapp::main::write_fixtures();
     auto __tup_1 = ::tpyapp::main::handshaken_pair();
-    ::tpystd::ssl::SSLSocket cli = std::move(std::get<0>(__tup_1));
-    ::tpystd::ssl::SSLSocket srv = std::move(std::get<1>(__tup_1));
+    auto&& cli = std::move(std::get<0>(__tup_1));
+    auto&& srv = std::move(std::get<1>(__tup_1));
     ::tpystd::ssl::SSLContext __tmp_1 = ::tpystd::ssl::create_default_context();
     ::tpystd::http::client::HTTPSConnection conn = ::tpystd::http::client::HTTPSConnection("localhost", ::tpystd::http::client::HTTPS_PORT, std::nullopt, &(__tmp_1));
     conn._tls = std::move(cli);

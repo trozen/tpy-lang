@@ -180,7 +180,7 @@ inline std::tuple<std::vector<std::string>, int32_t> Stack::take() {
 inline void Stack::drain() {
     this->items.push_back(std::tuple<std::vector<std::string>, int32_t>{{"m"}, 2});
     auto __tup_1 = ::tpy::pop_back(this->items);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "method_body" << " " << ::tpy::ListPrinter(a) << " " << n << " " << ::tpy::ListPrinter(this->items) << "\n" << ::tpy::check_signals;
@@ -193,7 +193,7 @@ inline void Stack::drain() {
 template<PairMaker T>
 void protocol_generic(::tpy::param_val_or_ref_t<T> maker) {
     auto __tup_1 = maker.pair();
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "protocol_generic" << " " << ::tpy::ListPrinter(a) << " " << n << "\n" << ::tpy::check_signals;

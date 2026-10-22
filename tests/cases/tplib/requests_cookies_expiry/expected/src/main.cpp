@@ -25,8 +25,8 @@ double AFTER_2099{};
 //     return r
 ::tpystd::tplib::requests::Response one(::tpy::BytesView set_cookie) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("HTTP/1.1 200 OK\r\n", 17), set_cookie)), ::tpy::bytes_literal("Content-Length: 0\r\n\r\n", 21))));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
@@ -85,8 +85,8 @@ void live_cookie_resent() {
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a1 = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b1 = std::move(std::get<1>(__tup_1));
+    auto&& a1 = std::move(std::get<0>(__tup_1));
+    auto&& b1 = std::move(std::get<1>(__tup_1));
     b1.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: k=v; Max-Age=3600\r\nContent-Length: 0\r\n\r\n", 69));
     ::tpystd::http::client::HTTPConnection c1 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c1.sock = std::move(a1);
@@ -94,8 +94,8 @@ void live_cookie_resent() {
     s.get("http://api.test/one");
     b1.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket b2 = std::move(std::get<1>(__tup_2));
+    auto&& a2 = std::move(std::get<0>(__tup_2));
+    auto&& b2 = std::move(std::get<1>(__tup_2));
     b2.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n", 38));
     ::tpystd::http::client::HTTPConnection c2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     c2.sock = std::move(a2);

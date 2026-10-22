@@ -145,6 +145,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_truth)
 from ...codegen_cpp.forms import (
     LocalBinding,
+    LoopBinding,
     is_plain_nonvalue,
     is_ptr_variant_union,
     reads_storage_form_optional,
@@ -7748,6 +7749,20 @@ def unpack_claim_agrees(stmt: TpyTupleUnpack, lc: _LowerCtx) -> bool:
                if any(p[:1] == (i,) for p in rec.leaves))
 
 
+def unpack_holder_agrees(stmt: TpyTupleUnpack, source_bind: TupleSourceBind,
+                          lc: _LowerCtx) -> bool:
+    """Whether the targets the binding table holds in place in the
+    unpack's rvalue holder (`bindings.unpack_holder_is_rvalue`) bind off
+    the holder `source_bind` renders: a reference into any other holder
+    would alias storage the statement does not own."""
+    if source_bind is TupleSourceBind.RVALUE:
+        return True
+    return not any(
+        rec is not None and rec.loop_binding is LoopBinding.OWNED
+        for rec in (_bindings.fresh_record(lc.table, stmt, n)
+                    for n in stmt.targets if n is not None))
+
+
 def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                               scope: '_LowerScope') -> THIRStmt:
     """Resumable frame-target tuple unpack (the reactor `a, b =
@@ -14350,6 +14365,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 raise ThirUnsupported("stmt.tuple_unpack")
             _witness("stmt.tuple_unpack.ref_target")
             if subscript_wrap_src:
+                if not unpack_holder_agrees(
+                        stmt, TupleSourceBind.STORAGE_WRAP, lc):
+                    note_detail("tuple_unpack.owned_target_holder")
+                    raise ThirUnsupported("stmt.tuple_unpack")
                 return THIRTupleUnpack(
                     source="", targets=tuple(stmt.targets),
                     target_cpps=tuple(target_cpps), binds=tuple(bind_tags),
@@ -14425,6 +14444,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                  else "stmt.tuple_unpack.rvalue_source")
         rv_sb = (TupleSourceBind.NAME_CREF if lvalue_select
                  else TupleSourceBind.RVALUE)
+        if not unpack_holder_agrees(stmt, rv_sb, lc):
+            note_detail("tuple_unpack.owned_target_holder")
+            raise ThirUnsupported("stmt.tuple_unpack")
         rv_binds, rv_wraps = _move_owned_buffer_targets(
             stmt, rv_sb, bind_tags, declared, analyzer,
             wraps_in=opt_wraps if any(opt_wraps) else None)

@@ -49,8 +49,8 @@ namespace tpyapp::main {
 //         print("no-host OSError")
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nhello", 43));
     ::tpystd::http::client::HTTPConnection hc = ::tpystd::http::client::HTTPConnection("api.test", 8002);
     hc.sock = std::move(a);
@@ -61,8 +61,8 @@ void main() {
     std::cout << ::tpy::BytesPrinter(b.recv(65536)) << "\n" << ::tpy::check_signals;
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
+    auto&& c = std::move(std::get<0>(__tup_2));
+    auto&& d = std::move(std::get<1>(__tup_2));
     d.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::http::client::HTTPConnection hc2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
     hc2.sock = std::move(c);

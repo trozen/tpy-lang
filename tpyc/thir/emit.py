@@ -4580,11 +4580,17 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
                 moved = (f"std::move({get})" if bind is UnpackBind.MOVE
                          else f"std::move(*{get})")
                 rec = stmt.target_slot(i)
+                own = stmt.bindings[i] if i < len(stmt.bindings) else None
                 if rec is not None:
                     # A rebound target: the element lands in its own slot.
                     _emit_slot_pointer(out, indent, cpp, escape_cpp_name(name),
                                        moved, state,
                                        hoisted=rec.storage_hoisted)
+                elif (own is not None
+                      and own.loop_binding is LoopBinding.OWNED):
+                    _write_lines(out, indent, loop_var_binding(
+                        LoopBinding.OWNED, own.type, escape_cpp_name(name),
+                        get, owned_step_expr=moved))
                 else:
                     out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                               f"{moved};\n")

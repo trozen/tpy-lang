@@ -73,41 +73,39 @@ std::expected<P, Err> make(int32_t i) {
 //         print(tag, "for_own_lvalue", d.n, c.n)
 void rows(std::string_view tag) {
     auto __tup_1 = ::tpyapp::main::mk(1);
-    P __slot_1 = std::move(std::get<0>(__tup_1));
-    P* p = &__slot_1;
+    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
     int32_t k = std::get<1>(__tup_1);
     P& q = (*p);
-    std::optional<P> __slot_2;
-    p = &*(__slot_2 = P(2));
+    std::optional<P> __slot_1;
+    p = &*(__slot_1 = P(2));
     q.n = ::tpy::add_check<int32_t>(q.n, 10);
     std::cout << tag << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
     P other = P(100);
     auto __tup_2 = ::tpyapp::main::mk(5);
-    P __slot_3 = std::move(std::get<0>(__tup_2));
-    P* a = &__slot_3;
+    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
     int32_t j = std::get<1>(__tup_2);
     P& b = (*a);
     a = &(other);
     other.n = ::tpy::add_check<int32_t>(other.n, 5);
     std::cout << tag << " " << "unpack_lvalue" << " " << b.n << " " << a->n << " " << j << "\n" << ::tpy::check_signals;
-    std::optional<P> __slot_4;
-    std::optional<P> __slot_5;
+    std::optional<P> __slot_2;
+    std::optional<P> __slot_3;
     P* w = nullptr;
-    if (((w = &*(__slot_4 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
+    if (((w = &*(__slot_2 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
         P& v = (*w);
-        w = &*(__slot_5 = P(2));
+        w = &*(__slot_3 = P(2));
         v.n = ::tpy::add_check<int32_t>(v.n, 10);
         std::cout << tag << " " << "walrus_rvalue" << " " << v.n << " " << w->n << "\n" << ::tpy::check_signals;
     }
-    std::optional<P> __slot_6;
+    std::optional<P> __slot_4;
     P* x = nullptr;
-    if (((x = &*(__slot_6 = ::tpyapp::main::mk1(6)), *x).n > 0)) {
+    if (((x = &*(__slot_4 = ::tpyapp::main::mk1(6)), *x).n > 0)) {
         P& y = (*x);
         x = &(other);
         other.n = ::tpy::add_check<int32_t>(other.n, 1);
         std::cout << tag << " " << "walrus_lvalue" << " " << y.n << " " << x->n << "\n" << ::tpy::check_signals;
     }
-    std::optional<P> __slot_7;
+    std::optional<P> __slot_5;
     {
         auto __src_0 = ::tpyapp::main::steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -117,7 +115,7 @@ void rows(std::string_view tag) {
             auto&& __own_1 = ::tpy::own_bind(*__r_1);
             P* s = &__own_1;
             P& t = (*s);
-            s = &*(__slot_7 = P(9));
+            s = &*(__slot_5 = P(9));
             t.n = ::tpy::add_check<int32_t>(t.n, 10);
             std::cout << tag << " " << "for_own_rvalue" << " " << t.n << " " << s->n << "\n" << ::tpy::check_signals;
         }
@@ -271,15 +269,14 @@ void while_head_alias_across_passes() {
 void nested() {
     auto inner = []() {
         auto __tup_1 = ::tpyapp::main::mk(1);
-        P __slot_1 = std::move(std::get<0>(__tup_1));
-        P* p = &__slot_1;
+        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
-        std::optional<P> __slot_2;
-        p = &*(__slot_2 = P(2));
+        std::optional<P> __slot_1;
+        p = &*(__slot_1 = P(2));
         q.n = ::tpy::add_check<int32_t>(q.n, 10);
         std::cout << "nested" << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
-        std::optional<P> __slot_3;
+        std::optional<P> __slot_2;
         {
             auto __src_0 = ::tpyapp::main::steps();
             auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -289,7 +286,7 @@ void nested() {
                 auto&& __own_1 = ::tpy::own_bind(*__r_1);
                 P* s = &__own_1;
                 P& t = (*s);
-                s = &*(__slot_3 = P(9));
+                s = &*(__slot_2 = P(9));
                 t.n = ::tpy::add_check<int32_t>(t.n, 10);
                 std::cout << "nested" << " " << "for_own_rvalue" << " " << t.n << " " << s->n << "\n" << ::tpy::check_signals;
             }
@@ -320,23 +317,22 @@ void nested() {
 //     except ValueError:
 //         print("try", "unreachable")
 void in_try() {
+    std::optional<P> __slot_1;
     std::optional<P> __slot_2;
     std::optional<P> __slot_3;
-    std::optional<P> __slot_4;
     {
         try {
             auto __tup_1 = ::tpyapp::main::mk(1);
-            P __slot_1 = std::move(std::get<0>(__tup_1));
-            P* p = &__slot_1;
+            auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
             int32_t k = std::get<1>(__tup_1);
             P& q = (*p);
-            p = &*(__slot_2 = P(2));
+            p = &*(__slot_1 = P(2));
             q.n = ::tpy::add_check<int32_t>(q.n, 10);
             std::cout << "try" << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
             P* w = nullptr;
-            if (((w = &*(__slot_3 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
+            if (((w = &*(__slot_2 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
                 P& v = (*w);
-                w = &*(__slot_4 = P(2));
+                w = &*(__slot_3 = P(2));
                 v.n = ::tpy::add_check<int32_t>(v.n, 10);
                 std::cout << "try" << " " << "walrus_rvalue" << " " << v.n << " " << w->n << "\n" << ::tpy::check_signals;
             }
@@ -377,24 +373,23 @@ void in_try() {
 //         case _:
 //             pass
 void in_match(int32_t v) {
+    std::optional<P> __slot_1;
     std::optional<P> __slot_2;
     std::optional<P> __slot_3;
-    std::optional<P> __slot_4;
     auto& __match_subject_1 = v;
     switch (__match_subject_1) {
     case 1: {
         auto __tup_1 = ::tpyapp::main::mk(1);
-        P __slot_1 = std::move(std::get<0>(__tup_1));
-        P* p = &__slot_1;
+        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
-        p = &*(__slot_2 = P(2));
+        p = &*(__slot_1 = P(2));
         q.n = ::tpy::add_check<int32_t>(q.n, 10);
         std::cout << "match" << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
         P* w = nullptr;
-        if (((w = &*(__slot_3 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
+        if (((w = &*(__slot_2 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
             P& x = (*w);
-            w = &*(__slot_4 = P(2));
+            w = &*(__slot_3 = P(2));
             x.n = ::tpy::add_check<int32_t>(x.n, 10);
             std::cout << "match" << " " << "walrus_rvalue" << " " << x.n << " " << w->n << "\n" << ::tpy::check_signals;
         }
@@ -419,15 +414,14 @@ void in_match(int32_t v) {
 //             t.n += 10
 //             print("if", "for_own_rvalue", t.n, s.n)
 void in_if(bool c) {
+    std::optional<P> __slot_1;
     std::optional<P> __slot_2;
-    std::optional<P> __slot_3;
     if (c) {
         auto __tup_1 = ::tpyapp::main::mk(1);
-        P __slot_1 = std::move(std::get<0>(__tup_1));
-        P* p = &__slot_1;
+        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
-        p = &*(__slot_2 = P(2));
+        p = &*(__slot_1 = P(2));
         q.n = ::tpy::add_check<int32_t>(q.n, 10);
         std::cout << "if" << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
         {
@@ -439,7 +433,7 @@ void in_if(bool c) {
                 auto&& __own_1 = ::tpy::own_bind(*__r_1);
                 P* s = &__own_1;
                 P& t = (*s);
-                s = &*(__slot_3 = P(9));
+                s = &*(__slot_2 = P(9));
                 t.n = ::tpy::add_check<int32_t>(t.n, 10);
                 std::cout << "if" << " " << "for_own_rvalue" << " " << t.n << " " << s->n << "\n" << ::tpy::check_signals;
             }
@@ -460,22 +454,21 @@ void in_if(bool c) {
 //             x.n += 10
 //             print("loop", "walrus_rvalue", x.n, w.n)
 void in_loop() {
+    std::optional<P> __slot_1;
     std::optional<P> __slot_2;
     std::optional<P> __slot_3;
-    std::optional<P> __slot_4;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_1 = ::tpyapp::main::mk(i);
-        P __slot_1 = std::move(std::get<0>(__tup_1));
-        P* p = &__slot_1;
+        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
-        p = &*(__slot_2 = P((::tpy::add_check<int32_t>(20, i))));
+        p = &*(__slot_1 = P((::tpy::add_check<int32_t>(20, i))));
         q.n = ::tpy::add_check<int32_t>(q.n, 10);
         std::cout << "loop" << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
         P* w = nullptr;
-        if (((w = &*(__slot_3 = ::tpyapp::main::mk1(i)), *w).n >= 0)) {
+        if (((w = &*(__slot_2 = ::tpyapp::main::mk1(i)), *w).n >= 0)) {
             P& x = (*w);
-            w = &*(__slot_4 = P((::tpy::add_check<int32_t>(30, i))));
+            w = &*(__slot_3 = P((::tpy::add_check<int32_t>(30, i))));
             x.n = ::tpy::add_check<int32_t>(x.n, 10);
             std::cout << "loop" << " " << "walrus_rvalue" << " " << x.n << " " << w->n << "\n" << ::tpy::check_signals;
         }
@@ -559,7 +552,7 @@ void declarations(Outer& o) {
 //     print("inverse", "value_unpack", m, n, j)
 void inverse() {
     auto __tup_1 = ::tpyapp::main::mk(3);
-    P p = std::move(std::get<0>(__tup_1));
+    auto&& p = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     P& q = p;
     q.n = ::tpy::add_check<int32_t>(q.n, 1);
@@ -1298,30 +1291,28 @@ void compare_operands() {
     Ce oe = Ce(5);
     Cl ol = Cl(5);
     auto __tup_1 = ::tpyapp::main::mke(1);
-    Ce __slot_1 = std::move(std::get<0>(__tup_1));
-    Ce* a = &__slot_1;
+    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
     int32_t k = std::get<1>(__tup_1);
     Ce& ka = (*a);
     a = &(oe);
     oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
     std::cout << "compare" << " " << "unpack_eq" << " " << ::tpy::print_bool((((*a)) == (Ce(6)))) << " " << ::tpy::print_bool((!(((*a)) == (ka)))) << " " << k << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::mkl(1);
-    Cl __slot_2 = std::move(std::get<0>(__tup_2));
-    Cl* b = &__slot_2;
+    auto* b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
     int32_t j = std::get<1>(__tup_2);
     b = &(ol);
     ol.n = ::tpy::add_check<int32_t>(ol.n, 1);
     std::cout << "compare" << " " << "unpack_lt" << " " << ::tpy::print_bool(((Cl(5)) < ((*b)))) << " " << ::tpy::print_bool((((*b)) < (Cl(6)))) << " " << j << "\n" << ::tpy::check_signals;
-    std::optional<Ce> __slot_3;
+    std::optional<Ce> __slot_1;
     Ce* w = nullptr;
-    if (((w = &*(__slot_3 = ::tpyapp::main::mke1(1)), *w).n > 0)) {
+    if (((w = &*(__slot_1 = ::tpyapp::main::mke1(1)), *w).n > 0)) {
         w = &(oe);
         oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
         std::cout << "compare" << " " << "walrus_eq" << " " << ::tpy::print_bool((((*w)) == (Ce(7)))) << " " << ::tpy::print_bool((!(((*w)) == (oe)))) << "\n" << ::tpy::check_signals;
     }
-    std::optional<Cl> __slot_4;
+    std::optional<Cl> __slot_2;
     Cl* v = nullptr;
-    if (((v = &*(__slot_4 = ::tpyapp::main::mkl1(1)), *v).n > 0)) {
+    if (((v = &*(__slot_2 = ::tpyapp::main::mkl1(1)), *v).n > 0)) {
         v = &(ol);
         ol.n = ::tpy::add_check<int32_t>(ol.n, 1);
         std::cout << "compare" << " " << "walrus_lt" << " " << ::tpy::print_bool(((Cl(6)) < ((*v)))) << " " << ::tpy::print_bool((((*v)) < (Cl(7)))) << "\n" << ::tpy::check_signals;
@@ -1379,13 +1370,13 @@ void compare_operands() {
     }
     __with_exit_3:
     __ctx_3.__exit__({}, {}, {});
-    Ce __slot_5 = Ce(1);
-    Ce* x = &__slot_5;
+    Ce __slot_3 = Ce(1);
+    Ce* x = &__slot_3;
     x = &(oe);
     oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
     std::cout << "compare" << " " << "decl_eq" << " " << ::tpy::print_bool((((*x)) == (Ce(10)))) << " " << ::tpy::print_bool((!(((*x)) == (oe)))) << "\n" << ::tpy::check_signals;
-    Cl __slot_6 = Cl(1);
-    Cl* y = &__slot_6;
+    Cl __slot_4 = Cl(1);
+    Cl* y = &__slot_4;
     y = &(ol);
     ol.n = ::tpy::add_check<int32_t>(ol.n, 1);
     std::cout << "compare" << " " << "decl_lt" << " " << ::tpy::print_bool(((Cl(9)) < ((*y)))) << " " << ::tpy::print_bool((((*y)) < (Cl(10)))) << "\n" << ::tpy::check_signals;
@@ -1412,24 +1403,23 @@ void compare_operands() {
 //         print("ctor", "for_own_rvalue", t.n, s.n)
 Holder::Holder() {
     auto __tup_1 = ::tpyapp::main::mk(1);
-    P __slot_1 = std::move(std::get<0>(__tup_1));
-    P* p = &__slot_1;
+    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
     int32_t k = std::get<1>(__tup_1);
     P& q = (*p);
-    std::optional<P> __slot_2;
-    p = &*(__slot_2 = P(2));
+    std::optional<P> __slot_1;
+    p = &*(__slot_1 = P(2));
     q.n = ::tpy::add_check<int32_t>(q.n, 10);
     std::cout << "ctor" << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
     P other = P(100);
-    std::optional<P> __slot_3;
+    std::optional<P> __slot_2;
     P* x = nullptr;
-    if (((x = &*(__slot_3 = ::tpyapp::main::mk1(6)), *x).n > 0)) {
+    if (((x = &*(__slot_2 = ::tpyapp::main::mk1(6)), *x).n > 0)) {
         P& y = (*x);
         x = &(other);
         other.n = ::tpy::add_check<int32_t>(other.n, 1);
         std::cout << "ctor" << " " << "walrus_lvalue" << " " << y.n << " " << x->n << "\n" << ::tpy::check_signals;
     }
-    std::optional<P> __slot_4;
+    std::optional<P> __slot_3;
     {
         auto __src_0 = ::tpyapp::main::steps();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1439,7 +1429,7 @@ Holder::Holder() {
             auto&& __own_1 = ::tpy::own_bind(*__r_1);
             P* s = &__own_1;
             P& t = (*s);
-            s = &*(__slot_4 = P(9));
+            s = &*(__slot_3 = P(9));
             t.n = ::tpy::add_check<int32_t>(t.n, 10);
             std::cout << "ctor" << " " << "for_own_rvalue" << " " << t.n << " " << s->n << "\n" << ::tpy::check_signals;
         }
@@ -1467,19 +1457,18 @@ Holder::Holder() {
 void Holder::method() const {
     P other = P(100);
     auto __tup_1 = ::tpyapp::main::mk(5);
-    P __slot_1 = std::move(std::get<0>(__tup_1));
-    P* a = &__slot_1;
+    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
     int32_t j = std::get<1>(__tup_1);
     P& b = (*a);
     a = &(other);
     other.n = ::tpy::add_check<int32_t>(other.n, 5);
     std::cout << "method" << " " << "unpack_lvalue" << " " << b.n << " " << a->n << " " << j << "\n" << ::tpy::check_signals;
+    std::optional<P> __slot_1;
     std::optional<P> __slot_2;
-    std::optional<P> __slot_3;
     P* w = nullptr;
-    if (((w = &*(__slot_2 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
+    if (((w = &*(__slot_1 = ::tpyapp::main::mk1(1)), *w).n > 0)) {
         P& v = (*w);
-        w = &*(__slot_3 = P(2));
+        w = &*(__slot_2 = P(2));
         v.n = ::tpy::add_check<int32_t>(v.n, 10);
         std::cout << "method" << " " << "walrus_rvalue" << " " << v.n << " " << w->n << "\n" << ::tpy::check_signals;
     }

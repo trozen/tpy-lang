@@ -21,14 +21,14 @@ from ..identity_map import IdentityMap
 from ..codegen_cpp.context import ThirRejectError
 from ..parse import (TpyAssign, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpyIfExpr, TpyMethodCall, TpyName, TpyNamedExpr,
-                     TpyReturn, TpySubscript, TpyTupleLiteral, TpyVarDecl,
-                     TpyYield)
+                     TpyReturn, TpySubscript, TpyTupleLiteral,
+                     TpyTupleUnpack, TpyVarDecl, TpyYield)
 from ..parse.nodes import SourceLocation, TpyNestedDef, walk_body_stmts
 from ..sema import alias_rebind
 from ..sema.alias_rebind import (bare_tuple, direct_elements, owned_slot_paths,
                                  peel_slot, tuple_borrowed_paths,
                                  tuple_source_elem_owned)
-from ..sema.binding_ownership import ReadKind
+from ..sema.binding_ownership import ReadKind, local_ownership
 from ..sema.compatibility import TupleSink, TypeCompatibility
 from ..sema.context import NonOwningBind, SemanticContext
 from ..sema.source_records import (Disposition, Leaf, LeafPermission,
@@ -856,6 +856,57 @@ print(sel_name[0].x, alias[0].x, field[0].x, lit[0].x)
     expr = inits[name]
     slot = analyzer.get_expr_type(expr)
     assert tuple_source_elem_owned(analyzer.ctx, expr, slot) == expected
+
+
+@pytest.mark.parametrize("target, owned", [
+    # A borrowing call lends its element: the target aliases it.
+    ("b0", False),
+    # An `Own` element marker hands that element over, its sibling not.
+    ("m0", True),
+    ("m1", False),
+    # `-> Own[tuple]` hands every reference element over.
+    ("o0", True),
+    ("o1", True),
+    # A method's plain `-> tuple` lends; list.pop hands its element over.
+    ("g0", False),
+    ("p0", True),
+    # A tuple NAME read again keeps its element.
+    ("t0", False),
+    # A scalar element is a value bind, never an owned one.
+    ("pn", False),
+    # An open T element is one body for every instantiation: not owned.
+    ("x0", False),
+])
+def test_unpack_target_owns_what_its_call_source_hands_over(
+        target: str, owned: bool) -> None:
+    # The unpack's per-target tag and the target's ownership record are
+    # one verdict: the source's per-element hand-over.
+    _compiler, modules = _compile(PRELUDE + """\
+def owning_t[T](x: T) -> Own[tuple[T, int32]]:
+    raise ValueError("signature only")
+def generic[T](x: T) -> None:
+    x0, x1 = owning_t(x)
+    print(x1)
+def subject(a: A, h: H, t: tuple[A, int32]) -> None:
+    b0, b1 = mk(a)
+    m0, m1 = mixed(a)
+    o0, o1 = owning(a)
+    g0, g1 = h.get(a)
+    st = [(A(1), 1)]
+    p0, pn = st.pop()
+    t0, t1 = t
+    print(b0.x, b1, m0.x, m1.x, o0.x, o1.x, g0.x, g1, p0.x, pn, t0.x, t1)
+    print(t[0].x)
+""")
+    entry = _entry(modules)
+    ctx = entry.analyzer.ctx
+    body = next(f for f in entry.ast.functions
+                if f.name == ("generic" if target == "x0" else "subject"))
+    unpack = next(s for s in body.body if isinstance(s, TpyTupleUnpack)
+                  and target in s.targets)
+    i = unpack.targets.index(target)
+    assert unpack.is_owned[i] is owned
+    assert bool(local_ownership(ctx, body, target)) is owned
 
 
 @pytest.mark.parametrize("name, expected", [

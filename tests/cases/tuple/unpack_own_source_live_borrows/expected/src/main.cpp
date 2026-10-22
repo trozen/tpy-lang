@@ -190,7 +190,7 @@ std::tuple<int32_t, NBox> relay() {
 void relayed_call() {
     auto __tup_1 = ::tpyapp::main::relay();
     int32_t n = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.n = 9;
     std::cout << "relayed_call" << " " << n << " " << b.n << "\n" << ::tpy::check_signals;
 }

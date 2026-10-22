@@ -51,7 +51,7 @@ void main() {
     auto p = ::tpyapp::main::keep_param(tree);
     std::cout << ::tpyapp::main::count(std::get<0>(p)) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::own_escape();
-    Tree<int32_t> q = std::move(std::get<0>(__tup_1));
+    auto&& q = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << ::tpyapp::main::count(q) << "\n" << ::tpy::check_signals;
 }

@@ -29,15 +29,15 @@ namespace tpyapp::main {
 //     c.close()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.sendall(::tpy::bytes_literal("hi", 2));
     std::cout << "live send:" << " " << ::tpy::BytesPrinter(b.recv(2)) << "\n" << ::tpy::check_signals;
     a.close();
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket c = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket d = std::move(std::get<1>(__tup_2));
+    auto&& c = std::move(std::get<0>(__tup_2));
+    auto&& d = std::move(std::get<1>(__tup_2));
     d.close();
     {
         try {

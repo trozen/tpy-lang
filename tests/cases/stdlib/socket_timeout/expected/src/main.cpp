@@ -22,7 +22,7 @@ void accept_timeout() {
     {
         try {
             auto __tup_1 = srv.accept();
-            ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
+            auto&& conn = std::move(std::get<0>(__tup_1));
             const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
             std::cout << "accept: NO TIMEOUT" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::TimeoutError& e) {
@@ -48,7 +48,7 @@ void accept_queued() {
     ::tpystd::socket::socket c = ::tpystd::socket::create_connection(srv.getsockname());
     srv.settimeout(1e-09);
     auto __tup_1 = srv.accept();
-    ::tpystd::socket::socket conn = std::move(std::get<0>(__tup_1));
+    auto&& conn = std::move(std::get<0>(__tup_1));
     const std::tuple<std::string, int32_t>& peer = std::get<1>(__tup_1);
     std::cout << "accept queued: peer matches:" << " " << ::tpy::print_bool((peer == c.getsockname())) << "\n" << ::tpy::check_signals;
     conn.close();
@@ -70,8 +70,8 @@ void accept_queued() {
 //     b.close()
 void send_timeout() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.settimeout(0.05);
     ::tpy::Bytes chunk = (::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), 65536));
     {
@@ -98,8 +98,8 @@ void send_timeout() {
 //     print("blocking send: peer got:", h.join())
 void blocking_send() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::tpy::thread::JoinHandle<int32_t> h = ::tpystd::tpy::thread::spawn<int32_t, Drain>(Drain(std::move(b)));
     ::tpy::Bytes data = (::tpy::bytes_repeat(::tpy::bytes_literal("x", 1), 2000000));
     int32_t n = a.send(data);
@@ -149,8 +149,8 @@ void blocking_send() {
 //     blocking_send()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.settimeout(0.5);
     a.sendall(::tpy::bytes_literal("hi", 2));
     ::tpy::Bytes got = b.recv(2);

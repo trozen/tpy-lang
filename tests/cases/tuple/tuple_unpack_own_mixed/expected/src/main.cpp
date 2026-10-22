@@ -22,7 +22,7 @@ void consume(Counter&& c) {
 //     print(n)
 void main() {
     auto __tup_1 = ::tpyapp::main::make();
-    Counter a = std::move(std::get<0>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     ::tpyapp::main::consume(std::move(a));
     std::cout << n << "\n" << ::tpy::check_signals;

@@ -1,0 +1,3 @@
+main.py:218: warning: copies A into owned storage; use copy() to make this explicit ('a' is bound to existing storage at line 217)
+main.py:253: warning: copies A into field; use copy() to make this explicit
+main.py:261: warning: copies A into owned storage; use copy() to make this explicit

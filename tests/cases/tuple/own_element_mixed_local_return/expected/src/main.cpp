@@ -21,8 +21,8 @@ std::tuple<N, P> f(P& p) {
 void main() {
     P p = P(2);
     auto __tup_1 = ::tpyapp::main::f(p);
-    N n = std::move(std::get<0>(__tup_1));
-    P q = std::move(std::get<1>(__tup_1));
+    auto&& n = std::move(std::get<0>(__tup_1));
+    auto&& q = std::move(std::get<1>(__tup_1));
     p.x = 5;
     std::cout << n.v << " " << q.x << " " << p.x << "\n" << ::tpy::check_signals;
 }

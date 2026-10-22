@@ -1031,7 +1031,7 @@ std::tuple<Src, Src> make_srcs(int32_t n) {
 void slot_drop_unpack_plain() {
     auto __tup_1 = ::tpyapp::main::make_srcs(7);
     auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    auto&& q = std::move(std::get<1>(__tup_1));
     Viewer __slot_1 = Viewer(p->s);
     Viewer* w = &__slot_1;
     std::optional<Src> __slot_2;

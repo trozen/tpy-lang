@@ -47,8 +47,8 @@ namespace tpyapp::main {
 //     b3.close()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("api.test", 80);
@@ -58,8 +58,8 @@ void main() {
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(b.recv(65536), ::tpy::bytes_literal_owned("User-Agent: tpy-requests/", 25)))) << "\n" << ::tpy::check_signals;
     b.close();
     auto __tup_2 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a2 = std::move(std::get<0>(__tup_2));
-    ::tpystd::socket::socket b2 = std::move(std::get<1>(__tup_2));
+    auto&& a2 = std::move(std::get<0>(__tup_2));
+    auto&& b2 = std::move(std::get<1>(__tup_2));
     b2.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s2 = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn2 = ::tpystd::http::client::HTTPConnection("api.test", 80);
@@ -72,8 +72,8 @@ void main() {
     std::cout << ::tpy::print_bool((::tpy::bytes_contains_sub(sent, ::tpy::bytes_literal_owned("tpy-requests", 12)))) << "\n" << ::tpy::check_signals;
     b2.close();
     auto __tup_3 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a3 = std::move(std::get<0>(__tup_3));
-    ::tpystd::socket::socket b3 = std::move(std::get<1>(__tup_3));
+    auto&& a3 = std::move(std::get<0>(__tup_3));
+    auto&& b3 = std::move(std::get<1>(__tup_3));
     b3.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok", 40));
     ::tpystd::tplib::requests::Session s3 = ::tpystd::tplib::requests::Session();
     ::tpystd::http::client::HTTPConnection conn3 = ::tpystd::http::client::HTTPConnection("api.test", 80);

@@ -183,7 +183,7 @@ void main() {
     std::cout << "last_use" << " " << ::tpyapp::main::take(std::tuple<P, P>{std::move(c), std::move(d)}) << "\n" << ::tpy::check_signals;
     std::cout << "give" << " " << Holder().give() << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::ret_moves();
-    P m = std::move(std::get<0>(__tup_1));
+    auto&& m = std::move(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     m.xs.push_back(6);
     std::cout << "ret_moves" << " " << ::tpy::__len__(m.xs) << " " << k << "\n" << ::tpy::check_signals;

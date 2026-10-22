@@ -39,8 +39,8 @@ namespace tpyapp::main {
 //     print("evil" in s.cookies)
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     b.sendall(::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=xyz; Path=/; HttpOnly\r\nSet-Cookie: pref=dark; Domain=api.test\r\nSet-Cookie: evil=1; Domain=other.test\r\nContent-Length: 2\r\n\r\nok", 158));
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});

@@ -45,8 +45,8 @@ namespace tpyapp::main {
 //     b.close()
 void main() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     std::cout << "default:" << " " << ::tpy::print_bool((!a.gettimeout().has_value())) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;
     a.settimeout(0.0);
     std::cout << "zero:" << " " << ::tpy::print_bool((a.gettimeout() == 0.0)) << " " << ::tpy::print_bool(a.getblocking()) << "\n" << ::tpy::check_signals;

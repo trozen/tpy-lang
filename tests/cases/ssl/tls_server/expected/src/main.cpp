@@ -111,8 +111,8 @@ bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv) {
 //     cli.close()
 void server_roundtrip() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext cctx = ::tpystd::ssl::create_default_context();
@@ -150,8 +150,8 @@ void server_roundtrip() {
 //         print("no cert chain rejected")
 void missing_cert_chain() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     {
         try {
@@ -192,8 +192,8 @@ void malformed_cert() {
     __with_exit_3:
     __ctx_3.__exit__({}, nullptr, {});
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     sctx.load_cert_chain(BAD_CERT_PATH, BAD_CERT_PATH);
     {
@@ -219,8 +219,8 @@ void malformed_cert() {
 //         print("server_hostname with server_side rejected")
 void server_hostname_rejected() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::ssl::SSLContext sctx = ::tpystd::ssl::SSLContext();
     sctx.load_cert_chain(CERT_PATH, KEY_PATH);
     {

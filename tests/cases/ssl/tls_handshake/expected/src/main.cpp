@@ -108,8 +108,8 @@ bool drive(::tpystd::ssl::SSLSocket& cli, ::tpystd::ssl::SSLSocket& srv) {
 //     srv.close()
 void handshake_ok() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
@@ -165,8 +165,8 @@ void handshake_ok() {
 //     print("FAIL: no verify decision")
 void hostname_mismatch() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();
@@ -224,8 +224,8 @@ void hostname_mismatch() {
 //         print("FAIL: no-verify handshake did not converge")
 void cert_none() {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     a.setblocking(false);
     b.setblocking(false);
     ::tpystd::ssl::SSLContext ctx = ::tpystd::ssl::create_default_context();

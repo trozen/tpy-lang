@@ -192,7 +192,7 @@ void main() {
     std::cout << "literal" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(lt)) << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::mix(r);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    Rec o = std::move(std::get<1>(__tup_2));
+    auto&& o = std::move(std::get<1>(__tup_2));
     ::tpy::Bytes s3 = std::move(std::get<2>(__tup_2));
     b.n = 6;
     o.n = 7;

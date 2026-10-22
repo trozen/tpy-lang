@@ -282,8 +282,8 @@ void loop_unpack_first_bind_section() {
     Point* q = &other;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_1 = ::tpyapp::main::mk2((::tpy::mul_check<int32_t>(10, i)));
-        Point a = std::move(std::get<0>(__tup_1));
-        Point b = std::move(std::get<1>(__tup_1));
+        auto&& a = std::move(std::get<0>(__tup_1));
+        auto&& b = std::move(std::get<1>(__tup_1));
         if ((i == 0)) {
             std::cout << "loop_unpack_first_bind_iter:" << " " << ::tpy::deref_check(q).x << " " << b.x << "\n" << ::tpy::check_signals;
         }

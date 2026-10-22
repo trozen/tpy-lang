@@ -27,7 +27,7 @@ void main() {
     Point p = Point(1);
     auto __tup_1 = ::tpyapp::main::split3(p);
     auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    Point owned = std::move(std::get<1>(__tup_1));
+    auto&& owned = std::move(std::get<1>(__tup_1));
     int32_t n = std::get<2>(__tup_1);
     std::string s = std::move(std::get<3>(__tup_1));
     p.x = 9;

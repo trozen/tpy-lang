@@ -14,8 +14,8 @@ void list_pop() {
     std::vector<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>> stack = ::tpy::make_vector<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>>(::tpy::tuple_to_storage<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>>(std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>{"s", {"p"}, {"q"}, true}));
     auto __tup_1 = ::tpy::pop_back(stack);
     std::string a = std::move(std::get<0>(__tup_1));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+    auto&& b = std::move(std::get<1>(__tup_1));
+    auto&& c = std::move(std::get<2>(__tup_1));
     bool d = std::get<3>(__tup_1);
     b.push_back("z");
     std::cout << "list_pop" << " " << a << " " << ::tpy::ListPrinter(b) << " " << ::tpy::ListPrinter(c) << " " << ::tpy::print_bool(d) << " " << ::tpy::ListPrinter(stack) << "\n" << ::tpy::check_signals;
@@ -30,7 +30,7 @@ void list_pop() {
 void pop0() {
     std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = {::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1}), ::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"w"}, 2})};
     auto __tup_1 = ::tpy::list_pop_at(stack, 0);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t b = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "pop0" << " " << ::tpy::ListPrinter(a) << " " << b << " " << ::tpy::ListPrinter(stack) << "\n" << ::tpy::check_signals;
@@ -45,7 +45,7 @@ void pop0() {
 void dict_pop() {
     ::tpy::ordered_map<std::string, std::tuple<std::vector<std::string>, int32_t>> d = ::tpy::ordered_map<std::string, std::tuple<std::vector<std::string>, int32_t>>({{"k", ::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1})}, {"j", ::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"w"}, 2})}});
     auto __tup_1 = ::tpy::dict_pop(d, "k");
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t b = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "dict_pop" << " " << ::tpy::ListPrinter(a) << " " << b << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
@@ -62,7 +62,7 @@ void arraylist_pop() {
     ::tpystd::tplib::array_list::ArrayList<std::tuple<std::vector<std::string>, int32_t>, 4> xs = ::tpystd::tplib::array_list::ArrayList<std::tuple<std::vector<std::string>, int32_t>, 4>();
     xs.append(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1});
     auto __tup_1 = xs.pop();
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "arraylist_pop" << " " << ::tpy::ListPrinter(a) << " " << n << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
@@ -78,7 +78,7 @@ void arraylist_pop() {
 void user_method() {
     Stack s = Stack();
     auto __tup_1 = s.take();
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "user_method" << " " << ::tpy::ListPrinter(a) << " " << n << " " << ::tpy::ListPrinter(s.items) << "\n" << ::tpy::check_signals;
@@ -132,7 +132,7 @@ void bound() {
 void literal_stack() {
     std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = ::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1}));
     auto __tup_1 = ::tpy::pop_back(stack);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t b = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "literal_stack" << " " << ::tpy::ListPrinter(a) << " " << b << " " << ::tpy::ListPrinter(stack) << "\n" << ::tpy::check_signals;
@@ -223,7 +223,7 @@ void dict_items_literal() {
 //     print("static_method", a, n)
 void static_method() {
     auto __tup_1 = Maker::make();
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "static_method" << " " << ::tpy::ListPrinter(a) << " " << n << "\n" << ::tpy::check_signals;
@@ -236,7 +236,7 @@ void static_method() {
 //     print("module_qualified", a, n)
 void module_qualified() {
     auto __tup_1 = ::tpyapp::pairs::pair();
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.push_back("y");
     std::cout << "module_qualified" << " " << ::tpy::ListPrinter(a) << " " << n << "\n" << ::tpy::check_signals;
@@ -251,7 +251,7 @@ void module_qualified() {
 void record_elem() {
     std::vector<std::tuple<R, int32_t>> stack = ::tpy::make_vector<std::tuple<R, int32_t>>(::tpy::tuple_to_storage<std::tuple<R, int32_t>>(std::tuple<R, int32_t>{R(1), 1}));
     auto __tup_1 = ::tpy::pop_back(stack);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t b = std::get<1>(__tup_1);
     a.n = 9;
     std::cout << "record_elem" << " " << a.n << " " << b << " " << ::tpy::__len__(stack) << "\n" << ::tpy::check_signals;
@@ -268,7 +268,7 @@ void nocopy_elem() {
     std::vector<std::tuple<NC, int32_t>> stack = std::vector<std::tuple<NC, int32_t>>{};
     stack.push_back(std::tuple<NC, int32_t>{NC(1), 1});
     auto __tup_1 = ::tpy::pop_back(stack);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& a = std::move(std::get<0>(__tup_1));
     int32_t b = std::get<1>(__tup_1);
     a.n = 9;
     std::cout << "nocopy_elem" << " " << a.n << " " << b << " " << ::tpy::__len__(stack) << "\n" << ::tpy::check_signals;

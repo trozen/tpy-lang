@@ -21,8 +21,8 @@ namespace tpyapp::main {
 //     conn.close()
 void run(std::string_view method, ::tpy::BytesView response) {
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("h", 80);
     conn.sock = std::move(a);
     conn.request(method, "/");
@@ -85,8 +85,8 @@ void main() {
     ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 101 Switching Protocols\r\n\r\n", 36));
     ::tpyapp::main::run("GET", ::tpy::bytes_literal("HTTP/1.1 103 Early Hints\r\n\r\nHTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nhi", 68));
     auto __tup_1 = ::tpystd::socket::socketpair();
-    ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));
-    ::tpystd::socket::socket b = std::move(std::get<1>(__tup_1));
+    auto&& a = std::move(std::get<0>(__tup_1));
+    auto&& b = std::move(std::get<1>(__tup_1));
     ::tpystd::http::client::HTTPConnection conn = ::tpystd::http::client::HTTPConnection("h", 80);
     conn.sock = std::move(a);
     conn.request("GET", "/");
