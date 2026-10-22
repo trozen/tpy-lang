@@ -560,7 +560,7 @@ evaluated once into an argument temp the statement declares in its own block
 and reads by name (`THIRArgTemp.read_id` / `THIRTempRead`); the key is
 received at the getter and at the setter apart (`TpySubscript.setitem_index`), and the setter is ranked
 on, and receives, the operation's result at its value parameter
-(`TpyAugAssign.setitem_value`), so a narrowing there is the call's *Type
+(`TpyAugAssign.stored_value`), so a narrowing there is the call's *Type
 mismatch*. Each form's call passes the receiver const on its own when its
 variant needs it (`TpySubscript.const_dunders`). A BigInt key at a fixed-width
 variant is the call's checked narrowing, one `to_fixed_check<T>()` per key.
@@ -624,14 +624,24 @@ both stages), compared key by key:
    (second pass, below); 0 for every strict-pass candidate.
 2. **Container widening** -- how far the candidate widens an undecided
    container argument (below).
-3. **Narrowing** -- how many converted arguments narrow (a `BigInt` into a
-   fixed-width parameter); 0 in the strict pass.
+3. **Narrowing** -- how many converted arguments narrow (an integer into a
+   fixed-width parameter that does not hold every value of its type: a
+   `BigInt`, a wider or sign-changing fixed width -- the `narrows_checked`
+   coercion rows); 0 in the strict pass. Between two narrowing candidates
+   the conversion widening below compares them, and a narrowing carries
+   no width distance between fixed widths, only the sign-flip step:
+   `f(uint8)` / `f(int32)` called with an `int64` takes `f(int32)`, while
+   `f(int8)` / `f(int16)` called with an `int32` or an `int64` are
+   ambiguous. From a `BigInt` the fixed widths are ordered wider first
+   (below), so `f(int8)` / `f(int16)` called with an `int` takes
+   `f(int16)`.
 4. **Conversion widening** -- how far a protocol match widens the argument's
    elements: the widening cost of every `PROTOCOL_EXPLICIT` /
    `GENERIC_PROTOCOL_EXPLICIT` argument, read from the conformance
    (`TypeOperations.protocol_type_args_of`: a `dict[int8, int32]` is an
    `Iterable[int8]`), plus how far a converted fixed int, float or numeric
-   literal widens (`_scalar_widening_cost`; a literal from its home). A
+   literal widens or narrows (`_scalar_widening_cost`; a literal from its
+   home, a `BigInt` with the fixed widths ordered wider first). A
    candidate that converts nothing beats one that widens elements, at any
    tier.
 5. **Tier counts** -- the negated per-tier count vector (more matches at

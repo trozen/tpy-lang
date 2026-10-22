@@ -147,8 +147,9 @@ added later as an optimization layer on top of this policy.
 
 ## Compatibility and Migration
 
-Changing default from `BigInt` to `int32` can introduce overflow panics in
-previously unbounded arithmetic where users relied on implicit BigInt.
+Changing default from `BigInt` to `int32` can introduce overflow errors in
+previously unbounded arithmetic where users relied on implicit BigInt (an
+`OverflowError`, catchable).
 
 Mitigation path:
 
@@ -181,7 +182,19 @@ widening relation -- and every use, earlier ones included, is compiled at
 that type. It never becomes unsigned (a literal counts as the default
 int), and a literal the default does not hold makes it `int`. A local
 whose first binding is a typed value -- a numeric type constructor call
-(`x = int8(3)`) included -- keeps that type and refuses a wider value.
+(`x = int8(3)`) included -- has that type unless it is bound again: a
+local bound more than once (a plain or augmented assignment, a `for`
+head, an unpack target, a `match` capture, a walrus;
+`LiteralLocals.rebound`) and first bound to a fixed-width integer gets a
+derived cell whose later bindings JOIN it (`PendingNumCell.joins_stores`),
+so `c = data[i]; c -= 48` makes `c` an `int32` throughout; bindings with
+no join (`uint32` then `int32`) are refused. A `with` / `except` target, a
+nested `def` and an annotation keep a name out of the join (a `with`
+target: BUGS.md#with-target-declared-type-ignores-join), and so does a
+walrus inside a comprehension (BUGS.md#comprehension-walrus-binding-join).
+A local first bound to a literal that a form other than an assignment
+also binds (`x = 0; for x in ys:`) is not pending: it is the default int,
+and that binding must fit it.
 The sibling arms of one `if` / `match` / `try` that each bind a local are
 together its first binding (`scan_first_bindings`): typed arms join, and
 beside a bare-literal arm the family DEFAULT must widen into the typed
@@ -205,7 +218,10 @@ literal's default. Nothing is analyzed twice (`tpyc/sema/pending_num.py`):
   documented order dependence);
 - an operator over a pending operand is typed at once (arithmetic and
   bitwise: the wider operand, itself pending; `/`: float; comparisons:
-  bool; shifts: the left operand) and resolved through the ordinary
+  bool; shifts: the left operand, or the operator's own result for a
+  settled left operand -- an 8/16-bit one computes in the default int; an
+  operator that computes wider than its operands floors the result at
+  its declared return type) and resolved through the ordinary
   `OperatorResolver` once its operands settle; a conversion whose ends are
   not known yet is a `TpyCoerce` placeholder, filled then or spliced out of
   the tree;
@@ -215,7 +231,12 @@ literal's default. Nothing is analyzed twice (`tpyc/sema/pending_num.py`):
   cell settles (a fixed point over locals stored from one another), every
   deferred operation resolves, and no pending type remains in any table.
 
-Module globals and collection-element literals keep the Phase 1 policy.
+Collection-element literals keep the Phase 1 policy. A module global has
+no cell (TODO.md "Module scope is the body of __tpy_init"): one first
+bound to a typed integer keeps that type and refuses a wider store, an
+out-of-range literal included; one first bound to a literal is retyped in
+place by a wider store, which the uses analyzed before it do not follow
+(BUGS.md#module-literal-global-retype-after-use).
 
 ### Interaction with Constant Folding
 

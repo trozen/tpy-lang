@@ -433,7 +433,7 @@ int32_t triple(int32_t v) {
 namespace {
 
 // return sum(b - 96 for b in data)  # tpyc: ok
-struct __genexpr_byte_sum_13_frame : public ::tpy::next_iter_mixin<__genexpr_byte_sum_13_frame, uint8_t> {
+struct __genexpr_byte_sum_13_frame : public ::tpy::next_iter_mixin<__genexpr_byte_sum_13_frame, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::Bytes __src;
     uint8_t b;
@@ -452,7 +452,7 @@ struct __genexpr_byte_sum_13_frame : public ::tpy::next_iter_mixin<__genexpr_byt
         : __state(S_INITIAL),
           __src(::tpy::Bytes(__src_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
-    std::expected<uint8_t, ::tpy::StopIteration> __next__();
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_byte_sum_13_frame& __iter__() { return *this; }
 
     [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_byte_sum_13_frame&) {
@@ -462,10 +462,10 @@ struct __genexpr_byte_sum_13_frame : public ::tpy::next_iter_mixin<__genexpr_byt
 
 // # bytes PARAM source (a borrowed view).
 // return sum(b - 96 for b in data)  # tpyc: ok  # -> S_RESUME_0
-std::expected<uint8_t, ::tpy::StopIteration> __genexpr_byte_sum_13_frame::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_byte_sum_13_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         b = *((*__for_it_0))++;
-        return (::tpy::sub_check<uint8_t>(b, 96));
+        return (::tpy::sub_check<int32_t>(b, 96));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -481,7 +481,7 @@ __genexpr_byte_sum_13_frame __genexpr_byte_sum_13(::tpy::BytesView __src) {
 //     # bytes PARAM source (a borrowed view).
 //     return sum(b - 96 for b in data)  # tpyc: ok
 int32_t byte_sum(::tpy::BytesView data) {
-    return static_cast<int32_t>(::tpy::builtin_sum<uint8_t>(::tpyapp::main::__genexpr_byte_sum_13(data)));
+    return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_byte_sum_13(data));
 }
 
 namespace {
@@ -2822,7 +2822,7 @@ __genexpr_main_47_frame<std::invoke_result_t<F_make>> __genexpr_main_47(std::in_
 }
 
 // print("bytes", sum(b - 96 for b in data))  # tpyc: ok
-struct __genexpr_main_48_frame : public ::tpy::next_iter_mixin<__genexpr_main_48_frame, uint8_t> {
+struct __genexpr_main_48_frame : public ::tpy::next_iter_mixin<__genexpr_main_48_frame, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::BytesView __src;
     uint8_t b;
@@ -2841,7 +2841,7 @@ struct __genexpr_main_48_frame : public ::tpy::next_iter_mixin<__genexpr_main_48
         : __state(S_INITIAL),
           __src(std::move(__src_)) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
 
-    std::expected<uint8_t, ::tpy::StopIteration> __next__();
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
     __genexpr_main_48_frame& __iter__() { return *this; }
 
     [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_main_48_frame&) {
@@ -2850,10 +2850,10 @@ struct __genexpr_main_48_frame : public ::tpy::next_iter_mixin<__genexpr_main_48
 };
 
 // print("bytes", sum(b - 96 for b in data))  # tpyc: ok  # -> S_RESUME_0
-std::expected<uint8_t, ::tpy::StopIteration> __genexpr_main_48_frame::__next__() {
+std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_48_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         b = *((*__for_it_0))++;
-        return (::tpy::sub_check<uint8_t>(b, 96));
+        return (::tpy::sub_check<int32_t>(b, 96));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -3433,7 +3433,7 @@ void main() {
     std::cout << "any" << " " << ::tpy::print_bool(::tpy::builtin_any(::tpyapp::main::__genexpr_main_46(std::in_place, [&]() { return ::tpy::dict_values(d); }))) << "\n" << ::tpy::check_signals;
     std::cout << "all" << " " << ::tpy::print_bool(::tpy::builtin_all(::tpyapp::main::__genexpr_main_47(std::in_place, [&]() { return ::tpy::dict_values(d); }))) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView data = ::tpy::bytes_literal("abc", 3);
-    std::cout << "bytes" << " " << static_cast<int>(::tpy::builtin_sum<uint8_t>(::tpyapp::main::__genexpr_main_48(data))) << "\n" << ::tpy::check_signals;
+    std::cout << "bytes" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_48(data)) << "\n" << ::tpy::check_signals;
     std::cout << "bytes_dict" << " " << ::tpy::__len__(::tpy::dict_construct<uint8_t, double>(::tpyapp::main::__genexpr_main_49(data))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::string> names = ::tpy::ordered_map<int32_t, std::string>({{1, "ab"}, {2, "cd"}});
     std::cout << "join" << " " << ::tpy::str_join(", ", ::tpyapp::main::__genexpr_main_50(std::in_place, [&]() { return ::tpy::dict_values(names); })) << "\n" << ::tpy::check_signals;

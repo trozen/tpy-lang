@@ -518,15 +518,13 @@ def test_empty_list_refusal_wording(body: str, message: str) -> None:
 def test_loop_var_argument_checked_after_settle() -> None:
     """A loop variable passed at a typed parameter does not decide the
     list it iterates: the list widens, and the argument's conversion is
-    refused once it has, as `take32(y)` over `y = xs[0]` is."""
+    judged once it has -- the checked narrowing of an int64 into the int32
+    parameter, as `take32(y)` over `y = xs[0]` is."""
     body = ("def take32(v: int32) -> int32: return v\n"
             "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
             "        print(take32(x))\n    xs.append(a64())\n")
-    with pytest.raises(SemanticError,
-                       match=r"^Type mismatch in argument 'v': expected "
-                             r"int32, got int64$"):
-        Compiler.from_source(_EMPTY_PRELUDE + body,
-                             lib_dirs=[get_lib_dir() / "tpy"]).compile()
+    Compiler.from_source(_EMPTY_PRELUDE + body,
+                         lib_dirs=[get_lib_dir() / "tpy"]).compile()
 
 
 @pytest.mark.parametrize(
@@ -546,18 +544,6 @@ def test_loop_var_argument_checked_after_settle() -> None:
             r"elements of type 'int64'; rename the loop variable or match "
             r"the types$",
             id="pending-target-then-wider"),
-        pytest.param(
-            "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
-            "        x = a64()\n        print(x)\n",
-            r"^'x' is int32 and this value is int64; bind the int64 value "
-            r"to a new name$",
-            id="loop-var-wider-store"),
-        pytest.param(
-            "def main() -> None:\n    ps = [(1, 2)]\n    a, b = ps[0]\n"
-            "    a = a64()\n    print(a, b)\n",
-            r"^'a' is int32 and this value is int64; bind the int64 value "
-            r"to a new name$",
-            id="unpack-target-wider-store"),
         # A limitation: a loop whose variable is read after it decides.
         pytest.param(
             "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
@@ -578,9 +564,9 @@ def test_loop_var_argument_checked_after_settle() -> None:
     ],
 )
 def test_loop_var_refusal_wording(body: str, message: str) -> None:
-    """A loop variable or unpack target is its own local: a wider store
-    into it, or a container widening under a typed or earlier-bound loop
-    target, is refused rather than narrowed."""
+    """A container widening under a typed or earlier-bound loop target is
+    refused rather than narrowed (a wider store into a loop or unpack
+    target joins its bindings instead)."""
     with pytest.raises(SemanticError, match=message):
         Compiler.from_source(_EMPTY_PRELUDE + body,
                              lib_dirs=[get_lib_dir() / "tpy"]).compile()
@@ -676,8 +662,8 @@ def rows32(v: list[list[int32]]) -> None: pass
             "def main() -> None:\n    r: list[int32] = [1]\n"
             "    g = [[a64()]]\n    g.append(r)\n",
             r"^'g' holds list\[int64\] elements \(line 8\), and it is stored "
-            r"here as list\[int32\] \(row element\), which would not hold "
-            r"\.\.\.$",
+            r"here as list\[int32\] \(row element\); annotate its first "
+            r"binding: g: list\[list\[int32\]\] = \[\.\.\.\]$",
             id="wide-rows-then-typed-row"),
         pytest.param(
             "def main() -> None:\n    r: list[int32] = [1]\n    g = [[1]]\n"
@@ -702,23 +688,6 @@ def rows32(v: list[list[int32]]) -> None: pass
             r"\(tuple element 1\); the list is passed as "
             r"list\[tuple\[int64, int32\]\], so the value must be int32$",
             id="member-context-then-wider-extend"),
-        # A list's `remove` / `index` / `count` and `in` are lookups: a
-        # value the element holds leaves it open
-        # (`test_list_lookup_leaves_cells_open`); any other decides the list
-        # first and is then checked as against a decided list, which refuses
-        # a wider argument to the methods.
-        pytest.param(
-            "def main() -> None:\n    xs = [1, 2]\n    xs.remove(a64())\n",
-            r"^Type mismatch in argument 'value': expected int32, got int64$",
-            id="remove-wider-lookup"),
-        pytest.param(
-            "def main() -> None:\n    xs = [1, 2]\n    i = xs.index(a64())\n",
-            r"^Type mismatch in argument 'value': expected int32, got int64$",
-            id="index-wider-lookup"),
-        pytest.param(
-            "def main() -> None:\n    xs = [1, 2]\n    n = xs.count(a64())\n",
-            r"^Type mismatch in argument 'value': expected int32, got int64$",
-            id="count-wider-lookup"),
         # A looked-up value the element does not hold -- a wider width, an
         # `int`, the other family, a part that is no single number --
         # decides the list first and is compared, never converted down.
@@ -1054,32 +1023,11 @@ def take32(d: dict[str, int32]) -> None: pass
             r"and this value is int64; annotate its first binding: "
             r"s: set\[int64\] = \{\.\.\.\}$",
             id="set-comprehension-then-wider"),
-        pytest.param(
-            "def main() -> None:\n    d = {'a': 1}\n"
-            "    print(d.get('b', a64()))\n",
-            r"^Type mismatch in argument 'default': expected int32, got "
-            r"int64$",
-            id="wider-get-default"),
-        pytest.param(
-            "def main() -> None:\n    k = {1: 'x'}\n    print(a64() in k)\n",
-            r"^Type mismatch in membership test \(expected int32\): "
-            r"expected int32, got int64$",
-            id="wider-lookup-key"),
-        pytest.param(
-            "def main() -> None:\n    s = {1}\n    print(a64() in s)\n",
-            r"^Type mismatch in membership test \(expected int32\): "
-            r"expected int32, got int64$",
-            id="set-wider-in"),
         # An `int` looked up decides the dict or set first. `in` then
         # compares it as it is; `discard` checks it against the decided
         # element as a value to store, narrowing it with a check that
         # panics on a value the element cannot hold
         # (BUGS.md#list-lookup-method-arg-converts).
-        pytest.param(
-            "def main() -> None:\n    k = {1: 'x'}\n    n: int = 5\n"
-            "    b = n in k\n    k[a64()] = 'y'\n",
-            r"^Type mismatch in dict key: expected int32, got int64$",
-            id="dict-bigint-in-decides"),
         pytest.param(
             "def main() -> None:\n    s = {1}\n    n: int = 5\n"
             "    b = n in s\n    s.add(a64())\n",
@@ -1143,38 +1091,12 @@ def take32(d: dict[str, int32]) -> None: pass
             r"^'d1' holds int32 values since line 8 \(a conditional "
             r"expression arm\), and this value is int64",
             id="select-of-two-cell-dicts-then-wider"),
-        pytest.param(
-            "def main() -> None:\n    k = {1: 'x'}\n    print(k[a64()])\n",
-            r"^Type mismatch in dict key: expected int32, got int64$",
-            id="wider-subscript-key"),
-        pytest.param(
-            "def main() -> None:\n    d = {1: 'x'}\n    print(d.get(a64()))\n",
-            r"^No matching overload for 'get' with argument types \(int64\)$",
-            id="wider-get-key"),
         # An update's source rows must be the receiver's: no conversion makes
         # one C++ list type of another.
-        pytest.param(
-            "def main() -> None:\n    d = {'a': 1}\n"
-            "    print(d.pop('x', a64()))\n",
-            r"^Type mismatch in argument 'default': expected int32, got "
-            r"int64$",
-            id="wider-pop-default"),
         # Each stub method's declared effect: a looked-up argument must fit
         # the cells (a fitting one leaves them open:
         # `test_dict_set_effect_leaves_cells_open`), an inserted one widens
         # them, which a typed container met afterwards shows.
-        pytest.param(
-            "def main() -> None:\n    s = {1}\n    s.discard(a64())\n",
-            r"^Type mismatch in argument 'value': expected int32, got int64$",
-            id="set-discard-lookup"),
-        pytest.param(
-            "def main() -> None:\n    s = {1}\n    s.remove(a64())\n",
-            r"^Type mismatch in argument 'value': expected int32, got int64$",
-            id="set-remove-lookup"),
-        pytest.param(
-            "def main() -> None:\n    d = {1: 'x'}\n    del d[a64()]\n",
-            r"^Type mismatch in dict key: expected int32, got int64$",
-            id="dict-delitem-lookup"),
         # `update` from a dict literal as an empty dict's first evidence
         # stops with today's ordinary mismatch against the still-unknown
         # parts; pinned so a change to it is seen.
@@ -1316,3 +1238,32 @@ def test_list_lookup_leaves_cells_open(body: str) -> None:
     source = (_DICT_SET_PRELUDE + "def main() -> None:\n    xs = [1, 2, 3]\n"
               + body + "    xs.append(a64())\n")
     Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+# A lookup decides the list, dict or set first; a wider key (or a `get` /
+# `pop` default) then converts into the decided element as at any slot,
+# checked, and the compared key's narrowing warns. `in` compares by value.
+@pytest.mark.parametrize("body, warns", [
+    pytest.param("xs = [1, 2]\n    xs.remove(a64())", True, id="list-remove"),
+    pytest.param("xs = [1, 2]\n    i = xs.index(a64())", True, id="list-index"),
+    pytest.param("xs = [1, 2]\n    n = xs.count(a64())", True, id="list-count"),
+    pytest.param("d = {'a': 1}\n    print(d.get('b', a64()))", False,
+                 id="dict-get-default"),
+    pytest.param("d = {'a': 1}\n    print(d.pop('x', a64()))", False,
+                 id="dict-pop-default"),
+    pytest.param("k = {1: 'x'}\n    print(k[a64()])", True, id="dict-subscript"),
+    pytest.param("d = {1: 'x'}\n    del d[a64()]", True, id="dict-delitem"),
+    pytest.param("s = {1}\n    s.discard(a64())", True, id="set-discard"),
+    pytest.param("s = {1}\n    s.remove(a64())", True, id="set-remove"),
+    pytest.param("k = {1: 'x'}\n    print(a64() in k)", False, id="dict-in"),
+    pytest.param("s = {1}\n    print(a64() in s)", False, id="set-in"),
+])
+def test_wider_lookup_key_converts(body: str, warns: bool) -> None:
+    source = _DICT_SET_PRELUDE + f"def main() -> None:\n    {body}\n"
+    comp = Compiler.from_source(source, lib_dirs=[get_lib_dir() / "tpy"])
+    comp.compile()
+    entry = next(m for m in comp.modules.values() if m.is_entry_point)
+    warnings = [d.message for d in entry.analyzer.diagnostics
+                if d.level is DiagnosticLevel.WARNING]
+    assert any(w.startswith("lookup key narrows from int64 to int32")
+               for w in warnings) == warns, warnings

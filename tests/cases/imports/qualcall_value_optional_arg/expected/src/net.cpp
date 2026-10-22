@@ -13,14 +13,14 @@ namespace tpyapp::net {
 //         n += int(timeout)
 //     return n
 ::tpy::BigInt request(std::string_view url, std::optional<std::tuple<std::string, std::string>> auth, std::optional<double> timeout) {
-    int32_t n = ::tpy::__len__(url);
+    ::tpy::BigInt n = ::tpy::BigInt(::tpy::__len__(url));
     if ((auth.has_value())) {
-        n = ::tpy::add_check<int32_t>(n, ::tpy::__len__(std::get<0>((*auth))));
+        n = (n) + (::tpy::BigInt(::tpy::__len__(std::get<0>((*auth)))));
     }
     if ((timeout.has_value())) {
-        n = ::tpy::add_check<int32_t>(n, (::tpy::BigInt::from_float((*timeout))).to_fixed_check<int32_t>());
+        n = (n) + (::tpy::BigInt::from_float((*timeout)));
     }
-    return ::tpy::BigInt(n);
+    return n;
 }
 
 void __tpy_init() {

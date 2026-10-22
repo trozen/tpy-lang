@@ -595,7 +595,7 @@ accrete as ad-hoc one-off flags. Initial set:
 | `default-float` | float64 / float32 | per-module (sibling of `default-int`) |
 | panic mode | abort (`std::exit`) / throw (catchable) | whole-program-ish; `.so` extension builds want throw (see `CPYTHON_INTEROP.md`) |
 | `str` character width | 1 (Latin-1) / 2 / 4 / PEP-393 (default 4) | **whole-artifact** -- it is the `str` ABI; mixing widths across a boundary is a corruption hazard. Resolved design: `STRING_WIDTH_DESIGN.md` |
-| integer overflow checks | on (panic) / off (wrap) | per-module / per-function |
+| integer overflow checks | on (`OverflowError`) / off (wrap) | per-module / per-function |
 | integer `//` / `%` | Python floor (default; parity) / C truncation (perf) | per-module / per-function (no boundary hazard) |
 | bounds checks (indexing) | on / off | per-module / per-function |
 | null/deref checks (`Optional`/`Ptr`) | on / off | per-module / per-function |

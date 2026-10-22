@@ -285,10 +285,6 @@ inline std::ostream& check_signals(std::ostream& os) {
 
 #endif  // TPY_NO_SIGNALS
 
-// Forward decl: raise_fixedint_overflow (below) calls tpy_panic, whose
-// definition lives later in this header.
-[[noreturn]] inline void tpy_panic(std::string_view msg);
-
 // raise<E>(msg) / raise<E>(fmt, args...) -- throw a Python-shaped exception.
 //
 // Every runtime site that surfaces a catchable error goes through this so
@@ -467,19 +463,18 @@ inline void OSError::__raise__() const {
     throw_os_error_as(mapped_kind, error_number, strerror_text, filename, filename2);
 }
 
-// Fixed-width integer arithmetic overflow. CPython promotes to unbounded
-// BigInt and never overflows; TPy uses fixed-width storage (int8..int64,
-// uint8..uint64) and panics on overflow by default. Routed through this
-// helper so the policy can be made switchable later (per build / module /
-// function: none / panic / throw OverflowError) without rewriting the call
-// sites. Currently always panics.
+// Fixed-width integer overflow (arithmetic and a value that does not fit a
+// fixed-width slot). CPython never overflows; a fixed-width type's range is
+// its declared contract, and leaving it raises a catchable OverflowError.
+// Every such site routes through this helper so a later opt-in policy switch
+// has one place to change.
 [[noreturn]] inline void raise_fixedint_overflow(std::string_view msg) {
-    tpy_panic(msg);
+    raise_overflow_error(msg);
 }
 template<typename T, typename... Rest>
 [[noreturn]] inline void raise_fixedint_overflow(std::format_string<T, Rest...> fmt,
                                                  T&& arg, Rest&&... rest) {
-    tpy_panic(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
+    raise_overflow_error(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
 }
 
 // Portable replacement for std::unexpected(). Some libc++ versions (e.g. zig's

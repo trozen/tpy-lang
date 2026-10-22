@@ -15,7 +15,7 @@ namespace tpyapp::main {
 void compare_pairs(::tpy::BytesView a, ::tpy::BytesView v, ::tpy::ByteArray& ba) {
     std::cout << "pairs" << " " << ::tpy::print_bool((a == v)) << " " << ::tpy::print_bool((v == a)) << " " << ::tpy::print_bool((a == ba)) << " " << ::tpy::print_bool((ba == a)) << " " << ::tpy::print_bool((a != ::tpy::bytes_literal("zz", 2))) << " " << ::tpy::print_bool((::tpy::bytes_literal("zz", 2) != v)) << "\n" << ::tpy::check_signals;
     std::cout << "order" << " " << ::tpy::print_bool((a < ::tpy::bytes_literal("b", 1))) << " " << ::tpy::print_bool((::tpy::bytes_literal("b", 1) > a)) << " " << ::tpy::print_bool((v <= a)) << " " << ::tpy::print_bool((ba >= v)) << " " << ::tpy::print_bool((a < ba)) << "\n" << ::tpy::check_signals;
-    ba.push_back(33);
+    ::tpy::bytearray_append(ba, 33);
     std::cout << "mutated" << " " << ::tpy::print_bool((a == ba)) << " " << ::tpy::print_bool((ba > a)) << "\n" << ::tpy::check_signals;
 }
 

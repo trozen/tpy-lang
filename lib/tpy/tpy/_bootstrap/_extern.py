@@ -98,9 +98,8 @@ def virtual_raise(): ...
 @builtin_decorator("tpy.extern.type_param_default")
 def type_param_default(): ...
 
-# Sentinel for @type_param_default: resolves to the configured --default-int type.
-# TODO: make this a real type alias (e.g. `type DefaultInt = ...`) with compiler
-# support, so it can be used in type annotations beyond @type_param_default.
+# The configured --default-int type: as an annotation (an 8/16-bit operator's
+# result) and as the @type_param_default sentinel.
 @builtin_type("tpy.extern.DefaultInt")
 class DefaultInt: pass
 

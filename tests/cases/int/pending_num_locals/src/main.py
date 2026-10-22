@@ -328,11 +328,11 @@ def declared_aug() -> None:
 # a value as first binding gives the local its type, int and float alike: a
 # bare literal stored later converts into it, as does a narrower value; an
 # augmented assignment stores an operation's value, in which the literal
-# adapts
+# adapts (an int16 one computes in the default int, which the local joins)
 def float_literal(a16: int16, a32: int32, f32: float32) -> None:
     b = a16  # tpyc: type(int16)
     b = 10
-    c = a16  # tpyc: type(int16)
+    c = a16  # tpyc: type(int32)
     c += 10
     # 0.5 is exact in float32, so the output matches CPython's double; a
     # literal that rounds is float/float32_declared_literal_rounds
@@ -472,9 +472,9 @@ def arm_try(fail: bool) -> None:
     print("arm_try", x)
 
 
-# an accumulator first bound int16 takes the int8 values added to it
+# an accumulator first bound int16 joins the default-int sums stored in it
 def first_accum(data: list[int8]) -> None:
-    count = int16(0)  # tpyc: type(int16)
+    count = int16(0)  # tpyc: type(int32)
     for b in data:
         count += b
     print("first_accum", count)

@@ -38,7 +38,7 @@ struct Stride;
 
 inline constexpr std::string_view __name__ = "__main__";
 inline constexpr int64_t STEP = 7;
-extern const std::tuple<int32_t, int32_t> ORIGIN;
+inline constexpr std::tuple<int32_t, int32_t> ORIGIN = std::tuple<int32_t, int32_t>{10, 20};
 
 std::string greet(std::string_view name, std::string_view greeting = "Hello", bool excited = false);
 int64_t advance(int64_t n, int64_t by = ::tpyapp::defaults::STEP);

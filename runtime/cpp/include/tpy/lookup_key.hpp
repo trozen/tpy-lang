@@ -59,11 +59,26 @@ template<typename X>
 concept c_string_key =
     std::same_as<std::decay_t<X>, const char*> || std::same_as<std::decay_t<X>, char*>;
 
+// A standard integer type: the domain of std::cmp_equal / std::in_range,
+// which exclude bool and the character types.
+template<typename X>
+concept std_integer =
+    std::integral<X> && !std::same_as<std::remove_cv_t<X>, bool>
+    && !std::same_as<std::remove_cv_t<X>, char>
+    && !std::same_as<std::remove_cv_t<X>, wchar_t>
+    && !std::same_as<std::remove_cv_t<X>, char8_t>
+    && !std::same_as<std::remove_cv_t<X>, char16_t>
+    && !std::same_as<std::remove_cv_t<X>, char32_t>;
+
 // Compare a container's STORED element against a lookup key that may be
 // spelled in a different C++ type.
 template<typename T, typename U>
 constexpr bool key_eq(const T& stored, const U& key) {
-    if constexpr (requires { { stored == key } -> std::convertible_to<bool>; }) {
+    if constexpr (std_integer<T> && std_integer<U>) {
+        // By value: `==`'s usual arithmetic conversions would make
+        // uint32_t(4294967295) equal int32_t(-1).
+        return std::cmp_equal(stored, key);
+    } else if constexpr (requires { { stored == key } -> std::convertible_to<bool>; }) {
         return stored == key;
     } else {
         // A key that only CONVERTS: the last resort, and the one shape that

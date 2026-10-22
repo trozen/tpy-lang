@@ -2015,7 +2015,7 @@ def unpacks(t: tuple[P, int], u: tuple[P | None, int],
 
 def heads(ts: list[tuple[P | None, int]], ps: list[tuple[int, int]],
           qs: list[tuple[P, int]]) -> int:
-    s = 0
+    s: int = 0
     for b, m in ts:
         s += m + (b.v if b is not None else 0)
     for s, y in ps:

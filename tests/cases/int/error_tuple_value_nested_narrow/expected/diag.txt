@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in return value (tuple element 1): a tuple element is int32, which int8 does not hold every value of; convert the elements: (int8(...), int8(...))

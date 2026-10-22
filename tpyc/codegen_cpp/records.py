@@ -580,8 +580,12 @@ class RecordGenerator:
                     self._thir_add_const(const_scope, cc_name, cc_fld.type)
                 else:
                     init = cc_fld.default_value if cc_fld.default_value is not None else "{}"
-                is_final = record_info.is_final_class_constant(cc_name)
-                storage = "static constexpr" if is_final else "static inline"
+                if not record_info.is_final_class_constant(cc_name):
+                    storage = "static inline"
+                elif cc_name in record_info.runtime_class_constants:
+                    storage = "static inline const"
+                else:
+                    storage = "static constexpr"
                 out.write(f"{INDENT}{storage} {cpp_type} {escape_cpp_name(cc_name)} = {init};\n")
 
         # Drop flag for classes with __del__ -- prevents double-drop after move.

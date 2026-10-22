@@ -63,7 +63,7 @@ inline constexpr int32_t _K = 5;
 // S: Final[str] = "hello"
 inline constexpr std::string_view S = "hello";
 // PAIR: Final[tuple[int32, int32]] = (7, 2)
-extern const std::tuple<int32_t, int32_t> PAIR;
+inline constexpr std::tuple<int32_t, int32_t> PAIR = std::tuple<int32_t, int32_t>{7, 2};
 
 struct __gen_gen;
 

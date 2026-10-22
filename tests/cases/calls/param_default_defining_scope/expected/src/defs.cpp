@@ -76,8 +76,6 @@ std::optional<::tpyapp::defs::LateDotted::E> EnumUtil<::tpyapp::defs::LateDotted
 
 namespace tpyapp::defs {
 
-// PAIR: Final[tuple[int32, int32]] = (7, 2)
-const std::tuple<int32_t, int32_t> PAIR = std::tuple<int32_t, int32_t>{7, 2};
 
 // # The module's K (7), not the parameter named K before it.
 // def shadowed(K: int32, x: int32 = K) -> int32:

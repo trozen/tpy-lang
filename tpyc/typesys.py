@@ -1681,12 +1681,21 @@ def expand_fi_template(fi: 'FunctionInfo',
             placeholder = f"{{{name}}}"
             if placeholder in template and hasattr(typ, "to_cpp"):
                 template = template.replace(placeholder, typ.to_cpp_stored())
-    if "{cpp}" in template and fi.return_type is not None:
+    if fi.return_type is not None:
         ret_type = fi.return_type
-        if effective_subst:
+        if effective_subst and "{cpp}" in template:
             ret_type = substitute_type_params_simple(ret_type, effective_subst)
-        template = template.replace("{cpp}", ret_type.to_cpp())
+        template = substitute_cpp_ret(template, ret_type)
     return template
+
+
+def substitute_cpp_ret(template: str, ret_type: 'TpyType') -> str:
+    """A template's `{cpp}` placeholder: its operation's return type,
+    spelled `to_cpp()` (`expand_fi_template`'s rule, also the one the THIR
+    emitter applies to an operator or method template it holds alone)."""
+    if "{cpp}" not in template:
+        return template
+    return template.replace("{cpp}", ret_type.to_cpp())
 
 
 # Re-entrancy guards for NominalType.is_send / is_sync. Generic records
@@ -3962,11 +3971,14 @@ def is_any_bytes_type(typ: 'TpyType') -> bool:
 def is_constexpr_eligible(typ: 'TpyType') -> bool:
     """Check if a type can use C++ constexpr (vs runtime const).
 
-    Constexpr-eligible: fixed-width integers, float, bool, char, str, StrView.
+    Constexpr-eligible: fixed-width integers, float, bool, char, str, StrView,
+    and a tuple of them (`std::tuple` of literal types is a literal type).
     Non-constexpr (needs const): BigInt (non-trivial constructor), String (std::string).
     Note: str uses std::string_view for Final[str] (overridden in codegen).
     """
     from .type_def_registry import is_str_type, is_str_view_type
+    if isinstance(typ, TupleType):
+        return all(is_constexpr_eligible(e) for e in typ.element_types)
     return is_primitive_type(typ) or is_str_type(typ) or is_str_view_type(typ)
 
 
@@ -7774,6 +7786,9 @@ class RecordInfo:
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
     class_constants: dict[str, FieldInfo] = field(default_factory=dict)  # class-scoped Final/ClassVar storage; partitioned out of `fields` during sema registration
     class_constants_finality: dict[str, bool] = field(default_factory=dict)  # per-entry: True for Final (read-only, static constexpr), False for mutable ClassVar (static inline)
+    # Final class constants whose initializer is not a C++ constant
+    # expression (sema's `final_is_runtime`): `static inline const`.
+    runtime_class_constants: set[str] = field(default_factory=set)
     type_params: list[str] = field(default_factory=list)  # ["T", "U"] for class Stack[T, U]
     type_param_kinds: list[TypeParamKind] = field(default_factory=list)  # [TYPE, INT] for class Matrix[T, N: int]
     type_param_bounds: dict[str, 'NominalType'] = field(default_factory=dict)  # {"T": Comparable} (must be protocols)
@@ -8899,6 +8914,10 @@ class ResolvedBinop:
     # The call passes the receiver const so C++ runs the readonly variant
     # sema ranked (`pins_const_receiver`).
     const_receiver: bool = False
+    # An int literal operand that fits neither the other (fixed-width)
+    # operand nor the default int, so the operation computes in `int`:
+    # decided where the operator is (`decide_operator` warns).
+    wide_literal: 'IntLiteralType | None' = None
 
     @property
     def result_ignores_operand(self) -> bool:
@@ -9046,6 +9065,9 @@ class ModuleVarInfo:
     # FinalType wrapper is stripped during registration, so this flag is how
     # downstream modules recover "this reference is a compile-time constant".
     is_final: bool = False
+    # A Final whose initializer is no C++ constant expression (sema's
+    # `final_is_runtime`): `inline const`, and a Final reading it is too.
+    runtime_final: bool = False
 
 
 @dataclass

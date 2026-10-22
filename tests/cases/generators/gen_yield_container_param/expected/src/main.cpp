@@ -108,7 +108,7 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& gb = ::tpy::unwrap_ref(*__r_7);
-            gb.push_back(66);
+            ::tpy::bytearray_append(gb, 66);
         }
     }
     std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, 1)) << "\n" << ::tpy::check_signals;

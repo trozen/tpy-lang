@@ -18,7 +18,7 @@ extern ::tpy::StdStream* stdout;
 extern ::tpy::StdStream* stderr;
 inline constexpr std::string_view __name__ = "sys";
 // maxunicode: Final[int] = 0x10FFFF
-extern const ::tpy::BigInt maxunicode;
+inline const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 
 // @dispatch
 // def exit() -> None:

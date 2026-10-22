@@ -57,7 +57,7 @@ void other_kinds() {
     s2.insert(2);
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray b2 = std::move(ba);
-    b2.push_back(99);
+    ::tpy::bytearray_append(b2, 99);
     std::vector<std::vector<int32_t>> ns = {{9}};
     std::vector<std::vector<int32_t>> n2 = std::move(ns);
     n2.push_back(std::vector<int32_t>{1});

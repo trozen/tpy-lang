@@ -78,8 +78,6 @@ Queue (triage at 0.7 planning; not commitments):
   options in pyproject"
 - Polymorphic `cls` -- FEATURE_ROADMAP: "Polymorphic `cls`
   (`type[Self]`)"
-- Mixed-width int arithmetic decision -- TODO: "Sub-default-int
-  arithmetic: promote, or keep width-preserving?" (snapshot-heavy)
 - Traits -- TODO: "No `AnyInt` protocol covering" + "trivially-
   relocatable / primitive-value trait"
 - `namedtuple` -- TODO: "`collections.namedtuple` / `typing.NamedTuple`

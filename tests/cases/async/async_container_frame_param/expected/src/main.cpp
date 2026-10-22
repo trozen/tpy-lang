@@ -23,7 +23,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        b.push_back(66);
+        ::tpy::bytearray_append(b, 66);
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__(b);
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

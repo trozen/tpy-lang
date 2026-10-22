@@ -252,17 +252,19 @@ def pow(base: int, exp: int) -> int: ...
 @native("std::pow")
 def pow(base: float, exp: float) -> float: ...
 
+# 8/16-bit operands compute in the default int, as `**` does; the result
+# converts into a narrower slot like any value.
 @dispatch
 @pure
 @readonly
-@native("tpy::pow_check<int8_t>")
-def pow(base: int8, exp: int8) -> int8: ...
+@cpp_template("::tpy::pow_check<{cpp}>({0}, {1})")
+def pow(base: int8, exp: int8) -> DefaultInt: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::pow_check<int16_t>")
-def pow(base: int16, exp: int16) -> int16: ...
+@cpp_template("::tpy::pow_check<{cpp}>({0}, {1})")
+def pow(base: int16, exp: int16) -> DefaultInt: ...
 
 @dispatch
 @pure
@@ -279,14 +281,14 @@ def pow(base: int64, exp: int64) -> int64: ...
 @dispatch
 @pure
 @readonly
-@native("tpy::pow_check<uint8_t>")
-def pow(base: uint8, exp: uint8) -> uint8: ...
+@cpp_template("::tpy::pow_check<{cpp}>({0}, {1})")
+def pow(base: uint8, exp: uint8) -> DefaultInt: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::pow_check<uint16_t>")
-def pow(base: uint16, exp: uint16) -> uint16: ...
+@cpp_template("::tpy::pow_check<{cpp}>({0}, {1})")
+def pow(base: uint16, exp: uint16) -> DefaultInt: ...
 
 @dispatch
 @pure
@@ -314,17 +316,18 @@ def divmod(a: int, b: int) -> tuple[int, int]: ...
 @native("tpy::divmod_float")
 def divmod(a: float, b: float) -> tuple[float, float]: ...
 
+# 8/16-bit operands compute in the default int, as `//` and `%` do.
 @dispatch
 @pure
 @readonly
-@native("tpy::divmod_fixed<int8_t>")
-def divmod(a: int8, b: int8) -> tuple[int8, int8]: ...
+@cpp_template("::tpy::divmod_fixed<std::tuple_element_t<0, {cpp}>>({0}, {1})")
+def divmod(a: int8, b: int8) -> tuple[DefaultInt, DefaultInt]: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::divmod_fixed<int16_t>")
-def divmod(a: int16, b: int16) -> tuple[int16, int16]: ...
+@cpp_template("::tpy::divmod_fixed<std::tuple_element_t<0, {cpp}>>({0}, {1})")
+def divmod(a: int16, b: int16) -> tuple[DefaultInt, DefaultInt]: ...
 
 @dispatch
 @pure
@@ -341,14 +344,14 @@ def divmod(a: int64, b: int64) -> tuple[int64, int64]: ...
 @dispatch
 @pure
 @readonly
-@native("tpy::divmod_fixed<uint8_t>")
-def divmod(a: uint8, b: uint8) -> tuple[uint8, uint8]: ...
+@cpp_template("::tpy::divmod_fixed<std::tuple_element_t<0, {cpp}>>({0}, {1})")
+def divmod(a: uint8, b: uint8) -> tuple[DefaultInt, DefaultInt]: ...
 
 @dispatch
 @pure
 @readonly
-@native("tpy::divmod_fixed<uint16_t>")
-def divmod(a: uint16, b: uint16) -> tuple[uint16, uint16]: ...
+@cpp_template("::tpy::divmod_fixed<std::tuple_element_t<0, {cpp}>>({0}, {1})")
+def divmod(a: uint16, b: uint16) -> tuple[DefaultInt, DefaultInt]: ...
 
 @dispatch
 @pure

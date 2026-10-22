@@ -37,7 +37,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping, Sequence
 
-from ..coercions import Coercion, CoercionContext
+from ..coercions import Coercion, CoercionContext, int_literal_fits_fixed_int
 from ..parse import (
     TpyArrayLiteral, TpyCall, TpyCoerce, TpyDictLiteral, TpyExpr,
     TpyIntLiteral, TpyListRepeat, TpyMethodCall, TpyName, TpySetLiteral,
@@ -59,6 +59,7 @@ from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_float64_type, int_traits_of,
     is_array, is_dict, is_list, is_set, is_span,
 )
+from .int_narrowing import site_value_range
 from .numeric_lattice import (join_numeric, smallest_type_holding,
                               widen_numeric_types)
 from .type_join import (annotate_first_binding, operand_spelling,
@@ -67,7 +68,7 @@ from .type_join import (annotate_first_binding, operand_spelling,
 
 if TYPE_CHECKING:
     from .context import SemanticContext
-    from .compatibility import TypeCompatibility
+    from .compatibility import InferredSlot, TypeCompatibility
 
 
 # The conversion a placeholder carries until its function settles.
@@ -95,6 +96,9 @@ class PendingNumCell:
     name: str
     first_decl: TpyVarDecl | None
     derived: bool = False
+    # A derived cell whose later stores join it rather than having to fit
+    # it: a rebound local first bound to a fixed-width integer value.
+    joins_stores: bool = False
     is_float: bool = False
     # Declared by a `for` head: the name is handed back when the loop ends
     # (`retire_loop_heads`).
@@ -594,6 +598,31 @@ def literal_entries(e: object, node: TpyType | type
     return [(x,) for x in e.elements]
 
 
+@dataclass(frozen=True)
+class ValueBindsFirst:
+    """`PendingNums.value_binds_first`: asked before the value is analyzed
+    (`joins`) and after it (`cell`)."""
+    pend: 'PendingNums'
+    name: str
+    unbound: bool
+
+    @property
+    def joins(self) -> bool:
+        """Whether the value is analyzed as a pending number: the local's
+        bindings join, so a binding inside the value creates its cell."""
+        return (self.unbound
+                and self.name in self.pend.ctx.func.pending_num_rebound)
+
+    def cell(self) -> 'tuple[PendingNumCell, TpyType] | None':
+        """After the value: the cell a binding inside it created, and the
+        type the local reads as."""
+        if not self.unbound:
+            return None
+        bound = self.pend.ctx.func.current_scope.lookup(self.name)
+        cell = self.pend.cell_for(self.name) if bound is not None else None
+        return (cell, bound) if cell is not None else None
+
+
 class PendingNums:
     """The pending locals of the function under analysis: their cells, the
     join, the settle, and the deferred resolution."""
@@ -644,6 +673,13 @@ class PendingNums:
     def cell_for(self, name: str) -> PendingNumCell | None:
         cid = self.ctx.func.pending_cell_of.get(name)
         return self.ctx.pending_num_cells.get(cid) if cid is not None else None
+
+    def value_binds_first(self, name: str,
+                          unbound: bool) -> 'ValueBindsFirst':
+        """A store into `name`, unbound before it (`unbound`), whose own
+        value may bind it first (`x = (x := v) + 1`): the store is one more
+        binding of that local, so it joins the cell the value created."""
+        return ValueBindsFirst(self, name, unbound)
 
     def arm_group(self, name: str) -> tuple[TpyStmt, ...]:
         """The sibling-arm stores that are together `name`'s first binding,
@@ -2020,9 +2056,95 @@ class PendingNums:
     def add_literal_store(self, cell: PendingNumCell, literal: TpyType,
                           node: TpyExpr, site: TpyStmt) -> None:
         """Record a bare literal stored into the cell's local: it counts as
-        its family's default type."""
+        its family's default type -- or, stored later into a local whose
+        bindings join (`joins_stores`), as the local's type when it fits it,
+        as a literal beside an operator's peer does."""
+        if (cell.joins_stores and cell.evidence
+                and isinstance(literal, IntLiteralType)):
+            known = self.known_so_far(cell)
+            if is_big_int_type(known) or int_literal_fits_fixed_int(literal, known):
+                self._add(cell, known, site)
+                return
         self._add(cell, self.literal_type(literal, node, bool(cell.evidence)),
                   site)
+
+    def joins_bindings(self, name: str, value_type: TpyType | None) -> bool:
+        """Whether a first binding of `name` to a value of `value_type`
+        gives it a cell that joins every binding of it: an unannotated
+        local bound more than once (`LiteralLocals.rebound`), first bound
+        to an integer of a fixed width, or of one its cells decide."""
+        value = unwrap_readonly(strip_int(value_type))
+        return (name in self.ctx.func.pending_num_rebound
+                and name not in self.ctx.func.global_declarations
+                and (is_fixed_int_type(value)
+                     or (isinstance(value, PendingNumType)
+                         and not value.is_float)))
+
+    def record_binding(self, cell: PendingNumCell, value_type: TpyType | None,
+                       value_expr: TpyExpr | None,
+                       site: TpyStmt | TpyExpr) -> TpyType:
+        """Record a binding of a value of `value_type` into the cell's local
+        (a store, a loop head, an unpack target, a capture, a walrus).
+        Returns what the local reads as now."""
+        value = strip_int(value_type)
+        if value_family(value) != cell.is_float:
+            known = self.known_so_far(cell)
+            # The int/float rule has its own wording; anything else is the
+            # ordinary mismatch against the type so far.
+            self.compat.deduction.refuse_int_float_rebind(
+                cell.name, known, value, value_expr,
+                site=site if isinstance(site, TpyStmt) else None)
+            raise self.ctx.error(
+                f"Type mismatch in reassignment to '{cell.name}': expected "
+                f"{known}, got {value}", site)
+        # A constant over literals analyzes to a literal type, the same
+        # stores the prescan counts as literal ones.
+        if isinstance(site, TpyStmt):
+            self.record_arm_store(cell, value, value_expr, site)
+        if isinstance(value, (IntLiteralType, FloatLiteralType)):
+            self.add_literal_store(cell, value, value_expr, site)
+        else:
+            self.add_store(cell, value, site)
+        return self.cell_type(cell)
+
+    def rebind(self, name: str, value_type: TpyType,
+               value_expr: TpyExpr | None,
+               site: TpyStmt | TpyExpr) -> TpyType | None:
+        """A binding of an existing local that is no plain assignment (a
+        loop head, an unpack target, a capture, a walrus): with a cell, the
+        value joins it and what the local reads as is returned; else None."""
+        cell = self.cell_for(name)
+        if cell is None:
+            return None
+        return self.record_binding(cell, value_type, value_expr, site)
+
+    def derived_binding(self, name: str, elem_type: TpyType,
+                        site: TpyStmt | TpyExpr,
+                        loop_head: bool) -> tuple[TpyType, TpyType]:
+        """The types a new local `name` bound to a value of type `elem_type`
+        without a store of its own (a `for` head, a tuple-unpack target, a
+        `match` capture, a walrus) reads as and is declared at, in that
+        order. It reads as a derived cell of the value when the value is a
+        pending number or the local joins its bindings (`joins_bindings`),
+        else as the value's type. A joining local is declared at its cell;
+        one over a pending value that does not join must fit that value, so
+        it is declared at the value's type, which stays readable once a nested
+        scope (a generator expression) has dropped the value's cells. The
+        declaration recorded for the site's line follows the cell."""
+        elem = strip_int(elem_type)
+        joins_stores = self.joins_bindings(name, elem)
+        if (not (is_pending_num(elem) or joins_stores)
+                or name in self.ctx.func.global_declarations):
+            return elem_type, elem_type
+        cell = self.new_cell(name, None, derived=True,
+                             is_float=bool(value_family(elem)))
+        cell.loop_head = loop_head
+        cell.joins_stores = joins_stores
+        if site.loc is not None:
+            cell.decl_keys.append((site.loc.line, name))
+        self.add_store(cell, elem, site)
+        read = self.cell_type(cell)
+        return read, (read if joins_stores else elem_type)
 
     def add_store(self, cell: PendingNumCell, value_type: TpyType,
                   node: TpyStmt | TpyExpr) -> None:
@@ -2055,7 +2177,7 @@ class PendingNums:
                 self._check_fits(cell, value_type, node)
             return
         self.ctx.pending_num_epoch += 1
-        if (cell.derived and cell.evidence
+        if (cell.derived and cell.evidence and not cell.joins_stores
                 and not any(s is node for s in cell.arm_sites)):
             cell.must_fit.append((value_type, node))
         elif cell.record is None or not any(
@@ -3075,7 +3197,8 @@ class PendingNums:
 
     def coerce(self, expr: TpyExpr, actual: TpyType, expected: TpyType,
                context: str, coercion_ctx: CoercionContext | None,
-               rebind_of: str | None = None) -> TpyExpr:
+               rebind_of: str | None = None,
+               inferred_slot: 'InferredSlot | None' = None) -> TpyExpr:
         """A conversion of `expr` whose two ends are known when the function
         settles: a placeholder filled then, or spliced out if it is none.
         `rebind_of` names the typed local a store rebinds, which a wider
@@ -3085,6 +3208,9 @@ class PendingNums:
                          context_kind=coercion_ctx, context_msg=context,
                          loc=expr.loc)
         self.ctx.set_expr_type(node, expected)
+        # The range check is elided by the value's range HERE, not by the
+        # one the function ends with.
+        site_range = site_value_range(self.ctx, expr)
 
         def resolve(types: tuple[TpyType, ...]) -> None:
             a, e = types
@@ -3100,7 +3226,8 @@ class PendingNums:
             if coercion is None:
                 self.ctx.func.pending_num_splices.append(node)
             else:
-                node.coercion = coercion
+                node.coercion = self.compat.site_coercion(
+                    coercion, a, e, expr, site_range, inferred_slot)
 
         self.defer(node, (actual, expected), resolve)
         return node
@@ -3285,6 +3412,23 @@ class PendingNums:
         if isinstance(t, PendingContainerType):
             return t
         return t.map_inner_types(self.finalize_values)
+
+    def decided_by_own_cells(self, t: TpyType) -> bool:
+        """Whether every pending leaf of `t` is a number of the function
+        under analysis, so its end decides `t` (no container literal, no
+        enclosing function's cell)."""
+        if isinstance(t, PendingContainerType):
+            return False
+        if isinstance(t, PendingNumType):
+            return t.cells <= set(self._cids())
+        return all(self.decided_by_own_cells(i) for i in t.inner_types())
+
+    def finalize_settled(self, t: TpyType) -> TpyType:
+        """`finalize_values` once every number `t` holds by value has
+        settled; else `t` as it is (the function's end finalizes it)."""
+        if all(self.settled_all(leaf) for leaf in value_leaves(t)):
+            return self.finalize_values(t)
+        return t
 
     def drop_cells(self) -> None:
         """Forget the function's cells once nothing refers to them."""

@@ -8,6 +8,7 @@
 #pragma once
 
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
 #include <iostream>
 #include <ranges>
@@ -16,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 #include "bigint.hpp"
@@ -152,15 +154,34 @@ inline Bytes bytes_from_buf(const uint8_t* p, uint64_t size) {
     return Bytes(p, p + size);
 }
 
-inline uint8_t int_to_byte(int32_t v) {
-    if (v < 0 || v > 255) raise_value_error("bytes must be in range(0, 256)");
+// A byte from any integer, raising CPython's ValueError outside
+// range(0, 256) -- never a narrowing of the integer type first. bool and the
+// character types are not integers here (nor in std::in_range's domain).
+template<std_integer T>
+inline uint8_t int_to_byte(T v) {
+    if (!std::in_range<uint8_t>(v)) raise_value_error("bytes must be in range(0, 256)");
     return static_cast<uint8_t>(v);
+}
+
+// Exactly a BigInt: a bool or a character would convert to one implicitly.
+template<std::same_as<BigInt> B>
+inline uint8_t int_to_byte(const B& v) {
+    int32_t small;
+    if (!v.template to_fixed_try<int32_t>(small)) raise_value_error("bytes must be in range(0, 256)");
+    return int_to_byte(small);
 }
 
 // Owned counterpart of bytes_literal: a bytes literal materialized into an
 // owning vector (for owned slots -- fields, list elements, returns).
 inline Bytes bytes_literal_owned(const char* data, size_t n) {
     return Bytes(bytes_literal(data, n));
+}
+
+// bytearray.append of an integer wider than uint8: CPython's ValueError
+// outside range(0, 256), never a narrowing of the integer type first.
+template<typename Buf, typename T>
+inline void bytearray_append(Buf& self, const T& v) {
+    self.push_back(int_to_byte(v));
 }
 
 // TODO(hot-path): per-element int_to_byte range check; revisit alongside a
@@ -268,19 +289,13 @@ inline bool bytes_contains(BytesView haystack, uint8_t needle) {
     return std::find(haystack.begin(), haystack.end(), needle) != haystack.end();
 }
 
-inline bool bytes_contains(BytesView haystack, int32_t needle) {
-    return bytes_contains(haystack, int_to_byte(needle));
-}
-
-// A BigInt needle raises outside the byte domain like CPython's
+// Any other integer needle raises outside the byte domain like CPython's
 // `2**40 in b"..."` (ValueError, not False -- unlike dict/set membership,
 // where an out-of-range key is simply absent).
-inline bool bytes_contains(BytesView haystack, const BigInt& needle) {
-    int32_t v;
-    if (!needle.to_fixed_try<int32_t>(v)) {
-        raise_value_error("bytes must be in range(0, 256)");
-    }
-    return bytes_contains(haystack, int_to_byte(v));
+template<typename T>
+    requires (std_integer<T> && !std::same_as<T, uint8_t>) || std::same_as<T, BigInt>
+inline bool bytes_contains(BytesView haystack, const T& needle) {
+    return bytes_contains(haystack, int_to_byte(needle));
 }
 
 // -- Manipulation -----------------------------------------------------------
@@ -551,7 +566,9 @@ inline void bytearray_insert(ByteArray& b, int32_t index, uint8_t value) {
     b.insert(b.begin() + i, value);
 }
 
-inline void bytearray_insert(ByteArray& b, int32_t index, int32_t value) {
+template<typename T>
+    requires (std_integer<T> && !std::same_as<T, uint8_t>) || std::same_as<T, BigInt>
+inline void bytearray_insert(ByteArray& b, int32_t index, const T& value) {
     bytearray_insert(b, index, int_to_byte(value));
 }
 
@@ -561,7 +578,9 @@ inline void bytearray_remove(ByteArray& b, uint8_t value) {
     b.erase(it);
 }
 
-inline void bytearray_remove(ByteArray& b, int32_t value) {
+template<typename T>
+    requires (std_integer<T> && !std::same_as<T, uint8_t>) || std::same_as<T, BigInt>
+inline void bytearray_remove(ByteArray& b, const T& value) {
     bytearray_remove(b, int_to_byte(value));
 }
 

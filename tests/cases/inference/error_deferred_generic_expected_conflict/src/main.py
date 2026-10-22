@@ -15,6 +15,6 @@ def consume(p: Pair[int64, int32]) -> None:
 def main() -> None:
     p = Pair()
     p.set_a(int32(1))  # T = int32, U still pending
-    consume(p)  # tpyc: error(/Conflicting type for 'T'.*previously inferred as 'int32'.*requires 'int64'/)
+    consume(p)  # tpyc: error(/expected Pair\[int64, int32\], got Pair\[int32, int32\]/)
 
 main()

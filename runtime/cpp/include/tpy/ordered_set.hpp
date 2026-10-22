@@ -152,6 +152,13 @@ public:
         return erase_found(table_.find(value));
     }
 
+    template<typename U>
+        requires (std_integer<T> && std_integer<U> && !std::same_as<T, U>)
+    bool erase(const U& value) {
+        return std::in_range<T>(value)
+            && erase_found(table_.find(static_cast<T>(value)));
+    }
+
     void clear() {
         auto* n = head_;
         while (n != nullptr) {
@@ -182,6 +189,10 @@ public:
     bool contains(const ValArg& value) const {
         if constexpr (lookup_key_for<T, ValArg>) {
             return table_.find(value) != table_.end();
+        } else if constexpr (std_integer<T> && std_integer<ValArg>) {
+            // Out of T's range is absent; converting would wrap onto a
+            // stored element (int8_t(300) == 44).
+            return std::in_range<T>(value) && contains(static_cast<T>(value));
         } else {
             return contains(T(value));
         }

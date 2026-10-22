@@ -34,7 +34,7 @@ void pick_set(bool c, ::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t
 //     v.append(9)
 void pick_bytearray(bool c, ::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     ::tpy::ByteArray& v = ((c) ? (a) : (b));
-    v.push_back(9);
+    ::tpy::bytearray_append(v, 9);
 }
 
 // def pick_array(c: bool, a: Array[int32, 2], b: Array[int32, 2]) -> None:

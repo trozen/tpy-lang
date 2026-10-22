@@ -592,7 +592,7 @@ void match_arm(int32_t kind) {
     case 1: {
         std::vector<int8_t> ys = {a};
         ::tpyapp::main::hold8(ys);
-        std::cout << "match" << " " << static_cast<int>(::tpy::builtin_sum<int8_t>(ys)) << " " << static_cast<int>((::tpy::add_check<int8_t>(::tpy::__getitem__(ys, 0), ::tpy::__getitem__(ys, 1)))) << "\n" << ::tpy::check_signals;
+        std::cout << "match" << " " << static_cast<int>(::tpy::builtin_sum<int8_t>(ys)) << " " << (::tpy::add_check<int32_t>(::tpy::__getitem__(ys, 0), ::tpy::__getitem__(ys, 1))) << "\n" << ::tpy::check_signals;
         break;
     }
     default: {

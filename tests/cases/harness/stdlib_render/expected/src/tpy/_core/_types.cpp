@@ -7,7 +7,7 @@ namespace tpystd::tpy {
 // from .._typing import Protocol, Self, Iterator, Iterable, Sized
 //
 // from .._bootstrap._decorators import readonly, pure, nocopy, Own, dynamic, dispatch
-// from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion
+// from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion, DefaultInt
 // from ..mem import UninitStorage as _UninitStorage
 void __tpy_init() {
 }

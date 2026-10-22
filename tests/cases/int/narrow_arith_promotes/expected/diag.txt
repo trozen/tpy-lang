@@ -1,0 +1,7 @@
+main.py:194: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:46: warning: Integer literal 3000000000 is outside default int32 range; the operation computes in int (BigInt). Write int64(3000000000) or int(3000000000) to state the type.
+main.py:159: warning: lookup key narrows from int32 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly
+main.py:159: warning: lookup key narrows from int32 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly
+main.py:159: warning: lookup key narrows from int32 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly
+main.py:438: warning: lookup key narrows from int32 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly
+main.py:436: warning: lookup key narrows from int64 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly

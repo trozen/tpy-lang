@@ -1,4 +1,4 @@
-free 137438953472 224 7 40 8 247 16 8
+free 137438953472 224 7 40 8 -9 16 8
 ctor 240
 method 15 61440
 module 40
@@ -13,7 +13,7 @@ er_body -16
 er_body failed
 match_arm width 4294967280
 match_arm 3298534883328 15
-aug_local 4294967296 127
+aug_local 4294967296 -129
 pending 8 6 8
 negative ValueError
 negative << ValueError

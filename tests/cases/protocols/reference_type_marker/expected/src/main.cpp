@@ -63,7 +63,7 @@ void main() {
     std::cout << "set:" << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray& bb = ::tpyapp::main::touch<::tpy::ByteArray>(ba);
-    bb.push_back(99);
+    ::tpy::bytearray_append(bb, 99);
     std::cout << "bytearray:" << " " << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::relay<Box>(b).n = ::tpy::BigInt(7);
     std::cout << "relay:" << " " << b.n << "\n" << ::tpy::check_signals;

@@ -8,9 +8,9 @@
 namespace tpyapp::constants {
 
 inline constexpr std::string_view __name__ = "__main__";
-extern const ::tpy::BigInt MAX_SIZE;
-extern const ::tpy::BigInt MIN_SIZE;
-extern const ::tpy::BigInt BIG;
+inline const ::tpy::BigInt MAX_SIZE = ::tpy::BigInt(100);
+inline const ::tpy::BigInt MIN_SIZE = ::tpy::BigInt(-7);
+inline const ::tpy::BigInt BIG = ::tpy::BigInt::from_str("123456789012345678901234567890");
 inline constexpr double RATIO = 1.5;
 inline constexpr bool ENABLED = true;
 inline constexpr bool DISABLED = false;

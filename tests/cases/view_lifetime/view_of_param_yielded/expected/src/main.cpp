@@ -66,7 +66,7 @@ void main() {
             int32_t step = ::tpy::unwrap_ref(*__r_5);
             if ((step == 0)) {
                 for (int32_t _ = 0; _ < 2000; ++_) {
-                    buf.push_back(65);
+                    ::tpy::bytearray_append(buf, 65);
                 }
             }
         }

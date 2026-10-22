@@ -585,6 +585,9 @@ class ModuleExports:
     # Names of variables declared Final[T] in this module. Kept separate from
     # `variables` because FinalType is stripped at sema registration time.
     final_variables: set[str] = field(default_factory=set)
+    # The Finals among them whose initializer is no C++ constant expression
+    # (`ModuleVarInfo.runtime_final`).
+    runtime_final_variables: set[str] = field(default_factory=set)
     # Defining modules this module's generated code references. Populated
     # by sema.reach_analysis after analysis; threaded into ModuleInfo.reached.
     reached: set[str] = field(default_factory=set)
@@ -3498,6 +3501,8 @@ class Compiler:
             exports.variables[name] = var_type
             if name in analyzer.ctx.final_globals:
                 exports.final_variables.add(name)
+                if name in analyzer.ctx.runtime_finals:
+                    exports.runtime_final_variables.add(name)
             elif is_reexport:
                 # Re-exported names are never in final_globals (only locally
                 # declared Finals are); look through to the source module so
@@ -3506,6 +3511,8 @@ class Compiler:
                 src_var = src_info.variables.get(original_name) if src_info else None
                 if src_var is not None and src_var.is_final:
                     exports.final_variables.add(name)
+                    if src_var.runtime_final:
+                        exports.runtime_final_variables.add(name)
 
         # Per-module attribute table: backfill any entries the
         # registration paths missed (e.g. macro-emitted records, untyped
@@ -3856,6 +3863,7 @@ class Compiler:
                 k, v, is_pointer=is_ptr,
                 native_cpp_name=native_name,
                 is_final=k in exports.final_variables,
+                runtime_final=k in exports.runtime_final_variables,
             )
 
         is_native = compiled.ast.directives.native_module if compiled else False

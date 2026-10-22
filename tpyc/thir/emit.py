@@ -35,7 +35,7 @@ from ..type_def_registry import (
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
-from ..typesys import (NoneType, OptionalType, TpyType, TupleType,
+from ..typesys import (NoneType, substitute_cpp_ret, OptionalType, TpyType, TupleType,
                        TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
 from .nodes import (
@@ -758,7 +758,8 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     if e.template_override is not None:
         # The rebuilt fixed-int literal arm over the target-typed operands:
         # plain template expansion, no wrappers, no parens, no divisor swap.
-        return expand_cpp_template(e.template_override, left, right)
+        return _expand_op_template(e.template_override, e.result_type,
+                                   left, right)
     rb = e.resolved
     if rb is None:
         # Derived comparison (`<= > >= !=`) or logical `&&`/`||` (incl. the
@@ -769,7 +770,8 @@ def _emit_binop(e: THIRBinOp, state: _EmitState) -> str:
     if rb.is_reverse:
         wl, wr = wr, wl
     if rb.method.cpp_template:
-        result = expand_cpp_template(rb.method.cpp_template, wl, wr)
+        result = _expand_op_template(rb.method.cpp_template,
+                                     rb.method.return_type, wl, wr)
     else:
         # A @native free-function dunder (list `+` -> `::tpy::list_concat`):
         # the free function takes both operands as arguments. The gate
@@ -875,7 +877,7 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
     mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
               if e.method_targs_cpp else "")
     if e.cpp_template is not None or e.native_function_name is not None:
-        return _emit_bound_call(bound, recv, args)
+        return _emit_bound_call(bound, recv, args, ret=e.result_type)
     if e.deref_check:
         # Unproven pointer-repr Optional receiver: null-check the (already
         # `T*`) receiver before the `.` member call.
@@ -897,10 +899,22 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
     return _emit_bound_call(bound, recv, args, arrow=arrow, mtargs=mtargs)
 
 
+def _expand_op_template(template: str, ret: 'TpyType | None', recv,
+                        *args: str) -> str:
+    """An operator's or method's `@cpp_template` over its rendered operands,
+    `{cpp}` spelled as the operation's return type `ret` -- the one place
+    the emitter substitutes it, for binary and unary operators and method
+    calls alike."""
+    if ret is not None:
+        template = substitute_cpp_ret(template, unwrap_qualifiers(ret))
+    return expand_cpp_template(template, recv, *args)
+
+
 def _emit_bound_call(b: THIRBoundCall, recv: str, args: list[str], *,
-                     arrow: bool = False, mtargs: str = "") -> str:
+                     arrow: bool = False, mtargs: str = "",
+                     ret: 'TpyType | None' = None) -> str:
     if b.cpp_template is not None:
-        return expand_cpp_template(b.cpp_template, recv, *args)
+        return _expand_op_template(b.cpp_template, ret, recv, *args)
     if b.native_function_name is not None:
         return f"{qualify_native_name(b.native_function_name)}({', '.join([recv, *args])})"
     return (f"{recv}{'->' if arrow else '.'}"
@@ -1672,7 +1686,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # The resolved-dunder tail: expand the operator template
         # (`{self}` = operand) -- neg/pos/invert, checked or bare per the
         # method's own template.
-        return expand_cpp_template(e.cpp_template, _emit_expr(e.operand, state))
+        return _expand_op_template(e.cpp_template, e.result_type,
+                                   _emit_expr(e.operand, state))
     if isinstance(e, THIRMembership):
         # The resolved_contains arm: `(recv.contains(needle))`, the
         # negation wrapping the already-parenthesized find expr. A bytes

@@ -1,7 +1,8 @@
 # A shift count may be any fixed-width int of either sign and the result has
-# the LEFT operand's type; the count is checked in its own type (a negative
-# signed count raises ValueError). A literal left operand takes the count's
-# type. `~` on an unsigned result shows its width.
+# the LEFT operand's type -- an 8/16-bit `<<` computes in the default int --;
+# the count is checked in its own type (a negative signed count raises
+# ValueError). A literal left operand takes the count's type. `~` on an
+# unsigned 32/64-bit result shows its width.
 from __future__ import annotations
 from typing import Iterator
 from tpy import int8, int16, int32, int64, uint8, uint32, uint64, Own, error_return, ReturnException
@@ -43,16 +44,16 @@ def free_fn(n: int64, k: int32, b: int32, a: int64, w: uint32, u8: uint8, k64: i
     t = w >> (32 - k)  # tpyc: type(uint32)
     v = a << u8  # tpyc: type(int64)
     lit = 1 << k64  # tpyc: type(int64)
-    small = uint8(1) << k64  # tpyc: type(uint8)
+    small = uint8(1) << k64  # tpyc: type(int32)
     # a literal left operand takes a narrow count's type too
-    lk8 = 1 << k8  # tpyc: type(int8)
-    lu8 = 1 << u8  # tpyc: type(uint8)
+    lk8 = 1 << k8  # tpyc: type(int32)
+    lu8 = 1 << u8  # tpyc: type(int32)
     print("free", r, s, t, v, lit, ~small, lk8, lu8)
 
 
 # module-level statement: int16 << int64 into a global
 gk = int64(3)
-gs = int16(5) << gk  # tpyc: type(int16)
+gs = int16(5) << gk  # tpyc: type(int32)
 
 
 # generator body: uint64 >> int8
@@ -64,7 +65,7 @@ def gen(x: uint64, ks: list[int8]) -> Iterator[uint64]:
 # async body: int8 << uint32 after a suspension
 async def async_fn(x: int8, k: uint32) -> int8:
     await asyncio.sleep(0)
-    r = x << k  # tpyc: type(int8)
+    r = x << k  # tpyc: type(int32)
     return r
 
 
@@ -90,7 +91,7 @@ def cm_body(n: int64, k: uint8) -> int64:
 # try/finally: uint8 << int32
 def try_finally(x: uint8, k: int32) -> uint8:
     try:
-        r = x << k  # tpyc: type(uint8)
+        r = x << k  # tpyc: type(int32)
     finally:
         print("try_finally done")
     return r
@@ -130,7 +131,7 @@ def pending(k64: int64, x8: int8) -> None:
     p = 1
     r = p << k64  # tpyc: type(int32)
     c = 1
-    s = x8 << c  # tpyc: type(int8)
+    s = x8 << c  # tpyc: type(int32)
     c = k64
     lit = 1 << c  # tpyc: type(int64)
     print("pending", r, s, lit)

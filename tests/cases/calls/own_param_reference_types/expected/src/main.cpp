@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     b.append(90)                 # the owned buffer is mutable in the callee
 //     return len(b)                # the bare Own[bytearray] name read
 int32_t consume(::tpy::ByteArray&& b) {
-    b.push_back(90);
+    ::tpy::bytearray_append(b, 90);
     return ::tpy::__len__(b);
 }
 

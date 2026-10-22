@@ -1,0 +1,4 @@
+Every section raises OverflowError where a fixed-width value leaves its
+type; CPython's integers never overflow (the stubs' arithmetic returns a
+plain int and an annotation converts nothing), so the run cannot be
+reproduced under CPython.

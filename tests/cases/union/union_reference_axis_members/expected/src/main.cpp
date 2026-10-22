@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void grow(::tpy::Union<::tpy::ByteArray*, std::vector<int32_t>*> u) {
     if (std::holds_alternative<::tpy::ByteArray*>(u)) {
         auto& __u = *std::get<::tpy::ByteArray*>(u);
-        __u.push_back(33);
+        ::tpy::bytearray_append(__u, 33);
     } else {
         auto& __u = *std::get<std::vector<int32_t>*>(u);
         __u.push_back(9);

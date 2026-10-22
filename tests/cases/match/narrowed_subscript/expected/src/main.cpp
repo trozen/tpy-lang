@@ -295,7 +295,7 @@ __gen_generate generate(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x)
         __sub_0.reset();
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
         __state = S_DONE;
-        int32_t __tpy_async_ret = static_cast<int32_t>((::tpy::add_check<uint8_t>(first, ::tpy::bytes_getitem(__x, -1))));
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(first, ::tpy::bytes_getitem(__x, -1)));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");

@@ -3,14 +3,6 @@
 
 namespace tpyapp::main {
 
-// VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
-const std::tuple<int32_t, int32_t, int32_t> VERSION = std::tuple<int32_t, int32_t, int32_t>{1, 2, 3};
-// PAIR: Final[tuple[str, bool]] = ("hello", True)
-const std::tuple<std::string_view, bool> PAIR = std::tuple<std::string_view, bool>{"hello", true};
-// ARITH: Final[tuple[int32, int32]] = (10 + 20, 100 - 1)
-const std::tuple<int32_t, int32_t> ARITH = std::tuple<int32_t, int32_t>{30, 99};
-// NESTED: Final[tuple[tuple[str, int32], str]] = (("inner", 42), "outer")
-const std::tuple<std::tuple<std::string_view, int32_t>, std::string_view> NESTED = std::tuple<std::tuple<std::string_view, int32_t>, std::string_view>{std::tuple<std::string_view, int32_t>{"inner", 42}, "outer"};
 
 // def main() -> None:
 //     major, minor, patch = VERSION

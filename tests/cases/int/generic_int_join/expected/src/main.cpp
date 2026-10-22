@@ -98,7 +98,7 @@ void free_function() {
     uint8_t su = ::std::max<uint8_t>(200, 100);
     int8_t si = ::std::max<int8_t>(100, 90);
     int64_t sl = ::std::max<int64_t>(a, 7);
-    std::cout << "free same-width" << " " << ::tpyapp::main::width__uint8(su) << " " << static_cast<int>(static_cast<uint8_t>(~(su))) << " " << ::tpyapp::main::width__int8(si) << " " << static_cast<int>((::tpy::add_check<int8_t>(si, 20))) << " " << ::tpyapp::main::width__int64(sl) << "\n" << ::tpy::check_signals;
+    std::cout << "free same-width" << " " << ::tpyapp::main::width__uint8(su) << " " << static_cast<int32_t>(~(su)) << " " << ::tpyapp::main::width__int8(si) << " " << (::tpy::add_check<int32_t>(si, 20)) << " " << ::tpyapp::main::width__int64(sl) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt w = ::std::max(::tpy::BigInt(1), ::tpy::BigInt(2));
     std::cout << "free no-common" << " " << w << "\n" << ::tpy::check_signals;
     int64_t total = 0;

@@ -14,7 +14,7 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
-    make_readonly,
+    make_readonly, substitute_cpp_ret,
     declares_no_writes, param_may_be_written,
     any_default_suppressed,
     default_emittable_at,
@@ -74,9 +74,11 @@ from .overloads import (
     type_matches_numeric,
     resolve_overload, OverloadAmbiguityError,
     OverloadCandidate, rank_overload_candidates, _expand_arg_types_with_kwargs,
-    _scalar_widening_cost, call_resolves_param, call_resolves_params,
+    call_resolves_param, call_resolves_params,
 )
 from .context import CallOperands
+from .int_narrowing import (proven_cast, select_template_ctor,
+                           site_value_range)
 from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
                            path_key, pointee_root, receiver_leaves,
                            storage_roots)
@@ -105,6 +107,7 @@ if TYPE_CHECKING:
     from .expressions import ExpressionAnalyzer
     from .methods import MethodAnalyzer
     from .pending_num import PendingNums
+    from .value_range import ValueRange
     from ..parse.nodes import SourceLocation
 
 from tpyc import modules as builtin_modules
@@ -575,8 +578,8 @@ def _resolve_cpp_template_type_params(
         overlay = _cross_module_cpp_overlay(render_types, ctx)
     with _native_cpp_names_overlay(overlay):
         template = fi.cpp_template
-        if result_type is not None and "{cpp}" in template:
-            template = template.replace("{cpp}", result_type.to_cpp())
+        if result_type is not None:
+            template = substitute_cpp_ret(template, result_type)
         if type_params:
             for name, typ in type_params.items():
                 placeholder = f"{{{name}}}"
@@ -4177,7 +4180,8 @@ class CallAnalyzer:
                        MarkRequest(params=False, loop_vars=True))
 
     def _check_ctor_type_param_bounds(
-        self, expr: TpyCall, ctor: FunctionInfo, arg_types: list[TpyType],
+        self, node: TpyExpr, callee: str, ctor: FunctionInfo,
+        arg_types: list[TpyType],
     ) -> None:
         """A type-ctor overload carrying its OWN type params (`int32.__init__
         [T: AnyFixedInt]`, whose @cpp_template is the fixed-int cast) is
@@ -4196,13 +4200,57 @@ class CallAnalyzer:
             if isinstance(slot, TypeParamRef):
                 type_subst.setdefault(slot.name, arg_t)
         validate_type_param_bounds(
-            type_subst, bounds, f"{expr.func_name}()",
+            type_subst, bounds, f"{callee}()",
             self.protocols.satisfies_bound,
-            lambda msg: self.ctx.error(msg, expr),
+            lambda msg: self.ctx.error(msg, node),
             self.type_ops.substitute_type_params,
             detail=(". The conversion is picked once for the whole generic "
                     "body, so the argument needs a bound satisfying it"),
         )
+
+    def pick_template_ctor(self, init_overloads: list[FunctionInfo],
+                           arg_types: list[TpyType]) -> FunctionInfo | None:
+        """The `__init__` overload a call of a template-constructed type
+        (`int8(x)`) takes for `arg_types`: the numeric pick
+        (`select_template_ctor`), else protocol-aware overload resolution
+        (`bool(obj)` via Truthy). Raises OverloadAmbiguityError."""
+        ctor = select_template_ctor(init_overloads, arg_types,
+                                    self.ctx.default_int_type)
+        if ctor is not None:
+            return ctor
+        return resolve_overload(
+            init_overloads, arg_types,
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+            protocol_classifier=self.protocols.classify_protocol_conformance,
+            default_int_type=self.ctx.default_int_type,
+            subclass_checker=self.ctx.registry.subclass_distance,
+            type_ops=self.type_ops,
+        )
+
+    def narrowing_ctor(self, arg: TpyExpr, source: TpyType, target: TpyType,
+                       value_range: 'ValueRange | None') -> FunctionInfo | None:
+        """The call an implicit narrowing of `arg` (of type `source`) into
+        fixed-width `target` renders as: the constructor `target(arg)` takes,
+        picked and resolved as that call's is, or a plain cast where
+        `value_range` -- the argument's range at the conversion site --
+        proves the value fits. None when `target` has no constructor
+        overload for the source."""
+        record = self.ctx.registry.get_record_for_type(target)
+        if record is None:
+            return None
+        try:
+            ctor = self.pick_template_ctor(
+                record.get_method_overloads("__init__"), [source])
+        except OverloadAmbiguityError:
+            return None
+        if ctor is None or not ctor.cpp_template:
+            return None
+        self._check_ctor_type_param_bounds(arg, str(target), ctor, [source])
+        cast = proven_cast(self.ctx, arg, ctor, source, target, value_range)
+        if cast is not None:
+            return cast
+        return _resolve_cpp_template_type_params(ctor, result_type=target,
+                                                 ctx=self.ctx)
 
     def _analyze_template_constructor(self, expr: TpyCall, record: RecordInfo,
                                       init_overloads: list[FunctionInfo]) -> TpyType:
@@ -4227,43 +4275,13 @@ class CallAnalyzer:
         # in Python, so we look up the actual type via the type factory.
         record_type = builtin_modules.get_builtin_type_obj(record.builtin_type_key)
 
-        # First-match-wins, except when multiple fixed-int overloads accept an
-        # IntLiteralType arg -- there, prefer the default_int_type one over the
-        # smallest-fitting one (str(IntLiteralType) -> fixed_to_str<int32_t>
-        # rather than <int8_t>). Other-shape ctors (BigInt, float, etc.) and
-        # single-fixed-int ctors (int64(20)) keep declaration-order behavior.
-        default_int_type = self.ctx.default_int_type
-        best_ctor: FunctionInfo | None = None
-        best_cost = 0
-        for ctor in init_overloads:
-            if len(ctor.params) != len(arg_types):
-                continue
-            if not all(type_matches_numeric(arg_type, ptype)
-                       for (pname, ptype), arg_type in zip(ctor.params, arg_types)):
-                continue
-            # Single pass: detect IntLiteralType -> fixed-int matches and
-            # accumulate their widening cost from default_int_type.
-            is_fixed_int = False
-            cost = 0
-            for (_pname, ptype), arg_type in zip(ctor.params, arg_types):
-                if isinstance(arg_type, IntLiteralType) and is_fixed_int_type(ptype):
-                    is_fixed_int = True
-                    cost += _scalar_widening_cost(arg_type, ptype, default_int_type)
-            if best_ctor is None:
-                best_ctor = ctor
-                best_cost = cost
-                # Tie-break only fires when the first match was fixed-int;
-                # otherwise no later ctor can improve on this one.
-                if not is_fixed_int:
-                    break
-            elif is_fixed_int and cost < best_cost:
-                best_ctor = ctor
-                best_cost = cost
-            if best_cost == 0:
-                break
-        if best_ctor is not None:
-            ctor = best_ctor
-            self._check_ctor_type_param_bounds(expr, ctor, arg_types)
+        try:
+            ctor = self.pick_template_ctor(init_overloads, arg_types)
+        except OverloadAmbiguityError as e:
+            raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
+        if ctor is not None:
+            self._check_ctor_type_param_bounds(
+                expr, expr.func_name, ctor, arg_types)
             ret = record_type or ctor.return_type
             # Reject int literals that are out of range for the target fixed-int type
             if (is_fixed_int_type(ret) and len(arg_types) == 1
@@ -4282,27 +4300,6 @@ class CallAnalyzer:
             # populated so downstream dangling/provenance checks can see
             # through the constructor. Other builtin constructors leave
             # call_type unset to preserve their existing codegen paths.
-            if is_borrowing_view_type(ret):
-                expr.call_type = ret
-            return ret
-
-        # Fallback: try protocol-aware overload resolution (e.g. bool(obj) via Truthy)
-        try:
-            matched = resolve_overload(
-                init_overloads, arg_types,
-                protocol_checker=self.protocols.type_conforms_to_protocol,
-                protocol_classifier=self.protocols.classify_protocol_conformance,
-                default_int_type=self.ctx.default_int_type,
-                subclass_checker=self.ctx.registry.subclass_distance,
-                type_ops=self.type_ops,
-            )
-        except OverloadAmbiguityError as e:
-            raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
-        if matched:
-            self._check_ctor_type_param_bounds(expr, matched, arg_types)
-            ret = record_type or matched.return_type
-            expr.resolved_function_info = _resolve_cpp_template_type_params(matched, result_type=ret, ctx=self.ctx)
-            self._check_cast_safe(expr, matched, arg_types, ret)
             if is_borrowing_view_type(ret):
                 expr.call_type = ret
             return ret
@@ -4367,41 +4364,19 @@ class CallAnalyzer:
 
     def _check_cast_safe(self, expr: TpyCall, ctor: FunctionInfo,
                          arg_types: list[TpyType], target_type: TpyType | None = None) -> None:
-        """Mark signed->unsigned casts as safe when value is provably non-negative.
-
-        When the source is a signed int with lo >= 0 (from range tracking) and
-        the target unsigned type is wide enough to hold all non-negative values
-        of the source type, skip the runtime range check.
-
-        Only applies when the argument is a simple variable name (TpyName);
-        field accesses and sub-expressions are conservatively left checked.
-        """
-        if len(arg_types) != 1 or not ctor.cpp_template:
-            return
-        if "int_cast_check" not in ctor.cpp_template:
-            return
+        """The value-range elision of an explicit integer conversion
+        (`narrowing_proven_safe`), shared with the implicit one."""
         target = target_type or ctor.return_type
-        source = arg_types[0]
-        target_tr = int_traits_of(target)
-        source_tr = int_traits_of(source)
-        if target_tr is None or source_tr is None:
+        if (len(arg_types) != 1 or not ctor.cpp_template
+                or target is None or not is_fixed_int_type(target)
+                or not is_fixed_int_type(unwrap_readonly(arg_types[0]))
+                or unwrap_readonly(arg_types[0]) == target):
             return
-        arg = expr.args[0]
-        if not isinstance(arg, TpyName):
-            return
-        # Safe when: signed -> unsigned, target at least as wide, source proven non-negative
-        is_safe = (
-            source_tr.signed and not target_tr.signed
-            and target_tr.bits >= source_tr.bits
-            and (rng := self.ctx.func.value_ranges.get(arg.name)) is not None
-            and rng.is_non_negative()
-        )
-        if is_safe:
-            safe_template = f"static_cast<{target.to_cpp()}>({{0}})"
-            expr.resolved_function_info = dc_replace(
-                ctor, cpp_template=safe_template, canonical_fi=ctor.root)
-        if expr.loc:
-            self.ctx.cast_safe_facts[(expr.loc.line, str(target))] = is_safe
+        cast = proven_cast(self.ctx, expr, ctor,
+                           unwrap_readonly(arg_types[0]), target,
+                           site_value_range(self.ctx, expr.args[0]))
+        if cast is not None:
+            expr.resolved_function_info = cast
 
     def _validate_explicit_type_args(self, expr: TpyCall, max_type_params: int) -> None:
         """Validate explicit type arguments for a generic call.

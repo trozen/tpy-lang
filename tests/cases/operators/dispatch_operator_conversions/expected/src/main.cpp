@@ -53,7 +53,7 @@ void lit34(int32_t k, const B& b) {
 void lit_slots(int32_t k) {
     S64 s64 = S64();
     S8 s8 = S8();
-    std::cout << "literal_slots:" << " " << ((s64) * (static_cast<int64_t>(k))) << " " << ((s8) * (static_cast<int8_t>(k))) << " " << (s8) * (static_cast<int8_t>(k)) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_slots:" << " " << ((s64) * (static_cast<int64_t>(k))) << " " << ((s8) * (::tpy::int_cast_check<int8_t>(k))) << " " << (s8) * (::tpy::int_cast_check<int8_t>(k)) << "\n" << ::tpy::check_signals;
 }
 
 // async def scaled_later(o: Ops, n: int32) -> int32:

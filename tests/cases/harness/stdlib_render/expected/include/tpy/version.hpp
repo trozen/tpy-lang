@@ -9,7 +9,7 @@ inline constexpr std::string_view __name__ = "tpy.version";
 // __version__: Final[str] = _version()
 inline constexpr std::string_view __version__ = "0.7.0.dev0";
 // version_info: Final[tuple[int32, int32, int32, str, int32]] = _version_info()
-extern const std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t> version_info;
+inline constexpr std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t> version_info = std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t>{0, 7, 0, "dev", 0};
 // is_compiled: Final[bool] = True
 inline constexpr bool is_compiled = true;
 

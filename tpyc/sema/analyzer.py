@@ -27,6 +27,7 @@ from ..typesys import (
     PendingListType, PendingDictType, PendingSetType, PendingViewType,
     PendingNumType,
 )
+from ..coercions import CoercionContext
 from ..type_def_registry import is_span, is_varargs, is_spanlike_view
 from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
@@ -1918,15 +1919,25 @@ class SemanticAnalyzer:
         """A genexpr's function can read a container literal of the ENCLOSING
         function (its source, a capture), whose Array-vs-list verdict settles
         only when that function's body ends. The nodes recorded as holding
-        such a type are finalized there, not at the end of this body."""
+        such a type are finalized there, not at the end of this body -- save
+        a node field only this body's own cells decide (a loop target joining
+        its bindings), which this body's end finalizes before it drops them."""
         enclosing = self._genexpr_enclosing[-1]
         inner = self.ctx.func
         enclosing.pending_composite_exprs.extend(inner.pending_composite_exprs)
         inner.pending_composite_exprs.clear()
         enclosing.pending_container_exprs.extend(inner.pending_container_exprs)
         inner.pending_container_exprs.clear()
-        enclosing.pending_elem_type_fields.extend(inner.pending_elem_type_fields)
-        inner.pending_elem_type_fields.clear()
+        own: list[tuple[object, str]] = []
+        for node, attr in inner.pending_elem_type_fields:
+            value = getattr(node, attr)
+            values = value if isinstance(value, list) else [value]
+            if all(t is None or self.pend.decided_by_own_cells(t)
+                   for t in values):
+                own.append((node, attr))
+            else:
+                enclosing.pending_elem_type_fields.append((node, attr))
+        inner.pending_elem_type_fields[:] = own
 
     def _register_genexpr_function(
             self, func: TpyFunction,
@@ -2814,18 +2825,30 @@ class SemanticAnalyzer:
         # const-validity check accepts forward refs. Track adds and roll
         # back at the end -- avoids cloning the full module Finals set.
         added_finals: list[str] = []
+        # Each earlier constant of the body with its runtime fact: a later
+        # one reading it, or shadowing a module Final, sees this one.
+        class_scope: dict[str, bool] = {}
 
         try:
             for cc_name, cc_fld in record_info.class_constants.items():
                 if cc_fld.default_expr is None:
                     # @native extern binding: no initializer to analyze.
                     continue
-                self.expr.analyze_expr_with_hint(cc_fld.default_expr, cc_fld.type)
+                label = f"class constant '{record.name}.{cc_name}'"
+                init_type = self.expr.analyze_at_slot(
+                    cc_fld.default_expr, cc_fld.type, CoercionContext.INIT)
                 self.stmts.validate_compile_time_constant(
-                    cc_fld.default_expr, cc_fld.type,
-                    f"class constant '{record.name}.{cc_name}'",
-                    cc_fld.loc,
+                    cc_fld.default_expr, cc_fld.type, label, cc_fld.loc,
                 )
+                cc_fld.default_expr = self.compat.coerce_expr(
+                    cc_fld.default_expr, unwrap_readonly(init_type),
+                    cc_fld.type, label, CoercionContext.INIT)
+                runtime = (record_info.is_final_class_constant(cc_name)
+                           and self.stmts.final_is_runtime(
+                               cc_fld.type, cc_fld.default_expr, class_scope))
+                if runtime:
+                    record_info.runtime_class_constants.add(cc_name)
+                class_scope[cc_name] = runtime
                 # Bind so later class constants in the same body can reference it.
                 self.ctx.func.current_scope.define(cc_name, cc_fld.type)
                 self.ctx.func.current_ns.bind_variable(cc_name, cc_fld.type)

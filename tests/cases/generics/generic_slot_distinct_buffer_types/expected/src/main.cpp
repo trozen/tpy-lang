@@ -122,11 +122,11 @@ void bytes_family(::tpy::BytesView p) {
     std::cout << "bytes" << " " << ::tpy::print_bool(::tpyapp::main::has_item<::tpy::Bytes>(keys, p)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_bytes(keys, p)) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     ::tpy::ByteArray& r = ::tpyapp::main::echo_ref<::tpy::ByteArray>(ba);
-    r.push_back(9);
+    ::tpy::bytearray_append(r, 9);
     std::cout << "bytearray" << " " << ::tpy::__len__(ba) << " " << ::tpy::__len__(r) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray buf = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     int32_t n1 = ::tpyapp::main::size_of(buf);
-    buf.push_back(7);
+    ::tpy::bytearray_append(buf, 7);
     std::cout << "borrow" << " " << n1 << " " << ::tpyapp::main::size_of(buf) << "\n" << ::tpy::check_signals;
 }
 

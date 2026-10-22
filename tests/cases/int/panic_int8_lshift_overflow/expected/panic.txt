@@ -1,1 +1,1 @@
-TurboPython panic: int8 overflow in left shift
+TurboPython panic: uncaught tpy::OverflowError: int8 overflow: value out of range

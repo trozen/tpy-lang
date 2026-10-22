@@ -9327,8 +9327,8 @@ def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
 
 def _received_value(received: TpyExpr, value: THIRExpr, lc: '_LowerCtx',
                     declared: dict[str, TpyType]) -> THIRExpr:
-    """The operation's result `value` of `t[k] op= v` as the setter
-    receives it (`TpyAugAssign.setitem_value`): the conversion sema put on
+    """The operation's result `value` of `x op= v` as the store
+    receives it (`TpyAugAssign.stored_value`): the conversion sema put on
     the stand-in for the result, lowered over `value`."""
     stand_in = received
     while isinstance(stand_in, TpyCoerce):
@@ -12962,16 +12962,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(cast_t))),
                         analyzer.ctx.default_int_for_literal)
             _, aug_rslot = _rb_operand_slots(stmt.resolved_binop)
-            # FixedInt += BigInt: the value wraps in `({0}).to_fixed_check<T>()`
-            # BEFORE the binop substitution (sema resolved the binop over the
-            # target width), carried as the per-side operand cast.
-            aug_value_key = _narrow_key_type(stmt.value, declared, analyzer)
-            right_cast = None
-            if (is_fixed_int_type(cast_t)
-                    and is_big_int_type(aug_value_key)):
-                _witness("narrow.aug_value")
-                right_cast = ("({0}).to_fixed_check<"
-                              f"{lc.render_type(cast_t)}>()")
             # The subscript-write route flushes arg temps before its single
             # setitem line (the pre-statement flush point), so the value
             # position admits the temp rows there -- `d[i] += k.take(b)` hoists
@@ -12998,22 +12988,25 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 left=left,
                 op=stmt.op,
                 right=aug_right,
-                right_cast=right_cast,
                 resolved=stmt.resolved_binop,
                 paren_wrap=False,
                 form=(Form.STORAGE if tgt_bytes is not None
                       and is_bytes_type(tgt_bytes) else Form.VALUE),
                 loc=loc,
             )
+            # The store receives the result under the conversion sema put
+            # on its stand-in, where it has one.
+            stored = (binop if stmt.stored_value is None
+                      else _received_value(stmt.stored_value, binop, lc,
+                                           declared))
             if (isinstance(stmt.target, TpySubscript)
                     and stmt.target.typed_dict_field is None):
                 _witness("setitem.aug")
                 if isinstance(stmt.target.obj, TpyFieldAccess):
                     _witness("setitem.field_recv")
-                if stmt.setitem_value is not None:
+                if stmt.target.setitem_index is not None:
                     store_key = aug_sub.store_index
-                    received = _received_value(stmt.setitem_value, binop, lc,
-                                               declared)
+                    received = stored
                     if _setter_consumes_held_key(stmt, store_key):
                         # Moving the key inside the call that also reads it
                         # for the getter would leave the getter an empty key
@@ -13032,12 +13025,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     return THIRExprStmt(expr=_record_dunder_call(
                         stmt.target, SubscriptDunder.SET, aug_sub.receiver,
                         (store_key, received), lc, loc), held=held, loc=loc)
+            if (isinstance(stmt.target, TpySubscript)
+                    and stmt.target.typed_dict_field is None):
                 target = replace(target, receiver=aug_sub.receiver,
                                  index=aug_sub.store_index)
-                return THIRSetItem(target=target, value=binop,
+                return THIRSetItem(target=target, value=stored,
                                    stub_callee=setitem_stub_callee(target, analyzer),
                                    held=held, loc=loc)
-            return THIRAssign(target=target, value=binop,
+            return THIRAssign(target=target, value=stored,
                               recv_eval=recv_eval, recv_wrap=recv_wrap,
                               held=held, loc=loc)
     if isinstance(stmt, TpyReturn):

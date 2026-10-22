@@ -211,6 +211,12 @@ class LiteralLocals:
     # Names also bound through a form a pending local may not be (a loop
     # target, an unpack, a `nonlocal` store...): none of them gets a cell.
     excluded: frozenset[str] = frozenset()
+    # The other locals bound more than once, by any form whose value sema
+    # records into the local's cell (a plain or augmented assignment, a loop
+    # head, an unpack target, a `match` capture, a walrus): one first bound
+    # to a fixed-width integer value takes the join of all its bindings
+    # (`b = d[0]; b += 1` is an int32).
+    rebound: frozenset[str] = frozenset()
 
 
 def _store_value(s: TpyStmt) -> tuple[str, TpyExpr | None] | None:
@@ -305,6 +311,12 @@ def scan_pending_num_locals(
     literal: dict[str, list[int]] = {}
     widening: set[str] = set()
     excluded: set[str] = set(params)
+    # Every binding of each name, by any form, each walrus on its own.
+    bindings: Counter[str] = Counter()
+    # Bound through a form whose value no cell records (a `with` / `except`
+    # target, a nested `def`), annotated, or not the function's own local
+    # (`global`, `nonlocal`, a parameter): no join decides its type.
+    opaque: set[str] = set(params)
 
     def store(name: str, value: TpyExpr | None, stmt: TpyStmt,
               aug: bool = False) -> None:
@@ -324,9 +336,18 @@ def scan_pending_num_locals(
             literal.setdefault(name, []).append(lit.value)
 
     def on_stmt(s: TpyStmt) -> None:
+        if isinstance(s, TpyMatch):
+            # Each arm's capture is a binding of its own.
+            for case in s.cases:
+                bindings.update({c.name for c in
+                                 iter_capture_bindings(case.pattern)})
+        elif not isinstance(s, TpyDelVar):
+            bindings.update(written_names(s, walrus=False))
+        bindings.update(ne.target for ne in walrus_bindings(s))
         if isinstance(s, TpyVarDecl):
             if s.type is not None:
                 excluded.add(s.name)
+                opaque.add(s.name)
             elif s.init is not None:
                 store(s.name, s.init, s)
         elif (isinstance(s, TpyAssign) and isinstance(s.target, TpyName)):
@@ -335,20 +356,29 @@ def scan_pending_num_locals(
             store(s.target.name, s.value, s, aug=True)
         elif isinstance(s, (TpyGlobal, TpyNonlocal)):
             excluded.update(s.names)
+            opaque.update(s.names)
+        elif isinstance(s, (TpyForEach, TpyTupleUnpack, TpyMatch)):
+            excluded.update(written_names(s))
         elif not isinstance(s, TpyDelVar):
             excluded.update(written_names(s))
+            opaque.update(written_names(s, walrus=False))
 
     walk_body_stmts(stmts, lambda e: None, on_stmt)
+    nested_before = set(excluded)
     _nested_nonlocal_names(stmts, excluded)
+    opaque.update(excluded - nested_before)
     # Seeded: some statement of the first binding stores a literal.
     seeded = {name for name, sites in first.items()
               if any((sv := _store_value(s)) is not None
                      and literal_constant(sv[1]) is not None for s in sites)}
     seeded -= excluded
+    pending = seeded & widening
+    rebound = {n for n, count in bindings.items() if count > 1}
     return LiteralLocals(
-        frozenset(seeded & widening),
+        frozenset(pending),
         {n: tuple(vs) for n, vs in literal.items() if n in seeded},
-        frozenset(excluded))
+        frozenset(excluded),
+        frozenset(rebound - pending - opaque))
 
 
 def scan_reassigned_vars(stmts: list[TpyStmt],

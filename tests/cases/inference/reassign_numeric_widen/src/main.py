@@ -1,7 +1,7 @@
 # Numeric widening across reassignments: a local whose first binding is a
 # bare integer literal is widened by the typed values stored in it; a local
-# first bound to a typed value keeps that type and converts a narrower value
-# (int/error_typed_local_rebind_wider refuses a wider one). An int and a float
+# first bound to a typed value converts a narrower value, and one stored
+# again joins its bindings (int/narrow_arith_promotes). An int and a float
 # never join (a local has one numeric type -- inference/error_rebind_int_float),
 # except through a declared float slot. The typed values come from parameters.
 from typing import Callable

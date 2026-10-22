@@ -45,7 +45,7 @@ void value_positions(std::string_view data) {
     std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), std::nullopt}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::str_slice(data, ::tpy::BasicSlice{std::nullopt, p.to_fixed_check<int32_t>()}) << "\n" << ::tpy::check_signals;
     int32_t q = 7;
-    q = ::tpy::add_check<int32_t>(q, (p).to_fixed_check<int32_t>());
+    q = ((::tpy::BigInt(q)) + (p)).to_fixed_check<int32_t>();
     std::cout << q << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", (p).to_string()) << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::widen();

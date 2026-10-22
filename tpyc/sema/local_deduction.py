@@ -73,7 +73,7 @@ from .receiver_calls import method_writes_receiver
 from ..storage_trace import StepKind
 from .storage_walk import (Leaf, LeafKind, StorageKey, borrow_key, leaves,
                            receiver_leaves, ternary_operands, view_leaves)
-from ..diagnostics import SemanticError
+from ..diagnostics import Scope, SemanticError
 from .type_join import (InferredJoin, JoinOutcome, descend,
                         find_int_float_mix, flipped, join_inferred_value_types,
                         numeric_kind, peel_value,
@@ -406,6 +406,40 @@ class LocalTypeDeduction:
                     )
                 raise SemanticError(msg, e.loc) from e
 
+    def join_rebind(self, name: str, existing_type: TpyType,
+                    var_type: TpyType, scope: Scope, line: int) -> None:
+        """A rebind whose value widened `name` to `var_type` (a module
+        variable first bound to a literal joins its bindings, until module
+        code is analyzed as one body: TODO "Module scope is the body of
+        __tpy_init"): the variable takes the new type wherever it is
+        recorded, so a store of any spelling widens it alike."""
+        if var_type == existing_type:
+            return
+        self.retype_declaration(name, var_type)
+        scope.define(name, var_type)
+        # The binding's owner, not the current level: inside a comprehension
+        # or a block the current namespace is a temporary child that a
+        # module variable's later reads never see.
+        ns = self.ctx.func.current_ns
+        if ns is not None and not ns.update_variable_type_recursive(
+                name, var_type):
+            ns.bind_variable(name, var_type)
+        if (self.ctx.is_top_level
+                and self.ctx.global_scope.lookup(name) is not None):
+            self.ctx.define_module_global(name, var_type, line)
+
+    def retype_declaration(self, name: str, var_type: TpyType) -> None:
+        """A rebind widened `name` (a module variable joins its bindings):
+        its first declaration, and every type recorded for it, take the
+        new type."""
+        resolved = unwrap_readonly(var_type)
+        orig_decl = self.ctx.func.var_decl_by_name.get(name)
+        if orig_decl:
+            self.ctx.var_types[orig_decl] = resolved
+        for key in self.ctx.declared_var_types:
+            if key[1] == name:
+                self.ctx.declared_var_types[key] = resolved
+
     def resolve_reassignment_target_type(
         self,
         name: str,
@@ -471,20 +505,42 @@ class LocalTypeDeduction:
         # binding and a narrower value converts into it. (A local whose
         # first binding is a bare literal is a pending local and never gets
         # here.)
-        # Module-level variables still join their bindings.
-        module_level = (self.ctx.func.current_function is None
-                        or self.ctx.is_top_level)
+        module_level = self.module_level()
         if module_level and self._literal_outgrows(existing_type, init_type):
+            if self.keeps_first_type(name):
+                self.refuse_wider_rebind(
+                    name, existing_type,
+                    self.ctx.default_int_for_literal(init_type,
+                                                     rebinding=True),
+                    init_expr, aug_op, site)
             return self.ctx.default_int_for_literal(
                 init_type, warn_node=init_expr, rebinding=True)
         widened = widen_numeric_types(existing_type, init_type)
         if widened is not None and widened != existing_type:
-            if module_level:
+            if module_level and not (is_integer_type(existing_type)
+                                     and self.keeps_first_type(name)):
                 return widened
             self.refuse_wider_rebind(name, existing_type, init_type,
                                      init_expr, aug_op, site)
 
         return existing_type
+
+    def module_level(self) -> bool:
+        """Whether the code being analyzed is module code, whose variables
+        are the module's globals."""
+        return (self.ctx.func.current_function is None
+                or self.ctx.is_top_level)
+
+    def keeps_first_type(self, name: str) -> bool:
+        """Whether an integer store into `name` at module level keeps the
+        type of its first binding, refusing a wider value, as a function
+        local does. A module variable first bound to a literal still joins
+        its bindings (and an annotated one converts what it is given),
+        until module code is analyzed as one body (TODO "Module scope is
+        the body of __tpy_init")."""
+        return (self.module_level()
+                and name not in self.ctx.func.literal_seeded
+                and name not in self.ctx.func.authoritative_types)
 
     def _literal_outgrows(self, existing_type: TpyType,
                           init_type: TpyType) -> bool:
@@ -2401,7 +2457,8 @@ class LocalTypeDeduction:
             self.ctx.default_int_for_literal)
 
     def _finalize_pending_elem_type_fields(self) -> None:
-        """Refresh comprehension element/key/value-type snapshots post-resolution.
+        """Refresh node-held type snapshots post-resolution (a comprehension's
+        element/key/value type, a loop head's or an unpack's targets).
 
         A snapshot field (result_elem_type etc.) cached before resolution may
         hold a Pending* container type (bare or nested in a composite) whose
@@ -2409,6 +2466,11 @@ class LocalTypeDeduction:
         codegen sees the concrete type."""
         for node, attr in self.ctx.func.pending_elem_type_fields:
             current = getattr(node, attr)
+            if isinstance(current, list):
+                # One type per target (an unpack's).
+                current[:] = [t if t is None else self._deep_resolve_pending(t)
+                              for t in current]
+                continue
             resolved = self._deep_resolve_pending(current)
             if resolved is not current:
                 setattr(node, attr, resolved)

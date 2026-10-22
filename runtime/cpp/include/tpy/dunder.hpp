@@ -123,7 +123,7 @@ template<typename T>
     requires (requires(const T& t) { { t.__len__() } -> std::same_as<BigInt>; }
               && !requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; })
 int32_t __len__(const T& x) {
-    // to_fixed_check narrows the BigInt (and panics on an oversized result); a
+    // to_fixed_check narrows the BigInt (OverflowError on an oversized result); a
     // negative in-range result is still ValueError, like the int-convertible branch.
     int32_t n = x.__len__().template to_fixed_check<int32_t>();
     if (n < 0) raise_value_error("__len__() should return >= 0");

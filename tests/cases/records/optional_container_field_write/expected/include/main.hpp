@@ -114,7 +114,7 @@ inline int32_t Slot::size() const {
 //         self.b.append(90)
 inline void Slot::grow() {
     if ((this->b.has_value())) {
-        (*this->b).push_back(90);
+        ::tpy::bytearray_append((*this->b), 90);
     }
 }
 void __tpy_init();

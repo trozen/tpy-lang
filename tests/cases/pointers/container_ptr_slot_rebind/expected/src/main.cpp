@@ -77,7 +77,7 @@ void rebound_bytes(::tpy::ByteArray& other) {
     ::tpy::ByteArray __slot_1 = ::tpyapp::main::mk_bytes();
     ::tpy::ByteArray* b = &__slot_1;
     b = &(other);
-    b->push_back(9);
+    ::tpy::bytearray_append((*b), 9);
 }
 
 // def rebound_array(other: Array[int32, 2]) -> None:

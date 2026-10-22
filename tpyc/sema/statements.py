@@ -6,7 +6,7 @@ Statement analysis including variable declarations, assignments, and control flo
 
 from __future__ import annotations
 from contextlib import AbstractContextManager, contextmanager, nullcontext
-from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple
+from typing import TYPE_CHECKING, Callable, Iterator, Mapping, NamedTuple
 
 from ..holders import IterHolder
 from ..typesys import (pointer_repr_optional, pointer_variant_union,
@@ -30,7 +30,7 @@ from ..typesys import (
     ViewTypeFamily, view_family_for_type, VIEW_TYPE_FAMILIES,
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, BOOL, is_protocol_type, is_protocol_union, final_type_str_to_strview,
-    is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
+    is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, is_constexpr_eligible,
     qualify_exception_name, is_return_exception, is_exception_record, error_return_matches,
     record_owner,
     FunctionInfo, ParamInfo, RecordInfo, MutationCallEdge,
@@ -62,7 +62,7 @@ from ..parse import (
     TpySetComprehension,
     is_stable_address_lvalue,
 )
-from ..coercions import CoercionContext
+from ..coercions import Coercion, CoercionContext, int_payload
 from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
@@ -144,7 +144,7 @@ from .alias_rebind import (binding_roots, decide_rebind_storage,
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
-from .compatibility import TupleSink, owned_tuple_slots
+from .compatibility import TupleSink, inferred_field_slot, owned_tuple_slots
 from .context import (
     BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS,
     MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, element_index_key,
@@ -2687,8 +2687,6 @@ class StatementAnalyzer:
                     line=(stmt.loc.line if stmt.loc else None),
                 )
                 stmt.elem_type = make_ref(elem_type)
-                if contains_pending_leaf(stmt.elem_type):
-                    self.ctx.func.pending_elem_type_fields.append((stmt, "elem_type"))
 
                 # Auto-consuming decision is deferred until after body analysis
                 # (see below) so we know whether the loop var is mutated.
@@ -2797,9 +2795,10 @@ class StatementAnalyzer:
                     self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self._check_loop_var_rebind(stmt, elem_type)
-                    self._record_for_loop_var_type(stmt, elem_type)
                     cid_floor = self.ctx.pending_num_counter
-                    var_type = self._loop_var_cell_type(stmt, elem_type)
+                    var_type, declared = self._loop_var_cell_type(
+                        stmt, elem_type)
+                    self._declare_loop_var(stmt, declared)
                     with self.scopes.loop_var(inner_scope, stmt.var, var_type, iter_depth, is_foreach=True,
                                               binder=stmt):
                         # Inside the declaration: the block rule reads the
@@ -2876,7 +2875,8 @@ class StatementAnalyzer:
                     stmt, inner_scope, edges, before=before,
                     consumed_before=consumed_before_loop,
                     ns_types_before=ns_types_before_foreach,
-                    runs_once=runs_once, elem_type=elem_type)
+                    runs_once=runs_once,
+                    elem_type=unwrap_ref_type(stmt.elem_type))
                 self._decide_loop_copies_var(stmt, iterable_type, elem_type)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.func.loop_depth == 0:
@@ -3962,10 +3962,10 @@ class StatementAnalyzer:
         self._note_loop_var_iteration(stmt.var, elem_type, False,
                                       placeable=False)
         stmt.elem_type = make_ref(elem_type)
-        if contains_pending_leaf(stmt.elem_type):
-            self.ctx.func.pending_elem_type_fields.append((stmt, "elem_type"))
         self._check_loop_var_rebind(stmt, elem_type)
-        self._record_for_loop_var_type(stmt, elem_type)
+        cid_floor = self.ctx.pending_num_counter
+        var_type, declared = self._loop_var_cell_type(stmt, elem_type)
+        self._declare_loop_var(stmt, declared)
 
         # The first `__anext__` await suspends before the body ever runs;
         # kill pre-save so the loop-entry restore and the exit-facts
@@ -3991,16 +3991,17 @@ class StatementAnalyzer:
             # reject at lowering) -- it is called so the row lifting that
             # reject does not have to remember this route.
             self._register_foreach_iter_loans(stmt, iterable_type)
-            with self.scopes.loop_var(inner_scope, stmt.var, elem_type,
+            with self.scopes.loop_var(inner_scope, stmt.var, var_type,
                                        inner_scope.depth, is_foreach=True,
                                        binder=stmt):
                 for s in stmt.body:
                     self.analyze_stmt(s)
+            self.pend.retire_loop_heads(cid_floor)
         self._finish_loop_clauses(
             stmt, inner_scope, edges, before=before,
             consumed_before=consumed_before_loop,
             ns_types_before=ns_types_before, runs_once=runs_once,
-            elem_type=elem_type)
+            elem_type=unwrap_ref_type(stmt.elem_type))
 
     def _mark_with_manager_mutated(
             self, manager: 'TpyExpr', ctx_type: TpyType,
@@ -4353,6 +4354,7 @@ class StatementAnalyzer:
         self.ctx.func.pending_num_names = scan.literal_locals.pending
         self.ctx.func.int_literal_values = scan.literal_locals.literals
         self.ctx.func.pending_num_excluded = scan.literal_locals.excluded
+        self.ctx.func.pending_num_rebound = scan.literal_locals.rebound
         self.ctx.func.first_bindings = scan.first_bindings
         # Python binds a nested def's name for the whole enclosing scope, so
         # the set has to exist before the walk reaches any `def`. The update
@@ -4760,7 +4762,7 @@ class StatementAnalyzer:
             # An element of a container whose cells decide its leaves
             # follows them, as a declaration bound to one does.
             def follow(_types: tuple[TpyType, ...]) -> None:
-                table[key] = self.pend.finalize_values(table[key])
+                table[key] = self.pend.finalize_settled(table[key])
             self.pend.defer(stmt, (recorded,), follow)
         elif self.pend.container_cells(recorded) is not None:
             # A row of a container whose cells decide it (`for row in g`)
@@ -4769,38 +4771,37 @@ class StatementAnalyzer:
                 table[key] = resolved
             self.ctx.func.after_list_resolution.append((recorded, resolve))
 
+    def _declare_loop_var(self, stmt: TpyForEach, declared: TpyType) -> None:
+        """Declare the variable a `for` head binds anew at the type its
+        bindings decide (`derived_binding`); a pending one is decided
+        with its function. A head assigning an existing local declares
+        nothing."""
+        if not stmt.hoist_loop_var:
+            stmt.elem_type = make_ref(declared)
+        self._record_for_loop_var_type(
+            stmt, unwrap_ref_type(stmt.elem_type))
+        if contains_pending_leaf(stmt.elem_type):
+            self.ctx.func.pending_elem_type_fields.append((stmt, "elem_type"))
+
     def _loop_var_cell_type(self, stmt: TpyForEach,
-                            elem_type: TpyType) -> TpyType:
-        """The type the loop variable reads as in the body. A head binding
+                            elem_type: TpyType) -> tuple[TpyType, TpyType]:
+        """The types the loop variable reads as in the body and is declared
+        at (`derived_binding`). A head binding
         an element a cell has not decided yet is a local first bound to a
         value over a pending one (`y = xs[0]`): it gets a derived cell, so
         a store into it, a capture of it or a use that needs its type
         works on its own cell, never widening the container's."""
         if stmt.hoist_loop_var:
             # The head assigns the existing local, which reads as its own
-            # type; `_check_loop_var_rebind` holds the element to it.
+            # type; `_check_loop_var_rebind` holds the element to it, or
+            # joins it into the local's cell.
             existing = self.ctx.func.current_scope.lookup(stmt.var)
             if existing is None:
-                return elem_type
-            return unwrap_readonly(unwrap_ref_type(existing))
-        return self._derived_cell_type(stmt.var, elem_type, stmt,
-                                       loop_head=True)
-
-    def _derived_cell_type(self, name: str, elem_type: TpyType,
-                           site: TpyStmt, loop_head: bool) -> TpyType:
-        """The type a new local `name` bound to an element of type
-        `elem_type` without a value expression of its own (a `for` head, a
-        tuple-unpack target) reads as: a derived cell of that element when
-        it is a pending number, else the element's type."""
-        elem = strip_int(elem_type)
-        if (not is_pending_num(elem)
-                or name in self.ctx.func.global_declarations):
-            return elem_type
-        cell = self.pend.new_cell(name, None, derived=True,
-                                  is_float=bool(value_family(elem)))
-        cell.loop_head = loop_head
-        self.pend.add_store(cell, elem, site)
-        return self.pend.cell_type(cell)
+                return elem_type, elem_type
+            existing = unwrap_readonly(unwrap_ref_type(existing))
+            return existing, existing
+        return self.pend.derived_binding(stmt.var, elem_type, stmt,
+                                         loop_head=True)
 
     def _is_body_first_local(self, name: str) -> bool:
         """Whether `name` is pending as a local a loop body (not a `for`
@@ -4870,6 +4871,10 @@ class StatementAnalyzer:
                 f"is not yet supported; rename the loop variable", stmt)
         elem_bare = self._resolve_literal_type(
             unwrap_readonly(unwrap_ref_type(unwrap_own(elem_type))))
+        stmt.hoist_loop_var = True
+        if self.pend.rebind(stmt.var, elem_bare, None, stmt) is not None:
+            # A local whose bindings join takes the element as one more.
+            return
 
         def check(types: tuple[TpyType, ...]) -> None:
             exist_t, elem_t = types
@@ -4886,7 +4891,6 @@ class StatementAnalyzer:
             self.pend.defer(stmt, (exist_bare, elem_bare), check)
         else:
             check((exist_bare, elem_bare))
-        stmt.hoist_loop_var = True
 
     def _unbind_branch_pending(self, scope_before: set[str],
                                pending_before: set[str],
@@ -5146,6 +5150,59 @@ class StatementAnalyzer:
                 loc,
             )
         raise self.ctx.error(prefix, loc)
+
+    def final_is_runtime(self, typ: TpyType, init: TpyExpr,
+                         class_scope: Mapping[str, bool] | None = None,
+                         ) -> bool:
+        """Whether a Final of type `typ` runs its compile-time-constant
+        initializer at program start rather than as a C++ constant
+        expression: its type has no constexpr form, or the initializer
+        computes an `int` (BigInt) value on the way (an 8/16-bit operation
+        under the BigInt default int), or reads a Final that is runtime
+        itself. `class_scope` holds the earlier constants of the class body
+        being analyzed, with their facts; they shadow module Finals."""
+        return (not is_constexpr_eligible(typ)
+                or self._init_is_runtime(init, class_scope or {}))
+
+    def _init_is_runtime(self, init: TpyExpr,
+                         class_scope: Mapping[str, bool]) -> bool:
+        macro_exp = getattr(init, "macro_expansion", None)
+        if macro_exp is not None:
+            return self._init_is_runtime(macro_exp, class_scope)
+        t = self.ctx.get_expr_type(init)
+        if t is not None and is_big_int_type(unwrap_readonly(t)):
+            return True
+        if self._reads_runtime_final(init, class_scope):
+            return True
+        return any(self._init_is_runtime(c, class_scope)
+                   for c in init.children())
+
+    def _reads_runtime_final(self, node: TpyExpr,
+                             class_scope: Mapping[str, bool]) -> bool:
+        """Whether `node` reads a Final whose initializer runs at program
+        start: a class constant (its record's fact), a module Final of this
+        module, or another module's (its export's fact)."""
+        if isinstance(node, TpyName):
+            if node.name in class_scope:
+                return class_scope[node.name]
+            if node.name in self.ctx.final_globals:
+                return node.name in self.ctx.runtime_finals
+            imp = lookup_imported(self.ctx.module_attributes, node.name,
+                                  SymbolKind.VARIABLE)
+            var = (self.ctx.registry.module_variable(*imp)
+                   if imp is not None else None)
+            return var is not None and var.runtime_final
+        if isinstance(node, TpyFieldAccess):
+            owner = node.class_constant_owner
+            if owner is not None:
+                return node.field in owner.runtime_class_constants
+            module_name = self.ctx.module_named_by(node.obj)
+            module_info = (self.ctx.registry.get_module(module_name)
+                           if module_name is not None else None)
+            var = (module_info.variables.get(node.field)
+                   if module_info is not None else None)
+            return var is not None and var.runtime_final
+        return False
 
     def _find_nonconstant_leaf(self, expr: TpyExpr, target_type: 'TpyType | None' = None) -> 'TpyExpr | None':
         """Find the first non-constant sub-expression in a Final initializer.
@@ -5654,30 +5711,13 @@ class StatementAnalyzer:
         """Record a store of `value_expr` into a pending local, its value
         converted once the local's type is decided. Returns what the local
         reads as now and the value to store."""
-        name = cell.name
-        value = strip_int(value_type)
-        if value_family(value) != cell.is_float:
-            known = self.pend.known_so_far(cell)
-            # The int/float rule has its own wording; anything else is the
-            # ordinary mismatch against the type so far.
-            self.deduction.refuse_int_float_rebind(
-                name, known, value, value_expr, site=site)
-            raise self.ctx.error(
-                f"Type mismatch in reassignment to '{name}': expected "
-                f"{known}, got {value}", site)
-        # A constant over literals analyzes to a literal type, the same
-        # stores the prescan counts as literal ones.
-        literal = isinstance(value, (IntLiteralType, FloatLiteralType))
-        self.pend.record_arm_store(cell, value, value_expr, site)
-        if literal:
-            self.pend.add_literal_store(cell, value, value_expr, site)
+        var_type = self.pend.record_binding(cell, value_type, value_expr, site)
+        if isinstance(strip_int(value_type), (IntLiteralType, FloatLiteralType)):
             note_elem_binding(self.ctx, value_expr)
         else:
-            self.pend.add_store(cell, value, site)
-        var_type = self.pend.cell_type(cell)
-        if not literal:
             value_expr = self.compat.coerce_expr(
-                value_expr, value, var_type, f"variable '{name}'",
+                value_expr, strip_int(value_type), var_type,
+                f"variable '{cell.name}'",
                 coercion_ctx=CoercionContext.ASSIGN)
         return var_type, value_expr
 
@@ -6226,17 +6266,24 @@ class StatementAnalyzer:
                         and self.deduction.declared_slot_type(
                             stmt.name, existing_type) is None):
                     type_hint = SlotHint.inferred_local(type_hint)
+                inner = self.pend.value_binds_first(
+                    stmt.name,
+                    unbound=(stmt.type is None and not is_global_declared
+                             and pending_cell is None
+                             and existing_type is None))
                 # A store into a local, or into an annotated numeric one, is
                 # a consumer a pending number reaches.
                 # A first binding of a name some other form binds too
                 # (a `nonlocal` store, a loop target...) gets no cell, so
-                # it takes a concrete value.
+                # it takes a concrete value -- unless its bindings join,
+                # which every such form records into the cell.
                 takes_pending = (
                     not is_global_declared
                     and ((stmt.type is None
                           and (existing_type is not None
                                or pending_cell is not None
-                               or not self.pend.is_excluded(stmt.name)))
+                               or not self.pend.is_excluded(stmt.name)
+                               or inner.joins))
                          or is_numeric_slot(stmt.type)))
                 # A second name for a list literal leaves its element open.
                 alias = (stmt.init if stmt.type is None
@@ -6266,6 +6313,8 @@ class StatementAnalyzer:
                 if stmt.type is None and not is_global_declared:
                     init_type = self._bind_list_elem_cell(
                         stmt.name, stmt, stmt.init, init_type, existing_type)
+                    if (bound_inside := inner.cell()) is not None:
+                        pending_cell, existing_type = bound_inside
 
             # Unannotated top-level ALL_CAPS: now that the init type is known,
             # the Final-suggestion can name it (the annotated case warned above).
@@ -6280,6 +6329,8 @@ class StatementAnalyzer:
                     stmt.init, stmt.type, f"Final variable '{stmt.name}'", stmt,
                 )
                 self.ctx.analyzed_finals.add(stmt.name)
+                if self.final_is_runtime(stmt.type, stmt.init):
+                    self.ctx.runtime_finals.add(stmt.name)
 
             # Track container literal to variable mapping for mutation/type inference.
             # Only bind when the init is an actual literal or empty constructor,
@@ -6386,36 +6437,34 @@ class StatementAnalyzer:
                         var_type, stmt.init = self.compat.coerce_reassignment(
                             stmt.name, existing_type, init_type, stmt.init,
                             stmt)
-                if var_type != existing_type:
-                    # Keep codegen and `# tpyc: type()` in sync with the
-                    # original declaration when the resolved type changed.
-                    resolved = unwrap_readonly(var_type)
-                    orig_decl = self.ctx.func.var_decl_by_name.get(stmt.name)
-                    if orig_decl:
-                        self.ctx.var_types[orig_decl] = resolved
-                    for key in self.ctx.declared_var_types:
-                        if key[1] == stmt.name:
-                            self.ctx.declared_var_types[key] = resolved
+                self.deduction.join_rebind(
+                    stmt.name, existing_type, var_type,
+                    self.ctx.func.current_scope,
+                    stmt.loc.line if stmt.loc else 0)
             else:
                 # New variable: resolve IntLiteralType/FloatLiteralType.
+                joins_stores = self.pend.joins_bindings(stmt.name, init_type)
                 if (not is_global_declared
                         and (((self.pend.is_pending_name(stmt.name)
                                or self.pend.arm_group(stmt.name))
                               and value_family(strip_int(init_type)) is not None)
-                             or is_pending_num(init_type))):
+                             or is_pending_num(init_type) or joins_stores)):
                     # A literal-seeded local, one first bound to a value over
-                    # one, or one sibling arms bind together: its type is
+                    # one, one sibling arms bind together, or a rebound one
+                    # first bound to a fixed-width integer: its type is
                     # decided when the body is.
                     pending_cell = self.pend.new_cell(
                         stmt.name, stmt,
                         derived=not self.pend.is_pending_name(stmt.name),
                         is_float=bool(value_family(strip_int(init_type))))
+                    pending_cell.joins_stores = joins_stores
                     var_type, stmt.init = self._store_pending_num(
                         pending_cell, stmt.init, init_type, stmt)
                     self.ctx.var_types[stmt] = var_type
                     pending_cell.decls.append(stmt)
                 elif isinstance(init_type, IntLiteralType):
                     var_type = self.ctx.default_int_for_literal(init_type, warn_node=stmt.init)
+                    self.ctx.func.literal_seeded.add(stmt.name)
                     note_elem_binding(self.ctx, stmt.init)
                 elif isinstance(init_type, FloatLiteralType):
                     var_type = FLOAT  # float literals always default to float64
@@ -6908,6 +6957,39 @@ class StatementAnalyzer:
                 table[k] = f(table[k])
             follow(table[k], rewrite)
 
+    def _unpack_store_type(self, name: str, existing: TpyType,
+                           elem_type: TpyType, elem_expr: TpyExpr | None,
+                           stmt: TpyTupleUnpack, index: int, *,
+                           may_retype: bool) -> TpyType:
+        """The type an unpack target already bound stores element `index`
+        at. A module variable takes the reassignment rule
+        (`resolve_reassignment_target_type`): a wider integer is refused
+        where the name keeps its first type, and the result is `existing`
+        unless `may_retype` lets a joining module variable take the joined
+        type. An element that would narrow into the slot is refused: the
+        unpack assigns each element as it is, with no place for the range
+        check the narrowing needs (BUGS.md#unpack-target-narrowing)."""
+        self.deduction.refuse_int_float_rebind(
+            name, existing, elem_type, elem_expr, site=stmt)
+        target = existing
+        slot = unwrap_readonly(unwrap_ref_type(existing))
+        if (self.deduction.module_level() and is_integer_type(slot)
+                and is_integer_type(elem_type)):
+            resolved = self.deduction.resolve_reassignment_target_type(
+                name, slot, elem_type, elem_expr, site=stmt)
+            if may_retype:
+                target = resolved
+        coercion = self.compat.check_type_compatible(
+            elem_type, target, "tuple unpacking", source_expr=stmt)
+        if coercion is not None and coercion.narrows_checked:
+            raise self.ctx.error(
+                f"Type mismatch in tuple unpacking: element {index} is "
+                f"{python_type_name(elem_type)}, which '{name}' "
+                f"({python_type_name(int_payload(target))}) does not hold "
+                f"every value of; unpack it into a new name and assign "
+                f"that to '{name}'", stmt)
+        return target
+
     def _analyze_tuple_unpack(self, stmt: TpyTupleUnpack) -> None:
         """Analyze tuple unpacking: a, b = expr. A tuple read from a list
         whose leaves cells decide reaches it undecided: each target binds
@@ -7032,6 +7114,13 @@ class StatementAnalyzer:
                 # Resolve IntLiteralType so the global's declared type aligns
                 # with the int32_t storage codegen emits (sema/codegen parity).
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
+                prior = self.ctx.global_scope.lookup(name)
+                if (prior is not None and is_integer_type(prior)
+                        and is_integer_type(elem_type)):
+                    # An integer global is never retyped by a typed store.
+                    elem_type = self._unpack_store_type(
+                        name, prior, elem_type, elem_expr, stmt, i,
+                        may_retype=True)
                 self.ctx.define_module_global(
                     name, elem_type, stmt.loc.line if stmt.loc else 0)
                 self.ctx.func.current_scope.define(name, elem_type)
@@ -7060,10 +7149,10 @@ class StatementAnalyzer:
                 existing = None
             if existing is not None:
                 self._check_nonvalue_rebinding(name, stmt)
-                self.deduction.refuse_int_float_rebind(
-                    name, existing, elem_type, elem_expr, site=stmt)
-                self.compat.check_type_compatible(
-                    elem_type, existing, "tuple unpacking", source_expr=stmt)
+                if self.pend.rebind(name, elem_type, elem_expr, stmt) is None:
+                    self._unpack_store_type(name, existing, elem_type,
+                                            elem_expr, stmt, i,
+                                            may_retype=False)
                 self.narrowing.update_after_write(name, existing, elem_type, elem_expr)
                 # Mirror the scalar var-decl, which marks assigned on every
                 # init path (statements.py `if stmt.init: mark_assigned`): a
@@ -7085,13 +7174,14 @@ class StatementAnalyzer:
                 # IntLiteralType in place: `for v in [...]: f(v)` where f
                 # takes BigInt needs that flexibility (heapq pattern).
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
-                stmt.target_types[i] = elem_type
                 # A leaf a cell has not decided yet binds as `a = xs[1][0]`
-                # does: the target has its own derived cell.
-                read_type = (elem_type if self.ctx.is_top_level
-                             else self._derived_cell_type(
-                                 name, elem_type, stmt,
-                                 loop_head=stmt.is_loop_head))
+                # does, and a local joining its bindings as `a = p[0]`: the
+                # target is declared at its own derived cell.
+                read_type, elem_type = (
+                    (elem_type, elem_type) if self.ctx.is_top_level
+                    else self.pend.derived_binding(
+                        name, elem_type, stmt, loop_head=stmt.is_loop_head))
+                stmt.target_types[i] = elem_type
                 self.ctx.func.current_scope.define(name, read_type)
                 if stmt.is_loop_head:
                     register_binder(self.ctx, self.ctx.func.current_scope,
@@ -7172,17 +7262,23 @@ class StatementAnalyzer:
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
 
         stamp_unpack_rebinds(self.ctx, stmt)
+        if any(t is not None and contains_pending_leaf(t)
+               for t in stmt.target_types):
+            self.ctx.func.pending_elem_type_fields.append(
+                (stmt, "target_types"))
 
         if value_leaves(rhs_type):
             # The targets bound leaves of a list's element: their recorded
-            # types follow the cells.
+            # types follow the cells. A target with a derived cell of its own
+            # is decided with its function.
+            decided = self.pend.finalize_settled
+
             def follow(_types: tuple[TpyType, ...]) -> None:
-                stmt.target_types[:] = [self.pend.finalize_values(t)
-                                        for t in stmt.target_types]
+                stmt.target_types[:] = [decided(t) for t in stmt.target_types]
                 for name in stmt.targets:
                     key = (stmt.loc.line, name) if stmt.loc else None
                     if key in self.ctx.declared_var_types:
-                        self.ctx.declared_var_types[key] = self.pend.finalize_values(
+                        self.ctx.declared_var_types[key] = decided(
                             self.ctx.declared_var_types[key])
             self.pend.defer(stmt, (rhs_type,), follow)
 
@@ -7990,9 +8086,15 @@ class StatementAnalyzer:
         # the `T -> Optional[T]` address-take that fires for borrow-form
         # destinations doesn't apply here.
         target_is_storage = isinstance(stmt.target, (TpyFieldAccess, TpySubscript))
-        stmt.value = self.compat.coerce_expr(stmt.value, value_type, target_type, "assignment",
-                                              coercion_ctx=CoercionContext.ASSIGN,
-                                              target_is_storage_form=target_is_storage)
+        stmt.value = self.compat.coerce_expr(
+            stmt.value, value_type, target_type, "assignment",
+            coercion_ctx=CoercionContext.ASSIGN,
+            target_is_storage_form=target_is_storage,
+            inferred_slot=inferred_field_slot(self.ctx, stmt.target))
+        if (isinstance(stmt.target, TpyFieldAccess)
+                and stmt.target.property_setter_call is not None):
+            # The setter receives the converted value, as any argument does.
+            stmt.target.property_setter_call.args[0] = stmt.value
         # Annotate tuple literal element capture modes. A cell container's
         # store coerced the literal to its part, which reads as a reference;
         # its members land in the container as a declared one's do.
@@ -8365,34 +8467,67 @@ class StatementAnalyzer:
         if isinstance(target, TpyName):
             name = target.name
             if (same_width_family(target_type, result_type)
+                    and not is_integer_type(target_type)
                     and self.deduction.declared_slot_type(name, target_type)
                     is not None):
                 self._refuse_declared_aug_widening(
                     name, target_type, result_type, op, stmt)
-            effective_type = self.deduction.resolve_reassignment_target_type(
-                name, target_type, result_type, aug_op=op, site=stmt,
-            )
+            if (is_integer_type(target_type) and is_integer_type(result_type)
+                    and self.pend.cell_for(name) is None
+                    and not self.deduction.keeps_first_type(name)):
+                # An integer local whose bindings no cell joins (a loop or
+                # unpack target among them) is a slot of its own type: the
+                # operation's result narrows into it, checked.
+                effective_type = target_type
+            else:
+                effective_type = self.deduction.resolve_reassignment_target_type(
+                    name, target_type, result_type, aug_op=op, site=stmt,
+                )
             # check_type_compatible errors when effective_type refused widening
             # (e.g. annotated variable, or mixed-sign fixed-int pair).
-            self.compat.check_type_compatible(
+            coercion = self.compat.check_type_compatible(
                 result_type, effective_type, f"'{op}=' to '{name}'", loc=stmt.loc,
             )
-            if effective_type != target_type:
-                if self.ctx.func.current_scope:
-                    self.ctx.func.current_scope.define(name, effective_type)
-                var_decl = self.ctx.func.var_decl_by_name.get(name)
-                if var_decl:
-                    self.ctx.var_types[var_decl] = effective_type
-                for key in self.ctx.declared_var_types:
-                    if key[1] == name:
-                        self.ctx.declared_var_types[key] = effective_type
+            self._narrow_aug_result(stmt, result_type, effective_type,
+                                    coercion, f"'{op}=' to '{name}'")
+            if self.ctx.func.current_scope:
+                self.deduction.join_rebind(
+                    name, target_type, effective_type,
+                    self.ctx.func.current_scope,
+                    stmt.loc.line if stmt.loc else 0)
         else:
             # Subscript/field target: element type is fixed, cannot widen.
-            self.compat.check_type_compatible(
-                result_type, target_type,
-                f"'{op}=' to {_format_aug_target(target)}", loc=stmt.loc,
+            what = f"'{op}=' to {_format_aug_target(target)}"
+            coercion = self.compat.check_type_compatible(
+                result_type, target_type, what, loc=stmt.loc,
                 target_is_storage_form=True,
             )
+            self._narrow_aug_result(stmt, result_type, target_type,
+                                    coercion, what)
+
+    def _narrow_aug_result(self, stmt: TpyAugAssign, result_type: TpyType,
+                           target_type: TpyType, coercion: Coercion | None,
+                           what: str) -> None:
+        """An integer operation's result that narrows into the target
+        (`x8 += 1` computes in the default int): the store takes it through
+        the narrowing conversion (`TpyAugAssign.stored_value`). A record
+        subscript's setter later replaces it with its own parameter's
+        conversion (`_resolve_aug_store`), which narrows at the call."""
+        if coercion is None or not coercion.narrows_checked:
+            return
+        stmt.stored_value = self.compat.coerce_expr(
+            self._aug_result_stand_in(stmt, result_type), result_type,
+            target_type, what, CoercionContext.ASSIGN,
+            target_is_storage_form=not isinstance(stmt.target, TpyName))
+
+    def _aug_result_stand_in(self, stmt: TpyAugAssign,
+                             result_type: TpyType) -> TpyBinOp:
+        """The operation's result of `target op= value`, which no node of the
+        statement spells, as the node a store's conversion is put on."""
+        stand_in = TpyBinOp(left=stmt.target, op=stmt.op, right=stmt.value,
+                            resolved_binop=stmt.resolved_binop, loc=stmt.loc)
+        self.ctx.set_expr_type(stand_in, result_type)
+        return stand_in
 
     def _refuse_declared_aug_widening(
         self, name: str, target_type: TpyType, result_type: TpyType,
@@ -8552,14 +8687,10 @@ class StatementAnalyzer:
         """The operator of a numeric `x op= v` and its write-back, at the
         analysis or, over a pending side, once it settled. A literal-seeded
         target recorded the result as a store; any other keeps its type."""
-        resolve_value = value
-        # A fixed-int slot the stores do not decide keeps its checked ops and
-        # converts an `int` value rather than promoting to BigInt.
-        if (not seeded_target and is_fixed_int_type(target)
-                and is_big_int_type(value)):
-            resolve_value = target
+        # The operation runs at the operands' own types, as `x = x op v`
+        # does; only its result narrows into a fixed-width target.
         result = self.expr.decide_operator(self.expr.operators.resolve_binop(
-            target, stmt.op, resolve_value, loc_node=stmt), stmt)
+            target, stmt.op, value, loc_node=stmt), stmt)
         if result is None:
             raise self.ctx.error(
                 f"Operator '{op_spelling(stmt.op)}=' is not supported between "
@@ -8600,12 +8731,9 @@ class StatementAnalyzer:
         key_type = self.ctx.get_expr_type(key)
         assert result is not None and key_type is not None
         result = unwrap_ref_type(result)
-        # The value the setter receives is the operation's result, which no
-        # node of the statement spells: a stand-in carries it through the
-        # call's receiving step.
-        value = [TpyBinOp(left=target, op=stmt.op, right=stmt.value,
-                          resolved_binop=rb, loc=stmt.loc)]
-        self.ctx.set_expr_type(value[0], result)
+        # The setter receives the operation's result: its stand-in goes
+        # through the call's receiving step.
+        value: list[TpyExpr] = [self._aug_result_stand_in(stmt, result)]
         getter_key = target.index
         target.index = key
         try:
@@ -8614,7 +8742,7 @@ class StatementAnalyzer:
                 [key_type, result], value)
         finally:
             target.setitem_index, target.index = target.index, getter_key
-        stmt.setitem_value = value[0]
+        stmt.stored_value = value[0]
         storage = self._resolve_obj_storage(target.obj)
         hit = (self.ctx.func.borrow_tracker.element_hop_loan(
                    storage, element_index_key(key))

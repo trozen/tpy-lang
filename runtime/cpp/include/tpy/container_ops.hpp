@@ -534,6 +534,11 @@ constexpr bool seq_contains(Range&& haystack, const Needle& needle) {
             if (&e == needle || e == *needle) return true;
         }
         return false;
+    } else if constexpr (std_integer<Elem> && std_integer<Needle>) {
+        for (auto&& e : haystack) {
+            if (key_eq(e, needle)) return true;
+        }
+        return false;
     } else {
         return std::ranges::contains(haystack, needle);
     }

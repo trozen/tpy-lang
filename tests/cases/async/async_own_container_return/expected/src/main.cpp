@@ -131,7 +131,7 @@ __coro_make_boxes make_boxes() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         ba.emplace(std::move(__r1).value());
         __sub_1.reset();
-        (*ba).push_back(99);
+        ::tpy::bytearray_append((*ba), 99);
         std::cout << ::tpy::__len__((*ba)) << " " << static_cast<int>(::tpy::bytes_getitem((*ba), 2)) << "\n" << ::tpy::check_signals;
         __sub_2.emplace();
         __state = S_RESUME_2;

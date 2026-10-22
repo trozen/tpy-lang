@@ -31,6 +31,7 @@ from ..parse.nodes import name_path
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
+from .compatibility import InferredSlot, inferred_receiver
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type, protocol_info_of
@@ -418,6 +419,7 @@ class MethodAnalyzer:
         when available). Otherwise pre-analyzed arg_types are used.
         """
         pre = self.ctx.func.pre_analyzed_method_args.pop(expr, None)
+        inferred = self._inferred_receiver_slots(expr)
         for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
             if arg_types is not None:
                 at = arg_types[i]
@@ -429,8 +431,24 @@ class MethodAnalyzer:
             at = self.calls._restore_readonly_arg(arg, at, target_is_readonly)
             self.calls.check_own_param(arg, at, pname, ptype)
             self.calls.mark_pending_arg_context(arg, at, ptype)
-            expr.args[i] = self.compat.coerce_expr(arg, at, ptype, f"argument '{pname}'",
-                                                    coercion_ctx=CoercionContext.ARG)
+            expr.args[i] = self.compat.coerce_expr(
+                arg, at, ptype, f"argument '{pname}'",
+                coercion_ctx=CoercionContext.ARG,
+                inferred_slot=inferred.get(i))
+
+    def _inferred_receiver_slots(self, expr: TpyMethodCall
+                                 ) -> dict[int, InferredSlot]:
+        """The parameters of a method called on a local whose type arguments
+        an earlier call inferred (`inferred_receiver`) that the method types
+        by a type parameter: slots the user never wrote."""
+        recv = inferred_receiver(self.ctx, expr.obj)
+        fi = expr.resolved_function_info
+        if recv is None or fi is None:
+            return {}
+        name, line, _resolved = recv
+        return {i: InferredSlot(name, line, f"argument '{pname}'")
+                for i, (pname, ptype) in enumerate(fi.root.params)
+                if contains_type_param(ptype)}
 
     def _resolve_and_check_args(
         self, expr: TpyMethodCall,
@@ -1812,6 +1830,8 @@ class MethodAnalyzer:
             if var_decl:
                 self.ctx.var_types[var_decl] = resolved_type
             self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved_type
+            self.ctx.func.inferred_generic_locals[info.variable_name] = (
+                resolved_type, info.decl_line)
 
         # Set constructor info now that we have concrete types
         type_subst = info.inferred

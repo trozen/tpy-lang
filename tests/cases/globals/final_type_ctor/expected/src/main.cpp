@@ -3,8 +3,6 @@
 
 namespace tpyapp::main {
 
-// WIDE: Final[int] = int(SMALL)
-const ::tpy::BigInt WIDE = ::tpy::BigInt(static_cast<int64_t>(SMALL));
 
 // def main() -> None:
 //     print(SMALL)

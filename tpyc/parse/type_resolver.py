@@ -30,6 +30,7 @@ from ..typesys import (
     substitute_type_params_structural,
 )
 from .. import qnames
+from ..compilation_context import get_current_compiler
 from ..type_def_registry import (
     TypeDef, get_type_def, find_factory_by_simple_name, find_factory_in_module,
 )
@@ -51,6 +52,13 @@ if TYPE_CHECKING:
 # only need name membership use a local `_FIXED_INT_NAMES` frozenset
 # instead of pulling in the singleton values.
 _FIXED_INT_MAP: dict[str, TpyType] = {str(t): t for t in ALL_FIXED_INTS}
+
+
+def _compilation_default_int() -> TpyType:
+    """The annotation `DefaultInt`: this compilation's `--default-int`. A parse
+    outside a compilation (unit tests) reads the CLI default."""
+    compiler = get_current_compiler()
+    return compiler.default_int_type if compiler is not None else INT32
 
 
 def _refloat_markers(
@@ -851,6 +859,10 @@ class TypeResolver:
         Either `node` (ast-based) or `loc` (ref-based) may be passed for
         error reporting.
         """
+        # The library's `DefaultInt`, not a user class of the same name.
+        if (self._parser.registry.get_builtin_type_key(original)
+                == qnames.DEFAULT_INT and module.split(".")[0] == "tpy"):
+            return _compilation_default_int()
         if module == "builtins":
             if original == "int": return BIGINT
             elif original == "float": return FLOAT

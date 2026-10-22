@@ -45,7 +45,7 @@ class TestFinalGlobalScalars:
         # The two slot-driven renders the position exists for: a char slot
         # turns a str literal into a character literal, a BigInt slot wraps.
         assert "inline constexpr char LETTER = 'A';" in thir[0]
-        assert "const ::tpy::BigInt BIG = ::tpy::BigInt(100);" in thir[1]
+        assert "inline const ::tpy::BigInt BIG = ::tpy::BigInt(100);" in thir[0]
 
 
 class TestFinalGlobalArithmetic:
@@ -69,7 +69,7 @@ class TestFinalGlobalArithmetic:
 
     def test_byte_identical(self):
         thir = _assert_byte_identical(self.SRC)
-        assert "const ::tpy::BigInt SUM = ((A) + (B));" in thir[1]
+        assert "inline const ::tpy::BigInt SUM = ((A) + (B));" in thir[0]
 
 
 class TestFinalGlobalOverflowChecked:
@@ -195,9 +195,9 @@ class TestMacroExpandedConstant:
     def test_byte_identical(self, tmp_path):
         thir = _assert_byte_identical(
             self.SRC, extra_lib_dirs=self._libs(tmp_path))
-        assert ("const std::tuple<int32_t, std::string_view> PAIR = "
+        assert ("inline constexpr std::tuple<int32_t, std::string_view> PAIR = "
                 "std::tuple<int32_t, std::string_view>{1, \"dev\"};"
-                ) in thir[1]
+                ) in thir[0]
 
 
 class TestPrimitiveConstructorCall:

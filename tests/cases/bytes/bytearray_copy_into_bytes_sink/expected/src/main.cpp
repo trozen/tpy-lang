@@ -86,7 +86,7 @@ void main() {
     std::optional<::tpy::Bytes> opt = ::tpy::Bytes(ba);
     ::tpy::ordered_map<std::string, std::optional<::tpy::Bytes>> dopt = ::tpy::ordered_map<std::string, std::optional<::tpy::Bytes>>({{"k", ::tpy::Bytes(ba)}});
     ::tpy::BigInt tup = ::tpyapp::main::tuple_arg(std::tuple<::tpy::Bytes, ::tpy::BigInt>{::tpy::Bytes(ba), ::tpy::BigInt(1)});
-    ba.push_back(99);
+    ::tpy::bytearray_append(ba, 99);
     ::tpy::bytearray_setitem(ba, 0, 122);
     std::cout << "source" << " " << ::tpy::__len__(ba) << " " << static_cast<int>(::tpy::bytes_getitem(ba, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "element" << " " << ::tpy::__len__(::tpy::__getitem__(seen, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(::tpy::__getitem__(seen, 0), 0)) << "\n" << ::tpy::check_signals;

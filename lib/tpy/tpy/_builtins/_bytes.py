@@ -71,6 +71,18 @@ class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @readonly
     @pure
     def __contains__(self, value: uint8) -> bool: ...
+    # A wider integer outside the byte domain raises CPython's ValueError
+    # rather than narrowing into the uint8 overload.
+    @dispatch
+    @native("tpy::bytes_contains", function=True)
+    @readonly
+    @pure
+    def __contains__(self, value: int32) -> bool: ...
+    @dispatch
+    @native("tpy::bytes_contains", function=True)
+    @readonly
+    @pure
+    def __contains__(self, value: int) -> bool: ...
     @dispatch
     @native("tpy::bytes_contains_sub", function=True)
     @readonly
@@ -271,10 +283,21 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __repr__(self) -> str: ...
 
+    @dispatch
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
     def __contains__(self, value: uint8) -> bool: ...
+    @dispatch
+    @native("tpy::bytes_contains", function=True)
+    @readonly
+    @pure
+    def __contains__(self, value: int32) -> bool: ...
+    @dispatch
+    @native("tpy::bytes_contains", function=True)
+    @readonly
+    @pure
+    def __contains__(self, value: int) -> bool: ...
     @dispatch
     @native("tpy::bytes_contains_sub", function=True)
     @readonly
@@ -311,8 +334,16 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __mul__(self, n: int32) -> Own[bytearray]: ...
 
+    @dispatch
     @native("push_back")
     def append(self, value: uint8) -> None: ...
+    # Every wider integer raises CPython's ValueError outside range(0, 256).
+    @dispatch
+    @native("tpy::bytearray_append", function=True)
+    def append(self, value: int32) -> None: ...
+    @dispatch
+    @native("tpy::bytearray_append", function=True)
+    def append(self, value: int) -> None: ...
 
     @dispatch
     @native("tpy::extend", function=True)
@@ -332,11 +363,25 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @native
     def clear(self) -> None: ...
 
+    @dispatch
     @native("tpy::bytearray_insert", function=True)
     def insert(self, index: int32, value: uint8) -> None: ...
+    @dispatch
+    @native("tpy::bytearray_insert", function=True)
+    def insert(self, index: int32, value: int32) -> None: ...
+    @dispatch
+    @native("tpy::bytearray_insert", function=True)
+    def insert(self, index: int32, value: int) -> None: ...
 
+    @dispatch
     @native("tpy::bytearray_remove", function=True)
     def remove(self, value: uint8) -> None: ...
+    @dispatch
+    @native("tpy::bytearray_remove", function=True)
+    def remove(self, value: int32) -> None: ...
+    @dispatch
+    @native("tpy::bytearray_remove", function=True)
+    def remove(self, value: int) -> None: ...
 
     @native("tpy::bytes_decode", function=True)
     @readonly

@@ -55,7 +55,7 @@ void bytearray_slice_view() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("   padded long bytes that dodge the small buffer here   ", 56));
     ::tpy::Bytes v = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{3, 9}));
     std::cout << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
-    ba.push_back(33);
+    ::tpy::bytearray_append(ba, 33);
 }
 
 // def main() -> None:

@@ -11,7 +11,7 @@
  * `raise<ValueError>`); this is permitted under C++23 P2448 as long as those
  * branches are not reached during constant evaluation. When they are reached
  * (e.g. `Final[int32] = -INT32_MIN`), the compiler rejects the call, turning
- * a would-be runtime panic into a compile-time error.
+ * a would-be runtime OverflowError into a compile-time error.
  */
 
 #pragma once
@@ -29,6 +29,11 @@
 #include "core.hpp"
 
 namespace tpy {
+
+class BigInt;
+
+template<typename T>
+concept fixed_check_type = !std::is_same_v<T, BigInt>;
 
 // --- Checked power helper (reusable across all integer types) ---
 
@@ -70,7 +75,7 @@ template<> constexpr const char* fixed_int_name<uint64_t>() { return "uint64"; }
 
 // --- Checked arithmetic ---
 
-template<typename T>
+template<fixed_check_type T>
 constexpr T add_check(T a, T b) {
     T result;
     if (__builtin_add_overflow(a, b, &result)) {
@@ -79,7 +84,7 @@ constexpr T add_check(T a, T b) {
     return result;
 }
 
-template<typename T>
+template<fixed_check_type T>
 constexpr T sub_check(T a, T b) {
     T result;
     if (__builtin_sub_overflow(a, b, &result)) {
@@ -88,7 +93,7 @@ constexpr T sub_check(T a, T b) {
     return result;
 }
 
-template<typename T>
+template<fixed_check_type T>
 constexpr T mul_check(T a, T b) {
     T result;
     if (__builtin_mul_overflow(a, b, &result)) {
@@ -135,7 +140,7 @@ constexpr T mod_floor(T a, T b) {
 }
 
 // Checked variants: also check for division by zero.
-template<typename T>
+template<fixed_check_type T>
 constexpr T div_check(T a, T b) {
     if (b == 0) [[unlikely]] {
         raise_zero_division_error("integer division or modulo by zero");
@@ -143,7 +148,7 @@ constexpr T div_check(T a, T b) {
     return div_floor(a, b);
 }
 
-template<typename T>
+template<fixed_check_type T>
 constexpr T mod_check(T a, T b) {
     if (b == 0) [[unlikely]] {
         raise_zero_division_error("integer modulo by zero");
@@ -151,7 +156,7 @@ constexpr T mod_check(T a, T b) {
     return mod_floor(a, b);
 }
 
-template<typename T>
+template<fixed_check_type T>
 constexpr T neg_check(T a) {
     static_assert(std::is_signed_v<T>, "Negation only supported on signed types");
     if (a == std::numeric_limits<T>::min()) {
@@ -161,7 +166,7 @@ constexpr T neg_check(T a) {
 }
 
 // A shift count has a type of its own: it is range-checked in that type, so a
-// count too wide for T (`int8(1) << int64(256)`) panics instead of wrapping
+// count too wide for T (`int8(1) << int64(256)`) raises OverflowError instead of wrapping
 // into a small one on a conversion.
 template<typename T, bool IsLeft, typename C>
 constexpr int shift_count_check(C b) {
@@ -182,7 +187,7 @@ constexpr int shift_count_check(C b) {
     return static_cast<int>(b);
 }
 
-template<typename T, typename C>
+template<fixed_check_type T, typename C>
 constexpr T lshift_check(T a, C count) {
     const int b = shift_count_check<T, true>(count);
     using U = std::make_unsigned_t<T>;
@@ -199,7 +204,7 @@ constexpr T rshift_check(T a, C count) {
     return a >> b;
 }
 
-template<typename T>
+template<fixed_check_type T>
 constexpr T pow_check(T base, T exp) {
     if constexpr (std::is_signed_v<T>) {
         if (exp < 0) {
@@ -236,6 +241,44 @@ constexpr To int_cast_check(From v) {
         }
     }
     return static_cast<To>(v);
+}
+
+// --- The same checked operations at T = BigInt ---
+// An 8/16-bit operator computes in the default int, which may be BigInt: the
+// one `*_check<T>` spelling then takes BigInt's exact arithmetic, where
+// nothing overflows. Division and power keep BigInt's own ZeroDivisionError /
+// negative-exponent behavior.
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T add_check(const T& a, const T& b) { return a + b; }
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T sub_check(const T& a, const T& b) { return a - b; }
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T mul_check(const T& a, const T& b) { return a * b; }
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T div_check(const T& a, const T& b) { return a / b; }
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T mod_check(const T& a, const T& b) { return a % b; }
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T neg_check(const T& a) { return -a; }
+
+template<typename T> requires std::is_same_v<T, BigInt>
+T pow_check(const T& base, const T& exp) { return base.pow(exp); }
+
+// The count converts checked: BigInt's `operator<<(int32_t)` would otherwise
+// see a wider count truncated.
+template<typename T, typename C> requires std::is_same_v<T, BigInt>
+T lshift_check(const T& a, const C& count) {
+    if constexpr (std::is_same_v<C, BigInt>) {
+        return a << count;
+    } else {
+        return a << int_cast_check<int32_t>(count);
+    }
 }
 
 // --- Conversion from other types ---

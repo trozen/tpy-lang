@@ -6,8 +6,6 @@ namespace tpystd::sys {
 std::vector<std::string>* argv{};
 ::tpy::StdStream* stdout{};
 ::tpy::StdStream* stderr{};
-// maxunicode: Final[int] = 0x10FFFF
-const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 
 
 

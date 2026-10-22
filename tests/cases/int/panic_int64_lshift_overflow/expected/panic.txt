@@ -1,1 +1,1 @@
-TurboPython panic: int64 overflow in left shift
+TurboPython panic: uncaught tpy::OverflowError: int64 overflow in left shift

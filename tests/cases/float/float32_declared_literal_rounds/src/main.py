@@ -13,8 +13,8 @@ def main() -> None:
     f = 0.1  # tpyc: ok
     print("float32", f * 3)
     u = uint8(3)  # tpyc: type(uint8)
-    # the literal converts into the uint8 local: ~u is 255 where CPython
-    # prints -1
+    # the literal converts into the uint8 local; ~u computes in the default
+    # int, -1 as in CPython
     u = 0  # tpyc: ok
     print("uint8", ~u)
 

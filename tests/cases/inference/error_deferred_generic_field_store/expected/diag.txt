@@ -1,0 +1,2 @@
+main.py:13: warning: may copy T into field if not a value type; use copy() to make this explicit
+main.py:19: error: Type mismatch in field 'val': expected int32, got int64; the type argument of 'c' was inferred as int32 from an earlier call, so annotate its first binding (line 17) to give it the wider type

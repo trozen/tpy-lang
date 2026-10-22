@@ -424,7 +424,7 @@ inline void BaMeth::meth() {
     ::tpy::Bytes v = ::tpy::bytes_literal_owned("x", 1);
     for (int32_t i = 0; i < 3; ++i) {
         for (int32_t j = 0; j < 100; ++j) {
-            this->ba.push_back(65);
+            ::tpy::bytearray_append(this->ba, 65);
         }
         std::cout << "field-alias-self" << " " << ::tpy::print_bool(((v == ::tpy::bytes_literal("x", 1)) || (v == ::tpy::bytes_literal("abcd", 4)))) << "\n" << ::tpy::check_signals;
         v = ::tpy::Bytes(::tpy::bytes_slice(t, ::tpy::BasicSlice{0, 4}));

@@ -1,1 +1,0 @@
-main.py:7: error: 'i' is declared int16 and keeps its declared type, but this '+=' produces int64; convert explicitly: i = int16(i + ...)

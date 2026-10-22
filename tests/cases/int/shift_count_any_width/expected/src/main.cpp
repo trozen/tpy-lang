@@ -7,7 +7,7 @@
 namespace tpyapp::main {
 
 int64_t gk{};
-int16_t gs{};
+int32_t gs{};
 
 // # free function: int64 >> int32, int32 << int64, uint32 >> (int32 expr),
 // # int64 << uint8, a literal left operand, and a uint8 result's width
@@ -17,10 +17,10 @@ int16_t gs{};
 //     t = w >> (32 - k)  # tpyc: type(uint32)
 //     v = a << u8  # tpyc: type(int64)
 //     lit = 1 << k64  # tpyc: type(int64)
-//     small = uint8(1) << k64  # tpyc: type(uint8)
+//     small = uint8(1) << k64  # tpyc: type(int32)
 //     # a literal left operand takes a narrow count's type too
-//     lk8 = 1 << k8  # tpyc: type(int8)
-//     lu8 = 1 << u8  # tpyc: type(uint8)
+//     lk8 = 1 << k8  # tpyc: type(int32)
+//     lu8 = 1 << u8  # tpyc: type(int32)
 //     print("free", r, s, t, v, lit, ~small, lk8, lu8)
 void free_fn(int64_t n, int32_t k, int32_t b, int64_t a, uint32_t w, uint8_t u8, int64_t k64, int8_t k8) {
     int64_t r = (::tpy::rshift_check<int64_t>(n, k));
@@ -28,10 +28,10 @@ void free_fn(int64_t n, int32_t k, int32_t b, int64_t a, uint32_t w, uint8_t u8,
     uint32_t t = (::tpy::rshift_check<uint32_t>(w, (::tpy::sub_check<int32_t>(32, k))));
     int64_t v = (::tpy::lshift_check<int64_t>(a, u8));
     int64_t lit = (::tpy::lshift_check<int64_t>(1, k64));
-    uint8_t small = (::tpy::lshift_check<uint8_t>(1, k64));
-    int8_t lk8 = (::tpy::lshift_check<int8_t>(1, k8));
-    uint8_t lu8 = (::tpy::lshift_check<uint8_t>(1, u8));
-    std::cout << "free" << " " << r << " " << s << " " << t << " " << v << " " << lit << " " << static_cast<int>(static_cast<uint8_t>(~(small))) << " " << static_cast<int>(lk8) << " " << static_cast<int>(lu8) << "\n" << ::tpy::check_signals;
+    int32_t small = (::tpy::lshift_check<int32_t>(1, k64));
+    int32_t lk8 = (::tpy::lshift_check<int32_t>(1, k8));
+    int32_t lu8 = (::tpy::lshift_check<int32_t>(1, u8));
+    std::cout << "free" << " " << r << " " << s << " " << t << " " << v << " " << lit << " " << static_cast<int32_t>(~(small)) << " " << lk8 << " " << lu8 << "\n" << ::tpy::check_signals;
 }
 
 
@@ -43,7 +43,7 @@ __gen_gen gen(uint64_t x, const std::vector<int8_t>& ks) {
 // # async body: int8 << uint32 after a suspension
 // async def async_fn(x: int8, k: uint32) -> int8:
 //     await asyncio.sleep(0)                       # -> S_RESUME_0
-//     r = x << k  # tpyc: type(int8)
+//     r = x << k  # tpyc: type(int32)
 //     return r
 ::tpystd::tpy::Poll<int8_t> __coro_async_fn::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
@@ -58,9 +58,9 @@ __gen_gen gen(uint64_t x, const std::vector<int8_t>& ks) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int8_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        r = (::tpy::lshift_check<int8_t>(x, k));
+        r = (::tpy::lshift_check<int32_t>(x, k));
         __state = S_DONE;
-        int8_t __tpy_async_ret = r;
+        int8_t __tpy_async_ret = ::tpy::int_cast_check<int8_t>(r);
         return ::tpystd::tpy::Poll<int8_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -131,22 +131,22 @@ int64_t cm_body(int64_t n, uint8_t k) {
 // # try/finally: uint8 << int32
 // def try_finally(x: uint8, k: int32) -> uint8:
 //     try:
-//         r = x << k  # tpyc: type(uint8)
+//         r = x << k  # tpyc: type(int32)
 //     finally:
 //         print("try_finally done")
 //     return r
 uint8_t try_finally(uint8_t x, int32_t k) {
-    uint8_t r;
+    int32_t r;
     {
         try {
-            r = (::tpy::lshift_check<uint8_t>(x, k));
+            r = (::tpy::lshift_check<int32_t>(x, k));
         } catch (...) {
             std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
             throw;
         }
         std::cout << "try_finally done" << "\n" << ::tpy::check_signals;
     }
-    return r;
+    return ::tpy::int_cast_check<uint8_t>(r);
 }
 
 // # @error_return body: int32 >> uint64
@@ -194,8 +194,8 @@ int64_t match_arm(int32_t sel, int64_t n, uint32_t w, int8_t k8, int64_t k64) {
 //     print("aug_local", n, ~x)
 void aug_local(int64_t n, int32_t k, uint8_t x, int64_t k64) {
     n = ::tpy::rshift_check<int64_t>(n, k);
-    x = ::tpy::lshift_check<uint8_t>(x, k64);
-    std::cout << "aug_local" << " " << n << " " << static_cast<int>(static_cast<uint8_t>(~(x))) << "\n" << ::tpy::check_signals;
+    x = ::tpy::int_cast_check<uint8_t>(::tpy::lshift_check<int32_t>(x, k64));
+    std::cout << "aug_local" << " " << n << " " << static_cast<int32_t>(~(x)) << "\n" << ::tpy::check_signals;
 }
 
 // # pending locals: a literal-seeded left operand keeps its own type, a
@@ -205,7 +205,7 @@ void aug_local(int64_t n, int32_t k, uint8_t x, int64_t k64) {
 //     p = 1
 //     r = p << k64  # tpyc: type(int32)
 //     c = 1
-//     s = x8 << c  # tpyc: type(int8)
+//     s = x8 << c  # tpyc: type(int32)
 //     c = k64
 //     lit = 1 << c  # tpyc: type(int64)
 //     print("pending", r, s, lit)
@@ -213,10 +213,10 @@ void pending(int64_t k64, int8_t x8) {
     int32_t p = 1;
     int32_t r = (::tpy::lshift_check<int32_t>(p, k64));
     int64_t c = 1;
-    int8_t s = (::tpy::lshift_check<int8_t>(x8, c));
+    int32_t s = (::tpy::lshift_check<int32_t>(x8, c));
     c = k64;
     int64_t lit = (::tpy::lshift_check<int64_t>(1, c));
-    std::cout << "pending" << " " << r << " " << static_cast<int>(s) << " " << lit << "\n" << ::tpy::check_signals;
+    std::cout << "pending" << " " << r << " " << s << " " << lit << "\n" << ::tpy::check_signals;
 }
 
 // # a negative count raises ValueError whatever the count's type, on either shift
@@ -339,7 +339,7 @@ void main() {
 //
 // # module-level statement: int16 << int64 into a global
 // gk = int64(3)
-// gs = int16(5) << gk  # tpyc: type(int16)
+// gs = int16(5) << gk  # tpyc: type(int32)
 //
 // main()
 void __tpy_init() {
@@ -349,7 +349,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     gk = 3;
-    gs = (::tpy::lshift_check<int16_t>(5, gk));
+    gs = (::tpy::lshift_check<int32_t>(5, gk));
     ::tpyapp::main::main();
 }
 

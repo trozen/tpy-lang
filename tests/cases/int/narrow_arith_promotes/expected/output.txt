@@ -1,0 +1,73 @@
+module global (255, 1) 257
+module global (257, 1) 259
+module global after 259
+module literal walrus 5000000000
+module literal walrus loop 6000000000
+module literal walrus after 6000000000
+module comprehension walrus [5000000000] 5000000000
+free 200 355 -256 -200 15 255 300000000000
+free slots 100 7 100
+free join -8 200 10000 (-4, 1)
+free pow 125 90000 10000 0 -4 1 64
+free bitwise 50 100 0 100
+free dunder 200 -100
+free cast 7 7
+gen [11, 9]
+async -128
+comp [2, 255] [2, 255]
+closure 7
+cm 120000
+try_finally done
+try 60000
+er 100
+match big small
+method 16
+slots [11, 20, 30] -10 (11, 20) False
+lookups in False False False True
+lookups 0 1 7
+lookups by value False False
+bytes ValueError
+bytes bytearray(b'aCB')
+ctor OverflowError
+module 6 101 101 101 101
+converts declared 3 5 2
+converts joined 3 2 8 200
+converts unsigned 0 7 5
+converts trial 1 1 1
+converts element 1 5
+converts bytes ValueError
+targets loop 256
+targets loop assign 256
+targets unpack 256 1
+targets match 128
+targets gen [256]
+targets async 256
+targets reunpack 5000000000 -5000000000
+targets prebound 256
+targets walrus 256
+targets loop int 139
+walrus first 256
+walrus twice 256
+walrus pending source 255 254 256 256 5000000000 [1, 2]
+walrus gen [256]
+nested assign 256
+nested walrus 256
+nested unpack 1 256
+nested gen [256, 256]
+setters 100
+setters atomic store OverflowError
+setters atomic fetch_add OverflowError
+setters atomic 1
+setters atomic compare_exchange OverflowError
+setters atomic compare_exchange_weak OverflowError
+keys 1
+keys 1 False
+retype ZeroDivisionError
+bytes append 0 ValueError
+bytes append 1 ValueError
+bytes append 2 ValueError
+bytes append 3 ValueError
+bytes insert ValueError
+bytes remove ValueError
+bytes view contains ValueError
+bytes bytearray(b'ab')

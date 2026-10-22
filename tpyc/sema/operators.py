@@ -471,6 +471,34 @@ class OperatorResolver:
         self, left_type: TpyType, op: str, right_type: TpyType,
         loc_node=None,
     ) -> ResolvedBinop | OperatorAmbiguity | None:
+        """`_resolve_binop`, with the fact that an int literal operand made
+        the operation compute in `int` (`ResolvedBinop.wide_literal`)."""
+        result = self._resolve_binop(left_type, op, right_type, loc_node)
+        # A comparison computes no value: a literal compares by value.
+        if (isinstance(result, ResolvedBinop)
+                and op in builtin_modules.BINOP_TO_RMETHOD):
+            wide = (self._wide_literal(left_type, right_type)
+                    or self._wide_literal(right_type, left_type))
+            if wide is not None:
+                result = dc_replace(result, wide_literal=wide)
+        return result
+
+    def _wide_literal(self, t: TpyType, other: TpyType) -> IntLiteralType | None:
+        """`t` when it is an int literal outside the default int that has no
+        home beside fixed-width `other` (`literal_home`), else None."""
+        if not isinstance(t, IntLiteralType) or t.value is None:
+            return None
+        other_effective = self.get_effective_type_for_binop(other)
+        if not is_fixed_int_type(other_effective):
+            return None
+        if literal_home(t, other, other_effective) is not None:
+            return None
+        return t if is_big_int_type(self.ctx.default_int_for_literal(t)) else None
+
+    def _resolve_binop(
+        self, left_type: TpyType, op: str, right_type: TpyType,
+        loc_node=None,
+    ) -> ResolvedBinop | OperatorAmbiguity | None:
         """Resolve binary operator using registry.
 
         Handles both builtin types and user-defined types with dunder methods.

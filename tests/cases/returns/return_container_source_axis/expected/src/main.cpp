@@ -82,7 +82,7 @@ void main() {
     ::tpy::__setitem__(a, 1, 42);
     std::cout << ::tpy::__getitem__(a, 0) << " " << ::tpy::__getitem__(a, 1) << " " << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray b = ::tpyapp::main::grow_bytes(4);
-    b.push_back(70);
+    ::tpy::bytearray_append(b, 70);
     std::cout << ::tpy::__len__(b) << " " << static_cast<int>(::tpy::bytes_getitem(b, -1)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = ::tpyapp::main::grow_list(4);
     xs.push_back(9);

@@ -118,11 +118,11 @@ void main() {
     std::cout << pair3.x << " " << pair3.y << "\n" << ::tpy::check_signals;
     Clamped cl = Clamped();
     int32_t n = 200;
-    cl.set_val(n);
+    cl.set_val(::tpy::BigInt(n));
     std::cout << n << " " << cl.val() << "\n" << ::tpy::check_signals;
     Clamped cl2 = Clamped();
     int32_t __ma_3 = 200;
-    cl2.set_val(__ma_3);
+    cl2.set_val(::tpy::BigInt(__ma_3));
     int32_t m = __ma_3;
     std::cout << m << " " << cl2.val() << "\n" << ::tpy::check_signals;
     std::string_view s1 = "hello";

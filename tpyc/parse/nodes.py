@@ -1241,11 +1241,12 @@ class TpyAugAssign(TpyStmt):
     value: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     resolved_inplace: 'ResolvedBinop | None' = None  # Set by sema for in-place ops (__iadd__, __ior__, etc.)
-    # Set by sema on a record subscript target: the operation's result as the
-    # `__setitem__` variant receives it at its value parameter -- the result
-    # (a stand-in `target op value` node, which lowering supplies the
-    # operation for) under that parameter's conversion. Not a child.
-    setitem_value: 'TpyExpr | None' = None
+    # Set by sema where the store receives the operation's result through a
+    # conversion: a stand-in `target op value` node (which lowering supplies
+    # the operation for) under that conversion -- a record subscript's
+    # `__setitem__` value parameter, or the checked narrowing into any other
+    # target (`x8 += 1` computes in the default int). Not a child.
+    stored_value: 'TpyExpr | None' = None
     # Set by sema on a subscript or attribute target: the target parts the
     # statement evaluates once, ahead of the store, and reads by name
     # (`sema/aug_hold.py`), in evaluation order. Not children.
@@ -2713,7 +2714,8 @@ def read_names(e: TpyExpr) -> set[str]:
     return out
 
 
-def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
+def written_names(stmt: TpyStmt, *, match_binds: bool = True,
+                  walrus: bool = True) -> set[str]:
     """Roots written AT NAME LEVEL by `stmt` itself (not its sub-bodies) --
     a rebind, bare-name value write, re-decl, unpack target, `del name`, a
     compound statement's OWN binding targets (a for-loop's loop var, a
@@ -2732,7 +2734,10 @@ def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
     it rebinds the name without writing through an outer alias of it; every
     other form here writes through. Callers asking "is this name rebound?" for
     scoping want the default; callers asking "would this corrupt the object an
-    outer alias points at?" want False."""
+    outer alias points at?" want False.
+
+    `walrus=False` leaves the walrus targets out, for a caller that counts
+    them one by one (`walrus_bindings`)."""
     out: set[str] = set()
     if isinstance(stmt, (TpyAssign, TpyAugAssign)):
         if isinstance(stmt.target, TpyName):
@@ -2762,7 +2767,8 @@ def written_names(stmt: TpyStmt, *, match_binds: bool = True) -> set[str]:
         for case in stmt.cases:
             out.update(n.name for n in iter_capture_bindings(case.pattern))
 
-    out.update(ne.target for ne in walrus_bindings(stmt))
+    if walrus:
+        out.update(ne.target for ne in walrus_bindings(stmt))
     return out
 
 

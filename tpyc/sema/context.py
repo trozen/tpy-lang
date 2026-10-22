@@ -1677,6 +1677,11 @@ class FunctionTrackingState:
     # --- Pending generic instance tracking ---
     pending_generic_instances: dict[int, PendingGenericInstanceInfo] = field(default_factory=dict)
     variable_to_generic_instance: dict[str, int] = field(default_factory=dict)
+    # Locals whose generic type arguments a later method call inferred:
+    # the resolved type and the line of the binding. A type argument the
+    # user never wrote is no slot a wider value narrows into.
+    inferred_generic_locals: dict[str, tuple[TpyType, int]] = field(
+        default_factory=dict)
 
     # --- String local tracking ---
     variable_to_str_var: dict[str, int] = field(default_factory=dict)
@@ -1906,6 +1911,8 @@ class FunctionTrackingState:
     # The prescan's excluded names: a local bound through one of those forms
     # is never pending, derived included.
     pending_num_excluded: frozenset[str] = frozenset()
+    # The prescan's other locals bound more than once (`LiteralLocals.rebound`).
+    pending_num_rebound: frozenset[str] = frozenset()
     # Every literal-seeded local's literal values, pending or not: what an
     # annotation of it must hold.
     int_literal_values: dict[str, tuple[int, ...]] = field(default_factory=dict)
@@ -2075,6 +2082,10 @@ class FunctionTrackingState:
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
+    # Module variables first bound to an int literal: their type is the
+    # default int only for want of a better one, so a wider store still
+    # joins it; one first bound to a typed integer keeps that type.
+    literal_seeded: set[str] = field(default_factory=set)
 
     # --- Integer value range tracking ---
     value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
@@ -2639,6 +2650,12 @@ class SemanticContext:
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
     analyzed_finals: set[str] = field(default_factory=set)
+    # The module's Final globals whose initializer is not a C++ constant
+    # expression (`final_is_runtime`): codegen defines them `const`, not
+    # `constexpr`, a Final reading one is runtime too, and the module's
+    # export carries it (`ModuleVarInfo.runtime_final`). A class constant's
+    # fact is on its record (`RecordInfo.runtime_class_constants`).
+    runtime_finals: set[str] = field(default_factory=set)
 
     # --- Builtins ---
     builtin_names: dict[str, TpyType] = field(default_factory=dict)
@@ -3704,10 +3721,12 @@ class SemanticContext:
         typ: TpyType,
         warn_node: TpyExpr | TpyStmt | None = None,
         rebinding: bool = False,
+        operand: bool = False,
     ) -> TpyType:
         """Resolve configured default-int, with range-safe fallback for
         literals; the warning says whether the literal gives a variable its
-        first type or promotes one (`rebinding`)."""
+        first type, promotes one (`rebinding`), or makes the operation it
+        is an operand of compute in `int` (`operand`)."""
         if not isinstance(typ, IntLiteralType):
             return self.default_int_type
         default_tr = int_traits_of(self.default_int_type)
@@ -3717,10 +3736,17 @@ class SemanticContext:
             and not (default_tr.min_value <= typ.value <= default_tr.max_value)
         ):
             if warn_node is not None:
-                what = ("promoting variable to int (BigInt)" if rebinding
-                        else "inferring int (BigInt)")
+                v = typ.value
+                if operand:
+                    fixes = (f"int64({v}) or int({v})"
+                             if -(2**63) <= v < 2**63 else f"int({v})")
+                    what = ("the operation computes in int (BigInt). Write "
+                            f"{fixes} to state the type")
+                else:
+                    what = ("promoting variable to int (BigInt)" if rebinding
+                            else "inferring int (BigInt)")
                 self.warning(
-                    f"Integer literal {typ.value} is outside default "
+                    f"Integer literal {v} is outside default "
                     f"{self.default_int_type} range; {what}.",
                     warn_node,
                 )

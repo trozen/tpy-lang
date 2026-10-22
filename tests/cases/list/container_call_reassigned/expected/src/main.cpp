@@ -37,7 +37,7 @@ std::vector<::tpy::BigInt> other(const ::tpy::BigInt& n) {
 // def push(b: bytearray, v: int) -> None:
 //     b.append(v)
 void push(::tpy::ByteArray& b, const ::tpy::BigInt& v) {
-    b.push_back((v).to_fixed_check<uint8_t>());
+    ::tpy::bytearray_append(b, v);
 }
 
 // def main():

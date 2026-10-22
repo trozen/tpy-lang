@@ -12,6 +12,7 @@ using ::tpyapp::policy_lib::Inferred;
 
 struct Mixed;
 struct Narrow;
+struct NarrowKey;
 struct Twins;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -64,6 +65,45 @@ struct Narrow {
 
     // @dispatch
     // @readonly(False)
+    // def __getitem__(self, k: bool) -> int32:
+    int32_t __getitem__(bool k);
+
+    // @dispatch
+    // @readonly
+    // def __getitem__(self, k: int64) -> int32:
+    int32_t __getitem__(int64_t k) const;
+
+    // @dispatch
+    // @readonly(False)
+    // def m(self, k: bool) -> int32:
+    int32_t m(bool k);
+
+    // @dispatch
+    // @readonly
+    // def m(self, k: int64) -> int32:
+    int32_t m(int64_t k) const;
+
+    int32_t operator[](bool k);
+
+    int32_t operator[](int64_t k) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Narrow";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Narrow& obj) {
+    ::tpy::print_object_default(os, "Narrow", obj);
+    return os;
+}
+
+// class NarrowKey:
+struct NarrowKey {
+    // hits: int32
+    int32_t hits;
+
+    // def __init__(self) -> None:
+    NarrowKey();
+
+    // @dispatch
+    // @readonly(False)
     // def __getitem__(self, k: int8) -> int32:
     int32_t __getitem__(int8_t k);
 
@@ -85,11 +125,11 @@ struct Narrow {
     int32_t operator[](int8_t k);
 
     int32_t operator[](int64_t k) const;
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Narrow";
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NarrowKey";
 };
 
-inline std::ostream& operator<<(std::ostream& os, const Narrow& obj) {
-    ::tpy::print_object_default(os, "Narrow", obj);
+inline std::ostream& operator<<(std::ostream& os, const NarrowKey& obj) {
+    ::tpy::print_object_default(os, "NarrowKey", obj);
     return os;
 }
 
@@ -159,10 +199,10 @@ inline Narrow::Narrow() : hits(0) {}
 
 // @dispatch
 // @readonly(False)
-// def __getitem__(self, k: int8) -> int32:
+// def __getitem__(self, k: bool) -> int32:
 //     self.hits += 1
 //     return 8
-inline int32_t Narrow::__getitem__(int8_t k) {
+inline int32_t Narrow::__getitem__(bool k) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return 8;
 }
@@ -177,10 +217,10 @@ inline int32_t Narrow::__getitem__(int64_t k) const {
 
 // @dispatch
 // @readonly(False)
-// def m(self, k: int8) -> int32:
+// def m(self, k: bool) -> int32:
 //     self.hits += 1
 //     return 8
-inline int32_t Narrow::m(int8_t k) {
+inline int32_t Narrow::m(bool k) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
     return 8;
 }
@@ -193,11 +233,59 @@ inline int32_t Narrow::m(int64_t k) const {
     return 64;
 }
 
-inline int32_t Narrow::operator[](int8_t k) {
+inline int32_t Narrow::operator[](bool k) {
     return __getitem__(k);
 }
 
 inline int32_t Narrow::operator[](int64_t k) const {
+    return __getitem__(k);
+}
+
+// def __init__(self) -> None:
+//     self.hits = 0
+inline NarrowKey::NarrowKey() : hits(0) {}
+
+// @dispatch
+// @readonly(False)
+// def __getitem__(self, k: int8) -> int32:
+//     self.hits += 1
+//     return 8
+inline int32_t NarrowKey::__getitem__(int8_t k) {
+    this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
+    return 8;
+}
+
+// @dispatch
+// @readonly
+// def __getitem__(self, k: int64) -> int32:
+//     return 64
+inline int32_t NarrowKey::__getitem__(int64_t k) const {
+    return 64;
+}
+
+// @dispatch
+// @readonly(False)
+// def m(self, k: int8) -> int32:
+//     self.hits += 1
+//     return 8
+inline int32_t NarrowKey::m(int8_t k) {
+    this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
+    return 8;
+}
+
+// @dispatch
+// @readonly
+// def m(self, k: int64) -> int32:
+//     return 64
+inline int32_t NarrowKey::m(int64_t k) const {
+    return 64;
+}
+
+inline int32_t NarrowKey::operator[](int8_t k) {
+    return __getitem__(k);
+}
+
+inline int32_t NarrowKey::operator[](int64_t k) const {
     return __getitem__(k);
 }
 

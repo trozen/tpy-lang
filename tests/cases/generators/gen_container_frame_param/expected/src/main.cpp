@@ -49,7 +49,7 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& got = ::tpy::unwrap_ref(*__r_1);
-            got.push_back(66);
+            ::tpy::bytearray_append(got, 66);
         }
     }
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;

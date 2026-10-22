@@ -1,0 +1,2 @@
+main.py:58: warning: lookup key narrows from int32 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly
+main.py:62: warning: lookup key narrows from int32 to int8: a key outside int8 raises OverflowError instead of not being found; write int8(...) to convert it explicitly

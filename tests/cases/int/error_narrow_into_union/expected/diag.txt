@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in variable 'u': expected int8 | str, got int32

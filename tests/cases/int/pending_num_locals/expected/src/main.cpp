@@ -583,7 +583,7 @@ void overload_trial() {
 void declared_aug() {
     ::tpy::BigInt p = ::tpy::BigInt(0);
     int32_t q = 7;
-    q = ::tpy::add_check<int32_t>(q, (((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>());
+    q = ((::tpy::BigInt(q)) + (((p) + (::tpy::BigInt(1))))).to_fixed_check<int32_t>();
     std::cout << "declared_aug" << " " << q << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::big();
     std::cout << "declared_aug" << " " << p << "\n" << ::tpy::check_signals;
@@ -592,11 +592,11 @@ void declared_aug() {
 // # a value as first binding gives the local its type, int and float alike: a
 // # bare literal stored later converts into it, as does a narrower value; an
 // # augmented assignment stores an operation's value, in which the literal
-// # adapts
+// # adapts (an int16 one computes in the default int, which the local joins)
 // def float_literal(a16: int16, a32: int32, f32: float32) -> None:
 //     b = a16  # tpyc: type(int16)
 //     b = 10
-//     c = a16  # tpyc: type(int16)
+//     c = a16  # tpyc: type(int32)
 //     c += 10
 //     # 0.5 is exact in float32, so the output matches CPython's double; a
 //     # literal that rounds is float/float32_declared_literal_rounds
@@ -613,8 +613,8 @@ void declared_aug() {
 void float_literal(int16_t a16, int32_t a32, float f32) {
     int16_t b = a16;
     b = 10;
-    int16_t c = a16;
-    c = ::tpy::add_check<int16_t>(c, 10);
+    int32_t c = static_cast<int32_t>(a16);
+    c = ::tpy::add_check<int32_t>(c, 10);
     float f = f32;
     f = 0.5f;
     float g = f32;
@@ -624,7 +624,7 @@ void float_literal(int16_t a16, int32_t a32, float f32) {
     h = static_cast<int32_t>(a16);
     int16_t k = a16;
     k = 15;
-    std::cout << "literal_family" << " " << (::tpy::mul_check<int16_t>(b, 50)) << " " << c << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << " " << ::tpy::print_float(static_cast<double>(g)) << " " << (::tpy::mul_check<int32_t>(h, 5000)) << " " << (::tpy::mul_check<int16_t>(k, 50)) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_family" << " " << (::tpy::mul_check<int32_t>(b, 50)) << " " << c << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << " " << ::tpy::print_float(static_cast<double>(g)) << " " << (::tpy::mul_check<int32_t>(h, 5000)) << " " << (::tpy::mul_check<int32_t>(k, 50)) << "\n" << ::tpy::check_signals;
 }
 
 // def w16(v: int16) -> int16:
@@ -840,20 +840,20 @@ void arm_try(bool fail) {
     std::cout << "arm_try" << " " << x << "\n" << ::tpy::check_signals;
 }
 
-// # an accumulator first bound int16 takes the int8 values added to it
+// # an accumulator first bound int16 joins the default-int sums stored in it
 // def first_accum(data: list[int8]) -> None:
-//     count = int16(0)  # tpyc: type(int16)
+//     count = int16(0)  # tpyc: type(int32)
 //     for b in data:
 //         count += b
 //     print("first_accum", count)
 void first_accum(const std::vector<int8_t>& data) {
-    int16_t count = 0;
+    int32_t count = static_cast<int32_t>(0);
     auto& __obj_0 = data;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int8_t b = *__beg_0;
-        count = ::tpy::add_check<int16_t>(count, static_cast<int16_t>(b));
+        count = ::tpy::add_check<int32_t>(count, static_cast<int32_t>(b));
     }
     std::cout << "first_accum" << " " << count << "\n" << ::tpy::check_signals;
 }

@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     f = 0.1  # tpyc: ok
 //     print("float32", f * 3)
 //     u = uint8(3)  # tpyc: type(uint8)
-//     # the literal converts into the uint8 local: ~u is 255 where CPython
-//     # prints -1
+//     # the literal converts into the uint8 local; ~u computes in the default
+//     # int, -1 as in CPython
 //     u = 0  # tpyc: ok
 //     print("uint8", ~u)
 void main() {
@@ -21,7 +21,7 @@ void main() {
     std::cout << "float32" << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << "\n" << ::tpy::check_signals;
     uint8_t u = 3;
     u = 0;
-    std::cout << "uint8" << " " << static_cast<int>(static_cast<uint8_t>(~(u))) << "\n" << ::tpy::check_signals;
+    std::cout << "uint8" << " " << static_cast<int32_t>(~(u)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

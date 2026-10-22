@@ -821,8 +821,9 @@ def _converted_cell(
     default_int_type: TpyType | None,
 ) -> _Conversion | None:
     """How an argument the strict match refuses converts to its parameter,
-    None when it does not: whether it narrows (a BigInt into a fixed
-    width), how far a numeric scalar widens (`_scalar_widening_cost`, a
+    None when it does not: whether it narrows (a `narrows_checked` row: an
+    integer into a fixed width that does not hold every value of its
+    type), how far a numeric scalar converts (`_scalar_widening_cost`, a
     numeric literal from its home), and its cost -- a subclass's distance
     from its base (`_coercion_upcast_distance`), plus one for a `Literal[...]`
     value converted to a type other than its base. A literal its conversion row's
@@ -838,10 +839,12 @@ def _converted_cell(
     if not type_matches_with_coercion(arg_type, target, protocol_checker,
                                       deref_checker, subclass_checker):
         return None
-    narrowing = int(is_big_int_type(arg_inner) and is_fixed_int_type(target))
+    row = resolve_coercion(arg_inner, target, CoercionContext.ARG)
+    narrowing = int(row is not None and row.narrows_checked)
     widening = 0
-    if (not is_big_int_type(arg_inner)
-            and _numeric_scalar(arg_inner) and _numeric_scalar(target)):
+    if _numeric_scalar(arg_inner) and _numeric_scalar(target):
+        # Between two narrowing candidates the nearer slot wins too
+        # (`bytearray.append(int32 | uint8)` with an int64 takes int32).
         widening = _scalar_widening_cost(arg_inner, target, default_int_type)
     cost = _coercion_upcast_distance(arg_type, target, subclass_checker) or 0
     # A `Literal[...]` value converts to its own base type a step more
@@ -922,8 +925,8 @@ def _expand_arg_types_with_kwargs(
 
 class OverloadFit(NamedTuple):
     """A candidate's match (`_classify_overload`): its container widening
-    (`_container_fit`), how far the call narrows a scalar (a BigInt into a
-    fixed-width parameter), how far its arguments' conversions widen them
+    (`_container_fit`), how many scalars the call narrows (an integer into
+    a fixed-width parameter that does not hold all its values), how far its arguments' conversions widen them
     (the elements an explicit protocol match widens, a converted numeric
     scalar), and one cell per argument -- its tier (`CONVERTED` for one
     only a conversion accepts) with its cost (`_score`)."""

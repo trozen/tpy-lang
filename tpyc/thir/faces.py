@@ -1105,10 +1105,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`std::vector<T> __slot_1 = ({...});`).
     "decl.comp_rebind_slot",
     # Runtime-BigInt `.to_fixed_check<T>()` narrows (lowering; the
-    # subscript-index / slice-bound / aug-assign / enum-from_value wraps).
+    # subscript-index / slice-bound / enum-from_value wraps).
     "narrow.subscript_index",       # `i.to_fixed_check<int32_t>()` (reads + del)
     "narrow.slice_bound",           # same wrap on a str/bytes slice bound
-    "narrow.aug_value",             # `({0}).to_fixed_check<T>()` aug-assign value
     "narrow.enum_arg",              # `({0}).to_fixed_check<U>()` E(x) arg
     "narrow.binop_param",           # same wrap at a resolved binop's fixed-int
                                     # param slot (_convert_to_fixed_int_arg)

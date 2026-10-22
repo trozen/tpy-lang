@@ -826,7 +826,7 @@ void sec_loop_order(int32_t n) {
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         for (int32_t j = 0; j < 40; ++j) {
-            ba.push_back(65);
+            ::tpy::bytearray_append(ba, 65);
         }
         s = (::tpy::str_concat(::tpy::str_upper(s), (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40))));
         std::cout << "loop-order" << " " << ::tpy::BytesPrinter(::tpy::Bytes(v)) << " " << w << "\n" << ::tpy::check_signals;
@@ -1047,7 +1047,7 @@ void sec_indirect_writes(::tpy::ByteArray& ba, BaHolder& h) {
 //         b.append(65)
 void grow(::tpy::ByteArray& b) {
     for (int32_t i = 0; i < 100; ++i) {
-        b.push_back(65);
+        ::tpy::bytearray_append(b, 65);
     }
 }
 
@@ -1078,7 +1078,7 @@ void sec_call_write_loop(::tpy::ByteArray& ba, ::tpy::ByteArray& bb) {
     ::tpy::Bytes w = ::tpy::bytes_literal_owned("y", 1);
     for (int32_t i = 0; i < 3; ++i) {
         for (int32_t j = 0; j < 100; ++j) {
-            al.push_back(65);
+            ::tpy::bytearray_append(al, 65);
         }
         std::cout << "call-write-loop alias" << " " << ::tpy::BytesPrinter(::tpy::Bytes(w)) << "\n" << ::tpy::check_signals;
         w = ::tpy::Bytes(::tpy::bytes_slice(bb, ::tpy::BasicSlice{0, 4}));
@@ -1210,7 +1210,7 @@ void sec_alias_spellings(bool c) {
     for (int32_t i = 0; i < 2; ++i) {
         for (int32_t j = 0; j < 100; ++j) {
             ::tpy::ByteArray* t = nullptr;
-            (t = &(ba), *t).push_back(65);
+            ::tpy::bytearray_append((t = &(ba), *t), 65);
         }
         std::cout << "alias walrus" << " " << ::tpy::BytesPrinter(::tpy::Bytes(v)) << "\n" << ::tpy::check_signals;
         v = ::tpy::Bytes(::tpy::bytes_slice(ba, ::tpy::BasicSlice{0, 4}));
@@ -1221,7 +1221,7 @@ void sec_alias_spellings(bool c) {
     for (int32_t i = 0; i < 2; ++i) {
         ::tpy::ByteArray& t2 = ((c) ? (ba2) : (bb2));
         for (int32_t j = 0; j < 100; ++j) {
-            t2.push_back(65);
+            ::tpy::bytearray_append(t2, 65);
         }
         std::cout << "alias ternary" << " " << ::tpy::BytesPrinter(::tpy::Bytes(v2)) << "\n" << ::tpy::check_signals;
         v2 = ::tpy::Bytes(::tpy::bytes_slice(ba2, ::tpy::BasicSlice{0, 4}));
@@ -1230,7 +1230,7 @@ void sec_alias_spellings(bool c) {
     auto grow3 = [&ba3]() {
         ::tpy::ByteArray& t3 = ba3;
         for (int32_t j = 0; j < 100; ++j) {
-            t3.push_back(65);
+            ::tpy::bytearray_append(t3, 65);
         }
     };
     ::tpy::Bytes v3 = ::tpy::bytes_literal_owned("x", 1);
@@ -1244,7 +1244,7 @@ void sec_alias_spellings(bool c) {
     ::tpy::Bytes v4 = ::tpy::bytes_literal_owned("x", 1);
     for (int32_t i = 0; i < 2; ++i) {
         for (int32_t j = 0; j < 100; ++j) {
-            ((c) ? (ba4) : (bb4)).push_back(65);
+            ::tpy::bytearray_append(((c) ? (ba4) : (bb4)), 65);
         }
         std::cout << "alias ternary-receiver" << " " << ::tpy::BytesPrinter(::tpy::Bytes(v4)) << "\n" << ::tpy::check_signals;
         v4 = ::tpy::Bytes(::tpy::bytes_slice(ba4, ::tpy::BasicSlice{0, 4}));
@@ -1256,7 +1256,7 @@ void sec_alias_spellings(bool c) {
     for (int32_t i = 0; i < 2; ++i) {
         t5 = &(ba5);
         for (int32_t j = 0; j < 100; ++j) {
-            t5->push_back(65);
+            ::tpy::bytearray_append((*t5), 65);
         }
         std::cout << "alias rebound" << " " << ::tpy::BytesPrinter(::tpy::Bytes(v5)) << "\n" << ::tpy::check_signals;
         v5 = ::tpy::Bytes(::tpy::bytes_slice(ba5, ::tpy::BasicSlice{0, 4}));
@@ -1277,7 +1277,7 @@ void sec_field_alias_loop(BaMeth& h) {
     ::tpy::Bytes v = ::tpy::bytes_literal_owned("x", 1);
     for (int32_t i = 0; i < 3; ++i) {
         for (int32_t j = 0; j < 100; ++j) {
-            h.ba.push_back(65);
+            ::tpy::bytearray_append(h.ba, 65);
         }
         std::cout << "field-alias" << " " << ::tpy::print_bool(((v == ::tpy::bytes_literal("x", 1)) || (v == ::tpy::bytes_literal("abcd", 4)))) << "\n" << ::tpy::check_signals;
         v = ::tpy::Bytes(::tpy::bytes_slice(t, ::tpy::BasicSlice{0, 4}));
@@ -1307,7 +1307,7 @@ void sec_global_getter() {
     ::tpy::Bytes v = ::tpy::bytes_literal_owned("x", 1);
     for (int32_t i = 0; i < 3; ++i) {
         for (int32_t j = 0; j < 100; ++j) {
-            GBA->push_back(65);
+            ::tpy::bytearray_append((*GBA), 65);
         }
         std::cout << "global-getter" << " " << ::tpy::print_bool(((v == ::tpy::bytes_literal("x", 1)) || (v == ::tpy::bytes_literal("abcd", 4)))) << "\n" << ::tpy::check_signals;
         v = ::tpy::Bytes(::tpy::bytes_slice(t, ::tpy::BasicSlice{0, 4}));

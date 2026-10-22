@@ -38,7 +38,7 @@ void main() {
     ::tpy::bytearray_upper(ba);
     xs.push_back(4);
     ss.insert(9);
-    ba.push_back(120);
+    ::tpy::bytearray_append(ba, 120);
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(ss) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((ss.contains(2))) << "\n" << ::tpy::check_signals;

@@ -17,7 +17,7 @@ void main() {
     auto& __match_subject_1 = h;
     {
         v = &(__match_subject_1.buf);
-        v->push_back(99);
+        ::tpy::bytearray_append((*v), 99);
         std::cout << ::tpy::__len__((*v)) << "\n" << ::tpy::check_signals;
     }
     std::cout << ::tpy::__len__(h.buf) << "\n" << ::tpy::check_signals;

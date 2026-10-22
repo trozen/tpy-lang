@@ -159,7 +159,7 @@ void container_receiver(bool c) {
     std::vector<std::string> log = std::vector<std::string>{};
     ::tpy::ByteArray a = ::tpy::ByteArray(::tpy::bytes_literal("q", 1));
     std::optional<::tpy::ByteArray> __select_slot_1;
-    ((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make_ba(log)))).push_back(1);
+    ::tpy::bytearray_append(((c) ? (a) : (__select_slot_1.emplace(::tpyapp::main::make_ba(log)))), 1);
     std::cout << "recv_ba" << " " << ::tpy::print_bool(c) << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(log) << "\n" << ::tpy::check_signals;
 }
 

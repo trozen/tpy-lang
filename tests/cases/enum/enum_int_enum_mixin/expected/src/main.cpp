@@ -62,7 +62,7 @@ namespace tpyapp::main {
 void main() {
     std::cout << SmallEnum::A << "\n" << ::tpy::check_signals;
     std::cout << SmallEnum::C << "\n" << ::tpy::check_signals;
-    int8_t x = (::tpy::add_check<int8_t>(static_cast<int8_t>(SmallEnum::B), 10));
+    int8_t x = ::tpy::int_cast_check<int8_t>((::tpy::add_check<int32_t>(static_cast<int8_t>(SmallEnum::B), 10)));
     std::cout << static_cast<int>(x) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::A) < static_cast<int8_t>(SmallEnum::C))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((static_cast<int8_t>(SmallEnum::B) == 1)) << "\n" << ::tpy::check_signals;

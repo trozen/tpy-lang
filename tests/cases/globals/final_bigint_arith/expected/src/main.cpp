@@ -3,16 +3,6 @@
 
 namespace tpyapp::main {
 
-// A: Final[int] = 100
-const ::tpy::BigInt A = ::tpy::BigInt(100);
-// B: Final[int] = 7
-const ::tpy::BigInt B = ::tpy::BigInt(7);
-// SUM: Final[int] = A + B
-const ::tpy::BigInt SUM = ((A) + (B));
-// PROD: Final[int] = A * B
-const ::tpy::BigInt PROD = ((A) * (B));
-// NESTED: Final[int] = (A + B) * 10 - 1
-const ::tpy::BigInt NESTED = ((((((A) + (B))) * (::tpy::BigInt(10)))) - (::tpy::BigInt(1)));
 
 // def main() -> None:
 //     print(SUM)

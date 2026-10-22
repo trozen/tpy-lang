@@ -16,7 +16,7 @@ namespace tpyapp::main {
 void main() {
     H h = H();
     ::tpy::ByteArray& v = h.view();
-    v.push_back(33);
+    ::tpy::bytearray_append(v, 33);
     std::cout << ::tpy::__len__(h.buf) << " " << ::tpy::__len__(v) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& ns = h.nums();
     ns.push_back(3);

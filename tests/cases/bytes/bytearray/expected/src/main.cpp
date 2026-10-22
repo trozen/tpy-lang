@@ -34,7 +34,7 @@ void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("\x01\x02\x03", 3));
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
-    ba.push_back(4);
+    ::tpy::bytearray_append(ba, 4);
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     ::tpy::bytearray_setitem(ba, 0, 10);
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;

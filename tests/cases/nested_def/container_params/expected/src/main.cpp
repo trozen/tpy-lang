@@ -67,7 +67,7 @@ void main() {
         s.insert(7);
     };
     auto stamp = [](::tpy::ByteArray& b) {
-        b.push_back(65);
+        ::tpy::bytearray_append(b, 65);
     };
     auto total = [](std::vector<int32_t>& xs) -> int32_t {
         int32_t s = 0;

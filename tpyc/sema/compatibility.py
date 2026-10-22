@@ -71,7 +71,7 @@ from ..parse import (
 from .literal_utils import literal_value_from_expr
 from ..parse.nodes import program_names
 from .dyn_erasure import dyn_erasure_coercion
-from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value
+from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value, int_payload
 from ..modules import get_span_return_type
 from .call_lends import (
     EveryTempLend, Lent, MayLend, ReturnLend,
@@ -98,11 +98,12 @@ from ..diagnostics import (
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
-    is_big_int_type, is_str_category, is_bytes_category,
+    is_big_int_type, is_fixed_int_type, is_str_category, is_bytes_category,
     protocol_info_of, iter_yields_owned_elements, is_iterator_adapter,
     is_dict_view,
 )
 from .overloads import type_matches_numeric
+from .int_narrowing import site_value_range
 from .pending_num import (ContainerCells, at_path, container_parts,
                           is_numeric_slot, is_pending_num, literal_entries,
                           map_leaves,
@@ -509,6 +510,54 @@ if TYPE_CHECKING:
     from .pending_num import PendingNums
     from .init_tracker import InitTracker
     from ..typesys import FunctionInfo
+    from .value_range import ValueRange
+
+
+# `site_coercion`'s default: the value range is read where it is asked.
+_READ_NOW = object()
+
+
+class InferredSlot(NamedTuple):
+    """A slot typed by a type argument a call inferred for local `local`
+    (bound at `line`), not one the user wrote: `what` names the slot."""
+    local: str
+    line: int
+    what: str
+
+
+def inferred_receiver(ctx: 'SemanticContext', obj: TpyExpr
+                      ) -> 'tuple[str, int, NominalType] | None':
+    """`obj` as a local whose type arguments an earlier call inferred
+    (`c = Box(); c.set(int32(1))`): its name, the line of its binding and
+    its resolved type; None for anything else."""
+    if not isinstance(obj, TpyName):
+        return None
+    known = ctx.func.inferred_generic_locals.get(obj.name)
+    if known is None:
+        return None
+    resolved, line = known
+    if unwrap_readonly(unwrap_ref_type(ctx.get_expr_type(obj))) != resolved:
+        return None
+    return obj.name, line, resolved
+
+
+def inferred_field_slot(ctx: 'SemanticContext', target: TpyExpr
+                        ) -> 'InferredSlot | None':
+    """A store target that is a field its record types by a type parameter,
+    of a local whose type arguments a call inferred."""
+    if not isinstance(target, TpyFieldAccess):
+        return None
+    recv = inferred_receiver(ctx, target.obj)
+    if recv is None:
+        return None
+    name, line, resolved = recv
+    record = ctx.registry.get_record_for_type(resolved)
+    fld = (next((f for f in ctx.registry.get_all_fields(record)
+                 if f.name == target.field), None)
+           if record is not None else None)
+    if fld is None or not contains_type_param(fld.type):
+        return None
+    return InferredSlot(name, line, f"field '{target.field}'")
 
 
 class PendingIterCopyCheck(NamedTuple):
@@ -1466,6 +1515,12 @@ class TypeCompatibility:
                     commit)
             for member in _union_member_order(actual_unwrapped, union_members):
                 result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+                if (isinstance(result, Coercion) and result.narrows_checked
+                        and is_fixed_int_type(unwrap_own(actual))):
+                    # A union stores a fixed-width value as one of its
+                    # alternatives, never through a range-checked conversion
+                    # into a member (an `int` keeps its checked one).
+                    continue
                 if not isinstance(result, CompatError):
                     if commit:
                         # The member that admits the value is the slot it
@@ -1973,7 +2028,26 @@ class TypeCompatibility:
                 )
             decided = self._check_own_element_slots(actual, expected,
                                                     source_expr)
+            # Each element is checked against its own source: a literal's
+            # member, else the tuple value itself.
+            members = (source_expr.elements
+                       if isinstance(source_expr, TpyTupleLiteral) else None)
             for i, (a, e) in enumerate(zip(actual.element_types, expected.element_types)):
+                if members is None:
+                    a_in = unwrap_own(unwrap_readonly(unwrap_send_sync(a)))
+                    e_in = unwrap_own(unwrap_readonly(unwrap_send_sync(e)))
+                    row = resolve_coercion(a_in, e_in, CoercionContext.ASSIGN)
+                    if row is not None and row.narrows_checked:
+                        # A tuple value converts as a whole, which has no
+                        # per-element range check
+                        # (BUGS.md#tuple-value-element-narrowing).
+                        parts = ", ".join(f"{t}(...)"
+                                          for t in expected.element_types)
+                        return CompatError(
+                            f"Type mismatch in {context}: a tuple element is "
+                            f"{a_in}, which {e_in} does not hold every value "
+                            f"of; convert the elements: ({parts})", loc)
+                sub = members[i] if members is not None else source_expr
                 # A tuple ELEMENT is an owning storage slot whatever position
                 # the tuple itself sits at: the tuple holds its elements by
                 # value, so a borrowing tuple parameter still owns each one.
@@ -1982,7 +2056,7 @@ class TypeCompatibility:
                 # `bytes` element with no diagnostic at all.
                 result = self._check_compat(
                     a, e, _tuple_element_context(context, i), loc,
-                    source_expr=None if i in decided else source_expr,
+                    source_expr=None if i in decided else sub,
                     is_return=is_return,
                     coercion_ctx=coercion_ctx, target_is_storage_form=True,
                     sink_owns=True, commit=commit,
@@ -2451,6 +2525,44 @@ class TypeCompatibility:
                 if async_result_aliases(fi.async_inner_return, awaited)
                 else None)
 
+    def site_coercion(self, coercion: Coercion, actual: TpyType,
+                      expected: TpyType, expr: TpyExpr,
+                      value_range: 'ValueRange | None | object' = _READ_NOW,
+                      inferred_slot: 'InferredSlot | None' = None,
+                      ) -> Coercion:
+        """`coercion` as it renders at this node: a checked integer
+        narrowing renders as the slot's constructor call does for `expr`
+        (`CallAnalyzer.narrowing_ctor`), its range check elided where the
+        value range at the conversion site proves the value fits -- read
+        now unless a conversion decided later passes the one it captured
+        at its site. Any other row renders itself. A narrowing into a slot
+        typed by an inferred type argument (`inferred_slot`) is refused: the
+        user wrote no slot of that width."""
+        if not coercion.narrows_checked:
+            return coercion
+        if inferred_slot is not None:
+            raise self.ctx.error(
+                f"Type mismatch in {inferred_slot.what}: expected "
+                f"{int_payload(expected)}, got {actual}; the type argument of "
+                f"'{inferred_slot.local}' was inferred as "
+                f"{int_payload(expected)} from an earlier call, so annotate "
+                f"its first binding (line {inferred_slot.line}) to give it "
+                f"the wider type", expr)
+        if value_range is _READ_NOW:
+            value_range = site_value_range(self.ctx, expr)
+        ctor = self.methods.calls.narrowing_ctor(
+            expr, unwrap_own(unwrap_readonly(actual)), int_payload(expected),
+            value_range)
+        if ctor is None:
+            return coercion
+        # Local import: codegen_cpp imports sema.
+        from ..codegen_cpp.context import expand_cpp_template
+        template = ctor.cpp_template
+        return dc_replace(
+            coercion, context_free_wrap=True,
+            codegen=lambda e, _a, _b, _c: expand_cpp_template(template, None,
+                                                              e))
+
     def materialize_fresh_value(
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
         coercion: Optional[Coercion], coercion_ctx: CoercionContext,
@@ -2474,12 +2586,15 @@ class TypeCompatibility:
         self, expr: TpyExpr, actual: TpyType, expected: TpyType, context: str,
         coercion_ctx: CoercionContext, is_return: bool = False,
         target_is_storage_form: bool = False,
+        inferred_slot: 'InferredSlot | None' = None,
     ) -> TpyExpr:
         """Wrap expr in a coercion node if a conversion is needed.
 
         target_is_storage_form: see _check_compat docstring. Set by callers
         that know the destination is a field / container element so the
         pointer-repr-Optional address-take mark is suppressed.
+        inferred_slot: the slot's type is a type argument an earlier call
+        inferred (`site_coercion` refuses a narrowing into it).
         """
         # The slot receives the callable a class-name factory stands for, so
         # the node the caller stores back is that lambda.
@@ -2487,7 +2602,8 @@ class TypeCompatibility:
         pending = self._pending_num_ends(actual, expected, expr, context)
         if pending is not None:
             return (self.pend.coerce(expr, strip_int(actual),
-                                     strip_int(expected), context, coercion_ctx)
+                                     strip_int(expected), context, coercion_ctx,
+                                     inferred_slot=inferred_slot)
                     if pending else expr)
         actual = self.pend.current(actual)
         expected = self.pend.current(expected)
@@ -2580,6 +2696,8 @@ class TypeCompatibility:
         if coercion.name == "into_any":
             actual = self._resolve_pending_for_any_storage(actual)
         actual = literal_conversion_source(actual, expected)
+        coercion = self.site_coercion(coercion, actual, expected, expr,
+                                      inferred_slot=inferred_slot)
         coerced = TpyCoerce(
             expr=expr,
             actual_type=actual,

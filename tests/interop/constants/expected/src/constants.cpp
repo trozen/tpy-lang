@@ -3,9 +3,6 @@
 
 namespace tpyapp::constants {
 
-const ::tpy::BigInt MAX_SIZE = ::tpy::BigInt(100);
-const ::tpy::BigInt MIN_SIZE = ::tpy::BigInt(-7);
-const ::tpy::BigInt BIG = ::tpy::BigInt::from_str("123456789012345678901234567890");
 
 void __tpy_init() {
 }

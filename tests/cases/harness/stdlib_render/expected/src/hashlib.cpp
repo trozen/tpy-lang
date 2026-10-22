@@ -205,9 +205,9 @@ void SHA256::_process_block(::tpy::BytesView data, int32_t off) {
     uint64_t bit_len = static_cast<uint64_t>(clone.length + clone.length);
     bit_len = static_cast<uint64_t>(bit_len + bit_len);
     bit_len = static_cast<uint64_t>(bit_len + bit_len);
-    clone.buffer.push_back(128);
+    ::tpy::bytearray_append(clone.buffer, 128);
     while (((::tpy::mod_floor<int32_t>(::tpy::__len__(clone.buffer), 64)) != 56)) {
-        clone.buffer.push_back(0);
+        ::tpy::bytearray_append(clone.buffer, 0);
     }
     int32_t i = 7;
     while ((i >= 0)) {

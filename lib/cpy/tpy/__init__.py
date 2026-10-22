@@ -58,10 +58,12 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
 
     A value built through the type (`int32(x)`, a field default) is an
     instance of it, so `~`, the shifts, the width helpers and `@dispatch`
-    see its width. Arithmetic returns a plain int: per-operation wrapping in
-    Python cost several times the program's own work, and in range the
-    result is the same; out of range compiled TPy stops with an overflow
-    error, so there is no wrapped value to reproduce."""
+    see its width. Arithmetic returns a plain int: an 8/16-bit operation
+    computes in the default int in TPy, and a wider one out of range raises
+    OverflowError there, so there is no wrapped value to reproduce. The
+    constructor raises OverflowError for a value outside the type, as a
+    store into a fixed-width slot does; only the `trunc` / `*_wrap` helpers
+    and `~` on an unsigned 32/64-bit value wrap."""
     if signed:
         min_val = -(2 ** (bits - 1))
         max_val = 2 ** (bits - 1) - 1
@@ -74,6 +76,12 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     def _wrap(value):
         return value if value is NotImplemented else FixedInt(value)
 
+    def _modular(value):
+        value = int(value)
+        if signed:
+            return ((value - min_val) % mod) + min_val
+        return value % mod
+
     class FixedInt(int):
         MIN = min_val
         MAX = max_val
@@ -83,42 +91,42 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
             if cls is FixedInt and type(value) is int and min_val <= value <= max_val:
                 return int.__new__(cls, value)
             value = int(value)
-            if signed:
-                if value < min_val or value > max_val:
-                    value = ((value - min_val) % mod) + min_val
-            else:
-                if value < 0 or value > max_val:
-                    value = value % mod
+            if value < min_val or value > max_val:
+                raise OverflowError(f"{name} overflow: value out of range")
             return super().__new__(cls, value)
 
-        # A shift's result has the left operand's type whatever the count's;
-        # unlike arithmetic it stays typed, so `~` over a shifted mask sees
-        # its width.
-        def __lshift__(self, other): return _wrap(int.__lshift__(self, other))
+        # A 32/64-bit shift's result has the left operand's type whatever
+        # the count's, so `~` over a shifted mask sees its width; an 8/16-bit
+        # `<<` and `~` compute in the default int, as their arithmetic does.
+        if bits <= 16:
+            def __lshift__(self, other): return int.__lshift__(self, other)
+            def __invert__(self): return int.__invert__(self)
+        else:
+            def __lshift__(self, other): return _wrap(int.__lshift__(self, other))
+            def __invert__(self): return FixedInt(_modular(int.__invert__(self)))
         def __rshift__(self, other): return _wrap(int.__rshift__(self, other))
-        def __invert__(self): return FixedInt(int.__invert__(self))
         def __repr__(self): return str(int(self))
         def __str__(self): return str(int(self))
 
     @classmethod
     def trunc(cls, value):
-        return cls(int(value))
+        return cls(_modular(value))
 
     @classmethod
     def add_wrap(cls, a, b):
-        return cls(int(a) + int(b))
+        return cls(_modular(int(a) + int(b)))
 
     @classmethod
     def sub_wrap(cls, a, b):
-        return cls(int(a) - int(b))
+        return cls(_modular(int(a) - int(b)))
 
     @classmethod
     def mul_wrap(cls, a, b):
-        return cls(int(a) * int(b))
+        return cls(_modular(int(a) * int(b)))
 
     @classmethod
     def shl_wrap(cls, a, b):
-        return cls(int(a) << int(b))
+        return cls(_modular(int(a) << int(b)))
 
     @classmethod
     def shr_wrap(cls, a, b):
@@ -126,7 +134,7 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
         # codegen for signed types. For unsigned types this is the same
         # as Python's `>>`; for signed it differs (Python `>>` is
         # arithmetic / sign-extending).
-        return cls((int(a) & (mod - 1)) >> int(b))
+        return cls(_modular((int(a) & (mod - 1)) >> int(b)))
 
     FixedInt.trunc = trunc
     FixedInt.add_wrap = add_wrap

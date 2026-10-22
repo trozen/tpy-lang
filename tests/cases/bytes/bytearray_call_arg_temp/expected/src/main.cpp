@@ -16,7 +16,7 @@ void show(const ::tpy::ByteArray& b) {
 // def grow(b: bytearray) -> None:
 //     b.append(120)
 void grow(::tpy::ByteArray& b) {
-    b.push_back(120);
+    ::tpy::bytearray_append(b, 120);
 }
 
 // def main() -> None:

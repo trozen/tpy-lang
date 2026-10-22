@@ -21,7 +21,7 @@ void main() {
     Buf b = Buf();
     b.reset(3);
     ::tpy::bytearray_setitem(b.data, 0, 65);
-    b.data.push_back(66);
+    ::tpy::bytearray_append(b.data, 66);
     std::cout << ::tpy::__len__(b.data) << " " << static_cast<int>(::tpy::bytes_getitem(b.data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(b.data, 3)) << "\n" << ::tpy::check_signals;
     b.retag(7);
     b.tags.push_back(8);

@@ -92,6 +92,7 @@ from .pending_num import (ContainerCells, PendingNumCell, PendingNums,
                           pairs_as,
                           is_numeric_slot, value_leaves,
                           is_pending_num, pending_join, strip_int,
+                          pending_leaves,
                           leaves_as_numbers,
                           value_family)
 from .type_join import (InferredJoin, JoinOutcome, declared_float_slot,
@@ -359,11 +360,16 @@ def _identity_object(t: TpyType) -> 'TpyType | str':
     return "other"
 
 
-def _walrus_result_type(resolved: TpyType, value_type: TpyType) -> TpyType:
+def _walrus_result_type(resolved: TpyType, value_type: TpyType, *,
+                        declared: TpyType | None = None) -> TpyType:
     """The type of a walrus that binds a fresh local of type `resolved`:
     its value's type (a literal stays a literal), except a collapsed
     per-element-Own borrow tuple, whose `(t := ...)[i]` element access must
-    agree with the pointer-repr local."""
+    agree with the pointer-repr local, and a target whose cells decide the
+    type it is `declared` at (lowering declares the target at it), which
+    the walrus reads as."""
+    if declared is not None and is_pending_num(strip_int(declared)):
+        return declared
     res_bare = unwrap_readonly(resolved)
     if isinstance(res_bare, TupleType) and res_bare.has_pointer_repr_element():
         return resolved
@@ -1133,6 +1139,7 @@ class ExpressionAnalyzer:
             expr.result_form = ResultForm.NOT_DECLARED
             typ = self._concrete_generator_call(
                 expr, self.methods.analyze_method_call(expr))
+            self._warn_narrowed_lookup_arg(expr)
             if self.calls.stamp_result_borrow(expr, typ):
                 typ = _readonly_result(typ)
             self._warn_frame_held_copies(expr)
@@ -2907,6 +2914,9 @@ class ExpressionAnalyzer:
         if isinstance(result, OperatorAmbiguity):
             raise self.ctx.error(self.compat.ambiguous_overload_text(
                 result.method_name, result.candidates), loc_node)
+        if isinstance(result, ResolvedBinop) and result.wide_literal is not None:
+            self.ctx.default_int_for_literal(
+                result.wide_literal, warn_node=loc_node, operand=True)
         return result
 
     def _resolve_comparison(self, expr: TpyBinOp, left: TpyType,
@@ -3068,9 +3078,23 @@ class ExpressionAnalyzer:
             return result
         if resolved.result_ignores_operand:
             receiver, operand = (rt, lt) if resolved.is_reverse else (lt, rt)
-            # A literal receiver took the operand's type, which it follows.
-            return operand if isinstance(receiver, IntLiteralType) else receiver
-        return pending_join(lt, rt)
+            # A literal receiver took the operand's type, which it follows;
+            # a pending one is followed itself. A settled receiver's result
+            # is its dunder's (`int8 << count` computes in the default int).
+            if isinstance(receiver, IntLiteralType):
+                return operand
+            return receiver if isinstance(receiver, PendingNumType) else result
+        joined = pending_join(lt, rt)
+        return (self._floor_at_result(joined, result) if joined is not None
+                else None)
+
+    def _floor_at_result(self, pending: TpyType, result: TpyType) -> TpyType:
+        """The type of an operation over pending operands typed `pending`
+        (their join): floored at the operator's result where it computes
+        wider than its operands (an 8/16-bit one in the default int)."""
+        if result == self.pend.known_type(pending):
+            return pending
+        return pending_join(pending, result) or result
 
     def _resolve_binop_late(self, expr: TpyBinOp, left: TpyType,
                             right: TpyType, typed: TpyType) -> None:
@@ -3172,6 +3196,8 @@ class ExpressionAnalyzer:
                     result = strip_int(resolved.method.return_type)
                     typed = (pending if value_family(result) == pending.is_float
                              else result)
+                    if typed is pending:
+                        typed = self._floor_at_result(pending, result)
                     self.pend.defer(
                         expr, (pending,),
                         lambda ts: self._resolve_unaryop_late(expr, ts[0], typed))
@@ -3218,9 +3244,14 @@ class ExpressionAnalyzer:
                     return FloatLiteralType(-effective_type.value)
                 return effective_type
 
-        # IntEnum: unary negation returns the underlying integer type
+        # IntEnum: unary negation is the underlying type's (an 8/16-bit one
+        # yields the default int). resolved_unaryop stays None: the operand
+        # renders through its own cast (`-static_cast<U>(p)`), unchecked
+        # (BUGS.md#int-enum-negation-unchecked).
         if is_int_enum_type(effective_type) and expr.op == "-":
-            return enum_info_of(effective_type).underlying_type
+            underlying = enum_info_of(effective_type).underlying_type
+            neg = self.operators.resolve_unaryop(underlying, "-", loc_node=expr)
+            return neg.method.return_type if neg is not None else underlying
 
         # IntLiteralType special cases - preserve literal nature when possible
         if isinstance(effective_type, IntLiteralType):
@@ -4312,14 +4343,29 @@ class ExpressionAnalyzer:
 
     def _analyze_named_expr(self, expr: TpyNamedExpr) -> TpyType:
         """Analyze walrus operator: (x := expr)."""
-        value_type = self.analyze_expr(expr.value)
         name = expr.target
+        # A store into a local whose bindings decide its type takes a value
+        # whose type is decided with it.
+        cell = (None if self.ctx.in_comprehension
+                else self.pend.cell_for(name))
+        # So does one the value binds first (`(x := (x := v) + 1)`).
+        inner = self.pend.value_binds_first(
+            name, unbound=(not self.ctx.in_comprehension
+                           and self.ctx.func.current_scope.lookup(name)
+                           is None))
+        with self.pend.sink(expr.value if cell is not None or inner.joins
+                            else None):
+            value_type = self.analyze_expr(expr.value)
+        if (bound_inside := inner.cell()) is not None:
+            cell = bound_inside[0]
         is_global = name in self.ctx.func.global_declarations
 
         # Resolve pending/literal types for the variable binding
         resolved = value_type
         if isinstance(resolved, IntLiteralType):
             resolved = self.ctx.default_int_type
+            if self.ctx.func.current_scope.lookup(name) is None:
+                self.ctx.func.literal_seeded.add(name)
         elif isinstance(resolved, FloatLiteralType):
             resolved = FLOAT
         elif isinstance(resolved, PendingViewType):
@@ -4366,7 +4412,18 @@ class ExpressionAnalyzer:
         if is_global:
             return self._analyze_global_walrus(expr, name, value_type)
 
-        if existing is not None:
+        if cell is not None and existing is not None:
+            # One more binding of a local whose type its bindings decide.
+            var_type = self.pend.record_binding(cell, value_type, expr.value,
+                                                expr)
+            if not isinstance(strip_int(value_type),
+                              (IntLiteralType, FloatLiteralType)):
+                expr.value = self.compat.coerce_expr(
+                    expr.value, strip_int(value_type), var_type,
+                    f"variable '{name}'", coercion_ctx=CoercionContext.ASSIGN)
+            resolved = existing
+            result_type = existing
+        elif existing is not None:
             # Reassignment via walrus. Non-value (and pointer-repr-tuple) locals
             # use a storage form (T* / std::optional<T> / borrow slot) the walrus
             # binding path can't rebind in place without the var-decl rebind
@@ -4383,8 +4440,12 @@ class ExpressionAnalyzer:
                     f"walrus reassignment of non-value local '{name}' is not "
                     f"supported yet; use a separate assignment statement",
                     expr)
-            _, expr.value = self.compat.coerce_reassignment(
+            var_type, expr.value = self.compat.coerce_reassignment(
                 name, existing, value_type, expr.value, expr)
+            self.compat.deduction.join_rebind(
+                name, existing, var_type, target_scope,
+                expr.loc.line if expr.loc else 0)
+            existing = var_type
             resolved = existing
             # A re-analysis of the walrus that introduced the binding is
             # checked as a reassignment but keeps its first type.
@@ -4392,9 +4453,13 @@ class ExpressionAnalyzer:
                            if expr in self.ctx.func.bind_kinds else existing)
         else:
             # New binding
+            declared = resolved
+            if not self.ctx.in_comprehension and not self.ctx.is_top_level:
+                resolved, declared = self.pend.derived_binding(
+                    name, resolved, expr, loop_head=False)
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
-                self.ctx.func.current_ns.bind_variable(name, resolved)
+                self.ctx.func.current_ns.bind_variable(name, declared)
             # Mirror the VarDecl ownership classification for non-value
             # bindings: a fresh rvalue is owned (feeds the branch-decl owned
             # form and last-use moves); a borrow records the statement-level
@@ -4430,7 +4495,8 @@ class ExpressionAnalyzer:
                     # Local import: statements imports this module.
                     from .statements import _register_call_result_borrow
                     _register_call_result_borrow(self.ctx, name, val_inner)
-            result_type = _walrus_result_type(resolved, value_type)
+            result_type = _walrus_result_type(resolved, value_type,
+                                              declared=declared)
 
         self.ctx.func.definitely_assigned.add(name)
         self.ctx.func.rvalue_vars.add(name)
@@ -5859,6 +5925,44 @@ class ExpressionAnalyzer:
             )
         return tuple_type.element_types[idx]
 
+    def _warn_narrowed_lookup_arg(self, call: TpyMethodCall) -> None:
+        """`warn_narrowed_lookup_key` at a container lookup method (the
+        stub's `element_effect="lookup"`): its first parameter is the
+        compared one; a default value is stored, not compared."""
+        fi = call.resolved_function_info
+        if (fi is None or fi.native_element_effect != "lookup"
+                or not call.args or not fi.params):
+            return
+        arg = call.args[0]
+        if isinstance(arg, TpyCoerce):
+            self.warn_narrowed_lookup_key(arg.actual_type, arg.expected_type,
+                                          arg)
+        else:
+            key_type = self.ctx.get_expr_type(arg)
+            if key_type is not None:
+                self.warn_narrowed_lookup_key(key_type, fi.params[0].type, arg)
+
+    def warn_narrowed_lookup_key(self, key_type: TpyType, slot_type: TpyType,
+                                 node: TpyExpr) -> None:
+        """A lookup key that narrows into the container's element type: a
+        key outside that type raises OverflowError, where CPython finds no
+        entry. The explicit conversion states it and silences this. A key
+        whose type its function decides later is judged then."""
+        if pending_leaves(strip_int(key_type)):
+            self.pend.defer(node, (key_type, slot_type),
+                            lambda ts: self.warn_narrowed_lookup_key(
+                                ts[0], ts[1], node))
+            return
+        key = unwrap_readonly(key_type)
+        slot = unwrap_readonly(slot_type)
+        row = resolve_coercion(key, slot, CoercionContext.ARG)
+        if row is None or not row.narrows_checked:
+            return
+        self.ctx.warning(
+            f"lookup key narrows from {key} to {slot}: "
+            f"a key outside {slot} raises OverflowError instead of not being "
+            f"found; write {slot}(...) to convert it explicitly", node)
+
     def check_dict_key(self, sub: TpySubscript, key_type: TpyType,
                        index_type: TpyType) -> None:
         """Validate a dict subscript's key against the dict's key type and
@@ -5871,6 +5975,8 @@ class ExpressionAnalyzer:
         context = "dict key"
         coercion = self.compat.check_type_compatible(
             index_type, key_type, context, loc=sub.loc, source_expr=sub.index)
+        if not sub.is_write_target:
+            self.warn_narrowed_lookup_key(index_type, key_type, sub.index)
         sub.index = self.compat.materialize_fresh_value(
             sub.index, index_type, key_type, context, coercion,
             CoercionContext.ARG)

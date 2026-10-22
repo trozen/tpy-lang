@@ -750,9 +750,6 @@ class CodeGenerator:
         # Generate global definitions in source (before functions)
         for stmt in global_decls:
             self.functions.gen_global_decl(cpp, stmt)
-        # Final globals: constexpr in header, const in source (BigInt only)
-        for stmt in final_decls:
-            self.functions.gen_final_global_source(cpp, stmt)
         cpp.write("\n")
 
         # Generate function definitions (skip template functions -- defined in header)

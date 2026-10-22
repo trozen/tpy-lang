@@ -147,6 +147,24 @@ def _is_safe_widening(actual: TpyType, expected: TpyType) -> bool:
     return False
 
 
+def int_payload(slot: TpyType) -> TpyType:
+    """The integer type a narrowing converts to: an optional slot's payload
+    (the optional wraps the converted value implicitly)."""
+    slot = unwrap_readonly(slot)
+    if isinstance(slot, OwnType):
+        slot = unwrap_readonly(slot.wrapped)
+    if isinstance(slot, OptionalType):
+        slot = unwrap_readonly(slot.inner)
+    return slot
+
+
+def _narrowing_rendered_at_site(e: str, _a: TpyType, _b: TpyType,
+                                _c: CoercionContext) -> str:
+    raise AssertionError(
+        "a checked integer narrowing renders at its node "
+        "(TypeCompatibility.site_coercion)")
+
+
 def _spanlike_to_span_match(actual: TpyType, expected: TpyType) -> bool:
     """Check if actual type (extending Spannable[T]) can coerce to Span[T]/ReadOnlySpan[T]."""
     if not is_span(expected):
@@ -221,6 +239,10 @@ class Coercion:
     # promotion in Python arithmetic).
     widening_safe: bool = False
     check_range: Optional[Callable[[TpyType, TpyType], bool]] = None
+    # An integer into a fixed-width slot that does not hold every value of
+    # the source type: the render checks the range at run time
+    # (OverflowError). Overload ranking counts these as narrowing.
+    narrows_checked: bool = False
     # Address-taking coercions (`&{expr}`) produce a Ptr that is unconditionally
     # non-null. Consumers can elide the deref null-check, same as for `take_ptr`.
     produces_non_null_ptr: bool = False
@@ -313,6 +335,22 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
 
+    # Any other fixed width into a fixed-width slot (narrower, or a sign
+    # change): checked at run time. C++ would convert the pair implicitly
+    # by wrapping, so the check must be spelled wherever the value lands:
+    # sema renders it at the node as the target's constructor `int8(x)`
+    # does (`TypeCompatibility.site_coercion`), never off the bare row.
+    Coercion(
+        name="fixed_int_narrowing",
+        from_type=is_fixed_int_type,
+        to_type=is_fixed_int_type,
+        type_match=lambda a, b: (int_traits_of(a) != int_traits_of(b)
+                                 and not _is_safe_widening(a, b)),
+        narrows_checked=True,
+        builds_fresh_value=True,
+        codegen=_narrowing_rendered_at_site,
+    ),
+
     # Fixed-width integer to BigInt
     Coercion(
         name="fixed_int_to_bigint",
@@ -323,13 +361,17 @@ COERCIONS: list[Coercion] = [
         codegen=lambda e, _a, _b, _c: f"::tpy::BigInt({e})",
     ),
     # BigInt to fixed-width integer (narrowing, runtime checked)
+    # Sema renders it at the node as the constructor does (the same
+    # `to_fixed_check`); the lowering's literal-at-slot conversion reads the
+    # row itself.
     Coercion(
         name="bigint_to_fixed_int",
         from_type=is_big_int_type,
         to_type=is_fixed_int_type,
+        narrows_checked=True,
         builds_fresh_value=True,
         context_free_wrap=True,
-        codegen=lambda e, _a, b, _c: f"({e}).to_fixed_check<{b.to_cpp()}>()",
+        codegen=lambda e, _a, b, _c: f"({e}).to_fixed_check<{int_payload(b).to_cpp()}>()",
     ),
 
     # Float coercions
@@ -406,10 +448,10 @@ COERCIONS: list[Coercion] = [
         context_free_wrap=True,
         codegen=lambda e, _a, _b, _c: f"static_cast<double>({e})",
     ),
-    # No float -> float32 row: a declared slot never narrows a wider value
-    # of its own family implicitly, as int64 never converts into int32; the
-    # user spells float32(x). Only `int` (BigInt) narrows into a fixed width,
-    # and that row checks the range at run time.
+    # No float -> float32 row: float32(x) is spelled. Integers differ: any
+    # integer converts into any fixed-width slot, checked at run time where
+    # the slot does not hold every value of the source type (the two
+    # `narrows_checked` rows above).
 
     # char -> str at a BORROWING slot. `str`'s param form is a view, so the
     # owning row below would bind the slot to a full-expression temporary and

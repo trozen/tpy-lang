@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 PROGRAM = """\
-from tpy import Own, float32, int32, uint8
+from tpy import Own, float32, int32, uint8, uint32
 import tpy
 
 class Acc:
@@ -25,8 +25,9 @@ def main() -> None:
     acc = fill(Acc(), [1, 2, 3, 40])
     print(acc.total, uint8(200) + 50, float32(0.5) * 3)
     print(tpy.int32 is int, tpy.float32 is float)
-    # exact mode: a shift keeps its operand's width, other arithmetic is an int
-    u = uint8(1)
+    # exact mode: a 32-bit shift keeps its operand's width, other arithmetic
+    # is an int
+    u = uint32(1)
     print(~(u << 1), type(u + 1).__name__)
 
 main()
@@ -52,7 +53,7 @@ def test_fast_mode_binds_the_builtins_and_keeps_in_range_output(tmp_path: Path) 
     assert exact.splitlines()[0] == fast.splitlines()[0] == "138 250 1.5"
     assert exact.splitlines()[1] == "False False"
     assert fast.splitlines()[1] == "True True"
-    assert exact.splitlines()[2] == "253 int"
+    assert exact.splitlines()[2] == "4294967293 int"
     assert fast.splitlines()[2] == "-3 int"
 
 

@@ -1228,22 +1228,65 @@ native-module headers it depends on is emitted into the consumer
 header. Native-to-native chains are followed explicitly in codegen
 since natives have no `.hpp` to chain through.
 
-`pending_num` owns the type of a literal-seeded function local (integer or
-float), the one numeric fact sema decides after the fact rather than in
-source order. The prescan decides it by each local's FIRST BINDING
-(`scan_first_bindings`): one statement, or the sibling arms of one
-`if` / `match` / `try` that each bind the name the statement did not see
-bound. It records those first-binding groups once, per function
+`pending_num` owns the type of an unannotated function local whose
+bindings decide it (integer or float), the one numeric fact sema decides
+after the fact rather than in source order: the local is the join of its
+bindings under the widening relation, and bindings with no join (`uint32`
+then `int32`) are refused. The prescan picks those locals by each local's
+FIRST BINDING (`scan_first_bindings`): one statement, or the sibling arms
+of one `if` / `match` / `try` that each bind the name the statement did
+not see bound. It records those first-binding groups once, per function
 (`ScanResult.first_bindings`, kept as
-`FunctionTrackingState.first_bindings`), and the pending locals
-(`scan_pending_num_locals`) are those whose first binding stores a bare
-literal and that no excluded form also binds (a loop target, a tuple
-unpack, a walrus, `with` / `except` / `match` bindings, a nested `def`,
-`nonlocal` / `global`, an annotation); a local first bound to a value has that value's type, a numeric
-type constructor call included, so there is no declaration resolver. The
-same table refuses an annotation that stands past a local's first binding
-(`StatementAnalyzer._refuse_later_annotation`). Each pending one gets
-a cell on the context (not on the function state, so a settle inside a
+`FunctionTrackingState.first_bindings`), and `scan_pending_num_locals`
+returns two sets. The PENDING locals are those whose first binding stores
+a bare literal, that some store widens, and that no other form binds (a
+loop target, an unpack, a walrus, a `match` capture, `with` / `except`, a
+nested `def`, `nonlocal` / `global`, an annotation): the literal family's
+default widened by what is stored. The REBOUND locals
+(`LiteralLocals.rebound`, kept as `FunctionTrackingState.pending_num_rebound`)
+are the others bound more than once by a form whose value sema records
+into a cell -- a plain or augmented assignment, a `for` head, an unpack
+target, a `match` capture (each arm's its own binding), a walrus (each its
+own: `written_names(..., walrus=False)` plus `walrus_bindings`). The
+`opaque` set stays out: a name a `with` / `except` target or a nested
+`def` binds, an annotated one, a parameter, a `global` / `nonlocal` name.
+A rebound local first bound to a fixed-width integer value, or to a value
+a cell decides, gets a derived cell whose later bindings join it rather
+than having to fit it (`PendingNums.joins_bindings`,
+`PendingNumCell.joins_stores`), so `c = data[i]; c -= 48` is an `int32`
+throughout, and a later literal store takes the local's type when it
+fits it. Any other local first bound to a value has that value's type, a
+numeric type constructor call included, and a wider store is refused
+(`LocalTypeDeduction.refuse_wider_rebind`); a local first bound to a
+literal that another form also binds gets no cell and is the default
+int. Every binding of a cell's local records through
+`PendingNums.record_binding`: a plain store (`_store_pending_num`), and
+each other form rebinding an existing local (`PendingNums.rebind`). A new
+local a binding declares without a store of its own -- a `for` head, an
+unpack target, a capture, a walrus -- reads ONE declared-type decision,
+`PendingNums.derived_binding`, which returns the type the local reads as
+and the type it is declared at: a joining local is declared at its cell,
+one over a pending value that does not join at the value's type, which a
+nested scope can still read once the value's cells are dropped. A store
+whose own value binds the name first (`x = (x := v) + 1`) is one more
+binding of the cell the value created (`PendingNums.value_binds_first`).
+Two bindings do not join yet: a `with` target
+(BUGS.md#with-target-declared-type-ignores-join) and a walrus inside a
+comprehension (BUGS.md#comprehension-walrus-binding-join).
+
+A module variable has no cell, since module code is not analyzed as one
+body (TODO.md "Module scope is the body of __tpy_init"). One first bound
+to a typed integer keeps that type and refuses a wider store, an
+out-of-range literal included (`LocalTypeDeduction.keeps_first_type`,
+`refuse_wider_rebind`); an annotated one converts what it is given; one
+first bound to a literal (`FunctionTrackingState.literal_seeded`) is the
+default int only for want of a better type, so a wider store retypes it
+in place (`join_rebind`), which the uses analyzed before that store do
+not follow (BUGS.md#module-literal-global-retype-after-use).
+
+The first-binding table also refuses an annotation that stands past a
+local's first binding (`StatementAnalyzer._refuse_later_annotation`). Each
+pending or joining local gets a cell on the context (not on the function state, so a settle inside a
 rolled-back overload trial stays made) that collects the types stored in it,
 and its reads are typed `PendingNumType`. A group of sibling arms shares one
 cell, typed arms included (a derived cell whose evidence is the arms'
@@ -1351,13 +1394,13 @@ leaves; the declarations, unpack targets and return values that hold such
 leaves are rewritten when they settle (`PendingNums.defer`). A target bound
 to such a leaf without a value of its own -- a `for` head, a tuple-unpack
 target -- is a local first bound over a pending read (`y = xs[0]`): it gets a
-derived cell (`StatementAnalyzer._derived_cell_type`), so a store into it
+derived cell (`PendingNums.derived_binding`), so a store into it
 never widens the container; a later `for` head declaring the same name
 takes the name and the earlier cell settles with the function
 (`FunctionTrackingState.pending_unowned_cids`); when the loop ends its head
 cells hand the name back (`PendingNums.retire_loop_heads`). A head that
-rebinds an existing local is judged against it once both settle
-(`_check_loop_var_rebind`). The deferral waits for every leaf of the types it names, and a type recorded at a value
+rebinds an existing local joins its cell when it has one, else is judged
+against it once both settle (`_check_loop_var_rebind`). The deferral waits for every leaf of the types it names, and a type recorded at a value
 that holds a row -- a call's signature at the element
 (`PendingNums.when_elem_known`), a local bound to a row (`row = g[0]`) --
 is recorded again once the rows' list types are resolved

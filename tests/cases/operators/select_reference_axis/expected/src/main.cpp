@@ -36,7 +36,7 @@ int32_t pick_set(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b)
 //     return len(v)
 int32_t pick_bytearray(::tpy::ByteArray& a, ::tpy::ByteArray& b) {
     ::tpy::ByteArray& v = ((!a.empty()) ? a : b);
-    v.push_back(90);
+    ::tpy::bytearray_append(v, 90);
     return ::tpy::__len__(v);
 }
 

@@ -399,6 +399,11 @@ private:
         if constexpr (std::same_as<std::remove_cvref_t<KeyArg>, K>
                       || lookup_key_for<K, KeyArg>) {
             return table_.find(key);
+        } else if constexpr (std_integer<K> && std_integer<KeyArg>) {
+            // An integer key outside K's range is absent; converting it
+            // would wrap onto a stored key (int8_t(300) == 44).
+            if (!std::in_range<K>(key)) return table_.end();
+            return table_.find(static_cast<K>(key));
         } else {
             return table_.find(K(key));
         }

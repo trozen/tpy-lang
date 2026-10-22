@@ -1,1 +1,1 @@
-TurboPython panic: int32 overflow: value out of range
+TurboPython panic: uncaught tpy::OverflowError: int32 overflow: value out of range

@@ -16,7 +16,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_twice::__next__() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((b != nullptr)) {
-            b->push_back(7);
+            ::tpy::bytearray_append((*b), 7);
         }
         __state = S_RESUME_0;
         return 1;

@@ -58,7 +58,7 @@ void main() {
     ys.push_back(9);
     std::cout << "function" << " " << ::tpy::ListPrinter(bag.items) << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     uint8_t b = 250;
-    std::cout << "multi-line" << " " << static_cast<int>((::tpy::add_check<uint8_t>(b, 5))) << "\n" << ::tpy::check_signals;
+    std::cout << "multi-line" << " " << (::tpy::add_check<int32_t>(b, 5)) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2};
     std::cout << "typing" << " " << ::tpy::print_optional_val(::tpyapp::main::find(xs, 2)) << " " << ::tpy::print_optional_val(::tpyapp::main::find(xs, 5)) << "\n" << ::tpy::check_signals;
     std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>> stored = std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>>{};

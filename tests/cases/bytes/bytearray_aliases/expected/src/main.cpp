@@ -17,11 +17,11 @@ namespace tpyapp::main {
 void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray& x = ba;
-    x.push_back(99);
+    ::tpy::bytearray_append(x, 99);
     std::cout << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
     Holder h = Holder(::tpy::ByteArray(::tpy::bytes_literal("xy", 2)));
     ::tpy::ByteArray& y = h.data;
-    y.push_back(7);
+    ::tpy::bytearray_append(y, 7);
     std::cout << ::tpy::__len__(h.data) << "\n" << ::tpy::check_signals;
 }
 

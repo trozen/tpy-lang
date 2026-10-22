@@ -2277,7 +2277,7 @@
  "bytearray__async__borrow_method__recv_mut": [
   "ok",
   "",
-  "[2] method_call(method_call(*%b, v_m, []), push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
+  "[2] method_call(method_call(*%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "bytearray__async__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -2292,12 +2292,12 @@
  "bytearray__async__global_name__decl_alias": [
   "ok",
   "",
-  "[1] %x = form_convert[borrow](*%G) [2] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [*%G]) [raw])"
+  "[1] %x = form_convert[borrow](*%G) [2] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__async__global_name__decl_reassigned": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) [6] print(call(len "
+  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) ["
  ],
  "bytearray__async__global_name__field_write": [
   "ok",
@@ -2312,7 +2312,7 @@
  "bytearray__async__global_name__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%G, ->push_back, [coerce(lit(9) -> uint8)]) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
+  "[1] method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__async__global_name__return_borrow": [
   "reject:stmt.return:return.borrow_form",
@@ -2327,12 +2327,12 @@
  "bytearray__async__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "bytearray__async__local__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "bytearray__async__local__field_write": [
   "ok",
@@ -2347,7 +2347,7 @@
  "bytearray__async__local__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] method_call(*%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "bytearray__async__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2357,12 +2357,12 @@
  "bytearray__async__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)])"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__async__local_last__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw])"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw])"
  ],
  "bytearray__async__local_last__field_write": [
   "ok",
@@ -2377,7 +2377,7 @@
  "bytearray__async__local_last__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, push_back, [coerce(lit(9) -> uint8)])"
+  "[2] method_call(*%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__async__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2387,12 +2387,12 @@
  "bytearray__async__obj_field__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
+  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
  ],
  "bytearray__async__obj_field__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] pr"
+  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%"
  ],
  "bytearray__async__obj_field__field_write": [
   "ok",
@@ -2407,7 +2407,7 @@
  "bytearray__async__obj_field__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%b._v [storage], push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
+  "[2] method_call(*%b._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
  ],
  "bytearray__async__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -2422,7 +2422,7 @@
  "bytearray__async__own_call__decl_alias": [
   "ok",
   "",
-  "[1] frame_slot %x <- call(mk, []) [2] method_call(*%x, push_back, [coerce(lit(9) -> uint8)])"
+  "[1] frame_slot %x <- call(mk, []) [2] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__async__own_call__decl_reassigned": [
   "reject:res.alias_bind",
@@ -2477,7 +2477,7 @@
  "bytearray__async__param__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%pv, push_back, [coerce(lit(9) -> uint8)]) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
+  "[1] method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__async__param__return_borrow": [
   "reject:stmt.return:return.borrow_form",
@@ -2527,12 +2527,12 @@
  "bytearray__ctor__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__ctor__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]"
  ],
  "bytearray__ctor__borrow_method__field_write": [
   "ok",
@@ -2547,7 +2547,7 @@
  "bytearray__ctor__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "method_call(method_call(%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__ctor__borrow_method__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -2557,12 +2557,12 @@
  "bytearray__ctor__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "bytearray__ctor__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__ctor__closure_capture__field_write": [
   "ok",
@@ -2577,7 +2577,7 @@
  "bytearray__ctor__closure_capture__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "bytearray__ctor__closure_capture__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2587,12 +2587,12 @@
  "bytearray__ctor__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print("
  ],
  "bytearray__ctor__ctor_rvalue__field_write": [
   "ok",
@@ -2647,7 +2647,7 @@
  "bytearray__ctor__global_name__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%G method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%x: bytearray = *%G method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__ctor__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -2667,7 +2667,7 @@
  "bytearray__ctor__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__ctor__global_name__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2677,12 +2677,12 @@
  "bytearray__ctor__local__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__ctor__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__ctor__local__field_write": [
   "ok",
@@ -2697,7 +2697,7 @@
  "bytearray__ctor__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__ctor__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2707,12 +2707,12 @@
  "bytearray__ctor__local_last__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = move(%s0) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = move(%s0) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__ctor__local_last__field_write": [
   "ok",
@@ -2727,7 +2727,7 @@
  "bytearray__ctor__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__local_last__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -2767,7 +2767,7 @@
  "bytearray__ctor__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%o0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%x: bytearray = *%o0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "bytearray__ctor__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -2787,7 +2787,7 @@
  "bytearray__ctor__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "method_call(*%o0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "bytearray__ctor__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2797,7 +2797,7 @@
  "bytearray__ctor__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%x: bytearray = *%pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "bytearray__ctor__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -2817,7 +2817,7 @@
  "bytearray__ctor__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "method_call(*%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "bytearray__ctor__narrowed_opt_param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2827,12 +2827,12 @@
  "bytearray__ctor__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%x: bytearray = %b._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "bytearray__ctor__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len "
+  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw"
  ],
  "bytearray__ctor__obj_field__field_write": [
   "ok",
@@ -2847,7 +2847,7 @@
  "bytearray__ctor__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "method_call(%b._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "bytearray__ctor__obj_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal",
@@ -2857,12 +2857,12 @@
  "bytearray__ctor__own_call__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(mk, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__ctor__own_call__field_write": [
   "ok",
@@ -2887,12 +2887,12 @@
  "bytearray__ctor__param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%x: bytearray = %pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__ctor__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__ctor__param__field_write": [
   "ok",
@@ -2907,7 +2907,7 @@
  "bytearray__ctor__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__ctor__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -2917,12 +2917,12 @@
  "bytearray__ctor__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__ctor__prop_own__field_write": [
   "ok",
@@ -2937,7 +2937,7 @@
  "bytearray__ctor__prop_own__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_own, []), push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(method_call(%b, v_own, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__prop_own__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -2947,7 +2947,7 @@
  "bytearray__ctor__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "%x: bytearray = method_call(%b, v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "bytearray__ctor__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -2967,7 +2967,7 @@
  "bytearray__ctor__prop_ref__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "method_call(method_call(%b, v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "bytearray__ctor__prop_ref__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
@@ -3027,7 +3027,7 @@
  "bytearray__ctor__temp_accessor__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(call(mk_b, []), v, []), push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(method_call(call(mk_b, []), v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -3037,7 +3037,7 @@
  "bytearray__ctor__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -3057,7 +3057,7 @@
  "bytearray__ctor__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(call(mk_b, [])._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -3067,12 +3067,12 @@
  "bytearray__fn__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__fn__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]"
  ],
  "bytearray__fn__borrow_method__field_write": [
   "ok",
@@ -3087,7 +3087,7 @@
  "bytearray__fn__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "method_call(method_call(%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__fn__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3102,12 +3102,12 @@
  "bytearray__fn__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "bytearray__fn__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__fn__closure_capture__field_write": [
   "ok",
@@ -3122,7 +3122,7 @@
  "bytearray__fn__closure_capture__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "bytearray__fn__closure_capture__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3132,12 +3132,12 @@
  "bytearray__fn__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print("
  ],
  "bytearray__fn__ctor_rvalue__field_write": [
   "ok",
@@ -3202,7 +3202,7 @@
  "bytearray__fn__global_name__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%G method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%x: bytearray = *%G method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__fn__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -3222,7 +3222,7 @@
  "bytearray__fn__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__fn__global_name__return_borrow": [
   "ok",
@@ -3237,12 +3237,12 @@
  "bytearray__fn__local__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__fn__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__fn__local__field_write": [
   "ok",
@@ -3257,7 +3257,7 @@
  "bytearray__fn__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__fn__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3267,12 +3267,12 @@
  "bytearray__fn__local_last__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = move(%s0) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = move(%s0) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__fn__local_last__field_write": [
   "ok",
@@ -3287,7 +3287,7 @@
  "bytearray__fn__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__local_last__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -3327,7 +3327,7 @@
  "bytearray__fn__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%o0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%x: bytearray = *%o0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "bytearray__fn__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -3347,7 +3347,7 @@
  "bytearray__fn__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "method_call(*%o0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "bytearray__fn__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3357,7 +3357,7 @@
  "bytearray__fn__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%x: bytearray = *%pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "bytearray__fn__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -3377,7 +3377,7 @@
  "bytearray__fn__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "method_call(*%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "bytearray__fn__narrowed_opt_param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3387,12 +3387,12 @@
  "bytearray__fn__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%x: bytearray = %b._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "bytearray__fn__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len "
+  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw"
  ],
  "bytearray__fn__obj_field__field_write": [
   "ok",
@@ -3407,7 +3407,7 @@
  "bytearray__fn__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "method_call(%b._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "bytearray__fn__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3422,12 +3422,12 @@
  "bytearray__fn__own_call__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(mk, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__fn__own_call__field_write": [
   "ok",
@@ -3457,12 +3457,12 @@
  "bytearray__fn__param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%x: bytearray = %pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__fn__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__fn__param__field_write": [
   "ok",
@@ -3477,7 +3477,7 @@
  "bytearray__fn__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__fn__param__return_borrow": [
   "ok",
@@ -3492,12 +3492,12 @@
  "bytearray__fn__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__fn__prop_own__field_write": [
   "ok",
@@ -3512,7 +3512,7 @@
  "bytearray__fn__prop_own__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_own, []), push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(method_call(%b, v_own, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3527,7 +3527,7 @@
  "bytearray__fn__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "%x: bytearray = method_call(%b, v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "bytearray__fn__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -3547,7 +3547,7 @@
  "bytearray__fn__prop_ref__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "method_call(method_call(%b, v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "bytearray__fn__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3617,7 +3617,7 @@
  "bytearray__fn__temp_accessor__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(call(mk_b, []), v, []), push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(method_call(call(mk_b, []), v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3632,7 +3632,7 @@
  "bytearray__fn__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -3652,7 +3652,7 @@
  "bytearray__fn__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(call(mk_b, [])._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3687,7 +3687,7 @@
  "bytearray__gen__borrow_method__recv_mut": [
   "ok",
   "",
-  "[2] method_call(method_call(*%b, v_m, []), push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(method_call(*%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values: [0] coerce(lit("
  ],
  "bytearray__gen__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3702,12 +3702,12 @@
  "bytearray__gen__global_name__decl_alias": [
   "ok",
   "",
-  "[1] %x = form_convert[borrow](*%G) [2] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] %x = form_convert[borrow](*%G) [2] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int"
  ],
  "bytearray__gen__global_name__decl_reassigned": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) [6] print(call(len "
+  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) ["
  ],
  "bytearray__gen__global_name__field_write": [
   "ok",
@@ -3722,7 +3722,7 @@
  "bytearray__gen__global_name__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%G, ->push_back, [coerce(lit(9) -> uint8)]) [2] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__global_name__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3737,12 +3737,12 @@
  "bytearray__gen__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> i"
  ],
  "bytearray__gen__local__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "bytearray__gen__local__field_write": [
   "ok",
@@ -3757,7 +3757,7 @@
  "bytearray__gen__local__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3767,12 +3767,12 @@
  "bytearray__gen__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__local_last__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) yield_values: [0] "
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "bytearray__gen__local_last__field_write": [
   "ok",
@@ -3787,7 +3787,7 @@
  "bytearray__gen__local_last__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, push_back, [coerce(lit(9) -> uint8)]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__local_last__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3797,12 +3797,12 @@
  "bytearray__gen__obj_field__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0"
+  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values"
  ],
  "bytearray__gen__obj_field__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] pr"
+  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%"
  ],
  "bytearray__gen__obj_field__field_write": [
   "ok",
@@ -3817,7 +3817,7 @@
  "bytearray__gen__obj_field__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%b._v [storage], push_back, [coerce(lit(9) -> uint8)]) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%b._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__obj_field__tuple_elem": [
   "reject:expr.tuple_literal",
@@ -3832,7 +3832,7 @@
  "bytearray__gen__own_call__decl_alias": [
   "ok",
   "",
-  "[1] frame_slot %x <- call(mk, []) [2] method_call(*%x, push_back, [coerce(lit(9) -> uint8)]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] frame_slot %x <- call(mk, []) [2] method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__own_call__decl_reassigned": [
   "reject:res.alias_bind",
@@ -3887,7 +3887,7 @@
  "bytearray__gen__param__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%pv, push_back, [coerce(lit(9) -> uint8)]) [2] print(call(len [tpy::__len__], [%pv]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) [2] print(call(len [tpy::__len__], [%pv]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "bytearray__gen__param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -3937,12 +3937,12 @@
  "bytearray__meth__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__meth__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]"
  ],
  "bytearray__meth__borrow_method__field_write": [
   "ok",
@@ -3957,7 +3957,7 @@
  "bytearray__meth__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "method_call(method_call(%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__meth__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -3972,12 +3972,12 @@
  "bytearray__meth__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "bytearray__meth__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__meth__closure_capture__field_write": [
   "ok",
@@ -3992,7 +3992,7 @@
  "bytearray__meth__closure_capture__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "bytearray__meth__closure_capture__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -4002,12 +4002,12 @@
  "bytearray__meth__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print("
  ],
  "bytearray__meth__ctor_rvalue__field_write": [
   "ok",
@@ -4072,7 +4072,7 @@
  "bytearray__meth__global_name__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%G method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%x: bytearray = *%G method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__meth__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -4092,7 +4092,7 @@
  "bytearray__meth__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "bytearray__meth__global_name__return_borrow": [
   "ok",
@@ -4107,12 +4107,12 @@
  "bytearray__meth__local__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__meth__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__meth__local__field_write": [
   "ok",
@@ -4127,7 +4127,7 @@
  "bytearray__meth__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "bytearray__meth__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -4137,12 +4137,12 @@
  "bytearray__meth__local_last__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = move(%s0) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = move(%s0) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__meth__local_last__field_write": [
   "ok",
@@ -4157,7 +4157,7 @@
  "bytearray__meth__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__local_last__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -4197,7 +4197,7 @@
  "bytearray__meth__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%o0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%x: bytearray = *%o0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "bytearray__meth__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -4217,7 +4217,7 @@
  "bytearray__meth__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "method_call(*%o0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "bytearray__meth__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -4227,7 +4227,7 @@
  "bytearray__meth__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%x: bytearray = *%pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "bytearray__meth__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -4247,7 +4247,7 @@
  "bytearray__meth__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "method_call(*%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "bytearray__meth__narrowed_opt_param__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -4257,12 +4257,12 @@
  "bytearray__meth__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%x: bytearray = %b._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "bytearray__meth__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len "
+  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw"
  ],
  "bytearray__meth__obj_field__field_write": [
   "ok",
@@ -4277,7 +4277,7 @@
  "bytearray__meth__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "method_call(%b._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "bytearray__meth__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4292,12 +4292,12 @@
  "bytearray__meth__own_call__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(mk, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__meth__own_call__field_write": [
   "ok",
@@ -4327,12 +4327,12 @@
  "bytearray__meth__param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%x: bytearray = %pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__meth__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__meth__param__field_write": [
   "ok",
@@ -4347,7 +4347,7 @@
  "bytearray__meth__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "bytearray__meth__param__return_borrow": [
   "ok",
@@ -4362,12 +4362,12 @@
  "bytearray__meth__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__meth__prop_own__field_write": [
   "ok",
@@ -4382,7 +4382,7 @@
  "bytearray__meth__prop_own__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_own, []), push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(method_call(%b, v_own, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4397,7 +4397,7 @@
  "bytearray__meth__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "%x: bytearray = method_call(%b, v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "bytearray__meth__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -4417,7 +4417,7 @@
  "bytearray__meth__prop_ref__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "method_call(method_call(%b, v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "bytearray__meth__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4487,7 +4487,7 @@
  "bytearray__meth__temp_accessor__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(call(mk_b, []), v, []), push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(method_call(call(mk_b, []), v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4502,7 +4502,7 @@
  "bytearray__meth__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
+  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -4522,7 +4522,7 @@
  "bytearray__meth__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], push_back, [coerce(lit(9) -> uint8)])"
+  "method_call(call(mk_b, [])._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4537,12 +4537,12 @@
  "bytearray__nested__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = method_call(%b, v_m, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, ["
  ],
  "bytearray__nested__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(cal"
+  "ptr_decl[ptr_addr] %x: bytearray = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]"
  ],
  "bytearray__nested__borrow_method__field_write": [
   "ok",
@@ -4557,7 +4557,7 @@
  "bytearray__nested__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
+  "method_call(method_call(%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4572,12 +4572,12 @@
  "bytearray__nested__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print("
  ],
  "bytearray__nested__ctor_rvalue__field_write": [
   "ok",
@@ -4642,7 +4642,7 @@
  "bytearray__nested__global_name__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%G method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = *%G method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -4662,7 +4662,7 @@
  "bytearray__nested__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
+  "method_call(*%G, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__global_name__return_borrow": [
   "ok",
@@ -4677,12 +4677,12 @@
  "bytearray__nested__local__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__nested__local__field_write": [
   "ok",
@@ -4697,7 +4697,7 @@
  "bytearray__nested__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__local__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -4707,12 +4707,12 @@
  "bytearray__nested__local_last__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %s0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "%x: bytearray = %s0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "ptr_decl[ptr_addr] %x: bytearray = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_"
  ],
  "bytearray__nested__local_last__field_write": [
   "ok",
@@ -4727,7 +4727,7 @@
  "bytearray__nested__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__local_last__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
@@ -4767,7 +4767,7 @@
  "bytearray__nested__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = *%o0 method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = *%o0 method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -4787,7 +4787,7 @@
  "bytearray__nested__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
+  "method_call(*%o0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__narrowed_opt__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -4827,12 +4827,12 @@
  "bytearray__nested__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %b._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = %b._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len "
+  "%x: bytearray = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw"
  ],
  "bytearray__nested__obj_field__field_write": [
   "ok",
@@ -4847,7 +4847,7 @@
  "bytearray__nested__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
+  "method_call(%b._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4862,12 +4862,12 @@
  "bytearray__nested__own_call__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "%x: bytearray = call(mk, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__own_call__field_write": [
   "ok",
@@ -4897,12 +4897,12 @@
  "bytearray__nested__param__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = %pv method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
+  "%x: bytearray = %pv method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
  ],
  "bytearray__nested__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__],"
+  "ptr_decl[ptr_addr] %x: bytearray = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(l"
  ],
  "bytearray__nested__param__field_write": [
   "ok",
@@ -4917,7 +4917,7 @@
  "bytearray__nested__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
+  "method_call(%pv, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
  ],
  "bytearray__nested__param__return_borrow": [
   "ok",
@@ -4932,12 +4932,12 @@
  "bytearray__nested__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "%x: bytearray = method_call(%b, v_own, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(*%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nes"
  ],
  "bytearray__nested__prop_own__field_write": [
   "ok",
@@ -4952,7 +4952,7 @@
  "bytearray__nested__prop_own__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_own, []), push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "method_call(method_call(%b, v_own, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -4967,7 +4967,7 @@
  "bytearray__nested__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = method_call(%b, v, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw]) call(nested_inner, [])"
+  "%x: bytearray = method_call(%b, v, []) method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.container_call_reassigned",
@@ -4987,7 +4987,7 @@
  "bytearray__nested__prop_ref__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v, []), push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw]) call(nested_inner, [])"
+  "method_call(method_call(%b, v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -5057,7 +5057,7 @@
  "bytearray__nested__temp_accessor__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(call(mk_b, []), v, []), push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "method_call(method_call(call(mk_b, []), v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",
@@ -5072,7 +5072,7 @@
  "bytearray__nested__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "%x: bytearray = call(mk_b, [])._v [storage] method_call(%x, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -5092,7 +5092,7 @@
  "bytearray__nested__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
+  "method_call(call(mk_b, [])._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'bytearray' is ret",

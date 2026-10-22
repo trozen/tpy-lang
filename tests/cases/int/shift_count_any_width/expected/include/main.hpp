@@ -15,7 +15,7 @@ struct Ctx;
 struct Bits;
 
 extern int64_t gk;
-extern int16_t gs;
+extern int32_t gs;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
@@ -104,7 +104,7 @@ struct __coro_async_fn {
     bool __cancel_pending;
     int8_t x;
     uint32_t k;
-    int8_t r;
+    int32_t r;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

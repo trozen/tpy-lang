@@ -28,7 +28,7 @@ from ..typesys import (
     default_emittable_at, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
-    BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
+    BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, FunctionInfo, TypeParamRef, unwrap_readonly,
     PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
@@ -1923,11 +1923,19 @@ class FunctionGenerator:
         commit_attempt()
         return init
 
+    def _final_is_constexpr(self, stmt: TpyVarDecl) -> bool:
+        """Sema's verdict (`runtime_finals`): a Final global is `inline
+        constexpr` unless its initializer runs at program start."""
+        return stmt.name not in self.ctx.analyzer.ctx.runtime_finals
+
     def gen_final_global_header(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate a Final global declaration in header file.
 
-        Constexpr-eligible types: inline constexpr T NAME = VALUE;
-        BigInt: extern const ::tpy::BigInt NAME;
+        A constant expression: inline constexpr T NAME = VALUE;
+        any other (BigInt, a tuple, a value computed through BigInt):
+        inline const T NAME = VALUE; -- in the header too, so it is
+        initialized before a class constant the header defines after it
+        reads it (inline variables initialize in their definition order).
 
         Special case: Final[str] uses std::string_view (string literals have
         static lifetime, constexpr requires literal type).
@@ -1938,26 +1946,10 @@ class FunctionGenerator:
         # Final[str] -> constexpr std::string_view (string literals are static)
         if is_str_type(var_type):
             cpp_type = "std::string_view"
-        if is_constexpr_eligible(var_type):
-            init_expr = self._gen_final_init_expr(stmt, var_type)
-            out.write(f"inline constexpr {cpp_type} {stmt.name} = {init_expr};\n")
-        else:
-            # BigInt and other non-constexpr types: extern const in header
-            out.write(f"extern const {cpp_type} {stmt.name};\n")
-
-    def gen_final_global_source(self, out: TextIO, stmt: TpyVarDecl) -> None:
-        """Generate a Final global definition in source file.
-
-        Only needed for non-constexpr types (BigInt). Constexpr types are
-        fully defined in the header via inline constexpr.
-        """
-        var_type = self._resolve_global_type(stmt)
-        if is_constexpr_eligible(var_type):
-            return  # Defined in header via inline constexpr
-        self.ctx.emit_declaration_echo(out, stmt.loc)
-        cpp_type = var_type.to_cpp()
         init_expr = self._gen_final_init_expr(stmt, var_type)
-        out.write(f"const {cpp_type} {stmt.name} = {init_expr};\n")
+        storage = ("inline constexpr" if self._final_is_constexpr(stmt)
+                   else "inline const")
+        out.write(f"{storage} {cpp_type} {stmt.name} = {init_expr};\n")
 
     def gen_module_init_decl(self, out: TextIO) -> None:
         """Generate module init function declaration in header."""

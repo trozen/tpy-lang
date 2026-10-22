@@ -197,7 +197,7 @@ inline RecListTaker::RecListTaker(std::vector<Rec>& rs) {
 //     b.append(98)
 //     self.n = len(b)
 inline BufTaker::BufTaker(::tpy::ByteArray& b) {
-    b.push_back(98);
+    ::tpy::bytearray_append(b, 98);
     this->n = ::tpy::__len__(b);
 }
 void __tpy_init();

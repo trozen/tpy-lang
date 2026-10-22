@@ -1,1 +1,1 @@
-TurboPython panic: range() would overflow on iteration
+TurboPython panic: uncaught tpy::OverflowError: range() would overflow on iteration

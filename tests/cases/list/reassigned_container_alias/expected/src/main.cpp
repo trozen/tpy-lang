@@ -115,7 +115,7 @@ void bytearrays(::tpy::ByteArray& a, ::tpy::ByteArray& b, bool go) {
     if (go) {
         x = &(b);
     }
-    x->push_back(122);
+    ::tpy::bytearray_append((*x), 122);
     std::cout << "bytearray" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }
 

@@ -81,7 +81,7 @@ def main() -> None:
     print(d.load())                               # 0
     e = Atomic(uint8(1))
     e += 1
-    print(~e.load())                              # 253: still a uint8
+    print(~e.load())                              # -3: ~ on a uint8 computes in the default int
     print("done")
 
 

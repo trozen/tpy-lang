@@ -36,6 +36,10 @@ void read_twins(const Twins& w) {
 //     nw = Narrow()
 //     n32: int32 = 5
 //     print("narrow:", nw[n32], nw.m(n32), nw.hits)  # tpyc: ok
+//     # receiver kind ranks before conversion cost: the mutating int8 variant
+//     # takes the narrowed key, in the subscript and the method form alike
+//     nk = NarrowKey()
+//     print("narrow key:", nk[n32], nk.m(n32), nk.hits)  # tpyc: ok
 //     # temporary: a temporary receiver is passed const the same way (a
 //     # subscript of a call is not lowered yet: subscript.record_getitem)
 //     print("temporary:", make_narrow().m(n32))  # tpyc: ok
@@ -57,6 +61,8 @@ void main() {
     Narrow nw = Narrow();
     int32_t n32 = 5;
     std::cout << "narrow:" << " " << static_cast<const Narrow&>(nw)[static_cast<int64_t>(n32)] << " " << static_cast<const Narrow&>(nw).m(static_cast<int64_t>(n32)) << " " << nw.hits << "\n" << ::tpy::check_signals;
+    NarrowKey nk = NarrowKey();
+    std::cout << "narrow key:" << " " << nk[::tpy::int_cast_check<int8_t>(n32)] << " " << nk.m(::tpy::int_cast_check<int8_t>(n32)) << " " << nk.hits << "\n" << ::tpy::check_signals;
     std::cout << "temporary:" << " " << static_cast<const Narrow&>(::tpyapp::main::make_narrow()).m(static_cast<int64_t>(n32)) << "\n" << ::tpy::check_signals;
     Twins w = Twins();
     int64_t n = 0;

@@ -13,8 +13,8 @@ namespace tpyapp::main {
 //     dst.append(v)
 //     dst.append(v + 1)
 void pack(::tpy::ByteArray& dst, const ::tpy::BigInt& v) {
-    dst.push_back((v).to_fixed_check<uint8_t>());
-    dst.push_back((((v) + (::tpy::BigInt(1)))).to_fixed_check<uint8_t>());
+    ::tpy::bytearray_append(dst, v);
+    ::tpy::bytearray_append(dst, ((v) + (::tpy::BigInt(1))));
 }
 
 // def borrow(src: bytearray) -> int:

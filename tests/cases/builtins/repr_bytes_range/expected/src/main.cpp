@@ -45,7 +45,7 @@ void section_bytes() {
 //     print("bytearray:", repr(bytearray(b"it's \"both\"")))  # tpyc: ok
 void section_bytearray() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("z", 1));
-    ba.push_back(3);
+    ::tpy::bytearray_append(ba, 3);
     std::cout << "bytearray:" << " " << ::tpy::repr_of(ba) << "\n" << ::tpy::check_signals;
     std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray()) << "\n" << ::tpy::check_signals;
     std::cout << "bytearray:" << " " << ::tpy::repr_of(::tpy::ByteArray(::tpy::bytes_literal("it's", 4))) << "\n" << ::tpy::check_signals;

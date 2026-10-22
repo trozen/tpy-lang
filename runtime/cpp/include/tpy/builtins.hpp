@@ -181,7 +181,7 @@ inline std::tuple<double, double> divmod_float(double a, double b) {
 }
 
 // divmod(fixed_int, fixed_int) -> tuple[T, T]  (Python floor division + mod)
-template<typename T>
+template<fixed_check_type T>
 std::tuple<T, T> divmod_fixed(T a, T b) {
     if (b == 0) raise_zero_division_error("integer division or modulo by zero");
     if constexpr (std::is_signed_v<T>) {
@@ -200,6 +200,12 @@ std::tuple<T, T> divmod_fixed(T a, T b) {
 // divmod(BigInt, BigInt) -> tuple[BigInt, BigInt]
 inline std::tuple<BigInt, BigInt> divmod_bigint(const BigInt& a, const BigInt& b) {
     return a.floor_divmod(b);
+}
+
+// An 8/16-bit divmod computes in the default int, which may be BigInt.
+template<typename T> requires std::is_same_v<T, BigInt>
+std::tuple<BigInt, BigInt> divmod_fixed(const T& a, const T& b) {
+    return divmod_bigint(a, b);
 }
 
 // 3-arg min/max: returns const& to avoid copies for expensive types (BigInt)

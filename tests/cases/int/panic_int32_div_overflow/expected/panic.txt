@@ -1,1 +1,1 @@
-TurboPython panic: integer overflow in division
+TurboPython panic: uncaught tpy::OverflowError: integer overflow in division

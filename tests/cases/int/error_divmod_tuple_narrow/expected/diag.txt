@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in variable 'q': a tuple element is int32, which uint8 does not hold every value of; convert the elements: (uint8(...), uint8(...))

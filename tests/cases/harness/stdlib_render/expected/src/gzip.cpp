@@ -94,7 +94,7 @@ GzipFile open(std::string_view filename) {
     ::tpy::ByteArray header = ::tpy::ByteArray(::tpy::bytes_literal("\x1f\x8b\x08\000", 4));
     ::tpystd::gzip::_put_u32le(header, static_cast<uint32_t>(::tpy::from_float_check<int64_t>(stamp)));
     header.push_back(xfl);
-    header.push_back(255);
+    ::tpy::bytearray_append(header, 255);
     ::tpy::Bytes body = ::tpystd::zlib::compress(data, compresslevel, ::tpy::neg_check<int32_t>(::tpystd::zlib::MAX_WBITS));
     ::tpy::ByteArray trailer = ::tpy::ByteArray();
     ::tpystd::gzip::_put_u32le(trailer, ::tpystd::zlib::crc32(data));

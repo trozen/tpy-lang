@@ -42,10 +42,21 @@ class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __getitem__(self, index: slice) -> bytes: ...
 
+    @dispatch
     @native("tpy::bytes_contains", function=True)
     @readonly
     @pure
     def __contains__(self, value: uint8) -> bool: ...
+    @dispatch
+    @native("tpy::bytes_contains", function=True)
+    @readonly
+    @pure
+    def __contains__(self, value: int32) -> bool: ...
+    @dispatch
+    @native("tpy::bytes_contains", function=True)
+    @readonly
+    @pure
+    def __contains__(self, value: int) -> bool: ...
 
     @cpp_template("{self} == {0}")
     @readonly

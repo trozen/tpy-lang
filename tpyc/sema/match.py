@@ -370,6 +370,17 @@ class MatchAnalyzer:
                 if subject_readonly and not self._capture_binds_by_value(ty):
                     ty = make_readonly(ty)
                     pattern_bindings[name] = ty
+                declared = ty
+                if not self.ctx.is_top_level:
+                    # A capture is one more binding of a local whose
+                    # bindings join (`case x: x += 1`), or its first.
+                    pend = self.stmts.pend
+                    if existing is None:
+                        ty, declared = pend.derived_binding(name, ty, stmt,
+                                                            loop_head=False)
+                    else:
+                        ty = pend.rebind(name, ty, None, stmt) or ty
+                        declared = ty
                 self.ctx.func.current_scope.define(name, ty)
                 scope = self.ctx.func.current_scope
                 pushed.append((name, scope, register_binder(
@@ -389,7 +400,7 @@ class MatchAnalyzer:
                 # binding is registered for resolution only.
                 if self.ctx.func.current_ns is not None:
                     self.ctx.func.current_ns.bind_capture(
-                        name, ty, frame_exempt=not needs_frame_field)
+                        name, declared, frame_exempt=not needs_frame_field)
 
             # Narrow subject variable for class patterns. For polymorphic
             # dispatch the fact lets the arm body resolve `subject.method()`

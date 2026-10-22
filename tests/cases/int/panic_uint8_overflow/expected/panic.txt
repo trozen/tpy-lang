@@ -1,1 +1,1 @@
-TurboPython panic: uint8 overflow in addition
+TurboPython panic: uncaught tpy::OverflowError: uint8 overflow: value out of range

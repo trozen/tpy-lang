@@ -750,7 +750,7 @@ void ref_sink_forms(P& s1, std::vector<int32_t>& l1, ::tpy::ByteArray& b1) {
     ::tpy::ByteArray __slot_3 = ::tpy::ByteArray(::tpy::bytes_literal("cd", 2));
     ::tpy::ByteArray* z = &__slot_3;
     z = &(b1);
-    z->push_back(9);
+    ::tpy::bytearray_append((*z), 9);
     std::cout << "ref_sink" << " " << "bytearray_ctor" << " " << ::tpy::__len__(b1) << "\n" << ::tpy::check_signals;
 }
 
@@ -1155,7 +1155,7 @@ void owning_property_kinds(::tpy::ordered_map<std::string, int32_t>& d1, ::tpy::
     ::tpy::ByteArray __slot_4 = k.ba_own();
     ::tpy::ByteArray* b = &__slot_4;
     b = &(b1);
-    b->push_back(9);
+    ::tpy::bytearray_append((*b), 9);
     std::cout << "prop_own" << " " << "bytearray" << " " << ::tpy::__len__(b1) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::box::Box<P> __slot_5 = k.g_own();
     ::tpystd::tplib::box::Box<P>* g = &__slot_5;

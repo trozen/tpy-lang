@@ -34,6 +34,35 @@ class Narrow:
 
     @dispatch
     @readonly(False)
+    def __getitem__(self, k: bool) -> int32:
+        self.hits += 1
+        return 8
+
+    @dispatch
+    @readonly
+    def __getitem__(self, k: int64) -> int32:
+        return 64
+
+    @dispatch
+    @readonly(False)
+    def m(self, k: bool) -> int32:
+        self.hits += 1
+        return 8
+
+    @dispatch
+    @readonly
+    def m(self, k: int64) -> int32:
+        return 64
+
+
+class NarrowKey:
+    hits: int32
+
+    def __init__(self) -> None:
+        self.hits = 0
+
+    @dispatch
+    @readonly(False)
     def __getitem__(self, k: int8) -> int32:
         self.hits += 1
         return 8
@@ -98,6 +127,10 @@ def main() -> None:
     nw = Narrow()
     n32: int32 = 5
     print("narrow:", nw[n32], nw.m(n32), nw.hits)  # tpyc: ok
+    # receiver kind ranks before conversion cost: the mutating int8 variant
+    # takes the narrowed key, in the subscript and the method form alike
+    nk = NarrowKey()
+    print("narrow key:", nk[n32], nk.m(n32), nk.hits)  # tpyc: ok
     # temporary: a temporary receiver is passed const the same way (a
     # subscript of a call is not lowered yet: subscript.record_getitem)
     print("temporary:", make_narrow().m(n32))  # tpyc: ok

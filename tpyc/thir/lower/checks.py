@@ -3957,8 +3957,7 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # through `expand_fi_template`; only a
         # fully-substituted positional-only result expands with no
         # receiver/substitution context (the scalar-ctor cell's rule).
-        tmpl = (expand_fi_template(fi, e.type_args or e.inferred_type_args)
-                if has_targs else fi.cpp_template)
+        tmpl = expand_fi_template(fi, e.type_args or e.inferred_type_args)
         if _positional_only_template(tmpl, len(e.args)):
             return ("template", tmpl)
         note_detail("call.template_shape")
@@ -14400,8 +14399,6 @@ def _scalar_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     a discarded probe call renders the bare statement)."""
     if not (fi.native_function or fi.cpp_template):
         return note_detail("method.scalar.fi_kind")
-    if fi.cpp_template is not None and "{cpp}" in fi.cpp_template:
-        return note_detail("method.scalar.cpp_ret_substitution")
     ret = analyzer.get_expr_type(e)
     if (_value_tuple(ret, analyzer) is not None
             and (storage_ret_ok or stmt_position)):

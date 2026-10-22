@@ -19,7 +19,7 @@ inline constexpr float HALF = 0.5f;
 // NEG: Final[int32] = int32(-1)
 inline constexpr int32_t NEG = -1;
 // WIDE: Final[int] = int(SMALL)
-extern const ::tpy::BigInt WIDE;
+inline const ::tpy::BigInt WIDE = ::tpy::BigInt(static_cast<int64_t>(SMALL));
 // DBL: Final[float] = float(SMALL)
 inline constexpr double DBL = static_cast<double>(SMALL);
 // FLAG: Final[bool] = bool(1)

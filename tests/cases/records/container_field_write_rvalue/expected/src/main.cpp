@@ -43,7 +43,7 @@ void main() {
     std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
     b.own_call();
     std::cout << ::tpy::__len__(b.ba) << " " << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
-    b.ba.push_back(33);
+    ::tpy::bytearray_append(b.ba, 33);
     std::cout << ::tpy::__len__(b.ba) << "\n" << ::tpy::check_signals;
     b.repeat();
     std::cout << ::tpy::__getitem__(b.a, 0) << "\n" << ::tpy::check_signals;
