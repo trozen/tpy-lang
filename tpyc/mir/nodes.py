@@ -9,12 +9,14 @@ from enum import Enum, auto
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
 from ..thir.scalar_leaves import MIRClass
-from ..typesys import TpyType
+from ..typesys import Representation, TpyType
 from .call_contract import MIRCallSummary, MIRGlobalId, MIRParameterBinding, path_projections
 from .shapes import (
     MIRWalk, Projection, object_prefix, walk, walk_to,
 )
-from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError, Records, loan_field
+from .value import (
+    NO_FIELDS, MIRField, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError, RecordFields, loan_field,
+)
 
 
 @dataclass(frozen=True)
@@ -127,12 +129,12 @@ class MIRPlace:
     projections: tuple[Projection, ...] = ()
 
 
-def place_walk(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: Records) -> MIRWalk:
+def place_walk(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRWalk:
     """`place`'s projections stepped from its root slot's shape."""
     return walk(slots[place.root].shape, place.projections, records)
 
 
-def place_shape(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: Records) -> MIRShape:
+def place_shape(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRShape:
     """The value `place` denotes."""
     return walk_to(slots[place.root].shape, place.projections, records)
 
@@ -246,8 +248,10 @@ class MIRConstruct:
     temporary storage the call hands over, or a view member storing the loan
     a lending holder holds. Into a container layout it is a literal: one
     operand per element (a dict's keys and values alternate), each by its
-    member's form."""
-    fields: tuple[MIRSlotId, ...]
+    member's form. A receiver member's literal at entry may take a leaf
+    element's constant, as a composed record member's field does
+    (`MIRMemberInit`): there are no slots before the CFG to hold it."""
+    fields: tuple[MIRSlotId | MIRConstant, ...]
     # Some owned-leaf member is copied, and that copy can exit by exception
     # (`TypeDef.copy_may_raise`); a container literal allocates, so always.
     may_raise: bool = False
@@ -535,7 +539,7 @@ class MIRMemberInits:
 class MIRMemberInit:
     """How one member of the receiver is initialized at entry, in layout order.
     A container member is copied from a container parameter, or MOVEd from
-    the literal its `MIRConstruct` builds over parameters; a record member
+    the literal its `MIRConstruct` builds over parameters and constants; a record member
     built by its own constructor is MOVEd from its `MIRMemberInits`. An
     Optional record member is left empty (`MIROptionalConstruct()`), COPYs
     the payload an Optional record parameter lends, or MOVEs a payload its
@@ -565,7 +569,7 @@ def member_init_operands(members: tuple[MIRMemberInit, ...]) -> tuple[MIRSlotId,
             case MIRSlotId():
                 operands.append(member.source)
             case MIRConstruct(fields=fields):
-                operands.extend(fields)
+                operands.extend(f for f in fields if isinstance(f, MIRSlotId))
             case MIRMemberInits(fields=nested):
                 operands.extend(member_init_operands(nested))
     return tuple(operands)
@@ -592,11 +596,21 @@ class MIRFunction:
     # How each parameter slot is bound (`call_contract.parameter_binding`),
     # receiver first: the lowering's, which a summary publishes.
     parameter_bindings: tuple[MIRParameterBinding, ...] = ()
+    # The declared fields of every record the body may name
+    # (`MIRDefinitions.fields`): what field membership reads.
+    record_fields: RecordFields = field(default=NO_FIELDS, compare=False)
+    # How the result is returned, decided once by the lowering: as the
+    # body's signature publishes it, a body with none as its declared type
+    # does. What the validator checks the result against.
+    return_representation: Representation | None = None
+    # The container types whose definitions the body registered beside its
+    # record layouts: what container storage's definition check reads.
+    containers: tuple[TpyType, ...] = ()
 
     @cached_property
-    def record_layouts(self) -> 'Mapping[TpyType, MIRRecordLayout]':
-        """The body's record layouts by record type."""
-        return MappingProxyType({r.type: r for r in self.records})
+    def record_layouts(self) -> MIRRecords:
+        """The body's record layouts by record type, with the declared fields."""
+        return MIRRecords(MappingProxyType({r.type: r for r in self.records}), self.record_fields, self.containers)
 
     @cached_property
     def slot_bindings(self) -> 'Mapping[MIRSlotId, MIRParameterBinding]':

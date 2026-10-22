@@ -427,7 +427,7 @@ void copy_count(const std::vector<int32_t>& src, std::vector<int32_t>& out) {
 
 // # free function: owned container local, Span slice, len
 // def own() -> int32:  # tpyc: mir(covered)
-//     xs = [1, 2, 3]  # tpyc: mir_owned(xs)
+//     xs = [1, 2, 3]  # tpyc: mir_borrowed(xs) mir_borrows(xs, xs)
 //     s = xs[1:3]  # tpyc: mir_borrows(s, xs[elements])
 //     return s[0] + len(xs)
 int32_t own() {
@@ -654,7 +654,7 @@ int32_t holds(const std::vector<std::string_view>& vs) {
 }
 
 // # comprehension: a frame, kept refused
-// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported expression$/)
+// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported record initializer$/)
 //     return [x + 1 for x in xs]
 std::vector<int32_t> comp(const std::vector<int32_t>& xs) {
     return ({
@@ -685,8 +685,37 @@ int32_t nested(const std::vector<std::vector<int32_t>>& xss) {
     return ::tpy::__getitem__(::tpy::__getitem__(xss, 0), 0);
 }
 
-// # a caller's construct of a record with a container member is the constructor body's own
-// def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
+// def rack_items(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = r.items[0]
+//     if flag:
+//         # with flag true `p` would dangle: the old buffer is freed
+//         r.items = [Point(3)]  # tpyc: warning(/Mutation of 'r.items' while borrowed/)
+//     return p.x
+int32_t rack_items(Rack& r, bool flag) {
+    Point& p = ::tpy::__getitem__(r.items, 0);
+    if (flag) {
+        r.items = {Point(3)};
+    }
+    return p.x;
+}
+
+// def rack_rec(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+//     p = r.rec
+//     if flag:
+//         # with flag true `p` would alias the replaced field, not keep the old Point
+//         r.rec = Point(3)  # tpyc: warning(/Mutation of 'r.rec' while borrowed/)
+//     return p.x
+int32_t rack_rec(Rack& r, bool flag) {
+    Point& p = r.rec;
+    if (flag) {
+        r.rec = Point(3);
+    }
+    return p.x;
+}
+
+// # kept refusal: a list literal passed as a Span argument (`b.plus_span([3, 4])`) has no
+// # container place for the view to borrow
+// def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a place$/)
 //     b = Bag()
 //     b.push(1)
 //     b.push(2)
@@ -782,6 +811,12 @@ int32_t nested(const std::vector<std::vector<int32_t>>& xss) {
 //     # of the holders' scope (BUGS.md#borrow-warning-not-last-use-aware)
 //     extend_it(xs, ys)  # tpyc: warning(/borrowed container .xs./)
 //     print("extend_it:", len(xs))
+//     sh = Shelf([1])
+//     sh.refill([4, 5])  # the caller's arguments never overlap
+//     print("refill:", len(sh.items))
+//     rk = Rack()
+//     print("rack_items:", rack_items(rk, False))
+//     print("rack_rec:", rack_rec(rk, False))
 void main() {
     Bag b = Bag();
     b.push(1);
@@ -870,6 +905,12 @@ void main() {
     std::vector<int32_t> ys = {9};
     ::tpyapp::main::extend_it(xs, ys);
     std::cout << "extend_it:" << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+    Shelf sh = Shelf({1});
+    sh.refill({4, 5});
+    std::cout << "refill:" << " " << ::tpy::__len__(sh.items) << "\n" << ::tpy::check_signals;
+    Rack rk = Rack();
+    std::cout << "rack_items:" << " " << ::tpyapp::main::rack_items(rk, false) << "\n" << ::tpy::check_signals;
+    std::cout << "rack_rec:" << " " << ::tpyapp::main::rack_rec(rk, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

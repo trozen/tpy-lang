@@ -1952,9 +1952,11 @@ stubs, constructor definitions and the validator, which checks each
 parameter slot against its binding through the same derivation,
 `parameter_contract_problem`), and calls and constructors
 bind arguments through one ladder (`_Lowering.argument`); a call's write,
-return and transfer paths are walked by one predicate,
-`call_contract.call_path_problem`, which the lowering and the validator
-share. Fragments are built bottom-up and spliced
+return and transfer paths are walked once by the summary's contract check
+over the declared fields, and the records they cross
+(`call_contract.crossed_records`) are registered by the lowering and
+checked by the validator to have a layout in the caller's body
+("call path record has no layout"). Fragments are built bottom-up and spliced
 into their parent; a statement list is spliced into the scope it runs in, and
 a statement after one with no open exit is checked but not built. A
 fragment's region is a dissolved handle whose parent is the region it is

@@ -1,13 +1,13 @@
 """Immutable certificates for the bounded call interface."""
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterator, Mapping
 from dataclasses import dataclass, replace
 from enum import Enum, auto
 
 from ..thir.nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunction, THIRFunctionIdentity,
-    THIRNativeContainer, THIRParam, THIRResolvedCallee, THIRStubCallee, THIRStubContract, THIRStubIdentity,
-    declared_param_type, effective_params,
+    THIRParam, THIRResolvedCallee, THIRStubCallee, THIRStubContract, THIRStubIdentity,
+    effective_params,
 )
 from ..thir.scalar_leaves import (
     MIRClass, binds_cursor, container_element, container_view, holds_loan, modeled_members, native_container_subject,
@@ -16,24 +16,44 @@ from ..thir.scalar_leaves import (
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
-    NominalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
+    NominalType, OwnType, Representation, TpyType, VoidType, is_owned_leaf,
     is_protocol_type, passing_representation, return_representation, unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRWalk, Projection, field_member, object_prefix, store_problem,
+    MIRContainerElements, MIRContainerStructure, MIRWalk, Projection, object_prefix, store_problem,
     walk,
 )
 from .value import (
-    AGGREGATE_CLASSES, CONTAINER_CLASSES, WRAPPER_CLASSES, Declared, MIRField, MIRFieldId, MIRHolding,
-    MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, Passing, Records, container_members,
-    fact_access_problem, fact_shape, handed_type, holding_of, laid_value, layout_fact, lent_record, loan_access,
-    shape_problem, thir_member, value_shape,
+    AGGREGATE_CLASSES, WRAPPER_CLASSES, Declared, MIRField, MIRFieldId, MIRHolding,
+    MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, MIRRecords, Passing, admission_problem, lent_shape_problem,
+    handed_type, holding_of, laid_value, layout_fact, lent_record, loan_access, shape_problem,
+    subject_class, value_shape,
 )
 
 # The passings at which a parameter borrows an owned leaf the caller keeps,
 # and those at which the callee receives its own copy.
 BORROWING_PASSINGS = frozenset({ParamPassing.CONST_REF, ParamPassing.VIEW})
 OWNING_PASSINGS = frozenset({ParamPassing.VALUE, ParamPassing.OWN})
+
+
+# MIR's types are bare: which position borrows is its passing or its
+# published return representation. THIR still spells a borrowed parameter
+# or result `Ref[...]`; each node kind's types are read through one
+# accessor, which strips it.
+def param_type(p: THIRParam) -> TpyType:
+    return unwrap_ref_type(p.type)
+
+
+def signature_params(signature: THIRCallableSignature) -> tuple[TpyType, ...]:
+    return tuple(map(unwrap_ref_type, signature.param_types))
+
+
+def signature_result(signature: THIRCallableSignature) -> TpyType:
+    return unwrap_ref_type(signature.return_type)
+
+
+def body_result(fn: THIRFunction) -> TpyType:
+    return unwrap_ref_type(fn.return_type)
 
 
 @dataclass(frozen=True)
@@ -204,7 +224,7 @@ def region_view(typ: TpyType) -> bool:
     """A container view MIR holds as the elements region it views: one
     whose stub declares an element a cursor binds (a Span, a dict keys or
     values view, a varargs pack). An items view is only a call's result."""
-    bare = unwrap_readonly(unwrap_ref_type(typ))
+    bare = unwrap_readonly(typ)
     return isinstance(bare, NominalType) and container_view(bare) and binds_cursor(bare)
 
 
@@ -219,51 +239,43 @@ def _parameter_class(typ: TpyType) -> tuple[bool, MIRClass | None]:
     """Whether a parameter of type `typ` is a protocol parameter, and the
     value class of its subject (None for a protocol, or a type MIR does not
     model)."""
-    if is_protocol_type(unwrap_readonly(unwrap_ref_type(typ))):
+    if is_protocol_type(unwrap_readonly(typ)):
         return True, None
-    return False, value_class(native_container_subject(typ))
+    return False, subject_class(typ)
 
 
 def parameter_binding(p: THIRParam, context: BindingContext = FUNCTION) -> MIRParameterBinding | str:
     """How a callee binds parameter `p` in `context` -- a body's parameter
     or receiver, a summary's, a constructor's, a stub's -- by the one
-    derivation (`derived_binding`) from the value THIR's one fact lays out
-    (`layout_fact`, `laid_value`; a container's fact read at its type,
-    `container_fact_problem`), checked by the contract
-    (`parameter_contract_problem`), the fact's access checked, never read
-    (`fact_access_problem`). Else the reason; what a stub takes is its
-    caller's to check (`_stub_binding`)."""
+    derivation (`derived_binding`) from its declared type, its passing and
+    the wrapper THIR's one layout fact lays out (`layout_fact`,
+    `laid_value`), checked by the contract (`parameter_contract_problem`).
+    Else the reason; what a stub takes is its caller's to check
+    (`_stub_binding`)."""
     passing = p.passing
     if not isinstance(passing, ParamPassing):
         return "unpublished parameter passing"
-    _, cls = _parameter_class(p.type)
-    container = p.native_container
-    fact = layout_fact(p, others=("native_container",))
-    laid = fact if fact is None or isinstance(fact, str) else laid_value(p.type, fact)
+    declared = param_type(p)
+    fact = layout_fact(p)
+    laid = fact if fact is None or isinstance(fact, str) else laid_value(declared, fact)
     if isinstance(laid, str):
         return laid
-    if container is not None and (problem := container_fact_problem(container, p.type)) is not None:
-        return problem
-    if container is not None and cls not in CONTAINER_CLASSES:
-        return "conflicting layout facts"
-    binding = derived_binding(p.type, passing, laid, context)
+    binding = derived_binding(declared, passing, laid, context)
     if isinstance(binding, str):
         return binding
-    stated = container if container is not None else laid
     return ((not binding.protocol
-             and shape_problem(binding.value, p.type, representation=passing_representation(passing)))
-            or fact_access_problem(binding.cls, None if stated is None else stated.readonly, binding.readonly)
+             and shape_problem(binding.value, declared, representation=passing_representation(passing)))
             or binding)
 
 
 def bound_params(fn: THIRFunction) -> tuple[THIRParam, ...] | None:
     """The parameters callers of `fn` bind (`effective_params`: a method's
     receiver first), at the types its signature declares (an explicit
-    `@readonly` body reads `readonly[P]`, callers bind `Ref[P]`); None if
-    it declares no others."""
+    `@readonly` body reads `readonly[P]`, callers bind `P`); None if it
+    declares no others."""
     params = effective_params(fn)
-    types = fn.resolved_callee.signature.param_types if fn.resolved_callee is not None else None
-    if types is None or tuple(map(declared_param_type, types)) != tuple(declared_param_type(p.type) for p in params):
+    types = signature_params(fn.resolved_callee.signature) if fn.resolved_callee is not None else None
+    if types is None or tuple(map(unwrap_readonly, types)) != tuple(unwrap_readonly(param_type(p)) for p in params):
         return None
     return tuple(replace(p, type=t) for p, t in zip(params, types))
 
@@ -271,21 +283,20 @@ def bound_params(fn: THIRFunction) -> tuple[THIRParam, ...] | None:
 def derived_binding(declared: TpyType, passing: ParamPassing, laid: MIRShape | None,
                     context: BindingContext = FUNCTION) -> MIRParameterBinding | str:
     """The one derivation of a binding from its declared type, passing,
-    context and the value a fact lays out (`laid`: a lent record, a
-    wrapper -- THIR's, or the one a binding holds; of the declared type's
-    class); else the reason. The class is the subject type's (a protocol
+    context and the wrapper a fact lays out (`laid`: THIR's, or the one a
+    binding holds; of the declared type's class); else the reason. The class is the subject type's (a protocol
     parameter has none); passed by value the callee's own storage
     (`parameter_storage`), private to it when handed over outside a
     constructor; else the caller's loan at the access its source gives
     (`loan_access`: a stub's declaration, else its passing), an Optional
-    record's its payload's. A fact lays out only what the binding lends or
-    wraps (`takes_layout`). The passing is its type's (`_passing_problem`,
+    record's its payload's. A fact lays out only a wrapper (`takes_layout`);
+    a record or container is admitted by its type (`admission_problem`). The passing is its type's (`_passing_problem`,
     checked first: it decides the refusal), the holding one the class
     takes (`_holding_problem`).
     Outside a stub the binding is a function's or a constructor's: no
-    protocol parameter, no scalar element handed over, a record handed
-    over only as exactly `Own[R]` at OWN (`R&&`; a value-type record is
-    passed by value). What the value is checked against is the contract's
+    protocol parameter, no scalar element handed over, a record or
+    container handed over only as exactly `Own[T]` at OWN (`T&&`; a
+    value-type record is passed by value). What the value is checked against is the contract's
     (`parameter_contract_problem`)."""
     protocol, cls = _parameter_class(declared)
     if cls is None and not protocol:
@@ -299,91 +310,25 @@ def derived_binding(declared: TpyType, passing: ParamPassing, laid: MIRShape | N
     lent = cls in AGGREGATE_CLASSES and not storage
     if (problem := _passing_problem(declared, passing, readonly if lent else None)) is not None:
         return problem
-    # A fact lays out exactly what the binding lends or wraps.
-    if (laid is not None) is not takes_layout(cls, storage):
+    # A fact lays out exactly a wrapper.
+    if (laid is not None) is not takes_layout(cls):
         return "conflicting layout facts" if laid is not None else "unsupported parameter type"
     if (problem := _holding_problem(cls, declared, passing, storage, handed, laid)) is not None:
         return problem
     subject = native_container_subject(declared)
     if protocol:
         value: MIRShape | MIRProtocolParameter | str = MIRProtocolParameter(readonly)
-    elif laid is not None and cls is MIRClass.RECORD:
-        # The record the binding lends, at the binding's access.
-        value = value_shape(laid.type, cls, access=readonly, role=MIRRole.LOAN)
     elif laid is not None:
         value = laid
-    elif cls in CONTAINER_CLASSES and isinstance(members := container_members(subject, readonly), str):
-        return members
+    elif (problem := admission_problem(subject, cls)) is not None:
+        return problem
     else:
         value = value_shape(subject, cls, access=readonly, role=MIRRole.STORAGE if storage else MIRRole.LOAN)
-    if not stub and (protocol or handed and (cls is MIRClass.LEAF or cls is MIRClass.RECORD and not (
+    # An aggregate is handed over as exactly `Own[T]` at OWN (`T&&`).
+    if not stub and (protocol or handed and (cls is MIRClass.LEAF or cls in AGGREGATE_CLASSES and not (
             passing is ParamPassing.OWN and isinstance(declared, OwnType) and declared.wrapped == value.type))):
         return "unsupported parameter type"
     return MIRParameterBinding(declared, value, passing, handed and context is not CONSTRUCTOR)
-
-
-def function_binding(p: THIRParam, context: MIRBindingContext = FUNCTION) -> MIRParameterBinding | str:
-    """How a function body or a constructor's definition binds `p`: its one
-    binding, of THIR's facts."""
-    binding = parameter_binding(p, context)
-    return binding if isinstance(binding, str) else published_problem(p) or binding
-
-
-def published_problem(p: THIRParam) -> str | None:
-    """What a body's parameter `p` needs of THIR's facts beyond their form
-    (`parameter_binding`; a stub publishes none): a container's present, of
-    the element its type derives (`native_container_problem`); a container
-    view's present."""
-    _, cls = _parameter_class(p.type)
-    subject = native_container_subject(p.type)
-    if cls is MIRClass.CONTAINER:
-        return native_container_problem(p.native_container, subject)
-    if cls is MIRClass.CONTAINER_VIEW and p.native_container is None:
-        # As for a container: members MIR does not model are refused as such.
-        members = container_members(subject, False)
-        return members if isinstance(members, str) else "missing native container fact"
-    return None
-
-
-def container_read_problem(container: TpyType, readonly: object, typ: TpyType) -> str | None:
-    """A container (a fact, or a borrowed container binding) read at `typ`:
-    of exactly its container, never with more access than `typ` grants."""
-    bare = native_container_subject(typ)
-    if not (isinstance(bare, NominalType) and container == bare and type(readonly) is bool
-            and (not isinstance(unwrap_ref_type(typ), ReadonlyType) or readonly)):
-        return "invalid native container fact"
-    return None
-
-
-def container_fact_problem(fact: object, typ: TpyType) -> str | None:
-    """A container fact (a container's or a container view's) for a value
-    held at `typ`: one, read at `typ` (`container_read_problem`)."""
-    if not isinstance(fact, THIRNativeContainer):
-        return "invalid native container fact"
-    return container_read_problem(fact.type, fact.readonly, typ)
-
-
-def native_container_problem(fact: THIRNativeContainer | None, typ: TpyType) -> str | None:
-    """THIR's fact for a native container held at `typ`, of a checked form
-    (`container_fact_problem`): present (THIR declines one for members MIR
-    does not model -- their refusal -- or cannot state, as
-    `list[readonly[int32]]`), its element the member the type derives
-    (`container_members`; a record element at the container's access)."""
-    bare = native_container_subject(typ)
-    if fact is not None and not native_container_type(bare):
-        return "unsupported native container type"
-    members = container_members(bare, False)
-    if isinstance(members, str):
-        return members
-    if fact is None:
-        return "missing native container fact"
-    # THIR states a record element as a pointer at the container's access, any other by its type.
-    element, expected = thir_member(fact.element), members[0]
-    record = element.cls is MIRClass.RECORD
-    if not (element.type == expected.type and record is (expected.cls is MIRClass.RECORD)
-            and (not record or element.is_pointer and element.readonly is fact.readonly)):
-        return "unsupported native container element"
-    return None
 
 
 def _holding_problem(cls: MIRClass | None, typ: TpyType, passing: ParamPassing, storage: bool, handed: bool,
@@ -412,10 +357,10 @@ def _holding_problem(cls: MIRClass | None, typ: TpyType, passing: ParamPassing, 
     return None
 
 
-def takes_layout(cls: MIRClass | None, storage: bool) -> bool:
+def takes_layout(cls: MIRClass | None) -> bool:
     """Whether a binding of class `cls` holds a value a fact lays out: a
-    wrapper, or a record it lends (one handed over is its own storage)."""
-    return cls in WRAPPER_CLASSES or cls is MIRClass.RECORD and not storage
+    wrapper, whose per-member forms its type does not state."""
+    return cls in WRAPPER_CLASSES
 
 
 def parameter_contract_problem(binding: object, context: BindingContext = FUNCTION) -> str | None:
@@ -436,7 +381,7 @@ def parameter_contract_problem(binding: object, context: BindingContext = FUNCTI
     if not binding.protocol and (problem := shape_problem(
             value, declared, representation=passing_representation(passing))) is not None:
         return problem
-    laid = value if takes_layout(binding.cls, binding.storage) else None
+    laid = value if takes_layout(binding.cls) else None
     derived = derived_binding(declared, passing, laid, context)
     if isinstance(derived, str):
         return derived
@@ -490,52 +435,58 @@ class MIRCallSummary:
 
 
 def call_result(callee: THIRResolvedCallee | THIRStubCallee | None, receiver_readonly: bool | None, *,
-                lends: bool = False, declared: TpyType | None = None) -> THIRBorrowedRecord | None:
+                lends: bool = False, declared: TpyType | None = None,
+                representation: Representation | None = None) -> THIRBorrowedRecord | None:
     """What one call of `callee` returns borrowed, its receiver at access
     `receiver_readonly` -- or, None, the access the signature publishes,
     no receiver adjusting it (the body's `MIRFunction.borrowed_result` and
     its callers' summaries) -- the one result path, the callee's kind an input.
+    Whether the result borrows is its `representation`: a body's own
+    lowering passes the one it decided (`MIRFunction.return_representation`),
+    any other caller reads the signature's.
     A body THIR resolved no callee for (an overload) is a user callee
-    declaring `declared`, with no borrowed fact and no receiver it follows:
-    a user callee's borrowed record (THIR's fact); a view (`view_result`);
-    a method stub's record returned by reference (`method_record_result`);
-    a user callee's container returned by reference (`container_result`);
+    declaring `declared`, with no receiver it follows: a view
+    (`view_result`); a record or container returned by reference, a user
+    callee's or a method stub's (`aggregate_result`);
     a readonly borrow of a stub's owned-leaf result when the stub lends it
     arguments (`lends`). A result borrowing the receiver takes the
-    receiver's access too: a method stub's view or record result, whatever
-    access the stub binds the receiver at (an `@auto_readonly` pure clone
-    binds it mutably), and a user callee's result following its receiver
+    receiver's access too: a method stub's view or aggregate result,
+    whatever access the stub binds the receiver at (an `@auto_readonly` pure
+    clone binds it mutably; an aggregate is readonly too where the stub
+    binds the receiver readonly), and a user callee's result following its receiver
     (`@auto_readonly`: C++ picks the clone by the receiver's constness).
     None for a fresh result."""
     signature = callee.signature if callee is not None else None
-    typ = signature.return_type if signature is not None else declared
+    typ = signature_result(signature) if signature is not None else declared
+    if representation is None and signature is not None:
+        representation = signature.return_representation
     stub = isinstance(callee, THIRStubCallee)
     follows = signature is not None and receiver_readonly is not None and (
         callee.receiver if stub else signature.result_follows_receiver)
     receiver = bool(follows and receiver_readonly)
-    if not stub and signature is not None and (record := signature.borrowed_result) is not None:
-        if not follows or view_leaf(record.type):
-            return record
-        return THIRBorrowedRecord(record.type, loan_access(typ, value_class(record.type), Declared(receiver)))
-    if (view := view_result(typ, receiver)) is not None:
+    if (view := view_result(typ, representation, receiver)) is not None:
         return view
-    if not stub:
-        return container_result(typ, receiver)
-    if (record := method_record_result(callee, receiver)) is not None:
-        return record
+    # A method stub binds its receiver at its declared access, which an
+    # aggregate it returns by reference takes too. A receiverless stub's
+    # reference result lends from no receiver MIR binds: it derives none.
+    if (not stub or callee.receiver) and (aggregate := aggregate_result(
+            typ, representation, receiver or stub and callee.readonly[0])) is not None:
+        return aggregate
     owned = owned_value_type(typ)
-    if owned is None or not lends:
+    if not stub or owned is None or not lends:
         return None
     return THIRBorrowedRecord(owned, loan_access(owned, MIRClass.OWNED_LEAF, None))
 
 
-def view_result(typ: TpyType, receiver_readonly: bool = False) -> THIRBorrowedRecord | None:
+def view_result(typ: TpyType, representation: Representation | None,
+                receiver_readonly: bool = False) -> THIRBorrowedRecord | None:
     """The holder a view-returning callee hands its caller: a borrow typed
-    by the view, returned as a VIEW -- a view leaf (`view_leaf`, readonly)
-    or a container view whose members MIR models (`modeled_members`;
-    readonly when its element argument is, or when it views a receiver
-    bound readonly, `receiver_readonly`). None for any other result."""
-    if return_representation(typ) is not Representation.VIEW:
+    by the view, returned as a VIEW (its published `representation`) -- a
+    view leaf (`view_leaf`, readonly) or a container view whose members
+    MIR models (`modeled_members`; readonly when its element argument is,
+    or when it views a receiver bound readonly, `receiver_readonly`).
+    None for any other result."""
+    if representation is not Representation.VIEW:
         return None
     if view_leaf(typ):
         return THIRBorrowedRecord(typ, loan_access(typ, MIRClass.VIEW, None))
@@ -544,29 +495,20 @@ def view_result(typ: TpyType, receiver_readonly: bool = False) -> THIRBorrowedRe
     return None
 
 
-def method_record_result(callee: THIRStubCallee, place_readonly: bool = False) -> THIRBorrowedRecord | None:
-    """The element a method stub returns by reference (`setdefault` on a
-    dict of records): a borrow of its receiver's storage, at the access the
-    receiver is bound at -- its declared one, readonly too at a readonly
-    receiver place (`place_readonly`). None for any other result."""
-    typ = callee.signature.return_type
-    if not callee.receiver or return_representation(typ) is not Representation.REFERENCE:
+def aggregate_result(typ: TpyType, representation: Representation | None,
+                     receiver_readonly: bool = False) -> THIRBorrowedRecord | None:
+    """The borrow a record or native container returned by reference (its
+    published `representation`) hands its caller, one derivation for both:
+    of its declared type, readonly when the type is or it borrows a
+    receiver bound readonly (`receiver_readonly`); None for any other
+    result (an `Own[...]` aggregate returns storage) and for an aggregate
+    MIR does not model (`admission_problem`)."""
+    bare = unwrap_readonly(typ)
+    cls = value_class(bare)
+    if (representation is not Representation.REFERENCE or cls not in AGGREGATE_CLASSES
+            or admission_problem(bare, cls) is not None):
         return None
-    bare = unwrap_readonly(unwrap_ref_type(typ))
-    if not plain_record_element(bare):
-        return None
-    return THIRBorrowedRecord(bare, loan_access(typ, MIRClass.RECORD, Declared(callee.readonly[0] or place_readonly)))
-
-
-def container_result(typ: TpyType, receiver_readonly: bool = False) -> THIRBorrowedRecord | None:
-    """The borrow a native container returned by reference hands its
-    caller, readonly when its type is or it borrows a receiver bound
-    readonly (`receiver_readonly`); None for any other result (an
-    `Own[...]` container returns storage)."""
-    bare = unwrap_readonly(unwrap_ref_type(typ))
-    if return_representation(typ) is not Representation.REFERENCE or not native_container_type(bare):
-        return None
-    return THIRBorrowedRecord(bare, loan_access(typ, MIRClass.CONTAINER, Declared(receiver_readonly)))
+    return THIRBorrowedRecord(bare, loan_access(typ, cls, Declared(receiver_readonly)))
 
 
 def _passing_problem(typ: TpyType, passing: ParamPassing, loan_readonly: bool | None = None) -> str | None:
@@ -579,38 +521,33 @@ def _passing_problem(typ: TpyType, passing: ParamPassing, loan_readonly: bool | 
     return None
 
 
-def owned_record_result(typ: TpyType) -> NominalType | None:
-    """The record an `Own[R]` result hands the caller by value: storage the
-    callee moved out, which the caller owns and destroys. A bare record
-    result is a borrow, never this."""
+def owned_aggregate_result(typ: TpyType) -> NominalType | None:
+    """The record or container an `Own[...]` result hands the caller by
+    value: storage the callee moved out, which the caller owns and
+    destroys. A bare aggregate result is a borrow, never this."""
     bare = unwrap_own(typ)
-    return (bare if isinstance(typ, OwnType) and record_type(bare)
+    return (bare if isinstance(typ, OwnType) and value_class(bare) in AGGREGATE_CLASSES
             and return_representation(typ) is Representation.STORAGE else None)
 
 
-def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
+def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None, representation: Representation | None) -> str | None:
+    """Whether a result of type `typ` at its published `representation`
+    is the borrowed result `ref` (None for a fresh one) describes; else the
+    refusal."""
     if ref is None:
-        # An owned leaf, an `Own[...]` container or an `Own[R]` record
-        # returns by value, as storage the caller receives.
-        storage = return_representation(typ) is Representation.STORAGE
-        return (None if storage_leaf(typ, return_representation(typ)) or isinstance(typ, VoidType)
-                or storage and (is_owned_leaf(typ) or native_container_type(native_container_subject(typ)))
-                or owned_record_result(typ) is not None
+        # An owned leaf or an `Own[...]` aggregate returns by value, as
+        # storage the caller receives.
+        storage = representation is Representation.STORAGE
+        return (None if representation is not None and storage_leaf(typ, representation) or isinstance(typ, VoidType)
+                or storage and is_owned_leaf(typ)
+                or owned_aggregate_result(typ) is not None
                 else "unsupported return type")
     if isinstance(ref, THIRBorrowedRecord) and (view_leaf(ref.type) or container_view(ref.type)):
-        return None if view_result(typ) == ref else "invalid borrowed result"
-    if isinstance(ref, THIRBorrowedRecord) and native_container_type(ref.type):
-        # As for a record, the holder may be more readonly than the type (a
-        # follows-receiver result bound at a readonly receiver): the region
-        # it lays out, checked once (`shape_problem`). A container whose
-        # members MIR does not model has no region to build.
-        if (container_result(typ) is None or type(ref.readonly) is not bool
-                or isinstance(container_members(ref.type, ref.readonly), str)):
-            return "invalid borrowed result"
-        region = value_shape(ref.type, access=ref.readonly, role=MIRRole.LOAN)
-        return None if shape_problem(region, typ) is None else "invalid borrowed result"
-    if (not isinstance(ref, THIRBorrowedRecord) or isinstance(fact_shape(typ, ref), str)
-            or not isinstance(typ, (RefType, ReadonlyType))):
+        return None if view_result(typ, representation) == ref else "invalid borrowed result"
+    # A record or container returned by reference: its holder, which may be
+    # more readonly than the type (a follows-receiver result bound at a
+    # readonly receiver), checked once (`lent_shape_problem`).
+    if aggregate_result(typ, representation) is None or lent_shape_problem(typ, ref) is not None:
         return "invalid borrowed result"
     return None
 
@@ -664,7 +601,7 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         return "invalid stub callee"
     identity, signature = callee.identity, callee.signature
     if (not isinstance(identity.qualified_name, str) or not identity.qualified_name
-            or identity.param_types != signature.param_types or signature.borrowed_result is not None
+            or identity.param_types != signature.param_types
             or not isinstance(callee.readonly, tuple) or len(callee.readonly) != len(signature.param_types)
             or any(type(r) is not bool for r in callee.readonly)
             or type(callee.mutates_elements) is not bool or type(callee.receiver) is not bool
@@ -681,18 +618,18 @@ def stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
         return "invalid stub callee"
     if (signature.passings is None or len(signature.passings) != len(signature.param_types)
             or signature.return_representation is None
-            or signature.return_representation is not return_representation(signature.return_type)):
+            or signature.return_representation is not return_representation(signature_result(signature))):
         return "stub signature unpublished"
     bindings: list[MIRParameterBinding] = []
-    for typ, passing, readonly in zip(signature.param_types, signature.passings, callee.readonly):
+    for typ, passing, readonly in zip(signature_params(signature), signature.passings, callee.readonly):
         binding = _stub_binding(callee, typ, passing, readonly, method=False)
         if isinstance(binding, str):
             return binding
         bindings.append(binding)
-    result = signature.return_type
+    result = signature_result(signature)
     representation = signature.return_representation
     lent = frozenset(MIRReturnOrigin(i) for i, b in enumerate(bindings) if b.readonly)
-    if view_result(result) is not None:
+    if view_result(result, representation) is not None:
         # A view result may borrow every argument the call lends, and only
         # those: with none lent its origin is outside the call.
         if not lent:
@@ -747,11 +684,11 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     signature = callee.signature
     if (signature.passings is None or len(signature.passings) != len(signature.param_types)
             or signature.return_representation is None
-            or signature.return_representation is not return_representation(signature.return_type)):
+            or signature.return_representation is not return_representation(signature_result(signature))):
         return "stub signature unpublished"
     if not signature.param_types or not (callee.contract is None or isinstance(callee.contract, THIRStubContract)):
         return "invalid stub callee"
-    receiver = signature.param_types[0]
+    receiver = signature_params(signature)[0]
     view = container_view(receiver)
     if not (native_container_type(receiver) or view):
         return "unsupported stub receiver"
@@ -767,7 +704,7 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     if isinstance(receiver_binding, str):
         return receiver_binding
     bindings = [receiver_binding]
-    for typ, passing, readonly in zip(signature.param_types[1:], signature.passings[1:], callee.readonly[1:]):
+    for typ, passing, readonly in zip(signature_params(signature)[1:], signature.passings[1:], callee.readonly[1:]):
         binding = _stub_binding(callee, typ, passing, readonly, method=True)
         if isinstance(binding, str):
             return binding
@@ -776,7 +713,7 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
     if callee.contract is not THIRStubContract.PURE and not callee.readonly[0]:
         projection = (MIRContainerElements() if callee.mutates_elements or view else MIRContainerStructure())
         writes = frozenset({MIRParameterWrite(0, (projection,))})
-    result = signature.return_type
+    result = signature_result(signature)
     representation = signature.return_representation
     returns: frozenset[MIRReturnOrigin] = frozenset()
     if representation in (Representation.VIEW, Representation.REFERENCE) and not isinstance(result, VoidType):
@@ -832,10 +769,11 @@ def path_projections(shape: MIRShape, path: tuple[object, ...]) -> tuple[Project
     return object_prefix(shape, payload=True) + tuple(map(path_step, path))
 
 
-def path_walk(root: MIRShape, fields: tuple[THIRFieldIdentity, ...], layouts: Records) -> MIRWalk | str:
+def path_walk(root: MIRShape, fields: tuple[THIRFieldIdentity, ...], layouts: MIRRecords) -> MIRWalk | str:
     """`fields` walked from the object a value of `root` holds
     (`path_projections`), each a member of the record storage it is read
-    from by the one membership rule (`field_member`, over `layouts`); the
+    from by the one membership rule (`field_member`, over the declared
+    fields `layouts` carries); the
     walk's refusal when a hop is refused. A trailing container projection
     is the endpoint rule's: the elements' layouts are the callee's."""
     try:
@@ -846,12 +784,12 @@ def path_walk(root: MIRShape, fields: tuple[THIRFieldIdentity, ...], layouts: Re
 
 # The walks a summary's checks made, by the end (a parameter index or the
 # owned-record result) and the path they walked: what a call reads its
-# caller-dependent part off (`call_path_problem`) instead of walking again.
+# caller-dependent part off (`crossed_records`) instead of walking again.
 MIRPathWalks = dict[tuple[object, MIRParameterPath], MIRWalk]
 
 
 def _summary_walk(end: object, path: object, root: MIRShape, fields: tuple[THIRFieldIdentity, ...],
-                  layouts: Records, walks: MIRPathWalks | None) -> MIRWalk | str:
+                  layouts: MIRRecords, walks: MIRPathWalks | None) -> MIRWalk | str:
     """The fields of summary path `path` under `end` walked from `root`
     (`path_walk`), recorded in `walks` when the walk holds: the one place a
     summary path is walked, so `walks` holds every path with a field."""
@@ -862,7 +800,7 @@ def _summary_walk(end: object, path: object, root: MIRShape, fields: tuple[THIRF
 
 
 def resolve_path(parameter: object, path: object, parameters: tuple[MIRParameterBinding, ...],
-                 layouts: Records, walks: MIRPathWalks | None = None) -> MIRResolvedPath | str | None:
+                 layouts: MIRRecords, walks: MIRPathWalks | None = None) -> MIRResolvedPath | str | None:
     """A parameter path of the one grammar writes and return origins share
     (`_path_parts`), its fields walked from the record the parameter lends
     (`_summary_walk`). None when the parameter index or the path is
@@ -895,7 +833,7 @@ def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
     Under a record parameter, a write is allowed by the write rule
     (`store_problem`, over the walk of its fields) and ends at a
     scalar leaf (written in place), an owned leaf (its buffer replaced), a
-    record member or an Optional record field (replaced whole; a write
+    record or container member or an Optional record field (replaced whole; a write
     under its payload is published as one) or a container projection of a
     container field whose members MIR models: an element write keys on the
     container's access, whatever its elements' (`list[readonly[R]]`). A
@@ -913,17 +851,19 @@ def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
         return _whole_parameter_endpoint(binding, resolved.projection, result)
     end = resolved.walk.end
     bare = end.type
+    container = native_container_type(bare) and modeled_members(bare)
     if result is None:
         if store_problem(resolved.walk) is not None:
             return False
         if resolved.projection is not None:
-            return native_container_type(bare) and modeled_members(bare)
-        return storage_leaf(bare) or owned_leaf(bare) or record_type(bare) or optional_record_field(bare) is not None
+            return container
+        return (storage_leaf(bare) or owned_leaf(bare) or container or record_type(bare)
+                or optional_record_field(bare) is not None)
     if resolved.projection is not None:
         return False
     if view_leaf(result.type):
         return view_endpoint(result.type, bare)
-    return ((native_container_type(bare) and modeled_members(bare) or record_type(bare))
+    return ((container or record_type(bare))
             and bare == result.type and (result.readonly or not end.readonly))
 
 
@@ -963,7 +903,7 @@ def binds_at(records: Mapping[NominalType, 'MIRRecordLayout'], storage: NominalT
 
 
 def return_origin_problem(origin: MIRReturnOrigin, result: THIRBorrowedRecord,
-                          parameters: tuple[MIRParameterBinding, ...], layouts: Records,
+                          parameters: tuple[MIRParameterBinding, ...], layouts: MIRRecords,
                           walks: MIRPathWalks | None = None) -> str | None:
     """Check one published return origin against the borrowed result it
     reaches (bound at the definition's receiver): a path of the grammar
@@ -979,7 +919,7 @@ def return_origin_problem(origin: MIRReturnOrigin, result: THIRBorrowedRecord,
 
 
 def write_problem(write: MIRParameterWrite, parameters: tuple[MIRParameterBinding, ...],
-                  layouts: Records, walks: MIRPathWalks | None = None) -> str | None:
+                  layouts: MIRRecords, walks: MIRPathWalks | None = None) -> str | None:
     """Check one published parameter write: a non-empty path of the grammar
     (`resolve_path`) whose endpoint may be written (`endpoint_admitted`). A
     readonly parameter is never written."""
@@ -1004,15 +944,15 @@ def _stored_member(walked: MIRWalk | None) -> TpyType | None:
 
 
 def _end_walk(end: object, path: object, parameters: tuple[MIRParameterBinding, ...], result: TpyType,
-              layouts: Records, walks: MIRPathWalks | None, *, lent_only: bool = False) -> MIRWalk | str | None:
+              layouts: MIRRecords, walks: MIRPathWalks | None, *, lent_only: bool = False) -> MIRWalk | str | None:
     """The walk of one end of a transfer: under a lent record parameter
     from the record it lends (`resolve_path`), ending at no projection;
-    under owned record storage -- the record an owned-record result hands
-    over, an `Own[R]` parameter's object, unless `lent_only` -- from that
+    under owned aggregate storage -- what an owned result hands
+    over, an `Own[...]` parameter's object, unless `lent_only` -- from that
     storage. The walk's refusal when a hop is refused; None when the end
     is malformed."""
     if isinstance(end, MIRResultHolder):
-        owned = owned_record_result(result)
+        owned = owned_aggregate_result(result)
         storage = None if owned is None else value_shape(owned)
     elif type(end) is int and 0 <= end < len(parameters):
         binding = parameters[end]
@@ -1021,7 +961,7 @@ def _end_walk(end: object, path: object, parameters: tuple[MIRParameterBinding, 
             if not isinstance(resolved, MIRResolvedPath):
                 return resolved
             return resolved.walk if resolved.projection is None else None
-        storage = binding.value if binding.cls is MIRClass.RECORD and binding.storage and not lent_only else None
+        storage = binding.value if binding.cls in AGGREGATE_CLASSES and binding.storage and not lent_only else None
     else:
         return None
     parts = _path_parts(path)
@@ -1030,22 +970,16 @@ def _end_walk(end: object, path: object, parameters: tuple[MIRParameterBinding, 
     return _summary_walk(end, path, storage, parts[0], layouts, walks)
 
 
-def call_path_problem(summary: 'MIRCallSummary', walks: MIRPathWalks,
-                      storage_of: Callable[[int], NominalType | None],
-                      layout_of: Callable[[NominalType], 'MIRRecordLayout | None'],
-                      skip: Callable[[int, NominalType | None], bool] | None = None) -> str | None:
-    """The problem of a call's paths against the record layouts it binds,
-    or None: what the summary's own walks (`walks`, every path with a field
-    the contract check walked: `_summary_walk`) cannot know. Each field is
-    a member (`field_member`) of the layout `layout_of` gives the storage
-    it is read from: for a lent parameter's first field the record its
-    argument binds (`storage_of`; a descendant's layout carries its
-    ancestors' fields), else the holder the walk reached it through -- the
-    walk itself admitted a field of a record with no layout by its owner
-    alone. The lowering's `layout_of` also registers each record's
-    verified definition with the body (publication already refused a path
-    through a refused one); the validator's states the body carries the
-    layout. `skip` passes over a parameter path whose binding another
+def crossed_records(summary: 'MIRCallSummary', walks: MIRPathWalks,
+                    storage_of: Callable[[int], NominalType | None],
+                    skip: Callable[[int, NominalType | None], bool] | None = None) -> Iterator[NominalType]:
+    """The records whose fields a call's published paths (`walks`, every
+    path with a field the contract check walked: `_summary_walk`) read: for
+    a lent parameter's first field the record its argument binds
+    (`storage_of`; a descendant's layout carries its ancestors' fields),
+    else the holder the walk reached it through. The caller's body carries
+    each one's layout: the lowering registers it, the validator checks it
+    is there. `skip` passes over a parameter path whose binding another
     check refuses."""
     for (end, _path), walked in walks.items():
         lent = type(end) is int and summary.parameters[end].lent_record is not None
@@ -1054,17 +988,11 @@ def call_path_problem(summary: 'MIRCallSummary', walks: MIRPathWalks,
             continue
         fields = [hop for hop in walked.hops if isinstance(hop.projection, MIRField)]
         for index, hop in enumerate(fields):
-            holder = storage if index == 0 and storage is not None else hop.holder.type
-            layout = layout_of(holder)
-            field = hop.projection
-            if layout is None or field_member({holder: layout}, holder, field.id.owner, field.id.name,
-                                              field.type) is not None:
-                return "call write field does not match record layout"
-    return None
+            yield storage if index == 0 and storage is not None else hop.holder.type
 
 
 def transfer_problem(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBinding, ...],
-                     result: TpyType, layouts: Records, walks: MIRPathWalks | None = None) -> str | None:
+                     result: TpyType, layouts: MIRRecords, walks: MIRPathWalks | None = None) -> str | None:
     """Check one published loan transfer: its holder path ends at a view
     member a store may rebind (`_stored_member`) under a lent record
     parameter -- what an `Own[R]` parameter's object stores, the caller
@@ -1098,7 +1026,7 @@ def transfer_problem(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBi
     return None
 
 
-def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary, layouts: Records,
+def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary, layouts: MIRRecords,
                        walks: MIRPathWalks | None = None) -> str | None:
     """Check one published no-alias obligation: its written place is one of
     the summary's writes, and the place it retains is a path of the grammar
@@ -1113,11 +1041,11 @@ def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary, 
     return resolved if isinstance(resolved, str) else None
 
 
-def summary_problem(summary: MIRCallSummary, layouts: Records,
+def summary_problem(summary: MIRCallSummary, layouts: MIRRecords,
                     walks: MIRPathWalks | None = None) -> str | None:
     """Validate the bounded contract without re-proving its supplying body;
     its paths walk over `layouts` (`path_walk`), each walk recorded in
-    `walks` when given (`call_path_problem` reads them). A stub summary must be
+    `walks` when given (`crossed_records` reads them). A stub summary must be
     exactly the one its declaration derives, so a hand-built summary cannot
     claim more than the stub declares."""
     if not isinstance(summary, MIRCallSummary):
@@ -1146,14 +1074,15 @@ def summary_problem(summary: MIRCallSummary, layouts: Records,
                                                           and isinstance(g.name, str) and g.name)
                    for g in summary.global_reads)):
         return "invalid call summary identity or facts"
-    if (result_problem(signature.return_type, call_result(summary.callee, None)) is not None
+    if (result_problem(signature_result(signature), call_result(summary.callee, None),
+                       signature.return_representation) is not None
             or len(summary.parameters) != len(signature.param_types)
             or summary.reads != frozenset(range(len(summary.parameters)))
             or not isinstance(summary.writes, frozenset)
             or summary.invalidates
             or type(summary.normal_return_only) is not bool):
         return "unsupported call summary contract"
-    for typ, binding in zip(signature.param_types, summary.parameters):
+    for typ, binding in zip(signature_params(signature), summary.parameters):
         # The binding's declared type is the signature's, so a forged one does not pass.
         if not isinstance(binding, MIRParameterBinding):
             return "malformed call parameter binding"
@@ -1182,7 +1111,7 @@ def summary_problem(summary: MIRCallSummary, layouts: Records,
         if problem is not None:
             return problem
     for transfer in summary.transfers:
-        problem = transfer_problem(transfer, summary.parameters, signature.return_type, layouts, walks)
+        problem = transfer_problem(transfer, summary.parameters, signature_result(signature), layouts, walks)
         if problem is not None:
             return problem
     for obligation in summary.obligations:

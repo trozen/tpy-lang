@@ -4,8 +4,9 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
-from ..typesys import BOOL, INT32, NominalType
+from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
@@ -16,7 +17,9 @@ from .nodes import (
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
-from .testutil import bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
+from .testutil import (
+    compiled_definitions, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot,
+)
 from .validate import validate_function
 
 
@@ -53,12 +56,13 @@ def reuse(n: int32) -> int32:
 
 def source_function(source: str, name: str = "reuse") -> MIRFunction:
     compiler, modules = _compile(source)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    fn = next(fn for fn in ctx.thir_functions.values() if fn.name == name)
-    result = lower_function(fn, MIRBodyId("reuse", name),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRFunction), result
-    return result
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(fn for fn in ctx.thir_functions.values() if fn.name == name)
+        result = lower_function(fn, MIRBodyId("reuse", name),
+                                definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
+        assert isinstance(result, MIRFunction), result
+        return result
 
 
 @pytest.mark.parametrize("optional", [False, True])
@@ -110,18 +114,21 @@ def test_reuse_in_methods_and_constructor_tails(optional: bool, position: str) -
         source = CELL_SOURCE + "\nclass Host:\n    value: int32\n    def __init__(self, n: int32):\n        self.value = 0\n"
         free = free.replace("return result", "self.value = result")
     source += "\n".join("    " + line for line in free.splitlines()) + "\n"
-    if position == "method":
-        fn = source_function(source)
-    else:
-        compiler, modules = _compile(source)
+    compiler, modules = _compile(source)
+    with activate_compiler(compiler):
         _, ctx = compiler.generate_code_and_thir(_entry(modules))
         constructors = tuple(ctx.thir_constructors.values())
-        ctor = next(c for c in constructors if c.record_name == "Host")
-        fn = lower_constructor(ctor, MIRBodyId("reuse", "Host.__init__"), definitions=MIRDefinitions(constructors))
+        definitions = MIRDefinitions(constructors)
+        if position == "method":
+            method = next(fn for fn in ctx.thir_functions.values() if fn.name == "reuse")
+            fn = lower_function(method, MIRBodyId("reuse", "reuse"), definitions=definitions)
+        else:
+            ctor = next(c for c in constructors if c.record_name == "Host")
+            fn = lower_constructor(ctor, MIRBodyId("reuse", "Host.__init__"), definitions=definitions)
         assert isinstance(fn, MIRFunction), fn
-    events = analyze_storage(fn)
-    assert isinstance(events, MIRStorageEvents)
-    assert [s.storage_write.mode for s in events.writes.values()].count(MIRRecordWriteMode.OWN_SITE) == 1
+        events = analyze_storage(fn)
+        assert isinstance(events, MIRStorageEvents)
+        assert [s.storage_write.mode for s in events.writes.values()].count(MIRRecordWriteMode.OWN_SITE) == 1
 
 
 def test_readonly_holder_can_borrow_reused_mutable_backing() -> None:
@@ -135,7 +142,7 @@ def backing_function() -> MIRFunction:
     body = MIRBodyId("storage", "facts")
     n, store, holder, result, flag = (MIRSlotId(body, i) for i in range(5))
     a, loop, end = (MIRBlockId(body, i) for i in range(3))
-    cell = NominalType("Cell", _module_qname="storage.Cell")
+    cell = hand_record("Cell", "storage.Cell", value=INT32)
     field = MIRField(MIRFieldId(cell, "value"), INT32)
     slots = (MIRSlot(n, leaf_shape(INT32), MIRSlotKind.PARAMETER),
              MIRSlot(store, owned_shape(cell), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY),
@@ -174,7 +181,7 @@ def test_cycles_require_positive_reuse_fact(fact: MIRRecordWrite | None, message
 @pytest.mark.parametrize("duration", [None, MIRStorageDuration.CALLER])
 def test_reuse_requires_body_storage(duration: MIRStorageDuration | None) -> None:
     fn = backing_function()
-    with pytest.raises(MIRValidationError, match="storage duration|private body storage"):
+    with pytest.raises(MIRValidationError, match="storage duration|needs a placement|private body storage"):
         validate_function(replace(fn, slots=(fn.slots[0], replace(fn.slots[1], storage_duration=duration), *fn.slots[2:])))
 
 

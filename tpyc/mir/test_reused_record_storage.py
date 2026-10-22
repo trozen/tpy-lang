@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -21,7 +22,7 @@ from .presence import MIREngagement, _analyze_presence
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import INITIAL, analyze, loop_function
-from .testutil import execute, owned_shape, reslot
+from .testutil import compiled_definitions, execute, owned_shape, reslot
 from .validate import validate_function
 from .value import MIRValidationError
 
@@ -155,11 +156,9 @@ def test_optional_transfer_keeps_source_eligibility(move: bool, fault: str) -> N
         fn = replace(fn, blocks=(replace(fn.blocks[0], statements=fn.blocks[0].statements[1:]),))
         reason = "read before definite assignment"
     elif fault == "readonly":
+        # Storage is never readonly: readonly is its holder's.
         fn = replace(fn, slots=(*fn.slots[:-1], reslot(fn.slots[-1], readonly=True)))
-        if not move:
-            validate_function(fn)
-            return
-        reason = "record move source or eligibility"
+        reason = "readonly owned storage"
     else:
         fn = replace(fn, records=(replace(fn.records[0], **({"movable": False} if move else {"copyable": False})),))
         reason = "movable record|copy source or eligibility"
@@ -184,11 +183,17 @@ def hoisted(flag: bool) -> int32:
 
 
 @pytest.fixture(scope="module")
-def hoist() -> tuple[th.THIRFunction, MIRDefinitions]:
-    compiler, modules = _compile(HOIST_SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return next(fn for node, fn in ctx.thir_functions.items() if node.name == "hoisted"), MIRDefinitions(
-        tuple(ctx.thir_constructors.values()))
+def compiled():
+    return _compile(HOIST_SOURCE)
+
+
+@pytest.fixture(scope="module")
+def hoist(compiled) -> tuple[th.THIRFunction, MIRDefinitions]:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        return next(fn for node, fn in ctx.thir_functions.items() if node.name == "hoisted"), compiled_definitions(
+            compiler, tuple(ctx.thir_constructors.values()))
 
 
 @pytest.mark.parametrize("move", [False, True])

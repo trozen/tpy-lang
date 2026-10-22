@@ -4,27 +4,27 @@ from dataclasses import replace
 
 import pytest
 
-from ..typesys import BOOL, INT32, NominalType
+from ..typesys import BOOL, INT32
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
-    MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .testutil import bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
+from .testutil import hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
 from .validate import validate_function
 
 B = MIRBodyId("owned", "verify")
-CELL = NominalType("Cell", _module_qname="owned.Cell")
+CELL = hand_record("Cell", "owned.Cell", value=INT32)
 N, S, P, T, Q, RESULT, FLAG = (MIRSlotId(B, i) for i in range(7))
 A, C, D, E = (MIRBlockId(B, i) for i in range(4))
 MEMBER = MIRField(MIRFieldId(CELL, "value"), INT32)
 LAYOUT = MIRRecordLayout(CELL, (MEMBER,), True, True)
 SLOTS = (
     MIRSlot(N, leaf_shape(INT32), MIRSlotKind.LOCAL),
-    MIRSlot(S, owned_shape(CELL), MIRSlotKind.TEMPORARY),
+    MIRSlot(S, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY),
     MIRSlot(P, borrowed_shape(CELL), MIRSlotKind.LOCAL),
-    MIRSlot(T, owned_shape(CELL), MIRSlotKind.TEMPORARY),
+    MIRSlot(T, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY),
     MIRSlot(Q, borrowed_shape(CELL), MIRSlotKind.LOCAL),
     MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
     MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
@@ -92,8 +92,9 @@ def test_layout_and_eligibility_are_required() -> None:
     validate_function(fn)
     invalid(replace(fn, records=(replace(LAYOUT, movable=False),)), "move source or eligibility")
     invalid(replace(fn, slots=(SLOTS[0], reslot(SLOTS[1], readonly=True), *SLOTS[2:])),
-            "borrow increases access")
-    invalid(bind_parameters(replace(GOOD, slots=(SLOTS[0], replace(SLOTS[1], kind=MIRSlotKind.PARAMETER), *SLOTS[2:]))),
+            "readonly owned storage")
+    parameter = replace(SLOTS[1], kind=MIRSlotKind.PARAMETER, storage_duration=None)
+    invalid(bind_parameters(replace(GOOD, slots=(SLOTS[0], parameter, *SLOTS[2:]))),
             "record storage type")
 
 

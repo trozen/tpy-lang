@@ -16,7 +16,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import STR, NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
 from .call_contract import (
     MIRCallSummary, MIRGlobalId, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, call_path_problem, summary_problem,
+    MIRSummaryState, crossed_records, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .coverage import MIRUnsupported
@@ -29,15 +29,15 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInit,
-    MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
+    MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite,
+    MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
-from .shapes import MIRDeref
-from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
+from .shapes import MIRContainerStructure, MIRDeref
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRValidationError
 from .retention import affects, analyze_retention
 from .storage import analyze_storage, storage_destination
-from .testutil import Reference, bind_parameters, borrowed_shape, bound, execute, leaf_shape, repass, reslot
+from .testutil import Reference, bind_parameters, Redeclared, borrowed_shape, bound, execute, leaf_shape, repass, reslot
 from .validate import validate_function
 
 SOURCE = """\
@@ -608,6 +608,80 @@ def replace_ancestor(f: Frame) -> bool:
     held = f.line.first()
     f.line = Line(Point(1, "a"), Point(2, "b"))
     return held.x > 0
+
+
+class WritesPoint:
+    n: int32
+
+    def __init__(self, p: Point) -> None:
+        self.n = 0
+        p.x = 1
+
+
+class WritesList:
+    n: int32
+
+    def __init__(self, xs: list[int32]) -> None:
+        self.n = 0
+        xs.append(1)
+
+
+class Rack:
+    items: list[Point]
+
+    def __init__(self, items: list[Point]) -> None:
+        self.items = copy(items)
+
+
+class RetainsRackElement:
+    n: int32
+
+    def __init__(self, r: Rack) -> None:
+        self.n = 0
+        held = r.items[0]
+        r.items = [Point(2, "b")]
+        self.n = held.x
+
+
+class RetainsListElement:
+    n: int32
+
+    def __init__(self, xs: list[Point]) -> None:
+        self.n = 0
+        held = xs[0]
+        xs.append(Point(2, "b"))
+        self.n = held.x
+
+
+def build_writes_point(p: Point) -> int32:
+    w = WritesPoint(p)
+    return w.n
+
+
+def build_writes_list(xs: list[int32]) -> int32:
+    w = WritesList(xs)
+    return w.n
+
+
+class Nums:
+    items: list[int32]
+    table: dict[int32, int32]
+
+    def __init__(self, n: int32) -> None:
+        self.items = [1, n]
+        self.table = {2: n}
+
+
+class Labels:
+    names: list[str]
+
+    def __init__(self) -> None:
+        self.names = ["a"]
+
+
+def build_nums(n: int32) -> int32:
+    b = Nums(n)
+    return len(b.items)
 """
 
 
@@ -628,9 +702,10 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                     compiler.thir_reject_by_node, mir.workspace)
-        yield _Program(compiler, {c.record_name: c for c in ctx.thir_constructors.values()}, mir.definitions,
+        result = _Program(compiler, {c.record_name: c for c in ctx.thir_constructors.values()}, mir.definitions,
                        {v.body.declaration.split("@")[0]: v for v in verdicts},
                        {node.name: fn for node, fn in ctx.thir_functions.items() if fn.receiver is None})
+    return result
 
 
 @pytest.fixture(autouse=True)
@@ -742,11 +817,76 @@ def test_composed_members(program: _Program) -> None:
     ("Called", "constructor initializer needs parameter or literal"),
     # A record argument to the member's constructor: a lend no leg models.
     ("Nested", "member argument needs matching parameter or literal"),
-    # A record lent mutably (MUT_REF).
-    ("Mutated", "constructor parameter type"),
+    # A record lent mutably (MUT_REF) is written through by the body; the
+    # member assigned from it is no member initializer.
+    ("Mutated", "incomplete constructor initialization"),
 ])
 def test_member_initializer_refusals(program: _Program, name: str, reason: str) -> None:
     assert _definition(program, name) == reason
+
+
+def test_a_container_literal_member_takes_leaf_constants(program: _Program) -> None:
+    # `self.items = [1, n]` is a literal over a parameter and a constant, as
+    # a composed record member's field takes either: the constant is an
+    # entry operand of the constructor body and an operand the caller
+    # materializes.
+    definition = _definition(program, "Nums")
+    assert isinstance(definition, MIRConstructorDefinition)
+    assert [init.source for init in definition.initializers] == [(MIRConstant(1), "n"), (MIRConstant(2), "n")]
+    body = _lowered(program, "Nums.__init__")
+    items, table = body.receiver_init.fields
+    assert isinstance(items.source, MIRConstruct) and items.source.fields[0] == MIRConstant(1)
+    caller = _lowered(program, "build_nums")
+    built = [stmt.value for b in caller.blocks for stmt in b.statements
+             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct)
+             and stmt.value.fields and all(isinstance(f, MIRSlotId) for f in stmt.value.fields)]
+    assert built, "the caller builds the literal over slots"
+    # A constant in a body statement's literal is no operand: only entry
+    # initialization has no slot to hold it.
+    stmt = next(stmt for b in caller.blocks for stmt in b.statements
+                if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) and len(stmt.value.fields) == 2
+                and stmt.value.may_raise)
+    forged = replace(stmt, value=replace(stmt.value, fields=(MIRConstant(1), stmt.value.fields[1])))
+    blocks = tuple(replace(b, statements=tuple(forged if s is stmt else s for s in b.statements))
+                   for b in caller.blocks)
+    with pytest.raises(MIRValidationError):
+        validate_function(replace(caller, blocks=blocks))
+    # An owned leaf's constant is the caller's no more than a record
+    # member's is (`_caller_operands`); the body still builds it at entry,
+    # as `self.s = "a"` does for a record's `str` field -- a constant lends
+    # nothing.
+    assert _definition(program, "Labels") == "constructor owned-leaf constant"
+    (names,) = _lowered(program, "Labels.__init__").receiver_init.fields
+    assert isinstance(names.source, MIRConstruct) and len(names.source.fields) == 1
+    assert isinstance(names.source.fields[0], MIRConstant)
+
+
+def test_a_constructor_writes_through_a_mutably_lent_aggregate(program: _Program) -> None:
+    # A complete constructor lending a record or a list mutably writes
+    # through it as any body writes through a parameter: `p.x = 1` is a
+    # write of the parameter's field, `xs.append(1)` a call writing the
+    # parameter's structure.
+    point = _lowered(program, 'WritesPoint.__init__')
+    p = next(s.id for s in point.slots if s.name == 'p' and s.kind is MIRSlotKind.PARAMETER)
+    assert [stmt.target.projections[-1].id.name for b in point.blocks for stmt in b.statements
+            if isinstance(stmt, MIRAssign) and stmt.target.root == p] == ['x']
+    listed = _lowered(program, 'WritesList.__init__')
+    xs = next(s.id for s in listed.slots if s.name == 'xs' and s.kind is MIRSlotKind.PARAMETER)
+    [call] = [stmt.call for b in listed.blocks for stmt in b.statements if isinstance(stmt, MIRCallStmt)]
+    assert call.arguments[0] == xs
+    assert [w.path for w in call.summary.writes if w.parameter == 0] == [(MIRContainerStructure(),)]
+    for name in ('WritesPoint', 'WritesList'):
+        verdict = program.verdicts[f'{name}.__init__']
+        assert verdict.status in _COVERED and verdict.conflicts == (), verdict.describe()
+    # An element held across a replacement of the parameter's container
+    # field, or across a growth of the list parameter, keeps the conflict.
+    for name in ("RetainsRackElement", "RetainsListElement"):
+        verdict = program.verdicts[f"{name}.__init__"]
+        assert verdict.status in _COVERED and verdict.conflicts == ("replacement",), verdict.describe()
+    # A caller binds only a parameter its construct models: the caller rule
+    # is stricter than the constructor body's.
+    for name in ("build_writes_point", "build_writes_list"):
+        assert _refusal(program, name) == "constructor parameter type"
 
 
 @pytest.mark.parametrize("name,reason", [
@@ -1056,7 +1196,7 @@ def test_an_owned_record_parameter_needs_its_definition(program: _Program) -> No
 @pytest.mark.parametrize("change,message", [
     ({"passing": ParamPassing.CONST_REF}, "parameter call parameter passing differs from its type"),
     ({"passing": ParamPassing.VALUE}, "parameter call parameter passing differs from its type"),
-    ({"readonly": True}, "parameter call parameter binding differs from its derivation"),
+    ({"readonly": True}, "slot readonly owned storage"),
     ({"storage_duration": None}, "unsupported record storage type or form"),
 ])
 def test_owned_record_parameter_slot_negatives(program: _Program, change: dict, message: str) -> None:
@@ -1147,8 +1287,6 @@ def test_a_member_place_is_lent_through_a_holder(program: _Program) -> None:
 
 @pytest.mark.parametrize("name,reason", [
     ("effectful", "effectful constructor argument"),
-    # THIR spells the last-use move of a local with forms the record move refuses.
-    ("moved_local", "move needs fixed movable owned local"),
     # A tuple member's construct is built outside a full expression.
     ("in_tuple", "temporary needs full-expression boundary"),
     # The member's storage runs a hook: no definition, no owned local.
@@ -1156,6 +1294,23 @@ def test_a_member_place_is_lent_through_a_holder(program: _Program) -> None:
 ])
 def test_construct_refusals(program: _Program, name: str, reason: str) -> None:
     assert _refusal(program, name) == reason
+
+
+def test_a_last_use_move_hands_over_the_local_backing(program: _Program) -> None:
+    # `q = Point(..); ln = Line(Point(1, "a"), q)`: THIR spells the last-use
+    # move of `q` into the `Own` constructor parameter as storage; the one
+    # move rule takes it, moving `q`'s backing into the argument temporary.
+    # Nothing reads `q` after, so nothing conflicts.
+    verdict = program.verdicts["moved_local"]
+    fn = verdict.function
+    assert isinstance(fn, MIRFunction), verdict.reason
+    q = next(s.id for s in fn.slots if s.name == "q")
+    backing, = {stmt.value.source.root for b in fn.blocks for stmt in b.statements
+                if isinstance(stmt, MIRAssign) and stmt.target == MIRPlace(q) and isinstance(stmt.value, MIRBorrow)}
+    moves = [stmt.value for b in fn.blocks for stmt in b.statements
+             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove)]
+    assert [m.source for m in moves] == [backing]
+    assert verdict.conflicts == ()
 
 
 def test_a_container_element_record_has_leaf_fields_only(program: _Program) -> None:
@@ -1210,7 +1365,7 @@ def test_construct_record_operand_negatives(program: _Program) -> None:
     with pytest.raises(MIRValidationError, match=bad):
         validate_function(_with_construct(fn, line, replace(line.value, fields=(other, handed))))
     # The handed-over temporary is moved from: never readonly, and movable.
-    with pytest.raises(MIRValidationError, match=bad):
+    with pytest.raises(MIRValidationError, match="readonly owned storage"):
         validate_function(_with_slot(fn, fn.slots[handed.index], readonly=True))
     with pytest.raises(MIRValidationError, match=bad):
         validate_function(_with_layout(fn, point, movable=False))
@@ -1423,7 +1578,13 @@ def _with_statement(fn: MIRFunction, stmt: MIRAssign, **changes) -> MIRFunction:
 
 
 def _with_layout(fn: MIRFunction, typ: NominalType, **changes) -> MIRFunction:
-    return replace(fn, records=tuple(replace(r, **changes) if r.type == typ else r for r in fn.records))
+    """`fn` with record `typ`'s layout changed, its declared fields alike."""
+    records = tuple(replace(r, **changes) if r.type == typ else r for r in fn.records)
+    if "fields" not in changes:
+        return replace(fn, records=records)
+    changed = frozenset(changes["fields"])
+    return replace(fn, records=records, record_fields=Redeclared(
+        fn.record_fields, lambda t, declared: changed if t == typ else declared))
 
 
 def test_member_write_validator_negatives(program: _Program) -> None:
@@ -1540,7 +1701,7 @@ def _thir_nodes(node: object) -> list[th.THIRNode]:
 def _summary(callee: th.THIRResolvedCallee, *, writes=(), returns=()) -> MIRSummaryResult:
     """A KNOWN summary of a method whose own summary depends on nested
     record paths (their summaries are not published yet), a contract with
-    no layout to check its fields against."""
+    no layout to check its fields against (the lowering checks it)."""
     bindings = []
     for typ, passing in zip(callee.signature.param_types, callee.signature.passings):
         bare = unwrap_readonly(unwrap_ref_type(typ))
@@ -1551,7 +1712,6 @@ def _summary(callee: th.THIRResolvedCallee, *, writes=(), returns=()) -> MIRSumm
             bindings.append(bound(typ, passing))
     summary = MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(writes),
                              frozenset(), frozenset(returns), frozenset(), True)
-    assert summary_problem(summary, {}) is None, summary_problem(summary, {})
     return MIRSummaryResult(MIRSummaryState.KNOWN, summary)
 
 
@@ -1630,31 +1790,38 @@ def test_a_call_path_hop_reads_the_previous_members_layout(program: _Program, na
     fn = _with_summaries(program, "scalar_call")
     good, = fn.call_summaries
     bad = replace(good, writes=frozenset({MIRParameterWrite(0, steps)}))
-    assert summary_problem(bad, program.definitions.layouts) == "field missing from record layout"
-    # The validator reads the layouts the body holds.
-    with pytest.raises(MIRValidationError, match="field missing from record layout"):
+    assert summary_problem(bad, program.definitions.layouts) == "field missing from declared fields"
+    # The validator reads the declared fields the body holds.
+    with pytest.raises(MIRValidationError, match="field missing from declared fields"):
         validate_function(_with_call_summary(fn, good, bad))
 
 
-def test_a_call_refuses_a_deeper_field_its_layout_lacks(program: _Program) -> None:
-    # The contract with no layout walks `(Line::a, Point::missing)`; the call
-    # reads Line's layout for the first field and Point's for the second.
+def test_a_contract_refuses_a_deeper_field_its_record_does_not_declare(program: _Program) -> None:
+    # Membership is the declared fields, with or without a layout: the
+    # contract's own walk refuses `(Line::a, Point::missing)`.
     line, point = _record(program, "Line"), _record(program, "Point")
     steps = (_field_identity(program, "Line", "a"),
              th.THIRFieldIdentity(point, "missing", _fields_of(program, "Point")["x"].type))
     summary = _summary(_callee(program.functions["scalar_call"], "bump"),
                        writes=(MIRParameterWrite(0, steps),)).summary
+    without_layouts = MIRRecords({}, program.definitions.fields)
+    assert summary_problem(summary, without_layouts) == "field missing from declared fields"
+    # A declared path: the call carries the layout of each record whose fields it reads.
+    good = replace(summary, writes=frozenset({MIRParameterWrite(0, steps[:1])}))
     walks: dict = {}
-    assert summary_problem(summary, {}, walks) is None
-    layouts = {t: _definition(program, t.name).layout for t in (line, point)}
-    asked: list = []
+    assert summary_problem(good, without_layouts, walks) is None
+    assert list(crossed_records(good, walks, lambda parameter: line)) == [line]
 
-    def layout_of(record: NominalType) -> object:
-        asked.append(record)
-        return layouts.get(record)
-    assert call_path_problem(summary, walks, lambda parameter: line, layout_of) == (
-        "call write field does not match record layout")
-    assert asked == [line, point]
+
+def test_the_validator_checks_each_record_a_call_path_reads_has_its_layout(program: _Program) -> None:
+    # The records a published path reads fields of (`crossed_records`) come
+    # with their layouts; a body missing one is malformed.
+    fn = _with_summaries(program, "scalar_call")
+    assert isinstance(fn, MIRFunction), fn
+    validate_function(fn)
+    line = _record(program, "Line")
+    with pytest.raises(MIRValidationError, match="call path record has no layout"):
+        validate_function(replace(fn, records=tuple(r for r in fn.records if r.type != line)))
 
 
 def _with_call_summary(fn: MIRFunction, good: MIRCallSummary, bad: MIRCallSummary) -> MIRFunction:
@@ -1686,6 +1853,6 @@ def test_a_call_return_path_hop_reads_the_bound_records_layout(program: _Program
     fn = _with_summaries(program, "member_receiver")
     good, = (s for s in fn.call_summaries if s.callee.identity.name == "first")
     bad = replace(good, returns=frozenset({MIRReturnOrigin(0, steps)}))
-    assert summary_problem(bad, program.definitions.layouts) == "field missing from record layout"
-    with pytest.raises(MIRValidationError, match="field missing from record layout"):
+    assert summary_problem(bad, program.definitions.layouts) == "field missing from declared fields"
+    with pytest.raises(MIRValidationError, match="field missing from declared fields"):
         validate_function(_with_call_summary(fn, good, bad))

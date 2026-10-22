@@ -9,15 +9,17 @@ source it comes from (`loan_access`).
 A leaf: it reads THIR's nodes and value classes and the type system,
 never another MIR module."""
 
-from collections.abc import Mapping
+from collections.abc import Collection, Iterator, Mapping
 from dataclasses import dataclass, replace
 from enum import Enum, auto
+from types import MappingProxyType
+from typing import Protocol
 
 from ..thir import nodes as th
 from ..thir.nodes import Form
 from ..thir.scalar_leaves import (
-    MIRClass, binds_cursor, declared_members, holds_loan, modeled_field, modeled_members, native_container_subject,
-    readonly_elements, record_type, value_class,
+    MIRClass, binds_cursor, declared_members, holds_loan, modeled_ancestors, modeled_field, modeled_members,
+    native_container_subject, readonly_elements, record_type, value_class,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import (
@@ -122,11 +124,6 @@ class MIRShape:
         return self.holding is MIRHolding.VALUE and self.cls is MIRClass.OWNED_LEAF
 
     @property
-    def container_storage(self) -> bool:
-        """A native container's storage held here."""
-        return self.holding is MIRHolding.VALUE and self.cls is MIRClass.CONTAINER
-
-    @property
     def is_holder(self) -> bool:
         """A holder of storage elsewhere -- a pointer, a region, an iterator's
         cursor, a payload alias: a loan of its own, whose root write points
@@ -170,16 +167,16 @@ class MIRShape:
         return self.holding in (MIRHolding.POINTER, MIRHolding.REGION)
 
     @property
-    def borrowed_container(self) -> bool:
-        """A pointer at a container's storage: how a container parameter,
-        alias or borrowed result is held."""
-        return self.cls is MIRClass.CONTAINER and self.is_pointer
-
-    @property
     def borrowed_record(self) -> bool:
         """A pointer at a record's storage: how a record parameter, alias
         or borrowed result is held."""
         return self.cls is MIRClass.RECORD and self.is_pointer
+
+    @property
+    def borrowed_aggregate(self) -> bool:
+        """A pointer at a record's or a container's storage: how an
+        aggregate parameter, local holder or borrowed result is held."""
+        return self.cls in AGGREGATE_CLASSES and self.is_pointer
 
     @property
     def owned_place(self) -> bool:
@@ -278,6 +275,39 @@ class MIRRecordLayout:
 
 
 Records = Mapping[TpyType, MIRRecordLayout]
+class RecordFields(Protocol):
+    """The fields record storage of each type contains, keyed by declaring
+    owner (`definitions.declared_fields`). Looked up per record, never
+    enumerated: which records exist is the compilation's, not MIR's."""
+
+    def __getitem__(self, typ: TpyType, /) -> frozenset[MIRField]: ...
+
+    def get(self, typ: TpyType, default: Collection[MIRField] = ..., /) -> Collection[MIRField] | None: ...
+
+
+NO_FIELDS: RecordFields = MappingProxyType({})
+
+
+class MIRRecords(Mapping[TpyType, MIRRecordLayout]):
+    """What a walk of places reads (`shapes.step`): the record layouts a
+    body or the definitions supply, by record type, and the declared fields
+    of every record -- a layout is MIR's storage model of a record, which
+    needs its verified definition; membership is a fact of every record."""
+
+    def __init__(self, layouts: Records, fields: RecordFields, containers: Collection[TpyType] = ()) -> None:
+        self._layouts = layouts
+        self.fields = fields
+        # The container types whose definitions were registered beside the layouts.
+        self.containers = frozenset(containers)
+
+    def __getitem__(self, typ: TpyType) -> MIRRecordLayout:
+        return self._layouts[typ]
+
+    def __iter__(self) -> Iterator[TpyType]:
+        return iter(self._layouts)
+
+    def __len__(self) -> int:
+        return len(self._layouts)
 
 
 _LEAVES = (MIRClass.LEAF, MIRClass.OWNED_LEAF)
@@ -337,6 +367,28 @@ def container_members(typ: TpyType, readonly: bool) -> tuple[MIRShape, ...] | st
         cls = value_class(bare)
         shapes.append(value_shape(bare, cls, access=cls is not MIRClass.LEAF and isinstance(member, ReadonlyType)))
     return with_access(tuple(shapes), readonly)
+
+
+def subject_class(declared: TpyType) -> MIRClass | None:
+    """The value class of what a binding of type `declared` holds, its
+    `readonly[...]` / `Own[...]` wrapper seen through; None for a type MIR
+    does not model."""
+    return value_class(native_container_subject(declared))
+
+
+def admission_problem(subject: TpyType, cls: MIRClass | None) -> str | None:
+    """Why MIR does not model an aggregate binding of type `subject` (a
+    parameter's, a receiver's, a local's, a hoist's): a record whose
+    hierarchy it does not model, a TypeDef missing included
+    (`modeled_ancestors`), a container or container view whose members it
+    does not (`container_members`); None when it does, and for any other
+    class."""
+    if cls is MIRClass.RECORD:
+        return "unmodeled record" if modeled_ancestors(subject) is None else None
+    if cls in CONTAINER_CLASSES:
+        members = container_members(subject, False)
+        return members if isinstance(members, str) else None
+    return None
 
 
 def admitted_members(typ: TpyType, readonly: bool, layouts: Records) -> tuple[MIRShape, ...] | str:
@@ -416,7 +468,7 @@ def holding_of(cls: MIRClass | None, role: MIRRole) -> MIRHolding:
 
 def handed_type(declared: TpyType) -> bool:
     """Whether `declared` hands a value over (`Own[...]`, under any wrapper)."""
-    return isinstance(unwrap_readonly(unwrap_ref_type(declared)), OwnType)
+    return isinstance(unwrap_readonly(declared), OwnType)
 
 
 def loan_field(typ: TpyType) -> bool:
@@ -455,14 +507,17 @@ def value_shape(declared: TpyType, cls: MIRClass | None = None, *, access: bool 
       at its access (`container_members`; `with_access`), at a field those
       `layouts` admits (`admitted_members`), none when it admits none.
     A lent owned leaf and a view are a readonly pointer: the access their
-    class has (`loan_access`)."""
+    class has (`loan_access`). A THIR type's `Ref[...]` names no loan (the
+    passing or the return representation does): it is stripped here, until
+    THIR publishes bare types."""
     field = position is MIRPosition.FIELD
     if (problem := position_problem(declared, position)) is not None:
         raise MIRValidationError(problem)
+    declared = unwrap_ref_type(declared)
     typ = declared
     if facts is not None:
         cls = _LAYOUT_CLASSES[type(facts)]
-        typ = unwrap_ref_type(unwrap_readonly(unwrap_ref_type(declared)))
+        typ = unwrap_readonly(declared)
     elif field:
         typ = unwrap_readonly(declared)
     if cls is None:
@@ -508,30 +563,26 @@ def thir_member(member: TpyType | th.THIRBorrowedRecord | th.THIROwnedRecord) ->
 
 
 # The layout facts a THIR binding may carry, at most one, each in its own
-# field: a borrowed record's pointer or a wrapper's layout.
-_LAYOUT_FACTS = {"borrowed_record": th.THIRBorrowedRecord, "optional_layout": th.THIROptionalLayout,
-                 "union_layout": th.THIRUnionLayout, "tuple_layout": th.THIRTupleLayout}
+# field: a wrapper's per-member forms, which its type does not state.
+_LAYOUT_FACTS = {"optional_layout": th.THIROptionalLayout, "union_layout": th.THIRUnionLayout,
+                 "tuple_layout": th.THIRTupleLayout}
 
 
 def laid_value(declared: TpyType, fact: object) -> MIRShape | str:
-    """The value THIR's layout fact `fact` lays out (a borrowed record's
-    pointer, `thir_member`; a wrapper of `declared`, `value_shape`), of
-    THIR's schema -- a fact, its records at a definite access, a union's
-    of the declared union -- unchecked against `declared`; else the
-    refusal."""
-    if isinstance(fact, th.THIRBorrowedRecord):
-        records = (fact,)
-    elif type(fact) in _LAYOUT_CLASSES:
+    """The wrapper of `declared` THIR's layout fact `fact` lays out
+    (`value_shape`), of THIR's schema -- a fact, its records at a definite
+    access, a union's of the declared union -- unchecked against
+    `declared`; else the refusal."""
+    if type(fact) in _LAYOUT_CLASSES:
         records = (fact.payload,) if isinstance(fact, th.THIROptionalLayout) else fact.elements
     else:
         return "missing or invalid layout fact"
-    if isinstance(fact, th.THIRUnionLayout) and fact.type != unwrap_ref_type(
-            unwrap_readonly(unwrap_ref_type(declared))):
+    if isinstance(fact, th.THIRUnionLayout) and fact.type != unwrap_readonly(declared):
         return "unsupported union layout"
     if any(isinstance(r, (th.THIRBorrowedRecord, th.THIROwnedRecord))
            and not (record_type(r.type) and type(r.readonly) is bool) for r in records):
         return "unsupported reference fact"
-    return thir_member(fact) if isinstance(fact, th.THIRBorrowedRecord) else value_shape(declared, facts=fact)
+    return value_shape(declared, facts=fact)
 
 
 def fact_shape(declared: TpyType, fact: object) -> MIRShape | str:
@@ -539,6 +590,17 @@ def fact_shape(declared: TpyType, fact: object) -> MIRShape | str:
     `declared`, checked once (`shape_problem`); else the refusal."""
     shape = laid_value(declared, fact)
     return shape if isinstance(shape, str) else shape_problem(shape, declared) or shape
+
+
+def lent_shape_problem(declared: TpyType, ref: object) -> str | None:
+    """Whether the holder a borrowed record or container `ref` names (a
+    call's borrowed result, a body's, a backing's record), one MIR models
+    (`admission_problem`), is read at `declared` (`shape_problem`); None
+    when it is, else the refusal."""
+    cls = value_class(ref.type) if isinstance(ref, th.THIRBorrowedRecord) else None
+    if not (cls in AGGREGATE_CLASSES and type(ref.readonly) is bool and admission_problem(ref.type, cls) is None):
+        return "unsupported reference fact"
+    return shape_problem(value_shape(ref.type, access=ref.readonly, role=MIRRole.LOAN), declared)
 
 
 def layout_fact(node: object, *, others: tuple[str, ...] = ()) -> object:
@@ -623,10 +685,8 @@ def _subject(shape: MIRShape, declared: TpyType) -> TpyType:
     """The type a shape of `declared` has: a wrapper's bare, a holder's the
     loaned type (an `Own[...]` declaration lends nothing), storage the
     owned one."""
-    if shape.cls in WRAPPER_CLASSES:
-        return unwrap_ref_type(unwrap_readonly(unwrap_ref_type(declared)))
-    if shape.is_holder:
-        return unwrap_readonly(unwrap_ref_type(declared))
+    if shape.cls in WRAPPER_CLASSES or shape.is_holder:
+        return unwrap_readonly(declared)
     return native_container_subject(declared)
 
 
@@ -656,7 +716,7 @@ def _members_problem(shape: MIRShape, declared: TpyType, position: MIRPosition) 
     each wrapper member the declared one (a record pointed at or, in a
     tuple, stored; an inert scalar of exactly the declared type, an
     Optional's of its declared payload's), a container's the builder's."""
-    readonly = isinstance(unwrap_ref_type(declared), ReadonlyType)
+    readonly = isinstance(declared, ReadonlyType)
     match shape.cls:
         case MIRClass.TUPLE:
             types = shape.type.element_types
@@ -736,7 +796,7 @@ def shape_problem(shape: MIRShape, declared: TpyType, position: MIRPosition = MI
     if (problem := _class_problem(shape, representation)) is not None:
         return problem
     if shape.type != _subject(shape, declared):
-        return "reference type mismatch" if shape.cls is MIRClass.RECORD else "value type mismatch"
+        return "reference type mismatch" if shape.cls in AGGREGATE_CLASSES else "value type mismatch"
     if shape.holding not in _holdings(shape.cls, declared, position):
         return "invalid holding"
     # A field's member is at its holder's access (`Member`), composed by `member_shape`.
@@ -749,7 +809,7 @@ def shape_problem(shape: MIRShape, declared: TpyType, position: MIRPosition = MI
             return "mutable loan of a readonly value"
         # A slot's own container or owned-leaf buffer is written in place
         # (grown, assigned, moved from); readonly is a loan's, never storage's.
-        elif (shape.container_storage or shape.leaf_storage) and shape.readonly:
+        elif shape.is_storage and shape.readonly:
             return "readonly owned storage"
     return _members_problem(shape, declared, position)
 
@@ -803,9 +863,9 @@ AccessSource = Passing | Declared | Published | Local | Member
 # protocol parameter (no class). A tuple, a union and storage keep the
 # access their members carry.
 _READ_ONLY_LOANS = frozenset({MIRClass.OWNED_LEAF, MIRClass.VIEW, None})
-# The classes whose loan's access a THIR fact states beside the source
-# deciding it (`fact_access_problem` checks the two agree).
-_LENT_FACT_CLASSES = AGGREGATE_CLASSES | {MIRClass.CONTAINER_VIEW}
+# The classes a `readonly[...]` declaration makes a readonly loan of
+# whatever its source.
+_DECLARED_READONLY_CLASSES = AGGREGATE_CLASSES | {MIRClass.CONTAINER_VIEW}
 
 
 def loan_access(declared: TpyType, cls: MIRClass | None, source: AccessSource | None) -> bool:
@@ -817,8 +877,8 @@ def loan_access(declared: TpyType, cls: MIRClass | None, source: AccessSource | 
     readonly whatever its source; a container view is readonly too when
     its elements are. The callee's own storage lends nothing: its binding has no loan to ask
     about."""
-    bare = unwrap_readonly(unwrap_ref_type(declared))
-    if cls in _LENT_FACT_CLASSES and isinstance(unwrap_ref_type(declared), ReadonlyType):
+    bare = unwrap_readonly(declared)
+    if cls in _DECLARED_READONLY_CLASSES and isinstance(declared, ReadonlyType):
         return True
     match source:
         case Passing(passing=passing):
@@ -834,20 +894,5 @@ def loan_access(declared: TpyType, cls: MIRClass | None, source: AccessSource | 
         case Local(const=const, source_readonly=source_readonly, alias=alias):
             return const or source_readonly or alias
         case Member(holder_readonly=holder_readonly):
-            return holder_readonly or isinstance(unwrap_ref_type(declared), ReadonlyType)
+            return holder_readonly or isinstance(declared, ReadonlyType)
     return cls in _READ_ONLY_LOANS or cls is MIRClass.CONTAINER_VIEW and readonly_elements(bare)
-
-
-def fact_access_problem(cls: MIRClass | None, fact_readonly: bool | None, readonly: bool) -> str | None:
-    """The access THIR states in a loan's fact (`fact_readonly`, None
-    without one) against the access `loan_access` decided for it
-    (`readonly`): checked, never read. A container fact states the loan's
-    access; a record fact may be mutable where a `readonly[...]`
-    declaration narrows the loan (`@readonly` binds `readonly[P]` at
-    CONST_REF over a mutable fact, TODO.md "the facts MIR still derives"),
-    never readonly where the loan is mutable."""
-    if cls not in _LENT_FACT_CLASSES or fact_readonly is None:
-        return None
-    if cls is MIRClass.RECORD:
-        return "invalid reference fact" if fact_readonly and not readonly else None
-    return "invalid native container fact" if fact_readonly is not readonly else None

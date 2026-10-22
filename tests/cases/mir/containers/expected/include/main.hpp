@@ -11,6 +11,8 @@ struct Point;
 struct Bag;
 struct Index;
 struct Pts;
+struct Rack;
+struct Shelf;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -102,13 +104,17 @@ int32_t set_total(const ::tpy::ordered_set<int32_t>& s);
 int32_t arr_first(const std::array<int32_t, 3>& a);
 // def holds(vs: list[StrView]) -> int32:  # tpyc: mir(uncovered /^container holds a borrow$/)
 int32_t holds(const std::vector<std::string_view>& vs);
-// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported expression$/)
+// def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported record initializer$/)
 std::vector<int32_t> comp(const std::vector<int32_t>& xs);
 // def extend_it(xs: list[int32], ys: list[int32]) -> None:  # tpyc: mir(uncovered /^stub declares no contract$/)
 void extend_it(std::vector<int32_t>& xs, std::vector<int32_t>& ys);
 // def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(uncovered /^unsupported native container element$/)
 int32_t nested(const std::vector<std::vector<int32_t>>& xss);
-// def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
+// def rack_items(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t rack_items(Rack& r, bool flag);
+// def rack_rec(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t rack_rec(Rack& r, bool flag);
+// def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a place$/)
 void main();
 
 // class Point:
@@ -193,6 +199,42 @@ inline std::ostream& operator<<(std::ostream& os, const Pts& obj) {
     return os;
 }
 
+// class Rack:
+struct Rack {
+    // items: list[Point]
+    std::vector<Point> items;
+    // rec: Point
+    Point rec;
+
+    // def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+    Rack();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rack";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rack& obj) {
+    ::tpy::print_object_default(os, "Rack", obj);
+    return os;
+}
+
+// class Shelf:
+struct Shelf {
+    // items: list[int32]
+    std::vector<int32_t> items;
+
+    // def __init__(self, items: list[int32]) -> None:  # tpyc: mir(covered)
+    Shelf() = default;
+    explicit Shelf(const std::vector<int32_t>& items);
+
+    // def refill(self, data: list[int32]) -> None:  # tpyc: mir_summary(known)
+    void refill(const std::vector<int32_t>& data);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shelf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
+    ::tpy::print_object_default(os, "Shelf", obj);
+    return os;
+}
+
 
 // # constructor: a scalar field
 // def __init__(self, x: int32) -> None:  # tpyc: mir(covered)
@@ -267,8 +309,8 @@ inline void Index::bump(std::string_view k, int32_t v) {
     ::tpy::__setitem__(this->counts, k, v);
 }
 
-// # constructor: a container of records -- its record elements are built from constants,
-// # which an entry member initializer (operands are parameters) cannot express yet
+// # constructor: a container of records -- a record element built by its own constructor
+// # is no literal operand at entry (BUGS.md#mir-ctor-nested-construct-operand)
 // def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
 //     self.ps = [Point(1), Point(2)]
 inline Pts::Pts() : ps(std::vector<Point>{Point(1), Point(2)}) {}
@@ -304,6 +346,27 @@ inline int32_t Pts::alias_grow_after_use() {
     std::vector<Point>& x = this->ps;
     x.push_back(Point(8));
     return (::tpy::add_check<int32_t>(v, ::tpy::__len__(this->ps)));
+}
+
+// # a literal member whose element is a record construct is not modeled
+// # (BUGS.md#mir-ctor-nested-construct-operand)
+// def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+//     self.items = [Point(1)]
+//     self.rec = Point(1)
+inline Rack::Rack()
+    : items(std::vector<Point>{Point(1)}),
+      rec(Point(1)) {}
+
+// def __init__(self, items: list[int32]) -> None:  # tpyc: mir(covered)
+//     self.items = copy(items)
+inline Shelf::Shelf(const std::vector<int32_t>& items) : items(items) {}
+
+// def refill(self, data: list[int32]) -> None:  # tpyc: mir_summary(known)
+//     self.items = copy(data)  # tpyc: mir_write(self.items)
+//     self.items = copy(data)
+inline void Shelf::refill(const std::vector<int32_t>& data) {
+    this->items = std::vector<int32_t>(data);
+    this->items = std::vector<int32_t>(data);
 }
 void __tpy_init();
 } // namespace tpyapp::main

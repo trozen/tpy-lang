@@ -4,15 +4,15 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import INT32
-from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRangeAdvance
 from .scope_lifetime import inspect_scope_lifetimes
-from .testutil import Reference, execute
+from .testutil import compiled_definitions, Reference, execute
 
 SOURCE = '''from tpy import int32
 def capture(start: int32, stop: int32) -> int32:
@@ -92,17 +92,23 @@ class Runner:
 
 
 @pytest.fixture(scope="module")
-def artifacts():
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {fn.name: fn for fn in ctx.thir_functions.values()}
-    bodies = {name: lower_function(fn, MIRBodyId("ranges", name), definitions=definitions)
-              for name, fn in functions.items()}
-    ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Runner")
-    bodies["Runner"] = lower_constructor(ctor, MIRBodyId("ranges", "Runner"), definitions=definitions)
-    assert all(isinstance(body, MIRFunction) for body in bodies.values()), bodies
-    return functions, bodies, definitions
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled):
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {fn.name: fn for fn in ctx.thir_functions.values()}
+        bodies = {name: lower_function(fn, MIRBodyId("ranges", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Runner")
+        bodies["Runner"] = lower_constructor(ctor, MIRBodyId("ranges", "Runner"), definitions=definitions)
+        assert all(isinstance(body, MIRFunction) for body in bodies.values()), bodies
+        return functions, bodies, definitions
 
 
 def test_once_captured_bounds_and_independent_body_target(artifacts) -> None:

@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, _iter_children, validate_function as validate_thir
@@ -60,11 +61,17 @@ Artifacts = tuple[dict[str, th.THIRFunction], th.THIRConstructor]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return ({node.name: fn for node, fn in ctx.thir_functions.items()},
-            next(c for c in ctx.thir_constructors.values() if c.record_name == "Writer"))
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        return ({node.name: fn for node, fn in ctx.thir_functions.items()},
+                next(c for c in ctx.thir_constructors.values() if c.record_name == "Writer"))
 
 
 def lower(fn: th.THIRFunction, module: str = "globals") -> MIRFunction:

@@ -5,15 +5,16 @@ from dataclasses import replace
 import pytest
 
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, NoneType, NominalType, OptionalType, UnionType
+from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsAlternative, MIRNot,
     MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract,
-    MIRConstruct,
+    MIRConstruct, MIRStorageDuration,
 )
 from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .testutil import (
+    hand_record,
     bind_parameters, Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
     reslot, union_shape,
 )
@@ -167,10 +168,10 @@ def test_scalar_alias_is_a_place_not_a_snapshot() -> None:
 
 @pytest.mark.parametrize("checked_read", [False, True])
 def test_record_construction_requires_explicit_scalar_alias_read(checked_read: bool) -> None:
-    record = NominalType("Box", _module_qname="union_validation.Box")
+    record = hand_record("Box", "union_validation.Box", value=INT32)
     storage = MIRSlotId(BODY, len(SLOTS))
     field = MIRField(MIRFieldId(record, "value"), INT32)
-    slot = MIRSlot(storage, owned_shape(record), MIRSlotKind.LOCAL)
+    slot = MIRSlot(storage, owned_shape(record), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY)
     # A checked read before replacement snapshots a scalar; the alias itself
     # cannot bypass that read by appearing directly in a constructor operand.
     statements = (BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
@@ -252,8 +253,8 @@ def test_malformed_union_operations(stmt: MIRAssign) -> None:
 
 
 def reference_function(source_const: bool = False, dest_const: bool = False) -> MIRFunction:
-    cell = NominalType("Cell", _module_qname="union_validation.Cell")
-    other = NominalType("Other", _module_qname="union_validation.Other")
+    cell = hand_record("Cell", "union_validation.Cell", value=INT32)
+    other = hand_record("Other", "union_validation.Other")
     typ = UnionType((cell, other))
     def layout(readonly: bool) -> tuple:
         return tuple(borrowed_shape(t, readonly) for t in (cell, other))

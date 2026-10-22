@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..codegen_cpp.forms import LocalBinding
 from ..parse import RebindStorage
 from ..thir import nodes as th
@@ -13,14 +14,17 @@ from ..thir.lower.storage import record_layout
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import THIRValidationError, validate_constructor, validate_function
 from ..type_def_registry import ParamPassing
+from ..thir.scalar_leaves import MIRClass
 from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode
+from .nodes import (
+    MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
+)
 from .value import MIRFieldId
 from .storage import MIRStorageEvents, analyze_storage
-from .testutil import Heap, Reference, execute
+from .testutil import compiled_definitions, Heap, Reference, execute
 
 Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 
@@ -127,14 +131,20 @@ def replacement_loop(flag: bool) -> int32:
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    # The in-place reseats MIR models; sema leaves every rebind OWN.
-    force_in_place(modules, {"in_place": None, "replacement_loop": None})
-    sources, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert sources
-    return ({node.name: fn for node, fn in ctx.thir_functions.items()},
-            tuple(ctx.thir_constructors.values()))
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        # The in-place reseats MIR models; sema leaves every rebind OWN.
+        force_in_place(modules, {"in_place": None, "replacement_loop": None})
+        sources, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert sources
+        return ({node.name: fn for node, fn in ctx.thir_functions.items()},
+                tuple(ctx.thir_constructors.values()))
 
 
 def lower(fn: th.THIRFunction, constructors: tuple[th.THIRConstructor, ...]) -> MIRFunction:
@@ -312,7 +322,7 @@ def test_owned_and_self_alias_method_bodies(body: str) -> None:
     else:
         assert fn.body[0].alias_binding.source == "self"
     result = lower_function(fn, MIRBodyId("owned", "method"),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                            definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction)
     value = MIRFieldId(fn.receiver.type, "value")
     assert execute(result, Reference(1), heap={1: {value: 7}}) == (1 if body.startswith("    cell") else 7)
@@ -323,7 +333,6 @@ def test_owned_and_self_alias_method_bodies(body: str) -> None:
     ("value: int32", "self.value = value\n        print(value)", "constructor body effects"),
     ("value: tuple[int32, int32]", "self.value = (value, value)", "unsupported record fields"),
     ("value: int32 | None", "self.value = value", "unsupported record fields"),
-    ("value: list[int32]", "self.value = [value]", "constructor container field"),
 ])
 def test_real_constructor_effects_and_sibling_shapes_remain_uncovered(
     declaration: str, assignment: str, reason: str,
@@ -332,11 +341,33 @@ def test_real_constructor_effects_and_sibling_shapes_remain_uncovered(
               + "\n    def __init__(self, value: int32):\n        " + assignment
               + "\ndef build() -> int32:\n    record = Record(1)\n    return 0\n")
     compiler, modules = _compile(source)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
-    result = lower_function(fn, MIRBodyId("owned", "build"),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRNotCovered) and reason in result.reason
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
+        result = lower_function(fn, MIRBodyId("owned", "build"),
+                                definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
+        assert isinstance(result, MIRNotCovered) and reason in result.reason
+
+
+def test_a_caller_builds_a_container_member_of_its_construct() -> None:
+    # `Record(1)` with `self.value = [value]`: the caller builds the member's
+    # literal over its argument into storage of the full expression and
+    # moves it into the construct, as a member built by its own constructor is.
+    source = ("from tpy import int32\nclass Record:\n    value: list[int32]\n"
+              "    def __init__(self, value: int32):\n        self.value = [value]\n"
+              "def build() -> int32:\n    record = Record(1)\n    return 0\n")
+    compiler, modules = _compile(source)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
+        result = lower_function(fn, MIRBodyId("owned", "build"),
+                                definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
+    assert isinstance(result, MIRFunction), result
+    constructs = [s for b in result.blocks for s in b.statements
+                  if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)]
+    literal, record = constructs
+    assert result.slots[literal.target.root.index].shape.cls is MIRClass.CONTAINER and literal.value.may_raise
+    assert record.value.fields == (literal.target.root,)
 
 
 @pytest.mark.parametrize("decorator,methods,attribute,expected", [
@@ -356,17 +387,18 @@ def test_special_member_facts_come_from_real_declarations(
               "    def __init__(self, value: int32):\n        self.value = value\n" + methods
               + "\ndef build() -> int32:\n    record = Record(1)\n    return record.value\n")
     compiler, modules = _compile(source)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
-    assert getattr(ctor.record_layout, attribute) is expected
-    fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
-    result = lower_function(fn, MIRBodyId("owned", "build"),
-                            definitions=MIRDefinitions((ctor,)))
-    if attribute.startswith("custom"):
-        assert isinstance(result, MIRNotCovered) and "special member" in result.reason
-    else:
-        assert isinstance(result, MIRFunction)
-        assert getattr(result.records[0], attribute) is False
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
+        assert getattr(ctor.record_layout, attribute) is expected
+        fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
+        result = lower_function(fn, MIRBodyId("owned", "build"),
+                                definitions=MIRDefinitions((ctor,)))
+        if attribute.startswith("custom"):
+            assert isinstance(result, MIRNotCovered) and "special member" in result.reason
+        else:
+            assert isinstance(result, MIRFunction)
+            assert getattr(result.records[0], attribute) is False
 
 
 def test_inconsistent_thir_storage_and_member_facts_fail_validation(artifacts: Artifacts) -> None:
@@ -438,7 +470,8 @@ def inspect() -> int32:
             constructors.extend(ctx.thir_constructors.values())
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(f for n, f in ctx.thir_functions.items() if n.name == "inspect")
-    mir = lower(fn, tuple(constructors))
+    with activate_compiler(compiler):
+        mir = lower(fn, tuple(constructors))
     assert len(mir.records) == 2 and mir.records[0].type != mir.records[1].type
     heap: Heap = {}
     assert execute(mir, heap=heap) == 2

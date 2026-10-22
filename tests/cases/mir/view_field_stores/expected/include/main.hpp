@@ -87,13 +87,13 @@ int32_t change(R& a, R&& b, bool flag);
 int32_t private_own_alias(int32_t k);
 // def store_replace(t: Tok, s: str, b: Own[Buf], flag: bool) -> None:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
 void store_replace(Tok& t, std::string_view s, Buf&& b, bool flag);
-// def own_write_transfer(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^unsupported record argument$/)
+// def own_write_transfer(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^constructor argument type$/)
 void own_write_transfer(int32_t k, bool flag);
 // def wrap_copy(t: Tok) -> int32:  # tpyc: mir(covered)
 int32_t wrap_copy(const Tok& t);
 // def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void wrap_copy_replaced(int32_t k, bool flag);
-// def wrap_move(k: int32) -> int32:  # tpyc: mir(uncovered /^move needs fixed movable owned local$/)
+// def wrap_move(k: int32) -> int32:  # tpyc: mir(conflict /scope_end/)
 int32_t wrap_move(int32_t k);
 // def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
 void store_and_replace(Tok& t, std::string_view s, Buf& b, bool flag);

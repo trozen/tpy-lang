@@ -106,7 +106,7 @@ def str_local(h: H) -> int32:  # tpyc: mir(covered)
 
 
 # list remedy: copy() hands the iteration its own list: silent (MIR does not lower copy() of a list yet)
-def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /call container argument needs a place/)
+def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
     return walk(copy(xs), xs)  # tpyc: ok
 
 
@@ -252,6 +252,26 @@ def line_copy(ln: Line) -> bool:  # tpyc: mir(uncovered /named argument needs co
     return alias_external(ln, copy(ln))  # tpyc: ok
 
 
+# container_select: a container alias of a conditional is analyzed like its record twin
+class Cell:
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+
+def pick(c: bool, a: list[Cell], b: list[Cell]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+    v = a if c else b
+    r = v[0]
+    a.append(Cell(5))
+    return r.x
+
+
+def caller(xs: list[Cell]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+    # The alias `v` may be `a`, whose growth invalidates `r`: one list as both arms is warned, not refused.
+    return pick(True, xs, xs)  # tpyc: warning(/passed as both/)
+
+
 def main() -> None:
     print("other_int", other_int([1], [2]))
     print("local_copy", local_copy([3]))
@@ -271,6 +291,13 @@ def main() -> None:
     member_param(o, "zz")
     print("member_param", o.inner.buf)
     print("line_copy", line_copy(Line(Point(5, "r"))))
+    cells = [Cell(1)]
+    others = [Cell(2)]
+    print("container_select pick b:", pick(False, cells, others))
+    # The callee grew the caller's list in place.
+    print("container_select grown:", len(cells), cells[1].x)
+    others[0].x = 9
+    print("container_select pick b again:", pick(False, cells, others), len(cells))
 
 
 main()

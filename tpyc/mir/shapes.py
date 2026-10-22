@@ -9,7 +9,8 @@ from dataclasses import dataclass, replace
 from ..thir.scalar_leaves import MIRClass
 from ..typesys import TpyType
 from .value import (
-    MIRField, MIRFieldId, MIRHolding, MIRShape, MIRValidationError, Records, holder_form, member_shape, require_valid,
+    MIRField, MIRFieldId, MIRHolding, MIRRecords, MIRShape, MIRValidationError, RecordFields, holder_form,
+    member_shape, require_valid,
 )
 
 
@@ -51,21 +52,18 @@ Projection = (MIRDeref | MIRField | MIRTupleIndex | MIROptionalPayload | MIRUnio
 REGION_END = "summary regions are analysis places, not direct element accesses"
 
 
-def field_member(layouts: Records, holder: TpyType, owner: TpyType, name: str, typ: TpyType) -> str | None:
+def field_member(fields: RecordFields, holder: TpyType, owner: TpyType, name: str, typ: TpyType) -> str | None:
     """Whether the field (`owner`, `name`, `typ`), named by a non-empty
-    string, is a member of record storage of type `holder`, keyed by its
-    declaring owner: in the holder's layout when `layouts` has one (it
-    carries its ancestors' fields); with none -- a record with no THIR
-    constructor -- a field the holder itself declares. Else the problem."""
+    string, is a member of record storage of type `holder`: one of the
+    holder's declared fields (`fields`), each keyed by its declaring
+    owner -- the one answer every walk gets. Else the problem."""
     if not (isinstance(name, str) and name):
         return "field owner mismatch"
-    layout = layouts.get(holder)
-    if layout is not None:
-        return None if MIRField(MIRFieldId(owner, name), typ) in layout.fields else "field missing from record layout"
-    return None if owner == holder else "field owner mismatch"
+    return None if MIRField(MIRFieldId(owner, name), typ) in fields.get(holder, ()) else (
+        "field missing from declared fields")
 
 
-def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
+def step(shape: MIRShape, projection: Projection, records: MIRRecords) -> MIRShape:
     """The value `projection` reaches from a value of `shape`; raises on a
     projection the value has no member for. A container's structure is an
     analysis region with no value of its own: no step reaches it."""
@@ -76,7 +74,8 @@ def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
             # Any element: a read, borrow or in-place write of one reaches
             # the whole region of container storage (a borrowed container's
             # after its dereference) or of the container a view views.
-            require_valid((shape.container_storage or shape.container_view_holder) and bool(shape.members),
+            require_valid((shape.owned_place and shape.cls is MIRClass.CONTAINER or shape.container_view_holder)
+                          and bool(shape.members),
                           "element projection needs container storage")
             return shape.subscript
         case MIRUnionPayload():
@@ -102,17 +101,16 @@ def step(shape: MIRShape, projection: Projection, records: Records) -> MIRShape:
         case MIRField():
             typ = shape.type
             # Only record storage has fields: a view, an owned leaf's buffer or a
-            # container's storage (elements only) has none, and the own-type
-            # escape of `field_member` would admit any name on it.
+            # container's storage (elements only) has none.
             require_valid(shape.owned_place and shape.cls is MIRClass.RECORD, "field needs record storage")
             require_valid(isinstance(projection.id, MIRFieldId), "field owner mismatch")
-            problem = field_member(records, typ, projection.id.owner, projection.id.name, projection.type)
+            problem = field_member(records.fields, typ, projection.id.owner, projection.id.name, projection.type)
             require_valid(problem is None, problem)
             return member_shape(projection.type, shape.readonly, records)
     raise MIRValidationError("unsupported place projections")
 
 
-def inline_payload_holder(field: MIRShape, records: Records) -> MIRShape:
+def inline_payload_holder(field: MIRShape, records: MIRRecords) -> MIRShape:
     """A holder of an Optional field's inline payload record, at the
     access of the place the payload lies in (`step`)."""
     return holder_form(step(field, MIROptionalPayload(), records))
@@ -147,7 +145,7 @@ class MIRWalk:
         return self.hops[-1].reached if self.hops else self.root
 
 
-def walk(shape: MIRShape, projections: tuple[Projection, ...], records: Records) -> MIRWalk:
+def walk(shape: MIRShape, projections: tuple[Projection, ...], records: MIRRecords) -> MIRWalk:
     """Each projection with the shape it applies to and the shape it
     reaches, from a value of `shape`; raises on a hop no rule admits. A
     container's structure is the terminal region: nothing follows it."""
@@ -196,7 +194,7 @@ def store_problem(walked: MIRWalk) -> str | None:
     return None
 
 
-def walk_to(shape: MIRShape, projections: tuple[Projection, ...], records: Records) -> MIRShape:
+def walk_to(shape: MIRShape, projections: tuple[Projection, ...], records: MIRRecords) -> MIRShape:
     """The value `projections` reach from a value of `shape`."""
     end = walk(shape, projections, records).end
     require_valid(end is not None, REGION_END)

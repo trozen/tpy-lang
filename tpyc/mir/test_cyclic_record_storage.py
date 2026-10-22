@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import validate_function as validate_thir
@@ -18,7 +19,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import CURRENT, INITIAL, LOOP, analyze, loop_function
 from .test_scope_inspection import scoped_loop
-from .testutil import execute
+from .testutil import compiled_definitions, execute
 from .validate import validate_function
 from .value import MIRValidationError
 
@@ -50,18 +51,26 @@ def fresh(run: bool, stop: bool, skip: bool, early: bool) -> int32:
 
 
 @pytest.fixture(scope="module")
-def source() -> tuple[th.THIRFunction, MIRDefinitions]:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "fresh")
-    return fn, MIRDefinitions(tuple(ctx.thir_constructors.values()))
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def source(compiled) -> tuple[th.THIRFunction, MIRDefinitions]:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "fresh")
+        return fn, compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
 
 
 def transferred(source: tuple[th.THIRFunction, MIRDefinitions], move: bool,
                 *, inner_source: bool = False, readonly: bool = False) -> th.THIRFunction:
     fn, _ = source
     original, result, second, loop, ret = fn.body
-    original = replace(original, is_const=readonly, owned_storage=replace(original.owned_storage, readonly=readonly))
+    # The const verdict is the binding's; the node spells it too.
+    original = replace(original, is_const=readonly, binding=replace(original.binding, const=readonly),
+                       owned_storage=replace(original.owned_storage, readonly=readonly))
     name = th.THIRName(original.resolved_type, "original", form=th.Form.STORAGE)
     value = (th.THIRMove(name.result_type, name, form=name.form) if move else
              th.THIRCopy(name.result_type, name, "Cell", form=th.Form.STORAGE))
@@ -98,14 +107,16 @@ def test_each_activation_owns_an_independent_copy(
     assert inspect_scope_lifetimes(fn).conflicts == ()
 
 
-def test_lowering_requires_positive_scoped_copy_fact(source: tuple[th.THIRFunction, MIRDefinitions]) -> None:
+def test_a_loop_copy_is_scoped_whatever_thir_publishes(source: tuple[th.THIRFunction, MIRDefinitions]) -> None:
+    # The copy a loop declaration owns is placed in its declaration's scope
+    # by MIR's own rule: a dropped THIR placement is not read.
     fn = transferred(source, False)
     loop = fn.body[3]
     local = replace(loop.body[0], storage_placement=None)
-    fn = replace(fn, body=(*fn.body[:3], replace(loop, body=(local, *loop.body[1:])), fn.body[-1]))
-    result = lower_function(fn, MIRBodyId("cyclic", "missing"),
-                            definitions=source[1])
-    assert isinstance(result, MIRNotCovered) and result.reason == "loop copy or move needs scoped or hoisted storage"
+    forged = replace(fn, body=(*fn.body[:3], replace(loop, body=(local, *loop.body[1:])), fn.body[-1]))
+    result = lower_function(forged, MIRBodyId("cyclic", "missing"), definitions=source[1])
+    assert result == lower_function(fn, MIRBodyId("cyclic", "missing"), definitions=source[1])
+    assert isinstance(result, MIRFunction), result
 
 
 def test_readonly_move_stays_uncovered(source: tuple[th.THIRFunction, MIRDefinitions]) -> None:

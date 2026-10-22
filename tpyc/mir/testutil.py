@@ -1,11 +1,14 @@
 """A bounded MIR interpreter with explicit shared object identities."""
 
+from collections.abc import Callable, Collection, Iterable
 import copy
 from dataclasses import dataclass, replace
 import operator
+from types import MappingProxyType
 
-from ..type_def_registry import int_traits_of
-from ..typesys import INT32_MIN, INT32_MAX
+from ..compilation_context import activate_compiler
+from ..type_def_registry import TypeCategory, TypeDef, _type_defs, int_traits_of, register
+from ..typesys import INT32_MIN, INT32_MAX, FieldInfo, NominalType, RecordInfo
 
 from .nodes import (
     MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
@@ -15,15 +18,53 @@ from .nodes import (
     MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIROp, MIRPrint, place_shape,
 )
-from .value import Declared, MIRField, MIRFieldId, MIRHolding, MIRShape
+from .value import (
+    NO_FIELDS, Declared, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, RecordFields,
+)
 from .region_flow import MIRRegionFlow
 from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, value_class
 from ..type_def_registry import ParamPassing
-from ..typesys import OwnType, TpyType
+from ..typesys import OwnType, TpyType, return_representation
 from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
+from .definitions import MIRDefinitions, declared_fields
 from .shapes import MIRContainerElements, MIRDeref, MIROptionalPayload, MIRTupleIndex, MIRUnionPayload
 from .validate import statement_reads
+
+# The TypeDef of every hand-built record (`hand_record`): its declared
+# fields are what `declared_fields` resolves from it.
+_HAND_TYPE_DEFS: dict[str, TypeDef] = {}
+
+
+def hand_record(name: str, qname: str, /, *bases: NominalType, **fields: TpyType) -> NominalType:
+    """A record a test builds MIR over by hand, declaring `fields` and
+    deriving from the hand-built `bases`, with the plain user record
+    TypeDef MIR admits a record by and reads its declared fields from. The
+    TypeDef is in the registry while the MIR tests are collected and while
+    each runs (`register_hand_records`), never beside other tests."""
+    typ = NominalType(name, _module_qname=qname)
+    declared = [FieldInfo(n, t) for n, t in fields.items()]
+    ancestors = [a for base in bases for a in (base, *_HAND_TYPE_DEFS[base.qualified_name()].record.mro_ancestors)]
+    if qname not in _HAND_TYPE_DEFS:
+        _HAND_TYPE_DEFS[qname] = TypeDef(qname=qname, category=TypeCategory.RECORD, record=RecordInfo(
+            name, declared, module=qname.rsplit(".", 1)[0], parents=list(bases), mro_ancestors=ancestors))
+        register(_HAND_TYPE_DEFS[qname])
+    record = _HAND_TYPE_DEFS[qname].record
+    assert record.fields == declared and record.mro_ancestors == ancestors, (typ, fields)
+    return typ
+
+
+def register_hand_records() -> None:
+    for qname, td in _HAND_TYPE_DEFS.items():
+        if qname not in _type_defs:
+            register(td)
+
+
+def unregister_hand_records() -> None:
+    for qname, td in _HAND_TYPE_DEFS.items():
+        if _type_defs.get(qname) is td:
+            del _type_defs[qname]
+
 
 # Shapes for hand-built slots and members, one per holding: the class is
 # the type's (`value_class`), unless a probe of an ill-classed value names it.
@@ -92,10 +133,63 @@ def slot_param(slot: MIRSlot, passing: ParamPassing | None = None) -> th.THIRPar
     return th.THIRParam(slot.name or "", typ, passing=passing, **facts)
 
 
-def bind_parameters(fn: MIRFunction, passings: dict[MIRSlotId, ParamPassing] | None = None) -> MIRFunction:
+def records_of(*layouts: MIRRecordLayout) -> MIRRecords:
+    """What a walk over hand-built records reads: their layouts, and the
+    fields their records declare (`declared_fields`)."""
+    return MIRRecords(MappingProxyType({layout.type: layout for layout in layouts}), declared_fields())
+
+
+def compiled_definitions(compiler: object, constructors: 'tuple[th.THIRConstructor, ...]') -> MIRDefinitions:
+    """The definitions of a compilation's constructors, verified under it."""
+    with activate_compiler(compiler):
+        return MIRDefinitions(constructors)
+
+
+def as_declared(records: MIRRecords, layout: MIRRecordLayout) -> MIRRecords:
+    """A forged record: `records` with `layout` added or replaced and its
+    record declaring exactly the layout's fields."""
+    fields = frozenset(layout.fields)
+    return MIRRecords(MappingProxyType({**records, layout.type: layout}),
+                      Redeclared(records.fields, lambda typ, declared: fields if typ == layout.type else declared))
+
+
+def no_layouts() -> MIRRecords:
+    """A walk over no layout: the declared fields alone."""
+    return MIRRecords(MappingProxyType({}), declared_fields())
+
+
+class Redeclared:
+    """A test's own declared fields (a `RecordFields` lookup), disagreeing
+    with the records' own: each record's as `change` gives it from
+    `base`'s."""
+
+    def __init__(self, base: RecordFields,
+                 change: Callable[[TpyType, frozenset[MIRField]], frozenset[MIRField]]) -> None:
+        self.base, self.change = base, change
+
+    def __getitem__(self, typ: TpyType, /) -> frozenset[MIRField]:
+        return self.change(typ, frozenset(self.base.get(typ, frozenset())))
+
+    def get(self, typ: TpyType, default: Collection[MIRField] | None = None, /) -> Collection[MIRField] | None:
+        return self[typ]
+
+
+def with_fields(base: RecordFields, extra: 'Iterable[MIRField]') -> RecordFields:
+    """`base` with `extra` added to their owners' declared fields."""
+    added: dict[TpyType, frozenset[MIRField]] = {}
+    for f in extra:
+        added[f.id.owner] = added.get(f.id.owner, frozenset()) | {f}
+    return Redeclared(base, lambda typ, declared: declared | added.get(typ, frozenset()))
+
+
+def bind_parameters(fn: MIRFunction, passings: dict[MIRSlotId, ParamPassing] | None = None, *,
+                    fields: 'Iterable[MIRField]' = ()) -> MIRFunction:
     """A hand-built body with the binding the one derivation
     (`parameter_binding`) gives each of its parameter slots, at the passing
-    `passings` names for it, else its type's own."""
+    `passings` names for it, else its type's own, and, unless it states
+    them, the fields its records declare (`declared_fields`), with
+    `fields` added to their owners', and the representation its declared
+    return type has (as a body's lowering decides it with no signature)."""
     passings = passings or {}
     bindings = []
     for slot in fn.slots:
@@ -104,7 +198,12 @@ def bind_parameters(fn: MIRFunction, passings: dict[MIRSlotId, ParamPassing] | N
             # A slot no binding derives (a forged one) keeps none: the validator refuses it.
             if isinstance(binding, MIRParameterBinding):
                 bindings.append(binding)
-    return replace(fn, parameter_bindings=tuple(bindings))
+    declared = fn.record_fields if fn.record_fields is not NO_FIELDS else declared_fields()
+    representation = (fn.return_representation if fn.return_representation is not None
+                      else return_representation(fn.return_type))
+    return replace(fn, parameter_bindings=tuple(bindings),
+                   record_fields=with_fields(declared, fields) if fields else declared,
+                   return_representation=representation)
 
 
 def repass(fn: MIRFunction, name: str, passing: ParamPassing) -> MIRFunction:
@@ -263,7 +362,8 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRMemberInits():
                     return {f.id: member_value(f, m.source) for f, m in zip(layout.fields, source.fields)}
                 case MIRConstruct():
-                    return ContainerValue([values[s] for s in source.fields])
+                    return ContainerValue([s.value if isinstance(s, MIRConstant) else values[s]
+                                           for s in source.fields])
             value = values[source]
             if layout is not None and isinstance(value, Reference):
                 held = objects[value.identity]
@@ -435,7 +535,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRUnionExtract():
                     value = (PayloadAlias(rhs.source) if slots[stmt.target.root].shape.holding is MIRHolding.ALIAS
                              else read(rhs.source))
-                case MIRConstruct() if slots[stmt.target.root].shape.container_storage:
+                case MIRConstruct() if place_shape(stmt.target, slots, records).cls is MIRClass.CONTAINER:
                     value = ContainerValue([values[src] for src in rhs.fields])
                 case MIRConstruct():
                     layout = records[place_shape(stmt.target, slots, records).type]

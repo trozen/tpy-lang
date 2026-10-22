@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from .definitions import MIRDefinitions
 from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
@@ -17,7 +17,7 @@ from .value import MIRHolding
 from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
-from .testutil import ContainerValue, Reference, execute
+from .testutil import compiled_definitions, ContainerValue, Reference, execute
 
 PREFIX = '''from tpy import int32, Array, readonly
 class Cell:
@@ -91,15 +91,26 @@ def _retention(fn: MIRFunction) -> MIRRetention:
 
 def compile_bodies(source: str):
     compiler, modules = _compile(source)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {fn.name: fn for fn in ctx.thir_functions.values()}
-    bodies = {name: lower_function(fn, MIRBodyId("native", name), definitions=definitions)
-              for name, fn in functions.items()}
-    for ctor in ctx.thir_constructors.values():
-        bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("native", ctor.record_name),
-                                                   definitions=definitions)
-    return functions, bodies, definitions
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {fn.name: fn for fn in ctx.thir_functions.values()}
+        bodies = {name: lower_function(fn, MIRBodyId("native", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        for ctor in ctx.thir_constructors.values():
+            bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("native", ctor.record_name),
+                                                       definitions=definitions)
+    return functions, bodies, definitions, compiler
+
+
+@pytest.fixture(autouse=True)
+def _active(request: pytest.FixtureRequest):
+    # MIR admits a record by the TypeDef its compilation registered.
+    if "artifacts" not in request.fixturenames:
+        yield
+        return
+    with activate_compiler(request.getfixturevalue("artifacts")[3]):
+        yield
 
 
 @pytest.fixture(scope="module")
@@ -123,7 +134,7 @@ def test_native_source_families(typ: str, record: bool, alias: bool) -> None:
         last = {'item.value' if record else 'item'}
     return last
 '''
-    _, bodies, _ = compile_bodies(source)
+    _, bodies, _, _ = compile_bodies(source)
     fn = bodies["walk"]
     assert isinstance(fn, MIRFunction), fn
     field = fn.records[0].fields[0].id if record else None
@@ -135,7 +146,7 @@ def test_native_source_families(typ: str, record: bool, alias: bool) -> None:
 
 
 def test_saved_element_survives_target_reset_and_cursor_advance(artifacts) -> None:
-    _, bodies, _ = artifacts
+    _, bodies, _, _ = artifacts
     fn = bodies["retained"]
     field = next(r.fields[0].id for r in fn.records if r.type.name == "Cell")
     heap = {1: {field: 1}, 2: {field: 2}, 3: {field: 3}}
@@ -156,7 +167,7 @@ def test_saved_element_survives_target_reset_and_cursor_advance(artifacts) -> No
 
 
 def test_native_transfers_targets_and_constructor_tail(artifacts) -> None:
-    _, bodies, _ = artifacts
+    _, bodies, _, _ = artifacts
     assert execute(bodies["exits"], ContainerValue(()), True) == 77
     assert execute(bodies["exits"], ContainerValue((2, 3)), True) == 3
     assert execute(bodies["exits"], ContainerValue((2, 3)), False) == 77
@@ -176,24 +187,43 @@ def test_native_transfers_targets_and_constructor_tail(artifacts) -> None:
     assert execute(bodies["first"], ContainerValue(()), heap=heap) == 42
 
 
-@pytest.mark.parametrize("damage", ["missing", "source", "binding", "hoist", "consuming", "reseat"])
+@pytest.mark.parametrize("damage", ["missing", "source"])
+def test_the_iteration_source_fact_is_not_read(artifacts, damage: str) -> None:
+    # The loop's source is the place MIR builds: THIR's description of it, or none, changes nothing.
+    functions, bodies, definitions, _ = artifacts
+    fn = functions["retained"]
+    loop = next(s for s in fn.body if isinstance(s, th.THIRForEach))
+    if damage == "missing":
+        loop = replace(loop, iteration=None)
+    else:
+        loop = replace(loop, iteration=replace(loop.iteration, source=replace(loop.iteration.source, readonly=True)))
+    damaged = replace(fn, body=tuple(loop if isinstance(s, th.THIRForEach) else s for s in fn.body))
+    assert lower_function(damaged, MIRBodyId("native", "retained"), definitions=definitions) == \
+        lower_function(fn, MIRBodyId("native", "retained"), definitions=definitions)
+
+
+def test_a_reassigned_source_is_no_fixed_holder_rule(artifacts) -> None:
+    # A holder reseated beside its iteration is a pointer holder like a
+    # record's: the dependencies follow the reseat, no layout set is read.
+    functions, _, definitions, _ = artifacts
+    fn = functions["retained"]
+    damaged = replace(fn, layout=replace(fn.layout, reassigned_locals=frozenset({"source"})))
+    assert lower_function(damaged, MIRBodyId("native", "retained"), definitions=definitions) == \
+        lower_function(fn, MIRBodyId("native", "retained"), definitions=definitions)
+
+
+@pytest.mark.parametrize("damage", ["binding", "hoist", "consuming"])
 def test_native_facts_fail_closed(artifacts, damage: str) -> None:
-    functions, _, definitions = artifacts
+    functions, _, definitions, _ = artifacts
     fn = functions["retained"]
     loop = next(s for s in fn.body if isinstance(s, th.THIRForEach))
     match damage:
-        case "missing":
-            loop = replace(loop, iteration=None)
-        case "source":
-            loop = replace(loop, iteration=replace(loop.iteration, source=replace(loop.iteration.source, readonly=True)))
         case "binding":
             loop = replace(loop, const_loop_var=True)
         case "hoist":
             loop = replace(loop, hoist_loop_var=True)
         case "consuming":
             loop = replace(loop, consuming=True)
-        case "reseat":
-            fn = replace(fn, layout=replace(fn.layout, reassigned_locals=frozenset({"source"})))
     fn = replace(fn, body=tuple(loop if isinstance(s, th.THIRForEach) else s for s in fn.body))
     result = lower_function(fn, MIRBodyId("native", "damaged"),
                             definitions=definitions)
@@ -207,7 +237,7 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
                          "value=int32:leaf:readonly parameter xs"),
 ])
 def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
-    _, bodies, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
+    _, bodies, _, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
     for item in xs:
         pass
     return 0
@@ -220,7 +250,7 @@ def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
 @pytest.mark.parametrize("typ", ["list[tuple[int32, int32]]", "list[Cell | None]", "set[int]",
                                   "dict[int32, Cell]"])
 def test_other_native_elements_remain_uncovered(typ: str) -> None:
-    _, bodies, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
+    _, bodies, _, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
     for item in xs:
         pass
     return 0
@@ -229,7 +259,7 @@ def test_other_native_elements_remain_uncovered(typ: str) -> None:
 
 
 def test_source_structural_mutation_lowers_and_record_target_hoist_stays_uncovered() -> None:
-    _, bodies, _ = compile_bodies(PREFIX + '''
+    _, bodies, _, _ = compile_bodies(PREFIX + '''
 def structural(xs: list[int32]) -> int32:
     alias = xs
     for item in xs:

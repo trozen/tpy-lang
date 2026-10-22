@@ -4,14 +4,16 @@ from dataclasses import replace
 
 import pytest
 
-from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType
+from ..typesys import BOOL, INT32, OptionalType, ReadonlyType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsPresent, MIRNot,
     MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .shapes import MIROptionalPayload
 from .value import MIRHolding, MIRValidationError
-from .testutil import bind_parameters, OptionalValue, execute, leaf_shape, optional_shape, owned_shape, reslot
+from .testutil import (
+    hand_record, bind_parameters, OptionalValue, execute, leaf_shape, optional_shape, owned_shape, reslot,
+)
 from .validate import MIRPresenceError, validate_function
 from .presence import _State, _transfer
 
@@ -128,7 +130,7 @@ def test_malformed_optional_layout_is_rejected(bad: MIRSlot) -> None:
 def test_a_slot_payload_is_never_inline_storage() -> None:
     # A slot's payload is an inert leaf or a pointer at a record; a record
     # stored inline is an Optional field's, never a slot's.
-    cell = NominalType("Cell", _module_qname="optional_validation.Cell")
+    cell = hand_record("Cell", "optional_validation.Cell")
     inline = reslot(SLOTS[0], type=OptionalType(cell), members=(owned_shape(cell),))
     fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
     with pytest.raises(MIRValidationError, match="unsupported optional record holding"):

@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.storage_facts import collect_storage_facts
 from ..thir.testutil import _compile, _entry
@@ -17,7 +18,7 @@ from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageVerdict
-from .testutil import Reference, execute
+from .testutil import compiled_definitions, Reference, execute
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -80,21 +81,27 @@ Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction], MIRDefinit
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("temporary", name), definitions=definitions)
-              for name, fn in functions.items()}
-    for ctor in ctx.thir_constructors.values():
-        if ctor.record_name == "Runner":
-            bodies["Runner"] = lower_constructor(ctor, MIRBodyId("temporary", "Runner"), definitions=definitions)
-    for name, body in bodies.items():
-        assert isinstance(body, MIRFunction), (name, body)
-        assert analyze_scope_ends(body).ends
-        assert inspect_scope_lifetimes(body).conflicts == ()
-    return functions, bodies, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("temporary", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        for ctor in ctx.thir_constructors.values():
+            if ctor.record_name == "Runner":
+                bodies["Runner"] = lower_constructor(ctor, MIRBodyId("temporary", "Runner"), definitions=definitions)
+        for name, body in bodies.items():
+            assert isinstance(body, MIRFunction), (name, body)
+            assert analyze_scope_ends(body).ends
+            assert inspect_scope_lifetimes(body).conflicts == ()
+        return functions, bodies, definitions, cpp
 
 
 @pytest.mark.parametrize("name,args,expected", [
@@ -178,7 +185,7 @@ def boundary(n: int32) -> int32:
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "boundary")
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+    definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
     result = lower_function(fn, MIRBodyId("boundary", "test"),
                             definitions=definitions)
     if reason is None:
@@ -199,21 +206,22 @@ def test_imported_constructor_boundary(tmp_path: Path, qualified: bool) -> None:
     imported, ctor = ("import cells", "cells.Cell") if qualified else ("from cells import Cell", "Cell")
     source = f"from tpy import int32\n{imported}\ndef read() -> int32:\n    return {ctor}(5).value\n"
     compiler, modules = _compile(source, extra_lib_dirs=[tmp_path])
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "read")
-    constructors = list(ctx.thir_constructors.values())
-    for module in modules:
-        if module.name == "cells":
-            _, imported_ctx = compiler.generate_code_and_thir(module)
-            constructors.extend(imported_ctx.thir_constructors.values())
-    definitions = MIRDefinitions(tuple(constructors))
-    result = lower_function(fn, MIRBodyId("qualified", "read"),
-                            definitions=definitions)
-    if qualified:
-        # This spelling still lowers as a general THIRCall, without constructor identity.
-        assert isinstance(result, MIRNotCovered) and result.reason == "reference needs local name"
-    else:
-        assert isinstance(result, MIRFunction) and execute(result) == 5
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "read")
+        constructors = list(ctx.thir_constructors.values())
+        for module in modules:
+            if module.name == "cells":
+                _, imported_ctx = compiler.generate_code_and_thir(module)
+                constructors.extend(imported_ctx.thir_constructors.values())
+        definitions = MIRDefinitions(tuple(constructors))
+        result = lower_function(fn, MIRBodyId("qualified", "read"),
+                                definitions=definitions)
+        if qualified:
+            # This spelling still lowers as a general THIRCall, without constructor identity.
+            assert isinstance(result, MIRNotCovered) and result.reason == "reference needs local name"
+        else:
+            assert isinstance(result, MIRFunction) and execute(result) == 5
 
 
 def test_debug_dump_exposes_temporary_region() -> None:
@@ -221,7 +229,7 @@ def test_debug_dump_exposes_temporary_region() -> None:
     entry = _entry(modules)
     ctx = compiler.collect_thir(entry, tolerate_reject=True)
     output = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                             MIRDefinitions(tuple(ctx.thir_constructors.values())),
+                             compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
                              compiler.thir_reject_by_node)
     assert "::local@" in output and "owned-storage temporary duration=r1" in output
     assert "initialize_region" in output and "scope ends" in output
@@ -253,7 +261,7 @@ def generic() -> int32:
     compiler, modules = _compile(source)
     (hpp, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     assert hpp and cpp
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+    definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
     for fn in ctx.thir_functions.values():
         pending = list(fn.body)
         while pending:
@@ -278,5 +286,5 @@ def boundary() -> int32:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "boundary")
     result = lower_function(fn, MIRBodyId("global", "boundary"),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                            definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered) and result.reason == "temporary global assignment"

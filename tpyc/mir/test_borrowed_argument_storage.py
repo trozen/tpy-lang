@@ -1,16 +1,21 @@
 """Returned argument aliases retain named backing identity through calls and loop activations."""
 
+from collections.abc import Iterator
 from dataclasses import replace
+from typing import NamedTuple
 
 import pytest
 
 from ..codegen_cpp.context import CodeGenContext
+from ..compilation_context import activate_compiler
+from ..compiler import Compiler
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.storage_facts import collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL
+from .testutil import compiled_definitions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .definitions import MIRDefinitions
@@ -90,7 +95,11 @@ def ranges(value: int32, seed: Cell) -> int32:
 '''
 
 
-Artifacts = tuple[CodeGenContext, MIRCallWorkspace, MIRDefinitions]
+class Artifacts(NamedTuple):
+    ctx: CodeGenContext
+    workspace: MIRCallWorkspace
+    definitions: MIRDefinitions
+    compiler: Compiler
 
 
 @pytest.fixture(scope="module")
@@ -98,12 +107,30 @@ def artifacts() -> Artifacts:
     return _compile_workspace(SOURCE)
 
 
+def active_artifacts(request: pytest.FixtureRequest, *names: str) -> Iterator[None]:
+    """Run a test under the compiler of the artifacts fixture it uses: MIR
+    admits a record by the TypeDef its compilation registered."""
+    used = [name for name in names if name in request.fixturenames]
+    if not used:
+        yield
+        return
+    with activate_compiler(request.getfixturevalue(used[0]).compiler):
+        yield
+
+
+@pytest.fixture(autouse=True)
+def _active(request: pytest.FixtureRequest) -> Iterator[None]:
+    yield from active_artifacts(request, "artifacts")
+
+
 def _compile_workspace(source: str) -> Artifacts:
     compiler, modules = _compile(source)
-    entry = _entry(modules)
-    _, ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    return ctx, analyze_call_workspace(call_definitions(ctx, entry.name), definitions), definitions
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        _, ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        return Artifacts(ctx, analyze_call_workspace(call_definitions(ctx, entry.name), definitions), definitions,
+                         compiler)
 
 
 def _thir(artifacts: Artifacts, name: str) -> th.THIRFunction:
@@ -111,7 +138,7 @@ def _thir(artifacts: Artifacts, name: str) -> th.THIRFunction:
 
 
 def _lower(artifacts: Artifacts, fn: th.THIRFunction) -> MIRFunction | MIRNotCovered:
-    _, workspace, definitions = artifacts
+    _, workspace, definitions, _ = artifacts
     return lower_function(fn, MIRBodyId("main", fn.name),
                           definitions=definitions, summaries=workspace.summaries)
 
@@ -133,7 +160,7 @@ def _lazy(artifacts: Artifacts) -> MIRFunction:
 
 
 def _body(artifacts: Artifacts, name: str) -> MIRFunction:
-    ctx, workspace, definitions = artifacts
+    ctx, workspace, definitions, _ = artifacts
     if name == "lazy":
         return _lazy(artifacts)
     if name == "method":
@@ -291,7 +318,7 @@ def rejected(owner: Cell) -> int32:
 ''', "named argument crosses unproven evaluation order"),
 ])
 def test_unverified_actuals_and_order_stay_uncovered(extra: str, reason: str) -> None:
-    _, workspace, _ = _compile_workspace(SOURCE + extra)
+    workspace = _compile_workspace(SOURCE + extra).workspace
     result = next(body for identity, body in workspace.bodies.items()
                   if identity.declaration.split("@")[0] == "rejected")
     assert isinstance(result, MIRNotCovered), result

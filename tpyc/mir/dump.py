@@ -101,7 +101,8 @@ def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
         case MIRConstant(value=value):
             source = repr(value)
         case MIRConstruct(fields=fields):
-            source = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
+            source = "construct (" + ", ".join(repr(s.value) if isinstance(s, MIRConstant) else f"%{s.index}"
+                                             for s in fields) + ")"
         case MIRMemberInits(fields=nested):
             source = "{" + ", ".join(_member_init(m, borrowed) for m in nested) + "}"
         case MIROptionalConstruct(source=payload):
@@ -165,10 +166,8 @@ def dump_function(fn: MIRFunction) -> str:
                     access += _layout(shape)
             case (MIRHolding.ALIAS, _):
                 access = f" payload-alias({_place(slot.alias_source)})"
-            case (_, MIRClass.CONTAINER):
-                access = " owned" + _layout(shape)
-            case (_, MIRClass.OWNED_LEAF | MIRClass.RECORD):
-                access = " owned-storage"
+            case (_, MIRClass.OWNED_LEAF | MIRClass.RECORD | MIRClass.CONTAINER):
+                access = " owned-storage" + (_layout(shape) if shape.members else "")
             case (_, MIRClass.TUPLE):
                 access = " payload(" + ", ".join(map(_member_access, shape.elements)) + ")"
             case (_, MIRClass.OPTIONAL):

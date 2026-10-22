@@ -6,6 +6,7 @@ import sys
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from .. import cli
 from ..thir import nodes as th
@@ -32,7 +33,7 @@ from .validate import validate_function
 from .value import MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .region_flow import outgoing_edges
-from .testutil import reslot
+from .testutil import no_layouts, compiled_definitions, reslot
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -167,15 +168,21 @@ Artifacts = tuple[dict[str, th.THIRFunction], MIRCallWorkspace, MIRDefinitions, 
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    entry = _entry(modules)
-    (_, cpp), ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    out = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
-                           compiler.thir_reject_by_node, workspace)
-    return {node.name: fn for node, fn in ctx.thir_functions.items()}, workspace, definitions, cpp, out
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        (_, cpp), ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+        out = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
+                               compiler.thir_reject_by_node, workspace)
+        return {node.name: fn for node, fn in ctx.thir_functions.items()}, workspace, definitions, cpp, out
 
 
 def body_named(workspace: MIRCallWorkspace, name: str) -> MIRFunction:
@@ -288,7 +295,7 @@ def test_writer_summary_requires_layout_and_mutable_actual(artifacts: Artifacts,
         if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall) else stmt
         for stmt in block.statements)) for block in body.blocks))
     # A field missing from the layout fails the walk of the summary path itself.
-    reason = "field missing from record layout" if bad_field else "call record argument mismatch"
+    reason = "field missing from declared fields" if bad_field else "call record argument mismatch"
     with pytest.raises(MIRValidationError, match=reason):
         validate_function(body)
 
@@ -365,7 +372,7 @@ def test_call_coverage_checks_selected_signature_and_contract(artifacts: Artifac
         callee = replace(call.resolved_callee, signature=replace(
             call.resolved_callee.signature, passings=None if damage == "unpublished" else (ParamPassing.MUT_REF,)))
         summary = replace(entry.summary, callee=callee)
-        assert summary_problem(summary, {}) == reason
+        assert summary_problem(summary, no_layouts()) == reason
         entries[callee.identity] = MIRSummaryResult(MIRSummaryState.KNOWN, summary)
         fn = replace(fn, body=(replace(stmt, value=replace(call, resolved_callee=callee)),))
     else:
@@ -433,7 +440,7 @@ def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artif
     _, workspace, _, _, _ = artifacts
     body = body_named(workspace, "absent_write")
     slots = {s.id: s for s in body.slots}
-    records = {r.type: r for r in body.records}
+    records = body.record_layouts
     _, _, call = _call_statement(body)
     value = th.THIRFieldIdentity("main", "value", call.summary.parameters[0].type)
     into_absent = MIRLoanTransfer(0, (value,), MIR_STATIC)

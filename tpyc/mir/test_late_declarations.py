@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
-from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIRReturn,
@@ -15,7 +15,7 @@ from .nodes import (
 from .shapes import MIROptionalPayload
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
-from .testutil import bind_parameters, Reference, execute, leaf_shape
+from .testutil import compiled_definitions, bind_parameters, Reference, execute, leaf_shape
 from .validate import validate_function
 from .value import MIRValidationError
 
@@ -140,20 +140,26 @@ def conditional(stop: bool, flag: bool) -> int32:
 
 
 @pytest.fixture(scope="module")
-def late_bodies() -> tuple[dict[str, MIRFunction], str]:
-    compiler, modules = _compile(SOURCE)
-    (header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    bodies = {}
-    for node, fn in ctx.thir_functions.items():
-        result = lower_function(fn, MIRBodyId("late", node.name), definitions=definitions)
-        assert isinstance(result, MIRFunction), (node.name, result)
-        bodies[node.name] = result
-    for ctor in ctx.thir_constructors.values():
-        result = lower_constructor(ctor, MIRBodyId("late", ctor.record_name), definitions=definitions)
-        assert isinstance(result, MIRFunction), result
-        bodies[ctor.record_name] = result
-    return bodies, header + cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def late_bodies(compiled) -> tuple[dict[str, MIRFunction], str]:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        bodies = {}
+        for node, fn in ctx.thir_functions.items():
+            result = lower_function(fn, MIRBodyId("late", node.name), definitions=definitions)
+            assert isinstance(result, MIRFunction), (node.name, result)
+            bodies[node.name] = result
+        for ctor in ctx.thir_constructors.values():
+            result = lower_constructor(ctor, MIRBodyId("late", ctor.record_name), definitions=definitions)
+            assert isinstance(result, MIRFunction), result
+            bodies[ctor.record_name] = result
+        return bodies, header + cpp
 
 
 def test_late_producers_keep_scope_and_shared_mutation(late_bodies: tuple[dict[str, MIRFunction], str]) -> None:

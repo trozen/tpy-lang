@@ -177,11 +177,8 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
             continue
         operation = block.statements[point.index] if point.index < len(block.statements) else block.terminator
         match operation:
-            # Container storage evidence is not modeled: a borrowed container
-            # holder is no supported borrow, whatever its holding.
             case MIRAssign(target=target) if (not target.projections
-                    and slots[target.root].shape.borrow_holder
-                    and slots[target.root].shape.cls is not MIRClass.CONTAINER):
+                    and slots[target.root].shape.borrow_holder):
                 holder = target
                 state_point = MIRPoint(point.block, point.index + 1)
             case MIRReturn(value=value) if (fn.borrowed_result is not None
@@ -273,7 +270,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 continue
             # Owned container storage answers its container layout (whose
             # record elements its definition verified); records their layout.
-            if (definition.members != slot.shape.members if slot.shape.container_storage
+            if (definition.members != slot.shape.members if slot.shape.cls is MIRClass.CONTAINER
                     else definition.layout not in fn.records):
                 gap("storage record layout differs from its definition")
 

@@ -429,8 +429,8 @@ def pick(g: Gauge) -> Gauge:  # tpyc: mir(covered) mir_summary(known)
     return g
 
 
-# kept refusal: a call-result receiver (the borrowed result of a summarized callee)
-def result_receiver(g: Gauge) -> int32:  # tpyc: mir(uncovered /^owned result from a borrowed call$/)
+# free caller: a call-result receiver, the borrowed result of a summarized callee read in place
+def result_receiver(g: Gauge) -> int32:  # tpyc: mir(covered)
     return pick(g).read()
 
 

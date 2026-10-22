@@ -59,7 +59,7 @@ int32_t lend_temp(int32_t n);
 int32_t maybe(bool flag, int32_t n);
 // def make_pinned(n: int32) -> Own[Pinned]:  # tpyc: mir(uncovered /^owned record result needs movable record$/)
 Pinned make_pinned(int32_t n);
-// def make_tok(n: int32) -> Own[Tok]:  # tpyc: mir(uncovered /^missing constructor definition$/)
+// def make_tok(n: int32) -> Own[Tok]:  # tpyc: mir(uncovered /^unmodeled record$/)
 Tok make_tok(int32_t n);
 // def make_box(n: int32) -> Own[Box[int32]]:  # tpyc: mir(uncovered /^unsupported return type$/)
 Box<int32_t> make_box(int32_t n);

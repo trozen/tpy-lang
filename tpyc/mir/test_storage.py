@@ -111,11 +111,17 @@ def fields(cell: Cell, other: Other) -> int32:
 
 
 @pytest.fixture(scope="module")
-def functions() -> dict[str, th.THIRFunction]:
-    compiler, modules = _compile(SOURCE)
-    sources, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert sources
-    return {node.name: fn for node, fn in ctx.thir_functions.items()}
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def functions(compiled) -> dict[str, th.THIRFunction]:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        sources, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert sources
+        return {node.name: fn for node, fn in ctx.thir_functions.items()}
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
@@ -199,9 +205,10 @@ def test_alias_conversions_cannot_acquire_ownership_effects(
 
 @pytest.mark.parametrize("typ", [BOOL, INT32])
 def test_scalar_nominals_cannot_claim_borrowed_record_facts(typ: NominalType) -> None:
+    # The fact is not read: a scalar binds by its type, never at a reference passing.
     fn = th.THIRFunction("f", (th.THIRParam("x", typ, th.THIRBorrowedRecord(typ, False), passing=ParamPassing.MUT_REF),),
                          INT32, (th.THIRReturn(th.THIRLiteral(INT32, 1)),), th.THIRFunctionLayout())
-    not_covered(fn, "unsupported reference fact")
+    not_covered(fn, "call parameter passing differs from its type")
 
 
 def walk(node: th.THIRNode) -> Iterator[th.THIRNode]:
@@ -261,14 +268,14 @@ def not_covered(fn: th.THIRFunction, reason: str) -> None:
 def test_semantic_facts_are_required(functions: dict[str, th.THIRFunction]) -> None:
     fn = functions["touch"]
     alias, store, ret = fn.body
-    not_covered(replace(fn, params=(replace(fn.params[0], borrowed_record=None),)),
-                "unsupported parameter type")
-    not_covered(replace(fn, body=(replace(alias, alias_binding=None), store, ret)),
-                "unsupported metadata")
+    # A record parameter binds by its type and passing, a record fact or none.
+    assert lower(replace(fn, params=(replace(fn.params[0], borrowed_record=None),))) == lower(fn)
+    # A local alias is derived from its declaration and its source: an alias fact, forged or none, is not read.
+    assert lower(replace(fn, body=(replace(alias, alias_binding=None), store, ret))) == lower(fn)
+    assert lower(replace(fn, body=(replace(alias, alias_binding=replace(
+        alias.alias_binding, source="missing")), store, ret))) == lower(fn)
     not_covered(replace(fn, body=(alias, replace(store, target=replace(
         store.target, field_identity=None)), ret)), "missing field identity")
-    not_covered(replace(fn, body=(replace(alias, alias_binding=replace(
-        alias.alias_binding, source="missing")), store, ret)), "alias source mismatch")
     # An identity of a member type MIR does not model refuses by that type.
     for unmodeled in (OptionalType(INT32), UnionType((INT32, BOOL))):
         not_covered(replace(fn, body=(alias, replace(store, target=replace(
@@ -314,12 +321,13 @@ def admitted(value: Child) -> int32:
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "admitted")
     child = fn.params[0].borrowed_record
     assert child == th.THIRBorrowedRecord(child.type, False) and child.type.name == "Child"
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()),
-                                 inherited=tuple(ctx.thir_inherited_constructors.values()))
     with activate_compiler(compiler):
+        definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()),
+                                     inherited=tuple(ctx.thir_inherited_constructors.values()))
         result = lower_function(fn, MIRBodyId("storage", fn.name), definitions=definitions)
     assert isinstance(result, MIRFunction), result
-    assert {f.id.owner.name for r in result.records for f in r.fields} == {"Cell"}
+    # Membership is the declared fields: no layout comes along for a field read or write.
+    assert not any(r.type.name in ("Cell", "Child") for r in result.records)
 
 
 @pytest.mark.parametrize("body,reason", [
@@ -425,6 +433,7 @@ def excluded(value: Special) -> int32:
     if isinstance(ret.value, th.THIRFieldAccess):
         assert ret.value.field_identity is None
     # A property read is a getter call: no field storage, and no summary here.
-    not_covered(fn, "call needs finalized known summary" if node_kind is th.THIRMethodCall
-                else "unsupported" if fn.params[0].borrowed_record is None
-                or node_kind is not th.THIRFieldAccess else "unsupported metadata")
+    with activate_compiler(compiler):
+        not_covered(fn, "call needs finalized known summary" if node_kind is th.THIRMethodCall
+                    else "unsupported" if fn.params[0].borrowed_record is None
+                    or node_kind is not th.THIRFieldAccess else "unsupported metadata")

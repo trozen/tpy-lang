@@ -4,7 +4,7 @@ from dataclasses import dataclass, replace
 
 import pytest
 
-from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
+from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
@@ -19,6 +19,7 @@ from .retention import MIRRetention, MIRRetentionConflict, analyze_retention, du
 from .storage import MIRStorageEvents, analyze_storage
 from .test_reuse import loop_source, source_function
 from .testutil import (
+    hand_record,
     bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape,
     union_shape,
 )
@@ -28,7 +29,7 @@ from ..thir.scalar_leaves import MIRClass
 B = MIRBodyId("retention", "loop")
 N, FLAG, INITIAL, SITE, CURRENT, TEMP, SAVED, COPIED, OUT = (MIRSlotId(B, i) for i in range(9))
 A, LOOP, AGAIN, END = (MIRBlockId(B, i) for i in range(4))
-CELL = NominalType("Cell", _module_qname="retention.Cell")
+CELL = hand_record("Cell", "retention.Cell", value=INT32)
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 LAYOUT = MIRRecordLayout(CELL, (FIELD,), True, True)
 
@@ -64,7 +65,7 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
             wrap, copy = MIROptionalConstruct(MIRPlace(TEMP)), MIROptionalCopy(MIRPlace(SAVED))
             path = (MIROptionalPayload(),)
         case "union":
-            other = NominalType("Other", _module_qname="retention.Other")
+            other = hand_record("Other", "retention.Other")
             holder = MIRSlot(SAVED, union_shape(UnionType((CELL, other)), (member, borrowed_shape(other))),
                              MIRSlotKind.LOCAL)
             wrap, copy = MIRUnionConstruct(0, MIRPlace(TEMP)), MIRUnionCopy(MIRPlace(SAVED))
@@ -245,7 +246,7 @@ def test_two_payloads_of_one_parameter_may_alias() -> None:
 @pytest.mark.parametrize("same_field", [False, True])
 def test_inline_siblings_are_disjoint_but_same_field_is_retained(same_field: bool) -> None:
     fn = in_place_function(live_alias=True)
-    parent = NominalType("Parent", _module_qname="retention.Parent")
+    parent = hand_record("Parent", "retention.Parent")
     left = MIRField(MIRFieldId(parent, "left"), CELL)
     right = MIRField(MIRFieldId(parent, "right"), CELL)
     param = reslot(reference(TEMP, parameter=True), type=parent)
@@ -254,7 +255,8 @@ def test_inline_siblings_are_disjoint_but_same_field_is_retained(same_field: boo
         MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(TEMP, (MIRDeref(), left if same_field else right)))),
     )
     fn = bind_parameters(replace(fn, slots=tuple(replace(s, kind=MIRSlotKind.LOCAL) if s.id == CURRENT else s for s in fn.slots) + (param,),
-                 blocks=(replace(fn.blocks[0], statements=(*prelude, *fn.blocks[0].statements[1:])),)))
+                 blocks=(replace(fn.blocks[0], statements=(*prelude, *fn.blocks[0].statements[1:])),)),
+                         fields=(left, right))
     assert {c.holder for c in analyze(fn).conflicts} == ({MIRPlace(SAVED)} if same_field else set())
 
 

@@ -184,7 +184,7 @@ class Tok(ValueType):
 
 
 # kept refusal: a value-type record returned by value
-def make_tok(n: int32) -> Own[Tok]:  # tpyc: mir(uncovered /^missing constructor definition$/)
+def make_tok(n: int32) -> Own[Tok]:  # tpyc: mir(uncovered /^unmodeled record$/)
     return Tok(n)
 
 

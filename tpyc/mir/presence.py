@@ -18,7 +18,7 @@ from .nodes import (
     MIRRecordWrite, MIRRecordWriteMode, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape,
 )
-from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, RecordFields
 from .shapes import MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRUnionPayload
 from .region_flow import MIRRegionFlow
 
@@ -138,14 +138,14 @@ def _place_type(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
 _HOLDS_NO_RECORD = frozenset({MIRClass.LEAF, MIRClass.OWNED_LEAF, MIRClass.VIEW, MIRClass.CONTAINER_VIEW})
 
 
-def _may_hold(typ: TpyType | None, member: MIRFieldId, layouts: Mapping[TpyType, MIRRecordLayout]) -> bool:
+def _may_hold(typ: TpyType | None, member: MIRFieldId, fields: RecordFields) -> bool:
     """Whether storage of `typ` may hold record member `member`. Only what
     is proven not to answers no: a scalar leaf, an owned leaf or a view
     holds no record; a tuple, an Optional or a union holds the member only
-    if an element, the payload or an alternative may; a record whose
-    layout is here holds it only if it, or a record stored inline in it
-    (`inline_member_type`), declares it. Any other type -- unknown, a
-    container, a generic record, a record with no layout here -- may."""
+    if an element, the payload or an alternative may; a record holds it
+    only if its declared fields (`fields`), or those of a record stored
+    inline in it (`inline_member_type`), include it. Any other type --
+    unknown, a container, a record whose fields MIR does not model -- may."""
     pending = [typ]
     seen: set[TpyType] = set()
     while pending:
@@ -168,10 +168,10 @@ def _may_hold(typ: TpyType | None, member: MIRFieldId, layouts: Mapping[TpyType,
             case UnionType():
                 pending.extend(m for m in current.members if not is_void_like_type(m))
                 continue
-        layout = layouts.get(current) if value_class(current) is MIRClass.RECORD else None
-        if layout is None:
+        declared = fields.get(current) if value_class(current) is MIRClass.RECORD else None
+        if declared is None:
             return True
-        for f in layout.fields:
+        for f in declared:
             if f.id == member:
                 return True
             pending.append(inline_member_type(f.type))
@@ -187,7 +187,7 @@ def _private(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
 
 
 def _reaches(written: MIRPlace, wrapper: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
-             layouts: Mapping[TpyType, MIRRecordLayout]) -> bool:
+             layouts: MIRRecords) -> bool:
     """Whether a write of `written` may change which payload the wrapper
     field at `wrapper` selects -- the overlap retention decides by
     (`retention.may_overlap`), on places: under one root, when one path is
@@ -212,11 +212,11 @@ def _reaches(written: MIRPlace, wrapper: MIRPlace, slots: Mapping[MIRSlotId, MIR
     last = written.projections[-1] if written.projections else None
     if isinstance(last, MIRField) and last.id == member.id:
         return True
-    return _may_hold(_place_type(written, slots, layouts), member.id, layouts)
+    return _may_hold(_place_type(written, slots, layouts), member.id, layouts.fields)
 
 
 def _kill_field_facts(state: _State, stmt: MIRStatement, slots: Mapping[MIRSlotId, MIRSlot],
-                      layouts: Mapping[TpyType, MIRRecordLayout]) -> _State:
+                      layouts: MIRRecords) -> _State:
     """A selection on a wrapper field (a projected place) dies at any write
     that may reach it (`_reaches`), a call's published writes included. A
     root wrapper's selection follows its own writes below."""
@@ -246,9 +246,9 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
               domains: dict[MIRPlace, frozenset[int]] | None = None,
               aliases: dict[MIRPlace, frozenset[MIRSlotId]] | None = None,
               slots: Mapping[MIRSlotId, MIRSlot] | None = None,
-              layouts: Mapping[TpyType, MIRRecordLayout] | None = None) -> _State:
+              layouts: MIRRecords | None = None) -> _State:
     if slots is not None:
-        state = _kill_field_facts(state, stmt, slots, layouts or {})
+        state = _kill_field_facts(state, stmt, slots, layouts)
     place = statement_target(stmt)
     if place is None:
         return state
@@ -256,7 +256,7 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
         # A wrapper field written whole selects what its value selects.
         if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIROptionalConstruct, MIROptionalCopy))
                 and slots is not None
-                and place_shape(place, slots, layouts or {}).cls is MIRClass.OPTIONAL):
+                and place_shape(place, slots, layouts).cls is MIRClass.OPTIONAL):
             known = (frozenset({int(stmt.value.source is not None)}) if isinstance(stmt.value, MIROptionalConstruct)
                      else dict(state.present).get(stmt.value.source))
             if known is not None:

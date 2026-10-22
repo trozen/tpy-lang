@@ -13,6 +13,8 @@ from ..thir.scalar_leaves import MIRClass, modeled_field, optional_record_field
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import INT32, NominalType, OptionalType, ReadonlyType, TupleType
+from .definitions import declared_fields
+from .value import MIRRecords
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
@@ -221,13 +223,18 @@ def _member(program: _Program, name: str) -> MIRField:
     return MIRField(MIRFieldId(owner, name.split(".")[1]), program.fields[name])
 
 
+def _declared() -> MIRRecords:
+    """No layout, the compilation's declared fields: what a walk reads."""
+    return MIRRecords({}, declared_fields())
+
+
 def test_a_field_place_carries_an_owned_payload_layout(program: _Program) -> None:
     holder = _holder(program, 0)
     shapes = MIRSlot(MIRSlotId(BODY, 1), borrowed_shape(program.types["Shapes"]), MIRSlotKind.PARAMETER)
     slots = {holder.id: holder, shapes.id: shapes}
 
     def layout(place: MIRPlace) -> object:
-        shape = place_shape(place, slots, {})
+        shape = place_shape(place, slots, _declared())
         return shape.payload if shape.cls is MIRClass.OPTIONAL else None
 
     field = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p")))
@@ -343,7 +350,7 @@ def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     own_a = _holder(program, 2, MIRSlotKind.LOCAL, owned=True)
     own_b = _holder(program, 3, MIRSlotKind.LOCAL, owned=True)
     slots = {s.id: s for s in (a, b, own_a, own_b)}
-    layouts: dict = {}
+    layouts = _declared()
     p, n = _member(program, "H.p"), _member(program, "H.n")
     fact = MIRPlace(a.id, (MIRDeref(), p))
     # Under one root: a prefix either way.
@@ -359,19 +366,24 @@ def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     # Rebinding another holder writes no storage.
     assert not _reaches(MIRPlace(b.id), fact, slots, layouts)
     # A root write of anything but a borrowed holder may write storage: an
-    # owned tuple or a generic record may hold the member, a scalar may not.
-    tup = MIRSlot(MIRSlotId(BODY, 4), tuple_shape(TupleType((INT32, program.types["P"])),
-                                                  (leaf_shape(INT32), owned_shape(program.types["P"]))),
+    # owned tuple of a record declaring the member or a generic record may
+    # hold it, a scalar or a tuple of a record declaring none may not.
+    tup = MIRSlot(MIRSlotId(BODY, 4), tuple_shape(TupleType((INT32, program.types["H"])),
+                                                  (leaf_shape(INT32), owned_shape(program.types["H"]))),
                   MIRSlotKind.LOCAL)
+    other = MIRSlot(MIRSlotId(BODY, 8), tuple_shape(TupleType((INT32, program.types["P"])),
+                                                    (leaf_shape(INT32), owned_shape(program.types["P"]))),
+                    MIRSlotKind.LOCAL)
     gen = MIRSlot(MIRSlotId(BODY, 5), owned_shape(program.fields["Shapes.g"]), MIRSlotKind.LOCAL)
     num = MIRSlot(MIRSlotId(BODY, 6), leaf_shape(INT32), MIRSlotKind.LOCAL)
-    slots.update({s.id: s for s in (tup, gen, num)})
+    slots.update({s.id: s for s in (tup, gen, num, other)})
     assert _reaches(MIRPlace(tup.id), fact, slots, layouts)
+    assert not _reaches(MIRPlace(other.id), fact, slots, layouts)
     assert _reaches(MIRPlace(gen.id), fact, slots, layouts)
     assert not _reaches(MIRPlace(num.id), fact, slots, layouts)
     # A generic record member may hold it too (a place MIR never builds:
     # the field is unmodeled, so the question is the type's alone).
-    assert _may_hold(program.fields["Shapes.g"], p.id, layouts)
+    assert _may_hold(program.fields["Shapes.g"], p.id, layouts.fields)
     # Rebinding an iterator's cursor writes no storage.
     cursor = MIRSlot(MIRSlotId(BODY, 7), cursor_shape(program.fields["Shapes.g"]), MIRSlotKind.LOCAL)
     slots[cursor.id] = cursor
@@ -386,31 +398,31 @@ def test_a_whole_field_write_selects_what_it_writes(program: _Program) -> None:
     slots = {holder.id: holder}
     field = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p")))
     state = _State(frozenset({(field, frozenset({1}))}))
-    emptied = _transfer(state, MIRAssign(field, MIROptionalConstruct()), set(), slots=slots, layouts={})
+    emptied = _transfer(state, MIRAssign(field, MIROptionalConstruct()), set(), slots=slots, layouts=_declared())
     assert emptied.present == frozenset({(field, frozenset({0}))})
     scalar = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.n")))
-    kept = _transfer(state, MIRAssign(scalar, MIRConstant(1)), set(), slots=slots, layouts={})
+    kept = _transfer(state, MIRAssign(scalar, MIRConstant(1)), set(), slots=slots, layouts=_declared())
     assert kept.present == state.present
 
 
 
 def test_may_hold_looks_through_aggregates(program: _Program) -> None:
-    layouts = program.definitions.layouts
+    fields = program.definitions.fields
     member = _member(program, "H.p").id
     p, h = program.types["P"], program.types["H"]
     # Leaves and records that do not declare the member cannot hold it.
-    assert not _may_hold(INT32, member, layouts)
-    assert not _may_hold(program.fields["V.s"], member, layouts)
-    assert not _may_hold(p, member, layouts)
+    assert not _may_hold(INT32, member, fields)
+    assert not _may_hold(program.fields["V.s"], member, fields)
+    assert not _may_hold(p, member, fields)
     # A tuple, an Optional and a union hold it only through an element.
-    assert not _may_hold(TupleType((INT32, INT32)), member, layouts)
-    assert not _may_hold(TupleType((ReadonlyType(INT32), INT32)), member, layouts)
-    assert not _may_hold(OptionalType(p), member, layouts)
-    assert _may_hold(TupleType((INT32, h)), member, layouts)
-    assert _may_hold(OptionalType(h), member, layouts)
-    assert _may_hold(h, member, layouts)
-    # A record with no layout here may.
-    assert _may_hold(program.fields["Shapes.g"], member, layouts)
+    assert not _may_hold(TupleType((INT32, INT32)), member, fields)
+    assert not _may_hold(TupleType((ReadonlyType(INT32), INT32)), member, fields)
+    assert not _may_hold(OptionalType(p), member, fields)
+    assert _may_hold(TupleType((INT32, h)), member, fields)
+    assert _may_hold(OptionalType(h), member, fields)
+    assert _may_hold(h, member, fields)
+    # A record whose fields MIR does not model (a generic one) may.
+    assert _may_hold(program.fields["Shapes.g"], member, fields)
 
 
 def test_a_composed_payload_needs_a_movable_record(program: _Program) -> None:

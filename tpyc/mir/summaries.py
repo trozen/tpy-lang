@@ -9,7 +9,7 @@ from ..typesys import TpyType, receiver_neutral_return
 from .call_contract import (
     BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRAliasObligation, MIRCallSummary, MIRGlobalId,
     MIRLoanTransfer, MIRParameterWrite, MIRPathWalks, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, bound_params, call_result, function_binding, obligation_problem, parameter_binding,
+    MIRSummaryState, body_result, bound_params, call_result, obligation_problem, parameter_binding,
     return_origin_problem, summary_problem, write_problem, summary_path,
 )
 from .call_effects import resolve_call_writes
@@ -28,7 +28,7 @@ from .nodes import (
     MIRRecordStorageInit, MIRReturn, MIRPlace, MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk,
     under_object, view_member,
 )
-from .value import CONTAINER_CLASSES, MIRField, MIRShape, Records, lent_record
+from .value import AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, lent_record
 from .validate import owned_leaf_place_type, statement_reads, validate_function
 
 # The passings that lend storage to the callee without a copy; a template
@@ -37,7 +37,7 @@ _LENDING_PASSINGS = BORROWING_PASSINGS | {ParamPassing.MUT_REF, ParamPassing.POI
 
 
 def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozenset[MIRSlotId]:
-    """The owned record slots whose storage is private to the body.
+    """The owned record and container slots whose storage is private to the body.
 
     HANDED OVER: storage that leaves the body by a transfer -- a return
     (the caller then owns it), a move out, an argument at an owning
@@ -59,7 +59,7 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     its definition must still be hook-free."""
     slots = {s.id: s for s in body.slots}
     records = {s.id for s in body.slots
-               if s.shape.is_storage and s.shape.cls is MIRClass.RECORD}
+               if s.shape.is_storage and s.shape.cls in AGGREGATE_CLASSES}
     excluded: set[MIRSlotId] = set()
     foreign: set[MIRSlotId] = set()
     transfers: list[tuple[MIRSlotId, MIRPoint]] = []
@@ -127,7 +127,7 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
 
 
 def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
-                  records: Records) -> MIRShape | None:
+                  records: MIRRecords) -> MIRShape | None:
     """What `source` reaches through inline record members of storage the
     summary accounts for, or None when it reaches none: under a live
     borrowed record (one leading dereference of its holder) or under the
@@ -206,18 +206,18 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
     return frozenset(found)
 
 
-def _record_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
-                   records: Records) -> bool:
-    """Whether `place` is an inline record member of storage the summary
+def _aggregate_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
+                   records: MIRRecords) -> bool:
+    """Whether `place` is an inline record or container member of storage the summary
     accounts for (`_member_chain`): a whole member a write replaces in
     place or a copy reads, or an Optional record field's payload a holder
     borrows."""
     end = _member_chain(place, slots, private, records)
-    return end is not None and end.cls is MIRClass.RECORD
+    return end is not None and end.cls in AGGREGATE_CLASSES
 
 
 def _optional_place(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
-                    records: Records) -> bool:
+                    records: MIRRecords) -> bool:
     """Whether `place` is a whole Optional: a holder slot, or an Optional
     record field of storage the summary accounts for (`_member_chain`):
     replaced, tested or copied."""
@@ -238,7 +238,7 @@ def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, 
     if any(isinstance(p, (MIROptionalPayload, MIRUnionPayload, MIRTupleIndex)) for p in path):
         return False
     return (any(isinstance(p, (MIRContainerStructure, MIRContainerElements)) for p in source.projections)
-            or target.shape.borrowed_container)
+            or target.shape.borrowed_aggregate)
 
 
 def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
@@ -264,9 +264,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             or (callee.identity.owner is not None) is not method or body.receiver_init is not None
             or twin and not (method and callee.signature.result_follows_receiver and callee.signature.passings)
             or body.borrowed_result != call_result(callee, method and declaration.receiver.readonly)
+            or body.return_type != body_result(declaration)
+            # THIR's declared and published types, compared as THIR spells both.
             or callee.signature.return_type not in (
-                body.return_type, receiver_neutral_return(
-                    body.return_type, callee.signature.result_follows_receiver))):
+                declaration.return_type, receiver_neutral_return(
+                    declaration.return_type, callee.signature.result_follows_receiver))):
         return MIRSummaryResult.opaque("summary definition or result contract mismatch")
     effective = bound_params(declaration)
     # The body bound each parameter as its callers bind it (`bound_params`),
@@ -278,7 +280,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         if param.passing is None:
             return MIRSummaryResult.opaque("summary parameter passing unpublished")
         # The body is the declaration's: each binding the one THIR's facts derive.
-        if slots[sid].name != param.name or function_binding(param) != binding:
+        if slots[sid].name != param.name or parameter_binding(param) != binding:
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
     bindings = list(body.parameter_bindings)
     if twin:
@@ -317,8 +319,17 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         shape = slot.shape
         if slot.shape.is_scalar:
             pass
+        elif shape.is_storage and shape.cls in AGGREGATE_CLASSES:
+            if slot.id not in private_records():
+                return MIRSummaryResult.opaque("summary storage or value shape")
+            # Storage private to the body (`_private_records`): whoever
+            # destroys it -- the body, a callee or container it is handed
+            # to, or the caller it is returned to -- runs no hook, so its
+            # definition (a container's: its record elements') must be
+            # hook-free.
+            records = (slot.type,)
         elif shape.cls in CONTAINER_CLASSES:
-            # Whatever holds a container (its storage, a pointer at it, a
+            # Whatever else holds a container (a pointer at it, a
             # view, a cursor): a record element is destroyed and copied by
             # the container itself.
             records = tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
@@ -330,12 +341,6 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         elif slot.shape.leaf_storage:
             # An owned leaf's storage is private to the body: nothing of the caller's.
             pass
-        elif shape.is_storage and shape.cls is MIRClass.RECORD and slot.id in private_records():
-            # Record storage private to the body (`_private_records`):
-            # whoever destroys it -- the body, a callee or container it is
-            # handed to, or the caller it is returned to -- runs no hook,
-            # so its definition must be hook-free.
-            records = (slot.type,)
         elif shape.cls is MIRClass.OPTIONAL and shape.payload.scalar_by_value:
             pass
         elif slot.shape.record_payload:
@@ -446,7 +451,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                                       and o.place.root in private_records() for o in origins))
             # An inline record member replaced whole: published as a write of
             # the member under a parameter, nothing under private storage.
-            member = _record_member(stmt.target, slots, private_records(), record_layouts)
+            member = _aggregate_member(stmt.target, slots, private_records(), record_layouts)
             # An Optional record field replaced whole: published like a member.
             wrapper = _optional_place(stmt.target, slots, private_records(), record_layouts)
             if stmt.storage_write is not None and not (
@@ -471,7 +476,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # A record holder of what an Optional holder's payload points at.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
-                                                  and _record_member(source, slots, private_records(),
+                                                  and _aggregate_member(source, slots, private_records(),
                                                                      record_layouts)):
                     # A record holder of an inline member: the dependency pass
                     # tracks it to the member's place, so a write through it is
@@ -483,7 +488,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     pass
                 case MIRCopy(source=source) if member and (
                         source.projections in ((), object_prefix(slots[source.root].shape, payload=False))
-                        or _record_member(source, slots, private_records(), record_layouts)
+                        or _aggregate_member(source, slots, private_records(), record_layouts)
                         or _container_access(source, target, slots)):
                     # A record copied into a member: a read of the body's own
                     # storage, of what a holder points at, of another member or

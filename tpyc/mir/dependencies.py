@@ -7,7 +7,7 @@ from types import MappingProxyType
 
 from ..parse import SourceLocation
 from ..thir.nodes import THIRFieldIdentity
-from .call_contract import MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_record_result, path_step
+from .call_contract import MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_aggregate_result, path_step
 from ..thir.scalar_leaves import (
     MIRClass, holds_loan, value_class, view_endpoint,
 )
@@ -784,7 +784,7 @@ def caller_stores(prepared: MIRPrepared, dependencies: MIRDependencies) -> tuple
     for point, state in dependencies.referents.items():
         if point in prepared.presence.points:
             stores.extend(MIRCallerStore(key, point, state[key]) for key in keys if state.get(key))
-    if owned_record_result(prepared.function.return_type) is not None:
+    if owned_aggregate_result(prepared.function.return_type) is not None:
         for point, term, state in feasible_returns(prepared, dependencies):
             if term.value is not None:
                 stores.extend(MIRCallerStore(key, point, state[key], result=True)

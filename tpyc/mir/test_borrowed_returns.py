@@ -5,12 +5,16 @@ from pathlib import Path
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
-from ..thir.nodes import THIRBorrowedRecord, THIRCallableSignature, THIRFunction, THIRFunctionIdentity, THIRResolvedCallee
+from ..thir.nodes import (
+    THIRBorrowedRecord, THIRCallableSignature, THIRFunction, THIRFunctionIdentity, THIRResolvedCallee,
+)
 from ..type_def_registry import ParamPassing
-from ..typesys import INT32, NominalType, RefType
+from ..typesys import Representation, INT32, NominalType, RefType
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from .call_contract import (
+    signature_params,
     MIRCallSummary, MIRReturnOrigin, MIRSummaryState, result_problem, summary_problem,
 )
 from .definitions import MIRDefinitions
@@ -29,7 +33,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .summaries import summarize_function
 from .validate import validate_function
-from .testutil import bind_parameters, Reference, bound, execute, reslot
+from .testutil import no_layouts, compiled_definitions, bind_parameters, Reference, bound, execute, reslot
 from .test_scope_inspection import scoped_loop
 from .test_retention import CELL, SAVED
 
@@ -184,14 +188,20 @@ Artifacts = tuple[dict[str, THIRFunction], dict[str, MIRFunction | MIRNotCovered
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions)
-              for name, fn in functions.items()}
-    return functions, bodies, definitions
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        return functions, bodies, definitions
 
 
 @pytest.mark.parametrize("name, origins, readonly", [
@@ -255,11 +265,13 @@ def test_result_contract_rejects_missing_or_wrong_origins(artifacts: Artifacts) 
         (frozenset({True}), "invalid call summary identity or facts"),
         (frozenset({0}), "invalid call summary identity or facts"),
     ):
-        assert summary_problem(replace(summary, returns=origins), {}) == message
+        assert summary_problem(replace(summary, returns=origins), no_layouts()) == message
     readonly = summarize_function(functions["observe"], bodies["observe"], definitions).summary
     # The readonly loan bound at the callee's own declared type.
-    lent = tuple(replace(b, declared=t) for b, t in zip(readonly.parameters, summary.callee.signature.param_types))
-    assert summary_problem(replace(summary, parameters=lent), {}) == "unsupported return origin type or access"
+    lent = tuple(replace(b, declared=t)
+                 for b, t in zip(readonly.parameters, signature_params(summary.callee.signature)))
+    assert summary_problem(replace(summary, parameters=lent), no_layouts()) == (
+        "unsupported return origin type or access")
 
 
 def test_return_access_is_validated_without_thir(artifacts: Artifacts) -> None:
@@ -290,7 +302,7 @@ def test_borrowed_return_requires_verified_layout(artifacts: Artifacts) -> None:
 def test_result_contract_excludes_generic_and_protocol_records(generic: bool) -> None:
     typ = NominalType("Other", type_args=(INT32,) if generic else (),
                       is_protocol=not generic, _module_qname="test.Other")
-    assert result_problem(RefType(typ), THIRBorrowedRecord(typ, False)) is not None
+    assert result_problem(typ, THIRBorrowedRecord(typ, False), Representation.REFERENCE) is not None
 
 
 @pytest.mark.parametrize("name", ["choose", "exits", "reseat"])
@@ -303,9 +315,10 @@ def test_return_preserves_selected_identity(artifacts: Artifacts, name: str, fla
 
 
 @pytest.fixture(scope="module")
-def workspace(artifacts: Artifacts) -> MIRCallWorkspace:
-    functions, _, definitions = artifacts
-    return analyze_call_workspace(tuple((MIRBodyId("main", n), fn) for n, fn in functions.items()), definitions)
+def workspace(artifacts: Artifacts, compiled) -> MIRCallWorkspace:
+    with activate_compiler(compiled[0]):
+        functions, _, definitions = artifacts
+        return analyze_call_workspace(tuple((MIRBodyId("main", n), fn) for n, fn in functions.items()), definitions)
 
 
 @pytest.mark.parametrize("name, roots", [
@@ -400,18 +413,19 @@ def test_imported_return_roots_are_substituted(tmp_path: Path) -> None:
 def caller(flag: bool, a: Cell, b: Cell) -> Cell:
     return imported(b)
 ''', extra_lib_dirs=[tmp_path])
-    functions = []
-    constructors = []
-    for module in modules:
-        if module.name not in ("main", "helper"):
-            continue
-        _, ctx = compiler.generate_code_and_thir(module)
-        functions.extend((MIRBodyId(module.name, fn.name), fn) for fn in ctx.thir_functions.values())
-        constructors.extend(ctx.thir_constructors.values())
-    result = analyze_call_workspace(tuple(functions), MIRDefinitions(tuple(constructors)))
-    summary = next(v for k, v in result.summaries.items() if k.name == "caller")
-    assert summary.state is MIRSummaryState.KNOWN, summary.reason
-    assert summary.summary.returns == {MIRReturnOrigin(2)}
+    with activate_compiler(compiler):
+        functions = []
+        constructors = []
+        for module in modules:
+            if module.name not in ("main", "helper"):
+                continue
+            _, ctx = compiler.generate_code_and_thir(module)
+            functions.extend((MIRBodyId(module.name, fn.name), fn) for fn in ctx.thir_functions.values())
+            constructors.extend(ctx.thir_constructors.values())
+        result = analyze_call_workspace(tuple(functions), MIRDefinitions(tuple(constructors)))
+        summary = next(v for k, v in result.summaries.items() if k.name == "caller")
+        assert summary.state is MIRSummaryState.KNOWN, summary.reason
+        assert summary.summary.returns == {MIRReturnOrigin(2)}
 
 
 def test_returned_holder_participates_in_storage_analysis(workspace: MIRCallWorkspace) -> None:
@@ -443,7 +457,8 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
     body, observed = scoped_loop("record")
     ref = THIRBorrowedRecord(CELL, False)
     callee = THIRResolvedCallee(THIRFunctionIdentity("retention", "identity"),
-                                THIRCallableSignature((RefType(CELL),), RefType(CELL), ref, (ParamPassing.MUT_REF,)))
+                                THIRCallableSignature((RefType(CELL),), RefType(CELL), ref, (ParamPassing.MUT_REF,),
+                                                      Representation.REFERENCE))
     summary = MIRCallSummary(callee, (bound(RefType(CELL), ParamPassing.MUT_REF, ref=ref),),
                              frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     blocks = tuple(replace(block, statements=tuple(
@@ -488,20 +503,20 @@ def test_missing_actual_origin_is_not_an_empty_result(workspace: MIRCallWorkspac
     body = workspace.bodies[MIRBodyId("main", "binding")]
     call = next(stmt.value for block in body.blocks for stmt in block.statements
                 if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
-    assert resolve_call_returns(call, {}, {s.id: s for s in body.slots}, {r.type: r for r in body.records}) is None
+    assert resolve_call_returns(call, {}, {s.id: s for s in body.slots}, body.record_layouts) is None
 
 
 def test_scalar_summary_cannot_claim_borrowed_origins(workspace: MIRCallWorkspace) -> None:
     result = next(r for key, r in workspace.summaries.items() if key.name == "readonly_binding")
     assert result.state is MIRSummaryState.KNOWN
-    assert summary_problem(replace(result.summary, returns=frozenset({MIRReturnOrigin(0)})), {}) == (
+    assert summary_problem(replace(result.summary, returns=frozenset({MIRReturnOrigin(0)})), no_layouts()) == (
         "missing or unexpected return origins")
 
 
 def test_method_and_constructor_callers(workspace: MIRCallWorkspace) -> None:
     compiler, modules = _compile(SOURCE)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+    definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
     method = next(fn for node, fn in ctx.thir_functions.items() if node.name == "method")
     constructor = next(fn for fn in ctx.thir_constructors.values() if fn.record_name == "Caller")
     bodies = (

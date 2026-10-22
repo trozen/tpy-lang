@@ -480,7 +480,7 @@ def test_mir_validator_rejects_a_cursor_over_a_view_that_binds_none(active) -> N
     items = _nominal("builtins.dict_items", STR, INT32)
     layout = (owned_shape(STR, cursor.readonly), leaf_shape(INT32, cursor.readonly))
     # The layout is the items view's own: only the missing cursor is wrong.
-    assert admitted_members(items, cursor.readonly, {r.type: r for r in fn.records}) == layout
+    assert admitted_members(items, cursor.readonly, fn.record_layouts) == layout
     damaged = replace(fn, slots=tuple(reslot(s, type=items, members=layout) if s is cursor else s
                                       for s in fn.slots))
     _mir_rejects(damaged, "iterator binds no element")

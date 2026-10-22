@@ -5,6 +5,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..parse import RebindStorage
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
@@ -135,14 +136,20 @@ Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    # The in-place reseats MIR models; sema leaves every rebind OWN.
-    force_in_place(modules, {"in_place": None, "loop": None,
-                             "optional_method": None, "annotation_only": (1,)})
-    sources, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert sources
-    return ({fn.name: fn for fn in ctx.thir_functions.values()}, tuple(ctx.thir_constructors.values()))
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        # The in-place reseats MIR models; sema leaves every rebind OWN.
+        force_in_place(modules, {"in_place": None, "loop": None,
+                                 "optional_method": None, "annotation_only": (1,)})
+        sources, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert sources
+        return ({fn.name: fn for fn in ctx.thir_functions.values()}, tuple(ctx.thir_constructors.values()))
 
 
 def lower(fn: th.THIRFunction, constructors: tuple[th.THIRConstructor, ...]) -> MIRFunction | MIRNotCovered:
@@ -308,7 +315,6 @@ def test_annotation_only_with_explicit_storage_verdicts(artifacts: Artifacts) ->
     assert isinstance(fn, MIRFunction), fn
     heap: Heap = {}
     assert execute(fn, heap=heap) == 0 and len(heap) == 1
-
 
 
 def test_upcast_constructor_does_not_claim_plain_payload_ownership() -> None:

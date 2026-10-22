@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -15,7 +16,7 @@ from .nodes import (
     MIRPayloadWriteMode, MIRRegionId, MIRStorageDuration, MIRStorageInit,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
-from .testutil import Reference, execute
+from .testutil import compiled_definitions, Reference, execute
 
 
 SOURCE = '''from tpy import int32
@@ -135,20 +136,26 @@ Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction], MIRDefinit
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("wrapper_hoists", name), definitions=definitions)
-              for name, fn in functions.items()}
-    for ctor in ctx.thir_constructors.values():
-        bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("wrapper_hoists", ctor.record_name),
-                                                     definitions=definitions)
-    for name, fn in bodies.items():
-        assert isinstance(fn, MIRFunction), (name, fn)
-        assert any(isinstance(stmt, MIRStorageInit) for block in fn.blocks for stmt in block.statements), name
-    return functions, bodies, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("wrapper_hoists", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        for ctor in ctx.thir_constructors.values():
+            bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("wrapper_hoists", ctor.record_name),
+                                                         definitions=definitions)
+        for name, fn in bodies.items():
+            assert isinstance(fn, MIRFunction), (name, fn)
+            assert any(isinstance(stmt, MIRStorageInit) for block in fn.blocks for stmt in block.statements), name
+        return functions, bodies, definitions, cpp
 
 
 @pytest.mark.parametrize("flag", [False, True])

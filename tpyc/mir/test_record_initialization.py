@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from ..typesys import BOOL, INT32, NominalType, NoneType, OptionalType, TupleType, UnionType
+from ..typesys import BOOL, INT32, NoneType, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
@@ -22,13 +22,14 @@ from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import (
+    hand_record,
     bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape,
 )
 from .validate import MIRDefiniteAssignmentError, validate_function
 
 
 BODY = MIRBodyId("record_initialization", "example")
-CELL = NominalType("Cell", _module_qname="record_initialization.Cell")
+CELL = hand_record("Cell", "record_initialization.Cell", value=INT32)
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 BACKING, CURRENT, SAVED, VALUE, FLAG, RESULT = (MIRSlotId(BODY, i) for i in range(6))
 ENTRY, YES, NO, JOIN = (MIRBlockId(BODY, i) for i in range(4))

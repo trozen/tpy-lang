@@ -64,12 +64,18 @@ Artifacts = tuple[dict[str, th.THIRConstructor], dict[str, th.THIRFunction]]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    emitted, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert emitted
-    return ({ctor.record_name: ctor for ctor in ctx.thir_constructors.values()},
-            {node.name: fn for node, fn in ctx.thir_functions.items()})
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        emitted, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert emitted
+        return ({ctor.record_name: ctor for ctor in ctx.thir_constructors.values()},
+                {node.name: fn for node, fn in ctx.thir_functions.items()})
 
 
 def lower(ctor: th.THIRConstructor) -> MIRFunction:
@@ -203,10 +209,11 @@ def test_the_built_receiver_is_parameter_zero(artifacts: Artifacts) -> None:
 def test_actual_emitted_exclusions(fields: str, body: str, reason: str) -> None:
     source = f"from tpy import int32\nclass Record:\n    {fields}\n    def __init__(self, value: int32):\n        {body}\n"
     compiler, modules = _compile(source)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
-    result = lower_constructor(ctor, MIRBodyId("constructors", "excluded"))
-    assert isinstance(result, MIRNotCovered) and reason in result.reason
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
+        result = lower_constructor(ctor, MIRBodyId("constructors", "excluded"))
+        assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 
 @pytest.mark.parametrize("field,param,body,reason", [

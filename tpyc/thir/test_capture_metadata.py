@@ -5,6 +5,8 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
+from ..compiler import Compiler
 from ..mir.lower import lower_function
 from ..mir.nodes import MIRBodyId, MIRNotCovered
 from ..parse.nodes import TpyFunction, TpyIntLiteral, TpyLambda, TpyReturn
@@ -27,7 +29,7 @@ def closures(fn: th.THIRFunction) -> list[th.THIRLambda | th.THIRNestedDef]:
 
 
 @pytest.fixture(scope="module")
-def functions() -> dict[str, th.THIRFunction]:
+def compiled() -> tuple[Compiler, dict[str, th.THIRFunction]]:
     source = """\
 from typing import Callable
 from tpy import int32, int64, Fn, readonly, Own
@@ -139,7 +141,12 @@ global_closure: Callable[[], int32] = lambda: 1
                                    body=ctor.body, layout=th.THIRFunctionLayout())
     result["module"] = th.THIRFunction(name="module", params=(), return_type=INT32,
                                      body=ctx.thir_top_level.body, layout=th.THIRFunctionLayout())
-    return result
+    return compiler, result
+
+
+@pytest.fixture(scope="module")
+def functions(compiled: tuple[Compiler, dict[str, th.THIRFunction]]) -> dict[str, th.THIRFunction]:
+    return compiled[1]
 
 
 def test_scalar_sources_and_selected_capture_modes(functions: dict[str, th.THIRFunction]) -> None:
@@ -212,8 +219,11 @@ def test_inventory_is_all_or_unavailable(functions: dict[str, th.THIRFunction], 
     assert all(node.captures is None for node in nodes)
 
 
-def test_closure_facts_do_not_admit_mir(functions: dict[str, th.THIRFunction]) -> None:
-    result = lower_function(functions["record_write"], MIRBodyId("test", "record_write"))
+def test_closure_facts_do_not_admit_mir(compiled: tuple[Compiler, dict[str, th.THIRFunction]]) -> None:
+    compiler, functions = compiled
+    # MIR admits a record parameter by its declared fields, which it reads from the active compiler.
+    with activate_compiler(compiler):
+        result = lower_function(functions["record_write"], MIRBodyId("test", "record_write"))
     assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRNestedDef"
 
 

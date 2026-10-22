@@ -17,7 +17,9 @@ from ..typesys import INT32, STR, NominalType
 from .call_contract import MIRSummaryState, binds_at
 from .collect import MIRBodyVerdict, enumerate_bodies, line_facts
 from .coverage import MIRUnsupported
-from .definitions import MIRConstructorDefinition, MIRDefinitions, _verify, constructor_initialization
+from .definitions import (
+    owned_leaf_layout, MIRConstructorDefinition, MIRDefinitions, _verify, constructor_initialization,
+)
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRConstant, MIRFunction, MIRMemberInitMode, MIRNotCovered
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -199,12 +201,13 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                     compiler.thir_reject_by_node, mir.workspace)
-        yield _Program(
+        result = _Program(
             compiler, {c.record_name: c for c in ctx.thir_constructors.values()},
             {i.record_layout.type.name: i for i in ctx.thir_inherited_constructors.values()},
             {fn.name: fn for _, fn in mir.workspace.definitions.values()},
             mir.definitions, mir.workspace.summaries,
             {v.body.declaration.split("@")[0]: v for v in verdicts})
+    return result
 
 
 @pytest.fixture(autouse=True)
@@ -270,7 +273,12 @@ def test_a_derived_layout_carries_its_ancestors_fields_in_construction_order(pro
 def test_the_validator_checks_layout_owners_and_agreement(program: _Program) -> None:
     fn = _lowered(program, "Sub.bump_twice")
     validate_function(fn)
-    sub = next(r for r in fn.records if r.type == _record(program, "Sub"))
+    sub = _definition(program, "Sub").layout
+    # The body walks its own fields by their declaration: it carries Sub's layout only to be forged here.
+    # (its `str` member needs the string's opaque layout).
+    fn = replace(fn, records=tuple(r for r in fn.records if r.type not in (sub.type, STR))
+                 + (sub, owned_leaf_layout(STR)))
+    validate_function(fn)
     other = _record(program, "Other")
 
     def with_layout(layout: MIRRecordLayout) -> MIRFunction:

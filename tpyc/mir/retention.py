@@ -17,7 +17,7 @@ from .nodes import (
     MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRSlot, MIRSlotId, MIRSlotKind,
     statement_call, call_place,
 )
-from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError
+from .value import AGGREGATE_CLASSES, MIRField, MIRRecordLayout, MIRShape, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, owned_field
 from .presence import MIREngagement
 from .shapes import walk_to, MIRContainerElements, MIRContainerStructure
@@ -154,7 +154,8 @@ def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotI
         region = isinstance(written.place.projections[-1], (MIRContainerStructure, MIRContainerElements))
         return not (region and _whole_container(retained, slots))
     shape = _referent_shape(retained, slots, records)
-    return shape is None or not (shape.cls is MIRClass.RECORD or _whole_container(retained, slots))
+    # A leaf replacement never replaces a record or container object.
+    return shape is None or shape.cls not in AGGREGATE_CLASSES
 
 
 def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,

@@ -142,7 +142,7 @@ int32_t str_local(H& h) {
 }
 
 // # list remedy: copy() hands the iteration its own list: silent (MIR does not lower copy() of a list yet)
-// def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /call container argument needs a place/)
+// def list_copy(xs: list[int32]) -> int32:  # tpyc: mir(uncovered /named argument needs complete temporary plan/)
 //     return walk(copy(xs), xs)  # tpyc: ok
 int32_t list_copy(std::vector<int32_t>& xs) {
     std::vector<int32_t> __tmp_1 = std::vector<int32_t>(xs);
@@ -256,6 +256,25 @@ bool line_copy(const Line& ln) {
     return ::tpyapp::main::alias_external(ln, __tmp_1);
 }
 
+// def pick(c: bool, a: list[Cell], b: list[Cell]) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+//     v = a if c else b
+//     r = v[0]
+//     a.append(Cell(5))
+//     return r.x
+int32_t pick(bool c, std::vector<Cell>& a, std::vector<Cell>& b) {
+    std::vector<Cell>& v = ((c) ? (a) : (b));
+    Cell& r = ::tpy::__getitem__(v, 0);
+    a.push_back(Cell(5));
+    return r.x;
+}
+
+// def caller(xs: list[Cell]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+//     # The alias `v` may be `a`, whose growth invalidates `r`: one list as both arms is warned, not refused.
+//     return pick(True, xs, xs)  # tpyc: warning(/passed as both/)
+int32_t caller(std::vector<Cell>& xs) {
+    return ::tpyapp::main::pick(true, xs, xs);
+}
+
 // def main() -> None:
 //     print("other_int", other_int([1], [2]))
 //     print("local_copy", local_copy([3]))
@@ -275,6 +294,13 @@ bool line_copy(const Line& ln) {
 //     member_param(o, "zz")
 //     print("member_param", o.inner.buf)
 //     print("line_copy", line_copy(Line(Point(5, "r"))))
+//     cells = [Cell(1)]
+//     others = [Cell(2)]
+//     print("container_select pick b:", pick(False, cells, others))
+//     # The callee grew the caller's list in place.
+//     print("container_select grown:", len(cells), cells[1].x)
+//     others[0].x = 9
+//     print("container_select pick b again:", pick(False, cells, others), len(cells))
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {1};
     std::vector<::tpy::BigInt> __tmp_2 = {2};
@@ -312,6 +338,12 @@ void main() {
     std::cout << "member_param" << " " << o.inner.buf << "\n" << ::tpy::check_signals;
     Line __tmp_15 = Line(Point(5, "r"));
     std::cout << "line_copy" << " " << ::tpy::print_bool(::tpyapp::main::line_copy(__tmp_15)) << "\n" << ::tpy::check_signals;
+    std::vector<Cell> cells = {Cell(1)};
+    std::vector<Cell> others = {Cell(2)};
+    std::cout << "container_select pick b:" << " " << ::tpyapp::main::pick(false, cells, others) << "\n" << ::tpy::check_signals;
+    std::cout << "container_select grown:" << " " << ::tpy::__len__(cells) << " " << ::tpy::__getitem__(cells, 1).x << "\n" << ::tpy::check_signals;
+    ::tpy::__getitem__(others, 0).x = 9;
+    std::cout << "container_select pick b again:" << " " << ::tpyapp::main::pick(false, cells, others) << " " << ::tpy::__len__(cells) << "\n" << ::tpy::check_signals;
 }
 
 // from helpers import grow_then_read as gtr

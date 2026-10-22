@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, _strict_reject, _assert_rejects_at
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -136,10 +137,16 @@ Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return {node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values())
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        return {node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values())
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:

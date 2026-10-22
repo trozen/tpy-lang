@@ -11,3 +11,6 @@ alias_external True
 merge_from 1
 member_param zz
 line_copy True
+container_select pick b: 2
+container_select grown: 2 5
+container_select pick b again: 9 3

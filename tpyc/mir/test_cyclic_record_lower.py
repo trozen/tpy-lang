@@ -5,6 +5,7 @@ from collections.abc import Iterator
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import _iter_children
@@ -16,7 +17,7 @@ from .nodes import (
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import ContainerValue, Reference, execute
+from .testutil import compiled_definitions, ContainerValue, Reference, execute
 
 
 SOURCE = '''from tpy import int32, copy, readonly
@@ -152,19 +153,25 @@ def nodes(root: th.THIRNode) -> Iterator[th.THIRNode]:
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    # The in-place reseats MIR models; sema leaves every rebind OWN.
-    force_in_place(modules, IN_PLACE_SITES)
-    (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("cyclic", name), definitions=definitions)
-              for name, fn in functions.items()}
-    for ctor in ctx.thir_constructors.values():
-        if ctor.record_name == "Runner":
-            bodies["Runner"] = lower_constructor(ctor, MIRBodyId("cyclic", "Runner"), definitions=definitions)
-    return functions, bodies, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        # The in-place reseats MIR models; sema leaves every rebind OWN.
+        force_in_place(modules, IN_PLACE_SITES)
+        (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("cyclic", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        for ctor in ctx.thir_constructors.values():
+            if ctor.record_name == "Runner":
+                bodies["Runner"] = lower_constructor(ctor, MIRBodyId("cyclic", "Runner"), definitions=definitions)
+        return functions, bodies, definitions, cpp
 
 
 @pytest.mark.parametrize("name", ["copied", "copied_readonly", "qualified", "mutation", "copied_self",
@@ -242,19 +249,18 @@ def test_native_iteration_nested_exits_and_callable_positions(artifacts: Artifac
     assert heap[1][field] == 7
 
 
-@pytest.mark.parametrize("dropped,reason", [
-    ({"storage_placement": None}, "loop copy or move needs scoped or hoisted storage"),
-    # Without its owned storage the copy is an ordinary value local, and a record is no leaf.
-    ({"owned_storage": None, "storage_placement": None}, "unsupported local type or form"),
-])
-def test_source_storage_fact_is_required(artifacts: Artifacts, dropped: dict, reason: str) -> None:
+@pytest.mark.parametrize("dropped", [{"storage_placement": None}, {"owned_storage": None, "storage_placement": None}])
+def test_owned_storage_facts_are_not_read(artifacts: Artifacts, dropped: dict) -> None:
+    # The copy owns its record by its form, and its storage lives in its
+    # declaration's scope by MIR's own rule: forged storage facts are not read.
     fn = artifacts[0]["copied_readonly"]
     loop = fn.body[2]
     assert isinstance(loop.body[0].init, th.THIRCopy)
     decl = replace(loop.body[0], **dropped)
-    fn = replace(fn, body=(*fn.body[:2], replace(loop, body=(decl, *loop.body[1:])), fn.body[-1]))
-    result = lower_function(fn, MIRBodyId("cyclic", "missing"), definitions=artifacts[2])
-    assert isinstance(result, MIRNotCovered) and result.reason == reason
+    forged = replace(fn, body=(*fn.body[:2], replace(loop, body=(decl, *loop.body[1:])), fn.body[-1]))
+    result = lower_function(forged, MIRBodyId("cyclic", "missing"), definitions=artifacts[2])
+    assert isinstance(result, MIRFunction), result
+    assert result == lower_function(fn, MIRBodyId("cyclic", "missing"), definitions=artifacts[2])
 
 
 def test_codegen_collection_includes_loop_copy() -> None:
@@ -263,7 +269,8 @@ def test_codegen_collection_includes_loop_copy() -> None:
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                              MIRDefinitions(tuple(ctx.thir_constructors.values())), compiler.thir_reject_by_node)
+                              compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
+                              compiler.thir_reject_by_node)
     copied = dumped.split(f"fn {entry.name}::copied@", 1)[1].split("\nfn ", 1)[0]
     replaced = dumped.split(f"fn {entry.name}::replaced@", 1)[1].split("\nfn ", 1)[0]
     assert " = copy " in copied and "initialize_region" in copied
@@ -301,14 +308,15 @@ def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n:
     assert target.owned_storage is not None
     assert target.storage_placement is th.THIRStoragePlacement.SCOPE
     fn = lower_function(function, MIRBodyId("cyclic", "moved"),
-                        definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                        definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     move, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
     assert move.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
     assert inspect_scope_lifetimes(fn).conflicts == ()
     entry = _entry(modules)
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                              MIRDefinitions(tuple(ctx.thir_constructors.values())), compiler.thir_reject_by_node)
+                              compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
+                              compiler.thir_reject_by_node)
     assert " = move " in dumped and "initialize_region" in dumped
     for run, stop, skip, early, count in ((False, False, False, False, 0),
                                          (True, False, False, False, 2),
@@ -337,7 +345,7 @@ def moved(flag: bool) -> int32:
     function = next(fn for node, fn in ctx.thir_functions.items() if node.name == "moved")
     assert "target = std::move(original);" in cpp
     result = lower_function(function, MIRBodyId("cyclic", "hoisted"),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                            definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction), result
     write, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, MIRMove))
     assert write.storage_write.mode is MIRRecordWriteMode.OPTIONAL_ASSIGN

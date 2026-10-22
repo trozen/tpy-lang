@@ -4,16 +4,17 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
-from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType, VoidType
+from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType, VoidType
 from .liveness import MIRPoint, analyze_liveness, dump_liveness
-from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIsAlternative, MIRMemberInit, MIRPlace, MIRRead, MIRReceiverInit, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRUnionExtract, MIRRvalue, MIRAlias, MIRConstruct, MIRCopy, MIRMove, MIRTupleConstruct, MIRTupleCopy,
     MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy, MIRIsPresent, MIRGlobalId,
+    MIRStorageDuration,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -22,13 +23,15 @@ from .test_iteration import fixture as iteration_fixture
 from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
 from .testutil import (
+    compiled_definitions,
+    hand_record,
     bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape,
 )
 
 B = MIRBodyId("liveness", "test")
 P, X, Y, Z = (MIRSlotId(B, i) for i in range(4))
 A, C, D, E = (MIRBlockId(B, i) for i in range(4))
-CELL = NominalType("Cell", _module_qname="liveness.Cell")
+CELL = hand_record("Cell", "liveness.Cell", value=INT32)
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 
 
@@ -172,7 +175,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
     ref = MIRSlot(P, borrowed_shape(CELL), MIRSlotKind.PARAMETER)
     scalar = MIRSlot(X, leaf_shape(INT32), MIRSlotKind.PARAMETER)
     other = MIRSlot(Y, leaf_shape(INT32), MIRSlotKind.PARAMETER)
-    target = MIRSlot(Z, owned_shape(CELL), MIRSlotKind.TEMPORARY)
+    target = MIRSlot(Z, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY)
     records = (MIRRecordLayout(CELL, (FIELD,), True, True),)
     expected = {X}
     value = MIRConstruct((X,))
@@ -207,7 +210,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
             target = MIRSlot(Z, leaf_shape(BOOL), MIRSlotKind.TEMPORARY)
             value, expected = MIRIsPresent(MIRPlace(Y)), {Y}
     elif operation in ("union", "union_copy"):
-        sibling = NominalType("Other", _module_qname="liveness.Other")
+        sibling = hand_record("Other", "liveness.Other")
         other = MIRSlot(Y, union_shape(UnionType((CELL, sibling)), tuple(
                             borrowed_shape(t) for t in (CELL, sibling))), MIRSlotKind.PARAMETER)
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
@@ -282,28 +285,30 @@ def call(value: int32) -> int32:
 
 def test_emitted_operations_and_reference_copy_last_use() -> None:
     compiler, modules = _compile(SOURCE)
-    entry = _entry(modules)
-    ctx = compiler.collect_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    operations: set[type] = set()
-    for node, thir in ctx.thir_functions.items():
-        fn = lower_function(thir, MIRBodyId("liveness", node.name), definitions=definitions, summaries=workspace.summaries)
-        assert isinstance(fn, MIRFunction), fn
-        result = analyze_liveness(fn)
-        for block in fn.blocks:
-            operations.update(type(s.value) for s in block.statements)
-        if node.name == "aliases":
-            block = fn.blocks[0]
-            index = next(i for i, stmt in enumerate(block.statements) if isinstance(stmt.value, MIRAlias))
-            stmt = block.statements[index]
-            assert stmt.value.source in result.points[MIRPoint(block.id, index)]
-            assert stmt.value.source not in result.points[MIRPoint(block.id, index + 1)]
-            assert stmt.target.root in result.points[MIRPoint(block.id, index + 1)]
-    iteration = iteration_fixture()
-    live = analyze_liveness(iteration)
-    for block in iteration.blocks:
-        for index, stmt in enumerate(block.statements):
-            operations.add(type(stmt.value))
-            assert set(operands(stmt.value)) <= live.points[MIRPoint(block.id, index)]
-    assert operations == set(MIRRvalue.__args__)
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        ctx = compiler.collect_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+        operations: set[type] = set()
+        for node, thir in ctx.thir_functions.items():
+            fn = lower_function(thir, MIRBodyId("liveness", node.name), definitions=definitions,
+                                summaries=workspace.summaries)
+            assert isinstance(fn, MIRFunction), fn
+            result = analyze_liveness(fn)
+            for block in fn.blocks:
+                operations.update(type(s.value) for s in block.statements)
+            if node.name == "aliases":
+                block = fn.blocks[0]
+                index = next(i for i, stmt in enumerate(block.statements) if isinstance(stmt.value, MIRAlias))
+                stmt = block.statements[index]
+                assert stmt.value.source in result.points[MIRPoint(block.id, index)]
+                assert stmt.value.source not in result.points[MIRPoint(block.id, index + 1)]
+                assert stmt.target.root in result.points[MIRPoint(block.id, index + 1)]
+        iteration = iteration_fixture()
+        live = analyze_liveness(iteration)
+        for block in iteration.blocks:
+            for index, stmt in enumerate(block.statements):
+                operations.add(type(stmt.value))
+                assert set(operands(stmt.value)) <= live.points[MIRPoint(block.id, index)]
+        assert operations == set(MIRRvalue.__args__)

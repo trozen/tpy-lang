@@ -11,6 +11,7 @@ from ..parse import SourceLocation
 from ..thir.testutil import _compile, _entry
 from ..typesys import INT32, VoidType
 from . import collect, storage_evidence
+from .testutil import records_of
 from .collect import enumerate_bodies, line_facts
 from .emit import Fragment, RegionHandle, assemble
 from .nodes import (
@@ -107,7 +108,8 @@ def naming():
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
                                     compiler.thir_reject_by_node, program.workspace)
         verdict = next(v for v in verdicts if v.name == "two_names")
-        yield verdict
+        result = verdict
+    return result
 
 
 @pytest.mark.parametrize("flip", [False, True])
@@ -183,8 +185,9 @@ def aliased():
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
     with compiler.mir_analysis([(entry, ctx)]) as mir:
-        yield {v.name: v for v in enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
+        result = {v.name: v for v in enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                                    compiler.thir_reject_by_node, mir.workspace)}
+    return result
 
 
 def _reported(verdict, reverse: bool) -> list[tuple[int, int, str | None, int, int]]:
@@ -216,7 +219,7 @@ def test_one_call_reports_one_storage_whatever_the_conflict_order(aliased, rever
 
 def _build(body: Fragment):
     return assemble(body, void=True, return_type=VoidType(), kind=MIRBodyKind.FREE_FUNCTION,
-                    callees=(), result=None, layouts={})
+                    callees=(), result=None, layouts=records_of())
 
 
 def _unused(slots: tuple[tuple[str, SourceLocation | None], ...]):

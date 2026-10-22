@@ -22,7 +22,7 @@ from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir
+from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir, active_artifacts
 from .test_expression_temporary_lower import SOURCE as EXPRESSION_SOURCE
 from .testutil import Reference, execute
 from .validate import MIRRepeatedInitializationError, validate_function
@@ -143,6 +143,11 @@ def escape_call(flag: bool, value: int32, owner: Cell) -> int32:
     return outer.value
 
 '''
+
+
+@pytest.fixture(autouse=True)
+def _active(request: pytest.FixtureRequest):
+    yield from active_artifacts(request, "artifacts", "expression_artifacts")
 
 
 @pytest.fixture(scope="module")

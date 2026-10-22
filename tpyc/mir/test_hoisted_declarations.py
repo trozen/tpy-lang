@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.source import UNBOUND
 from ..thir.testutil import _compile, _entry
@@ -17,7 +18,7 @@ from .value import MIRHolding
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_retention import analyze
 from .test_reuse import CELL_SOURCE, source_function
-from .testutil import OptionalValue, Reference, execute
+from .testutil import compiled_definitions, OptionalValue, Reference, execute
 from .validate import MIRDefiniteAssignmentError, validate_function
 
 
@@ -238,24 +239,30 @@ Hoists = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction], MIRDefinition
 
 
 @pytest.fixture(scope="module")
-def hoists() -> Hoists:
-    compiler, modules = _compile(SOURCE)
-    (header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {}
-    for name, fn in functions.items():
-        result = lower_function(fn, MIRBodyId("hoists", name), definitions=definitions)
-        if name == "global_optional":
-            assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRName"
-        else:
-            assert isinstance(result, MIRFunction), (name, result)
-            bodies[name] = result
-    for ctor in ctx.thir_constructors.values():
-        result = lower_constructor(ctor, MIRBodyId("hoists", ctor.record_name), definitions=definitions)
-        assert isinstance(result, MIRFunction), result
-        bodies[ctor.record_name] = result
-    return functions, bodies, definitions, header + cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def hoists(compiled) -> Hoists:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {}
+        for name, fn in functions.items():
+            result = lower_function(fn, MIRBodyId("hoists", name), definitions=definitions)
+            if name == "global_optional":
+                assert isinstance(result, MIRNotCovered) and result.node_kind == "THIRName"
+            else:
+                assert isinstance(result, MIRFunction), (name, result)
+                bodies[name] = result
+        for ctor in ctx.thir_constructors.values():
+            result = lower_constructor(ctor, MIRBodyId("hoists", ctor.record_name), definitions=definitions)
+            assert isinstance(result, MIRFunction), result
+            bodies[ctor.record_name] = result
+        return functions, bodies, definitions, header + cpp
 
 
 def test_hoist_producers_preserve_results_and_shared_mutation(hoists: Hoists) -> None:

@@ -66,11 +66,11 @@ int32_t elements(std::vector<Dog>& ds);
 int32_t call_super(Sub& s);
 // def call_virtual(v: VBase) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
 void call_virtual(VBase& v);
-// def upcast_local(s: Sub) -> int32:  # tpyc: mir(uncovered /^unsupported metadata: cpp_local_representation$/)
+// def upcast_local(s: Sub) -> int32:  # tpyc: mir(uncovered /^alias source mismatch$/)
 int32_t upcast_local(Sub& s);
 // def upcast_payload(s: Sub) -> int32:  # tpyc: mir(uncovered /^optional backing storage$/)
 int32_t upcast_payload(Sub& s);
-// def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
+// def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
 void main();
 
 // class Base:

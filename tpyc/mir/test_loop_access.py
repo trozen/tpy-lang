@@ -9,6 +9,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import ReadonlyType
@@ -92,21 +93,29 @@ def field_borrow(h: H) -> int32:
 
 
 @pytest.fixture(scope="module")
-def program():
-    compiler, modules = _compile(SOURCE)
-    entry = _entry(modules)
-    _, ctx = compiler.generate_code_and_thir(entry)
-    with compiler.mir_analysis(((entry, ctx),)) as mir:
-        def lower(fn: th.THIRFunction) -> MIRFunction | MIRNotCovered:
-            return lower_function(fn, MIRBodyId("access", fn.name), definitions=mir.definitions,
-                                  summaries=mir.workspace.summaries)
-        yield {fn.name: fn for fn in ctx.thir_functions.values()}, lower
+def compiled():
+    return _compile(SOURCE)
 
 
 @pytest.fixture(scope="module")
-def bodies(program) -> dict[str, object]:
-    functions, lower = program
-    return {name: lower(fn) for name, fn in functions.items()}
+def program(compiled):
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        _, ctx = compiler.generate_code_and_thir(entry)
+        with compiler.mir_analysis(((entry, ctx),)) as mir:
+            def lower(fn: th.THIRFunction) -> MIRFunction | MIRNotCovered:
+                return lower_function(fn, MIRBodyId("access", fn.name), definitions=mir.definitions,
+                                      summaries=mir.workspace.summaries)
+            result = {fn.name: fn for fn in ctx.thir_functions.values()}, lower
+    return result
+
+
+@pytest.fixture(scope="module")
+def bodies(program, compiled) -> dict[str, object]:
+    with activate_compiler(compiled[0]):
+        functions, lower = program
+        return {name: lower(fn) for name, fn in functions.items()}
 
 
 def _slot(fn: MIRFunction, name: str):
@@ -156,36 +165,39 @@ def _flip(fact):
     return replace(fact, readonly=not fact.readonly)
 
 
-def test_a_forged_container_alias_fact_is_refused(program) -> None:
-    # `ys = xs` binds const: its fact is readonly, as the declaration derives.
-    assert isinstance(_forged(program, "container_alias"), MIRFunction)
-    reason = "container alias needs fixed matching borrowed source"
-    assert _refused(_forged(program, "container_alias", native_container=_flip), reason)
+def test_a_forged_container_alias_fact_is_not_read(program) -> None:
+    # `ys = xs` binds const: its access is the declaration's, whatever a fact says.
+    plain = _forged(program, "container_alias")
+    assert isinstance(plain, MIRFunction)
+    assert _forged(program, "container_alias", native_container=_flip) == plain
     # A `readonly[...]` declaration reads only although it is not bound
-    # const: its readonly fact agrees, a mutable one is refused (by the
-    # fact's own check against the declared type, ahead of the alias's).
+    # const, a mutable fact or none.
     declared = _forged(program, "container_alias", resolved_type=ReadonlyType, is_const=False)
     assert isinstance(declared, MIRFunction), declared
     mutable = _forged(program, "container_alias", resolved_type=ReadonlyType, is_const=False,
                       native_container=lambda f: replace(f, readonly=False))
-    assert _refused(mutable, "invalid native container fact")
+    assert mutable == declared
 
 
-def test_a_forged_record_alias_fact_is_refused(program) -> None:
-    assert isinstance(_forged(program, "record_alias"), MIRFunction)
+def test_a_forged_record_alias_fact_is_not_read(program) -> None:
+    plain = _forged(program, "record_alias")
+    assert isinstance(plain, MIRFunction)
     reference = lambda ab: replace(ab, reference=_flip(ab.reference))  # noqa: E731
-    assert _refused(_forged(program, "record_alias", alias_binding=reference), "alias access mismatch")
-    # Declared `readonly[P]` and not bound const: a readonly fact agrees, a
-    # mutable one is refused (by the fact's own shape check against the
-    # declared type, ahead of the alias's).
-    assert isinstance(_forged(program, "record_alias", resolved_type=ReadonlyType, is_const=False), MIRFunction)
+    assert _forged(program, "record_alias", alias_binding=reference) == plain
+    # Declared `readonly[P]` and not bound const, the holder reads only,
+    # whatever access a fact states.
+    declared = _forged(program, "record_alias", resolved_type=ReadonlyType, is_const=False)
+    assert isinstance(declared, MIRFunction)
     mutable = lambda ab: replace(ab, reference=replace(ab.reference, readonly=False))  # noqa: E731
-    assert _refused(_forged(program, "record_alias", resolved_type=ReadonlyType, is_const=False,
-                            alias_binding=mutable), "mutable loan of a readonly value")
+    assert _forged(program, "record_alias", resolved_type=ReadonlyType, is_const=False,
+                   alias_binding=mutable) == declared
 
 
-def test_a_forged_storage_borrow_fact_is_refused(program) -> None:
-    # `q = h.p` written through binds mutable.
-    assert isinstance(_forged(program, "field_borrow"), MIRFunction)
-    assert _refused(_forged(program, "field_borrow", storage_borrow=_flip), "alias access mismatch")
-    assert _refused(_forged(program, "field_borrow", resolved_type=ReadonlyType), "mutable loan of a readonly value")
+def test_a_forged_storage_borrow_fact_is_not_read(program) -> None:
+    # `q = h.p` written through binds mutable, whatever access a fact states.
+    plain = _forged(program, "field_borrow")
+    assert isinstance(plain, MIRFunction)
+    assert _forged(program, "field_borrow", storage_borrow=_flip) == plain
+    # Declared `readonly[P]`, it is never written through: the write is refused.
+    declared = _forged(program, "field_borrow", resolved_type=ReadonlyType)
+    assert isinstance(declared, MIRNotCovered) and declared.reason == "readonly field store", declared

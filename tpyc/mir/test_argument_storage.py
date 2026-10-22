@@ -6,6 +6,7 @@ import sys
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from .. import cli
 from ..codegen_cpp.context import CodeGenContext
@@ -29,7 +30,7 @@ from .nodes import (
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .validate import validate_function
-from .testutil import borrowed_shape, leaf_shape, optional_shape, tuple_shape, union_shape
+from .testutil import compiled_definitions, borrowed_shape, leaf_shape, optional_shape, tuple_shape, union_shape
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -130,13 +131,19 @@ Artifacts = tuple[CodeGenContext, MIRCallWorkspace, MIRDefinitions, str]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    entry = _entry(modules)
-    (_, cpp), ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    return ctx, workspace, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        (_, cpp), ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+        return ctx, workspace, definitions, cpp
 
 
 def _body(artifacts: Artifacts, name: str) -> MIRFunction:
@@ -328,19 +335,20 @@ def rejected() -> int32:
 def test_source_boundaries_reject_at_the_expected_gate(
         extra: str, reason: str, blocked_callee: str | None) -> None:
     compiler, modules = _compile(SOURCE + extra)
-    entry = _entry(modules)
-    _, ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    result = next(body for identity, body in workspace.bodies.items()
-                  if identity.declaration.split("@")[0] == "rejected")
-    assert isinstance(result, MIRNotCovered), result
-    if blocked_callee is not None:
-        assert result.reason == "call needs finalized known summary"
-        summary = workspace.summaries[th.THIRFunctionIdentity("main", blocked_callee)]
-        assert summary.state is MIRSummaryState.OPAQUE and summary.reason == reason
-    else:
-        assert result.reason == reason
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        _, ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+        result = next(body for identity, body in workspace.bodies.items()
+                      if identity.declaration.split("@")[0] == "rejected")
+        assert isinstance(result, MIRNotCovered), result
+        if blocked_callee is not None:
+            assert result.reason == "call needs finalized known summary"
+            summary = workspace.summaries[th.THIRFunctionIdentity("main", blocked_callee)]
+            assert summary.state is MIRSummaryState.OPAQUE and summary.reason == reason
+        else:
+            assert result.reason == reason
 
 
 def test_deferred_backing_requires_verified_movability(artifacts: Artifacts) -> None:

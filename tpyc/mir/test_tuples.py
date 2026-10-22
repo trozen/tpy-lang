@@ -5,6 +5,8 @@ from dataclasses import fields, replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
+from ..compiler import Compiler
 from ..thir import nodes as th
 from ..parse import ParseError
 from ..thir.testutil import _compile, _entry, _strict_reject, _assert_rejects_at
@@ -18,7 +20,7 @@ from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .value import MIRFieldId
 from .testutil import Heap, Reference, execute
 
-Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...], tuple[str, str]]
+Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...], tuple[str, str], Compiler]
 
 
 PRELUDE = """\
@@ -112,7 +114,18 @@ def conditional_element(a: Cell, flag: bool) -> int32:
 def compile_artifacts(source: str) -> Artifacts:
     compiler, modules = _compile(source)
     emitted, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return {node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values()), emitted
+    return ({node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values()), emitted,
+            compiler)
+
+
+@pytest.fixture(autouse=True)
+def _active(request: pytest.FixtureRequest):
+    # MIR admits a record by the TypeDef its compilation registered.
+    if "artifacts" not in request.fixturenames:
+        yield
+        return
+    with activate_compiler(request.getfixturevalue("artifacts")[3]):
+        yield
 
 
 @pytest.fixture(scope="module")
@@ -147,7 +160,7 @@ def nodes(node: th.THIRNode | th.THIRFunction | th.THIRConstructor) -> Iterator[
 ])
 def test_source_payload_identity_and_snapshots(artifacts: Artifacts, name: str,
                                               expected: int, after: int) -> None:
-    functions, constructors, _ = artifacts
+    functions, constructors, _, _ = artifacts
     fn = lower(functions[name], constructors)
     cell = fn.slots[0].type
     member = MIRFieldId(cell, "value")
@@ -162,7 +175,7 @@ def test_source_payload_identity_and_snapshots(artifacts: Artifacts, name: str,
 @pytest.mark.parametrize("name", ["branches", "loop"])
 @pytest.mark.parametrize("flag", [False, True])
 def test_tuple_reseats_do_not_retarget_saved_payload(artifacts: Artifacts, name: str, flag: bool) -> None:
-    functions, constructors, _ = artifacts
+    functions, constructors, _, _ = artifacts
     fn = lower(functions[name], constructors)
     member = MIRFieldId(fn.slots[0].type, "value")
     heap = {1: {member: 3}, 2: {member: 4}}
@@ -171,7 +184,7 @@ def test_tuple_reseats_do_not_retarget_saved_payload(artifacts: Artifacts, name:
 
 
 def test_owned_storage_survives_tuple_copies(artifacts: Artifacts) -> None:
-    functions, constructors, _ = artifacts
+    functions, constructors, _, _ = artifacts
     fn = lower(functions["owned"], constructors)
     heap: Heap = {}
     assert execute(fn, heap=heap) == 2
@@ -180,7 +193,7 @@ def test_owned_storage_survives_tuple_copies(artifacts: Artifacts) -> None:
 
 @pytest.mark.parametrize("flag", [False, True])
 def test_scalar_payloads_and_pure_conditional_elements(artifacts: Artifacts, flag: bool) -> None:
-    functions, constructors, _ = artifacts
+    functions, constructors, _, _ = artifacts
     assert execute(lower(functions["scalars"], constructors), 7, flag) == (7 if flag else 2)
     fn = lower(functions["conditional_element"], constructors)
     member = MIRFieldId(fn.slots[0].type, "value")
@@ -190,7 +203,7 @@ def test_scalar_payloads_and_pure_conditional_elements(artifacts: Artifacts, fla
 
 
 def test_shared_producers_cover_methods_and_constructors(artifacts: Artifacts) -> None:
-    functions, constructors, _ = artifacts
+    functions, constructors, _, _ = artifacts
     method = functions["observe"]
     ctor = next(c for c in constructors if c.record_name == "Holder")
     for body in (method, ctor):
@@ -212,7 +225,7 @@ def test_shared_producers_cover_methods_and_constructors(artifacts: Artifacts) -
 ])
 def test_missing_or_contradictory_capture_facts_are_uncovered(
         artifacts: Artifacts, change: Callable[[th.THIRExpr], th.THIRExpr]) -> None:
-    functions, _, _ = artifacts
+    functions, _, _, _ = artifacts
     fn = functions["copied"]
     decl = fn.body[0]
     bad = replace(fn, body=(replace(decl, init=change(decl.init)), *fn.body[1:]))
@@ -220,7 +233,7 @@ def test_missing_or_contradictory_capture_facts_are_uncovered(
 
 
 def test_normalized_index_is_positive_fact(artifacts: Artifacts) -> None:
-    functions, _, _ = artifacts
+    functions, _, _, _ = artifacts
     fn = functions["conditional_element"]
     ret = fn.body[-1]
     assert ret.value.tuple_index == 1 and ret.value.index.value == 1
@@ -247,7 +260,7 @@ def test_empty_payload_thir_boundary() -> None:
 
 
 def test_readonly_source_thir_boundary(artifacts: Artifacts) -> None:
-    functions, _, _ = artifacts
+    functions, _, _, _ = artifacts
     fn = functions["singleton"]
     decl = fn.body[0]
     typ = fn.params[0].borrowed_record.type
@@ -290,8 +303,10 @@ def example(a: readonly[Cell]) -> int32:
     ("def example(x: int32) -> int32:\n    pair = (x, 'text')\n    return x\n", "layout fact"),
 ])
 def test_deferred_source_shapes_are_whole_body_uncovered(body: str, reason: str) -> None:
-    functions, constructors, _ = compile_artifacts(PRELUDE + body)
-    result = lower_function(functions["example"], MIRBodyId("tuples", "example"), definitions=MIRDefinitions(constructors))
+    functions, constructors, _, compiler = compile_artifacts(PRELUDE + body)
+    with activate_compiler(compiler):
+        result = lower_function(functions["example"], MIRBodyId("tuples", "example"),
+                                definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered), result
     assert reason in result.reason
 
@@ -303,7 +318,7 @@ def test_deferred_source_shapes_are_whole_body_uncovered(body: str, reason: str)
 ])
 def test_unknown_tuple_storage_metadata_is_not_ignored(
         artifacts: Artifacts, change: Callable[[th.THIRVarDecl], th.THIRVarDecl]) -> None:
-    functions, _, _ = artifacts
+    functions, _, _, _ = artifacts
     fn = functions["copied"]
     # Disable addr_of solely to allow construction of the wrapped node.
     decl = replace(fn.body[0], init=replace(fn.body[0].init, addr_of=(False, False)))
@@ -358,12 +373,12 @@ def example(current: GenericCell[int32]) -> int32:
 """,
 ])
 def test_owned_and_generic_captures_do_not_get_borrow_layouts(body: str) -> None:
-    functions, constructors, _ = compile_artifacts(PRELUDE + body)
+    functions, constructors, _, compiler = compile_artifacts(PRELUDE + body)
     fn = functions["example"]
     decl = next(n for n in fn.body if isinstance(n, th.THIRVarDecl) and n.name == "pair")
     # The node class alone must not classify every reference-type member as borrowed.
     assert isinstance(decl.init, th.THIRBorrowTupleLiteral)
     assert decl.init.tuple_layout is None and decl.tuple_layout is None
-    result = lower_function(fn, MIRBodyId("tuples", fn.name),
-                            definitions=MIRDefinitions(constructors))
+    with activate_compiler(compiler):
+        result = lower_function(fn, MIRBodyId("tuples", fn.name), definitions=MIRDefinitions(constructors))
     assert isinstance(result, MIRNotCovered), result

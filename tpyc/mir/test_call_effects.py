@@ -6,12 +6,14 @@ import sys
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..codegen_cpp.context import CodeGenContext
 from .. import cli
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import VoidType
+from .testutil import compiled_definitions
 from .call_contract import MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, resolve_call_writes
 from .collect import call_definitions, dump_codegen_mir
@@ -165,16 +167,22 @@ Artifacts = tuple[CodeGenContext, MIRCallWorkspace, MIRDefinitions, str]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    entry = _entry(modules)
-    (_, cpp), ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    # Exercise the complete CLI inspection pipeline, including all statement consumers.
-    dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
-                     compiler.thir_reject_by_node, workspace)
-    return ctx, workspace, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        (_, cpp), ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+        # Exercise the complete CLI inspection pipeline, including all statement consumers.
+        dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
+                         compiler.thir_reject_by_node, workspace)
+        return ctx, workspace, definitions, cpp
 
 
 def body(artifacts: Artifacts, name: str) -> MIRFunction:
@@ -338,7 +346,7 @@ def test_void_call_requires_assigned_arguments_and_void_signature(artifacts: Art
 def test_missing_origins_are_not_empty_effects(artifacts: Artifacts) -> None:
     fn = body(artifacts, "standalone")
     _, call = calls(fn)[0]
-    assert resolve_call_writes(call, {}, {s.id: s for s in fn.slots}, {r.type: r for r in fn.records}) is None
+    assert resolve_call_writes(call, {}, {s.id: s for s in fn.slots}, fn.record_layouts) is None
     deps = analyze_dependencies(fn, analyze_liveness(fn))
     point, _ = calls(fn)[0]
     broken = replace(deps, referents={point: {}})

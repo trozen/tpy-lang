@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -16,7 +17,7 @@ from .nodes import (
     MIRRegionId, MIRStorageDuration,
 )
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
-from .testutil import Reference, execute
+from .testutil import compiled_definitions, Reference, execute
 
 
 SOURCE = '''from tpy import int32
@@ -132,20 +133,27 @@ Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction], MIRDefinit
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("record_hoists", name), definitions=definitions)
-              for name, fn in functions.items()}
-    for ctor in ctx.thir_constructors.values():
-        if ctor.record_name == "Runner":
-            bodies["Runner"] = lower_constructor(ctor, MIRBodyId("record_hoists", "Runner"), definitions=definitions)
-    for name, fn in bodies.items():
-        assert isinstance(fn, MIRFunction), (name, fn)
-        assert any(isinstance(s, MIRRecordStorageInit) for b in fn.blocks for s in b.statements), name
-    return functions, bodies, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("record_hoists", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        for ctor in ctx.thir_constructors.values():
+            if ctor.record_name == "Runner":
+                bodies["Runner"] = lower_constructor(ctor, MIRBodyId("record_hoists", "Runner"),
+                                                     definitions=definitions)
+        for name, fn in bodies.items():
+            assert isinstance(fn, MIRFunction), (name, fn)
+            assert any(isinstance(s, MIRRecordStorageInit) for b in fn.blocks for s in b.statements), name
+        return functions, bodies, definitions, cpp
 
 
 @pytest.mark.parametrize("flag", [False, True])
@@ -263,6 +271,8 @@ def example(flag: bool) -> int32:
     compiler, modules = _compile(source)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "example")
-    result = lower_function(fn, MIRBodyId("record_hoists", "unsupported"),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
-    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported expression type", result
+    with activate_compiler(compiler):
+        result = lower_function(fn, MIRBodyId("record_hoists", "unsupported"),
+                                definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
+    # The holder is rebound to the call's result, which a borrowed binding needs borrowed, not fresh.
+    assert isinstance(result, MIRNotCovered) and result.reason == "unsupported borrowed expression form", result

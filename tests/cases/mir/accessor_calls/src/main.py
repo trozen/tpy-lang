@@ -173,8 +173,8 @@ def twin_readonly(c: readonly[Counter]) -> int32:  # tpyc: mir(certified)
     return d.count
 
 
-# kept refusal: a call result as a receiver (receivers beyond a name or self)
-def twin_via(c: Counter) -> int32:  # tpyc: mir(uncovered /^owned result from a borrowed call$/)
+# free caller: a borrowed call result as a receiver, read in place
+def twin_via(c: Counter) -> int32:  # tpyc: mir(covered)
     return c.via().count
 
 

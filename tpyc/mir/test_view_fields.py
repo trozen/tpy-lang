@@ -30,7 +30,7 @@ from .shapes import MIRDeref
 from .value import MIRField, MIRValidationError
 from .retention import affects, may_overlap
 from .validate import validate_function
-from .testutil import borrowed_shape, optional_shape, tuple_shape, union_shape
+from .testutil import no_layouts, borrowed_shape, optional_shape, tuple_shape, union_shape
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -204,8 +204,9 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                     compiler.thir_reject_by_node, mir.workspace)
-        yield _Program(compiler, {c.record_name: c for c in ctx.thir_constructors.values()}, mir.definitions,
+        result = _Program(compiler, {c.record_name: c for c in ctx.thir_constructors.values()}, mir.definitions,
                        {v.body.declaration.split("@")[0]: v for v in verdicts}, dict(compiler.dynamic_type_defs))
+    return result
 
 
 @pytest.fixture(autouse=True)
@@ -379,7 +380,7 @@ def test_stored_loans_follow_the_object(program: _Program) -> None:
 def test_a_fill_with_no_stored_loan_to_carry_refuses(program: _Program) -> None:
     fn = _lowered(program, "built")
     slots = {s.id: s for s in fn.slots}
-    layouts = {r.type: r for r in fn.records}
+    layouts = fn.record_layouts
     objects = {sid: object_keys(slot, layouts) for sid, slot in slots.items()}
     tok = _record(program, "Tok")
     source, target = [s.id for s in fn.slots if s.shape.is_storage and s.type == tok][:2]
@@ -403,7 +404,7 @@ def test_a_parameter_s_stored_loans_are_seeded_held(program: _Program) -> None:
     assert dependencies.entry_active[key] == frozenset({held})
     # The view read resolves through the holder to the seeded entry.
     assert resolve_referents(MIRPlace(fn.slots[0].id, (MIRDeref(), member)), state, {s.id: s for s in fn.slots},
-                             {r.type: r for r in fn.records}) == {held}
+                             fn.record_layouts) == {held}
     assert "held:%0.__main__.Tok::s" in dump_dependencies(dependencies)
 
 
@@ -429,7 +430,7 @@ def test_an_object_with_no_stored_loan_entry_refuses(program: _Program) -> None:
     with pytest.raises(MIRUnseededLoan):
         resolve_referents(MIRPlace(param, (MIRDeref(), _member(program, "Tok", "s"))),
                           {MIRPlace(param): frozenset({MIRReferent(MIRPlace(param), external=True)})},
-                          {s.id: s for s in fn.slots}, {r.type: r for r in fn.records})
+                          {s.id: s for s in fn.slots}, fn.record_layouts)
 
 
 def test_live_holders_reach_stored_loans_through_their_objects(program: _Program) -> None:
@@ -453,7 +454,7 @@ def test_live_holders_reach_stored_loans_through_their_objects(program: _Program
 def test_a_held_loan_may_be_any_external_storage(program: _Program) -> None:
     fn = _lowered(program, "seeded")
     slots = {s.id: s for s in fn.slots}
-    records = {r.type: r for r in fn.records}
+    records = fn.record_layouts
     member = _member(program, "Tok", "s")
     p, q = MIRSlotId(fn.id, 50), MIRSlotId(fn.id, 51)
     held = MIRReferent(MIRPlace(p, (member,)), external=True, held=True)
@@ -479,7 +480,7 @@ def test_a_view_result_off_a_member_keeps_its_path(program: _Program) -> None:
     assert summary.summary.returns == frozenset({MIRReturnOrigin(0, path)})
     # A view member is a return endpoint, never a write endpoint.
     writing = replace(summary.summary, writes=frozenset({MIRParameterWrite(0, path)}))
-    assert summary_problem(writing, {}) == "unsupported call write field or access"
+    assert summary_problem(writing, no_layouts()) == "unsupported call write field or access"
 
 
 # --- the validator --------------------------------------------------------------------------

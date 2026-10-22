@@ -161,7 +161,8 @@ def views():
         verdicts = {v.name: v for v in enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name,
                                                         mir.definitions, compiler.thir_reject_by_node,
                                                         mir.workspace)}
-        yield _Views(compiler, modules, mir.definitions, functions, verdicts)
+        result = _Views(compiler, modules, mir.definitions, functions, verdicts)
+    return result
 
 
 @pytest.fixture

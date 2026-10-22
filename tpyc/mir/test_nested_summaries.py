@@ -23,10 +23,10 @@ from .nodes import (
     MIRAssign, MIRBorrow, MIRConstruct, MIRFunction, MIRMove, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .shapes import MIRContainerElements, MIRDeref, MIROptionalPayload
-from .value import MIRField, MIRFieldId, MIRValidationError
+from .value import MIRRecords, MIRField, MIRFieldId, MIRValidationError
 from .summaries import _member_chain, _private_records, summarize_function
 from .validate import validate_function
-from .testutil import borrowed_shape, leaf_shape
+from .testutil import no_layouts, borrowed_shape, leaf_shape, Redeclared
 from ..thir.scalar_leaves import MIRClass
 
 SOURCE = """\
@@ -275,11 +275,12 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                     compiler.thir_reject_by_node, mir.workspace)
-        yield _Program(compiler, functions, mir.definitions,
+        result = _Program(compiler, functions, mir.definitions,
                        {v.body.declaration.split("@")[0]: v for v in verdicts})
+    return result
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def active(program):
     with activate_compiler(program.compiler):
         yield program
@@ -340,10 +341,10 @@ def test_an_inherited_member_hop_reads_the_parameter_storage_layout(active) -> N
     assert result.state is MIRSummaryState.KNOWN, result.reason
     (write,) = result.summary.writes
     assert [f.owner.name for f in write.path] == ["Base", "Point"]
-    # The contract admits the inherited field with the definitions' layouts;
-    # with none, Base::a is no field Derived itself declares.
+    # The contract admits the inherited field with or without layouts:
+    # Derived declares Base::a.
     assert summary_problem(result.summary, active.definitions.layouts) is None
-    assert summary_problem(result.summary, {}) == "field owner mismatch"
+    assert summary_problem(result.summary, no_layouts()) is None
 
 
 @pytest.mark.parametrize("name", ["write_scalar", "write_deep", "write_name"])
@@ -391,8 +392,12 @@ class _Without:
         return replace(definition, layout=self._without(typ, definition.layout))
 
     @property
-    def layouts(self):
-        return {typ: self._without(typ, layout) for typ, layout in self.inner.layouts.items()}
+    def layouts(self) -> MIRRecords:
+        # The record lacks the field in its declaration as in its layout.
+        fields = Redeclared(self.inner.fields, lambda typ, declared: frozenset(
+            f for f in declared if not (isinstance(typ, NominalType) and typ.name == self.typ_name
+                                        and f.id.name == self.field)))
+        return MIRRecords({typ: self._without(typ, layout) for typ, layout in self.inner.layouts.items()}, fields)
 
 
 @pytest.mark.parametrize(("name", "record", "field"), [
@@ -408,7 +413,7 @@ def test_a_write_field_missing_from_its_hop_layout_is_refused(active, name: str,
     fn = _lowered(active, name)
     result = summarize_function(active.functions[name], fn, _Without(active.definitions, record, field))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == (
-        "summary unsupported write origin: field missing from record layout")
+        "summary unsupported write origin: field missing from declared fields")
 
 
 def test_a_returned_member_holder_meets_the_return_rule(active) -> None:
@@ -460,7 +465,7 @@ def test_a_return_field_missing_from_its_hop_layout_is_refused(active, name: str
     fn = _lowered(active, name)
     result = summarize_function(active.functions[name], fn, _Without(active.definitions, record, field))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == (
-        "summary unsupported return origin: field missing from record layout")
+        "summary unsupported return origin: field missing from declared fields")
 
 
 _COVERED = (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED)

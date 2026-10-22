@@ -11,6 +11,7 @@ from ..diagnostics import Diagnostic, DiagnosticLevel, insert_in_source_order
 from ..identity_map import IdentityMap
 from ..parse import SourceLocation
 from ..thir.testutil import _compile, _entry
+from .testutil import no_layouts
 from .call_contract import MIRAliasObligation, MIRParameterWrite, MIRSummaryState, summary_problem
 from .shapes import MIRContainerElements, MIRContainerStructure
 from .collect import enumerate_bodies
@@ -20,7 +21,7 @@ from .nodes import MIRBlockId, MIRBodyId, MIRPlace, MIRSlotId
 from .retention import MIRRetentionConflict, alias_obligation
 
 SOURCE = '''\
-from tpy import int32
+from tpy import int32, copy
 
 
 class H:
@@ -74,6 +75,46 @@ def other_element(xs: list[str]) -> int32:
     return set_first(xs, xs[1])
 
 
+class Shelf:
+    items: list[int32]
+
+    def __init__(self, items: list[int32]) -> None:
+        self.items = copy(items)
+
+    def refill(self, data: list[int32]) -> None:
+        self.items = copy(data)
+        self.items = copy(data)
+
+
+def refill_self(sh: Shelf) -> None:
+    sh.refill(sh.items)
+
+
+class Box:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def reset(self, h: Holder) -> int32:
+        h.b = Box(0)
+        return self.n
+
+
+class Holder:
+    b: Box
+
+    def __init__(self) -> None:
+        self.b = Box(1)
+
+    def box(self) -> Box:
+        return self.b
+
+
+def reset_through_result(h: Holder) -> int32:
+    return h.box().reset(h)
+
+
 def main() -> None:
     print(keyword([1], ["a"]))
 
@@ -105,11 +146,17 @@ def test_warnings_spell_the_arguments_as_written(compiled) -> None:
     found = {d.loc.line: d.message for d in _warnings(compiled)}
     # A body passing two of its own parameters publishes the obligation
     # again (`forward`, `keyword`); passing one list twice breaks it.
-    assert sorted(found) == [34, 43]
+    assert sorted(found) == [34, 43, 67, 92]
     # An assignment's statement starts at its target, before the call.
     assert found[34].startswith("argument 'h.name' is what 'H.setname' modifies "
                                 "through parameter 'self' while it still uses 'value'")
     assert found[43].startswith("argument 'names[0]' points into 'names', which 'same'")
+    # A whole container field replaced, as a record field is (`Shelf.refill`).
+    assert found[67].startswith("argument 'sh.items' is what 'Shelf.refill' modifies "
+                                "through parameter 'self' while it still uses 'data'")
+    # A call-result receiver is spelled by the parameter it binds.
+    assert found[92].startswith("the argument for parameter 'self' is what 'Box.reset' modifies "
+                                "through parameter 'h' while it still uses 'self'")
     # A value-type argument is copied by binding it to a local.
     assert found[34].endswith("bind it to a local first ('v = h.name') or restructure so the call "
                               "does not hand over both")
@@ -135,6 +182,16 @@ def test_callers_of_two_parameters_publish_the_obligation(compiled) -> None:
         replace(expected, parameter=1, path=(MIRContainerElements(),))})
     # A body growing a list no other parameter reaches has nothing to publish.
     assert verdicts["grow"].summary.summary.obligations == frozenset()
+    # A whole container field replaced while another parameter is still
+    # read publishes `data` against `self.items`, as a record field does;
+    # a caller passing `sh.items` to both breaks it.
+    refill, = verdicts["refill"].summary.summary.obligations
+    assert (refill.parameter, refill.path, refill.written.parameter) == (1, (), 0)
+    assert [field.name for field in refill.written.path] == ["items"]
+    assert verdicts["refill_self"].conflicts == ("argument_alias",)
+    # A receiver a call returns by reference (`h.box()`, the storage of
+    # `h.b`) beside `h`, whose `b` the method replaces while reading `self`.
+    assert verdicts["reset_through_result"].conflicts == ("argument_alias",)
     assert verdicts["twice"].conflicts == ("argument_alias",)
     assert verdicts["keyword"].conflicts == ("alias_obligation",)
     # Element identity is not tracked: writing `xs[0]` may or may not reach
@@ -146,13 +203,15 @@ def test_a_summary_cannot_publish_an_obligation_it_does_not_write(compiled) -> N
     compiler, entry, ctx = compiled
     with compiler.mir_analysis([(entry, ctx)]) as mir:
         known = next(r.summary for i, r in mir.workspace.summaries.items() if i.name == "bound")
-    assert summary_problem(known, {}) is None
+    assert summary_problem(known, no_layouts()) is None
     unwritten = MIRAliasObligation(2, (), MIRParameterWrite(0, (MIRContainerElements(),)))
-    assert summary_problem(replace(known, obligations=frozenset({unwritten})), {}) == "invalid alias obligation write"
+    assert summary_problem(replace(known, obligations=frozenset({unwritten})), no_layouts()) == (
+        "invalid alias obligation write")
     itself = MIRAliasObligation(0, (), MIRParameterWrite(0, (MIRContainerStructure(),)))
-    assert summary_problem(replace(known, obligations=frozenset({itself})), {}) == "invalid alias obligation parameter"
+    assert summary_problem(replace(known, obligations=frozenset({itself})), no_layouts()) == (
+        "invalid alias obligation parameter")
     out_of_range = MIRAliasObligation(5, (), MIRParameterWrite(0, (MIRContainerStructure(),)))
-    assert summary_problem(replace(known, obligations=frozenset({out_of_range})), {}) == (
+    assert summary_problem(replace(known, obligations=frozenset({out_of_range})), no_layouts()) == (
         "invalid alias obligation parameter")
 
 
@@ -196,8 +255,8 @@ def test_a_mir_failure_costs_only_its_body_and_never_fails_the_compile(compiled,
     try:
         heard: list[str] = []
         added = compiler.report_mir_warnings([(entry, ctx)], on_failure=heard.append)
-        # `twice`'s warning survives the failure in `assigned`, and `-v` hears it.
-        assert [d.loc.line for _, d in added] == [43]
+        # The other bodies' warnings survive the failure in `assigned`, and `-v` hears it.
+        assert [d.loc.line for _, d in added] == [43, 67, 92]
         assert len(heard) == 1 and "MIR defect" in heard[0]
         with pytest.raises(RuntimeError, match="MIR defect"):
             compiler.report_mir_warnings([(entry, ctx)], strict=True)

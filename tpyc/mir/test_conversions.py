@@ -13,9 +13,9 @@ from ..compilation_context import activate_compiler
 from ..mir_workspace import analyze_call_workspace
 from ..thir.testutil import _compile, _entry
 from ..typesys import STR, STRVIEW
+from .testutil import compiled_definitions
 from .coverage import MIRUnsupported
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
-from .definitions import MIRDefinitions
 from .emit import Fragment, MIRValue, owned_leaf_shape, view_holder_shape
 from .lower import _Lowering
 from .nodes import MIRConstant, MIRRecordWriteMode
@@ -229,7 +229,7 @@ def unit():
     entry = _entry(modules)
     with activate_compiler(compiler):
         _, ctx = compiler.generate_code_and_thir(entry)
-        definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
         workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
         dump = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
                                 compiler.thir_reject_by_node, workspace)

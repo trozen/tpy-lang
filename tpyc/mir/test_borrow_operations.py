@@ -5,6 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.nodes import THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, ReadonlyType, TupleType
@@ -27,19 +28,25 @@ from .test_storage_evidence import (
     SAVED, _cell, _ref, activation, returning, reused,
 )
 from .validate import _prepare_function
-from .testutil import bind_parameters, leaf_shape, owned_shape, tuple_shape
+from .testutil import compiled_definitions, bind_parameters, leaf_shape, owned_shape, tuple_shape
 
 
 @pytest.fixture(scope="module")
-def definitions() -> MIRDefinitions:
-    compiler, modules = _compile('''from tpy import int32
+def compiled():
+    return _compile('''from tpy import int32
 class Cell:
     value: int32
     def __init__(self, value: int32):
         self.value = value
 ''')
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return MIRDefinitions(tuple(ctx.thir_constructors.values()))
+
+
+@pytest.fixture(scope="module")
+def definitions(compiled) -> MIRDefinitions:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        return compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
 
 
 BODY = MIRBodyId("borrow_operations", "forward")

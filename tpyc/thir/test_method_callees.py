@@ -734,7 +734,8 @@ def test_a_twin_result_has_the_access_of_the_receiver_at_the_call(
     for call in calls:
         # Every call publishes the definition's signature; its access is derived from its receiver.
         assert call.resolved_callee == definition.resolved_callee
-        assert call_result(call.resolved_callee, receiver_readonly).readonly is readonly
+        with activate_compiler(accessors.compiler):
+            assert call_result(call.resolved_callee, receiver_readonly).readonly is readonly
     # The definition is the const clone: its result is readonly.
     assert definition.resolved_callee.signature.borrowed_result.readonly
 

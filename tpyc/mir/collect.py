@@ -527,27 +527,45 @@ class MIRLineFacts:
     ambiguous: Mapping[str, tuple[str, ...]] = MappingProxyType({})
 
 
+def _reached_types(fn: MIRFunction) -> set[TpyType]:
+    """The types a body's places can hold a record of: its slots' values
+    and their members, and its layouts' records and fields."""
+    types: set[TpyType] = set()
+    stack = [slot.shape for slot in fn.slots]
+    while stack:
+        shape = stack.pop()
+        if shape is not None:
+            types.add(unwrap_readonly(shape.type))
+            stack.extend(shape.members)
+    for layout in fn.records:
+        types.add(layout.type)
+        types.update(unwrap_readonly(f.type) for f in layout.fields)
+    return types
+
+
 class _Spelling:
     """Spells places of one body. A field is spelled by its name unless the
-    layout of the record holding it carries that name under two owners;
-    then by `Owner.name`, and the bare spelling is recorded as ambiguous
-    with every owner's spelling."""
+    record holding it declares that name under two owners; then by
+    `Owner.name`, and the bare spelling is recorded as ambiguous with every
+    owner's spelling."""
 
     def __init__(self, fn: MIRFunction) -> None:
         self.slots = {slot.id: slot for slot in fn.slots}
-        # Per record layout: each field name two owners declare, to its owners.
+        # Per record the body reaches: each field name two owners declare, to its owners.
         self.shadowed: dict[TpyType, dict[str, tuple[str, ...]]] = {}
-        for record in fn.records:
+        for typ in _reached_types(fn):
             owners: dict[str, list[str]] = {}
-            for f in record.fields:
+            for f in fn.record_fields.get(typ, ()):
                 owners.setdefault(f.id.name, []).append(f.id.owner.name)
-            self.shadowed[record.type] = {n: tuple(o) for n, o in owners.items() if len(o) > 1}
+            shadowed = {n: tuple(sorted(o)) for n, o in owners.items() if len(o) > 1}
+            if shadowed:
+                self.shadowed[typ] = shadowed
         self.ambiguous: dict[str, set[str]] = {}
 
     def owners(self, holder: TpyType | None, field: MIRFieldId) -> tuple[str, ...]:
         if holder is not None:
             return self.shadowed.get(holder, {}).get(field.name, ())
-        # A record reached through a wrapper member: any layout carrying the field decides.
+        # A record reached through a wrapper member: any record declaring the field decides.
         return next((names[field.name] for names in self.shadowed.values()
                      if field.owner.name in names.get(field.name, ())), ())
 
@@ -735,7 +753,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 leaves.setdefault(named[slot.id], []).append(leaf)
                 if leaf.projections:
                     leaves.setdefault(_spell(leaf, named), []).append(leaf)
-            if slot.shape.borrowed_record:
+            if slot.shape.borrowed_aggregate:
                 for member in view_members(layouts.get(slot.type)):
                     place = MIRPlace(slot.id, (*object_prefix(slot.shape, payload=False), member))
                     members[_spell(place, named)] = place

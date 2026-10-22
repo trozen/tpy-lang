@@ -21,6 +21,7 @@ from .retention import may_overlap
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
 from .testutil import (
+    hand_record,
     bind_parameters, ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
     reslot, tuple_shape, union_shape,
 )
@@ -29,7 +30,7 @@ from .validate import validate_function
 B = MIRBodyId("iteration", "retained")
 P, Q, SOURCE, ITER, HAS, FIRST, CURRENT, OUT, SEVEN = (MIRSlotId(B, i) for i in range(9))
 ENTRY, FIRST_BODY, NEXT, SECOND_BODY, DONE, EMPTY = (MIRBlockId(B, i) for i in range(6))
-CELL = NominalType("Cell", _module_qname="iteration.Cell")
+CELL = hand_record("Cell", "iteration.Cell", value=INT32)
 LIST = NominalType("list", (CELL,), _module_qname="builtins.list")
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 RECORD = MIRRecordLayout(CELL, (FIELD,), True, True)
@@ -113,7 +114,7 @@ def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> No
             slot = MIRSlot(saved, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
             value, projection = MIROptionalConstruct(MIRPlace(FIRST)), MIROptionalPayload()
         case "union":
-            other = NominalType("Other", _module_qname="iteration.Other")
+            other = hand_record("Other", "iteration.Other")
             fn = replace(fn, records=(*fn.records, MIRRecordLayout(other, (), True, True)))
             slot = MIRSlot(saved, union_shape(UnionType((CELL, other)), (member, borrowed_shape(other))),
                            MIRSlotKind.LOCAL)

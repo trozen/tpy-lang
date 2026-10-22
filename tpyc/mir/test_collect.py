@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from .. import cli
+from ..compilation_context import activate_compiler
 from ..mir_workspace import analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
@@ -20,23 +21,24 @@ from .collect import (
     analyze_body,
     _written_kind, dump_codegen_mir, enumerate_bodies, enumerate_body_sources, line_facts, verdict_of,
 )
-from .definitions import MIRDefinitions
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction, MIRPlace,
     MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, function_body_kind,
 )
 from .shapes import MIRContainerElements, MIRDeref
 from .value import MIRRecordLayout
-from .testutil import bind_parameters, borrowed_shape, leaf_shape
+from .testutil import compiled_definitions, bind_parameters, borrowed_shape, leaf_shape
 
 
 def dump(source: str) -> str:
     compiler, modules = _compile(source)
     entry = _entry(modules)
     ctx = compiler.collect_thir(entry, tolerate_reject=True)
-    return dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                            MIRDefinitions(tuple(ctx.thir_constructors.values())),
-                            compiler.thir_reject_by_node)
+    # MIR admits a record by the TypeDef its compilation registered.
+    with activate_compiler(compiler):
+        return dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
+                                compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
+                                compiler.thir_reject_by_node)
 
 
 SOURCE = """\

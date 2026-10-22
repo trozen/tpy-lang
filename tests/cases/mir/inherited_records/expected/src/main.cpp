@@ -145,7 +145,7 @@ void call_virtual(VBase& v) {
 }
 
 // # kept refusal: an upcast local binds a subclass at its base's type
-// def upcast_local(s: Sub) -> int32:  # tpyc: mir(uncovered /^unsupported metadata: cpp_local_representation$/)
+// def upcast_local(s: Sub) -> int32:  # tpyc: mir(uncovered /^alias source mismatch$/)
 //     b: Base = s  # tpyc: warning(/upcast narrows/)
 //     b.bump()
 //     return b.n
@@ -169,7 +169,7 @@ int32_t upcast_payload(Sub& s) {
     return 0;
 }
 
-// def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
+// def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
 //     s = Sub("a", 5)
 //     print("use_sub", use_sub(s))
 //     print("alias", alias_inherited(s))

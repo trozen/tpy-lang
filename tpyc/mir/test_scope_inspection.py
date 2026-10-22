@@ -20,7 +20,7 @@ from .scope_lifetime import (
 from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_function
 from .test_payload_lifetime import CURRENT, FLAG
 from .test_retention import AGAIN, END, LOOP, SITE, loop_function
-from .test_scope_lifetime import Artifacts, artifacts
+from .test_scope_lifetime import Artifacts, artifacts, compiled  # noqa: F401 -- fixtures
 from .validate import MIRPresenceError, _prepare_function, validate_function
 from .value import MIRValidationError
 from .testutil import bind_parameters, leaf_shape

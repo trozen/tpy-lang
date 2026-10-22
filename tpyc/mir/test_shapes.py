@@ -13,15 +13,15 @@ from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, modeled_field, storage_leaf, value_class
 from ..thir.testutil import _compile, _entry
 from ..typesys import (
-    BYTES, BYTESVIEW, INT32, NONE, STR, STRVIEW, NominalType, OptionalType, OwnType, ReadonlyType, RefType,
+    BYTES, BYTESVIEW, INT32, NONE, STR, STRVIEW, NominalType, OptionalType, OwnType, ReadonlyType,
     Representation, TupleType, TpyType, UnionType,
 )
 from ..type_def_registry import ParamPassing
 from .definitions import lends_view
-from .testutil import bound
+from .testutil import bound, records_of, with_fields
 from .nodes import MIRAssign, MIRBorrow, MIRFunction, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRBodyId, place_shape
 from .value import (
-    MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRole, MIRShape, MIRValidationError,
+    MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError,
     lent_record, member_compatible, member_shape, shape_problem, value_shape,
 )
 from .dependencies import object_keys, origin_shape
@@ -72,7 +72,7 @@ def spans(s: Span[int32]) -> int32:
 class _Program:
     types: dict[str, NominalType]
     fields: dict[str, TpyType]
-    records: dict[TpyType, object]
+    records: MIRRecords
     span: TpyType
 
 
@@ -89,6 +89,7 @@ def program() -> Iterator[_Program]:
             MIRField(MIRFieldId(f.owner, f.name), f.type) for f in layout.fields), True, True)
             for layout in layouts.values()}
         records[STR] = MIRRecordLayout(STR, (), True, True, opaque=True)
+        records = records_of(*records.values())
         span = next(fn for node, fn in ctx.thir_functions.items() if node.name == "spans").params[0].type
         yield _Program(types, {f"{name}.{f.name}": f.type for name, layout in layouts.items() for f in layout.fields},
                        records, span)
@@ -175,10 +176,10 @@ def test_containers_are_pointers_storage_or_cursors(program: _Program) -> None:
     assert (borrowed.cls, borrowed.holding) == (MIRClass.CONTAINER, MIRHolding.POINTER) and borrowed.whole_container
     # The members come from the builder, at the holder's access.
     assert borrowed.members == members
-    assert value_shape(ints).container_storage
+    assert value_shape(ints).is_storage and value_shape(ints).cls is MIRClass.CONTAINER
     cursor = value_shape(ints, role=MIRRole.CURSOR)
     assert cursor.holding is MIRHolding.CURSOR and cursor.is_holder and cursor.members == members
-    assert not (cursor.container_storage or cursor.container_view_holder)
+    assert not (cursor.is_storage or cursor.container_view_holder)
     view = value_shape(program.span, access=True, role=MIRRole.LOAN)
     assert (view.cls, view.holding) == (MIRClass.CONTAINER_VIEW, MIRHolding.REGION) and view.container_view_holder
     assert view.members == (MIRShape(INT32, MIRClass.LEAF, readonly=True),)
@@ -189,13 +190,13 @@ def test_holder_and_object_questions_of_a_borrowed_container(program: _Program) 
     # is a whole container.
     ints = program.fields["H.xs"]
     borrowed = value_shape(ints, role=MIRRole.LOAN)
-    assert borrowed.borrow_holder and borrowed.borrowed_container and borrowed.whole_container
+    assert borrowed.borrow_holder and borrowed.borrowed_aggregate and borrowed.whole_container
     storage = value_shape(ints)
-    assert storage.whole_container and not storage.borrowed_container and not storage.borrow_holder
+    assert storage.whole_container and not storage.borrowed_aggregate and not storage.borrow_holder
     cursor = value_shape(ints, role=MIRRole.CURSOR)
-    assert not (cursor.whole_container or cursor.borrowed_container or cursor.borrow_holder)
+    assert not (cursor.whole_container or cursor.borrowed_aggregate or cursor.borrow_holder)
     view = value_shape(program.span, access=True, role=MIRRole.LOAN)
-    assert view.borrow_holder and not (view.whole_container or view.borrowed_container)
+    assert view.borrow_holder and not (view.whole_container or view.borrowed_aggregate)
     # A cursor over a view has the view's class, and is no view holder.
     view_cursor = value_shape(program.span, access=True, role=MIRRole.CURSOR)
     assert view_cursor.cls is MIRClass.CONTAINER_VIEW and not view_cursor.container_view_holder
@@ -277,11 +278,12 @@ def test_the_shape_check_accepts_what_the_composer_builds(program: _Program) -> 
     lent = th.THIRBorrowedRecord(p, True)
     slots = [
         (value_shape(p), p),
-        (value_shape(p, access=True, role=MIRRole.LOAN), RefType(p)),
+        # MIR's types are bare: a loan is the holding, not a `Ref[...]`.
+        (value_shape(p, access=True, role=MIRRole.LOAN), p),
         (value_shape(p), OwnType(p)),
         (value_shape(STR, access=True, role=MIRRole.LOAN), STR),
         (value_shape(view, access=True), view),
-        (value_shape(ints, role=MIRRole.LOAN), RefType(ints)),
+        (value_shape(ints, role=MIRRole.LOAN), ints),
         (value_shape(ints, role=MIRRole.CURSOR), ints),
         (value_shape(program.span, access=True, role=MIRRole.LOAN), program.span),
         (value_shape(INT32, MIRClass.LEAF, access=True, role=MIRRole.ALIAS), INT32),
@@ -379,9 +381,9 @@ def test_a_holder_declared_readonly_is_never_mutable(program: _Program) -> None:
     # The access a `readonly[...]` declaration gives every loan (`loan_access`) bounds the holder's.
     p, ints = program.types["P"], program.fields["H.xs"]
     mutable = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER)
-    for declared in (ReadonlyType(p), RefType(ReadonlyType(p))):
-        assert shape_problem(mutable, declared) == "mutable loan of a readonly value", declared
-        assert shape_problem(replace(mutable, readonly=True), declared) is None, declared
+    declared = ReadonlyType(p)
+    assert shape_problem(mutable, declared) == "mutable loan of a readonly value"
+    assert shape_problem(replace(mutable, readonly=True), declared) is None
     region = value_shape(ints, role=MIRRole.LOAN)
     assert shape_problem(region, ReadonlyType(ints)) == "mutable loan of a readonly value"
     # The callee's own storage lends nothing: no loan access to bound.
@@ -514,31 +516,32 @@ def test_an_optional_fields_inline_payload_is_stored_at_the_fields_access(progra
     assert shape_problem(forged, typ, MIRPosition.FIELD) == "optional layout increases access"
 
 
-def test_a_field_is_a_member_of_the_holders_layout_or_one_it_declares(program: _Program) -> None:
+def test_a_field_is_a_member_of_its_holders_declared_fields(program: _Program) -> None:
     h, p = program.types["H"], program.types["P"]
     storage = MIRShape(h, MIRClass.RECORD, MIRHolding.VALUE)
     n = _field(program, "H.n")
-    # A field missing from the holder's present layout is refused, an own-type one included.
+    # A field the holder does not declare is refused, an own-type one included.
     fabricated = MIRField(MIRFieldId(h, "nope"), INT32)
-    with pytest.raises(MIRValidationError, match="field missing from record layout"):
+    with pytest.raises(MIRValidationError, match="field missing from declared fields"):
         step(storage, fabricated, program.records)
-    with pytest.raises(MIRValidationError, match="field missing from record layout"):
+    with pytest.raises(MIRValidationError, match="field missing from declared fields"):
         step(storage, MIRField(n.id, STR), program.records)
-    # With no layout for the holder, a field the holder's own type declares is admitted ...
-    assert step(storage, fabricated, {}).cls is MIRClass.LEAF
-    # ... and one of another owner is not.
-    with pytest.raises(MIRValidationError, match="field owner mismatch"):
-        step(storage, MIRField(MIRFieldId(p, "x"), INT32), {})
-    # An ancestor's field is a member through the holder's layout, which carries it.
+    # With no layout for the holder the answer is the same: membership is the declaration's.
+    declared_only = MIRRecords({}, program.records.fields)
+    assert step(storage, n, declared_only).cls is MIRClass.LEAF
+    with pytest.raises(MIRValidationError, match="field missing from declared fields"):
+        step(storage, fabricated, declared_only)
+    with pytest.raises(MIRValidationError, match="field missing from declared fields"):
+        step(storage, MIRField(MIRFieldId(p, "x"), INT32), declared_only)
+    # An ancestor's field is a member of a record that declares it, keyed by its owner.
     inherited = MIRField(MIRFieldId(p, "x"), INT32)
-    derived = {h: replace(program.records[h], fields=(*program.records[h].fields, inherited), ancestors=(p,))}
+    derived = {h: program.records.fields[h] | {inherited}}
     assert field_member(derived, h, p, "x", INT32) is None
-    assert step(storage, inherited, derived).cls is MIRClass.LEAF
-    assert field_member(program.records, h, p, "x", INT32) == "field missing from record layout"
-    # A field is named by a non-empty string, whatever a layout lists.
+    assert step(storage, inherited, MIRRecords({}, derived)).cls is MIRClass.LEAF
+    assert field_member(program.records.fields, h, p, "x", INT32) == "field missing from declared fields"
+    # A field is named by a non-empty string, whatever a declaration lists.
     for name in (123, ""):
-        listed = {h: replace(program.records[h], fields=(*program.records[h].fields,
-                                                         MIRField(MIRFieldId(h, name), INT32)))}
+        listed = {h: program.records.fields[h] | {MIRField(MIRFieldId(h, name), INT32)}}
         assert field_member(listed, h, h, name, INT32) == "field owner mismatch", name
         assert field_member({}, h, h, name, INT32) == "field owner mismatch", name
 
@@ -623,12 +626,19 @@ def test_a_structure_hop_ends_the_walk_at_the_terminal_region(program: _Program)
 
 # --- the write rule over a walk (`store_problem`) ------------------------------------------
 
-def _frozen_items(program: _Program) -> tuple[MIRField, dict]:
+def _with_field(program: _Program, field: MIRField) -> MIRRecords:
+    """The records with `field` added to H's layout and declared fields."""
+    h = program.types["H"]
+    layout = replace(program.records[h], fields=(*program.records[h].fields, field))
+    records = records_of(*(layout if r.type == h else r for r in program.records.values()))
+    return MIRRecords(records, with_fields(records.fields, (field,)))
+
+
+def _frozen_items(program: _Program) -> tuple[MIRField, MIRRecords]:
     """`H.frozen: list[readonly[P]]`, added to H's layout."""
     h, p = program.types["H"], program.types["P"]
     frozen = MIRField(MIRFieldId(h, "frozen"), NominalType("list", (ReadonlyType(p),), _module_qname="builtins.list"))
-    records = {**program.records, h: replace(program.records[h], fields=(*program.records[h].fields, frozen))}
-    return frozen, records
+    return frozen, _with_field(program, frozen)
 
 
 def test_a_mutable_container_replaces_a_readonly_element_never_writes_into_it(program: _Program) -> None:
@@ -652,7 +662,7 @@ def test_a_readonly_field_is_never_replaced(program: _Program) -> None:
     # A `readonly[P]` record member alike (the validator's member write:
     # test_nested_records, `test_member_write_validator_negatives`).
     frozen = MIRField(MIRFieldId(h, "frozen"), ReadonlyType(program.types["P"]))
-    records = {**program.records, h: replace(program.records[h], fields=(*program.records[h].fields, frozen))}
+    records = _with_field(program, frozen)
     assert store_problem(walk(root, (MIRDeref(), frozen), records)) == "store through readonly storage"
     assert store_problem(walk(root, (MIRDeref(), _field(program, "H.inner")), records)) is None
 
@@ -737,8 +747,11 @@ def test_a_readonly_container_field_is_built_like_any_container_field(readonly_b
     init = readonly_bodies["H.__init__"]
     assert init.status is MIRVerdictStatus.COVERED, init.reason
     assert "initialize-receiver %0 (copy (*%1) may-raise, copy (*%2) may-raise)" in dump_function(init.function)
-    # A caller's construct refuses a container parameter alike for a readonly field and a mutable one.
-    assert readonly_bodies["make"].reason == readonly_bodies["make_g"].reason == "constructor parameter type"
+    # A caller's construct lends a container argument alike for a readonly
+    # field and a mutable one; `len(h.ro)` then stops at a readonly
+    # container field read as a stub protocol argument, a gap of its own.
+    assert readonly_bodies["make_g"].function is not None, readonly_bodies["make_g"].reason
+    assert readonly_bodies["make"].reason == "stub protocol argument is not a builtin leaf"
 
 
 def test_a_readonly_container_field_is_never_written_or_lent_mutably(readonly_bodies) -> None:

@@ -4,16 +4,16 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
-from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRBranch, MIRFunction, MIRNotCovered, MIRReturn, MIRSlotKind
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_lower import lower
-from .testutil import OptionalValue, Reference, UnionValue, execute
+from .testutil import compiled_definitions, OptionalValue, Reference, UnionValue, execute
 from .validate import MIRDefiniteAssignmentError, validate_function
 
 
@@ -155,22 +155,23 @@ def mutable_loop() -> int32:
 
 def test_emitted_storage_pruning_preserves_live_aliases() -> None:
     compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    original = functions["storage"]
-    branch = original.body[0]
-    assert isinstance(branch, th.THIRIf)
-    # Keep real storage facts while varying reachability at the THIR boundary.
-    constant = replace(original, body=(replace(branch, condition=literal(False)),))
-    fn = lower_function(constant, MIRBodyId("test", "storage"), definitions=definitions)
-    assert isinstance(fn, MIRFunction), fn
-    assert not any(s.name and s.name.startswith("dead") for s in fn.slots)
-    assert any(b.id.index > index for index, b in enumerate(fn.blocks))
-    assert any(s.id.index > index for index, s in enumerate(fn.slots))
-    assert len([s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]) == 4
-    assert inspect_scope_lifetimes(fn).conflicts == ()
-    assert execute(fn, True, Reference(0), OptionalValue(None), UnionValue(0, 1), heap={0: {}}) == 9
-    mutable = lower(functions["mutable_loop"])
-    assert any(isinstance(b.terminator, MIRBranch) for b in mutable.blocks)
-    assert execute(mutable) == 4
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        original = functions["storage"]
+        branch = original.body[0]
+        assert isinstance(branch, th.THIRIf)
+        # Keep real storage facts while varying reachability at the THIR boundary.
+        constant = replace(original, body=(replace(branch, condition=literal(False)),))
+        fn = lower_function(constant, MIRBodyId("test", "storage"), definitions=definitions)
+        assert isinstance(fn, MIRFunction), fn
+        assert not any(s.name and s.name.startswith("dead") for s in fn.slots)
+        assert any(b.id.index > index for index, b in enumerate(fn.blocks))
+        assert any(s.id.index > index for index, s in enumerate(fn.slots))
+        assert len([s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]) == 4
+        assert inspect_scope_lifetimes(fn).conflicts == ()
+        assert execute(fn, True, Reference(0), OptionalValue(None), UnionValue(0, 1), heap={0: {}}) == 9
+        mutable = lower(functions["mutable_loop"])
+        assert any(isinstance(b.terminator, MIRBranch) for b in mutable.blocks)
+        assert execute(mutable) == 4

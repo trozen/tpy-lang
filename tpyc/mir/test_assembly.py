@@ -4,11 +4,11 @@ the canonical numbering are fixed only once the whole body is built."""
 import pytest
 
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, STR, VoidType
+from ..typesys import BOOL, INT32, STR, VoidType, return_representation
 from .emit import Fragment, MIRRegionStorageError, MIRValue, assemble, owned_leaf_shape
 from .nodes import MIRBodyId, MIRBodyKind, MIRConstant, MIRGoto, MIRPlace, MIRRead, MIRReturn, MIRSlotKind
 from ..thir.scalar_leaves import MIRClass
-from .testutil import bound
+from .testutil import records_of, bound
 from .value import MIRRole, MIRShape, MIRValidationError
 
 BODY = MIRBodyId("main", "f")
@@ -20,8 +20,10 @@ def _emitter() -> Fragment:
 
 
 def _build(body: Fragment, void: bool = True, parameter_bindings: tuple = ()):
-    return assemble(body, void=void, return_type=VoidType() if void else INT32, kind=MIRBodyKind.FREE_FUNCTION,
-                    callees=(), result=None, layouts={}, parameter_bindings=parameter_bindings)
+    return_type = VoidType() if void else INT32
+    return assemble(body, void=void, return_type=return_type, kind=MIRBodyKind.FREE_FUNCTION,
+                    callees=(), result=None, layouts=records_of(), parameter_bindings=parameter_bindings,
+                    return_representation=return_representation(return_type))
 
 
 def test_a_dissolved_region_takes_its_parent_region() -> None:

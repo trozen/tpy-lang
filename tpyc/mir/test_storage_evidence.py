@@ -5,6 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.nodes import THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType
@@ -31,7 +32,9 @@ from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_functio
 from .test_payload_lifetime import CURRENT, payload, write
 from .test_scope_inspection import stale_scalar_alias
 from .validate import MIRPresenceError, _prepare_function
-from .testutil import bind_parameters, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot
+from .testutil import (
+    compiled_definitions, bind_parameters, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot,
+)
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -187,20 +190,26 @@ Artifacts = tuple[dict[str, MIRFunction], MIRDefinitions]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    entry = _entry(modules)
-    _, ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    bodies = {body.declaration.split("@")[0]: fn for body, fn in workspace.bodies.items()}
-    method = next(fn for fn in ctx.thir_functions.values() if fn.name == "escape")
-    bodies["escape"] = lower_function(method, MIRBodyId("main", "escape"),
-                                      definitions=definitions, summaries=workspace.summaries)
-    ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Observer")
-    bodies["Observer"] = lower_constructor(ctor, MIRBodyId("main", "Observer"), definitions=definitions,
-                                           summaries=workspace.summaries)
-    return bodies, definitions
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        _, ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
+        bodies = {body.declaration.split("@")[0]: fn for body, fn in workspace.bodies.items()}
+        method = next(fn for fn in ctx.thir_functions.values() if fn.name == "escape")
+        bodies["escape"] = lower_function(method, MIRBodyId("main", "escape"),
+                                          definitions=definitions, summaries=workspace.summaries)
+        ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Observer")
+        bodies["Observer"] = lower_constructor(ctor, MIRBodyId("main", "Observer"), definitions=definitions,
+                                               summaries=workspace.summaries)
+        return bodies, definitions
 
 
 def _storage(fn: MIRFunction) -> frozenset[MIRSlotId]:
@@ -516,13 +525,17 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
 def test_missing_placement_or_write_facts_are_not_covered(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
     fn = returning(definitions, escape=True)
-    fn = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == R_LOCAL else s for s in fn.slots),
-                 blocks=tuple(replace(b, statements=tuple(
-                     replace(stmt, storage_write=None) if stmt.target == MIRPlace(R_LOCAL) else stmt
-                     for stmt in b.statements)) for b in fn.blocks))
+    # Owned storage without a placement is invalid MIR, not an evidence gap.
+    unplaced = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == R_LOCAL else s
+                                       for s in fn.slots))
+    with pytest.raises(MIRValidationError, match="owned storage needs a placement"):
+        certify_storage_origins(unplaced, frozenset({R_SPARE}), definitions)
+    fn = replace(fn, blocks=tuple(replace(b, statements=tuple(
+        replace(stmt, storage_write=None) if stmt.target == MIRPlace(R_LOCAL) else stmt
+        for stmt in b.statements)) for b in fn.blocks))
     evidence = certify_storage_origins(fn, frozenset({R_SPARE}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
-    assert any("missing storage duration" in g.reason for g in evidence.gaps)
+    assert any("missing storage initialization/write fact" in g.reason for g in evidence.gaps)
 
 
 def test_unmaterialized_required_origin_is_not_covered(artifacts: Artifacts) -> None:

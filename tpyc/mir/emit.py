@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, is_dataclass, replace
 from enum import Enum, auto
 
-from ..typesys import BOOL, TpyType
+from ..typesys import BOOL, Representation, TpyType
 from ..identity_map import IdentityMap
 from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
@@ -22,7 +22,8 @@ from .nodes import (
 )
 from ..thir.scalar_leaves import MIRClass
 from .value import (
-    MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, Published, holder_form, loan_access, value_shape,
+    NO_FIELDS, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError, Published, holder_form, loan_access,
+    value_shape,
 )
 from .shapes import Projection, object_prefix
 from .validate import body_may_raise, reaches_element, statement_reads, successors, validate_function
@@ -203,7 +204,7 @@ class Fragment:
         if root is None:
             self.root = self
             self.body = body
-            self.layouts = layouts if layouts is not None else dict
+            self.layouts = layouts if layouts is not None else lambda: MIRRecords({}, NO_FIELDS)
             # Whether a copy of storage of a shape may raise (the lowering's rule).
             self.copy_may_raise = copy_may_raise if copy_may_raise is not None else (lambda shape: True)
             self.records: dict[MIRSlotId, _SlotRecord] = {}
@@ -690,9 +691,10 @@ class Fragment:
 
 
 def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, callees: tuple[object, ...],
-             result: object, layouts: Mapping[TpyType, MIRRecordLayout],
+             result: object, layouts: MIRRecords,
              receiver_init: MIRReceiverInit | None = None,
-             parameter_bindings: tuple[MIRParameterBinding, ...] = ()) -> MIRFunction:
+             parameter_bindings: tuple[MIRParameterBinding, ...] = (),
+             return_representation: Representation | None = None) -> MIRFunction:
     """The body built, closed and numbered: a reachable end returns (a
     non-void body's refuses), then assembly."""
     blocks = {b.id: b for b in body.blocks}
@@ -711,7 +713,7 @@ def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, 
             raise MIRFallthroughError("non-void fallthrough")
         body.end(MIRReturn())
     return _Assembly(body, receiver_init, reachable).function(return_type, kind, callees, result, layouts,
-                                                              parameter_bindings)
+                                                              parameter_bindings, return_representation)
 
 
 def _structure(value: object) -> bool:
@@ -917,8 +919,9 @@ class _Assembly:
         return points
 
     def function(self, return_type: TpyType, kind: object, callees: tuple[object, ...], result: object,
-                 layouts: Mapping[TpyType, MIRRecordLayout],
-                 parameter_bindings: tuple[MIRParameterBinding, ...] = ()) -> MIRFunction:
+                 layouts: MIRRecords,
+                 parameter_bindings: tuple[MIRParameterBinding, ...] = (),
+                 return_representation: Representation | None = None) -> MIRFunction:
         emitter = self.emitter
         operations = self.operations()
         emitter.borrow_operations = operations
@@ -942,8 +945,9 @@ class _Assembly:
         fn = MIRFunction(self.body, return_type, _reachable_slots(frozen, blocks, receiver_init), tuple(blocks),
                          self.block_ids[emitter.head.id], records, receiver_init, kind, regions,
                          callees, result,
-                         body_may_raise(blocks, frozen, {r.type: r for r in records}, receiver_init),
-                         parameter_bindings)
+                         body_may_raise(blocks, frozen, layouts, receiver_init),
+                         parameter_bindings, layouts.fields, return_representation,
+                         tuple(sorted(layouts.containers, key=str)))
         validate_function(fn)
         return fn
 

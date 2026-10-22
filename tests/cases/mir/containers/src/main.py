@@ -4,7 +4,7 @@
 # sibling, and the kept refusals. A conflict section's write never dangles at
 # runtime: a flag the caller passes False, data the run never produces, or an
 # aliasing MIR assumes that the call does not set up.
-from tpy import int32, StrView, Span, Array, Own, readonly
+from tpy import int32, StrView, Span, Array, Own, readonly, copy
 
 
 class Point:
@@ -59,8 +59,8 @@ class Index:
 class Pts:
     ps: list[Point]
 
-    # constructor: a container of records -- its record elements are built from constants,
-    # which an entry member initializer (operands are parameters) cannot express yet
+    # constructor: a container of records -- a record element built by its own constructor
+    # is no literal operand at entry (BUGS.md#mir-ctor-nested-construct-operand)
     def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
         self.ps = [Point(1), Point(2)]
 
@@ -303,7 +303,7 @@ def last_row_read_first(rows: list[str]) -> int:  # tpyc: mir(covered)
 
 # free function: owned container local, Span slice, len
 def own() -> int32:  # tpyc: mir(covered)
-    xs = [1, 2, 3]  # tpyc: mir_owned(xs)
+    xs = [1, 2, 3]  # tpyc: mir_borrowed(xs) mir_borrows(xs, xs)
     s = xs[1:3]  # tpyc: mir_borrows(s, xs[elements])
     return s[0] + len(xs)
 
@@ -430,7 +430,7 @@ def holds(vs: list[StrView]) -> int32:  # tpyc: mir(uncovered /^container holds 
 
 
 # comprehension: a frame, kept refused
-def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported expression$/)
+def comp(xs: list[int32]) -> Own[list[int32]]:  # tpyc: mir(uncovered /^unsupported record initializer$/)
     return [x + 1 for x in xs]
 
 
@@ -444,8 +444,52 @@ def nested(xss: list[list[int32]]) -> int32:  # tpyc: mir(uncovered /^unsupporte
     return xss[0][0]
 
 
-# a caller's construct of a record with a container member is the constructor body's own
-def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
+# free function: a whole container field replaced while an element bound
+# before it is read after it keeps the retention conflict, as replacing a
+# whole record field under a held binding does; the caller passes False
+class Rack:
+    items: list[Point]
+    rec: Point
+
+    # a literal member whose element is a record construct is not modeled
+    # (BUGS.md#mir-ctor-nested-construct-operand)
+    def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+        self.items = [Point(1)]
+        self.rec = Point(1)
+
+
+def rack_items(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+    p = r.items[0]
+    if flag:
+        # with flag true `p` would dangle: the old buffer is freed
+        r.items = [Point(3)]  # tpyc: warning(/Mutation of 'r.items' while borrowed/)
+    return p.x
+
+
+def rack_rec(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+    p = r.rec
+    if flag:
+        # with flag true `p` would alias the replaced field, not keep the old Point
+        r.rec = Point(3)  # tpyc: warning(/Mutation of 'r.rec' while borrowed/)
+    return p.x
+
+
+# method: a whole container field replaced, as a record field is; the
+# summary publishes `data` against `self.items` as a no-alias obligation
+class Shelf:
+    items: list[int32]
+
+    def __init__(self, items: list[int32]) -> None:  # tpyc: mir(covered)
+        self.items = copy(items)
+
+    def refill(self, data: list[int32]) -> None:  # tpyc: mir_summary(known)
+        self.items = copy(data)  # tpyc: mir_write(self.items)
+        self.items = copy(data)
+
+
+# kept refusal: a list literal passed as a Span argument (`b.plus_span([3, 4])`) has no
+# container place for the view to borrow
+def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a place$/)
     b = Bag()
     b.push(1)
     b.push(2)
@@ -541,6 +585,12 @@ def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
     # of the holders' scope (BUGS.md#borrow-warning-not-last-use-aware)
     extend_it(xs, ys)  # tpyc: warning(/borrowed container .xs./)
     print("extend_it:", len(xs))
+    sh = Shelf([1])
+    sh.refill([4, 5])  # the caller's arguments never overlap
+    print("refill:", len(sh.items))
+    rk = Rack()
+    print("rack_items:", rack_items(rk, False))
+    print("rack_rec:", rack_rec(rk, False))
 
 
 main()

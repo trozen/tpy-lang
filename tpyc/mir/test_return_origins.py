@@ -11,7 +11,8 @@ from ..thir.test_method_stubs import _replace_node, nodes as _thir_nodes
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import (
-    INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, return_representation, unwrap_ref_type,
+    INT32, STR, NominalType, OwnType, ReadonlyType, RefType, Representation, VoidType, return_representation,
+    unwrap_ref_type,
 )
 from .call_contract import (
     MIRCallSummary, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, call_result,
@@ -31,8 +32,8 @@ from .nodes import (
 )
 from . import summaries
 from .summaries import summarize_function
-from .testutil import borrowed_shape, bound, leaf_shape, reaccess
-from .value import MIRField, MIRFieldId, MIRHolding, MIRShape
+from .testutil import as_declared, Redeclared, no_layouts, borrowed_shape, bound, leaf_shape, reaccess
+from .value import MIRRecords, MIRField, MIRFieldId, MIRHolding, MIRShape
 
 
 SOURCE = '''\
@@ -246,9 +247,10 @@ def program():
                                     compiler.thir_reject_by_node, mir.workspace)
         functions = {body: fn for body, fn in mir.workspace.definitions.values()}
         functions.update({body: fn for body, fn in mir.workspace.twins.values()})
-        yield _Program(compiler, modules, {k.declaration: v for k, v in functions.items()}, mir.definitions,
+        result = _Program(compiler, modules, {k.declaration: v for k, v in functions.items()}, mir.definitions,
                        mir.workspace, {v.body.declaration.split("@")[0] + ("#2" if "#2" in v.body.declaration
                                                                           else ""): v for v in verdicts})
+    return result
 
 
 @pytest.fixture(autouse=True)
@@ -347,10 +349,10 @@ def test_unspellable_origins_refuse(program: _Program) -> None:
         ({MIRReturnOrigin(0, (items, items))}, "field needs record storage"),
         ({MIRReturnOrigin(1, (items,))}, "invalid return parameter"),
     ):
-        assert summary_problem(replace(elems, returns=frozenset(returns)), {}) == reason, returns
+        assert summary_problem(replace(elems, returns=frozenset(returns)), no_layouts()) == reason, returns
     # A record result reaches a record member of its own type, never a scalar field.
     me = _known(program, "Bag.me")
-    assert summary_problem(replace(me, returns=frozenset({MIRReturnOrigin(0, (n,))})), {}) == (
+    assert summary_problem(replace(me, returns=frozenset({MIRReturnOrigin(0, (n,))})), no_layouts()) == (
         "unsupported return origin type or access")
 
 
@@ -363,10 +365,10 @@ def test_a_return_path_names_a_field_of_the_bound_storage(program: _Program) -> 
     stranger = NominalType("Other", _module_qname="main.Other")
     foreign = th.THIRFieldIdentity(stranger, "items", INTS)
     damaged = replace(elems, returns=frozenset({MIRReturnOrigin(0, (foreign,))}))
-    assert summary_problem(damaged, layouts) == "field missing from record layout"
+    assert summary_problem(damaged, layouts) == "field missing from declared fields"
     assert summary_problem(replace(elems, returns=frozenset({
         MIRReturnOrigin(0, (th.THIRFieldIdentity(INT32, "items", INTS),))})), layouts) == (
-        "field missing from record layout")
+        "field missing from declared fields")
     summaries = dict(program.workspace.summaries)
     summaries[elems.callee.identity] = MIRSummaryResult(MIRSummaryState.KNOWN, damaged)
     result = lower_function(_free(program, "via_getter"), MIRBodyId("main", "via_getter"),
@@ -414,18 +416,28 @@ def _record_summary(param: NominalType, readonly: bool, *, ret=None, borrowed=No
 
 
 def _record_result(typ: NominalType, readonly: bool) -> dict:
-    return {"ret": RefType(typ), "borrowed": th.THIRBorrowedRecord(typ, readonly)}
+    """A record result by reference: its access is its declared type's."""
+    return {"ret": RefType(ReadonlyType(typ) if readonly else typ)}
 
 
 def _field_holders(resolved) -> list[NominalType]:
     return [hop.holder.type for hop in resolved.walk.hops if isinstance(hop.projection, MIRField)]
 
 
-def _retyped(layouts, record: NominalType, name: str, typ) -> dict:
+def _retyped(layouts: MIRRecords, record: NominalType, name: str, typ) -> MIRRecords:
     """`layouts` with `record`'s field `name` declared at `typ` (added when missing)."""
     layout = layouts[record]
     kept = tuple(f for f in layout.fields if f.id.name != name)
-    return {**layouts, record: replace(layout, fields=(*kept, MIRField(MIRFieldId(record, name), typ)))}
+    return as_declared(layouts, replace(layout, fields=(*kept, MIRField(MIRFieldId(record, name), typ))))
+
+
+def _redeclared(field: th.THIRFieldIdentity) -> MIRRecords:
+    """No layout, the declared fields with `field` declared at its type."""
+    declared = no_layouts()
+    owner = field.owner
+    kept = frozenset(f for f in declared.fields[owner] if f.id.name != field.name)
+    changed = kept | {MIRField(MIRFieldId(owner, field.name), field.type)}
+    return MIRRecords({}, Redeclared(declared.fields, lambda typ, fields: changed if typ == owner else fields))
 
 
 def test_a_path_walks_from_the_storage_each_field_is_read_from(program: _Program, nested: _Nested) -> None:
@@ -438,17 +450,17 @@ def test_a_path_walks_from_the_storage_each_field_is_read_from(program: _Program
     # At a call, the walk starts at the record the argument binds (a descendant's storage).
     other = NominalType("Wing", _module_qname="main.Wing")
     wing = replace(layouts[nested.room], type=other, ancestors=(nested.room,))
-    walked = path_walk(replace(room[0].lent_record, type=other), (nested.shelf_f,), {**layouts, other: wing})
+    walked = path_walk(replace(room[0].lent_record, type=other), (nested.shelf_f,), as_declared(layouts, wing))
     assert walked.hops[1].holder.type == other
     # The whole parameter walks nothing.
     assert resolve_path(0, (MIRContainerStructure(),), room, layouts) == MIRResolvedPath(None, MIRContainerStructure())
     # A field is read from the previous field's member: one its layout does not carry is refused.
     stray = (nested.shelf_f, nested.shelf_f)
-    assert resolve_path(0, stray, room, layouts) == "field missing from record layout"
+    assert resolve_path(0, stray, room, layouts) == "field missing from declared fields"
     assert summary_problem(_record_summary(nested.room, True, **_record_result(nested.shelf, True),
-                                           returns=[stray]), layouts) == "field missing from record layout"
+                                           returns=[stray]), layouts) == "field missing from declared fields"
     shelf = _record_summary(nested.shelf, False).parameters
-    for malformed, reason in (((nested.n, nested.bag_f), "field missing from record layout"),
+    for malformed, reason in (((nested.n, nested.bag_f), "field missing from declared fields"),
                               ((nested.bag_f, nested.items, nested.n), "field needs record storage"),
                               ((MIRContainerElements(), nested.bag_f), None),
                               ((MIRContainerStructure(), MIRContainerElements()), None)):
@@ -504,14 +516,15 @@ def test_nested_write_paths(program: _Program, nested: _Nested) -> None:
         (nested.bag_f, nested.name),                # an owned leaf of a member, its buffer replaced
         (nested.bag_f,),                            # the member replaced whole
         (nested.bag_f, nested.items, structure),    # a container field of a member
+        (nested.bag_f, nested.items),               # a container field replaced whole, as a record member is
     ):
-        assert summary_problem(_record_summary(nested.shelf, False, writes=[path]), {}) is None, path
+        assert summary_problem(_record_summary(nested.shelf, False, writes=[path]), no_layouts()) is None, path
     for path in ((nested.shelf_f, nested.bag_f, nested.n), (nested.shelf_f, nested.bag_f), (nested.shelf_f,)):
-        assert summary_problem(_record_summary(nested.room, False, writes=[path]), {}) is None, path
+        assert summary_problem(_record_summary(nested.room, False, writes=[path]), no_layouts()) is None, path
     frozen_bag = replace(nested.bag_f, type=ReadonlyType(nested.bag))
     for param, readonly, path, reason in (
         # A field the holder does not declare, a field after a projection, under a container.
-        (nested.shelf, False, (nested.n, nested.bag_f), "field owner mismatch"),
+        (nested.shelf, False, (nested.n, nested.bag_f), "field missing from declared fields"),
         (nested.shelf, False, (MIRContainerElements(), nested.bag_f), "invalid call write path"),
         (nested.shelf, False, (nested.bag_f, nested.items, nested.n), "field needs record storage"),
         # Never through a readonly receiver or a `readonly[...]` member.
@@ -520,12 +533,12 @@ def test_nested_write_paths(program: _Program, nested: _Nested) -> None:
         (nested.shelf, False, (frozen_bag,), "unsupported call write field or access"),
         # A first field whose owner is no record: no member the walk reaches.
         (nested.shelf, False, (th.THIRFieldIdentity(INT32, "bag", nested.bag), nested.n),
-         "field owner mismatch"),
-        # A container member is written through a projection; a record member takes none.
-        (nested.shelf, False, (nested.bag_f, nested.items), "unsupported call write field or access"),
+         "field missing from declared fields"),
+        # A projection names a container's elements or structure, never a record's.
         (nested.shelf, False, (nested.bag_f, structure), "unsupported call write field or access"),
     ):
-        assert summary_problem(_record_summary(param, readonly, writes=[path]), {}) == reason, path
+        records = _redeclared(frozen_bag) if frozen_bag in path else no_layouts()
+        assert summary_problem(_record_summary(param, readonly, writes=[path]), records) == reason, path
 
 
 def test_a_field_is_named_by_a_string(program: _Program, nested: _Nested) -> None:
@@ -533,7 +546,7 @@ def test_a_field_is_named_by_a_string(program: _Program, nested: _Nested) -> Non
     # string: an identity with another name is no field of it.
     for name in (123, ""):
         nameless = th.THIRFieldIdentity(nested.shelf, name, INT32)
-        assert summary_problem(_record_summary(nested.shelf, False, writes=[(nameless,)]), {}) == (
+        assert summary_problem(_record_summary(nested.shelf, False, writes=[(nameless,)]), no_layouts()) == (
             "field owner mismatch"), name
 
 
@@ -547,14 +560,14 @@ def test_nested_return_origins(program: _Program, nested: _Nested) -> None:
         (False, False, nested.room, (nested.shelf_f, nested.bag_f), nested.bag),
     ):
         summary = _record_summary(param, readonly, **_record_result(result, result_readonly), returns=[path])
-        assert summary_problem(summary, {}) is None, path
+        assert summary_problem(summary, no_layouts()) is None, path
     container = _record_summary(nested.shelf, False, ret=RefType(INTS), returns=[(nested.bag_f, nested.items)])
-    assert summary_problem(container, {}) is None
+    assert summary_problem(container, no_layouts()) is None
     view = _record_summary(nested.shelf, True, ret=nested.view, returns=[(nested.bag_f, nested.name)])
-    assert summary_problem(view, {}) is None
+    assert summary_problem(view, no_layouts()) is None
     frozen_bag = replace(nested.bag_f, type=ReadonlyType(nested.bag))
     assert summary_problem(_record_summary(nested.shelf, False, **_record_result(nested.bag, True),
-                                           returns=[(frozen_bag,)]), {}) is None
+                                           returns=[(frozen_bag,)]), _redeclared(frozen_bag)) is None
     for readonly, result_readonly, param, path, result, reason in (
         # A record member of another type than the result's.
         (False, False, nested.room, (nested.shelf_f,), nested.bag, "unsupported return origin type or access"),
@@ -567,11 +580,13 @@ def test_nested_return_origins(program: _Program, nested: _Nested) -> None:
         (False, False, nested.shelf, (nested.bag_f, MIRContainerStructure()), nested.bag,
          "unsupported return origin type or access"),
         # A field the holder does not declare, a field after a projection.
-        (False, False, nested.shelf, (nested.n, nested.bag_f), nested.bag, "field owner mismatch"),
+        (False, False, nested.shelf, (nested.n, nested.bag_f), nested.bag, "field missing from declared fields"),
         (False, False, nested.shelf, (MIRContainerElements(), nested.bag_f), nested.bag, "invalid return parameter"),
     ):
         summary = _record_summary(param, readonly, **_record_result(result, result_readonly), returns=[path])
-        assert summary_problem(summary, {}) == reason, path
+        frozen = next((f for f in path if isinstance(f, th.THIRFieldIdentity) and isinstance(f.type, ReadonlyType)),
+                      None)
+        assert summary_problem(summary, no_layouts() if frozen is None else _redeclared(frozen)) == reason, path
 
 
 def test_one_endpoint_table_serves_writes_and_returns(program: _Program, nested: _Nested) -> None:
@@ -595,7 +610,7 @@ def test_an_owned_record_parameter_is_handed_over(program: _Program, nested: _Ne
         assert parameter_contract_problem(handed) is None, record
         # Owned storage is never readonly and never a borrow of the caller's (a POINTER on `Own[R]`).
         assert parameter_contract_problem(reaccess(handed, True)) == (
-            "call parameter binding differs from its derivation")
+            "readonly owned storage")
         borrowed = replace(handed, value=replace(handed.value, holding=MIRHolding.POINTER))
         assert parameter_contract_problem(borrowed) == (
             "reference type mismatch")
@@ -630,7 +645,7 @@ def test_call_return_problem_checks_the_endpoint_type(program: _Program) -> None
     point = next(MIRPoint(b.id, i) for b in fn.blocks for i, s in enumerate(b.statements) if s is stmt)
     state = deps.referents[point]
     holder = slots[stmt.target.root]
-    records = {r.type: r for r in fn.records}
+    records = fn.record_layouts
     assert call_return_problem(stmt.value, holder, state, slots, records) is None
     n = _field(program, "n", INT32)
     scalar = replace(stmt.value, summary=replace(stmt.value.summary, returns=frozenset({MIRReturnOrigin(0, (n,))})))
@@ -646,7 +661,7 @@ def _call_site(program: _Program, name: str) -> tuple[MIRAssign, MIRSlot, dict, 
     point, stmt = next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
                        if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) and s.value.summary.returns)
     state = analyze_dependencies(fn, analyze_liveness(fn)).referents[point]
-    return stmt, slots[stmt.target.root], state, slots, {r.type: r for r in fn.records}
+    return stmt, slots[stmt.target.root], state, slots, fn.record_layouts
 
 
 def _returning(call: MIRCall, *path: th.THIRFieldIdentity | MIRContainerStructure | MIRContainerElements) -> MIRCall:
@@ -680,9 +695,9 @@ def test_a_return_field_outside_the_certified_layout_is_opaque(program: _Program
         f for f in bag.layout.fields if f.id.name != "items")))
     definitions = object.__new__(MIRDefinitions)
     object.__setattr__(definitions, "records", {**program.definitions.records, _bag(program): fewer})
-    object.__setattr__(definitions, "layouts", {**program.definitions.layouts, _bag(program): fewer.layout})
+    object.__setattr__(definitions, "layouts", as_declared(program.definitions.layouts, fewer.layout))
     assert summarize_function(fn, lowered, definitions).reason == (
-        "summary unsupported return origin: field missing from record layout")
+        "summary unsupported return origin: field missing from declared fields")
 
 
 def test_a_return_origin_inside_a_record_is_read_from_the_parameters_slot(
@@ -731,31 +746,39 @@ def test_an_optional_record_parameter_returns_inside_its_payload(program: _Progr
         f for f in definition.layout.fields if f.id.name != "inner")))
     definitions = object.__new__(MIRDefinitions)
     object.__setattr__(definitions, "records", {**program.definitions.records, box: fewer})
-    object.__setattr__(definitions, "layouts", {**program.definitions.layouts, box: fewer.layout})
+    object.__setattr__(definitions, "layouts", as_declared(program.definitions.layouts, fewer.layout))
     assert summarize_function(declaration, lowered, definitions).reason == (
-        "summary unsupported return origin: field missing from record layout")
+        "summary unsupported return origin: field missing from declared fields")
 
 
 def test_a_container_result_may_be_more_readonly_than_its_type(program: _Program) -> None:
-    mutable, frozen = RefType(INTS), RefType(ReadonlyType(INTS))
-    assert result_problem(mutable, th.THIRBorrowedRecord(INTS, False)) is None
-    assert result_problem(mutable, th.THIRBorrowedRecord(INTS, True)) is None
-    assert result_problem(frozen, th.THIRBorrowedRecord(INTS, True)) is None
-    assert result_problem(frozen, th.THIRBorrowedRecord(INTS, False)) == "invalid borrowed result"
+    # Returned by reference (its published representation), at the bare type.
+    ref = Representation.REFERENCE
+    mutable, frozen = INTS, ReadonlyType(INTS)
+    assert result_problem(mutable, th.THIRBorrowedRecord(INTS, False), ref) is None
+    assert result_problem(mutable, th.THIRBorrowedRecord(INTS, True), ref) is None
+    assert result_problem(frozen, th.THIRBorrowedRecord(INTS, True), ref) is None
+    assert result_problem(frozen, th.THIRBorrowedRecord(INTS, False), ref) == "invalid borrowed result"
     strs = NominalType("list", (STR,), _module_qname="builtins.list")
-    assert result_problem(mutable, th.THIRBorrowedRecord(strs, False)) == "invalid borrowed result"
+    assert result_problem(mutable, th.THIRBorrowedRecord(strs, False), ref) == "invalid borrowed result"
     # A nested container has no region MIR models: refused, never raised.
     nested = NominalType("list", (INTS,), _module_qname="builtins.list")
-    assert result_problem(RefType(nested), th.THIRBorrowedRecord(nested, False)) == "invalid borrowed result"
+    assert result_problem(nested, th.THIRBorrowedRecord(nested, False), ref) == "invalid borrowed result"
+    # A container returned as storage borrows nothing.
+    assert result_problem(mutable, th.THIRBorrowedRecord(INTS, False), Representation.STORAGE) == (
+        "invalid borrowed result")
 
 
 def test_a_record_result_declared_readonly_is_never_lent_mutably(program: _Program) -> None:
-    # The record's shape check refuses it (`fact_shape`): no guard of its own.
+    # The record's shape check refuses it: no guard of its own.
     bag = _bag(program)
-    frozen = RefType(ReadonlyType(bag))
-    assert result_problem(RefType(bag), th.THIRBorrowedRecord(bag, False)) is None
-    assert result_problem(frozen, th.THIRBorrowedRecord(bag, True)) is None
-    assert result_problem(frozen, th.THIRBorrowedRecord(bag, False)) == "invalid borrowed result"
+    ref = Representation.REFERENCE
+    frozen = ReadonlyType(bag)
+    assert result_problem(bag, th.THIRBorrowedRecord(bag, False), ref) is None
+    assert result_problem(frozen, th.THIRBorrowedRecord(bag, True), ref) is None
+    assert result_problem(frozen, th.THIRBorrowedRecord(bag, False), ref) == "invalid borrowed result"
+    # A borrowed record result is returned by reference, never as storage.
+    assert result_problem(bag, th.THIRBorrowedRecord(bag, False), Representation.STORAGE) == "invalid borrowed result"
 
 
 def test_a_whole_container_rooted_in_an_elements_region_is_refused() -> None:
@@ -763,7 +786,7 @@ def test_a_whole_container_rooted_in_an_elements_region_is_refused() -> None:
     layout = (leaf_shape(INT32),)
     xs = MIRSlot(MIRSlotId(body, 0), borrowed_shape(INTS, members=layout), MIRSlotKind.PARAMETER, "xs")
     ys = MIRSlot(MIRSlotId(body, 1), borrowed_shape(INTS, members=layout), MIRSlotKind.LOCAL, "ys")
-    signature = th.THIRCallableSignature((INTS,), INTS, None, (ParamPassing.MUT_REF,))
+    signature = th.THIRCallableSignature((INTS,), INTS, None, (ParamPassing.MUT_REF,), return_representation(INTS))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "ident"), signature)
     summary = MIRCallSummary(callee, (bound(INTS, ParamPassing.MUT_REF),), frozenset({0}),
                              frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
@@ -783,7 +806,7 @@ def test_a_span_argument_is_projected_once() -> None:
     layout = (leaf_shape(INT32),)
     t = MIRSlot(MIRSlotId(body, 0), borrowed_shape(span, members=layout), MIRSlotKind.LOCAL, "t")
     u = MIRSlot(MIRSlotId(body, 1), borrowed_shape(span, members=layout), MIRSlotKind.LOCAL, "u")
-    signature = th.THIRCallableSignature((span,), span, None, (ParamPassing.VALUE,))
+    signature = th.THIRCallableSignature((span,), span, None, (ParamPassing.VALUE,), return_representation(span))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "ident"), signature)
     xs_elements = MIRReferent(MIRPlace(MIRSlotId(MIRBodyId("main", "caller"), 0), (MIRContainerElements(),)), True)
     state = {MIRPlace(t.id): frozenset({xs_elements})}
@@ -911,5 +934,5 @@ def test_stub_summaries_keep_whole_argument_origins(program: _Program) -> None:
     stubs = [s for s in fn.call_summaries if isinstance(s.callee, th.THIRStubCallee)]
     assert stubs
     for summary in stubs:
-        assert summary == stub_summary(summary.callee) and summary_problem(summary, {}) is None
+        assert summary == stub_summary(summary.callee) and summary_problem(summary, no_layouts()) is None
         assert all(not origin.path for origin in summary.returns)

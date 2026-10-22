@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..thir.nodes import THIRFunction
 from ..type_def_registry import ParamPassing
@@ -16,7 +17,7 @@ from .nodes import (
     MIRStorageDuration,
 )
 from .summaries import summarize_function
-from .testutil import reaccess
+from .testutil import no_layouts, compiled_definitions, reaccess
 from .value import MIRValidationError
 
 
@@ -119,14 +120,20 @@ Artifacts = tuple[dict[str, THIRFunction], dict[str, MIRFunction | MIRNotCovered
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions)
-              for name, fn in functions.items()}
-    return functions, bodies, definitions
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("main", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        return functions, bodies, definitions
 
 
 # `owned` keeps a constructed record to its end: private storage, no effect.
@@ -185,8 +192,9 @@ def test_raising_summary_covers_writes_before_the_throw(artifacts: Artifacts) ->
     summary = result.summary
     assert summary.normal_return_only is False
     assert {(w.parameter, w.path[0].name) for w in summary.writes} == {(0, "value")}
-    assert summary_problem(summary, {}) is None
-    assert summary_problem(replace(summary, normal_return_only=None), {}) == "unsupported call summary contract"
+    assert summary_problem(summary, no_layouts()) is None
+    assert summary_problem(replace(summary, normal_return_only=None), no_layouts()) == (
+        "unsupported call summary contract")
 
 
 def test_global_reads_are_summarized(artifacts: Artifacts) -> None:
@@ -195,7 +203,7 @@ def test_global_reads_are_summarized(artifacts: Artifacts) -> None:
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.global_reads == frozenset({MIRGlobalId("main", "value")})
     for damaged in (frozenset({("main", "value")}), frozenset({MIRGlobalId("", "value")}), ("main", "value")):
-        assert summary_problem(replace(result.summary, global_reads=damaged), {}) is not None
+        assert summary_problem(replace(result.summary, global_reads=damaged), no_layouts()) is not None
 
 
 def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> None:
@@ -208,7 +216,7 @@ def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> No
     for damaged in (replace(value, passing=ParamPassing.CONST_REF), reaccess(value, True),
                     replace(cell, passing=ParamPassing.CONST_REF), replace(cell, declared=BOOL)):
         broken = replace(summary, parameters=(damaged, value) if damaged.lent_record else (cell, damaged))
-        assert summary_problem(broken, {}) is not None, damaged
+        assert summary_problem(broken, no_layouts()) is not None, damaged
     # An unpublished passing fails closed.
     fn = functions["setter"]
     unpublished = replace(fn, params=(fn.params[0], replace(fn.params[1], passing=None)))
@@ -224,16 +232,15 @@ def test_a_readonly_function_binds_its_record_parameters_readonly(artifacts: Art
     for record in (left, right):
         assert (record.passing, record.readonly, record.lent_record.readonly) == (
             ParamPassing.CONST_REF, True, True)
-    assert summary_problem(result.summary, {}) is None
+    assert summary_problem(result.summary, no_layouts()) is None
 
 
 def test_a_slot_weaker_than_its_thir_access_is_opaque(artifacts: Artifacts) -> None:
-    # THIR says readonly, the slot is mutable: the body could write what the caller lends readonly.
+    # The declaration lends readonly, the slot is mutable: the body could write what the caller lends readonly.
     functions, bodies, definitions = artifacts
     fn = functions["setter"]
     cell = fn.params[0]
-    damaged = replace(fn, params=(replace(cell, borrowed_record=replace(cell.borrowed_record, readonly=True)),
-                                  fn.params[1]))
+    damaged = replace(fn, params=(replace(cell, passing=ParamPassing.CONST_REF), fn.params[1]))
     result = summarize_function(damaged, bodies["setter"], definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter binding mismatch"
 
@@ -253,7 +260,7 @@ def test_writes_follow_aliases_at_each_write(artifacts: Artifacts, name: str,
     assert all(len(w.path) == 1 and w.path[0].type == INT32
                and w.path[0].owner == summary.parameters[w.parameter].type for w in summary.writes)
     assert summary.invalidates == summary.transfers == summary.returns == frozenset()
-    assert summary_problem(summary, {}) is None
+    assert summary_problem(summary, no_layouts()) is None
 
 
 @pytest.mark.parametrize("damage", ["index", "bool_index", "empty", "nested", "owner", "readonly", "untyped"])
@@ -276,7 +283,7 @@ def test_malformed_write_contract(artifacts: Artifacts, damage: str) -> None:
             summary = replace(summary, parameters=(reaccess(summary.parameters[0], True),))
         case "untyped":
             write = 0
-    assert summary_problem(replace(summary, writes=frozenset({write})), {}) is not None
+    assert summary_problem(replace(summary, writes=frozenset({write})), no_layouts()) is not None
 
 
 @pytest.mark.parametrize("damage", ["field", "origin"])
@@ -292,8 +299,10 @@ def test_write_evidence_needs_definition_and_reachable_origin(artifacts: Artifac
                 deref, replace(field, id=replace(field.id, name="missing")))))
         body = replace(body, blocks=tuple(replace(b, statements=tuple(stale(s) for s in b.statements))
                                          for b in body.blocks))
-        # The published path walks the definitions' layouts: the field is no member.
-        reason = "summary unsupported write origin: field missing from record layout"
+        # The field is no member the record declares: the body itself is malformed.
+        with pytest.raises(MIRValidationError, match="field missing from declared fields"):
+            summarize_function(functions["write"], body, definitions)
+        return
     else:
         # A disconnected but well-typed block has no dependency state to justify a write.
         extra = replace(body.blocks[0], id=MIRBlockId(body.id, max(b.id.index for b in body.blocks) + 1))

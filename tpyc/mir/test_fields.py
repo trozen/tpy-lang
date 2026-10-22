@@ -252,11 +252,12 @@ def lowered():
                                                             definitions=mir.definitions, summaries=summaries)
                         for ctor in ctx.thir_constructors.values()}
         record = next(c.record_layout.type for c in ctx.thir_constructors.values() if c.record_name == "Rec")
-        yield _Lowered(compiler, modules, mir.definitions, bodies, constructors,
+        result = _Lowered(compiler, modules, mir.definitions, bodies, constructors,
                        {identity.name: result for identity, result in summaries.items()}, record)
+    return result
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def active(lowered):
     # The per-test state reset clears the stub facts latched onto the static
     # TypeDefs (`borrowing_view` included, which every view rule reads).
@@ -544,7 +545,7 @@ def test_a_field_replacement_reaches_only_holders_at_or_under_it(active) -> None
     name, n = _name_field(active), MIRField(MIRFieldId(active.record, "n"), INT32)
     fn = _body(active, "name_after_other")
     slots = {s.id: s for s in fn.slots}
-    records = {r.type: r for r in fn.records}
+    records = fn.record_layouts
     p, q, s = (MIRPlace(slot.id) for slot in fn.slots[:3])
     field = MIRReferent(MIRPlace(p.root, (name,)), True)
     # Under one origin: the field itself, never the record around it or a sibling.
@@ -622,7 +623,7 @@ def test_validator_checks_construct_and_field_write_facts(active) -> None:
 
 def test_layouts_carry_the_owned_leaf_field_storage(active) -> None:
     fn = _body(active, "local_plain")
-    layouts = {r.type: r for r in fn.records}
+    layouts = fn.record_layouts
     assert layouts[STR].opaque and _name_field(active) in layouts[active.record].fields
     with pytest.raises(MIRValidationError, match="owned-leaf field needs its opaque layout"):
         validate_function(replace(fn, records=tuple(r for r in fn.records if r.type != STR)))

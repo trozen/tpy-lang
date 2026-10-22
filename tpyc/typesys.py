@@ -9586,21 +9586,9 @@ class TypeRegistry:
         return None
 
     def construction_order_fields(self, record: RecordInfo) -> list[tuple[RecordInfo, FieldInfo]]:
-        """Every field `record`'s C++ struct contains, with its declaring
-        record, in the order C++ constructs them: each struct base in
-        `parents` order (recursively), then the record's own fields in
-        emitted member order. Differs from `get_all_fields` for a
-        multi-base record, whose reversed-MRO walk lists the last base's
-        fields first."""
-        result: list[tuple[RecordInfo, FieldInfo]] = []
-        for parent in record.parents:
-            if not isinstance(parent, NominalType):
-                continue
-            base = self.get_record_for_type(parent)
-            if base is not None and self.is_struct_base(record, base):
-                result.extend(self.construction_order_fields(base))
-        result.extend((record, f) for f in record.fields)
-        return result
+        """`record_construction_fields`, each base resolved through this
+        registry."""
+        return record_construction_fields(record, self.get_record_for_type)
 
     def user_declared_fields(self, record: RecordInfo) -> list[FieldInfo]:
         """Fields declared on a record and its NON-native ancestor records,
@@ -10092,3 +10080,26 @@ def record_owner(info: RecordInfo) -> NominalType:
     facts a base's own bodies publish and the ones a subclass publishes for
     the same member compare equal."""
     return NominalType(info.name, _module_qname=info.qualified_name())
+
+
+
+def record_construction_fields(record: RecordInfo, resolve: Callable[[NominalType], RecordInfo | None]
+                               ) -> list[tuple[RecordInfo, FieldInfo]]:
+    """Every field `record`'s C++ struct contains, with its declaring
+    record, in the order C++ constructs them: each struct base in
+    `parents` order (recursively, each resolved by `resolve`), then the
+    record's own fields in emitted member order. The one enumeration behind
+    THIR's record layouts and MIR's declared fields; it takes the base
+    resolution as an input because MIR resolves a record through its
+    TypeDef, not through one module's registry. Differs from
+    `get_all_fields` for a multi-base record, whose reversed-MRO walk lists
+    the last base's fields first."""
+    result: list[tuple[RecordInfo, FieldInfo]] = []
+    for parent in record.parents:
+        if not isinstance(parent, NominalType):
+            continue
+        base = resolve(parent)
+        if base is not None and TypeRegistry.is_struct_base(record, base):
+            result.extend(record_construction_fields(base, resolve))
+    result.extend((record, f) for f in record.fields)
+    return result

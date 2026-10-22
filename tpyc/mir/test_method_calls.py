@@ -26,7 +26,7 @@ from .nodes import (
 from .summaries import summarize_function
 from .validate import validate_function
 from .value import MIRValidationError
-from .testutil import borrowed_shape, bound, leaf_shape
+from .testutil import no_layouts, borrowed_shape, bound, leaf_shape
 
 
 SOURCE = '''\
@@ -149,11 +149,12 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                     compiler.thir_reject_by_node, mir.workspace)
-        yield _Program(compiler, modules, functions, mir.definitions, mir.workspace,
+        result = _Program(compiler, modules, functions, mir.definitions, mir.workspace,
                        {v.body.declaration.split("@")[0]: v for v in verdicts})
+    return result
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def active(program):
     # The per-test state reset clears the stub facts latched onto the static TypeDefs.
     for module in program.modules:
@@ -200,7 +201,7 @@ def test_a_method_summary_binds_the_receiver_first(program: _Program) -> None:
         bound(INT32, ParamPassing.VALUE))
     items = _field(program, "Counter", "items", INTS)
     assert summary.writes == {MIRParameterWrite(0, (items, MIRContainerStructure()))}
-    assert summary.returns == frozenset() and summary_problem(summary, {}) is None
+    assert summary.returns == frozenset() and summary_problem(summary, no_layouts()) is None
     # The body binds its receiver at the passing the signature publishes for parameter 0.
     push = _lowered(program, "Counter.push")
     receiver = next(s for s in push.slots if s.kind is MIRSlotKind.PARAMETER)
@@ -278,11 +279,13 @@ def test_an_aliased_record_argument_is_an_obligation_of_the_callers(program: _Pr
 def test_a_container_returned_from_the_receiver_names_its_field(program: _Program) -> None:
     summary = _known(program, "Counter.all_items")
     assert summary.returns == {MIRReturnOrigin(0, (_field(program, "Counter", "items", INTS),))}
+    # The caller's container holder is a borrow its storage evidence
+    # certifies, as a record holder's is; it is never reseated.
     caller = program.verdicts["call_all_items"]
-    assert (caller.status, caller.conflicts) == (MIRVerdictStatus.COVERED, ())
+    assert (caller.status, caller.conflicts) == (MIRVerdictStatus.CERTIFIED, ())
     # A whole-receiver origin names no container: the contract and the caller's type check refuse it.
     whole = replace(summary, returns=frozenset({MIRReturnOrigin(0)}))
-    assert summary_problem(whole, {}) == "unsupported return origin type or access"
+    assert summary_problem(whole, no_layouts()) == "unsupported return origin type or access"
     summary = whole
     body = MIRBodyId("methods", "guard")
     receiver = MIRSlot(MIRSlotId(body, 0), borrowed_shape(_record(program, "Counter")), MIRSlotKind.PARAMETER, "self")
@@ -303,10 +306,11 @@ def _owned_by(summary, owner: str):
 def test_a_method_summary_needs_its_owner_receiver_first(program: _Program) -> None:
     counter = _record(program, "Counter").qualified_name()
     # An owner without a receiver binding, a receiver of another record, an empty owner.
-    assert summary_problem(_owned_by(_known(program, "scale"), counter), {}) == "method summary without its receiver"
-    assert summary_problem(_owned_by(_known(program, "Gauge.bump"), counter), {}) == (
+    assert summary_problem(_owned_by(_known(program, "scale"), counter), no_layouts()) == (
         "method summary without its receiver")
-    assert summary_problem(_owned_by(_known(program, "Counter.bump"), ""), {}) == (
+    assert summary_problem(_owned_by(_known(program, "Gauge.bump"), counter), no_layouts()) == (
+        "method summary without its receiver")
+    assert summary_problem(_owned_by(_known(program, "Counter.bump"), ""), no_layouts()) == (
         "invalid call summary identity or facts")
 
 
@@ -315,11 +319,14 @@ def test_a_damaged_receiver_binding_is_refused(program: _Program) -> None:
     receiver = total.parameters[0]
     written = MIRParameterWrite(0, (_field(program, "Counter", "n", INT32),))
     # A readonly receiver written, a receiver passed beyond its access, the receiver missing.
-    assert summary_problem(replace(total, writes=frozenset({written})), {}) == "unsupported call write field or access"
-    assert summary_problem(replace(total, parameters=(replace(receiver, passing=ParamPassing.MUT_REF),)), {}) == (
+    assert summary_problem(replace(total, writes=frozenset({written})), no_layouts()) == (
+        "unsupported call write field or access")
+    forged = replace(total, parameters=(replace(receiver, passing=ParamPassing.MUT_REF),))
+    assert summary_problem(forged, no_layouts()) == (
         "call parameter binding differs from its derivation")
     push = _known(program, "Counter.push")
-    assert summary_problem(replace(push, parameters=push.parameters[1:]), {}) == "unsupported call summary contract"
+    assert summary_problem(replace(push, parameters=push.parameters[1:]), no_layouts()) == (
+        "unsupported call summary contract")
 
 
 def test_a_method_call_without_its_receiver_argument_is_malformed(program: _Program) -> None:

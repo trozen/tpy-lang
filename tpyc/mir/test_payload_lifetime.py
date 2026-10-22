@@ -4,9 +4,9 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
-from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent,
@@ -18,7 +18,7 @@ from .payload_lifetime import MIRPayloadEnds, analyze_payload_ends, dump_payload
 from .presence import _analyze_presence
 from .validate import validate_function
 from .value import MIRValidationError
-from .testutil import bind_parameters, leaf_shape, optional_shape, union_shape
+from .testutil import compiled_definitions, bind_parameters, leaf_shape, optional_shape, union_shape
 
 
 BODY = MIRBodyId("payload_lifetime", "example")
@@ -235,18 +235,24 @@ def readonly_source(value: readonly[int32 | bool]) -> int32:
 
 
 @pytest.fixture(scope="module")
-def source_bodies() -> dict[str, MIRFunction]:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {fn.name: lower_function(fn, MIRBodyId("payload_source", fn.name), definitions=definitions)
-                 for fn in ctx.thir_functions.values()}
-    functions.update({c.record_name: lower_constructor(c, MIRBodyId("payload_source", c.record_name),
-                                                     definitions=definitions)
-                      for c in ctx.thir_constructors.values()})
-    for fn in functions.values():
-        assert isinstance(fn, MIRFunction), fn
-    return functions
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def source_bodies(compiled) -> dict[str, MIRFunction]:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {fn.name: lower_function(fn, MIRBodyId("payload_source", fn.name), definitions=definitions)
+                     for fn in ctx.thir_functions.values()}
+        functions.update({c.record_name: lower_constructor(c, MIRBodyId("payload_source", c.record_name),
+                                                         definitions=definitions)
+                          for c in ctx.thir_constructors.values()})
+        for fn in functions.values():
+            assert isinstance(fn, MIRFunction), fn
+        return functions
 
 
 @pytest.mark.parametrize("name", ["snapshot", "clear", "replace", "Cell", "readonly_source"])

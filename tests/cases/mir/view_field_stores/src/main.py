@@ -323,7 +323,7 @@ def store_replace(t: Tok, s: str, b: Own[Buf], flag: bool) -> None:  # tpyc: mir
 
 
 # free function: the Own argument is a named record, so the call stays refused
-def own_write_transfer(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^unsupported record argument$/)
+def own_write_transfer(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^constructor argument type$/)
     b = Buf(mk(k))
     t = Tok("static", 1)
     # a named record at an Own parameter is copied, as the warning says; the copy keeps the callee's buffer its own
@@ -355,9 +355,9 @@ def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /rep
     print("wrap_copy_replaced", w.t.s, t.n)
 
 
-# free function: a named record moved into an Own constructor parameter: the move (STORAGE) and
-# its operand (BORROW) differ in form, which the lowering refuses for any record
-def wrap_move(k: int32) -> int32:  # tpyc: mir(uncovered /^move needs fixed movable owned local$/)
+# free function: a named record moved into an Own constructor parameter; `t.s` views the temporary
+# `mk(k)`, dead after its statement while `w` keeps it: BUGS.md#record-view-field-escapes-local-buffer
+def wrap_move(k: int32) -> int32:  # tpyc: mir(conflict /scope_end/)
     t = Tok(mk(k), 1)
     w = Wrap(t)
     return w.t.n

@@ -4,18 +4,20 @@ from dataclasses import replace
 
 import pytest
 
-from ..typesys import BOOL, INT32, NominalType, TupleType
+from ..typesys import BOOL, INT32, TupleType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRPlace,
     MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRTupleCopy,
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRField, MIRFieldId, MIRValidationError
-from .testutil import bind_parameters, Reference, borrowed_shape, execute, leaf_shape, owned_shape, reslot, tuple_shape
+from .testutil import (
+    hand_record, bind_parameters, Reference, borrowed_shape, execute, leaf_shape, owned_shape, reslot, tuple_shape,
+)
 from .validate import validate_function
 
 B = MIRBodyId("test", "tuples")
-CELL = NominalType("Cell", _module_qname="test.Cell")
+CELL = hand_record("Cell", "test.Cell", value=INT32)
 TUPLE = TupleType((CELL, INT32))
 A, R, X, PAIR, SAVED, RESULT, FLAG = (MIRSlotId(B, i) for i in range(7))
 ENTRY, YES, NO, JOIN = (MIRBlockId(B, i) for i in range(4))

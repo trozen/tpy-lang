@@ -77,7 +77,8 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         bodies = {body.declaration.split("@")[0]: mir.workspace.bodies[body]
                   for body, _ in call_definitions(ctx, entry.name)}
-        yield bodies, mir.workspace.summaries
+        result = bodies, mir.workspace.summaries
+    return result
 
 
 @pytest.mark.parametrize("name", ["mandelbrot", "iter_to_char", "main"])

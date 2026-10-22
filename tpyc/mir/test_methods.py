@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.lower.functions import lower_function as lower_thir
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
@@ -14,7 +15,7 @@ from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRSlotKind, function_body_kind
 from .value import MIRFieldId
-from .testutil import Reference, execute
+from .testutil import compiled_definitions, Reference, execute
 
 
 SOURCE = """\
@@ -88,12 +89,18 @@ Artifacts = tuple[dict[str, th.THIRFunction], MIRDefinitions]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    emitted, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert emitted
-    return ({node.name: fn for node, fn in ctx.thir_functions.items()},
-            MIRDefinitions(tuple(ctx.thir_constructors.values())))
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        emitted, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert emitted
+        return ({node.name: fn for node, fn in ctx.thir_functions.items()},
+                compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
 
 
 def lower(fn: th.THIRFunction, definitions: MIRDefinitions | None = None) -> MIRFunction:
@@ -206,7 +213,7 @@ class Cell:
 def test_receiver_and_body_kind_must_agree(artifacts: Artifacts) -> None:
     fn = artifacts[0]["direct"]
     assert lower(fn).kind is MIRBodyKind.METHOD
-    uncovered(replace(fn, receiver=replace(fn.receiver, type=INT32)), "unsupported reference fact")
+    uncovered(replace(fn, receiver=replace(fn.receiver, type=INT32)), "unknown reference source")
     uncovered(replace(fn, params=(th.THIRParam("self", INT32, passing=ParamPassing.VALUE),)), "duplicate binding")
     with pytest.raises(THIRValidationError, match="invalid receiver fact"):
         validate_thir(replace(fn, receiver=replace(fn.receiver, readonly=1)))
@@ -237,8 +244,23 @@ def test_receiver_reads_and_alias_access_are_checked(artifacts: Artifacts) -> No
 def test_receiver_cannot_be_reseated(artifacts: Artifacts) -> None:
     fn = artifacts[0]["direct"]
     alias = fn.body[0]
+    # `self` read through its pointer is no holder rebind: an assignment through it is refused.
     reseat = th.THIRAssign(alias.init, alias.init, alias_binding=alias.alias_binding)
-    uncovered(replace(fn, body=(reseat,)), "reference parameter reseat")
+    uncovered(replace(fn, body=(reseat,)), "assignment through a holder")
+
+
+def test_a_reference_parameter_holder_is_never_reseated(artifacts: Artifacts) -> None:
+    # `saved = other` is a pointer local's rebind; the same rebind of the
+    # receiver or of the reference parameter itself repoints a `T&` the
+    # caller lent, which no slot of the body can be.
+    fn = artifacts[0]["reseat"]
+    alias, branch, *rest = fn.body
+    rebind, = branch.then_body
+    assert isinstance(rebind, th.THIRPtrLocalRebind) and rebind.name == "saved"
+    assert isinstance(lower(fn), MIRFunction)
+    for name, value in (("self", rebind.value), ("other", alias.init)):
+        reseated = replace(branch, then_body=(replace(rebind, name=name, value=value),))
+        uncovered(replace(fn, body=(alias, reseated, *rest)), "reference parameter reseat")
 
 
 @pytest.mark.parametrize("binding,reason", [

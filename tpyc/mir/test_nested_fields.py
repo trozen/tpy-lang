@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -156,11 +157,17 @@ Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    sources, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert sources
-    return ({node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values()))
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        sources, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert sources
+        return ({node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values()))
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
@@ -373,17 +380,18 @@ def sample(holder: Holder) -> int32:
     return saved.value
 """
     compiler, modules = _compile(source)
-    sources, ctx = compiler.generate_code_and_thir(_entry(modules))
-    assert sources
-    fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "sample")
-    owner = fn.params[0].borrowed_record.type
-    item = fn.body[0].storage_borrow.type
-    field, value = MIRFieldId(owner, "item"), MIRFieldId(item, "value")
-    assert execute(lower(fn), Reference(1), heap={1: {field: {value: 1}}}) == 7
+    with activate_compiler(compiler):
+        sources, ctx = compiler.generate_code_and_thir(_entry(modules))
+        assert sources
+        fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "sample")
+        owner = fn.params[0].borrowed_record.type
+        item = fn.body[0].storage_borrow.type
+        field, value = MIRFieldId(owner, "item"), MIRFieldId(item, "value")
+        assert execute(lower(fn), Reference(1), heap={1: {field: {value: 1}}}) == 7
 
 
 @pytest.mark.parametrize("change,message", [
-    ("owner", "field owner mismatch"),
+    ("owner", "field missing from declared fields"),
     ("deref", "dereference needs reference holder"),
     ("scalar", "borrow type mismatch"),
     ("readonly", "borrow increases access"),

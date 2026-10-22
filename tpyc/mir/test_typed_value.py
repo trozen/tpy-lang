@@ -15,18 +15,17 @@ from ..thir.scalar_leaves import MIRClass
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, STR, STRVIEW, NominalType, OwnType, TupleType
-from .call_contract import MIR_STATIC, MIRLoanTransfer, MIRParameterWrite, call_path_problem, path_walk
+from .call_contract import MIR_STATIC, MIRLoanTransfer, MIRParameterWrite, crossed_records, path_walk
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
-from .definitions import MIRDefinitions
 from .emit import owned_leaf_shape, view_holder_shape
 from .lower import _Lowering
 from .nodes import MIRAssign, MIRConstant, MIRRead, MIRTupleCopy
 from .value import (
-    MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, holder_form,
+    MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError, holder_form,
     with_access,
 )
 from .shapes import step, MIRContainerElements, MIRDeref
-from .testutil import bound
+from .testutil import no_layouts, compiled_definitions, bound, hand_record
 from .validate import validate_function
 
 SOURCE = '''\
@@ -127,7 +126,7 @@ def unit() -> SimpleNamespace:
     entry = _entry(modules)
     with activate_compiler(compiler):
         _, ctx = compiler.generate_code_and_thir(entry)
-        definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
         workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
         dump = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
                                 compiler.thir_reject_by_node, workspace)
@@ -215,7 +214,8 @@ def test_a_leaf_member_of_a_readonly_holder_is_readonly() -> None:
     members = with_access((leaf,), True)
     holder = MIRShape(NominalType("list", (INT32,)), MIRClass.CONTAINER, MIRHolding.POINTER, True, members)
     # The holder's members and the step to its element agree.
-    assert members[0].readonly and step(step(holder, MIRDeref(), {}), MIRContainerElements(), {}) == members[0]
+    pointee = step(holder, MIRDeref(), no_layouts())
+    assert members[0].readonly and step(pointee, MIRContainerElements(), no_layouts()) == members[0]
 
 
 def test_a_leaf_element_of_a_readonly_container_reads_readonly(unit, dumps) -> None:
@@ -249,15 +249,17 @@ def test_a_mutable_name_returned_readonly_is_its_own_holder(dumps) -> None:
     assert not any(re.match(r"%\d+: P ", line) for line in lines if "parameter" not in line)
 
 
-# --- the call's part of a summary path (`call_path_problem`) -------------------------
+# --- the records a call's summary paths read (`crossed_records`) ----------------------
 
-_R = NominalType("R", _module_qname="m.R")
-_D = NominalType("D", _module_qname="m.D")
+_R = hand_record("R", "m.R", v=STRVIEW)
+_D = hand_record("D", "m.D", _R)
 _V = th.THIRFieldIdentity(_R, "v", STRVIEW)
 _MISSING = th.THIRFieldIdentity(_R, "missing", STRVIEW)
 _LAYOUT = MIRRecordLayout(_R, (MIRField(MIRFieldId(_R, "v"), STRVIEW),), True, True)
 # A record deriving from R: its layout carries R's field under R.
 _DERIVED = MIRRecordLayout(_D, _LAYOUT.fields, True, True, ancestors=(_R,))
+# The contract's walks read declared fields; a layout is the body's.
+_DECLARED = no_layouts()
 _OWNED = bound(OwnType(_R), ParamPassing.OWN)
 _LENT = bound(_R, ParamPassing.MUT_REF, ref=th.THIRBorrowedRecord(_R, False))
 
@@ -271,52 +273,35 @@ def _summary(*paths: tuple[int, th.THIRFieldIdentity]) -> SimpleNamespace:
 
 
 def _walks(*paths: tuple[int, th.THIRFieldIdentity]) -> dict:
-    """The walks a contract with no layout made: an own-type field passes it."""
     roots = {0: _OWNED.value, 1: _LENT.lent_record}
-    return {(end, (field,)): path_walk(roots[end], (field,), {}) for end, field in paths}
+    return {(end, (field,)): path_walk(roots[end], (field,), _DECLARED) for end, field in paths}
 
 
-def _check(*paths, walks=None, skip=None, storage=_R) -> tuple[str | None, list[tuple[str, object]]]:
-    log: list[tuple[str, object]] = []
-    layouts = {_R: _LAYOUT, _D: _DERIVED}
+def _crossed(*paths, skip=None, storage=_R) -> tuple[list[NominalType], list[int]]:
+    asked: list[int] = []
 
     def storage_of(parameter: int) -> NominalType:
-        log.append(("storage", parameter))
+        asked.append(parameter)
         return storage
-
-    def layout_of(record: NominalType) -> MIRRecordLayout | None:
-        log.append(("layout", record))
-        return layouts.get(record)
-    walks = _walks(*paths) if walks is None else walks
-    return call_path_problem(_summary(*paths), walks, storage_of, layout_of, skip), log
+    return list(crossed_records(_summary(*paths), _walks(*paths), storage_of, skip)), asked
 
 
-def test_each_field_is_a_member_of_its_storages_layout_at_the_call() -> None:
-    # The contract's walk admitted `R.missing` (no layout); the call reads
-    # R's layout, which holds only `v`.
-    assert _check((1, _V))[0] is None
-    problem, log = _check((1, _MISSING))
-    assert problem == "call write field does not match record layout"
-    assert log == [("storage", 1), ("layout", _R)]
+def test_a_contract_walk_refuses_a_field_its_record_does_not_declare() -> None:
+    # No layout is needed for membership, and none admits more than the declaration.
+    assert not isinstance(path_walk(_LENT.lent_record, (_V,), _DECLARED), str)
+    assert path_walk(_LENT.lent_record, (_MISSING,), _DECLARED) == "field missing from declared fields"
 
 
 def test_the_first_field_is_read_from_the_record_the_argument_binds() -> None:
-    # A derived argument: its layout is asked, and carries R's field under R.
-    problem, log = _check((1, _V), storage=_D)
-    assert problem is None and log == [("storage", 1), ("layout", _D)]
+    # A derived argument: its record is the one whose layout the call carries.
+    assert _crossed((1, _V)) == ([_R], [1])
+    assert _crossed((1, _V), storage=_D) == ([_D], [1])
 
 
 def test_owned_storage_needs_no_argument() -> None:
     # Under owned record storage no argument binds: the walk's own holder is read.
-    problem, log = _check((0, _MISSING))
-    assert problem == "call write field does not match record layout" and log == [("layout", _R)]
-
-
-def test_every_field_hop_needs_its_storages_layout() -> None:
-    assert _check((1, _V), storage=NominalType("E", _module_qname="m.E"))[0] == (
-        "call write field does not match record layout")
+    assert _crossed((0, _V)) == ([_R], [])
 
 
 def test_skip_passes_over_a_parameter_path() -> None:
-    problem, log = _check((1, _MISSING), skip=lambda parameter, storage: parameter == 1 and storage == _R)
-    assert problem is None and log == [("storage", 1)]
+    assert _crossed((1, _V), skip=lambda parameter, storage: parameter == 1 and storage == _R) == ([], [1])

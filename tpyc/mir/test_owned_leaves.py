@@ -68,7 +68,8 @@ def program():
     _, ctx = compiler.generate_code_and_thir(entry)
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         ctor, = ctx.thir_constructors.values()
-        yield _Program(compiler, mir.definitions, ctor.record_layout.type)
+        result = _Program(compiler, mir.definitions, ctor.record_layout.type)
+    return result
 
 
 @pytest.fixture
@@ -154,7 +155,7 @@ def _with_exits(fn: MIRFunction) -> MIRFunction:
     """A hand-built body with the exit fact its statements imply (a str
     buffer's allocation can throw), which these probes do not test."""
     slots = {s.id: s for s in fn.slots}
-    records = {r.type: r for r in fn.records}
+    records = fn.record_layouts
     return replace(fn, exceptional_exits=any(statement_may_raise(stmt, slots, records)
                                              for block in fn.blocks for stmt in block.statements))
 
@@ -547,7 +548,8 @@ def lowered():
                                        summaries=mir.workspace.summaries)
                   for name, fn in functions.items()}
         summaries = {identity.name: result for identity, result in mir.workspace.summaries.items()}
-        yield _Lowered(compiler, mir.definitions, functions, bodies, summaries)
+        result = _Lowered(compiler, mir.definitions, functions, bodies, summaries)
+    return result
 
 
 @pytest.fixture
@@ -1033,7 +1035,7 @@ def test_validator_rejects_damaged_owned_leaf_slots_and_layouts(lowered_active) 
         validate_function(_replace_slot(local, "total", readonly=True))
     # Mutable owned storage with no placement: nothing would destroy its buffer.
     assert _slot(local, "total").shape.leaf_storage and not _slot(local, "total").readonly
-    with pytest.raises(MIRValidationError, match="owned leaf storage needs a placement"):
+    with pytest.raises(MIRValidationError, match="owned storage needs a placement"):
         validate_function(_replace_slot(local, "total", storage_duration=None))
     # An opaque layout that is not freely copyable.
     damaged = replace(local, records=tuple(replace(r, copyable=False) if r.opaque else r for r in local.records))

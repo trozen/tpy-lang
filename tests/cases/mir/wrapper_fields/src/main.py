@@ -231,8 +231,8 @@ def bump_payload(h: H) -> None:  # tpyc: mir(covered) mir_summary(known)
         h.p.bump()
 
 
-# kept refusal: a borrow of the narrowed payload has no THIR storage-borrow fact
-def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /storage borrow fact/)
+# kept refusal: MIR keeps the Optional field whole, so the narrowed payload alone is not bound
+def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /borrow of an Optional field's payload/)
     if h.p is not None:
         q = h.p
         return q.x

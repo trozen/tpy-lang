@@ -32,7 +32,8 @@ from .nodes import (
 from .shapes import MIRContainerElements, MIRDeref, object_prefix
 from .value import MIRHolding, MIRValidationError, container_members, with_access
 from .testutil import (
-    ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape, repass, reslot,
+    compiled_definitions,
+    ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape, Redeclared, repass, reslot,
 )
 from .validate import validate_function
 
@@ -224,7 +225,8 @@ def _unit() -> _Unit:
     ctx = compiler.collect_thir(entry, tolerate_reject=True)
     functions = {fn.name: fn for fn in ctx.thir_functions.values()}
     constructors = {c.record_name: c for c in ctx.thir_constructors.values()}
-    return _Unit(compiler, modules, functions, constructors, MIRDefinitions(tuple(constructors.values())))
+    return _Unit(compiler, modules, functions, constructors,
+                 compiled_definitions(compiler, tuple(constructors.values())))
 
 
 @pytest.fixture(scope="module")
@@ -352,6 +354,16 @@ def _slot(fn: MIRFunction, name: str) -> MIRSlot:
     return next(s for s in fn.slots if s.name == name)
 
 
+def _storage(fn: MIRFunction, name: str) -> MIRSlot:
+    """The storage an owning local holds through its holder: the backing
+    its declaration borrows."""
+    holder = _slot(fn, name).id
+    backing, = {s.value.source.root for b in fn.blocks for s in b.statements
+                if isinstance(s, MIRAssign) and s.target == MIRPlace(holder) and isinstance(s.value, MIRBorrow)
+                and not s.value.source.projections}
+    return fn.slots[backing.index]
+
+
 def _replace_first(fn: MIRFunction, match, change) -> MIRFunction:
     block, index = next((b, i) for b in fn.blocks for i, s in enumerate(b.statements) if match(s))
     stmt = change(block.statements[index])
@@ -425,19 +437,21 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
 
 def test_an_owned_container_local_is_built_from_its_literal(active) -> None:
     lines = _lines(_fn(active, "own"))
-    assert "%3: Array[int32, 3] owned element=int32:leaf local xs" in lines
-    assert "%3 = construct (%0, %1, %2) may-raise [initialize_once]" in lines
+    # The local holds its own storage through a holder, as an owned record local does.
+    assert "%3: Array[int32, 3] owned-storage element=int32:leaf temporary" in lines
+    assert "%4: Array[int32, 3] mutable-ref element=int32:leaf local xs" in lines
+    assert lines.index("%3 = construct (%0, %1, %2) may-raise [initialize_once]") < lines.index("%4 = borrow %3")
     # An unstepped slice reads its bounds, then borrows the whole region.
-    assert "%6: Span[int32] mutable-ref element=int32:leaf local s" in lines
-    assert lines.index("%5 = 3") < lines.index("%6 = borrow %3[elements]")
-    assert "%8 = read %6[elements] may-raise" in lines
+    assert "%7: Span[int32] mutable-ref element=int32:leaf local s" in lines
+    assert lines.index("%6 = 3") < lines.index("%7 = borrow (*%4)[elements]")
+    assert "%9 = read %7[elements] may-raise" in lines
     # `len` reads the container whole.
-    assert any(re.fullmatch(r"%9 = call stub tpy\._builtins\._funcs\.len\[Sized\]\(%3\) .*", line) for line in lines)
+    assert any(re.fullmatch(r"%10 = call stub tpy\._builtins\._funcs\.len\[Sized\]\(%4\) .*", line) for line in lines)
 
 
 def test_a_literal_of_records_moves_built_temporaries(active) -> None:
     fn = _fn(active, "points")
-    ps = _slot(fn, "ps").id
+    ps = _storage(fn, "ps").id
     construct = next(s for b in fn.blocks for s in b.statements
                      if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) and s.target.root == ps)
     for operand in construct.value.fields:
@@ -449,17 +463,20 @@ def test_a_literal_of_records_moves_built_temporaries(active) -> None:
 def test_an_owned_container_result_returns_its_storage(active) -> None:
     fn = _fn(active, "make")
     lines = _lines(fn)
-    assert "%3: list[int32] owned element=int32:leaf local xs" in lines
-    assert fn.blocks[-1].terminator == MIRReturn(_slot(fn, "xs").id, fn.blocks[-1].terminator.loc)
+    assert "%4: list[int32] mutable-ref element=int32:leaf local xs" in lines
+    # The local's own storage leaves the body.
+    assert fn.blocks[-1].terminator == MIRReturn(_storage(fn, "xs").id, fn.blocks[-1].terminator.loc)
     assert execute(fn, 4) is not None
 
 
 def test_an_owned_container_parameter_is_the_body_storage(active) -> None:
     # The parameter's name keeps THIR's `Own[...]` wrapper and reads in storage
-    # form; the fact and the slot are the bare container it owns.
+    # form; the fact and the slot are the bare container it owns, reached
+    # through a holder borrowed at entry, as an `Own[R]` record parameter is.
     lines = _lines(_fn(active, "own_param"))
-    assert "%0: list[int32] owned element=int32:leaf parameter xs" in lines
-    assert any(line.startswith("%1 = call stub tpy._builtins._funcs.len[Sized](%0)") for line in lines)
+    assert "%0: list[int32] owned-storage element=int32:leaf parameter xs" in lines
+    assert lines.index("%1 = borrow %0") < next(
+        i for i, line in enumerate(lines) if line.startswith("%2 = call stub tpy._builtins._funcs.len[Sized](%1)"))
 
 
 def test_a_span_parameter_and_result_view_a_region(active) -> None:
@@ -544,8 +561,11 @@ def test_container_members_are_initialized_at_entry(active) -> None:
     heap: dict = {}
     execute(pair, Reference(1), 4, heap=heap)
     assert [v.elements for v in heap[1].values()] == [[4, 4]]
-    # A caller's construct has no operand for a container member.
-    assert _lower(active, "build").reason == "constructor container field"
+    # A caller's construct builds a container member's literal into storage
+    # of the full expression and moves it in.
+    lines = _lines(_fn(active, "build"))
+    assert lines.index("%0 = construct () may-raise [initialize_region]") < lines.index(
+        "%1 = construct (%0) [initialize_once]")
 
 
 # --- refusals --------------------------------------------------------------------------
@@ -553,12 +573,12 @@ def test_container_members_are_initialized_at_entry(active) -> None:
 def test_kept_refusals(active) -> None:
     assert _lower(active, "holds").reason == "container holds a borrow"
     assert _lower(active, "nested").reason == "unsupported native container element"
-    # A container local THIR published no fact for.
+    # A container local is classed by its type: THIR's fact, or none, changes nothing.
     fn = active.functions["own"]
-    fn = replace(fn, body=_rewrite(fn.body, lambda n: replace(n, native_container=None)
-                                   if isinstance(n, th.THIRVarDecl) else n))
-    assert lower_function(fn, MIRBodyId("containers", "own"), definitions=active.definitions).reason \
-        == "missing native container fact"
+    bare = replace(fn, body=_rewrite(fn.body, lambda n: replace(n, native_container=None)
+                                     if isinstance(n, th.THIRVarDecl) else n))
+    assert lower_function(bare, MIRBodyId("containers", "own"), definitions=active.definitions) == \
+        lower_function(fn, MIRBodyId("containers", "own"), definitions=active.definitions)
     # A container a parameter cannot write.
     fn = _published(active.functions["set_scalar"])
     readonly = replace(fn, params=tuple(replace(p, passing=ParamPassing.CONST_REF, native_container=replace(
@@ -597,10 +617,12 @@ def test_validator_rejects_damaged_container_slots(active) -> None:
     _rejects(_reslot(first, "ps", holding=MIRHolding.VALUE, readonly=False, storage_duration=MIRStorageDuration.BODY,
                      members=container_members(ps.type, False)),
              "parameter call parameter binding differs from its derivation")
-    xs = next(s for s in own.slots if s.name == "xs")
-    _rejects(_reslot(own, "xs", readonly=True, members=with_access(xs.shape.members, True)),
+    xs = _storage(own, "xs")
+    _rejects(replace(own, slots=tuple(reslot(s, readonly=True, members=with_access(xs.shape.members, True))
+                                      if s.id == xs.id else s for s in own.slots)),
              "slot readonly owned storage")
-    _rejects(_reslot(own, "xs", members=(leaf_shape(BOOL),)),
+    _rejects(replace(own, slots=tuple(reslot(s, members=(leaf_shape(BOOL),)) if s.id == xs.id else s
+                                      for s in own.slots)),
              "container members disagree with its type")
     holder = next(s for s in tail.slots if s.shape.cls is MIRClass.CONTAINER_VIEW)
     _rejects(replace(tail, slots=tuple(reslot(s, readonly=False) if s is holder else s for s in tail.slots)),
@@ -641,18 +663,30 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     items = _fn(active, "items_of")
     _rejects(_replace_first(items, is_borrow, lambda s: replace(
         s, value=MIRBorrow(MIRPlace(s.value.source.root, (*s.value.source.projections, MIRContainerElements()))))),
-        "container borrow type mismatch")
-    # A whole container field is never replaced.
-    write = MIRAssign(items.blocks[0].statements[0].value.source, MIRConstruct((), True), None,
-                      MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))
-    _rejects(replace(items, blocks=(replace(items.blocks[0], statements=(write, *items.blocks[0].statements)),
-                                    *items.blocks[1:])), "container replacement is unsupported")
+        "storage borrow type mismatch")
+    # A whole container field is replaced by a member write, as a record
+    # member is: in place, under the record, never as a rebind of a holder.
+    def field_write(fact: MIRRecordWrite) -> MIRFunction:
+        write = MIRAssign(items.blocks[0].statements[0].value.source, MIRConstruct((), True), None, fact)
+        return replace(items, exceptional_exits=True, blocks=(replace(
+            items.blocks[0], statements=(write, *items.blocks[0].statements)), *items.blocks[1:]))
+    validate_function(field_write(MIRRecordWrite(MIRRecordWriteMode.IN_PLACE)))
+    receiver = items.blocks[0].statements[0].value.source.root
+    _rejects(field_write(MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, receiver)),
+             "record member write needs a replacement fact")
     # A container field whose members MIR does not model.
     nested = make_list(make_list(INT32))
     def nested_field(s: MIRAssign) -> MIRAssign:
         *head, field = s.value.source.projections
         return replace(s, value=MIRBorrow(MIRPlace(s.value.source.root, (*head, replace(field, type=nested)))))
-    _rejects(_replace_first(items, is_borrow, nested_field), "unsupported container field")
+    borrow = next(st for b in items.blocks for st in b.statements if is_borrow(st))
+    field = borrow.value.source.projections[-1]
+    # Declared so, or the field is no member of its record at all.
+    declared = Redeclared(items.record_fields, lambda typ, fields: frozenset(
+        replace(f, type=nested) if f == field else f for f in fields) if typ == field.id.owner else fields)
+    _rejects(replace(_replace_first(items, is_borrow, nested_field), record_fields=declared),
+             "unsupported container field")
+    _rejects(_replace_first(items, is_borrow, nested_field), "field missing from declared fields")
     # A Span aliases only a Span holder of its own layout.
     _rejects(_replace_first(own, lambda s: is_borrow(s) and s.target.root == span, lambda s: replace(
         s, value=MIRAlias(_slot(own, "xs").id))), "alias type mismatch")
@@ -661,12 +695,13 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     _rejects(_replace_first(first, is_borrow, lambda s: MIRAssign(
         MIRPlace(xs, (MIRDeref(), MIRContainerElements())), MIRConstruct((), False), s.loc,
         MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, xs))), "store through readonly reference")
-    # A whole container a pointer reaches is never replaced, as a container field is not.
+    # A whole container a pointer reaches is rebuilt in place only as its
+    # holder's referent, as a record is.
     scalar = _fn(active, "set_scalar")
     whole = MIRAssign(MIRPlace(_slot(scalar, "xs").id, (MIRDeref(),)), MIRConstruct((), True), None,
                       MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))
     _rejects(replace(scalar, blocks=(replace(scalar.blocks[0], statements=(whole, *scalar.blocks[0].statements)),
-                                     *scalar.blocks[1:])), "container replacement is unsupported")
+                                     *scalar.blocks[1:])), "invalid in-place rebind owner or target")
 
 
 def test_validator_rejects_damaged_element_writes(active) -> None:
@@ -708,22 +743,22 @@ def test_a_mutable_container_replaces_a_readonly_element(active) -> None:
 
 def test_validator_rejects_damaged_container_storage(active) -> None:
     own, make = _fn(active, "own"), _fn(active, "make")
-    xs = _slot(own, "xs").id
+    xs = _storage(own, "xs").id
     is_literal = lambda s: isinstance(s, MIRAssign) and s.target == MIRPlace(xs)
     _rejects(_replace_first(own, is_literal, lambda s: replace(s, value=replace(s.value, fields=s.value.fields[:2]))),
              "incomplete or mistyped container literal")
     _rejects(_replace_first(own, is_literal, lambda s: replace(s, value=replace(s.value, may_raise=False))),
              "incomplete or mistyped container literal")
     _rejects(_replace_first(own, is_literal, lambda s: replace(s, value=MIRConstant(1))),
-             "container write needs a literal, move, copy or call")
-    _rejects(_replace_first(own, is_literal, lambda s: replace(s, value=MIRMove(xs))), "container move source mismatch")
+             "record write on non-record operation")
+    _rejects(_replace_first(own, is_literal, lambda s: replace(s, value=MIRMove(xs))), "record move source or eligibility")
     _rejects(_replace_first(own, is_literal, lambda s: replace(s, value=MIRCopy(MIRPlace(_slot(own, "s").id), True))),
-             "container copy source mismatch")
+             "record copy source or eligibility")
     # The owned result is the body's container of the result type.
     n = _slot(make, "n").id
     ret = make.blocks[-1]
     _rejects(replace(make, blocks=(*make.blocks[:-1], replace(ret, terminator=MIRReturn(n, ret.terminator.loc)))),
-             "return type mismatch")
+             "owned record return needs movable owned storage")
 
 
 def _container_call(fn: MIRFunction, target: str, ret: TpyType, argument: str) -> MIRFunction:
@@ -733,7 +768,7 @@ def _container_call(fn: MIRFunction, target: str, ret: TpyType, argument: str) -
     summary = MIRCallSummary(th.THIRResolvedCallee(th.THIRFunctionIdentity("containers", "made"), signature),
                              (bound(INT32, ParamPassing.VALUE),), frozenset({0}),
                              frozenset(), frozenset(), frozenset(), frozenset(), False)
-    built = _replace_first(fn, lambda s: _assign(MIRConstruct)(s) and s.target == MIRPlace(_slot(fn, target).id),
+    built = _replace_first(fn, lambda s: _assign(MIRConstruct)(s) and s.target == MIRPlace(_storage(fn, target).id),
                            lambda s: replace(s, value=MIRCall(summary, (_slot(fn, argument).id,), True)))
     return replace(built, call_summaries=(*built.call_summaries, summary))
 
@@ -744,14 +779,14 @@ def test_validator_rejects_a_container_call_result_of_another_type(active) -> No
     # An `Own[...]` container result is the target's own storage.
     validate_function(_container_call(make, "xs", OwnType(xs), "n"))
     for ret in (OwnType(make_list(BOOL)), INT32):
-        _rejects(_container_call(make, "xs", ret, "n"), "call container result type mismatch")
+        _rejects(_container_call(make, "xs", ret, "n"), "call record result type mismatch")
 
 
 def test_validator_rejects_damaged_results_and_iterators(active) -> None:
     items, tail, span_sum = _fn(active, "items_of"), _fn(active, "tail"), _fn(active, "span_sum")
     _rejects(replace(tail, borrowed_result=replace(tail.borrowed_result, readonly=False)),
              "unsupported return type or access")
-    holder = next(s for s in items.slots if s.shape.borrowed_container)
+    holder = next(s for s in items.slots if s.shape.whole_container and s.shape.is_pointer)
     _rejects(replace(items, slots=tuple(reslot(s, readonly=True, members=with_access(s.shape.members, True))
                                         if s is holder else s for s in items.slots)),
              "borrowed return type or access mismatch")
@@ -821,7 +856,7 @@ def test_only_a_pure_stub_binds_a_readonly_container_mutably(active) -> None:
     # `append` writes its receiver: a readonly holder cannot be lent to it.
     _rejects(bind_parameters(_reslot(fn, "xs", readonly=True,
                                      members=(leaf_shape(INT32, True),))),
-             "call container argument mismatch")
+             "call record argument mismatch")
 
 
 # --- calls over real lowered MIR ---------------------------------------------------
@@ -884,7 +919,7 @@ def calls():
     entry = _entry(modules)
     with activate_compiler(compiler):
         _, ctx = compiler.generate_code_and_thir(entry)
-        definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
         workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
         dump = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions,
                                 compiler.thir_reject_by_node, workspace)
@@ -901,11 +936,14 @@ def calls():
 
 def test_a_local_moved_into_an_own_parameter_is_replaced(calls) -> None:
     lines = calls[0]["give"]
-    assert "%2: list[int32] owned element=int32:leaf local xs" in lines
+    # `xs` holds its own storage (%2) through its holder.
+    assert "%2: list[int32] owned-storage element=int32:leaf temporary" in lines
+    assert "%3: list[int32] mutable-ref element=int32:leaf local xs" in lines
+    assert "%3 = borrow %2" in lines
     # The argument is the caller's storage moved into a temporary the callee owns.
-    assert "%3: list[int32] owned element=int32:leaf temporary" in lines
-    assert "%3 = move %2 [initialize_region]" in lines
-    assert "%4 = call main::consume(%3) [reader, may-raise]" in lines
+    assert "%4: list[int32] owned-storage element=int32:leaf temporary" in lines
+    assert "%4 = move %2 [initialize_region]" in lines
+    assert "%5 = call main::consume(%4) [reader, may-raise]" in lines
     # The move empties `xs`: a replacement event on the source place, with no holder of it live.
     assert "bb1 before 0: move-out %2" in lines
     assert "no conflicts in covered replacement events" in lines
@@ -913,7 +951,7 @@ def test_a_local_moved_into_an_own_parameter_is_replaced(calls) -> None:
 
 def test_a_container_copied_into_an_own_parameter_is_refused(calls) -> None:
     # A live slice keeps `xs` borrowed, so the argument is an implicit copy.
-    assert calls[0]["after_slice"][0].endswith("<MIR not covered: container argument needs an owned move>")
+    assert calls[0]["after_slice"][0].endswith("<MIR not covered: constructor argument type>")
 
 
 def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
@@ -940,9 +978,9 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
 def test_a_span_holder_is_lent_at_a_span_parameter(calls) -> None:
     # A Span binding is not storage: the local and the parameter lend the region they view.
     lines = calls[0]["pass_span"]
-    assert "%7: Span[int32] mutable-ref element=int32:leaf local w" in lines
-    assert "%8 = call main::span_sum(%7) [reader, may-raise]" in lines
-    assert "%9 = call main::span_sum(%0) [reader, may-raise]" in lines
+    assert "%8: Span[int32] mutable-ref element=int32:leaf local w" in lines
+    assert "%9 = call main::span_sum(%8) [reader, may-raise]" in lines
+    assert "%10 = call main::span_sum(%0) [reader, may-raise]" in lines
 
 
 def test_an_element_of_a_container_a_call_returns_is_read_through_its_holder(calls) -> None:
@@ -953,7 +991,7 @@ def test_an_element_of_a_container_a_call_returns_is_read_through_its_holder(cal
     read = next(s.value for b in fn.blocks for s in b.statements
                 if isinstance(s, MIRAssign) and isinstance(s.value, MIRRead) and _elements(s.value.source))
     holder = next(s for s in fn.slots if s.id == read.source.root)
-    assert holder.shape.borrowed_container and holder.kind is not MIRSlotKind.PARAMETER
+    assert holder.shape.whole_container and holder.shape.is_pointer and holder.kind is not MIRSlotKind.PARAMETER
     assert read.source.projections == (*object_prefix(holder.shape, payload=False), MIRContainerElements())
 
 

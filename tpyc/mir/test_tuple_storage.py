@@ -4,7 +4,7 @@ from dataclasses import replace
 
 import pytest
 
-from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
+from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies, MIRReferent
 from .dump import dump_function
 from .liveness import analyze_liveness
@@ -20,6 +20,7 @@ from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
 from .testutil import (
+    hand_record,
     bind_parameters, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot,
     tuple_shape, union_shape,
 )
@@ -27,7 +28,7 @@ from .validate import validate_function
 
 
 BODY = MIRBodyId("tuple_storage", "example")
-CELL = NominalType("Cell", _module_qname="tuple_storage.Cell")
+CELL = hand_record("Cell", "tuple_storage.Cell", value=INT32)
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 PAIR, EXTERNAL, VALUE, FLAG, SAVED, RESULT = (MIRSlotId(BODY, i) for i in range(6))
 ENTRY, INNER, EXIT = (MIRBlockId(BODY, i) for i in range(3))
@@ -117,7 +118,7 @@ def test_aggregate_holders_retain_inline_member_after_tuple_ends(kind: str) -> N
             shape = optional_shape(OptionalType(CELL), borrowed_shape(CELL))
             capture, copy = MIROptionalConstruct(MIRPlace(SAVED)), MIROptionalCopy(MIRPlace(holder))
         case _:
-            other = NominalType("Other", _module_qname="tuple_storage.Other")
+            other = hand_record("Other", "tuple_storage.Other")
             shape = union_shape(UnionType((CELL, other)), (BORROWED, borrowed_shape(other)))
             capture, copy = MIRUnionConstruct(0, MIRPlace(SAVED)), MIRUnionCopy(MIRPlace(holder))
     fn = function()

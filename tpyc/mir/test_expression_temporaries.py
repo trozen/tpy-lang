@@ -20,7 +20,9 @@ from .value import MIRField, MIRFieldId, MIRValidationError
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .testutil import borrowed_shape, execute, optional_shape, tuple_shape, union_shape
+from .testutil import (
+    compiled_definitions, hand_record, borrowed_shape, execute, optional_shape, tuple_shape, union_shape,
+)
 from .validate import validate_function
 
 
@@ -33,7 +35,7 @@ class Cell:
         self.value = value
 ''')
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return MIRDefinitions(tuple(ctx.thir_constructors.values()))
+    return compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
 
 
 def constructor(definitions: MIRDefinitions, value: int = 7) -> th.THIRCtorCall:
@@ -180,7 +182,7 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
             capture = (MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder))),)
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
         case "union":
-            other = NominalType("Other", _module_qname="temporary.Other")
+            other = hand_record("Other", "temporary.Other")
             wrapper = MIRSlot(wrapper_id,
                               union_shape(UnionType((owned.type, other)), (borrowed, borrowed_shape(other))),
                               MIRSlotKind.LOCAL, residence=result.region)

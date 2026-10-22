@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
@@ -19,7 +20,7 @@ from .shapes import MIROptionalPayload
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
 from .validate import validate_function
 from .value import MIRValidationError
-from .testutil import bind_parameters, leaf_shape, optional_shape
+from .testutil import compiled_definitions, bind_parameters, leaf_shape, optional_shape
 
 
 SOURCE = """\
@@ -171,17 +172,23 @@ Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction | MIRNotCove
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    (_header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    thir = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("scope", name), definitions=definitions)
-              for name, fn in thir.items()}
-    for ctor in ctx.thir_constructors.values():
-        bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("scope", ctor.record_name),
-                                                     definitions=definitions)
-    return thir, bodies, cpp, definitions
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (_header, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        thir = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("scope", name), definitions=definitions)
+                  for name, fn in thir.items()}
+        for ctor in ctx.thir_constructors.values():
+            bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("scope", ctor.record_name),
+                                                         definitions=definitions)
+        return thir, bodies, cpp, definitions
 
 
 @pytest.mark.parametrize("name", ["branch", "loop", "wrapper", "union", "optional_record", "nested", "Observer"])
@@ -276,6 +283,19 @@ def _refused_at(result: MIRFunction | MIRNotCovered, declaration: th.THIRStmt) -
     assert (result.node_kind, result.loc) == (type(declaration).__name__, declaration.loc)
 
 
+def _placement_refused(artifacts: Artifacts, name: str, forged: th.THIRFunction, placed: th.THIRFunction,
+                       declaration: th.THIRStmt) -> None:
+    """A wrapper's dropped placement refuses at its declaration; an owned
+    record's placement is MIR's own (its declaration's scope, the body's
+    where THIR hoists it), so the forged payload is not read: the body
+    lowers as it does with its placement."""
+    result = _lower_changed(artifacts, forged, "forged")
+    if name != "loop":
+        _refused_at(result, declaration)
+        return
+    assert result == _lower_changed(artifacts, placed, "forged")
+
+
 def _both_return(fn: th.THIRFunction) -> th.THIRIf:
     """`if flag: return result else: return result`."""
     loop = next(stmt for stmt in fn.body if isinstance(stmt, th.THIRWhile))
@@ -286,7 +306,7 @@ def _both_return(fn: th.THIRFunction) -> th.THIRIf:
 def test_missing_placement_is_uncovered(artifacts: Artifacts, name: str) -> None:
     fn = artifacts[0][name]
     assert isinstance(artifacts[1][name], MIRFunction), artifacts[1][name]
-    _refused_at(_lower_changed(artifacts, _misplaced(fn), "missing"), _declaration(fn))
+    _placement_refused(artifacts, name, _misplaced(fn), _misplaced(fn, placed=True), _declaration(fn))
 
 
 @declarations
@@ -321,8 +341,8 @@ def test_missing_placement_after_a_planned_if_whose_arms_return_is_refused(artif
     assert isinstance(bodies[planned], MIRFunction), bodies[planned]
     fn = thir[planned]
     assert fn.temp_plan is not None
-    result = _lower_changed(artifacts, _misplaced(fn, (_both_return(fn),)), "planned-returned")
-    _refused_at(result, _declaration(fn))
+    _placement_refused(artifacts, name, _misplaced(fn, (_both_return(fn),)),
+                       _misplaced(fn, (_both_return(fn),), placed=True), _declaration(fn))
 
 
 @declarations
@@ -341,7 +361,8 @@ def test_placement_comes_before_a_non_void_fallthrough(artifacts: Artifacts, nam
     assert isinstance(placed, MIRNotCovered) and placed.reason == "non-void fallthrough", placed
     # The refusal names the body, which has no location of its own.
     assert (placed.node_kind, placed.loc) == ("THIRFunction", None)
-    _refused_at(_lower_changed(artifacts, _misplaced(fn, falls_through=True), "falls"), _declaration(fn))
+    _placement_refused(artifacts, name, _misplaced(fn, falls_through=True),
+                       _misplaced(fn, falls_through=True, placed=True), _declaration(fn))
 
 
 def region_fixture() -> MIRFunction:

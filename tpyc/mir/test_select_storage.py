@@ -9,7 +9,7 @@ from ..identity_map import IdentityMap
 from ..thir import nodes as th
 from ..thir.storage_facts import THIRBackingKind, collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
-from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
+from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from . import lower as lowering
 from .definitions import MIRDefinitions
 from .nodes import (
@@ -24,9 +24,11 @@ from .storage_adapter import certify_thir_storage
 from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins,
 )
-from .test_borrowed_argument_storage import Artifacts, _compile_workspace, _thir
+from .test_borrowed_argument_storage import Artifacts, _compile_workspace, _thir, active_artifacts
 from .test_storage_adapter import _request, _with_body
-from .testutil import Reference, borrowed_shape, execute, leaf_shape, optional_shape, tuple_shape, union_shape
+from .testutil import (
+    hand_record, Reference, borrowed_shape, execute, leaf_shape, optional_shape, tuple_shape, union_shape,
+)
 
 
 SOURCE = '''from tpy import int32, readonly, nocopy
@@ -118,6 +120,11 @@ class Runner:
         self.value = saved.value
         return self.value
 '''
+
+
+@pytest.fixture(autouse=True)
+def _active(request: pytest.FixtureRequest):
+    yield from active_artifacts(request, "artifacts")
 
 
 @pytest.fixture(scope="module")
@@ -401,7 +408,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
             capture.append(MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder.id))))
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
         else:
-            other = NominalType("Other", _module_qname="select.Other")
+            other = hand_record("Other", "select.Other")
             wrapper = MIRSlot(wrapper_id,
                               union_shape(UnionType((holder.type, other)), (borrowed, borrowed_shape(other))),
                               MIRSlotKind.LOCAL, residence=holder.residence)

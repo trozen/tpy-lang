@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -15,7 +16,7 @@ from .lower import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRead, MIRPoint, MIRTupleCopy
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import Reference, execute
+from .testutil import compiled_definitions, Reference, execute
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -74,16 +75,22 @@ Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction], MIRDefinit
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {fn.name: fn for fn in ctx.thir_functions.values()}
-    bodies = {name: lower(fn, definitions) for name, fn in functions.items()}
-    ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Runner")
-    bodies["Runner"] = lower_constructor(ctor, MIRBodyId("tuple_alias", "Runner"), definitions=definitions)
-    assert all(isinstance(body, MIRFunction) for body in bodies.values()), bodies
-    return functions, bodies, definitions, cpp
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {fn.name: fn for fn in ctx.thir_functions.values()}
+        bodies = {name: lower(fn, definitions) for name, fn in functions.items()}
+        ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Runner")
+        bodies["Runner"] = lower_constructor(ctor, MIRBodyId("tuple_alias", "Runner"), definitions=definitions)
+        assert all(isinstance(body, MIRFunction) for body in bodies.values()), bodies
+        return functions, bodies, definitions, cpp
 
 
 def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction | MIRNotCovered:

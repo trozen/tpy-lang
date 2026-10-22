@@ -51,3 +51,6 @@ span_pass: 6
 comp: 2
 nested: 8
 extend_it: 6
+refill: 2
+rack_items: 1
+rack_rec: 1

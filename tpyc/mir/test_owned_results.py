@@ -11,7 +11,7 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, OwnType
-from .call_contract import MIRReturnOrigin, MIRSummaryState, owned_record_result, result_problem
+from .call_contract import MIRReturnOrigin, MIRSummaryState, owned_aggregate_result, result_problem
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import analyze_dependencies
@@ -261,11 +261,12 @@ def program():
     with compiler.mir_analysis(((entry, ctx),)) as mir:
         verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
                                     compiler.thir_reject_by_node, mir.workspace)
-        yield _Program(compiler, modules, functions, mir.definitions, mir.workspace,
+        result = _Program(compiler, modules, functions, mir.definitions, mir.workspace,
                        {v.body.declaration.split("@")[0]: v for v in verdicts})
+    return result
 
 
-@pytest.fixture
+@pytest.fixture(autouse=True)
 def active(program):
     for module in program.modules:
         for record in module.ast.all_records():
@@ -306,11 +307,11 @@ def _initialization(fn: MIRFunction, slot: MIRSlotId) -> MIRAssign:
 
 def test_an_owned_record_result_is_storage_by_value(active) -> None:
     signature = active.functions["make"].resolved_callee.signature
-    point = owned_record_result(signature.return_type)
+    point = owned_aggregate_result(signature.return_type)
     assert isinstance(signature.return_type, OwnType) and point is not None and point.name == "Point"
-    assert result_problem(signature.return_type, None) is None
+    assert result_problem(signature.return_type, None, signature.return_representation) is None
     # A bare record result is a borrow, never an owned record result.
-    assert owned_record_result(active.functions["ident"].return_type) is None
+    assert owned_aggregate_result(active.functions["ident"].return_type) is None
     fn = _lowered(active, "make")
     assert fn.borrowed_result is None
     (ret,) = _returns(fn)
@@ -354,8 +355,6 @@ def test_each_branch_builds_its_own_result_slot(active) -> None:
 
 @pytest.mark.parametrize("name, reason", [
     ("reassigned", "reassigned local returned"),
-    # THIR states the copy of the borrowed result; a copy's source must be a name.
-    ("from_borrow", "reference needs local name"),
     ("from_param", "owned record return needs fixed owned local"),
     # The caller destroys the result: its definition must be hook-free.
     ("make_hooked", "custom record special member"),
@@ -367,12 +366,28 @@ def test_each_branch_builds_its_own_result_slot(active) -> None:
     # A `__copy__` body returning `Own[R]`: its record has a custom special member.
     ("Copied.__copy__", "custom record special member"),
     # A native factory has no body to say its result is fresh storage.
-    ("use_native", "unsupported local type or form"),
+    ("use_native", "stub declares no contract"),
     ("temp_native", "reference needs local name"),
 ])
 def test_refused_shapes(active, name: str, reason: str) -> None:
     verdict = active.verdicts[name]
     assert not isinstance(verdict.function, MIRFunction) and verdict.reason == reason, verdict.reason
+
+
+def test_a_copy_of_a_borrowed_call_result_is_built_into_the_result(active) -> None:
+    # `return ident(p)`: THIR states the copy of the borrowed result, which
+    # is read in place through the call's holder and copied into the result
+    # slot, as a copy of a parameter is.
+    verdict = active.verdicts["from_borrow"]
+    fn = verdict.function
+    assert isinstance(fn, MIRFunction), verdict.reason
+    call = next(stmt for b in fn.blocks for stmt in b.statements
+                if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
+    copy, = (stmt for b in fn.blocks for stmt in b.statements
+             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCopy))
+    assert copy.value.source.root == call.target.root
+    assert _returns(fn)[0].value == copy.target.root
+    assert verdict.conflicts == ()
 
 
 def _relowered(active, fn: th.THIRFunction) -> MIRFunction | MIRNotCovered:
@@ -385,7 +400,9 @@ def test_a_readonly_local_is_not_returned_as_the_result(active) -> None:
     fn = active.functions["make_fixed"]
     assert isinstance(_relowered(active, fn), MIRFunction)
     decl = fn.body[0]
-    readonly = replace(decl, is_const=True, owned_storage=replace(decl.owned_storage, readonly=True))
+    # The const verdict is the binding's; the node spells it too.
+    readonly = replace(decl, is_const=True, binding=replace(decl.binding, const=True),
+                       owned_storage=replace(decl.owned_storage, readonly=True))
     result = _relowered(active, replace(fn, body=(readonly, *fn.body[1:])))
     assert isinstance(result, MIRNotCovered) and result.reason == "readonly local returned", result
 
@@ -411,7 +428,7 @@ def test_the_validator_returns_only_mutable_movable_record_storage(active) -> No
     backing = fn.slots[ret.value.index]
     built = _lowered(active, "make")
     (result,) = _returns(built)
-    with pytest.raises(MIRValidationError, match="owned record return needs movable owned storage"):
+    with pytest.raises(MIRValidationError, match="readonly owned storage"):
         validate_function(_rebuilt(built, reslot(built.slots[result.value.index], readonly=True)))
     layout = next(r for r in fn.records if r.type == backing.type)
     pinned = replace(fn, records=tuple(replace(r, movable=False) if r is layout else r for r in fn.records))
@@ -681,7 +698,11 @@ def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:
     fn = _lowered(active, "collect")
     append = next(s for b in fn.blocks for s in b.statements if isinstance(s, MIRCallStmt))
     temporary = fn.slots[append.call.arguments[1].index]
-    assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {temporary.id}
+    # `ps`'s own storage, which only its holder borrows, is private too.
+    ps = next(s.id for s in fn.slots if s.name == "ps")
+    storage, = {s.value.source.root for b in fn.blocks for s in b.statements
+                if isinstance(s, MIRAssign) and s.target == MIRPlace(ps) and isinstance(s.value, MIRBorrow)}
+    assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {temporary.id, storage}
     # A holder borrowing the temporary, read after the append moved from it.
     holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(temporary.type), MIRSlotKind.TEMPORARY,
                      residence=temporary.residence)
@@ -703,7 +724,7 @@ def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:
         blocks.append(replace(block, statements=tuple(statements)))
     held = replace(fn, slots=(*fn.slots, holder, value), blocks=tuple(blocks))
     validate_function(held)
-    assert _private_records(held, analyze_dependencies(held, analyze_liveness(held))) == frozenset()
+    assert _private_records(held, analyze_dependencies(held, analyze_liveness(held))) == {storage}
     result = summarize_function(active.functions["collect"], held, active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
 

@@ -121,10 +121,16 @@ Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 
 
 @pytest.fixture(scope="module")
-def artifacts() -> Artifacts:
-    compiler, modules = _compile(SOURCE)
-    _, ctx = compiler.generate_code_and_thir(_entry(modules))
-    return {node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values())
+def compiled():
+    return _compile(SOURCE)
+
+
+@pytest.fixture(scope="module")
+def artifacts(compiled) -> Artifacts:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        return {node.name: fn for node, fn in ctx.thir_functions.items()}, tuple(ctx.thir_constructors.values())
 
 
 def lower(fn: th.THIRFunction) -> MIRFunction:
@@ -263,9 +269,9 @@ def admitted(a: Child | None) -> int32:
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "admitted")
     child = fn.params[0].optional_layout.payload
     assert child == th.THIRBorrowedRecord(child.type, True) and child.type.name == "Child"
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()),
-                                 inherited=tuple(ctx.thir_inherited_constructors.values()))
     with activate_compiler(compiler):
+        definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()),
+                                     inherited=tuple(ctx.thir_inherited_constructors.values()))
         result = lower_function(fn, MIRBodyId("optionals", fn.name), definitions=definitions)
     assert isinstance(result, MIRFunction), result
 

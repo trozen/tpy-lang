@@ -61,7 +61,7 @@ std::optional<P> find(int32_t x);
 void store_found(H& h);
 // def bump_payload(h: H) -> None:  # tpyc: mir(covered) mir_summary(known)
 void bump_payload(H& h);
-// def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /storage borrow fact/)
+// def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /borrow of an Optional field's payload/)
 int32_t payload_borrow(const H& h);
 // def payload_write(h: H) -> None:  # tpyc: mir(uncovered /optional field payload write/)
 void payload_write(H& h);

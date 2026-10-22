@@ -5,10 +5,10 @@ from textwrap import indent
 
 import pytest
 
+from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
 from .collect import dump_codegen_mir
-from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode,
@@ -17,7 +17,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_cyclic_record_lower import nodes
 from .test_retention import analyze
-from .testutil import ContainerValue, Reference, execute
+from .testutil import compiled_definitions, ContainerValue, Reference, execute
 
 
 CELL_SOURCE = '''from tpy import int32, copy
@@ -53,7 +53,7 @@ def replace_copy(source: Cell, n: int32) -> int32:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     body = next(fn for node, fn in ctx.thir_functions.items() if node.name == "replace_copy")
     fn = lower_function(body, MIRBodyId("reused", "copy"),
-                        definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                        definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRCopy))
     assert write.storage_write.mode is (MIRRecordWriteMode.OWN_SITE if retained else MIRRecordWriteMode.IN_PLACE)
@@ -200,22 +200,28 @@ Hoists = tuple[dict[str, th.THIRNode], dict[str, MIRFunction], str]
 
 
 @pytest.fixture(scope="module")
-def hoists() -> Hoists:
-    compiler, modules = _compile(HOIST_SOURCE)
-    entry = _entry(modules)
-    _, ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
-    functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
-    bodies = {name: lower_function(fn, MIRBodyId("reused", name), definitions=definitions)
-              for name, fn in functions.items()}
-    for ctor in ctx.thir_constructors.values():
-        if ctor.record_name == "Runner":
-            functions["Runner"] = ctor
-            bodies["Runner"] = lower_constructor(ctor, MIRBodyId("reused", "Runner"), definitions=definitions)
-    for name, fn in bodies.items():
-        assert isinstance(fn, MIRFunction), (name, fn)
-    dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
-    return functions, bodies, dumped
+def compiled():
+    return _compile(HOIST_SOURCE)
+
+
+@pytest.fixture(scope="module")
+def hoists(compiled) -> Hoists:
+    compiler, modules = compiled
+    with activate_compiler(compiler):
+        entry = _entry(modules)
+        _, ctx = compiler.generate_code_and_thir(entry)
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
+        bodies = {name: lower_function(fn, MIRBodyId("reused", name), definitions=definitions)
+                  for name, fn in functions.items()}
+        for ctor in ctx.thir_constructors.values():
+            if ctor.record_name == "Runner":
+                functions["Runner"] = ctor
+                bodies["Runner"] = lower_constructor(ctor, MIRBodyId("reused", "Runner"), definitions=definitions)
+        for name, fn in bodies.items():
+            assert isinstance(fn, MIRFunction), (name, fn)
+        dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
+        return functions, bodies, dumped
 
 
 @pytest.mark.parametrize("name", ["branch", "readonly_copy", "qualified", "repeated", "ranged", "native",
@@ -318,7 +324,7 @@ LOOP:
     compiler, modules = _compile(source)
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
-    definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+    definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
     if position == "constructor":
         function = next(c for c in ctx.thir_constructors.values() if c.record_name == "Runner")
         fn = lower_constructor(function, MIRBodyId("reused", "move_ctor"), definitions=definitions)
@@ -368,7 +374,7 @@ def escaped(source: Cell, n: int32) -> int32:
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     body = next(fn for node, fn in ctx.thir_functions.items() if node.name == "escaped")
     fn = lower_function(body, MIRBodyId("reused", "escaped"),
-                        definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                        definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
     write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove if move else MIRCopy))
     assert write.storage_write.mode is MIRRecordWriteMode.OWN_SITE
@@ -409,5 +415,5 @@ def example(flag: bool) -> int32:
     assert assignment.value.result_type != assignment.target.result_type
     assert ("target = std::move(original);" if move else "target = Derived(original);") in cpp
     result = lower_function(function, MIRBodyId("reused", "derived"),
-                            definitions=MIRDefinitions(tuple(ctx.thir_constructors.values())))
+                            definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRNotCovered), result

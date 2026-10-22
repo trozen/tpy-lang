@@ -12,11 +12,11 @@ from .nodes import (
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError
 from .validate import validate_function
-from .testutil import bind_parameters, borrowed_shape, leaf_shape, reslot
+from .testutil import hand_record, bind_parameters, borrowed_shape, leaf_shape, reslot
 
 B = MIRBodyId("test", "storage")
-CELL = NominalType("Cell", _module_qname="test.Cell")
-OTHER = NominalType("Cell", _module_qname="other.Cell")
+CELL = hand_record("Cell", "test.Cell", value=INT32)
+OTHER = hand_record("Cell", "other.Cell")
 P, Q, X, Y, FLAG = (MIRSlotId(B, i) for i in range(5))
 A, C, D, E = (MIRBlockId(B, i) for i in range(4))
 MEMBER = MIRField(MIRFieldId(CELL, "value"), INT32)
@@ -53,7 +53,7 @@ def invalid(fn: MIRFunction, message: str) -> None:
     (MIRAssign(MIRPlace(Q, (MEMBER,)), MIRConstant(7)), "field needs record storage"),
     (MIRAssign(MIRPlace(Q, (MIRDeref(),)), MIRConstant(7)), "constant type"),
     (MIRAssign(MIRPlace(Q, (MIRDeref(), MIRField(MIRFieldId(OTHER, "value"), INT32))),
-               MIRConstant(7)), "field owner mismatch"),
+               MIRConstant(7)), "field missing from declared fields"),
     (MIRAssign(field(Q), MIRConstant(True)), "constant type"),
     (MIRAssign(MIRPlace(Q), MIRConstant(7)), "constant type"),
     (MIRAssign(MIRPlace(Y), MIRRead(field(P))), "read type mismatch"),
@@ -84,8 +84,9 @@ def test_access_can_be_reduced_but_never_increased() -> None:
 def test_field_identity_has_one_type() -> None:
     bad = MIRPlace(P, (MIRDeref(), replace(MEMBER, type=BOOL)))
     stmt = MIRAssign(MIRPlace(Y), MIRRead(bad))
+    # A field identity at another type is no field the record declares.
     invalid(replace(GOOD, blocks=(MIRBlock(A, (BIND, STORE, stmt, READ), MIRReturn(X)),)),
-            "inconsistent field type")
+            "field missing from declared fields")
 
 
 def test_nominal_reference_types_must_match() -> None:
