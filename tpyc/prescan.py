@@ -174,17 +174,6 @@ def fold_int_constant(op: str, a: int | None, b: int | None) -> int | None:
     return value if value.bit_length() <= _FOLD_MAX_BITS else None
 
 
-def _nested_nonlocal_names(stmts: list[TpyStmt], out: set[str]) -> None:
-    """Every name a nested def at any depth below `stmts` declares
-    `nonlocal`: its stores are not this body's statements."""
-    for s in stmts:
-        if isinstance(s, TpyNestedDef):
-            collect_nonlocals(s.func.body, out)
-            continue
-        for body in s.sub_bodies():
-            _nested_nonlocal_names(body, out)
-
-
 def collect_nonlocals(stmts: list[TpyStmt], out: set[str]) -> None:
     """Every name a `nonlocal` statement in `stmts` (nested defs included)
     names."""
@@ -208,8 +197,8 @@ class LiteralLocals:
     literals each is assigned (`literals`)."""
     pending: frozenset[str] = frozenset()
     literals: dict[str, tuple[int, ...]] = field(default_factory=dict)
-    # Names also bound through a form a pending local may not be (a loop
-    # target, an unpack, a `nonlocal` store...): none of them gets a cell.
+    # Names also bound through a form a pending local may not be (a `with`
+    # target, a nested `def`, a `nonlocal` store...): none of them gets a cell.
     excluded: frozenset[str] = frozenset()
     # The other locals bound more than once, by any form whose value sema
     # records into the local's cell (a plain or augmented assignment, a loop
@@ -304,10 +293,11 @@ def scan_pending_num_locals(
     is no store that widens -- unless the literal is an integer no 32-bit
     default holds, which makes the value an `int`. A local every store of
     which is a literal the default holds is plainly the default type and is
-    left out, as is a name also bound through a form whose stores are not
-    plain assignments (a loop target, an unpack, a walrus, `with` /
-    `except` / `match` bindings, a nested `def`, `nonlocal` / `global`),
-    and a parameter."""
+    left out, as is a name also bound through a form whose value no cell
+    records (a `with` / `except` target, a nested `def`, `nonlocal` /
+    `global`), and a parameter. A loop head, an unpack target, a `match`
+    capture and a walrus are stores like an assignment, the walrus of its
+    own value and the others of a value that is no literal."""
     literal: dict[str, list[int]] = {}
     widening: set[str] = set()
     excluded: set[str] = set(params)
@@ -318,9 +308,7 @@ def scan_pending_num_locals(
     # (`global`, `nonlocal`, a parameter): no join decides its type.
     opaque: set[str] = set(params)
 
-    def store(name: str, value: TpyExpr | None, stmt: TpyStmt,
-              aug: bool = False) -> None:
-        excluded.update(ne.target for ne in walrus_bindings(stmt))
+    def store(name: str, value: TpyExpr | None, aug: bool = False) -> None:
         lit = literal_constant(value)
         if lit is None:
             widening.add(name)
@@ -343,30 +331,31 @@ def scan_pending_num_locals(
                                  iter_capture_bindings(case.pattern)})
         elif not isinstance(s, TpyDelVar):
             bindings.update(written_names(s, walrus=False))
-        bindings.update(ne.target for ne in walrus_bindings(s))
+        for ne in walrus_bindings(s):
+            bindings[ne.target] += 1
+            store(ne.target, ne.value)
         if isinstance(s, TpyVarDecl):
             if s.type is not None:
                 excluded.add(s.name)
                 opaque.add(s.name)
             elif s.init is not None:
-                store(s.name, s.init, s)
+                store(s.name, s.init)
         elif (isinstance(s, TpyAssign) and isinstance(s.target, TpyName)):
-            store(s.target.name, s.value, s)
+            store(s.target.name, s.value)
         elif (isinstance(s, TpyAugAssign) and isinstance(s.target, TpyName)):
-            store(s.target.name, s.value, s, aug=True)
+            store(s.target.name, s.value, aug=True)
         elif isinstance(s, (TpyGlobal, TpyNonlocal)):
             excluded.update(s.names)
             opaque.update(s.names)
         elif isinstance(s, (TpyForEach, TpyTupleUnpack, TpyMatch)):
-            excluded.update(written_names(s))
+            # A loop head, an unpack target or a capture records its value
+            # into the local's cell as a store does; none is a literal one.
+            widening.update(written_names(s, walrus=False))
         elif not isinstance(s, TpyDelVar):
-            excluded.update(written_names(s))
+            excluded.update(written_names(s, walrus=False))
             opaque.update(written_names(s, walrus=False))
 
     walk_body_stmts(stmts, lambda e: None, on_stmt)
-    nested_before = set(excluded)
-    _nested_nonlocal_names(stmts, excluded)
-    opaque.update(excluded - nested_before)
     # Seeded: some statement of the first binding stores a literal.
     seeded = {name for name, sites in first.items()
               if any((sv := _store_value(s)) is not None

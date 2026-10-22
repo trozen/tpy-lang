@@ -6,4 +6,4 @@ class Empty[T]:
 
 
 # Should fail - cannot infer T with no arguments
-empty = Empty()  # tpyc: error(/Cannot infer type arguments/)
+empty = Empty()  # tpyc: error(/Cannot infer type argument T/)

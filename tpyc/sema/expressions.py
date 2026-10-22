@@ -4721,9 +4721,9 @@ class ExpressionAnalyzer:
         """Analyze walrus operator: (x := expr)."""
         name = expr.target
         # A store into a local whose bindings decide its type takes a value
-        # whose type is decided with it.
-        cell = (None if self.ctx.in_comprehension
-                else self.pend.cell_for(name))
+        # whose type is decided with it -- inside a comprehension too, whose
+        # walrus binds the enclosing body's local (PEP 572).
+        cell = self.pend.cell_for(name)
         # So does one the value binds first (`(x := (x := v) + 1)`).
         inner = self.pend.value_binds_first(
             name, unbound=(not self.ctx.in_comprehension
@@ -4740,8 +4740,6 @@ class ExpressionAnalyzer:
         resolved = value_type
         if isinstance(resolved, IntLiteralType):
             resolved = self.ctx.default_int_type
-            if self.ctx.func.current_scope.lookup(name) is None:
-                self.ctx.func.literal_seeded.add(name)
         elif isinstance(resolved, FloatLiteralType):
             resolved = FLOAT
         elif isinstance(resolved, PendingViewType):
@@ -4772,6 +4770,8 @@ class ExpressionAnalyzer:
 
         existing = (self.ctx.global_scope.lookup(name) if is_global
                     else target_scope.lookup(name))
+        if existing is not None and self.compat.write_binds_local(name):
+            existing = None
         # The target outlives the comprehension, while what an element
         # reaches may die with the source or with one outer iteration;
         # which source a reference comes from is not tracked here.
@@ -4839,10 +4839,8 @@ class ExpressionAnalyzer:
                            if expr in self.ctx.func.bind_kinds else existing)
         else:
             # New binding
-            declared = resolved
-            if not self.ctx.in_comprehension and not self.ctx.is_top_level:
-                resolved, declared = self.pend.derived_binding(
-                    name, resolved, expr, loop_head=False)
+            resolved, declared = self.pend.derived_binding(
+                name, resolved, expr, loop_head=False)
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.bind_variable(name, declared)
@@ -5499,6 +5497,15 @@ class ExpressionAnalyzer:
         return self._analyze_elem_comprehension(expr, expected_elem, kind="set")
 
     def _analyze_generator_expression(self, expr: TpyGeneratorExpression) -> TpyType:
+        if expr.walrus_used_outside:
+            # The body is a generator frame of its own, so its walrus binds
+            # there, where PEP 572 binds the enclosing scope's variable
+            # (BUGS.md#genexpr-walrus-target-stays-in-frame).
+            walrus = expr.walrus_used_outside[0]
+            raise self.ctx.error(
+                f"assignment expression in a generator expression cannot "
+                f"yet bind '{walrus.target}' in the enclosing scope; use a "
+                f"for loop or a list comprehension", walrus)
         self._check_comp_clause_names(expr)
         elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
         # Stamped where the comprehensions stamp it: lowering reads the fact
@@ -5649,8 +5656,8 @@ class ExpressionAnalyzer:
                           [TpyName(n, loc=loc) for n in bound_names], loc=loc)
         loop = clause_loop(gen, src, inner, loc)
         self.ctx.genexpr_counter += 1
-        if not isinstance(outer, TpyFunction):
-            outer = None    # module level: the init sentinel
+        if not self.ctx.in_function_body():
+            outer = None    # module level
         owner = outer.name if outer is not None else "module"
         # A loop var binds a copy of a value element, so a `readonly` on one
         # (a view of a readonly dict) says nothing about it -- the for

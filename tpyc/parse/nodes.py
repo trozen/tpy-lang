@@ -878,6 +878,10 @@ class TpyGeneratorExpression(TpyExpr):
     # The call the expression IS, as borrow provenance asks it: the frame
     # function over the source (or range bounds) and the captures.
     frame_creation: 'TpyCall | None' = None
+    # Set by the parser: the walruses this is the innermost generator
+    # expression of whose target the enclosing scope (PEP 572's binding
+    # scope) uses outside it. The frame cannot bind that scope's variable.
+    walrus_used_outside: 'tuple[TpyNamedExpr, ...]' = ()
 
     def children(self) -> list[TpyExpr]:
         return comp_clause_children(self.generators) + [self.element_expr]
@@ -1423,6 +1427,22 @@ class TpyForEach(TpyStmt):
 
     def sub_bodies(self) -> list[list[TpyStmt]]:
         return [self.body, self.orelse]
+
+    def head_unpack(self) -> 'TpyTupleUnpack | None':
+        """The head's unpack of the per-iteration holder into its targets
+        (`for a, b in xs`), else None."""
+        if self.is_tuple_unpack and self.body and isinstance(
+                self.body[0], TpyTupleUnpack):
+            return self.body[0]
+        return None
+
+    def head_targets(self) -> list[str]:
+        """The names the head binds: the head unpack's targets, else the
+        loop variable."""
+        head = self.head_unpack()
+        if head is None:
+            return [self.var]
+        return [t for t in head.targets if t is not None]
 
 
 @dataclass

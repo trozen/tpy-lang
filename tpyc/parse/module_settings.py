@@ -282,7 +282,7 @@ def _check_other_uses(
     text = source if source.isascii() else unicodedata.normalize("NFKC", source)
     if text.count(SETTINGS_NAME) <= (1 if header is not None else 0):
         return
-    table = _scope_table(tree, source, header, _annotations_unevaluated(tree))
+    table = _scope_table(tree, source, header)
     binds, reads = _module_uses(table)
     if binds or (reads and not reads_allowed):
         raise ParseError(_REBIND_MSG if binds else _READ_MSG,
@@ -290,14 +290,20 @@ def _check_other_uses(
 
 
 def _scope_table(
-    tree: ast.Module, source: str, header: ast.Assign | None, annotations_unevaluated: bool,
+    tree: ast.Module, source: str, header: ast.Assign | None,
 ) -> symtable.SymbolTable:
     """The symtable of the module without its header, re-spelled so the
     verdict does not depend on the Python version (see _ScopeRespelling)."""
     scoped = ast.parse(source)
     if header is not None:
         scoped.body[tree.body.index(header)] = ast.Pass()
-    scoped = _ScopeRespelling(annotations_unevaluated).visit(scoped)
+    return respelled_symtable(scoped, source)
+
+
+def respelled_symtable(scoped: ast.Module, source: str) -> symtable.SymbolTable:
+    """The symtable of `scoped`, which this re-spells in place (see
+    _ScopeRespelling); a SyntaxError is reported at its line in `source`."""
+    scoped = _ScopeRespelling(_annotations_unevaluated(scoped)).visit(scoped)
     try:
         return symtable.symtable(ast.unparse(scoped), "<module>", "exec")
     except SyntaxError as exc:

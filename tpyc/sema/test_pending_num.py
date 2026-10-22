@@ -24,6 +24,7 @@ from ..typesys import (BIGINT, ELEM, FLOAT, FLOAT32, INT8, INT16, INT32, INT64, 
                        make_list)
 from .compatibility import TypeCompatibility
 from .context import SemanticContext
+from .statements import global_rebind_message
 from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, ContainerCells,
                           PendingNumCell, PendingNums,
                           Entry, _splice_out, lub_int, pending_join,
@@ -60,13 +61,17 @@ def _pending(body: str, params: str = "") -> frozenset[str]:
         pytest.param("f = 0.1\nf = 1.5", set(), id="float-literal-only"),
         pytest.param("x = g()\nx = h()", set(), id="typed-only"),
         pytest.param("x: int = 0\nx = g()", set(), id="annotated"),
-        pytest.param("x = 0\nfor x in xs:\n    pass\nx = g()", set(),
-                     id="loop-target"),
-        pytest.param("x = 0\nx, y = g()", set(), id="unpack"),
-        pytest.param("x = 0\nprint(x := g())", set(), id="walrus"),
+        pytest.param("x = 0\nfor x in xs:\n    pass", {"x"}, id="loop-target"),
+        pytest.param("x = 0\nx, y = g()", {"x"}, id="unpack"),
+        pytest.param("x = 0\nprint(x := g())", {"x"}, id="walrus"),
+        pytest.param("x = 0\nprint(x := 5)", set(), id="walrus-literal"),
+        pytest.param("x = 0\nys = [(x := g()) for i in xs]", {"x"},
+                     id="comprehension-walrus"),
+        pytest.param("x = 0\nmatch g():\n    case x:\n        pass", {"x"},
+                     id="match-capture"),
         pytest.param("x = 0\nwith g() as x:\n    pass", set(), id="with-target"),
         pytest.param("x = 0\ndef inner() -> None:\n    nonlocal x\n    x = g()\n"
-                     "x = g()", set(), id="nonlocal-in-nested-def"),
+                     "x = g()", {"x"}, id="nonlocal-in-nested-def"),
         pytest.param("global x\nx = 0\nx = g()", set(), id="global"),
         pytest.param("x = 0\nif c:\n    x = g()", {"x"}, id="branch-store"),
         pytest.param("if c:\n    x = g()\nelse:\n    x = 0", {"x"},
@@ -537,13 +542,6 @@ def test_loop_var_argument_checked_after_settle() -> None:
             r"elements of type 'int64'; rename the loop variable or match "
             r"the types$",
             id="typed-target-then-wider"),
-        pytest.param(
-            "def main() -> None:\n    x = 7\n    ys = [1, 2]\n"
-            "    for x in ys:\n        print(x)\n    ys.append(a64())\n",
-            r"^for-loop rebinds existing variable 'x' of type 'int32' with "
-            r"elements of type 'int64'; rename the loop variable or match "
-            r"the types$",
-            id="pending-target-then-wider"),
         # A limitation: a loop whose variable is read after it decides.
         pytest.param(
             "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
@@ -737,6 +735,13 @@ def rows32(v: list[list[int32]]) -> None: pass
             r"^'xs' holds int32 elements since line 8 \(a call to "
             r"'sort\(\)'\), and this value is int64",
             id="sort-decides"),
+        # A scalar read as a member of a tuple literal is pinned there.
+        pytest.param(
+            "def main() -> None:\n    n = 0\n    t = (n, 1)\n    print(t)\n"
+            "    n = a64()\n",
+            r"^'n' was used as int32 at line 8 \(a tuple element\), and this "
+            r"value is int64; annotate its first binding: n: int64 = 0$",
+            id="tuple-member-pins-scalar"),
     ],
 )
 def test_leaf_refusal_wording(body: str, message: str) -> None:
@@ -1267,3 +1272,10 @@ def test_wider_lookup_key_converts(body: str, warns: bool) -> None:
                 if d.level is DiagnosticLevel.WARNING]
     assert any(w.startswith("lookup key narrows from int64 to int32")
                for w in warnings) == warns, warnings
+
+
+def test_global_rebind_message_names_the_python_container() -> None:
+    # A list literal not settled yet is named as the container it is.
+    pending = PendingListType(IntLiteralType(1), 1, 3)
+    assert global_rebind_message("lg", pending) == (
+        "Cannot reassign global variable 'lg' of non-value type 'list[int]'")

@@ -711,10 +711,10 @@ void __tpy_init() {
     if ((m == 1)) {
         std::cout << "module one" << "\n" << ::tpy::check_signals;
     } else if ((m == 2)) {
-        std::string mr = "two";
+        std::string_view mr = "two";
         std::cout << (::tpy::str_concat("module ", mr)) << "\n" << ::tpy::check_signals;
     } else {
-        std::string mr = "other";
+        std::string_view mr = "other";
         std::cout << (::tpy::str_concat("module ", mr)) << "\n" << ::tpy::check_signals;
     }
 }

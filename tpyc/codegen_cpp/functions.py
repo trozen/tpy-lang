@@ -1981,7 +1981,9 @@ class FunctionGenerator:
                 if typ and not typ.is_value_type() and not typ.needs_wrapper()
             }
         self.ctx.slots.reset(global_scope=True)
-        scan = self.ctx.analyzer.top_level_scan_result
+        analyzer = self.ctx.analyzer
+        carrier = analyzer.ctx.module_init_function
+        scan = analyzer.function_scan_results.get(carrier)
         if scan:
             self.ctx.reassigned_vars = scan.reassigned - self.ctx.global_declared_vars
             self.ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - self.ctx.global_declared_vars
@@ -1990,8 +1992,9 @@ class FunctionGenerator:
             self.ctx.reassigned_vars = set()
             self.ctx.rvalue_reassigned_vars = set()
             self.ctx.lvalue_reassigned_vars = set()
-        self.ctx.hoisted_vars = self.ctx.analyzer.top_level_hoisted_vars.copy()
-        self.ctx.move_through_vars = self.ctx.analyzer.top_level_move_through_vars.copy()
+        self.ctx.hoisted_vars = set(analyzer.function_hoisted_vars.get(carrier, ()))
+        self.ctx.move_through_vars = set(
+            analyzer.function_move_through_vars.get(carrier, ()))
         self.ctx.current_ns = self.ctx.analyzer.global_ns
         self.ctx.indent_level = 1
 

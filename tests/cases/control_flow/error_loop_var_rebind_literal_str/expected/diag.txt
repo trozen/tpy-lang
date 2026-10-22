@@ -1,0 +1,1 @@
+main.py:9: error: for-loop rebinds existing variable 's' of type 'Literal["ok"]' with elements of type 'str'; rename the loop variable or match the types

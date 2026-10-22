@@ -588,7 +588,7 @@ void __tpy_init() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& line = *__beg_0;
+            std::string_view line = *__beg_0;
             std::cout << "module:" << " " << ::tpy::str_strip(line) << "\n" << ::tpy::check_signals;
         }
         goto __with_exit_18;

@@ -1247,7 +1247,7 @@ def note_nonowning_bind(ctx: 'SemanticContext', name: str,
     func = ctx.func.current_function
     entry = ctx.func.nonowning_sites.setdefault(name, NonOwningNotes())
     entry.notes.append((at, elems))
-    if (not ctx.is_top_level and isinstance(func, TpyFunction)
+    if (ctx.in_function_body()
             and not any(p == name for p, _ in func.params)):
         entry.local = fold_nonowning(entry.local, at, elems)
 
@@ -1366,8 +1366,9 @@ class PendingCopy(OwningRead):
     hedge: tuple | None = None
 
 
-class _ModuleInitSentinel:
-    """Sentinel for module-level init context (not a real function, but not None either).
+class _ClassConstantSentinel:
+    """Sentinel for a class-constant initializer's context (not a function,
+    but not None either).
 
     Truthy so that `if ctx.func.current_function:` passes, but fails
     `isinstance(ctx.func.current_function, TpyFunction)` checks.
@@ -1376,23 +1377,23 @@ class _ModuleInitSentinel:
     def __bool__(self) -> bool:
         return True
     def __repr__(self) -> str:
-        return "<MODULE_INIT>"
+        return "<CLASS_CONSTANT>"
 
 
-MODULE_INIT_CONTEXT = _ModuleInitSentinel()
+CLASS_CONSTANT_CONTEXT = _ClassConstantSentinel()
 
 
-def is_body_like_scope(current_function: 'TpyFunction | _ModuleInitSentinel | None') -> bool:
+def is_body_like_scope(current_function: 'TpyFunction | _ClassConstantSentinel | None') -> bool:
     """True when the current context supports pending-type resolution.
 
-    Real function bodies and ``MODULE_INIT_CONTEXT`` both have a
-    ``FunctionTrackingState`` with ``pending_resolutions`` plumbed through
-    and ``deduction.resolve_all()`` runs at the end of both (see
-    ``analyzer._analyze_top_level``). Class bodies, registration-time
-    contexts, and no-context states do not, so empty literals and similar
-    late-typed constructs must reject there.
+    Function bodies -- the module's `__tpy_init` carrier among them -- have
+    a ``FunctionTrackingState`` with ``pending_resolutions`` plumbed through
+    and ``deduction.resolve_all()`` runs at the end of each. Registration-
+    time contexts and no-context states do not, so empty literals and
+    similar late-typed constructs must reject there.
     """
-    return isinstance(current_function, TpyFunction) or current_function is MODULE_INIT_CONTEXT
+    return (isinstance(current_function, TpyFunction)
+            or current_function is CLASS_CONSTANT_CONTEXT)
 
 
 @dataclass
@@ -1590,7 +1591,7 @@ class FunctionTrackingState:
 
     # --- Analysis state (per-function) ---
     current_scope: Scope | None = None
-    current_function: TpyFunction | _ModuleInitSentinel | None = None
+    current_function: TpyFunction | _ClassConstantSentinel | None = None
     # The function or method whose emitted body the code under analysis lands
     # in: itself, or the one a nested def or a genexpr is written in.
     body_root: TpyFunction | None = None
@@ -1967,14 +1968,17 @@ class FunctionTrackingState:
     outer_scope_locals: set[str] = field(default_factory=set)
     current_nonlocal_names: set[str] = field(default_factory=set)
     # The names the enclosing function DECLARES (an annotation or a
-    # parameter): a `nonlocal` write into one converts into its type instead
-    # of joining inferred bindings.
+    # parameter): a `nonlocal` store that narrows into one converts with no
+    # warning, as a store in the enclosing function does.
     enclosing_declared_names: set[str] = field(default_factory=set)
     # The annotated ones among them, with the annotation's line: a
     # `nonlocal` store into one is refused when it narrows, as a store in
     # the enclosing function is.
     enclosing_annotation_lines: dict[str, int | None] = field(
         default_factory=dict)
+    # The line of each enclosing local's first binding, where an annotation
+    # that declares it goes.
+    enclosing_binding_lines: dict[str, int] = field(default_factory=dict)
     # Union of nonlocal targets across all nested defs analyzed so far in
     # this function: any later call may invoke such a closure and rebind
     # these names, so check-elision facts for them die at every call site.
@@ -2083,10 +2087,6 @@ class FunctionTrackingState:
 
     # --- Variable declaration tracking (per-function) ---
     var_decl_by_name: dict[str, 'TpyVarDecl'] = field(default_factory=dict)
-    # Module variables first bound to an int literal: their type is the
-    # default int only for want of a better one, so a wider store still
-    # joins it; one first bound to a typed integer keeps that type.
-    literal_seeded: set[str] = field(default_factory=set)
 
     # --- Integer value range tracking ---
     value_ranges: dict[str, 'ValueRange'] = field(default_factory=dict)
@@ -2701,8 +2701,12 @@ class SemanticContext:
     # `install_binding` no-ops.
     module_attributes: 'dict | None' = None
     top_level_decls: dict[str, int] = field(default_factory=dict)
+    # The module's statements as the body of its generated `__tpy_init`:
+    # sema analyzes them on the function-body path, and the lowering and
+    # MIR read this same function.
+    module_init_function: 'TpyFunction | None' = None
     # The module-level statement currently being analyzed at depth 0, set by
-    # `_analyze_top_level`'s driver loop. A binding made by THIS statement is
+    # the module's body walk (`_prescan_and_analyze_body`). A binding made by THIS statement is
     # the module's namespace-scope storage; one made inside an `if`/`for`/
     # `try` body at module level is a local of the generated `__tpy_init`,
     # with no slot to export, import or borrow from.
@@ -2791,7 +2795,6 @@ class SemanticContext:
     # `warn_cond_operand_eager_arg` reports. Zeroed for the duration of a
     # body that carries its own region (`ScopeTracker.deferred_body`).
     cond_operand_depth: int = 0
-    is_top_level: bool = False
     # REPL mode: allow @error_return calls at top level (unwrap with panic)
     allow_top_level_error_unwrap: bool = False
     # Re-entry guard for `is_type_nocopy` on a `RecursiveAliasInstanceType`:
@@ -4169,7 +4172,8 @@ class SemanticContext:
         if ns is None or root is None:
             assigned = name in self.func.definitely_assigned
             return assigned, assigned
-        while ns is not None and ns is not self.global_ns:
+        # The module's own body has the global namespace as its root.
+        while ns is not None and (ns is not self.global_ns or ns is root):
             if ns.has_local(name):
                 if ns is not root:
                     return True, True
@@ -4268,6 +4272,56 @@ class SemanticContext:
         return (isinstance(f, TpyFunction) and f.is_method
                 and not f.is_staticmethod)
 
+    def is_module_init(self, func: object) -> bool:
+        """Whether `func` is the module's `__tpy_init` carrier."""
+        return func is not None and func is self.module_init_function
+
+    @property
+    def is_top_level(self) -> bool:
+        """Whether the body being analyzed is the module's own statements
+        (its `__tpy_init` carrier) -- not a function, a nested def or
+        generator expression inside them, nor a class constant."""
+        return self.is_module_init(self.func.current_function)
+
+    def enclosing_function(self) -> 'TpyFunction | None':
+        """The function whose body the nested def being analyzed sits in."""
+        scope = self.func.current_scope
+        while scope is not None and not scope.function_root:
+            scope = scope.parent
+        outer = scope.outer_function if scope is not None else None
+        return outer if isinstance(outer, TpyFunction) else None
+
+    def in_function_body(self) -> bool:
+        """Whether the code being analyzed is a `def`'s body, not the
+        module's own statements nor a class-constant initializer."""
+        func = self.func.current_function
+        return isinstance(func, TpyFunction) and not self.is_module_init(func)
+
+    def binds_module_slot(self, name: str,
+                          body: 'TpyFunction | None' = None) -> bool:
+        """Whether `name` bound in `body` (default: the body being analyzed)
+        is a module global's namespace-scope storage, not a `__tpy_init`
+        local: `body` is the carrier and its binding has `module_slot`."""
+        if body is None or body is self.func.current_function:
+            return self.is_top_level and self.reads_module_slot(name)
+        return self.is_module_init(body) and self.is_module_slot_name(name)
+
+    def is_module_slot_name(self, name: str) -> bool:
+        """Whether the module's own statements bind `name` in a module slot.
+        One Python scope: when they do, every binding of the name there
+        (a block's included) is that slot's."""
+        binding = (self.global_ns.lookup_local(name)
+                   if self.global_ns is not None else None)
+        return binding is not None and binding.module_slot
+
+    def reads_module_slot(self, name: str) -> bool:
+        """Whether `name` read here resolves to a module global's
+        namespace-scope storage (`NameBinding.module_slot`), not to a local
+        of the body being analyzed."""
+        ns = self.func.current_ns or self.global_ns
+        binding = ns.lookup(name) if ns is not None else None
+        return binding is not None and binding.module_slot
+
     def is_module_slot_stmt(self, stmt: 'TpyStmt') -> bool:
         """True when `stmt` is the module-level statement whose bindings get
         namespace-scope storage: a direct element of the module's statement
@@ -4288,6 +4342,12 @@ class SemanticContext:
         if var_type is not None:
             var_type = global_tuple_binding_type(var_type)
         self.global_scope.define(name, var_type)
+        if self.global_ns is not None:
+            binding = self.global_ns.lookup_local(name)
+            if binding is None or binding.kind != BindingKind.VARIABLE:
+                self.global_ns.bind_variable(name, var_type)
+                binding = self.global_ns.lookup_local(name)
+            binding.module_slot = True
         prior = self.top_level_decls.get(name)
         self.top_level_decls[name] = line if prior is None else min(prior, line)
         return var_type
@@ -4692,6 +4752,10 @@ class SemanticContext:
         so a use site and the resolution can never disagree on what the facts
         say.
 
+        A module slot owns: bodies analyzed later read it, and may rebind
+        or mutate what it was bound from, after the module's statements
+        have run.
+
         A generator/async body hoists every local into the resumable frame,
         which outlives the case-block temps and suspensions the sync
         view-safety judgment assumes the binding shares scope with -- so a
@@ -4710,6 +4774,8 @@ class SemanticContext:
             or info.reassigned_from_owned
             or info.source_mutated
             or (in_resumable and info.frame_unsafe_source)
+            or (info.module_body
+                and self.is_module_slot_name(info.variable_name))
         )
 
     def view_storage_verdict(self, typ: 'TpyType | None') -> 'TpyType | None':

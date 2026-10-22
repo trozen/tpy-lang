@@ -54,6 +54,11 @@ class NameBinding:
     # cover has no slot at all today (see BUGS.md) -- so this flag preserves
     # the pre-existing frame layout rather than asserting one.
     frame_exempt: bool = False
+    # VARIABLE only: a module global with namespace-scope storage
+    # (`SemanticContext.define_module_global`), which other bodies read
+    # later -- a name the module's statements bind only inside a block is
+    # a local of `__tpy_init` instead. Kept across a rebind of the name.
+    module_slot: bool = False
 
 
 class Namespace:
@@ -74,6 +79,10 @@ class Namespace:
 
     def bind(self, binding: NameBinding) -> None:
         """Add a binding to this namespace."""
+        prior = self._bindings.get(binding.name)
+        if (prior is not None and prior.module_slot
+                and binding.kind == BindingKind.VARIABLE):
+            binding.module_slot = True
         self._bindings[binding.name] = binding
 
     def bind_variable(self, name: str, typ: TpyType) -> None:

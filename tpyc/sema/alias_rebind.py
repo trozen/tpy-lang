@@ -1328,11 +1328,11 @@ class _Replay:
         self.bound_here: set[str] = set()
         # The frame-holding locals, and the ones a generator or async body
         # still holds at each loop's back edge (`loop_frames`).
-        self.frames: frozenset[str] = (
-            frozenset() if ctx.is_top_level
-            else frozenset(ctx.func.frame_local_roots))
+        self.frames: frozenset[str] = frozenset(
+            n for n in ctx.func.frame_local_roots
+            if not ctx.binds_module_slot(n))
         fn = ctx.func.current_function
-        self.frame_body = (not ctx.is_top_level and isinstance(fn, TpyFunction)
+        self.frame_body = (isinstance(fn, TpyFunction)
                            and (fn.is_generator or fn.is_async))
         self.loop_holds: IdentityMap = IdentityMap()
         self.bound_any: set[str] = set()
@@ -2024,7 +2024,7 @@ class _Replay:
             if st is None:
                 continue  # unreachable
             is_tuple = _reference_elements(var_type) is not None
-            tuple_site = (is_tuple and not self.ctx.is_top_level
+            tuple_site = (is_tuple and not self.ctx.binds_module_slot(name)
                           and getattr(stmt, "rebind_storage", None)
                           is RebindStorage.OWN)
             origins = st.origins.get(name)

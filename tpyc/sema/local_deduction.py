@@ -7,7 +7,7 @@ for function-local variables.
 
 from __future__ import annotations
 
-from dataclasses import replace as dc_replace
+from dataclasses import dataclass, replace as dc_replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable
 
@@ -66,7 +66,7 @@ from ..typesys import (
 )
 from .call_lends import TempLend, ViewLend
 from .context import (
-    PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT, ProbeSlot,
+    PENDING_CONTAINER_TYPES, ProbeSlot,
     contains_pending_leaf,
 )
 from ..namespace import BindingKind
@@ -92,7 +92,6 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, is_bytes_type, is_bytes_view_type,
     is_string_type, is_bytearray_type,
     is_borrowing_view_type,
-    int_traits_of,
 )
 
 if TYPE_CHECKING:
@@ -256,6 +255,16 @@ def _numeric_leaf_differs(a: TpyType, b: TpyType) -> bool:
         a, b, lambda x, y: x != y if _is_number(x) and _is_number(y) else None)
 
 
+@dataclass(frozen=True)
+class ForeignSlot:
+    """A store from another body -- through `global` or `nonlocal` -- into
+    a variable whose type its owning scope inferred from its own bindings:
+    that scope, as a diagnostic names it, and the line of the variable's
+    first binding there, where an annotation would declare it."""
+    owner: str
+    line: int | None
+
+
 class _Form(Enum):
     """The container a list literal resolves to
     (`LocalTypeDeduction._container_form`)."""
@@ -409,30 +418,26 @@ class LocalTypeDeduction:
 
     def join_rebind(self, name: str, existing_type: TpyType,
                     var_type: TpyType, scope: Scope, line: int) -> None:
-        """A rebind whose value widened `name` to `var_type` (a module
-        variable first bound to a literal joins its bindings, until module
-        code is analyzed as one body: TODO "Module scope is the body of
-        __tpy_init"): the variable takes the new type wherever it is
-        recorded, so a store of any spelling widens it alike."""
+        """A rebind that resolved `name` to `var_type` (a None-seeded local
+        becoming Optional): the variable takes the new type wherever it is
+        recorded, so a store of any spelling retypes it alike."""
         if var_type == existing_type:
             return
         self.retype_declaration(name, var_type)
         scope.define(name, var_type)
         # The binding's owner, not the current level: inside a comprehension
-        # or a block the current namespace is a temporary child that a
-        # module variable's later reads never see.
+        # or a block the current namespace is a temporary child that the
+        # variable's later reads never see.
         ns = self.ctx.func.current_ns
         if ns is not None and not ns.update_variable_type_recursive(
                 name, var_type):
             ns.bind_variable(name, var_type)
-        if (self.ctx.is_top_level
-                and self.ctx.global_scope.lookup(name) is not None):
+        if self.ctx.binds_module_slot(name):
             self.ctx.define_module_global(name, var_type, line)
 
     def retype_declaration(self, name: str, var_type: TpyType) -> None:
-        """A rebind widened `name` (a module variable joins its bindings):
-        its first declaration, and every type recorded for it, take the
-        new type."""
+        """A rebind retyped `name`: its first declaration, and every type
+        recorded for it, take the new type."""
         resolved = unwrap_readonly(var_type)
         orig_decl = self.ctx.func.var_decl_by_name.get(name)
         if orig_decl:
@@ -477,6 +482,15 @@ class LocalTypeDeduction:
             if self.is_annotated_slot(name):
                 self.refuse_wider_rebind(name, declared, init_type,
                                          init_expr, aug_op, site)
+            elif self.foreign_inferred_slot(name) is not None:
+                # A store from another body into an inferred slot: an
+                # integer narrows into it, checked and warned
+                # (`warn_foreign_store_narrowing`); anything wider is refused.
+                self.refuse_int_float_rebind(name, existing_type, init_type,
+                                             init_expr, aug_op, site)
+                if not is_integer_type(declared):
+                    self.refuse_wider_rebind(name, declared, init_type,
+                                             init_expr, aug_op, site)
             return declared
 
         # A float literal converts into a float local as an int literal
@@ -502,56 +516,15 @@ class LocalTypeDeduction:
         if isinstance(existing_type, OptionalType):
             return existing_type
 
-        # One type per local: a function local keeps the type of its first
-        # binding and a narrower value converts into it. (A local whose
-        # first binding is a bare literal is a pending local and never gets
-        # here.)
-        module_level = self.module_level()
-        if module_level and self._literal_outgrows(existing_type, init_type):
-            if self.keeps_first_type(name):
-                self.refuse_wider_rebind(
-                    name, existing_type,
-                    self.ctx.default_int_for_literal(init_type,
-                                                     rebinding=True),
-                    init_expr, aug_op, site)
-            return self.ctx.default_int_for_literal(
-                init_type, warn_node=init_expr, rebinding=True)
+        # One type per local: a local keeps the type of its first binding
+        # and a narrower value converts into it. (A local whose first
+        # binding is a bare literal is a pending local and never gets here.)
         widened = widen_numeric_types(existing_type, init_type)
         if widened is not None and widened != existing_type:
-            if module_level and not (is_integer_type(existing_type)
-                                     and self.keeps_first_type(name)):
-                return widened
             self.refuse_wider_rebind(name, existing_type, init_type,
                                      init_expr, aug_op, site)
 
         return existing_type
-
-    def module_level(self) -> bool:
-        """Whether the code being analyzed is module code, whose variables
-        are the module's globals."""
-        return (self.ctx.func.current_function is None
-                or self.ctx.is_top_level)
-
-    def keeps_first_type(self, name: str) -> bool:
-        """Whether an integer store into `name` at module level keeps the
-        type of its first binding, refusing a wider value, as a function
-        local does. A module variable first bound to a literal still joins
-        its bindings (and an annotated one converts what it is given),
-        until module code is analyzed as one body (TODO "Module scope is
-        the body of __tpy_init")."""
-        return (self.module_level()
-                and name not in self.ctx.func.literal_seeded
-                and name not in self.ctx.func.authoritative_types)
-
-    def _literal_outgrows(self, existing_type: TpyType,
-                          init_type: TpyType) -> bool:
-        """An int literal the default-int variable it is bound to cannot
-        hold."""
-        if (not isinstance(init_type, IntLiteralType) or init_type.value is None
-                or existing_type != self.ctx.default_int_type):
-            return False
-        tr = int_traits_of(existing_type)
-        return tr is not None and not tr.min_value <= init_type.value <= tr.max_value
 
     def refuse_wider_rebind(
         self, name: str, existing_type: TpyType, value_type: TpyType,
@@ -627,6 +600,39 @@ class LocalTypeDeduction:
             return func.enclosing_annotation_lines.get(name)
         return self.ctx.top_level_decls.get(name)
 
+    def foreign_inferred_slot(self, name: str) -> ForeignSlot | None:
+        """The owning scope of the slot a store into `name` reaches through
+        `global` / `nonlocal` when no declaration types that slot -- its
+        type is the owner's join of its own bindings, which this store
+        cannot widen -- else None."""
+        func = self.ctx.func
+        if name in func.current_nonlocal_names:
+            if name in func.enclosing_declared_names:
+                return None
+            outer = self.ctx.enclosing_function()
+            owner = (f"the enclosing function '{outer.name}'"
+                     if outer is not None else "the enclosing function")
+            return ForeignSlot(owner, func.enclosing_binding_lines.get(name))
+        if name in func.global_declarations:
+            if name in self.ctx.preregistered_globals:
+                return None
+            return ForeignSlot("its module",
+                               self.ctx.top_level_decls.get(name))
+        return None
+
+    def slot_is_declared(self, name: str) -> bool:
+        """Whether a declaration gives the slot a store into `name` reaches
+        its type -- an annotation or a parameter, this function's or the
+        owning scope's through `nonlocal` / `global` -- rather than the
+        slot's bindings."""
+        func = self.ctx.func
+        if name in func.authoritative_types or name in func.current_param_names:
+            return True
+        if (name in func.current_nonlocal_names
+                or name in func.global_declarations):
+            return self.foreign_inferred_slot(name) is None
+        return False
+
     def declared_slot_type(self, name: str,
                            existing_type: TpyType) -> TpyType | None:
         """The type a declaration gives `name`'s one slot -- its annotation,
@@ -638,13 +644,11 @@ class LocalTypeDeduction:
         func = self.ctx.func
         if name in func.authoritative_types:
             return func.authoritative_types[name]
-        if name in func.current_nonlocal_names:
-            return (existing_type if name in func.enclosing_declared_names
-                    else None)
-        if name in func.global_declarations:
-            return (existing_type if name in self.ctx.preregistered_globals
-                    else None)
-        if name in func.current_param_names:
+        if (name in func.current_nonlocal_names
+                or name in func.global_declarations
+                or name in func.current_param_names):
+            # The owning scope settled the type of a `nonlocal` / `global`
+            # name before this body runs: a store from here converts into it.
             return existing_type
         return None
 
@@ -657,7 +661,7 @@ class LocalTypeDeduction:
         meet float ones. The local has one C++ type, so widening it to float
         would print an int binding as `3.0` (and an int storage would
         truncate a float), where CPython keeps each value's own type."""
-        if self.declared_slot_type(name, existing_type) is not None:
+        if self.slot_is_declared(name):
             return
         mix = self.int_float_mix(existing_type, init_type)
         if mix is None:
@@ -1369,8 +1373,7 @@ class LocalTypeDeduction:
                     if source_elem is not None:
                         elem_type = source_elem
                     elif (info.variable_name == "__all__"
-                          and self.ctx.func.current_function
-                              is MODULE_INIT_CONTEXT):
+                          and self.ctx.is_top_level):
                         # `__all__ = []` is the Python idiom for "export
                         # nothing". The literal is compile-time metadata
                         # consumed by star-import expansion; the bare
@@ -1980,14 +1983,17 @@ class LocalTypeDeduction:
             if var_id is not None and var_id in self.ctx.view_vars(family):
                 self.ctx.view_vars(family)[var_id].passed_to_promote_param = True
 
-    def mark_view_reassigned_from_owned(self, var_name: str, family: ViewTypeFamily) -> None:
-        """Mark a pending view-type variable as reassigned from an owned source."""
-        var_id = self.ctx.view_var_map(family).get(var_name)
+    def mark_view_reassigned_from_owned(self, var_name: str, family: ViewTypeFamily,
+                                        var_id: int | None = None) -> None:
+        """Mark a pending view-type variable as reassigned from an owned
+        source: its latest binding, or binding `var_id` of it."""
+        if var_id is None:
+            var_id = self.ctx.view_var_map(family).get(var_name)
         if var_id is not None and var_id in self.ctx.view_vars(family):
             self.ctx.view_vars(family)[var_id].reassigned_from_owned = True
 
-    def _add_view_source(self, family: ViewTypeFamily, var_id: int,
-                         source_var_id: int) -> None:
+    def add_view_source(self, family: ViewTypeFamily, var_id: int,
+                        source_var_id: int) -> None:
         """Record that view local `var_id` shares storage with `source_var_id`,
         so the alias pass promotes it when the source resolves owned."""
         info = self.ctx.view_vars(family).get(var_id)
@@ -2291,7 +2297,7 @@ class LocalTypeDeduction:
             # later rebound to another must keep BOTH -- if either source resolves
             # to owned (or is mutated), the alias must promote too. Replacing here
             # would drop the earlier source and leave a dangling view.
-            self._add_view_source(family, var_id, source_type.var_id)
+            self.add_view_source(family, var_id, source_type.var_id)
 
     def _resolve_pending_view_types(self, family: ViewTypeFamily) -> None:
         """Resolve all pending view types for the given family.
@@ -2496,7 +2502,10 @@ class LocalTypeDeduction:
         if ns is not None:
             for binding in ns.all_bindings().values():
                 if binding.kind is BindingKind.VARIABLE and binding.type is not None:
-                    binding.type = self._deep_resolve_pending(binding.type)
+                    # A module slot is read by bodies analyzed later, which
+                    # need its settled storage type.
+                    binding.type = self._deep_resolve_pending(
+                        binding.type, settle_views=binding.module_slot)
         # A pending number is bound in the function's own scope too (its
         # parents are the enclosing function's, settled on their own).
         scope = self.ctx.func.current_scope
@@ -2506,13 +2515,20 @@ class LocalTypeDeduction:
                     scope.bindings[name] = self.pend.finalize(typ)
 
         if self.ctx.is_top_level:
-            # An inferred top-level binding is recorded in `global_scope`
-            # while its container type is still pending, and the module's
-            # export table renders straight off that type.
+            # A module slot is recorded in `global_scope` while its type is
+            # still pending, and the module's export table renders straight
+            # off that type: each takes its settled type through the one
+            # writer of the module's global tables.
             gbindings = self.ctx.global_scope.bindings
-            for name, gtype in gbindings.items():
-                if gtype is not None:
-                    gbindings[name] = self._deep_resolve_pending(gtype)
+            for name, gtype in list(gbindings.items()):
+                if gtype is None:
+                    continue
+                settled = self._deep_resolve_pending(gtype, settle_views=True)
+                if self.ctx.binds_module_slot(name):
+                    self.ctx.define_module_global(
+                        name, settled, self.ctx.top_level_decls[name])
+                else:
+                    gbindings[name] = settled
 
         for node in self.ctx.func.pending_composite_exprs:
             current = self.ctx.expr_types.get(node)

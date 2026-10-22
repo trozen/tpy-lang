@@ -76,12 +76,12 @@ from typing import TYPE_CHECKING, AbstractSet, Callable, Iterable
 from ..parse import (
     TpyAugAssign, TpyAwait, TpyBinOp, TpyCall, TpyFieldAccess,
     TpyForEach, TpyMethodCall, TpyName, TpyStmt, TpySubscript,
-    TpyTupleUnpack, TpyUnaryOp, TpyVarargPack, TpyVarDecl, TpyStarUnpack,
+    TpyUnaryOp, TpyVarargPack, TpyVarDecl, TpyStarUnpack,
     TpyWith,
 )
 from ..parse.nodes import (
     TpyArrayLiteral, TpyBytesLiteral, TpyDictComprehension, TpyDictLiteral,
-    TpyFunction, TpyGeneratorExpression, TpyListComprehension, TpyListRepeat,
+    TpyGeneratorExpression, TpyListComprehension, TpyListRepeat,
     TpySetComprehension, TpySetLiteral, TpySlice, TpyStrLiteral,
     TpyTupleLiteral, is_property_getter_read, walk_body_stmts,
 )
@@ -828,7 +828,8 @@ def loop_source(ctx: 'SemanticContext', iterable: 'TpyExpr',
         return LoopSource(unknown=True)
     if not isinstance(e, (TpyCall, TpyMethodCall)):
         if view:
-            local = (isinstance(e, TpyName) and not ctx.is_top_level
+            local = (isinstance(e, TpyName)
+                     and not ctx.binds_module_slot(e.name)
                      and e.name not in ctx.func.current_param_names)
             return LoopSource((elem_type,), view=e.name if local else None)
         if isinstance(e, (TpyName, TpySubscript, TpyFieldAccess)):
@@ -910,8 +911,9 @@ def note_source_writes(ctx: 'SemanticContext',
         return
     # None: liveness never reached the loop, so the variable may be live.
     if isinstance(node, TpyForEach) and node.var_live_after is not False:
-        if ctx.is_top_level or not isinstance(ctx.func.current_function,
-                                              TpyFunction):
+        # A module slot stays live after the module body, into functions
+        # whose write summaries do not exist yet: no whole-body proof.
+        if any(ctx.binds_module_slot(n) for n in node.head_targets()):
             stamp_copy_verdicts(ctx, node, elem_type, outliving_only=True)
         else:
             ctx.pending_source_writes.append(PendingSourceWrite(
@@ -1008,8 +1010,8 @@ def stamp_copy_verdicts(ctx: 'SemanticContext',
     (`hoist_loop_var`, the loop's `if_branch_decls`), a head target bound
     to such a name or to an outer one. A verdict once set stays set."""
     if isinstance(node, TpyForEach) and node.is_tuple_unpack:
-        head = node.body[0] if node.body else None
-        if not isinstance(head, TpyTupleUnpack):
+        head = node.head_unpack()
+        if head is None:
             return
         holder = elem_type is not None and holds_only_values(elem_type)
         copies = list(head.target_copies) or [False] * len(head.targets)
@@ -1054,7 +1056,7 @@ class WriteProof(InertWalk):
 
     def __init__(self, ctx: 'SemanticContext') -> None:
         fn = ctx.func.current_function
-        super().__init__(ctx, fn if isinstance(fn, TpyFunction) else None)
+        super().__init__(ctx, fn if ctx.in_function_body() else None)
 
     def write_shows(self, e: 'TpyExpr') -> object:
         """Whether a call's write into the object `e` defeats the proof."""

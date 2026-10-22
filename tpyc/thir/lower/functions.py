@@ -1994,18 +1994,11 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
     (Final globals excluded -- they live at namespace scope). Everything below
     that seeding reuses the ordinary statement/expression arms.
     """
-    carrier = TpyFunction(name="__tpy_init", params=[],
-                          return_type=VoidType(),
-                          body=list(module.top_level_stmts))
+    carrier = analyzer.ctx.module_init_function
     lc = _LowerCtx(carrier, analyzer, render_type,
                    render_type_stored=render_type_stored,
                    render_resolve=render_resolve,
                    render_concept=render_concept,
-                   scan_override=analyzer.top_level_scan_result,
-                   hoisted_override=analyzer.top_level_hoisted_vars,
-                   move_through_override=analyzer.top_level_move_through_vars,
-                   escape_hoisted_override=(
-                       analyzer.top_level_escape_hoisted_vars),
                    top_level_scope=True)
     lc.signature = definition_signature((), VoidType(), (), analyzer)
     lc.prescan.native_globals = module_native_globals(module)

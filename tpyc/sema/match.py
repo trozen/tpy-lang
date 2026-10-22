@@ -235,13 +235,9 @@ class MatchAnalyzer:
         # Resumable frame (H1): when a generator/async `match` carries a
         # suspension, its arm bodies become separate states, so pattern
         # bindings must be frame fields (see the per-arm binding loop).
-        # `current_function` may be a module-init sentinel for a top-level
-        # `match` (no `is_generator`/`is_async`); a suspension cannot appear
-        # at module scope anyway, so guard with getattr.
         cur_fn = self.ctx.func.current_function
         needs_frame_field = (
-            (getattr(cur_fn, "is_generator", False)
-             or getattr(cur_fn, "is_async", False))
+            (cur_fn.is_generator or cur_fn.is_async)
             and stmt_has_any_suspension(stmt)
         )
 
@@ -356,7 +352,8 @@ class MatchAnalyzer:
                     raise self.ctx.error(
                         f"match capture '{name}' binds the full Optional "
                         f"subject ('{ty}') but '{name}' already has type "
-                        f"'{existing}'; add a 'case None:' arm before it or "
+                        f"'{self.stmts.pend.known_type(existing)}'; add a "
+                        f"'case None:' arm before it or "
                         f"use a fresh name", case.pattern)
                 if existing is not None:
                     stamp_capture_rebind(self.ctx, stmt, name, existing)
@@ -370,17 +367,15 @@ class MatchAnalyzer:
                 if subject_readonly and not self._capture_binds_by_value(ty):
                     ty = make_readonly(ty)
                     pattern_bindings[name] = ty
-                declared = ty
-                if not self.ctx.is_top_level:
-                    # A capture is one more binding of a local whose
-                    # bindings join (`case x: x += 1`), or its first.
-                    pend = self.stmts.pend
-                    if existing is None:
-                        ty, declared = pend.derived_binding(name, ty, stmt,
-                                                            loop_head=False)
-                    else:
-                        ty = pend.rebind(name, ty, None, stmt) or ty
-                        declared = ty
+                # A capture is one more binding of a local whose bindings
+                # join (`case x: x += 1`), or its first.
+                pend = self.stmts.pend
+                if existing is None:
+                    ty, declared = pend.derived_binding(name, ty, stmt,
+                                                        loop_head=False)
+                else:
+                    ty = pend.rebind(name, ty, None, stmt) or ty
+                    declared = ty
                 self.ctx.func.current_scope.define(name, ty)
                 scope = self.ctx.func.current_scope
                 pushed.append((name, scope, register_binder(

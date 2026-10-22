@@ -11,9 +11,14 @@ extern int32_t G;
 extern std::string_view label;
 extern std::vector<int32_t>* items;
 extern std::optional<int32_t> maybe;
+extern std::string rebound;
+extern std::vector<std::string>* churn;
 inline constexpr std::string_view __name__ = "helper";
 // BIG: Final[int32] = 99
 inline constexpr int32_t BIG = 99;
+
+// def mk_labels() -> Own[list[str]]:
+std::vector<std::string> mk_labels();
 
 void __tpy_init();
 } // namespace tpyapp::helper

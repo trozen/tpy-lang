@@ -6849,6 +6849,10 @@ class ViewVarInfo:
     # the view-keeping spellings. Unset for a temporary source.
     stored_source: Optional[str] = None
     owns_stored_source: bool = False
+    # Registered by the module's own statements (the `__tpy_init` carrier),
+    # where the name may be a module slot: whether it is, is the binding
+    # record's fact (`NameBinding.module_slot`), read at the decision.
+    module_body: bool = False
     resolved_type: Optional[TpyType] = None
 
 

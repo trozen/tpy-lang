@@ -1,1 +1,1 @@
-main.py:4: error: Conflicting explicit annotations for 'x': 'int32' at line 3 vs 'int' at line 4
+main.py:8: error: 'x' is already bound at line 7; an annotation goes on the first binding

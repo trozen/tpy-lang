@@ -1,0 +1,1 @@
+main.py:6: error: assignment expression in a generator expression cannot yet bind 'last' in the enclosing scope; use a for loop or a list comprehension

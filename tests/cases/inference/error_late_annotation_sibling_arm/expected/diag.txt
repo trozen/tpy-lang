@@ -1,0 +1,1 @@
+main.py:7: error: Assignment to 'x' is incompatible with later annotation 'int' at line 9: Type mismatch: expected int, got str

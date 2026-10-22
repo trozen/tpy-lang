@@ -12,8 +12,7 @@ Status: In Progress
 | Chained call anchoring (`x=None; x=get_factory().create()`) | Done |
 | `bool`/`Bool` annotation normalization | Done |
 | Bare `x=None` without anchor emits inference error | Done |
-| Late annotation in local scopes: refused, an annotation goes on the first binding (`docs/LANGUAGE_FEATURES.md`, "Numeric widening across reassignments") | Done |
-| Late annotation retro-validation for top-level globals | Done |
+| Late annotation refused, in a function and at module level alike: an annotation goes on the first binding (`docs/LANGUAGE_FEATURES.md`, "Numeric widening across reassignments") | Done |
 | Numeric lattice helper scaffolding for future numeric families | Done |
 | Augmented assignment policy (`x=0; x += int32(5)` does not anchor; emits warning) | Done |
 | Numeric widening across reassignments (int32->int64, FixedInt->BigInt, unsigned->wider signed); an int binding meeting a float one is refused | Done |
@@ -45,24 +44,24 @@ Does not change:
 3. `None` participates as nullable lift: if non-None base type is `T`, result is `T | None`.
 4. If no unique merge result exists, emit an error requiring annotation.
 
-## Annotation Precedence and Retro-Validation
+## Annotation Precedence
 
-An explicit annotation on a later write becomes authoritative but must be
-compatible with earlier writes.
+An annotation goes on a variable's first binding; one on a later write is
+refused (*'x' is already bound at line 1; an annotation goes on the first
+binding*), whether it agrees with the earlier writes or not. Module globals
+follow the same first-binding rule as function locals: the module's
+statements are one body (`__tpy_init`).
 
 - Valid:
-  - `x = 0; x: int32 = 666`
+  - `x: int32 = 0; x = 666`
 - Invalid:
+  - `x = 0; x: int32 = 666`
   - `x = None; x: Point = Point()`
   - `x = 0.0; x: int = 100`
 
-Behavior for invalid cases:
-- Report error at the earlier incompatible assignment(s), since those writes are
-  inconsistent with the final annotated type.
-
 Rationale:
-- Keeps explicit type declarations strict.
-- Avoids silently "forgetting" earlier values.
+- One declaration per variable, where it is first bound, so no earlier use
+  was compiled at a type a later annotation changes.
 
 ## Merge Lattice (Inference-Time)
 
@@ -224,10 +223,8 @@ must live in sema and track types/locations.
 ### 2. Analyze Writes and Resolve Authoritative Type
 
 For each variable history:
-1. In a function, an annotation goes on the first binding and a later one is
-   refused. At module level, if any annotated write exists, pick the
-   authoritative type from the annotation (latest in source order), and
-   retro-validate earlier writes against it.
+1. An annotation goes on the first binding and a later one is refused, for
+   function locals and module globals alike.
 2. Otherwise, fold writes with inference merge lattice.
 3. On failure, emit deterministic diagnostic with conflicting types and source
    locations.
@@ -259,8 +256,9 @@ Add snippet tests covering:
 2. literal anchoring to `int32`
 3. int/float rebind refused
 4. bool/numeric mismatch
-5. late annotation: refused in a function; valid and invalid retro-check
-   cases at module level
+5. late annotation: refused in a function and at module level alike; an
+   annotation on one of several sibling-arm first bindings is checked
+   against the arms before it
 6. optional annotation compatibility
 
 No snapshot updates for existing tests should be done without explicit review if
@@ -277,7 +275,9 @@ behavior changes.
 
 1. Multiple explicit annotations for the same variable must not conflict.
    - If annotated writes disagree, emit an error.
-2. Retro-validation reports first failure only (for now).
+2. Retro-validation -- reached only by an annotation on one of several
+   sibling-arm first bindings (`if c: x = "s"` / `else: x: int = 1`), which
+   checks the arms before it -- reports first failure only (for now).
    - Multi-diagnostic reporting can be added later.
 3. Future unsigned anchoring rules are strict:
    - Negative literals never anchor to unsigned integer types.

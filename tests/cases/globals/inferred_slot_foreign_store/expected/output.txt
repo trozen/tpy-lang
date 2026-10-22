@@ -1,0 +1,10 @@
+global_aug: 1
+global_plain: 2
+global_walrus: 3
+global_count: 1
+global_mixed_sign: 7
+global_bigint: 9
+global_annotated: 1
+global_explicit: 1
+nonlocal_walrus: 3
+nonlocal: 3 1

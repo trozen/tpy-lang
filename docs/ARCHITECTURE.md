@@ -1270,10 +1270,12 @@ not see bound. It records those first-binding groups once, per function
 (`ScanResult.first_bindings`, kept as
 `FunctionTrackingState.first_bindings`), and `scan_pending_num_locals`
 returns two sets. The PENDING locals are those whose first binding stores
-a bare literal, that some store widens, and that no other form binds (a
-loop target, an unpack, a walrus, a `match` capture, `with` / `except`, a
-nested `def`, `nonlocal` / `global`, an annotation): the literal family's
-default widened by what is stored. The REBOUND locals
+a bare literal, that some binding widens, and that no form outside the
+join binds (`with` / `except`, a nested `def`, `nonlocal` / `global`, an
+annotation): the literal family's default widened by what is stored. A
+loop target, an unpack target and a `match` capture count as a widening
+store, a walrus as a store of its own value, so `x = 0; for x in ys:`
+joins as `x = int8(0); for x in ys:` does. The REBOUND locals
 (`LiteralLocals.rebound`, kept as `FunctionTrackingState.pending_num_rebound`)
 are the others bound more than once by a form whose value sema records
 into a cell -- a plain or augmented assignment, a `for` head, an unpack
@@ -1288,9 +1290,7 @@ than having to fit it (`PendingNums.joins_bindings`,
 throughout, and a later literal store takes the local's type when it
 fits it. Any other local first bound to a value has that value's type, a
 numeric type constructor call included, and a wider store is refused
-(`LocalTypeDeduction.refuse_wider_rebind`); a local first bound to a
-literal that another form also binds gets no cell and is the default
-int. Every binding of a cell's local records through
+(`LocalTypeDeduction.refuse_wider_rebind`). Every binding of a cell's local records through
 `PendingNums.record_binding`: a plain store (`_store_pending_num`), and
 each other form rebinding an existing local (`PendingNums.rebind`). A new
 local a binding declares without a store of its own -- a `for` head, an
@@ -1301,19 +1301,24 @@ one over a pending value that does not join at the value's type, which a
 nested scope can still read once the value's cells are dropped. A store
 whose own value binds the name first (`x = (x := v) + 1`) is one more
 binding of the cell the value created (`PendingNums.value_binds_first`).
-Two bindings do not join yet: a `with` target
-(BUGS.md#with-target-declared-type-ignores-join) and a walrus inside a
-comprehension (BUGS.md#comprehension-walrus-binding-join).
+A walrus inside a comprehension records into the enclosing body's cell.
+One binding does not join yet: a `with` target
+(BUGS.md#with-target-declared-type-ignores-join).
 
-A module variable has no cell, since module code is not analyzed as one
-body (TODO.md "Module scope is the body of __tpy_init"). One first bound
-to a typed integer keeps that type and refuses a wider store, an
-out-of-range literal included (`LocalTypeDeduction.keeps_first_type`,
-`refuse_wider_rebind`); an annotated one converts what it is given; one
-first bound to a literal (`FunctionTrackingState.literal_seeded`) is the
-default int only for want of a better type, so a wider store retypes it
-in place (`join_rebind`), which the uses analyzed before that store do
-not follow (BUGS.md#module-literal-global-retype-after-use).
+The module's statements are the body of one function, the `__tpy_init`
+carrier (`SemanticContext.module_init_function`), analyzed on the
+function-body path (`_prescan_and_analyze_body`), so a module variable
+takes the cells and the join a function local does; the lowering and MIR
+read that same function. Settlement records each module slot's settled
+type through the one writer of the module's tables
+(`SemanticContext.define_module_global`), before any other body reads it.
+What stays module-specific is the slot: a name the statements bind at
+depth 0 is a module global (`NameBinding.module_slot`), which other bodies
+read later, so it is never moved at its last use (`_is_owned_var`). A store
+from another body (`global` / `nonlocal`) converts into the owner's
+settled type (`LocalTypeDeduction.declared_slot_type`) and, where the
+owner inferred it, warns when it narrows
+(`TypeCompatibility.warn_foreign_store_narrowing`).
 
 The first-binding table also refuses an annotation that stands past a
 local's first binding (`StatementAnalyzer._refuse_later_annotation`). Each

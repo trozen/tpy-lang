@@ -18,12 +18,14 @@ from ..typesys import (
     bare_name, unwrap_own,
 )
 from ..module_names import public_module_name
+from ..identity_map import IdentityMap
 from ..type_def_registry import (
     is_bool_type, is_str_type, type_def_of,
     find_factory_by_simple_name, find_factory_in_module,
 )
 from .type_resolver import TypeResolver
 from .desugar_suspensions import desugar_suspension_positions
+from .genexpr_walrus import genexpr_walrus_used_outside
 
 if TYPE_CHECKING:
     from ..typesys import TpyType
@@ -489,6 +491,11 @@ class Parser:
         # `<mod>_inl.hpp`, which the compiler must know before sema runs.
         self._plain_genexpr_count: int = 0
         self._has_header_genexpr: bool = False
+        # `genexpr_walrus_used_outside` of the tree being parsed, and the
+        # walrus nodes built so far by their ast node.
+        self._genexpr_walrus_outside: IdentityMap[ast.GeneratorExp, list[ast.NamedExpr]] = \
+            IdentityMap()
+        self._walrus_nodes: IdentityMap[ast.NamedExpr, TpyNamedExpr] = IdentityMap()
         self._for_unpack_counter: int = 0
         self._multi_assign_counter: int = 0
         self._tuple_unpack_counter: int = 0
@@ -691,6 +698,8 @@ class Parser:
         self._reverse_module_aliases = {}
         if tree is None:
             tree = ast.parse(source)
+        self._genexpr_walrus_outside = genexpr_walrus_used_outside(tree, source)
+        self._walrus_nodes = IdentityMap()
         # `clean=False` keeps the raw literal -- what CPython puts in `__doc__`.
         self._module_docstring = ast.get_docstring(tree, clean=False)
         # Settings first so cpp_namespace is available while _parse_module
@@ -4429,7 +4438,11 @@ class Parser:
             element_expr = self._parse_expr(node.elt)
             if not self._type_param_scope:
                 self._plain_genexpr_count += 1
-            return TpyGeneratorExpression(element_expr, generators, loc=loc)
+            outside = tuple(
+                self._walrus_nodes[w]
+                for w in self._genexpr_walrus_outside.get(node, ()))
+            return TpyGeneratorExpression(element_expr, generators, loc=loc,
+                                          walrus_used_outside=outside)
 
         elif isinstance(node, ast.Set):
             elements = [self._parse_expr(e) for e in node.elts]
@@ -4481,7 +4494,9 @@ class Parser:
         elif isinstance(node, ast.NamedExpr):
             target = node.target.id
             value = self._parse_expr(node.value)
-            return TpyNamedExpr(target=target, value=value, loc=loc)
+            walrus = TpyNamedExpr(target=target, value=value, loc=loc)
+            self._walrus_nodes[node] = walrus
+            return walrus
 
         elif isinstance(node, ast.Lambda):
             if node.args.vararg or node.args.kwarg:
@@ -4865,6 +4880,7 @@ class FragmentParser(Parser):
         parser = cls()
         parser.source_lines = source.splitlines()
         tree = ast.parse(source)
+        parser._genexpr_walrus_outside = genexpr_walrus_used_outside(tree, source)
 
         if kind == "function":
             funcs = [n for n in tree.body if isinstance(n, ast.FunctionDef)]

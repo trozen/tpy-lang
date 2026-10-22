@@ -175,7 +175,7 @@ _LEAF_VALUE_NAMES = {
     'str', 'int', 'float', 'bool', 'bytes', 'None',
     'SourceLocation',   # a position, the one non-node record nodes carry
     'TpyType',          # deliberately not carried by identity; see the seeder
-    'TryTier', 'ValueRange', 'BindingProvenance', '_ModuleInitSentinel',
+    'TryTier', 'ValueRange', 'BindingProvenance', '_ClassConstantSentinel',
     'EphemeralKind',
     'LoopClauseEdges',  # sets of names only
     'LoanInfo',         # a borrow kind, a flag and an index key

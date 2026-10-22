@@ -143,11 +143,12 @@ from .alias_rebind import (binding_roots, decide_rebind_storage,
                            stamp_unpack_rebinds, tuple_source_elem_owned)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
-from .type_join import operand_spelling, python_type_name, wider_store_message
+from .type_join import (operand_spelling, python_type_name, user_type_name,
+                        wider_store_message)
 from .compatibility import TupleSink, inferred_field_slot, owned_tuple_slots
 from .context import (
     BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS,
-    MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, element_index_key,
+    CLASS_CONSTANT_CONTEXT, PENDING_CONTAINER_TYPES, element_index_key,
     element_loan_mutation_warning, storage_loan_mutation_warning,
     register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf,
 )
@@ -409,12 +410,13 @@ def _handle_pinned_view_rebind(ctx: SemanticContext, name: str, stmt: TpyStmt) -
 def global_rebind_message(name: str, t: TpyType) -> str:
     """The one message for rebinding a reference-bound global from a
     function body; a tuple of references is named as such, since the
-    language calls a tuple a value type."""
+    language calls a tuple a value type. A container whose literal has not
+    settled yet is named as the Python container it is."""
     bare = unwrap_readonly(t)
     what = ("a tuple of reference types" if isinstance(bare, TupleType)
             else "non-value type")
     return (f"Cannot reassign global variable '{name}' of {what} "
-            f"'{collapse_tuple_own_elements(bare)}'")
+            f"'{user_type_name(collapse_tuple_own_elements(bare))}'")
 
 
 def _deferred_tuple_spelling(lit: TpyTupleLiteral) -> str:
@@ -907,11 +909,11 @@ class StatementAnalyzer:
 
     def _frame_hoist_body(self) -> bool:
         """A body whose locals are C++ block locals: a plain function or
-        method. A generator or async body keeps every local in its frame
-        for the frame's whole life already, and module code declares its
-        names at namespace scope."""
+        method, or the module's `__tpy_init` (a name first bound in one of
+        its blocks is no module slot). A generator or async body keeps
+        every local in its frame for the frame's whole life already."""
         fn = self.ctx.func.current_function
-        return (isinstance(fn, TpyFunction) and not self.ctx.is_top_level
+        return (isinstance(fn, TpyFunction)
                 and not fn.is_generator and not fn.is_async)
 
     def _frame_block_candidate(self, name: str) -> bool:
@@ -2619,15 +2621,13 @@ class StatementAnalyzer:
             # The head unpack is over the loop's per-iteration holder whoever
             # built the node (parser, genexpr, a macro), so the ForEach's own
             # fact is what marks it.
-            head = (stmt.body[0] if stmt.is_tuple_unpack and stmt.body
-                    and isinstance(stmt.body[0], TpyTupleUnpack) else None)
+            head = stmt.head_unpack()
             # The rebinds a binding of the loop sees: each pass binds the
             # variable (or the head's targets) afresh, so only its own body's
             # count. Decided once here, for every binding the loop makes.
             stmt.loop_body_rebinds = frozenset(scan_reassigned_vars(
                 stmt.body[1:] if head is not None else stmt.body,
-                pre_declared=({t for t in head.targets if t is not None}
-                              if head is not None else {stmt.var}))
+                pre_declared=set(stmt.head_targets()))
                 .reassigned)
             if head is not None:
                 head.is_loop_head = True
@@ -3035,7 +3035,7 @@ class StatementAnalyzer:
             return
 
         func = self.ctx.func.current_function
-        if not isinstance(func, TpyFunction):
+        if not self.ctx.in_function_body():
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
 
@@ -3200,7 +3200,7 @@ class StatementAnalyzer:
         `<expr>.__raise__()` which auto-derefs through Box's vtable.
         """
         func = self.ctx.func.current_function
-        if not isinstance(func, TpyFunction):
+        if not self.ctx.in_function_body():
             raise self.ctx.error(
                 "'raise' can only be used inside a function", stmt)
         # `raise m.Err` / `raise Outer.Err(args)`: a dotted class is the type
@@ -4319,12 +4319,15 @@ class StatementAnalyzer:
         params: list[tuple[str, TpyType]],
         scope: 'Scope',
         ns: 'Namespace | None',
+        *,
+        foreign_globals: set[str] = frozenset(),
     ) -> ScanResult:
-        """Shared function body analysis: bind params, prescan, analyze statements.
-
-        Used by both _analyze_function (analyzer.py) and _analyze_nested_def.
+        """Shared body analysis: bind params, prescan, analyze statements.
         Callers handle scope creation, type resolution, and post-processing.
+        `foreign_globals` names the module globals another body rebinds
+        through `global`.
         """
+        module_init = self.ctx.is_top_level
         # Bind params to scope with Ref for non-value types.
         # analyze_expr strips Ref from return values, so downstream sema
         # sees bare types.  Ref on scope types enables provenance-aware
@@ -4366,7 +4369,8 @@ class StatementAnalyzer:
         # nested def was seeded with.
         self.ctx.func.nested_def_pending.update(scan.nested_def_bind_loc)
         self.ctx.func.own_ns = ns
-        self._warn_scalar_type_shadows(func, param_names, scan)
+        self._warn_scalar_type_shadows(None if module_init else func,
+                                       param_names, scan)
         self.ctx.func.closure_pinned = closure_pinned_names(func.body)
         self.ctx.all_last_uses |= analyze_last_uses(
             func.body, liveness_alias_sources(scan),
@@ -4394,7 +4398,15 @@ class StatementAnalyzer:
 
         # Analyze body
         for stmt in func.body:
+            if module_init:
+                # A parser-minted comprehension temp is an init-scope local,
+                # not a module slot; every other depth-0 binding declares one.
+                self.ctx.current_module_stmt = (
+                    None if isinstance(stmt, TpyVarDecl) and stmt.module_init_local
+                    else stmt)
             self.analyze_stmt(stmt)
+        if module_init:
+            self.ctx.current_module_stmt = None
 
         # End-of-body return enforcement runs after analysis: it consults
         # facts the body sema just produced (match exhaustiveness drives
@@ -4413,7 +4425,8 @@ class StatementAnalyzer:
         decide_rebind_storage(
             self.ctx, func.body,
             always_foreign=(self.ctx.func.current_nonlocal_names
-                            | self.ctx.func.global_declarations),
+                            | self.ctx.func.global_declarations
+                            | foreign_globals),
             initial_foreign=param_names)
 
         return scan
@@ -4590,12 +4603,16 @@ class StatementAnalyzer:
         enclosing_annotated = {
             n: self.ctx.func.authoritative_type_lines.get(n)
             for n in self.ctx.func.authoritative_types}
+        enclosing_lines = {
+            n: d.loc.line for n, d in self.ctx.func.var_decl_by_name.items()
+            if d.loc is not None}
 
         # Analyze body in isolated scope
         with self.scopes.nested_def_scope(func) as inner_scope:
             self.ctx.func.enclosing_nonlocal_rebinds = enclosing_nonlocal
             self.ctx.func.enclosing_declared_names = enclosing_declared
             self.ctx.func.enclosing_annotation_lines = enclosing_annotated
+            self.ctx.func.enclosing_binding_lines = enclosing_lines
             self.ctx.func.outer_scope_locals = outer_locals
             self.ctx.func.outer_self_is_receiver = self_is_receiver
             self.ctx.func.nested_def_pending = outer_pending
@@ -4875,6 +4892,25 @@ class StatementAnalyzer:
                 f"is not yet supported; rename the loop variable", stmt)
         elem_bare = self._resolve_literal_type(
             unwrap_readonly(unwrap_ref_type(unwrap_own(elem_type))))
+        fam = view_family_for_type(exist_bare)
+        if (fam is not None and fam is view_family_for_type(elem_bare)
+                and (isinstance(exist_bare, PendingViewType)
+                     or exist_bare == fam.owned_type)
+                and (isinstance(elem_bare, PendingViewType)
+                     or elem_bare == fam.owned_type)):
+            # One str/bytes local, and the element is one more binding of it:
+            # a view local takes the element's storage verdict (the hoist
+            # rule's roots, and the source writes that make the element own)
+            # through the alias edge, an owned element owns it, and an owned
+            # local copies whatever the element is.
+            if isinstance(exist_bare, PendingViewType):
+                if isinstance(elem_bare, PendingViewType):
+                    self.deduction.add_view_source(
+                        fam, exist_bare.var_id, elem_bare.var_id)
+                else:
+                    self.deduction.mark_view_reassigned_from_owned(
+                        stmt.var, fam, var_id=exist_bare.var_id)
+            exist_bare = elem_bare = fam.owned_type
         stmt.hoist_loop_var = True
         if self.pend.rebind(stmt.var, elem_bare, None, stmt) is not None:
             # A local whose bindings join takes the element as one more.
@@ -5098,7 +5134,8 @@ class StatementAnalyzer:
     def _analyze_global_stmt(self, stmt: TpyGlobal) -> None:
         """Analyze a `global x, y` statement."""
         # Must be inside a function, not at module level
-        if self.ctx.is_top_level or isinstance(self.ctx.func.current_function, type(MODULE_INIT_CONTEXT)):
+        if (self.ctx.is_top_level
+                or self.ctx.func.current_function is CLASS_CONSTANT_CONTEXT):
             raise self.ctx.error("'global' declaration is only allowed inside a function", stmt)
         for name in stmt.names:
             # Cannot use 'global' with Final variables
@@ -5342,6 +5379,7 @@ class StatementAnalyzer:
                     info.owns_stored_source = True
                     info.stored_source = storage_spelling(src)
 
+        info.module_body = self.ctx.is_top_level
         vars_reg[var_id] = info
         var_map[name] = var_id
         self.ctx.func.view_ids_by_name.setdefault(name, []).append((family, var_id))
@@ -5359,7 +5397,7 @@ class StatementAnalyzer:
         """Apply deferred type inference for a new local variable.
 
         Handles view-type families (str/bytes -> PendingViewType) and
-        PendingListType alias logic.  Skipped at module top-level.
+        PendingListType alias logic.
 
         When init_expr is None (for-loop var, tuple unpack), the source is
         considered view-compatible (initialized_from_owned=False) because
@@ -5367,8 +5405,6 @@ class StatementAnalyzer:
         resumable frame outlives its case-block temps, so these register
         as frame-unsafe and resolve owned there (frame_unsafe_source).
         """
-        if self.ctx.is_top_level:
-            return var_type
         # Float literals resolve to float64 as new local variables
         if isinstance(var_type, FloatLiteralType):
             return FLOAT
@@ -5394,7 +5430,8 @@ class StatementAnalyzer:
                     family = fam
                     break
         if family is not None:
-            pending = self._infer_new_local_view_type(name, var_type, init_expr, init_type, line, family)
+            pending = self._infer_new_local_view_type(
+                name, var_type, init_expr, init_type, line, family)
             return var_type if isinstance(var_type, LiteralType) else pending
         elif (isinstance(var_type, PendingListType)
                 and init_expr is not None and isinstance(init_expr, TpyName)):
@@ -5521,11 +5558,7 @@ class StatementAnalyzer:
         nothing is borrowed."""
         if not ephemeral_src and not open_param_src:
             return set()
-        added = {stmt.var}
-        if stmt.is_tuple_unpack and stmt.body:
-            unpack = stmt.body[0]
-            if isinstance(unpack, TpyTupleUnpack):
-                added |= {t for t in unpack.targets if t is not None}
+        added = {stmt.var, *stmt.head_targets()}
         kind = EphemeralKind.HARD if ephemeral_src else EphemeralKind.GATE_ONLY
         for name in added:
             self.ctx.func.ephemeral_borrow_vars[name] = kind
@@ -5792,7 +5825,7 @@ class StatementAnalyzer:
         literal's entries are the first it holds; a literal that rebinds a
         container with cells joins its cells (`PendingNums.bind_container`).
         Returns the value's type, naming the cells."""
-        if self.ctx.is_top_level or self.ctx.trial_depth:
+        if self.ctx.trial_depth:
             return value_type
         # A comprehension of rows has one row record, its element's: the
         # rows it builds are that one written many times.
@@ -5859,7 +5892,7 @@ class StatementAnalyzer:
             return None
         info = self.ctx.list_literal(value_type.literal_id)
         if (info is None or info.elem_cells is not None
-                or info.has_explicit_annotation or info.is_global):
+                or info.has_explicit_annotation):
             return None
         return info
 
@@ -5874,13 +5907,13 @@ class StatementAnalyzer:
             self.ctx.name_initializer = saved
 
     def _refuse_later_annotation(self, stmt: TpyVarDecl) -> None:
-        """An annotation declares a function local's one type, so it stands
-        on the local's first binding (`scan_first_bindings`): past it, the
-        code before was already compiled at the type the first binding
-        gave. A parameter is bound by its own annotation."""
+        """An annotation declares a local's one type -- a module global's
+        too, the module's statements being one body -- so it stands on the
+        first binding (`scan_first_bindings`): past it, the code before was
+        already compiled at the type the first binding gave. A parameter is
+        bound by its own annotation."""
         func = self.ctx.func
-        if (stmt.type is None or self.ctx.is_top_level
-                or func.current_function is None):
+        if stmt.type is None or func.current_function is None:
             return
         if stmt.name in func.current_param_names:
             first = func.current_function
@@ -5984,14 +6017,12 @@ class StatementAnalyzer:
                 # to a `const Pet*` pointing at the materialized rvalue, same
                 # shape as the parameter position. Allow the pointer-repr
                 # @dynamic Optional here; the rvalue-rebind reject (shared slot
-                # can't retype) and definite-assignment keep it sound. Globals
-                # (module-init sentinel) and no-init declarations stay rejected
-                # -- a static slot has no value representation for an abstract
-                # base.
+                # can't retype) and definite-assignment keep it sound. A module
+                # slot and a no-init declaration stay rejected -- a static slot
+                # has no value representation for an abstract base.
                 allow_ptr_repr_dyn = (
                     stmt.init is not None
-                    and isinstance(self.ctx.func.current_function, TpyFunction)
-                )
+                    and not self.ctx.is_module_slot_stmt(stmt))
                 self.type_ops.validate_type(
                     stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc,
                     allow_forward_ref=False,
@@ -6145,13 +6176,8 @@ class StatementAnalyzer:
             if is_preregistered_global_write:
                 existing_type = None
             elif (existing_type is not None
-                    and not self.ctx.is_top_level
-                    and stmt.name in self.ctx.global_scope.bindings
-                    and not self.compat.is_local_shadow(stmt.name)):
-                # Inside a function a bare write binds a fresh LOCAL even when
-                # the name is a module global (only `global x` writes the
-                # module variable), so the global's type is not this write's
-                # history. Same rule as the tuple-unpack arm.
+                    and self.compat.write_binds_local(stmt.name)):
+                # The global's type is not this write's history.
                 existing_type = None
             if existing_type is None:
                 # A local first declared inside a loop BODY is out of the
@@ -6468,7 +6494,6 @@ class StatementAnalyzer:
                     pending_cell.decls.append(stmt)
                 elif isinstance(init_type, IntLiteralType):
                     var_type = self.ctx.default_int_for_literal(init_type, warn_node=stmt.init)
-                    self.ctx.func.literal_seeded.add(stmt.name)
                     note_elem_binding(self.ctx, stmt.init)
                 elif isinstance(init_type, FloatLiteralType):
                     var_type = FLOAT  # float literals always default to float64
@@ -6963,26 +6988,14 @@ class StatementAnalyzer:
 
     def _unpack_store_type(self, name: str, existing: TpyType,
                            elem_type: TpyType, elem_expr: TpyExpr | None,
-                           stmt: TpyTupleUnpack, index: int, *,
-                           may_retype: bool) -> TpyType:
+                           stmt: TpyTupleUnpack, index: int) -> TpyType:
         """The type an unpack target already bound stores element `index`
-        at. A module variable takes the reassignment rule
-        (`resolve_reassignment_target_type`): a wider integer is refused
-        where the name keeps its first type, and the result is `existing`
-        unless `may_retype` lets a joining module variable take the joined
-        type. An element that would narrow into the slot is refused: the
+        at. An element that would narrow into the slot is refused: the
         unpack assigns each element as it is, with no place for the range
         check the narrowing needs (BUGS.md#unpack-target-narrowing)."""
         self.deduction.refuse_int_float_rebind(
             name, existing, elem_type, elem_expr, site=stmt)
         target = existing
-        slot = unwrap_readonly(unwrap_ref_type(existing))
-        if (self.deduction.module_level() and is_integer_type(slot)
-                and is_integer_type(elem_type)):
-            resolved = self.deduction.resolve_reassignment_target_type(
-                name, slot, elem_type, elem_expr, site=stmt)
-            if may_retype:
-                target = resolved
         coercion = self.compat.check_type_compatible(
             elem_type, target, "tuple unpacking", source_expr=stmt)
         if coercion is not None and coercion.narrows_checked:
@@ -7125,57 +7138,18 @@ class StatementAnalyzer:
                 stmt.is_new.append(True)
                 continue
 
-            if self.ctx.is_module_slot_stmt(stmt):
-                # Block reassignment of Final globals at module level
-                if name in self.ctx.final_globals:
-                    raise self.ctx.error(
-                        f"Cannot reassign Final variable '{name}'",
-                        stmt)
-                # At module level, targets become globals with namespace-scope
-                # definitions. Mark is_new=False so codegen emits assignment
-                # (the declaration is handled by gen_global_decl).
-                # Resolve IntLiteralType so the global's declared type aligns
-                # with the int32_t storage codegen emits (sema/codegen parity).
-                elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
-                prior = self.ctx.global_scope.lookup(name)
-                if (prior is not None and is_integer_type(prior)
-                        and is_integer_type(elem_type)):
-                    # An integer global is never retyped by a typed store.
-                    elem_type = self._unpack_store_type(
-                        name, prior, elem_type, elem_expr, stmt, i,
-                        may_retype=True)
-                self.ctx.define_module_global(
-                    name, elem_type, stmt.loc.line if stmt.loc else 0)
-                self.ctx.func.current_scope.define(name, elem_type)
-                self.ctx.func.nonstmt_bound_names.add(name)
-                self.init.mark_assigned(name)
-                self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
-                if self.ctx.func.current_ns:
-                    self.ctx.func.current_ns.bind_variable(name, elem_type)
-                self._warn_all_caps_without_final(name, elem_type, stmt)
-                if stmt.loc:
-                    display_type = unwrap_own(elem_type) if elem_type else elem_type
-                    self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
-                stmt.is_new.append(False)
-                continue
-
+            # Block reassignment of Final globals at module level
+            if self.ctx.is_top_level and name in self.ctx.final_globals:
+                raise self.ctx.error(
+                    f"Cannot reassign Final variable '{name}'", stmt)
             existing = self.ctx.func.current_scope.lookup(name)
-            # Don't treat globals as existing unless explicitly declared
-            # with 'global' -- unpack should create locals by default. Same
-            # fresh-local rule (and same shadow predicate) as the scalar
-            # var-decl arm, which must not disagree about a name already
-            # bound in an enclosing BLOCK scope of this function.
-            if (existing is not None
-                    and name not in self.ctx.func.global_declarations
-                    and not self.compat.is_local_shadow(name)
-                    and name in self.ctx.global_scope.bindings):
+            if existing is not None and self.compat.write_binds_local(name):
                 existing = None
             if existing is not None:
                 self._check_nonvalue_rebinding(name, stmt)
                 if self.pend.rebind(name, elem_type, elem_expr, stmt) is None:
                     self._unpack_store_type(name, existing, elem_type,
-                                            elem_expr, stmt, i,
-                                            may_retype=False)
+                                            elem_expr, stmt, i)
                 self.narrowing.update_after_write(name, existing, elem_type, elem_expr)
                 # Mirror the scalar var-decl, which marks assigned on every
                 # init path (statements.py `if stmt.init: mark_assigned`): a
@@ -7185,6 +7159,9 @@ class StatementAnalyzer:
                 self.init.mark_assigned(name)
                 stmt.is_new.append(False)
             else:
+                # A depth-0 statement's target is a module global: the one
+                # difference from a local is its namespace-scope storage.
+                slot = self.ctx.is_module_slot_stmt(stmt)
                 elem_type = self._infer_new_local_type(
                     name, elem_type, None, None,
                     line=(stmt.loc.line if stmt.loc else None),
@@ -7200,11 +7177,12 @@ class StatementAnalyzer:
                 # A leaf a cell has not decided yet binds as `a = xs[1][0]`
                 # does, and a local joining its bindings as `a = p[0]`: the
                 # target is declared at its own derived cell.
-                read_type, elem_type = (
-                    (elem_type, elem_type) if self.ctx.is_top_level
-                    else self.pend.derived_binding(
-                        name, elem_type, stmt, loop_head=stmt.is_loop_head))
+                read_type, elem_type = self.pend.derived_binding(
+                    name, elem_type, stmt, loop_head=stmt.is_loop_head)
                 stmt.target_types[i] = elem_type
+                if slot:
+                    self.ctx.define_module_global(
+                        name, elem_type, stmt.loc.line if stmt.loc else 0)
                 self.ctx.func.current_scope.define(name, read_type)
                 if stmt.is_loop_head:
                     register_binder(self.ctx, self.ctx.func.current_scope,
@@ -7224,7 +7202,14 @@ class StatementAnalyzer:
                 if self.deduction.tuple_target_view_family(name) is not None:
                     self.ctx.func.tuple_unpack_view_targets.add(name)
                 self.narrowing.update_after_write(name, elem_type, elem_type, elem_expr)
-                stmt.is_new.append(True)
+                if slot:
+                    # Declared at namespace scope (`gen_global_decl`), so
+                    # the unpack assigns it.
+                    self._warn_all_caps_without_final(name, elem_type, stmt)
+                    if stmt.loc:
+                        self.ctx.declared_var_types[(stmt.loc.line, name)] = (
+                            unwrap_own(elem_type))
+                stmt.is_new.append(not slot)
                 # An Own[T] element is moved out of the source tuple, so the
                 # fresh target is an owned movable local -- same status as a
                 # single-assign owned rvalue (`x = make_one()`), registered the
@@ -7271,8 +7256,7 @@ class StatementAnalyzer:
             # A view target off a NAME source views that tuple's own element,
             # exactly as `a = t[i]` does, so it registers the same source
             # storage and a reseat of the tuple demotes it to owned.
-            if (source_binds_by_ref and not stmt.is_loop_head
-                    and not self.ctx.is_top_level):
+            if source_binds_by_ref and not stmt.is_loop_head:
                 fam = self.deduction.tuple_target_view_family(name)
                 src_id = self.ctx.view_var_map(fam).get(name) if fam else None
                 if fam is not None and src_id is not None:
@@ -8479,13 +8463,11 @@ class StatementAnalyzer:
             name = target.name
             if (same_width_family(target_type, result_type)
                     and not is_integer_type(target_type)
-                    and self.deduction.declared_slot_type(name, target_type)
-                    is not None):
+                    and self.deduction.slot_is_declared(name)):
                 self._refuse_declared_aug_widening(
                     name, target_type, result_type, op, stmt)
             if (is_integer_type(target_type) and is_integer_type(result_type)
-                    and self.pend.cell_for(name) is None
-                    and not self.deduction.keeps_first_type(name)):
+                    and self.pend.cell_for(name) is None):
                 # An integer local whose bindings no cell joins (a loop or
                 # unpack target among them) is a slot of its own type: the
                 # operation's result narrows into it, checked.
@@ -8494,6 +8476,8 @@ class StatementAnalyzer:
                 effective_type = self.deduction.resolve_reassignment_target_type(
                     name, target_type, result_type, aug_op=op, site=stmt,
                 )
+            self.compat.warn_foreign_store_narrowing(
+                name, result_type, effective_type, None, stmt)
             # check_type_compatible errors when effective_type refused widening
             # (e.g. annotated variable, or mixed-sign fixed-int pair).
             coercion = self.compat.check_type_compatible(

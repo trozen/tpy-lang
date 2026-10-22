@@ -39,9 +39,11 @@ def _record(func, kind: str, ctx=None) -> None:
     if func is None:
         UNATTRIBUTED[kind] += 1
         return
-    if not isinstance(func, _TpyFunction):
-        # Module-init sentinel: attribute to the module being analyzed.
-        ctx = ctx or _find_ctx(2)
+    ctx = ctx or _find_ctx(2)
+    if not isinstance(func, _TpyFunction) or (
+            ctx is not None and ctx.is_module_init(func)):
+        # Module code (its __tpy_init carrier, or a class-constant
+        # initializer): attribute to the module being analyzed.
         mod = ctx.module_name if ctx is not None else "?"
         INIT_EVENTS.setdefault(mod, Counter())[kind] += 1
         return

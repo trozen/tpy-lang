@@ -1,8 +1,10 @@
 # Imported value globals read bare in every family: scalar, Final, a StrView
 # global at an OWNED-str return, a container element, a shadowing local of the
-# same name, and a read from a method body.
+# same name, a read from a method body, and a str global its module's loop
+# over a temporary rebinds.
 from tpy import int32
 from helper import G, label, BIG, items
+import helper
 
 
 def read_g() -> int32:
@@ -40,6 +42,7 @@ def main() -> None:
     c = C()
     print(read_g(), read_final(), label_owned())
     print(read_items(), shadow(), c.m())
+    print(helper.rebound)  # the loop-rebound global outlives the temporary
 
 
 main()

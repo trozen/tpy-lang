@@ -1,1 +1,1 @@
-main.py:3: error: Assignment to 'x' is incompatible with later annotation 'int32' at line 4: Type mismatch: expected int32, got str
+main.py:8: error: 'x' is already bound at line 7; an annotation goes on the first binding

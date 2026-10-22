@@ -757,12 +757,13 @@ def sec_global_getter() -> None:
         v = t[0:4]  # tpyc: type(bytes) ok
 
 
-# module level: a slice of a global keeps the slice's own view type (no
-# deduction runs at module scope); a field read is a copy.
+# module level: a module global owns its characters, a slice of another
+# global included (other bodies read it after the module's statements);
+# a field read is a copy.
 mod_s = mk_s(1)
 mod_b = mk_b(1)
-mod_v = mod_s[1:]  # tpyc: type(StrView) ok
-mod_w = mod_b[1:]  # tpyc: type(BytesView) ok
+mod_v = mod_s[1:]  # tpyc: type(str) ok
+mod_w = mod_b[1:]  # tpyc: type(bytes) ok
 mod_h = H(2)
 mod_y = mod_h.s  # tpyc: type(str) ok
 mod_z = mod_h.b  # tpyc: type(bytes) ok

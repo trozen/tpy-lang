@@ -370,8 +370,9 @@ def _resolve_from(ctx: 'SemanticContext', name: str, scope: 'Scope | None',
                              or scope.lambda_node is not None):
             root = scope
         scope = scope.parent
-    if (not isinstance(func, TpyFunction) or scope is ctx.global_scope
-            or name in globals_):
+    if (not isinstance(func, TpyFunction)
+            or ctx.binds_module_slot(name, func)
+            or scope is ctx.global_scope or name in globals_):
         return ReadBinding(ReadKind.MODULE, name)
     if any(p == name for p, _t in func.params):
         return ReadBinding(ReadKind.PARAM, name, func)
@@ -596,7 +597,7 @@ def record_body_ownership(ctx: 'SemanticContext',
     for site, entry in walk.sites.items():
         ctx.site_ownership[site] = entry
     func = fs.current_function
-    if not isinstance(func, TpyFunction):
+    if not ctx.in_function_body():
         return
     owning_params = {p for p, t in func.params
                      if p in fs.current_rebound_params

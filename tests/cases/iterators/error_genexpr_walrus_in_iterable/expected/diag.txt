@@ -1,0 +1,1 @@
+main.py:5: error: assignment expression cannot be used in a comprehension iterable expression

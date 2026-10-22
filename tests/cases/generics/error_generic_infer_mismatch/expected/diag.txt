@@ -1,1 +1,1 @@
-main.py:14: error: Cannot infer type arguments for 'Same'. Please specify explicitly: Same[T](...)
+main.py:14: error: Cannot infer type argument T for 'same'; add explicit type args (e.g., Same[T]()) or call a method that constrains the type parameters

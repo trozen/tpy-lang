@@ -1,1 +1,1 @@
-main.py:9: error: Cannot infer type arguments for 'Empty'. Please specify explicitly: Empty[T](...)
+main.py:9: error: Cannot infer type argument T for 'empty'; add explicit type args (e.g., Empty[T]()) or call a method that constrains the type parameters

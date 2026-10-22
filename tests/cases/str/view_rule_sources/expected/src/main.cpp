@@ -43,8 +43,8 @@ namespace tpyapp::main {
 ::tpy::ByteArray* GBA{};
 std::string mod_s;
 ::tpy::Bytes mod_b;
-std::string_view mod_v;
-::tpy::BytesView mod_w;
+std::string mod_v;
+::tpy::Bytes mod_w;
 H* mod_h{};
 std::string mod_y;
 ::tpy::Bytes mod_z;
@@ -1471,12 +1471,13 @@ CtorViews::CtorViews(std::string_view s, ::tpy::BytesView b, H& h) {
 //
 // GBA = bytearray(b"abcd")
 //
-// # module level: a slice of a global keeps the slice's own view type (no
-// # deduction runs at module scope); a field read is a copy.
+// # module level: a module global owns its characters, a slice of another
+// # global included (other bodies read it after the module's statements);
+// # a field read is a copy.
 // mod_s = mk_s(1)
 // mod_b = mk_b(1)
-// mod_v = mod_s[1:]  # tpyc: type(StrView) ok
-// mod_w = mod_b[1:]  # tpyc: type(BytesView) ok
+// mod_v = mod_s[1:]  # tpyc: type(str) ok
+// mod_w = mod_b[1:]  # tpyc: type(bytes) ok
 // mod_h = H(2)
 // mod_y = mod_h.s  # tpyc: type(str) ok
 // mod_z = mod_h.b  # tpyc: type(bytes) ok
@@ -1496,7 +1497,7 @@ void __tpy_init() {
     mod_s = ::tpyapp::main::mk_s(1);
     mod_b = ::tpyapp::main::mk_b(1);
     mod_v = ::tpy::str_slice(mod_s, ::tpy::BasicSlice{1, std::nullopt});
-    mod_w = ::tpy::bytes_slice(mod_b, ::tpy::BasicSlice{1, std::nullopt});
+    mod_w = ::tpy::Bytes(::tpy::bytes_slice(mod_b, ::tpy::BasicSlice{1, std::nullopt}));
     static H __global_slot_2 = H(2);
     mod_h = &__global_slot_2;
     mod_y = mod_h->s;

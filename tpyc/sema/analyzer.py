@@ -96,7 +96,7 @@ from ..diagnostics import Scope, Diagnostic, SemanticError
 from .. import qnames
 from .context import (
     SemanticContext, RecordContext, ParkedFunctionState, LoanInfo, OwnSlot,
-    MODULE_INIT_CONTEXT, contains_pending_leaf)
+    CLASS_CONSTANT_CONTEXT, contains_pending_leaf)
 from .storage_walk import StorageKey
 from . import own_copy
 from .type_ops import TypeOperations
@@ -114,12 +114,8 @@ from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
 
-from ..prescan import (ScanResult, scan_reassigned_vars, liveness_alias_sources,
-                       collect_in_place_writes)
-from ..liveness import (analyze_last_uses, closure_pinned_names,
-                        collect_finally_return_candidates)
-from .alias_rebind import (decide_rebind_storage,
-                           finalize_pointer_tuples, global_write_facts)
+from ..prescan import ScanResult
+from .alias_rebind import finalize_pointer_tuples, global_write_facts
 from .frame_close import decide_frame_close, stamp_close_materials
 from .may_interrupt import stamp_may_interrupt
 from .loop_frames import resolve_leftover_source_writes, resolve_loop_frame_calls
@@ -292,6 +288,20 @@ def _genexpr_local_slot(func: TpyFunction, name: str) -> _GenexprTypeSlot:
     return _GenexprTypeSlot(lambda: dict(func.generator_locals)[name], put)
 
 
+def _block_defs(stmts: list[TpyStmt]) -> list[TpyFunction]:
+    """The functions a module defines inside a block of its statements (`if
+    c: def f(): ...`): bodies of their own, analyzed where the walk meets
+    them."""
+    out: list[TpyFunction] = []
+    for s in stmts:
+        if isinstance(s, TpyNestedDef):
+            out.append(s.func)
+            continue
+        for body in s.sub_bodies():
+            out.extend(_block_defs(body))
+    return out
+
+
 def _declares_only(stmt: TpyStmt) -> bool:
     """A module-level statement that runs nothing, a `native_global`
     binding included (its linkage is decided by analyzing it)."""
@@ -407,19 +417,15 @@ class SemanticAnalyzer:
         # Per function: the frame-holding locals some `del` closes. In a
         # plain function they hold their frame in an optional.
         self.function_closed_frames: IdentityMap = IdentityMap()
-        self.top_level_scan_result: ScanResult | None = None
 
         # Per-function/method hoisted vars (try/finally + branch predecl)
         self.function_hoisted_vars: IdentityMap = IdentityMap()
-        self.top_level_hoisted_vars: set[str] = set()
         # Their scope-escape subset alone: a binding kept across loop passes
         # (the storage policy's `hoisted` input).
         self.function_escape_hoisted_vars: IdentityMap = IdentityMap()
-        self.top_level_escape_hoisted_vars: set[str] = set()
 
         # Per-function/method move-through vars (lvalue alias promoted to rvalue)
         self.function_move_through_vars: IdentityMap = IdentityMap()
-        self.top_level_move_through_vars: set[str] = set()
 
         # Per-function locals an escaping closure (nested def or lambda) captures.
         self.function_escaping_captured_locals: IdentityMap = IdentityMap()
@@ -950,7 +956,8 @@ class SemanticAnalyzer:
         if resolve_defaults:
             self.registrar.resolve_defaults()
         bodies = [*module.functions,
-                  *(m for r in module.all_records() for m in r.methods)]
+                  *(m for r in module.all_records() for m in r.methods),
+                  *_block_defs(module.top_level_stmts or [])]
         # A borrow return rooted in a module global is certified durable
         # while the body that RESEATS that global may only be analyzed
         # afterwards, so the rebind fact is decided here, over every body at
@@ -966,10 +973,15 @@ class SemanticAnalyzer:
         # Cross-module function calls in top-level statements resolve
         # against decl-finalized peer ModuleInfos (deps run first in
         # topo order in the declarations pass).
+        if module.top_level_stmts is None:
+            module.top_level_stmts = []
+        self.ctx.module_init_function = TpyFunction(
+            name="__tpy_init", params=[], return_type=VOID,
+            body=module.top_level_stmts)
         if module.top_level_stmts:
             self.ctx.module_top_level_stmts = module.top_level_stmts
             self._analyze_top_level(
-                module.top_level_stmts, declared_globals,
+                self.ctx.module_init_function, declared_globals,
                 declaration_only=module.directives.native_module,
                 synthetic=name_decl if not is_private_submodule else None)
         self._advance_phase(
@@ -1890,14 +1902,11 @@ class SemanticAnalyzer:
         in_comprehension = self.ctx.in_comprehension
         cond_depth = self.ctx.cond_operand_depth
         consuming = self.ctx.in_consuming_method
-        top_level = self.ctx.is_top_level
         for_heads = self.ctx.for_head_bodies
         own_copy_from = self.ctx.own_copy_mark()
         self.ctx.in_comprehension = 0
         self.ctx.cond_operand_depth = 0
-        # The body is a FUNCTION body even where the expression sits at module
-        # level, and no enclosing `for` head is one of its own.
-        self.ctx.is_top_level = False
+        # No enclosing `for` head is one of the body's own.
         self.ctx.for_head_bodies = []
         try:
             self._analyze_function(func, genexpr_source_loans=source_loans)
@@ -1907,7 +1916,6 @@ class SemanticAnalyzer:
             self.ctx.in_comprehension = in_comprehension
             self.ctx.cond_operand_depth = cond_depth
             self.ctx.in_consuming_method = consuming
-            self.ctx.is_top_level = top_level
             self.ctx.for_head_bodies = for_heads
             own_copy_to = self.ctx.own_copy_mark()
             self.ctx.own_copy_inner_spans.append(
@@ -2810,16 +2818,15 @@ class SemanticAnalyzer:
         if record_info is None or not record_info.class_constants:
             return
 
-        # Class-body context: synthetic module-init scope so the const-validity
-        # check (`_find_nonconstant_leaf`) accepts Final names via
-        # `analyzed_finals`, and so name resolution inherits module-level
+        # Class-body context: a scope of its own under the module's, so the
+        # const-validity check (`_find_nonconstant_leaf`) accepts Final names
+        # via `analyzed_finals`, and so name resolution inherits module-level
         # bindings. Class-constant names get added to scope/ns as analysis
         # progresses (so later constants can forward-ref earlier ones).
         self.ctx.reset_function_tracking()
-        self.ctx.func.current_function = MODULE_INIT_CONTEXT
+        self.ctx.func.current_function = CLASS_CONSTANT_CONTEXT
         self.ctx.func.current_scope = Scope(parent=self.ctx.global_scope)
         self.ctx.func.current_ns = Namespace(parent=self.ctx.global_ns)
-        self.ctx.is_top_level = True
 
         # Class-constant names get added to `analyzed_finals` so the
         # const-validity check accepts forward refs. Track adds and roll
@@ -2859,7 +2866,6 @@ class SemanticAnalyzer:
             self.ctx.func.current_function = None
             self.ctx.func.current_scope = None
             self.ctx.func.current_ns = None
-            self.ctx.is_top_level = False
 
     def _analyze_record_methods(self, record: TpyRecord) -> None:
         """Analyze all methods of a record."""
@@ -3403,94 +3409,55 @@ class SemanticAnalyzer:
                 return True
         return False
 
-    def _analyze_top_level(self, stmts: list[TpyStmt],
+    def _analyze_top_level(self, carrier: TpyFunction,
                            function_globals: set[str], *,
                            declaration_only: bool = False,
                            synthetic: TpyStmt | None = None) -> None:
-        """Analyze top-level statements (for generated main()).
+        """Analyze the module's statements as the body of its `__tpy_init`
+        carrier, on the function-body path.
 
-        Treats top-level code like a function body so list literals and other
-        constructs go through the same analysis path. A `declaration_only`
-        (native) module generates no code, so any statement there but an
-        import, a bare declaration, a `native_global` binding or an inert
-        docstring / `pass` is rejected; `synthetic` is the compiler-injected
-        `__name__` declaration.
+        A `declaration_only` (native) module generates no code, so any
+        statement there but an import, a bare declaration, a `native_global`
+        binding or an inert docstring / `pass` is rejected; `synthetic` is
+        the compiler-injected `__name__` declaration.
         """
+        stmts = carrier.body
         self.ctx.reset_function_tracking()
-        self.ctx.func.current_function = MODULE_INIT_CONTEXT
-        self.ctx.func.current_scope = Scope(parent=self.ctx.global_scope)
-        self.ctx.is_top_level = True
-        # The top level settles its copy diagnostics as a body does.
-        self.ctx.func.copies_from = len(self.ctx.diagnostics)
-
-        # Set up namespace - use global_ns for top-level (globals are visible)
-        # New local variables will be added to global_ns as they're declared
+        self.ctx.func.current_function = carrier
+        scope = Scope(parent=self.ctx.global_scope)
+        self.ctx.func.current_scope = scope
+        # Module names live in the global namespace: what the statements
+        # bind there is what every other body reads.
         self.ctx.func.current_ns = self.ctx.global_ns
 
         # Top-level builder-trace expansion runs here (not in pass 5.5)
         # because pass 4 is itself the body-analysis pass for module
-        # code -- the rewrite has to land before the analyze loop below.
+        # code -- the rewrite has to land before the body walk.
         self._expand_builder_trace_top_level(stmts)
 
-        # Pre-scan for codegen
-        self.top_level_scan_result = scan_reassigned_vars(stmts)
-        self.stmts._warn_scalar_type_shadows(None, set(), self.top_level_scan_result)
-        # Last-use analysis for auto-move (shared with codegen)
-        self.ctx.func.closure_pinned = closure_pinned_names(stmts)
-        self.ctx.all_last_uses |= analyze_last_uses(
-            stmts, liveness_alias_sources(self.top_level_scan_result),
-            pinned=self.ctx.func.closure_pinned,
-            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads,
-            repeated_reads=self.ctx.repeated_reads)
-        self.ctx.finally_return_candidates |= collect_finally_return_candidates(stmts)
-        self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
-        self.ctx.func.current_fresh_ctor_locals = set()
-        self.ctx.func.current_aug_assigned_vars = self.top_level_scan_result.aug_assigned.copy()
-        self.ctx.func.current_alias_sources = dict(self.top_level_scan_result.alias_sources)
-        self.ctx.func.current_chain_alias_sources = dict(
-            self.top_level_scan_result.chain_alias_sources)
-        self.ctx.func.in_place_writes = collect_in_place_writes(
-            stmts, self.ctx.write_summaries)
-
-        for stmt in stmts:
-            # A parser-minted comprehension temp is an init-scope local, not a
-            # module slot; everything else at depth 0 declares one.
-            self.ctx.current_module_stmt = (
-                None if isinstance(stmt, TpyVarDecl) and stmt.module_init_local
-                else stmt)
-            self.stmts.analyze_stmt(stmt)
-            if (declaration_only and stmt is not synthetic
-                    and not _declares_only(stmt)):
-                raise self.ctx.error(
-                    f"module-level statement not allowed in {NATIVE_MODULE}: "
-                    f"'{self.ctx.module_name}' is declaration-only",
-                    stmt)
-        self.ctx.current_module_stmt = None
+        # A global some function rebinds through `global` can change between
+        # two module-level statements: foreign storage for the replay.
+        scan = self.stmts._prescan_and_analyze_body(
+            carrier, [], scope, self.ctx.global_ns,
+            foreign_globals=function_globals)
+        if declaration_only:
+            # A `native_global` binding's linkage is decided by analyzing it.
+            for stmt in stmts:
+                if stmt is not synthetic and not _declares_only(stmt):
+                    raise self.ctx.error(
+                        f"module-level statement not allowed in "
+                        f"{NATIVE_MODULE}: '{self.ctx.module_name}' is "
+                        f"declaration-only", stmt)
         self.deduction.resolve_all()
         self.compat.drain_deferred_escape_checks()
         warn_closure_captures(self.ctx, stmts)
         # The top level settles as every body does.
         self.compat.settle_owning_reads(stmts)
-        # A global some function rebinds through `global` can change between
-        # two module-level statements: foreign storage for the replay.
-        decide_rebind_storage(self.ctx, stmts, always_foreign=function_globals)
-
-        if self.ctx.func.hoisted_vars:
-            self.top_level_hoisted_vars = self.ctx.func.hoisted_vars.copy()
-        self.top_level_escape_hoisted_vars = (
-            self.ctx.func.escape_hoisted_vars.copy())
-        if self.ctx.func.move_through_vars:
-            self.top_level_move_through_vars = self.ctx.func.move_through_vars.copy()
-        self.if_branch_decls.update(self.ctx.if_branch_decls)
-        self.arm_branch_decls.update(self.ctx.arm_branch_decls)
-        self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
-        self.function_escape_hoisted_vars.update(
-            self.ctx.nested_def_hoisted_vars)
+        self._store_analysis_results(carrier, scan)
 
         self.ctx.func.current_function = None
         self.ctx.func.current_scope = None
         self.ctx.func.current_ns = None
-        self.ctx.is_top_level = False
 
     def get_expr_type(self, expr: TpyExpr) -> Optional[TpyType]:
         """Get the cached type of an expression."""

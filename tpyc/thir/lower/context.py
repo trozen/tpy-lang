@@ -1138,10 +1138,7 @@ class _Prescan:
                  "global_slots")
 
     def __init__(self, func: TpyFunction, analyzer,
-                 params_override=None,
-                 scan_override=None, hoisted_override=None,
-                 move_through_override=None,
-                 escape_hoisted_override=None) -> None:
+                 params_override=None) -> None:
         # `params_override` carries a per-@overload
         # STUB's signature: the impl body is emitted against the stub's
         # types, so every signature-derived fact here must key on them.
@@ -1183,11 +1180,7 @@ class _Prescan:
         # the try hoist arm rejects a colliding predecl name, and the
         # spelled-read witness keys native vs imported on membership.
         self.native_globals: 'Mapping[str, str] | frozenset[str]' = frozenset()
-        # The module-init walk has no per-function scan entry -- its facts come
-        # from the analyzer's top_level_* results, passed in as overrides
-        # (gen_module_init seeds ctx from exactly those three).
-        scan = (analyzer.function_scan_results.get(func)
-                if scan_override is None else scan_override)
+        scan = analyzer.function_scan_results.get(func)
         global_decls = analyzer.function_global_decls.get(func, set())
         # Every name the body binds anywhere, params included -- the set a
         # SYNTHESIZED local (a narrowing extraction alias) must stay clear of.
@@ -1211,16 +1204,13 @@ class _Prescan:
         # nested-def lowering scope; the enclosing function's storage, so
         # no reseat inside the lambda may take a slot of its own.
         self.nonlocal_names: set[str] = set()
-        self.hoisted = (analyzer.function_hoisted_vars.get(func, set())
-                        if hoisted_override is None else hoisted_override)
+        self.hoisted = analyzer.function_hoisted_vars.get(func, set())
         # The scope-escape subset of `hoisted` (a `try`'s predeclarations
         # are no escape): the storage policy's `hoisted` input.
-        self.escape_hoisted = (
-            analyzer.function_escape_hoisted_vars.get(func, set())
-            if escape_hoisted_override is None else escape_hoisted_override)
-        self.move_through = (
-            analyzer.function_move_through_vars.get(func, set())
-            if move_through_override is None else move_through_override)
+        self.escape_hoisted = analyzer.function_escape_hoisted_vars.get(
+            func, set())
+        self.move_through = analyzer.function_move_through_vars.get(
+            func, set())
         # Alias facts for the `del x` move-sink skips: names some alias binds
         # to (codegen's `ctx.aliased_vars` -- moving from them would gut the
         # alias) and names whose FIRST binding was an alias (`ctx.alias_names`
@@ -1725,10 +1715,6 @@ class _LowerCtx:
                  render_resolve=None,
                  params_override=None,
                  render_concept=None,
-                 scan_override=None,
-                 hoisted_override=None,
-                 move_through_override=None,
-                 escape_hoisted_override=None,
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
@@ -1750,11 +1736,7 @@ class _LowerCtx:
         self.params = tuple(func.params if params_override is None
                             else params_override)
         self.prescan = _Prescan(func, analyzer,
-                                params_override=params_override,
-                                scan_override=scan_override,
-                                hoisted_override=hoisted_override,
-                                move_through_override=move_through_override,
-                                escape_hoisted_override=escape_hoisted_override)
+                                params_override=params_override)
         # Module-init walk: names live at NAMESPACE scope (pre-declared by the
         # generator, so every write is an assignment), slot temps are `static
         # __global_slot_N`, and non-value globals are writable pointer slots --
@@ -1894,15 +1876,12 @@ class _LowerCtx:
         # Renders that spell the SLOT (the frame_slot brace-init prefix) must
         # read this, not `declared`. Populated only by `lower_resumable`.
         self.frame_local_types: dict = {}
-        # The residue ledger must read the SAME facts `prescan.hoisted` does:
-        # the module-init walk's carrier is synthetic, so its `id(func)` has no
-        # analyzer entry and only the override carries its hoisted set. Left
-        # unseeded, this reject backstop silently admits a body it should
-        # reject (top-level hoisting is reachable -- `module_init_local` temps
-        # are locals of `__tpy_init`, not globals).
+        # The residue ledger must read the SAME facts `prescan.hoisted` does.
+        # Left unseeded, this reject backstop silently admits a body it
+        # should reject (top-level hoisting is reachable --
+        # `module_init_local` temps are locals of `__tpy_init`, not globals).
         self.unhandled_hoists = set(
-            analyzer.function_hoisted_vars.get(func, ())
-            if hoisted_override is None else hoisted_override)
+            analyzer.function_hoisted_vars.get(func, ()))
         self._alias_taken_memo: 'tuple | None' = None
         # U3/U4 isinstance-narrowing scope (see _NarrowScope's docstring),
         # snapshot/restored around branch and loop bodies.

@@ -340,8 +340,9 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
         return MIRRefusal(MIRRefusalKind.THIR_NOT_ATTEMPTED, "THIR not attempted: an earlier reject ended emission")
 
     if module.top_level_stmts:
+        carrier = analyzer.ctx.module_init_function
         refusal = refused("module initialization") if ctx.thir_top_level is not None else missing(module)
-        yield MIRBodySource(identity("__tpy_init"), "__tpy_init", None, None, None, None, MIRBodyKind.MODULE,
+        yield MIRBodySource(identity(carrier.name), carrier.name, None, carrier, None, None, MIRBodyKind.MODULE,
                             None, refusal)
 
     for func, owner in iter_module_callables(module, analyzer):

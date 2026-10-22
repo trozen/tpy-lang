@@ -54,7 +54,7 @@ from .binding_ownership import (CompMove, ReadKind,
 from .source_records import (Leaf as TupleLeaf, LeafPermission,
                              SinkRead, SourceRecord, read_record, verdict,
                              publish_source_record)
-from .type_join import user_type_name
+from .type_join import python_type_name, user_type_name
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
@@ -89,7 +89,8 @@ from ..storage_trace import StepKind
 from .storage_walk import (Leaf, LeafKind, MarkRequest, Use, leaves,
                            mark_roots, slot_lent_roots, storage_roots,
                            ternary_operands)
-from .numeric_lattice import fixed_int_range_contains, numeric_info
+from .numeric_lattice import (fixed_int_range_contains, numeric_info,
+                             smallest_common_int)
 from ..diagnostics import (
     Diagnostic, DiagnosticLevel, SemanticError, NOCOPY_REMEDIATION_HINT, NOCOPY_NO_AUTO_MOVE_HINT,
     insert_in_source_order,
@@ -103,11 +104,11 @@ from ..type_def_registry import (
     is_dict_view,
 )
 from .overloads import type_matches_numeric
-from .int_narrowing import site_value_range
+from .int_narrowing import narrowing_proven_safe, site_value_range
 from .pending_num import (ContainerCells, at_path, container_parts,
                           is_numeric_slot, is_pending_num, literal_entries,
                           map_leaves,
-                          pending_list_of, root_of, strip_int,
+                          pending_leaves, pending_list_of, root_of, strip_int,
                           value_family, value_leaves, with_container)
 from .iter_loans import iteration_copies_lent_reference, iteration_lend_pending
 
@@ -2821,6 +2822,50 @@ class TypeCompatibility:
                 self.init.restore(end)
             self.drain_deferred_escape_checks()
 
+    def warn_foreign_store_narrowing(self, name: str, value_type: TpyType,
+                                     slot_type: TpyType,
+                                     value_expr: TpyExpr | None,
+                                     node: TpyExpr | TpyStmt) -> None:
+        """A store from another body -- through `global` or `nonlocal` --
+        into a variable whose type the owning scope inferred from its own
+        bindings, of a value that narrows into that type: it converts with
+        the run-time check a declared slot's store takes, where Python
+        stores the wider value, so it warns. Annotating the first binding
+        (a declared slot) or converting the value explicitly silences it. A
+        value whose type its body decides later is judged then."""
+        foreign = self.deduction.foreign_inferred_slot(name)
+        if foreign is None:
+            return
+        owner, line = foreign.owner, foreign.line
+        if pending_leaves(strip_int(value_type)):
+            self.pend.defer(node, (value_type, slot_type),
+                            lambda ts: self.warn_foreign_store_narrowing(
+                                name, ts[0], ts[1], value_expr, node))
+            return
+        value = unwrap_own(unwrap_readonly(value_type))
+        slot = unwrap_own(unwrap_readonly(slot_type))
+        row = resolve_coercion(value, slot, CoercionContext.ASSIGN)
+        if row is None or not row.narrows_checked:
+            return
+        rng = (site_value_range(self.ctx, value_expr)
+               if value_expr is not None else None)
+        if narrowing_proven_safe(value, slot, rng):
+            return
+        here = self.ctx.func.current_function
+        where = (f" from '{here.name}'" if isinstance(here, TpyFunction)
+                 else "")
+        at = f" (line {line})" if line is not None else ""
+        slot_name = python_type_name(slot)
+        wide = smallest_common_int(slot, value)
+        widen = (f", `{name}: {python_type_name(wide)} = ...` widens it"
+                 if wide is not None else "")
+        self.ctx.warning(
+            f"'{name}' was inferred as {slot_name} in {owner}; this store"
+            f"{where} narrows {python_type_name(value)} into it and raises "
+            f"OverflowError where Python stores the wider value; annotate "
+            f"its first binding{at}: `{name}: {slot_name} = ...` keeps "
+            f"it{widen}", node)
+
     def coerce_reassignment(
         self, name: str, existing_type: TpyType, value_type: TpyType,
         value_expr: TpyExpr, err_node,
@@ -2904,6 +2949,8 @@ class TypeCompatibility:
         # owned storage.
         var_type = self.deduction.resolve_reassignment_target_type(
             name, inner_existing, inner_value, init_expr=value_expr)
+        self.warn_foreign_store_narrowing(name, inner_value, var_type,
+                                          value_expr, err_node)
         if is_pending_num(inner_value) and is_numeric_slot(var_type):
             # Whether the value is wider than the local's first type is known
             # once the function settles.
@@ -3424,8 +3471,7 @@ class TypeCompatibility:
         whose ownership settles once the body is read (a parameter's and
         the receiver's are their types')."""
         func = self.ctx.func.current_function
-        return not (self.ctx.is_top_level or not isinstance(func, TpyFunction)
-                    or name == "self"
+        return not (not self.ctx.in_function_body() or name == "self"
                     or any(p == name for p, _ in func.params))
 
     def settle_owning_reads(self, body: list[TpyStmt]) -> None:
@@ -3570,7 +3616,7 @@ class TypeCompatibility:
         type, asked here; a local's is its binding's (fact 1), asked once
         the body is settled (`OwnIterMove`)."""
         func = self.ctx.func.current_function
-        if self.ctx.is_top_level or not isinstance(func, TpyFunction):
+        if not self.ctx.in_function_body():
             return
         ptype = next((t for p, t in func.params if p == name.name), None)
         if ptype is None:
@@ -4423,6 +4469,16 @@ class TypeCompatibility:
             scope = scope.parent
         return False
 
+    def write_binds_local(self, name: str) -> bool:
+        """Whether a store into module global `name` from here binds a local
+        of the function instead: Python's rule that a bare write in a
+        function body makes a local, unless `global` declares the name or a
+        binding of the function already shadows it."""
+        return (not self.ctx.is_top_level
+                and name not in self.ctx.func.global_declarations
+                and name in self.ctx.global_scope.bindings
+                and not self.is_local_shadow(name))
+
     def _is_owned_var(self, name: str) -> bool:
         """Whether `name` owns its value, so its last use at an owning sink
         moves it: a parameter that takes ownership (its declared type), or
@@ -4438,7 +4494,11 @@ class TypeCompatibility:
         if name == "self" and self.ctx.in_consuming_method:
             return True
         func = self.ctx.func.current_function
-        if isinstance(func, TpyFunction):
+        if self.ctx.reads_module_slot(name):
+            # A module global outlives every last use one body sees: other
+            # bodies read it later.
+            return False
+        if self.ctx.in_function_body():
             # Own[T] params, and owned-element tuple params (the ownership-
             # transfer `std::tuple<...>&&` ABI -- movable like a scalar Own[T]).
             for pname, ptype in func.params:
@@ -4459,9 +4519,9 @@ class TypeCompatibility:
             # are drawn from (`rebinds_keep_ownership`).
             return (name in fs.ever_owned_locals
                     and fs.rebinds_keep_ownership(name))
-        # Top-level: a global bound by reference (a pointer slot, or a
-        # tuple of them) points at storage it does not own, so its
-        # module-level last use is no move.
+        # A local of the module's init code (a block's binding, a desugar
+        # temp) bound by reference (a pointer slot, or a tuple of them)
+        # points at storage it does not own, so its last use is no move.
         var_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
         if var_type:
             inner = var_type.wrapped if isinstance(var_type, OwnType) else var_type
@@ -5874,7 +5934,7 @@ class TypeCompatibility:
         # value for.
         func = fs.current_function
         shown = ((program_names(expr.name, func.body)[0] or expr.name)
-                 if isinstance(func, TpyFunction) else expr.name)
+                 if self.ctx.in_function_body() else expr.name)
         return f" ('{shown}' is bound to existing storage at line {line})"
 
     def _site_line(self, read: TpyName,

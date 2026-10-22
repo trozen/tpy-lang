@@ -21,7 +21,7 @@ void __tpy_init() {
     initialized = true;
 
     x = ::tpy::BigInt(0);
-    x = 10;
+    x = ::tpy::BigInt(10);
     x = ::tpy::BigInt(20);
     std::cout << x << "\n" << ::tpy::check_signals;
     f = 0.0;

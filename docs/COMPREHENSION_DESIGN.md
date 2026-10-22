@@ -229,9 +229,9 @@ source is refused too. The check runs once in `_analyze_named_expr`, on the
 target's type, before the binding branches split. A value-type target is
 legal everywhere (a `str` slice is a view and is refused; a value tuple is
 refused for now, BUGS.md#value-tuple-walrus-rejects). CPython runs every refused shape. A generator expression's
-walrus binds a local of its frame
-(BUGS.md#genexpr-walrus-target-stays-in-frame), so the rule does not arise
-there.
+walrus binds a local of its frame, and is refused where the enclosing scope
+uses the target (BUGS.md#genexpr-walrus-target-stays-in-frame), so the rule
+does not arise there.
 
 ### Type inference details
 

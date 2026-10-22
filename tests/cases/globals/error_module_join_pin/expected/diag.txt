@@ -1,0 +1,1 @@
+main.py:9: error: 'n' was used as int32 at line 8 (a list element), and this value is int64; annotate its first binding: n: int64 = 0

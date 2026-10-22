@@ -1,0 +1,1 @@
+main.py:11: warning: 'g' was inferred as uint8 in its module; this store from 'inc' narrows int32 into it and raises OverflowError where Python stores the wider value; annotate its first binding (line 6): `g: uint8 = ...` keeps it, `g: int32 = ...` widens it

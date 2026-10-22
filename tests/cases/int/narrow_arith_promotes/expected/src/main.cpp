@@ -943,7 +943,7 @@ void main() {
 // g8: int8 = 5
 // g8 += 1  # tpyc: ok
 // # module level: a global annotated at its first binding takes the wider values
-// # stored into it later (an unannotated one keeps its first type and refuses them)
+// # stored into it later, checked
 // w8: int32 = uint8(255)
 // for i in range(2):
 //     wt = (w8, 1)

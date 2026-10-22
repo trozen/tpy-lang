@@ -88,6 +88,9 @@ field, container element, global (a global cell that diverges is filed against T
 "Module scope is the body of __tpy_init" design entry, not patched per shape: globals rank
 last). And across the SPELLINGS of the construct: bare name,
 module-qualified, nested class, aliased import, the result of a macro or `@inline` expansion.
+And across the BINDING FORMS of one name -- assignment, unpack, `for` head, walrus, `match`
+capture, `with ... as`, `except ... as`: a fact about a variable (its storage, whether it owns)
+belongs to the variable's binding record, never to the form that bound it.
 The compiler decides each fact once and every position consumes that decision; a position with
 its own copy of the logic is where the next divergence lives.
 
@@ -96,10 +99,17 @@ hard error at the return slot while the same call at an `Own` parameter, a conta
 field store only warned and copied; the return position carried a verdict of its own. Right:
 one verdict at every owning slot, the warning "copies Obj into owned storage; use copy()" and
 the copy, decided where the slot's ownership is decided and consumed by each position.
+Binding forms: `mv = "m"` at module level, then `for mv in mk(): pass` inside an `if` with
+`mk() -> Own[list[str]]`, then `print(mv)`. Wrong: `std::string_view mv;` pointing into the
+loop's temporary list, garbage on print -- "a module variable owns its text" was a flag each
+binding form set, and the loop head did not. Right: `std::string mv;`, decided once in the
+view-vs-owned predicate from the variable's module-slot fact.
 
 **Check.** For the construct under change, compile the same subject at two positions other
 than the one the reporter saw, and at each other spelling of it (`T(x)`, `mod.T(x)`,
 `Outer.T(x)`, an `@inline` body that expands to it), and diff the emitted C++ for the subject.
+For a fact about a variable, bind the variable by each binding form above and diff its
+declaration; grep the change for the fact read or set per form.
 A difference is the defect. A fix that touches several consuming sites instead of the deciding
 site is the same defect in the compiler -- and so is a verdict read off the source spelling
 when the lowered node already carries the answer.

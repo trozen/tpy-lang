@@ -42,7 +42,7 @@ from tpyc.mir.collect import (  # noqa: E402
     MIRBodyVerdict, MIRRefusalKind, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, enumerate_body_sources,
     verdict_of,
 )
-from tpyc.mir.nodes import MIRNotCovered  # noqa: E402
+from tpyc.mir.nodes import MIRBodyKind, MIRNotCovered  # noqa: E402
 from tpyc.mir_diagnostics import obligation_callees, obligation_calls  # noqa: E402
 from tpyc.parse import nodes as pn  # noqa: E402
 
@@ -385,7 +385,8 @@ def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]
         undischarged: the body did not lower or its retention is unresolved."""
         thir = source.source
         if thir is None:
-            thir = ctx.thir_top_level if source.func is None else ctx.thir_functions.get(source.func)
+            thir = (ctx.thir_top_level if source.kind is MIRBodyKind.MODULE
+                    else ctx.thir_functions.get(source.func))
         calls = obligation_calls(thir, callees) if thir is not None and callees else 0
         resolved = (verdict is not None and verdict.analyses is not None
                     and not isinstance(verdict.analyses.retention, MIRNotCovered))
@@ -411,7 +412,7 @@ def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]
 
     for source in enumerate_body_sources(tpy, analyzer, ctx, module.name, reasons):
         body, func = source.body, source.func
-        if func is None:
+        if source.kind is MIRBodyKind.MODULE:
             feats, _lo, _hi, _nested = body_scan(tpy.top_level_stmts)
             rec(body, "module_init", feats=feats, events=dict(hooks.INIT_EVENTS.get(module.name, {})),
                 **measure(source))

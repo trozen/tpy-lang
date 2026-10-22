@@ -1,0 +1,78 @@
+assign: 256
+reader: 256
+aug: 300
+for: 256
+unpack_literal: 5000000000 3
+unpack_value: 5000000000 7
+walrus: 301
+walrus: 301
+walrus_comprehension: [5000000000] 5000000000
+walrus_comprehension_fn: 256 [256]
+match: 5000000000
+list: [(1, 2), (5000000000, 3)]
+list_empty: [1, 5000000000]
+dict: {1: 2, 3: 5000000000}
+dict_empty: {1: 1, 2: 5000000000}
+set: [1, 5000000000]
+set_empty: [1, 5000000000]
+typed_widen: 257
+literal_widen: 5000000000
+aug_then_int: 20
+walrus_first: 0
+walrus_first: 5000000000
+view_rebind: xxxx babab
+view_reader: yy xxxx
+walrus_comprehension_first: [0] 5000000000
+walrus_comprehension_first_fn: [0] 5000000000
+literal_seed walrus: 5000000000
+literal_seed walrus_comprehension: [5000000000] 5000000000
+literal_seed unpack: 5000000000 7
+literal_seed for: 5000000000
+literal_seed match: 5000000000
+literal_seed_fn walrus: 5000000000
+literal_seed_fn walrus_comprehension: [5000000000] 5000000000
+literal_seed_fn unpack: 5000000000 7
+literal_seed_fn for: 5000000000
+literal_seed_fn match: 5000000000
+block_def: 42
+loop_target_view: yyyyyyyyyyyyyyyyyyyyyyyyyyyyyy kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk b'zzzzzzzzzzzzzzzzzzzzzzzzzzzzzz' pppppppppppppppppppppppppppppp 1
+loop_target_view block: qqqqqqqqqqqqqqqqqqqqqqqqqqqqqq
+loop_rebind_view: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa b'cccccccccccccccccccccccccccccc'
+loop_rebind_view reader: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa b'cccccccccccccccccccccccccccccc'
+loop_rebind_view_fn: dddddddddddddddddddddddddddddd b'eeeeeeeeeeeeeeeeeeeeeeeeeeeeee'
+loop_rebind_param: ffffffffffffffffffffffffffffff
+loop_rebind_elem: hhhhhhhhhhhhhhhhhhhhhhhhhhhhhh
+loop_rebind_gen: iiiiiiiiiiiiiiiiiiiiiiiiiiiiii
+loop_rebind_gen: iiiiiiiiiiiiiiiiiiiiiiiiiiiiii
+loop_widen_after: 1
+loop_widen_after: 2
+loop_widen_after: 1
+loop_widen_after: 2
+loop_widen_after: 5000000000
+loop_widen_after_fn: 1
+loop_widen_after_fn: 2
+loop_widen_after_fn: 1
+loop_widen_after_fn: 2
+loop_widen_after_fn: 5000000000
+genexpr_walrus: 10000000001
+genexpr_walrus cond: 3
+genexpr_walrus_fn: 15 3
+genexpr_walrus_shadow: True 10
+genexpr_walrus_sibling_fn: [1, 5, 3] 9
+genexpr_walrus_own_name: 6
+genexpr_walrus_write_only: 3 6
+genexpr_walrus_write_only_fn: 9
+walrus_global_fn: 20
+walrus_global_fn module: 20
+walrus_shadow_fn: 5000000000
+walrus_shadow_fn: 5000000000
+walrus_shadow_fn: 3
+walrus_shadow_fn module: 0 gw
+loop_rebind_temp: tttttttttttttttttttttttttttttt
+loop_rebind_temp reader: tttttttttttttttttttttttttttttt
+loop_rebind_temp_fn: tttttttttttttttttttttttttttttt 2
+loop_rebind_temp_bytes: b'tttttttttttttttttttttttttttttt'
+loop_rebind_temp_bytes reader: b'tttttttttttttttttttttttttttttt'
+unpack_name_str: kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk 4 5
+unpack_name_str reader: kkkkkkkkkkkkkkkkkkkkkkkkkkkkkk 4
+block_capture: 5 bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb

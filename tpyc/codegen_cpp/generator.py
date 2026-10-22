@@ -689,7 +689,13 @@ class CodeGenerator:
                     if (name is None or name in seen_globals
                             or name not in module_slots):
                         continue
-                    var_type = stmt.target_types[i]
+                    # The module binding sema settled, as for a
+                    # declaration: the target's type at this unpack is only
+                    # its first binding's.
+                    binding = self.analyzer.global_ns.lookup_local(name)
+                    var_type = (binding.type if binding is not None
+                                and binding.type is not None
+                                else stmt.target_types[i])
                     if isinstance(var_type, OwnType):
                         var_type = var_type.wrapped
                     seen_globals[name] = var_type

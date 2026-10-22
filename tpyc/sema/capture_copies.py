@@ -41,7 +41,6 @@ from ..typesys import (FrameType, OptionalType, TpyType,
                        pointer_repr_optional, unwrap_qualifiers,
                        unwrap_ref_type, unwrap_send_sync)
 from .binding_ownership import ReadBinding, ReadKind
-from .context import MODULE_INIT_CONTEXT
 from .own_copy import contains_reference_type, type_param_names
 
 if TYPE_CHECKING:
@@ -106,10 +105,6 @@ def closure_bindings(ctx: 'SemanticContext', closure: Closure) -> ClosureReads:
             if out.get(e.name) is None:
                 while b.kind is ReadKind.CAPTURED and b.outer is not None:
                     b = b.outer
-                if (b.kind is ReadKind.MODULE
-                        and b.name not in ctx.global_scope.bindings):
-                    b = ReadBinding(ReadKind.LOCAL, b.name,
-                                    MODULE_INIT_CONTEXT)
                 out[e.name] = b
         elif b is not None and out.get(e.name) is None:
             out[e.name] = None

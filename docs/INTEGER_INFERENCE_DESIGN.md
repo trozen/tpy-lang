@@ -6,7 +6,7 @@
 |-------|-------|--------|
 | **Phase 1** | Global `--default-int` CLI flag, configurable default (int32/int64/BigInt), explicit `int` stays BigInt | Done |
 | **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses | Replaced by Phase 2b (uses never decide a type) |
-| **Phase 2b** | Pending integer locals: a literal-seeded function local is typed by the values stored in it, decided once the function is analyzed | Done (function locals; module globals and collection elements not covered) |
+| **Phase 2b** | Pending integer locals: a literal-seeded function local is typed by the values stored in it, decided once the function is analyzed | Done (function locals and module globals, which join as the body of `__tpy_init`; collection element cells join too) |
 | **Constant folding** | A variable-free integer expression over literals is the literal of its value: sema values it, the lowering emits that literal at every position (`docs/LANGUAGE_FEATURES.md` "Constant folding") | Done |
 | **Future** | Per-module/per-function overrides (`__tpy__` settings, `@tpy.config`) | Planned |
 
@@ -190,11 +190,12 @@ derived cell whose later bindings JOIN it (`PendingNumCell.joins_stores`),
 so `c = data[i]; c -= 48` makes `c` an `int32` throughout; bindings with
 no join (`uint32` then `int32`) are refused. A `with` / `except` target, a
 nested `def` and an annotation keep a name out of the join (a `with`
-target: BUGS.md#with-target-declared-type-ignores-join), and so does a
-walrus inside a comprehension (BUGS.md#comprehension-walrus-binding-join).
-A local first bound to a literal that a form other than an assignment
-also binds (`x = 0; for x in ys:`) is not pending: it is the default int,
-and that binding must fit it.
+target: BUGS.md#with-target-declared-type-ignores-join); a walrus inside a
+comprehension is one more binding of the enclosing local.
+A local first bound to a literal joins the same forms: a `for` head, an
+unpack target or a `match` capture is one more binding whose value is no
+literal, a walrus a store of its own value (`x = 0; for x in ys:` with
+`ys: list[int64]` makes `x` an `int64`).
 The sibling arms of one `if` / `match` / `try` that each bind a local are
 together its first binding (`scan_first_bindings`): typed arms join, and
 beside a bare-literal arm the family DEFAULT must widen into the typed
@@ -231,12 +232,12 @@ literal's default. Nothing is analyzed twice (`tpyc/sema/pending_num.py`):
   cell settles (a fixed point over locals stored from one another), every
   deferred operation resolves, and no pending type remains in any table.
 
-Collection-element literals keep the Phase 1 policy. A module global has
-no cell (TODO.md "Module scope is the body of __tpy_init"): one first
-bound to a typed integer keeps that type and refuses a wider store, an
-out-of-range literal included; one first bound to a literal is retyped in
-place by a wider store, which the uses analyzed before it do not follow
-(BUGS.md#module-literal-global-retype-after-use).
+Collection-element literals keep the Phase 1 policy. Module code is the
+body of one function (`__tpy_init`), so a module global takes cells and
+joins its bindings as a function local does; a store into it from another
+body (`global`, or a nested def's `nonlocal` into an enclosing local)
+converts into the type the owner settled, checked, and warns where it
+narrows.
 
 ### Interaction with Constant Folding
 

@@ -7,6 +7,14 @@ int32_t G{};
 std::string_view label;
 std::vector<int32_t>* items{};
 std::optional<int32_t> maybe;
+std::string rebound;
+std::vector<std::string>* churn{};
+
+// def mk_labels() -> Own[list[str]]:
+//     return ["a" * 30, "b" * 30]
+std::vector<std::string> mk_labels() {
+    return {(::tpy::str_repeat("a", 30)), (::tpy::str_repeat("b", 30))};
+}
 
 // """Value globals of every family the importing module reads bare."""
 //
@@ -15,6 +23,12 @@ std::optional<int32_t> maybe;
 //
 // items: list[int32] = [1, 2]
 // maybe: int32 | None = 4
+//
+// # A str global a loop over a temporary rebinds owns the last element.
+// rebound = "m"
+// for rebound in mk_labels():
+//     pass
+// churn = ["q" * 40, "r" * 40]
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -25,6 +39,15 @@ void __tpy_init() {
     static std::vector<int32_t> __global_slot_1 = {1, 2};
     items = &__global_slot_1;
     maybe = 4;
+    rebound = "m";
+    auto __obj_0 = ::tpyapp::helper::mk_labels();
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        rebound = *__beg_0;
+    }
+    static std::vector<std::string> __global_slot_2 = {(::tpy::str_repeat("q", 40)), (::tpy::str_repeat("r", 40))};
+    churn = &__global_slot_2;
 }
 
 } // namespace tpyapp::helper

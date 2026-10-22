@@ -40,10 +40,12 @@ int32_t shadow() {
 //     c = C()
 //     print(read_g(), read_final(), label_owned())
 //     print(read_items(), shadow(), c.m())
+//     print(helper.rebound)  # the loop-rebound global outlives the temporary
 void main() {
     C c = C();
     std::cout << ::tpyapp::main::read_g() << " " << ::tpyapp::main::read_final() << " " << ::tpyapp::main::label_owned() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::read_items() << " " << ::tpyapp::main::shadow() << " " << c.m() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::helper::rebound << "\n" << ::tpy::check_signals;
 }
 
 // from helper import G, label, BIG, items

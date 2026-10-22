@@ -773,7 +773,7 @@ class PendingNums:
         has given an element yet: its cells are born at the first store or
         typed container it meets, as if that value had been written in the
         literal."""
-        if self.ctx.trial_depth or self.ctx.is_top_level:
+        if self.ctx.trial_depth:
             return None
         bare = bare_slot(t)
         if not isinstance(bare, PendingContainerType) or not all(
@@ -783,7 +783,7 @@ class PendingNums:
         if (info is None or info.elem_cells is not None
                 or not all(isinstance(p, UnknownElementType)
                            for p in info.pending_type().parts())
-                or info.has_explicit_annotation or info.is_global
+                or info.has_explicit_annotation
                 or info.variable_name is None
                 or info.literal_id not in self.ctx.func.pending_resolutions):
             return None

@@ -68,7 +68,7 @@ void __tpy_init() {
     for (;;) {
         auto __r_3 = __itr_2.__next__();
         if (!__r_3.has_value()) break;
-        const std::string& k = ::tpy::unwrap_ref(*__r_3);
+        std::string_view k = ::tpy::unwrap_ref(*__r_3);
         std::cout << k << "\n" << ::tpy::check_signals;
     }
 }

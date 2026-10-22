@@ -11,4 +11,4 @@ class Same[T]:
 
 
 # T can't be both int and str - should fail
-same = Same(1, "hi")  # tpyc: error(/Cannot infer type arguments/)
+same = Same(1, "hi")  # tpyc: error(/Cannot infer type argument T/)
