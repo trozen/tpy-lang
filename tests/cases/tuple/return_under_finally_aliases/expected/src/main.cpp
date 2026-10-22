@@ -544,11 +544,12 @@ std::tuple<::tpy::ordered_set<int32_t>, int32_t> aug_set() {
 }
 
 // # a record with only `__add__`: `+=` rebinds, the pending return keeps the
-// # original object.
+// # original object, which the eager capture copies (warned) before the finally
+// # rebinds the name (BUGS.md#finally-mutate-then-rebind-return).
 // def aug_rebinds() -> tuple[Own[Plus], int32]:
 //     p = Plus(1)
 //     try:
-//         return (p, 4)  # tpyc: ok
+//         return (p, 4)  # tpyc: warning(/copies Plus into owned storage \(tuple element 0\)/)
 //     finally:
 //         p += 5
 std::tuple<Plus, int32_t> aug_rebinds() {
@@ -556,7 +557,7 @@ std::tuple<Plus, int32_t> aug_rebinds() {
     {
         bool __fin_ran_22 = false;
         try {
-            std::tuple<Plus, int32_t> __tpy_ret_0 = std::tuple<Plus, int32_t>{p, 4};
+            std::tuple<Plus, int32_t> __tpy_ret_0 = std::tuple<Plus, int32_t>{Plus(p), 4};
             __fin_ran_22 = true;
             p = (p) + (5);
             return __tpy_ret_0;

@@ -48,7 +48,7 @@ int32_t field_read(const Holder& h) {
 //     print("field", field_read(Holder(Box(5))))
 //     print("method", Holder(Box(6)).total())
 void main() {
-    std::vector<std::tuple<int32_t, Box>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)})};
+    std::vector<std::tuple<int32_t, Box>> xs = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}));
     std::cout << "read" << " " << ::tpyapp::main::read_only(xs) << "\n" << ::tpy::check_signals;
     std::cout << "mut" << " " << ::tpyapp::main::mutating(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).n << "\n" << ::tpy::check_signals;
     Holder __tmp_1 = Holder(Box(5));

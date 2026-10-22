@@ -160,6 +160,19 @@ struct deref_visitor {
     Result operator()(std::monostate) const { return Result{std::monostate{}}; }
 };
 
+template<typename Result>
+struct move_visitor {
+    template<typename T>
+    Result operator()(T* p) const {
+        // A const pointee would bind std::move(*p) to the copy constructor.
+        static_assert(!std::is_const_v<T>,
+                      "to_value_variant_move needs mutable pointees");
+        return Result{std::move(*p)};
+    }
+
+    Result operator()(std::monostate) const { return Result{std::monostate{}}; }
+};
+
 } // namespace detail
 
 // Convert pointer variant to value variant: to_value_variant<std::variant<Dog,Cat>>(pv)
@@ -167,6 +180,15 @@ struct deref_visitor {
 template<typename ValueVariant, typename... PtrAlts>
 ValueVariant to_value_variant(const std::variant<PtrAlts...>& v) {
     return std::visit(detail::deref_visitor<ValueVariant>{}, v);
+}
+
+// The moving sibling: the active member's pointee is moved out. Only for a
+// pointer variant whose pointees the caller owns and gives up (an owned
+// union local at its last use); a pointer variant into storage someone else
+// owns goes through the copying `to_value_variant`.
+template<typename ValueVariant, typename... PtrAlts>
+ValueVariant to_value_variant_move(const std::variant<PtrAlts...>& v) {
+    return std::visit(detail::move_visitor<ValueVariant>{}, v);
 }
 
 namespace detail {

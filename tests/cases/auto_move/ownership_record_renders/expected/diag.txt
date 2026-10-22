@@ -1,0 +1,4 @@
+main.py:78: warning: copies Q into field (tuple element 1); use copy() to make this explicit
+main.py:97: warning: Own[A] param 'a' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:261: warning: copies Q into field (tuple element 1); use copy() to make this explicit ('m' is bound to existing storage at line 257)
+main.py:391: warning: Own[F] param 'f' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

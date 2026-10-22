@@ -59,7 +59,7 @@ from .call_lends import (
     call_lend_sources, escaping_borrow_writes, expr_lends_storage,
     proven_lend_roots,
 )
-from .context import OpenCallArgs, OwnIterMove, PENDING_CONTAINER_TYPES
+from .context import OpenCallArgs, PENDING_CONTAINER_TYPES
 from ..parse.nodes import name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
@@ -2387,15 +2387,17 @@ class CallAnalyzer:
         arg = expr.args[0]
         if isinstance(arg, TpyName):
             self.compat.check_own_iter_source(arg, expr)
-            if not self.compat.claim_name_move(
-                    arg, read=OwnIterMove(arg.name, arg, expr)):
+            # The consumption stamp; a later read is the read's own fact.
+            moved = self.compat.claim_name_move(arg, OwnType(arg_type),
+                                                registers=False)
+            if arg not in self.ctx.all_last_uses:
                 self.ctx.warning(
                     f"own_iter() consumes '{arg.name}' -- "
                     f"using it afterwards is undefined behavior. "
                     f"Use a regular for-loop if the container is needed later.",
                     expr,
                 )
-            else:
+            elif moved:
                 self.compat.check_own_consumption(arg)
         elem_type = builtin_modules.get_iterable_element_type(arg_type, registry=self.ctx.registry)
         assert elem_type is not None
@@ -3370,23 +3372,21 @@ class CallAnalyzer:
             return
         if self._is_nocopy_type(arg_type):
             reason = self.ctx.nocopy_reason(arg_type)
-            is_movable = (isinstance(arg, TpyName)
-                          and self.compat._is_owned_var(arg.name))
-            if is_movable:
-                # Movable owner, but not at last use (used later)
-                raise self.ctx.error(
-                    f"{reason} is used after this point "
-                    f"and cannot be moved into '{pname}: Own[{ptype.wrapped}]'. "
-                    f"Remove later uses or restructure the code.",
-                    arg
-                )
-            # Not movable (T& alias, readonly param, etc.)
-            raise self.ctx.error(
-                f"{reason} cannot be copied into "
-                f"'{pname}: Own[{ptype.wrapped}]'. "
-                f"Only the original owner can be moved at its last use.",
-                arg
-            )
+
+            def text(_note: str) -> str:
+                # Asked at settlement, when the read's binding is known.
+                if self.compat.read_owns(arg):
+                    # Movable owner, but not at last use (used later)
+                    return (f"{reason} is used after this point and cannot "
+                            f"be moved into '{pname}: Own[{ptype.wrapped}]'. "
+                            f"Remove later uses or restructure the code.")
+                # Not movable (T& alias, readonly param, etc.)
+                return (f"{reason} cannot be copied into "
+                        f"'{pname}: Own[{ptype.wrapped}]'. "
+                        f"Only the original owner can be moved at its last "
+                        f"use.")
+            # Held for settlement: the read's record says whether it copies.
+            self.ctx.copy_error(text, arg, arg)
         # Non-nocopy implicit copy: warning is emitted by the coercion
         # path in compatibility.py (T -> Own[T] coercion), so no need
         # to duplicate it here.
@@ -3505,6 +3505,8 @@ class CallAnalyzer:
             self.compat.check_tuple_result(arg, ptype, TupleSink.ARG,
                                            pname=pname)
         bare = unwrap_readonly(ptype)
+        # The walk's view only picks the copy's words -- the whole owned
+        # tuple's; the record decides whether it copies.
         if (isinstance(arg, TpyName) and isinstance(bare, TupleType)
                 and param_takes_ownership(ptype)
                 and self.compat._is_owned_var(arg.name)
@@ -3518,20 +3520,16 @@ class CallAnalyzer:
             if self.ctx.is_type_non_copyable(arg_type):
                 reason = (self.ctx.nocopy_reason(arg_type)
                           or f"owned tuple '{arg.name}'")
-                raise self.ctx.error(
+                self.ctx.copy_error(
                     f"{reason} is used after this point and cannot be "
                     f"moved into '{pname}'. Remove later uses or use "
-                    f"copy().", arg)
+                    f"copy().", arg, arg)
             # A mixed slot's owned element is warned by the
             # element-wise check the argument coercion runs.
-            if bare.is_owned_movable():
+            elif bare.is_owned_movable():
                 self.ctx.copy_warning(
                     f"copies {bare} into owned storage; use "
                     f"copy() to make this explicit", arg, arg)
-                # Declared to the lowering, which builds only
-                # declared copies of a name holding a reference. The
-                # whole owned tuple is copied, so no MIXED mark.
-                self.compat.record_tuple_copy(arg, None, mark_mixed=False)
         if own_ptype is None:
             return
         self.compat.register_owned_result(arg, own_ptype, TupleSink.ARG)

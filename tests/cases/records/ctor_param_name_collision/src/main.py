@@ -1,7 +1,7 @@
 # A ctor param sharing its name with an earlier function's union param must
 # classify against the ctor's own bindings (leaked set -> uncompilable MIL).
 from typing import Iterator
-from tpy import int32, Own, copy
+from tpy import int32, Own
 
 
 class A:
@@ -26,15 +26,10 @@ class H:
     u: A | B
     n: int32
 
-    # Known sema false positive: the field-consumption check does not
-    # credit copy() at a field store, though the MIL genuinely moves v.
-    def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
+    def __init__(self, v: Own[A | B]):
         # The line under test: same-named `v` must NOT take the leaked
-        # pointer-variant wrap. copy() is only here to silence a second
-        # false positive -- the bare store warns "copies A | B into field"
-        # although the emit moves it; the render is identical either way
-        # (BUGS.md#own-union-field-store-copy-warning).
-        self.u = copy(v)  # tpyc: ok
+        # pointer-variant wrap.
+        self.u = v  # tpyc: ok
         self.n = 0
 
 

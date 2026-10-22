@@ -81,7 +81,7 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
                 if (!__try_tmp_3.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_3.error()));
                 val = ::tpy::unwrap_ref_move(*__try_tmp_3);
             }
-            ::tpy::__setitem__(d, key, val);
+            ::tpy::__setitem__(d, key, std::move(val));
         }
         {
             auto __try_tmp_4 = reader.read_object_end();
@@ -102,7 +102,7 @@ std::expected<JsonValue, ::tpystd::tplib::json::parser::JsonError> _read_value(:
                 if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_6.error()));
                 item = ::tpy::unwrap_ref_move(*__try_tmp_6);
             }
-            a.push_back(item);
+            a.push_back(std::move(item));
         }
         {
             auto __try_tmp_7 = reader.read_array_end();

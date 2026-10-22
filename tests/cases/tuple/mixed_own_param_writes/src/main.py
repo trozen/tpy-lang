@@ -359,8 +359,7 @@ class Init:
 
 # field write: the whole param stored into a tuple field moves its owned
 # element and copies the borrowed one (warned -- a field owns its elements,
-# so the copy is intended). The element-0 warning is spurious:
-# BUGS.md#own-tuple-param-field-store-warns.
+# so the copy is intended).
 class Slot:
     pair: tuple[Box, Box]
 

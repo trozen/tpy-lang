@@ -1955,9 +1955,8 @@ void main() {
 // # a frame field of its own per binding site, so an alias of the old tuple or of
 // # its element keeps the old object across the rebind and every suspension.
 // # A container store copies the tuple's elements (warned), as from a plain body;
-// # a last-use field store moves the owned element under a copy warning
-// # (BUGS.md#ptr-tuple-field-store-move-warned-copy); those two sections only read
-// # the value back. The `_ints`, `_in_loop`, `_range_len` and `_holder` sections
+// # a last-use field store moves the owned element and copies the borrowed one
+// # (warned); those two sections only read the value back. The `_ints`, `_in_loop`, `_range_len` and `_holder` sections
 // # bind holders the storage verdict sees or that hold no pointer: ints, a tuple
 // # of ints, a `str` or value-type copy, a loop's iterator whose loan the borrow
 // # tracker records (plain function twins among them). The `_untracked`,

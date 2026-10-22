@@ -1,4 +1,3 @@
-main.py:29: warning: copies Node | None into field; use copy() to make this explicit
 main.py:44: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'h.num')
 main.py:47: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'h.num')
 main.py:51: warning: Truthiness check on optional value may also exclude falsy non-None values; use 'is not None' for None-only checks. (variable 'h.num')

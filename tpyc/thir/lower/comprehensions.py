@@ -50,7 +50,8 @@ from ..source import BindingForm
 from ..faces import witness as _witness
 from ..nodes import (
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
-    THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf, THIRMove, THIRName,
+    THIRContainerLiteral, THIRExpr, THIRFormConvert, THIRGenExpr, THIRIf,
+    THIRMove, THIRName,
     THIRStmt, THIRTupleUnpack, TupleSourceBind)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _user_iterator_iterable,
@@ -90,6 +91,7 @@ from .context import (
     _LowerCtx,
     SinkPos,
     SlotPlacement,
+    storage_type,
 )
 from .expressions import (
     _lower_checked_container_elem,
@@ -1108,8 +1110,19 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
     inner = e
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
-    if (lc.analyzer.ctx.comp_moves.get(inner) is CompMove.LAST_SINK
-            and not isinstance(lowered, THIRMove)):
+    lift = lowered.value if isinstance(lowered, THIRMove) else lowered
+    tuple_lift = (isinstance(lift, THIRFormConvert) and not lift.move
+                  and isinstance(storage_type(lift.result_type), TupleType)
+                  and not lift.elem_modes)
+    if tuple_lift and isinstance(lift.value, THIRMove):
+        # The lift takes the variable as an rvalue -- its inline elements
+        # move, its pointees copy -- and its result is a temporary already.
+        return lift
+    if lc.analyzer.ctx.comp_moves.get(inner) is not CompMove.LAST_SINK:
+        return lowered
+    if tuple_lift:
+        return replace(lift, value=lift.value.moved())
+    if not isinstance(lowered, THIRMove):
         lowered = THIRMove(result_type=lowered.result_type, value=lowered,
                            form=lowered.form, loc=getattr(e, "loc", None))
     return lowered

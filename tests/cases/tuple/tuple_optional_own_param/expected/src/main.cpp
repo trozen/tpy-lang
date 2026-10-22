@@ -85,7 +85,7 @@ void test_none_only() {
 void test_storage_form_source() {
     P p1 = P(7);
     P p2 = P(8);
-    std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(p1), &(p2)})};
+    std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = ::tpy::make_vector<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(p1), &(p2)}));
     std::cout << ::tpyapp::main::take(::tpy::__getitem__(pairs, 0)) << "\n" << ::tpy::check_signals;
 }
 

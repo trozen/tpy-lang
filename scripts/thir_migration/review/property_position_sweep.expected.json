@@ -397,7 +397,7 @@
  ],
  "comp_elem__rec__prop__temp": [
   "expr.container_literal:container_elem.accessor_lends_storage",
-  ""
+  "copies R into owned storage; use copy() to make this explicit"
  ],
  "comp_elem__text__meth__named": [
   "ok",
@@ -1213,7 +1213,7 @@
  ],
  "list_elem__rec__prop__temp": [
   "expr.container_literal:container_elem.accessor_lends_storage",
-  ""
+  "copies R into owned storage; use copy() to make this explicit"
  ],
  "list_elem__text__meth__named": [
   "ok",

@@ -107,8 +107,8 @@ def forward_param(p: tuple[Own[A], A]) -> Own[list[tuple[A, A]]]:
 
 
 # free function: a mixed literal local appended at its last use warns its
-# borrowed element 1 only, though the store copies element 0 too
-# (BUGS.md#mixed-tuple-local-append-copies-owned)
+# borrowed element 1 only, and moves the element 0 it owns, element by
+# element
 def append_mixed_local(a: A) -> Own[list[tuple[A, A]]]:
     ys: list[tuple[A, A]] = []
     t = (A(5), a)
@@ -122,17 +122,15 @@ class Holder:
     def __init__(self) -> None:
         self.bp = (A(0), A(0))
 
-    # method: a tuple local holding one element by reference is copied whole
-    # into the field at its last use, so both elements warn; element 0's
-    # warning is an over-warning, the store moves it
-    # (BUGS.md#tuple-local-last-use-copies-owned-elements)
+    # method: a tuple local holding one element by reference, stored into
+    # the field at its last use: the owned element 0 moves, the borrowed
+    # element 1 copies and warns
     def from_mixed(self, b: A) -> None:
         t = (A(7), b)
-        self.bp = t  # tpyc: warning(/copies A into field \(tuple element 0\)/) warning(/copies A into field \(tuple element 1\)/)
+        self.bp = t  # tpyc: warning(/copies A into field \(tuple element 1\)/)
 
-    # method: likewise when the local is read after the store, where element
-    # 0's copy is real (its last-use twin is
-    # BUGS.md#tuple-local-last-use-copies-owned-elements)
+    # method: read after the store, the local copies element 0 too (its
+    # last-use twin above moves it)
     def from_mixed_live(self, b: A) -> int32:
         t = (A(8), b)
         self.bp = t  # tpyc: warning(/copies A into field \(tuple element 0\)/) warning(/copies A into field \(tuple element 1\)/)

@@ -167,7 +167,7 @@ Point& ident(Point& p) {
 //     # borrows and the element is copied out (the named form above is why this
 //     # section, not that one, pins the value slot)
 //     ms = [Point(1), Point(2)]
-//     for p in mapped(lambda q: q, ms):
+//     for p in mapped(lambda q: q, ms):  # tpyc: warning(/copies Point into owned storage/)
 //         print("fn", p.x)
 //
 //     # ... and an `Own`-returning named callee behind the same param: a fresh

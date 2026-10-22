@@ -1,5 +1,6 @@
 # A tuple local holding an owned element beside a borrowed one, returned into
-# Own element slots, warns the borrowed copy and rejects: no whole-tuple lift.
+# Own element slots: the owned (@nocopy) element moves, and the borrowed one
+# copies with a warning.
 from tpy import int32, Own, nocopy
 
 
@@ -20,13 +21,15 @@ class P:
 
 def f(p: P) -> tuple[Own[N], Own[P]]:
     t = (N(1), p)
-    # Copying `t` whole would copy the N it owns, which cannot be copied.
-    return t  # tpyc: warning(/tuple element 1\)/) error(/return.lift.borrow/)
+    # The return moves the N it owns and copies the borrowed P.
+    return t  # tpyc: warning(/tuple element 1\)/)
 
 
 def main() -> None:
-    n, q = f(P(2))
-    print(n.v, q.x)
+    p = P(2)
+    n, q = f(p)
+    p.x = 5
+    print(n.v, q.x, p.x)
 
 
 main()

@@ -379,7 +379,7 @@ __gen_arg_generator arg_generator(P& p) {
         __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<P*, int32_t>{&(p), 1};
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpyapp::main::sink(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::move(t)));
+        int32_t __tpy_async_ret = ::tpyapp::main::sink(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -545,7 +545,7 @@ void call_sinks() {
         std::cout << "call_elem" << " " << ::tpy::__len__(ce.xs) << " " << "call_field" << " " << ::tpy::__len__(hc0.xs) << " " << "call_append" << " " << ::tpy::__len__(cs0.xs) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
     }
     std::cout << "arg_field_elem" << " " << ::tpyapp::main::arg_field_elem(hc) << " " << ::tpy::__len__(hc0.xs) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<P, int32_t>> ps = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(2), 1})};
+    std::vector<std::tuple<P, int32_t>> ps = ::tpy::make_vector<std::tuple<P, int32_t>>(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(2), 1}));
     int32_t n = ::tpyapp::main::arg_subscript_elem(ps);
     auto& __obj_1 = ps;
     auto __beg_1 = __obj_1.begin();
@@ -767,7 +767,7 @@ void main() {
     P rp = std::move(std::get<0>(__tup_7));
     rp.xs.push_back(5);
     std::cout << "ret_param" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(rp.xs) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<P, int32_t>> stored = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(3), 1})};
+    std::vector<std::tuple<P, int32_t>> stored = ::tpy::make_vector<std::tuple<P, int32_t>>(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(3), 1}));
     auto __tup_8 = ::tpyapp::main::ret_loop_var(stored);
     P lv0 = std::move(std::get<0>(__tup_8));
     lv0.xs.push_back(5);

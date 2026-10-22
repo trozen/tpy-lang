@@ -1,7 +1,7 @@
 # Storing a record into an `Any`-typed field at the source name's LAST use.
 # The payload cannot be read back in-language (no read form of a declared
-# `Any` field lowers yet), so the pin is the WRITE render -- which COPIES the
-# source instead of moving it (BUGS.md#any-field-write-copies-source).
+# `Any` field lowers yet), so the pin is the WRITE render, which moves the
+# source into the box (`make_any(std::move(n))`).
 from typing import Any
 from tpy import int32
 

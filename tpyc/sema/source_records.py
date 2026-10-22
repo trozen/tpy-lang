@@ -12,14 +12,17 @@ borrowed, whether the slot owns that leaf, and what the sink does with it.
 The record is keyed by the canonical source node (`peel_value_wrappers`),
 so a coercion or a walrus wrapped around the source reads the same record.
 
-Whether a leaf COPIES comes from the source facts the builder reads. Whether
-the user was TOLD of that copy comes from the copy diagnostics: every check
-that warns of a copy of a source into an owning slot records a
-`CopyDeclaration` linked to its `Diagnostic` by identity, and one pass at
-the end of module analysis (`finalize_source_records`), once every
-diagnostic has its final fate -- held and dropped, deduplicated, replaced
-by an instantiation's error, truncated by a rejected trial -- resolves each
-copying leaf from the declarations whose diagnostic still stands.
+Whether a leaf COPIES comes from the source facts the builder reads, a
+name read's from the one ownership verdict (`TypeCompatibility.name_moves`);
+a copied leaf is WARNED, or HEDGED for an open payload, by its own type.
+The copy diagnostics are projected from it: the walk only registers each
+owning sink's copy diagnostic (`context.PendingCopy`), and settlement emits
+it iff a leaf it speaks for copies (`TypeCompatibility.project_copies`).
+
+Every reader of an owning sink's copy-or-move verdict -- sema's settlement
+and the lowering alike -- asks the record one way: `read_record` /
+`verdict` and the classification on `SourceRecord` (the per-path
+`copied` / `moved` leaves and the `Disposition` over the whole).
 
 No record means the source was never checked. A record with no leaf for a
 value-bounded element (`T: ValueType`) means its copy is proven harmless.
@@ -27,12 +30,10 @@ value-bounded element (`T: ValueType`) means its copy is proven harmless.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping
 
-from ..diagnostics import Diagnostic
-from ..identity_map import IdentityMap, IdentitySet
 from ..parse import TpyExpr
 from ..typesys import TpyType
 from ..value_category import peel_value_wrappers
@@ -58,18 +59,15 @@ class LeafPermission(Enum):
 
     PASS: the slot does not own the leaf; a borrow passes as a borrow.
     MOVE: an owned leaf moves in, or the leaf is fresh.
-    WARNED: an implicit copy, and a standing copy warning says so.
-    HEDGED: an implicit copy of an open `T` leaf, and the standing
-        definition-time hedge (`defer_own_copy_verdict`) says so.
-    EXPLICIT: copied under `copy()`.
-    UNDECIDED: a copy no standing diagnostic tells, or no verdict yet; a
-        consumer must not act on the leaf."""
+    WARNED: an implicit copy, and its copy warning says so.
+    HEDGED: an implicit copy of an open `T` leaf, and its definition-time
+        hedge (`defer_own_copy_verdict`) says so.
+    EXPLICIT: copied under `copy()`."""
     PASS = "pass"
     MOVE = "move"
     WARNED = "warned"
     HEDGED = "hedged"
     EXPLICIT = "explicit"
-    UNDECIDED = "undecided"
 
     @property
     def copies(self) -> bool:
@@ -82,100 +80,113 @@ class Leaf:
     borrowed: bool
     slot_owns: bool
     permission: LeafPermission
-    # Set by the builder on a leaf the source facts say COPIES, until
-    # `finalize_source_records` resolves its permission from the standing
-    # declarations: each node of the leaf's source chain (the registered
-    # source, then a literal member under it) with the leaf's path
-    # relative to that node. On a MOVE leaf, the nodes whose told copy
-    # takes the move back. Empty on every leaf of a finalized record.
-    told_by: tuple[tuple[TpyExpr, ElemPath], ...] = field(
-        default=(), compare=False, repr=False)
+
+
+class Disposition(Enum):
+    """What an owning sink does with a source as a whole, from its leaves.
+
+    NONE: no leaf moves and none copies implicitly (every leaf passes or
+        is copied under `copy()`; or no sink took the source).
+    MOVE: every leaf moves.
+    COPY: some leaf copies implicitly and none moves -- the copy of the
+        source whole, its passed leaves passed on.
+    MIXED: some leaf moves and another does not -- the source converts
+        element by element."""
+    NONE = "none"
+    MOVE = "move"
+    COPY = "copy"
+    MIXED = "mixed"
 
 
 @dataclass(frozen=True)
 class SourceRecord:
     """`leaves`: every reference leaf path of the source at its slot. A
     select's verdict sits on the select's record; `arms` holds each arm's
-    own record (its own ownership; an arm never warns on its own)."""
+    own record (its own ownership; an arm never warns on its own).
+
+    The ONE classification of the record: `copied` / `moved` per path, and
+    `disposition` over the whole. Every reader of an owning sink's
+    copy-or-move verdict asks it here."""
     leaves: Mapping[ElemPath, Leaf]
     arms: tuple['SourceRecord', ...] = field(default=())
 
-    def copied_top_level(self) -> frozenset[int]:
-        """The top-level elements of a tuple source holding a leaf the sink
-        copies implicitly: for a source other than a name, its
-        `own_element_copies` entry -- the copies the sink declares by
-        top-level element, which the lowering builds. A scalar's one leaf
-        (path `()`) is no element."""
-        return frozenset(p[0] for p, leaf in self.leaves.items()
-                         if p and leaf.permission.copies)
+    @property
+    def copied(self) -> frozenset[ElemPath]:
+        """The leaf paths the sink copies implicitly (WARNED / HEDGED)."""
+        return frozenset(p for p, leaf in self.leaves.items()
+                         if leaf.permission.copies)
+
+    @property
+    def moved(self) -> frozenset[ElemPath]:
+        """The leaf paths the sink moves."""
+        return frozenset(p for p, leaf in self.leaves.items()
+                         if leaf.permission is LeafPermission.MOVE)
+
+    @property
+    def disposition(self) -> Disposition:
+        moved = self.moved
+        if moved:
+            return (Disposition.MOVE if len(moved) == len(self.leaves)
+                    else Disposition.MIXED)
+        return Disposition.COPY if self.copied else Disposition.NONE
+
+    @property
+    def moves_whole(self) -> bool:
+        """The sink takes the source whole by move: some leaf moves and
+        every other passes (MOVE, or MIXED over passed leaves)."""
+        perms = {leaf.permission for leaf in self.leaves.values()}
+        return (LeafPermission.MOVE in perms
+                and perms <= {LeafPermission.MOVE, LeafPermission.PASS})
+
+    def element_moves(self, index: int) -> bool:
+        """Whether the sink moves every leaf under top-level element
+        `index` (an element holding no leaf moves nothing of its own)."""
+        return all(leaf.permission is LeafPermission.MOVE
+                   for p, leaf in self.leaves.items() if p[:1] == (index,))
+
+    def copies_at(self, path: ElemPath) -> bool | None:
+        """Whether the sink copies a leaf at or under `path`; None where
+        the record holds no leaf there."""
+        mine = [leaf for p, leaf in self.leaves.items()
+                if p[:len(path)] == path]
+        return any(leaf.permission.copies for leaf in mine) if mine else None
 
 
-@dataclass(frozen=True, eq=False)
-class CopyDeclaration:
-    """A copy diagnostic's statement that the leaves of `source` (its
-    canonical node) at and under `path` are copied into an owning slot:
-    WARNED for a warning, HEDGED for an open payload's definition-time
-    hedge. It counts only while `diag` is in the module's final
-    diagnostics, by identity (the `OwnCopyObligation.diag` precedent)."""
-    source: TpyExpr
-    path: ElemPath
-    kind: LeafPermission
-    diag: Diagnostic
+NO_RECORD = SourceRecord({})
 
 
-def declare_copy(ctx: 'SemanticContext', source: TpyExpr | None,
-                 path: ElemPath, kind: LeafPermission,
-                 diag: Diagnostic | None) -> None:
-    """Record that `diag` tells the copy of `source`'s leaves at `path`."""
-    if source is None or diag is None:
-        return
-    ctx.copy_declarations.append(
-        CopyDeclaration(peel_value_wrappers(source), path, kind, diag))
-
-
-def source_record(ctx: 'SemanticContext',
-                  expr: TpyExpr | None) -> SourceRecord | None:
-    """The record an owning sink published for source `expr` (looked up by
-    its canonical node, as it was keyed); None when no sink checked it."""
+def read_record(ctx: 'SemanticContext',
+                expr: TpyExpr | None) -> SourceRecord | None:
+    """The record an owning sink published for source `expr`, relative to
+    it: its own record, or -- a member of a literal source -- the literal
+    record's leaves under the member's path. Looked up by the canonical
+    node (`peel_value_wrappers`: coercions and walruses peeled), as it was
+    keyed. None when no sink checked it."""
     if expr is None:
         return None
-    return ctx.source_records.get(peel_value_wrappers(expr))
+    key = peel_value_wrappers(expr)
+    rec = ctx.source_records.get(key)
+    if rec is not None:
+        return rec
+    at = ctx.member_sources.get(key)
+    if at is None:
+        return None
+    whole_key, prefix = at
+    whole = ctx.source_records.get(whole_key)
+    if whole is None:
+        return None
+    n = len(prefix)
+    return SourceRecord({p[n:]: leaf for p, leaf in whole.leaves.items()
+                         if p[:n] == prefix})
+
+
+def verdict(ctx: 'SemanticContext', expr: TpyExpr | None) -> SourceRecord:
+    """`read_record`, an empty record (NONE, nothing copied or moved) for a
+    source no sink checked."""
+    rec = read_record(ctx, expr)
+    return NO_RECORD if rec is None else rec
 
 
 def publish_source_record(ctx: 'SemanticContext', expr: TpyExpr,
                           record: SourceRecord) -> None:
     ctx.source_records[peel_value_wrappers(expr)] = record
-
-
-def finalize_source_records(ctx: 'SemanticContext') -> None:
-    """Resolve every copying leaf of the module's records from the copy
-    declarations whose diagnostic stands in the final `ctx.diagnostics`: a
-    standing warning makes it WARNED, a standing hedge alone HEDGED, and
-    nothing standing leaves the copy UNDECIDED. Runs once, after the last
-    diagnostic-emitting step of the module."""
-    standing: IdentitySet = IdentitySet(ctx.diagnostics)
-    told: IdentityMap = IdentityMap()
-    for d in ctx.copy_declarations:
-        if d.diag in standing:
-            told.setdefault(d.source, []).append((d.path, d.kind))
-
-    def leaf_told(leaf: Leaf) -> Leaf:
-        if not leaf.told_by:
-            return leaf
-        kinds = {kind for node, sub in leaf.told_by
-                 for path, kind in told.get(node, ())
-                 if sub[:len(path)] == path}
-        perm = (LeafPermission.WARNED if LeafPermission.WARNED in kinds
-                else LeafPermission.HEDGED if LeafPermission.HEDGED in kinds
-                else LeafPermission.MOVE
-                if leaf.permission is LeafPermission.MOVE
-                else LeafPermission.UNDECIDED)
-        return replace(leaf, permission=perm, told_by=())
-
-    def resolve(rec: SourceRecord) -> SourceRecord:
-        return SourceRecord({p: leaf_told(leaf)
-                             for p, leaf in rec.leaves.items()},
-                            tuple(resolve(a) for a in rec.arms))
-
-    for key, rec in list(ctx.source_records.items()):
-        ctx.source_records[key] = resolve(rec)

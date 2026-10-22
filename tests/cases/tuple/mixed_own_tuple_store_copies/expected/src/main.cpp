@@ -37,7 +37,7 @@ int32_t via_append(Box& b) {
 //     d[1][1].val = 23
 //     return b.val
 int32_t via_dict_literal(Box& b) {
-    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))}});
+    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::make_ordered_map<int32_t, std::tuple<Box, Box>>(1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
     std::get<1>(::tpy::__getitem__(d, 1)).val = 23;
     return b.val;
 }

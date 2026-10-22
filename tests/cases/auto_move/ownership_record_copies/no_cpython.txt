@@ -1,0 +1,7 @@
+Each section pins a copy the record says the sink makes (a leaf some
+binding borrows, a read that does not consume): the copy IS a divergence
+from CPython (which hands over the very object), acknowledged by the
+warning plus copy(). Comparing output against CPython would compare the
+divergence itself. One section pins a copy that is not warned yet:
+keep_rebound's rebound generic local copies at each bind
+(BUGS.md#generic-lending-local-copies-unwarned).

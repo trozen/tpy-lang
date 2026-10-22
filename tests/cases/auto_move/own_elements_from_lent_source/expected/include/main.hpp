@@ -289,7 +289,7 @@ template <::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        (*out).push_back((*x));
+        (*out).push_back(std::move((*x)));
         __state = S_JOIN_0;
         continue;
     }
@@ -369,7 +369,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_via_gen<T_source>::__next__()
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         x.emplace(::tpy::unwrap_ref(*(*__for_r_0)));
-        (*out).push_back((*x));
+        (*out).push_back(std::move((*x)));
         __state = S_RESUME_0;
         return ::tpy::__len__(::tpy::__getitem__((*out), -1));
     }

@@ -402,9 +402,9 @@ std::vector<std::tuple<Box, Box>> double_(T_src&& src) {
         std::move(__result);
     });
 }
-// # an owned variable passed to an `Own` parameter moves; the warning is a false positive (BUGS.md#comp-var-own-arg-false-copy-warning)
+// # an owned variable passed to an `Own` parameter moves, silently
 // def owned_arg(src: Iterable[Own[Box]]) -> Own[list[Box]]:
-//     return [take(b) for b in src]  # tpyc: warning(/copies Box into owned storage/)
+//     return [take(b) for b in src]  # tpyc: ok
 template<::tpystd::typing::Iterable<Box> T_src>
 std::vector<Box> owned_arg(T_src&& src) {
     return ({

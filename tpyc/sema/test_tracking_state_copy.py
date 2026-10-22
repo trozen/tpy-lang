@@ -33,7 +33,7 @@ from .alias_rebind import BindKind
 from .pending_num import DeferredIntOp
 from .source_records import SinkRead
 from .context import (BorrowTracker, CompTarget, FunctionTrackingState,
-                      NonOwningNotes, PendingLocal, ReceiverMove,
+                      NonOwningNotes, OwnIterMove, PendingLocal,
                       LIVE_HANDLE_FIELDS)
 
 
@@ -105,7 +105,7 @@ def _populated() -> FunctionTrackingState:
         arm_decl_sites=[(N.TpyIf(N.TpyName("c"), [], []), "r",
                          N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
-        owning_reads=[ReceiverMove("b", N.TpyName("b"))],
+        owning_reads=[OwnIterMove("b", N.TpyName("b"), N.TpyName("c"))],
         tuple_sinks=[SinkRead(N.TpyName("t"), INT32)],
         nonowning_sites={'a': NonOwningNotes([(N.TpyName("b"), None)])},
         comp_targets=[CompTarget("b", N.TpyName("comp"), 0, 1)],

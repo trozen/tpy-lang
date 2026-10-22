@@ -1071,9 +1071,10 @@ the loop writes").
 `source_records` holds the per-leaf ownership record of every source an
 owning sink checks -- a scalar is a tuple of one leaf, at path `()` --
 (`SourceRecord`: per reference leaf path borrowed, slot-owned and a
-permission -- PASS, MOVE, WARNED, HEDGED, EXPLICIT, UNDECIDED -- a select's
+permission -- PASS, MOVE, WARNED, HEDGED, EXPLICIT -- a select's
 arms with records of their own), keyed by the peeled source node;
-`source_record` is its one lookup. Each owning sink only registers its
+`read_record` is its one lookup (`verdict`: an empty record where no sink
+checked the source). Each owning sink only registers its
 source and slot where the slot holds a reference leaf
 (`TypeCompatibility.register_sink`: the `Own` coercion, an `Own` return,
 yield, lambda result or argument, a field or container store, a store into
@@ -1081,27 +1082,31 @@ yield, lambda result or argument, a field or container store, a store into
 tuple's), a consuming receiver, `check_owned_tuple_sink` and the name
 checks), once per source -- a statement's own check stands over its
 coercion's `Own`-slot check, and a tuple registers only from its per-leaf
-check, or into `Any`; one builder (`build_source_records`) runs at the end of
-`settle_owning_reads`, and once more after the module-level statements
-(`analyzer.py`, which leave no read to settle). The builder reads only facts
+check, or into `Any`; one builder (`build_source_records`) runs in
+`settle_owning_reads`, which settles every body -- the module's top level
+included -- once its walk is read. The builder reads only facts
 that stand once the body is settled -- nothing in the scope the sink was
 checked in, which is gone by then -- to decide whether each leaf COPIES: the
 source's incoming lending (`tuple_lent_paths`, `member_lends`), the slot's
-`owned_slot_paths`, the declared copies (`own_element_copies`,
-`owned_slot_copies` -- the copy settlement turns a move into included), element
-moves (`element_moves`), `copy()` nodes, and for a NAME read the one MOVE
-formula below. Whether
-a copy was TOLD comes from the copy diagnostics: every check that warns of a
-copy of a source into an owning slot records a `CopyDeclaration` (source,
-path, warned or hedged) linked to its `Diagnostic` by identity, in
-`ctx.copy_declarations` (`SemanticContext.copy_warning` emits the warning
-and records it together). `finalize_source_records` runs once, after the
-module's last diagnostic-emitting step (`finalize_borrow_checks`, after the
-own-copy verdicts and the duplicate collapse, which moves a dropped repeat's
-declarations to the report that stays), and resolves each copying leaf from
-the declarations whose diagnostic still stands: WARNED, HEDGED, or UNDECIDED
-for a copy nothing tells. No record means the source was never checked; no
-leaf for a `T: ValueType` element means its copy is proven harmless.
+`owned_slot_paths`, an element read that moves out of its tuple
+(`element_moves_out`), `copy()` nodes, and for a NAME read the one MOVE
+formula below; a copied leaf is WARNED, or HEDGED for an open payload, by its
+own type. The lowering reads the same record, through its one
+classification (`source_records.read_record` / `verdict`: the per-path
+`copied` / `moved` leaves and the `Disposition` over the whole -- NONE,
+MOVE, COPY, MIXED), so the C++ moves exactly the MOVE leaves: a read
+whose record moves a leaf moves whatever the binding's form
+(`thir/lower/checks.py` `record_disposition`), and none moves a leaf its
+record copies (`_assert_move_leaves_render_moves` checks both; the one
+exception is a storage local whose rebind copied, which moves its own copy
+on: BUGS.md#owned-local-rebound-from-lvalue-copies-silently). A read no
+owning sink took moves by the lowering's last-use rule. The copy
+diagnostics are its projection: each one the walk registered for a source
+(and a path under it), whatever its kind, is emitted iff a leaf it speaks
+for copies, merged in source order into the body's diagnostics; a name
+read a move-through claim or a container's element copy takes registers
+its record too. No record means the source was never checked; no leaf for
+a `T: ValueType` element means its copy is proven harmless.
 
 A name read's MOVE side is two facts. Fact 1, `binding_ownership`
 (`BindingOwnership`), is which leaf paths of a binding's storage the binding
@@ -1145,10 +1150,10 @@ Fact 2, `TypeCompatibility.name_moves`, is the record's MOVE: the binding
 owns the leaf, and the read is its final last use (`all_last_uses`, a hidden
 borrower's demotion retracted), its comprehension clause's move
 (`comp_moves`, which the lowering's last-sink move reads too) or the whole
-return of the name, and no copy fact takes it back (a pointer-hoisted
-local's told copy among them, `pointer_hoisted`). There are no move grants:
-the checks' `claim_name_move` keeps only the hidden-borrow demotion and the
-read settlement revisits. The binding planner (`thir/lower/bindings.py`)
+return of an ownership-transfer parameter or of a lambda's parameter. There
+are no move grants: the checks' `claim_name_move` is the walk's own stamp
+(a consumption, a move-through binding, a capture mode) and the
+hidden-borrow demotion. The binding planner (`thir/lower/bindings.py`)
 reads fact 1 as the base of a record's `movable`: `movable = forced(rec) or
 (owned and not exception(rec))`, each exception and forced row a named
 `MoveRow` scoped to the rows it applies to, its `slug` the BUGS.md entry
@@ -1157,10 +1162,16 @@ select the planner plans as a call passthrough, which the lowering refuses),
 a const pointer (`CONST_SLOT`: over an owning slot it owns a readonly
 result it does not move) and module storage (`MODULE_STORAGE`: a name the
 planner reads as a module global that sema did not declare global) are
-rows only where fact 1 says the binding owns. The copy WARNINGS do not
-read the facts yet (`_is_owned_var` answers from the facts read so far);
-where the two disagree the record's tests name the row
-(`_KNOWN_DISAGREEMENTS`).
+rows only where fact 1 says the binding owns. The copy DIAGNOSTICS are
+projected from the same record: the walk only registers each owning sink's
+copy diagnostic (`context.PendingCopy`, `SemanticContext.register_copy`),
+with its text and the note naming the read's binding, and settlement emits
+it iff a leaf it speaks for copies (`TypeCompatibility.project_copies`,
+reading the leaf's permission the builder decided); the first held error (a `@nocopy`
+payload's copy) raises after the warnings registered before it. A body whose
+walk fails emits none of its held diagnostics. The record's tests name the
+rows where a record still disagrees with the final diagnostics or with the
+render (`_DIAGNOSTIC_DISAGREEMENTS`, `_RENDER_DISAGREEMENTS`).
 
 `own_copy` holds the owning-slot copy contract of a body whose payload is
 still a type parameter. The sinks warn at the body line, hedged, at

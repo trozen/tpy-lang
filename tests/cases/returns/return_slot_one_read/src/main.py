@@ -355,14 +355,15 @@ def own_tuple_backedge(w: A) -> Own[tuple[A, int32]]:
     return (A(0), 0)
 
 
-# own_tuple_captured: a storage tuple local a closure reads moves out whole.
+# own_tuple_captured: a storage tuple local a closure reads is copied out
+# and warned, as its scalar twin is: the closure may still read it.
 def own_tuple_captured() -> Own[tuple[A, int32]]:
     t = (A(3), 1)
 
     def peek() -> int32:
         return t[1]
     print("own_tuple_captured peek", peek())
-    return t  # tpyc: ok
+    return t  # tpyc: warning(/copies tuple\[A, int32\] into owned storage/)
 
 
 @nocopy
@@ -454,11 +455,12 @@ def captured_own_list(x: Own[list[int32]]) -> int32:  # tpyc: warning(/never con
 
 
 # captured_own_list_lambda: the lambda twin copies the captured list each
-# call the same way (BUGS.md#nested-def-captured-own-return-copies), so a
-# second call and a later read of the parameter see every element.
+# call the same way, warned as a lambda's `Own` result copies its borrowed
+# body, so a second call and a later read of the parameter see every element.
 def captured_own_list_lambda(x: Own[list[int32]]) -> int32:  # tpyc: warning(/never consumed/)
-    # the lambda copies `x` when it is created; called at once, it prints the same
-    f: Callable[[], Own[list[int32]]] = lambda: x  # tpyc: warning(/copies the object 'x'/)
+    # the lambda copies `x` when it is created, and each call copies that
+    # capture into the `Own` result; called at once, it prints the same
+    f: Callable[[], Own[list[int32]]] = lambda: x  # tpyc: warning(/copies the object 'x'/) warning(/copies list\[int32\] into owned storage/)
     a = f()
     b = f()
     print("captured_own_list_lambda", len(a), len(b), len(x))

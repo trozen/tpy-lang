@@ -164,7 +164,7 @@ inline Holder::Holder(Box&& inner) : inner(std::move(inner)) {}
 
 // def __init__(self, v: int) -> None:
 //     self.items = [(Box(v), 1)]
-inline Pairs::Pairs(const ::tpy::BigInt& v) : items(std::vector<std::tuple<Box, ::tpy::BigInt>>{::tpy::tuple_to_storage<std::tuple<Box, ::tpy::BigInt>>(std::tuple<Box, ::tpy::BigInt>{Box(v), ::tpy::BigInt(1)})}) {}
+inline Pairs::Pairs(const ::tpy::BigInt& v) : items(::tpy::make_vector<std::tuple<Box, ::tpy::BigInt>>(::tpy::tuple_to_storage<std::tuple<Box, ::tpy::BigInt>>(std::tuple<Box, ::tpy::BigInt>{Box(v), ::tpy::BigInt(1)}))) {}
 
 // def bump(self) -> None:
 //     first, n = self.items[0]

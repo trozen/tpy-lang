@@ -137,7 +137,7 @@ int32_t in_list(Box& b) {
 //     d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
 //     return d[1][1].val
 int32_t in_dict(Box& b) {
-    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>({{1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))}});
+    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::make_ordered_map<int32_t, std::tuple<Box, Box>>(1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
     return std::get<1>(::tpy::__getitem__(d, 1)).val;
 }
 

@@ -636,7 +636,7 @@
  ],
  "array_i__ctor__temp_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__ctor__temp_field__match_capture": [
@@ -1096,7 +1096,7 @@
  ],
  "array_i__fn__temp_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__fn__temp_field__match_capture": [
@@ -1796,7 +1796,7 @@
  ],
  "array_i__meth__temp_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "array_i__meth__temp_field__match_capture": [
@@ -1932,7 +1932,7 @@
  "array_i__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -1947,7 +1947,7 @@
  "array_i__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(%s0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__narrowed_opt__decl_alias": [
   "ok",
@@ -1962,7 +1962,7 @@
  "array_i__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'A",
@@ -2231,7 +2231,7 @@
  ],
  "array_i__nested__temp_field__field_write": [
   "ok",
-  "copies Array[int32, 2] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__temp_field__match_capture": [
@@ -3046,7 +3046,7 @@
  ],
  "bytearray__ctor__temp_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__ctor__temp_field__match_capture": [
@@ -3641,7 +3641,7 @@
  ],
  "bytearray__fn__temp_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__fn__temp_field__match_capture": [
@@ -4511,7 +4511,7 @@
  ],
  "bytearray__meth__temp_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "bytearray__meth__temp_field__match_capture": [
@@ -4717,7 +4717,7 @@
  "bytearray__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -4777,7 +4777,7 @@
  "bytearray__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'b",
@@ -5081,7 +5081,7 @@
  ],
  "bytearray__nested__temp_field__field_write": [
   "ok",
-  "copies bytearray into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__temp_field__match_capture": [
@@ -5896,7 +5896,7 @@
  ],
  "deref_list__ctor__temp_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__temp_field__match_capture": [
@@ -6491,7 +6491,7 @@
  ],
  "deref_list__fn__temp_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__temp_field__match_capture": [
@@ -7361,7 +7361,7 @@
  ],
  "deref_list__meth__temp_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__temp_field__match_capture": [
@@ -7567,7 +7567,7 @@
  "deref_list__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -7627,7 +7627,7 @@
  "deref_list__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -7931,7 +7931,7 @@
  ],
  "deref_list__nested__temp_field__field_write": [
   "ok",
-  "copies DL into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__temp_field__match_capture": [
@@ -8746,7 +8746,7 @@
  ],
  "deref_rec__ctor__temp_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__temp_field__match_capture": [
@@ -9341,7 +9341,7 @@
  ],
  "deref_rec__fn__temp_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__temp_field__match_capture": [
@@ -10211,7 +10211,7 @@
  ],
  "deref_rec__meth__temp_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__temp_field__match_capture": [
@@ -10417,7 +10417,7 @@
  "deref_rec__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -10432,7 +10432,7 @@
  "deref_rec__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[DR, int32] = tuple(%s0, lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%t: tuple[DR, int32] = tuple(move(%s0), lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "deref_rec__nested__loop_var__decl_alias": [
   "ok",
@@ -10477,7 +10477,7 @@
  "deref_rec__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -10781,7 +10781,7 @@
  ],
  "deref_rec__nested__temp_field__field_write": [
   "ok",
-  "copies DR into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__temp_field__match_capture": [
@@ -11536,7 +11536,7 @@
  ],
  "dict_si__ctor__temp_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__ctor__temp_field__match_capture": [
@@ -12061,7 +12061,7 @@
  ],
  "dict_si__fn__temp_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__fn__temp_field__match_capture": [
@@ -12861,7 +12861,7 @@
  ],
  "dict_si__meth__temp_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__meth__temp_field__match_capture": [
@@ -12997,7 +12997,7 @@
  "dict_si__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13012,7 +13012,7 @@
  "dict_si__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[dict[str, int32], int32] = tuple(%s0, lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%t: tuple[dict[str, int32], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "dict_si__nested__loop_var__decl_alias": [
   "ok",
@@ -13057,7 +13057,7 @@
  "dict_si__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13361,7 +13361,7 @@
  ],
  "dict_si__nested__temp_field__field_write": [
   "ok",
-  "copies dict[str, int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__temp_field__match_capture": [
@@ -14145,7 +14145,7 @@
   ""
  ],
  "gen_rec__ctor__temp_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "reject:stmt.assign:field.result_type",
   "",
   ""
  ],
@@ -14705,9 +14705,9 @@
   ""
  ],
  "gen_rec__fn__temp_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = call(mk_b, [])._v [storage] print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__temp_field__match_capture": [
   "reject:stmt.match",
@@ -15540,9 +15540,9 @@
   ""
  ],
  "gen_rec__meth__temp_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = call(mk_b, [])._v [storage] print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__temp_field__match_capture": [
   "reject:stmt.match",
@@ -15712,7 +15712,7 @@
  "gen_rec__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -15727,7 +15727,7 @@
  "gen_rec__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(%s0, lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
+  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__loop_var__decl_alias": [
   "ok",
@@ -15772,7 +15772,7 @@
  "gen_rec__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -16075,9 +16075,9 @@
   ""
  ],
  "gen_rec__nested__temp_field__field_write": [
-  "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
+  "ok",
   "",
-  ""
+  "%h.f [storage] = call(mk_b, [])._v [storage] print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__temp_field__match_capture": [
   "reject:stmt.match",
@@ -16861,7 +16861,7 @@
  ],
  "list_i__ctor__temp_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__temp_field__match_capture": [
@@ -17421,7 +17421,7 @@
  ],
  "list_i__fn__temp_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__temp_field__match_capture": [
@@ -18256,7 +18256,7 @@
  ],
  "list_i__meth__temp_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__temp_field__match_capture": [
@@ -18487,7 +18487,7 @@
  "list_i__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -18791,7 +18791,7 @@
  ],
  "list_i__nested__temp_field__field_write": [
   "ok",
-  "copies list[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__temp_field__match_capture": [
@@ -19481,7 +19481,7 @@
  ],
  "list_r__ctor__temp_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__ctor__temp_field__match_capture": [
@@ -19976,7 +19976,7 @@
  ],
  "list_r__fn__temp_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__fn__temp_field__match_capture": [
@@ -20711,7 +20711,7 @@
  ],
  "list_r__meth__temp_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_r__meth__temp_field__match_capture": [
@@ -20912,7 +20912,7 @@
  "list_r__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'l",
@@ -21181,7 +21181,7 @@
  ],
  "list_r__nested__temp_field__field_write": [
   "ok",
-  "copies list[R] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_r__nested__temp_field__match_capture": [
@@ -21936,7 +21936,7 @@
  ],
  "rec__ctor__subclass_local__field_write": [
   "ok",
-  "copies Sub into field; use copy() to make this explicit",
+  "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subclass_local__match_capture": [
@@ -22026,7 +22026,7 @@
  ],
  "rec__ctor__temp_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__temp_field__match_capture": [
@@ -22551,7 +22551,7 @@
  ],
  "rec__fn__subclass_local__field_write": [
   "ok",
-  "copies Sub into field; use copy() to make this explicit",
+  "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subclass_local__match_capture": [
@@ -22651,7 +22651,7 @@
  ],
  "rec__fn__temp_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw])"
  ],
  "rec__fn__temp_field__match_capture": [
@@ -23451,7 +23451,7 @@
  ],
  "rec__meth__subclass_local__field_write": [
   "ok",
-  "copies Sub into field; use copy() to make this explicit",
+  "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subclass_local__match_capture": [
@@ -23551,7 +23551,7 @@
  ],
  "rec__meth__temp_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw])"
  ],
  "rec__meth__temp_field__match_capture": [
@@ -23757,7 +23757,7 @@
  "rec__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__local_last__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -23772,7 +23772,7 @@
  "rec__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[R, int32] = tuple(%s0, lit(1)) %t[0] [borrow].x = binop(%t[0] [borrow].x, +, lit(1)) call(nested_inner, [])"
+  "%t: tuple[R, int32] = tuple(move(%s0), lit(1)) %t[0] [borrow].x = binop(%t[0] [borrow].x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__loop_var__decl_alias": [
   "ok",
@@ -23817,7 +23817,7 @@
  "rec__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__narrowed_opt__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -24051,7 +24051,7 @@
  ],
  "rec__nested__subclass_local__field_write": [
   "ok",
-  "copies Sub into field; use copy() to make this explicit",
+  "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subclass_local__match_capture": [
@@ -24151,7 +24151,7 @@
  ],
  "rec__nested__temp_field__field_write": [
   "ok",
-  "copies R into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__temp_field__match_capture": [
@@ -25171,7 +25171,7 @@
  ],
  "set_i__ctor__temp_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__ctor__temp_field__match_capture": [
@@ -25731,7 +25731,7 @@
  ],
  "set_i__fn__temp_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__fn__temp_field__match_capture": [
@@ -26566,7 +26566,7 @@
  ],
  "set_i__meth__temp_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__meth__temp_field__match_capture": [
@@ -26737,7 +26737,7 @@
  "set_i__nested__local_last__field_write": [
   "ok",
   "",
-  "%h.f [storage] = %s0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__local_last__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26797,7 +26797,7 @@
  "set_i__nested__narrowed_opt__field_write": [
   "ok",
   "",
-  "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__narrowed_opt__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -27101,7 +27101,7 @@
  ],
  "set_i__nested__temp_field__field_write": [
   "ok",
-  "copies set[int32] into field; use copy() to make this explicit",
+  "",
   "%h.f [storage] = call(mk_b, [])._v [storage] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__temp_field__match_capture": [

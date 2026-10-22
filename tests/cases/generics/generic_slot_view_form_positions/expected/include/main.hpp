@@ -275,7 +275,7 @@ inline void OwnBoxed<T>::put(::tpy::own_param_t<T> value) {
 // def __init__(self, first: T) -> None:
 //     self.items = [first]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
-inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(std::vector<T>{::tpy::param_to_storage<T>(first)}) {}
+inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(::tpy::make_vector<T>(::tpy::param_to_storage<T>(first))) {}
 
 // def has(self, value: T) -> bool:
 //     for it in self.items:

@@ -242,7 +242,7 @@ void scalar_read() {
 //     a, b = d["k"]  # tpyc: ok
 //     print("fn.dict", a, b.v)
 void dict_read() {
-    ::tpy::ordered_map<std::string, std::tuple<int32_t, Box>> d = ::tpy::ordered_map<std::string, std::tuple<int32_t, Box>>({{"k", ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)})}});
+    ::tpy::ordered_map<std::string, std::tuple<int32_t, Box>> d = ::tpy::make_ordered_map<std::string, std::tuple<int32_t, Box>>("k", ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}));
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(d, "k"));
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));

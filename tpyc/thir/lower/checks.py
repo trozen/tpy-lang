@@ -106,6 +106,8 @@ from ...typesys import (
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
+from ...sema.alias_rebind import bare_tuple
+from ...sema.source_records import Disposition, verdict
 from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
     is_varargs,
@@ -5091,7 +5093,7 @@ def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     where the copy of its owned elements is owed: a live name whose copy
     sema declared."""
     def copy_owed(x: TpyExpr) -> bool:
-        return x in analyzer.ctx.own_element_copies
+        return bool(verdict(analyzer.ctx, x).copied)
     names = (storage_tuple_locals if _mixed_own_slot(ptype)
              else storage_tuple_locals | own_borrow_tuple_locals)
     return _borrow_tuple_arg(
@@ -6450,7 +6452,7 @@ def tuple_elem_payload(slot: TpyType) -> TpyType:
 def own_element_copied(member: TpyExpr, payload: TpyType, analyzer) -> bool:
     """A borrowed tuple element sema declared a copy of: it builds as its
     explicit `copy(member)` would."""
-    return (member in analyzer.ctx.own_element_copies
+    return (verdict(analyzer.ctx, member).disposition is Disposition.COPY
             and own_element_copy_type(member, analyzer) == payload)
 
 
@@ -6959,11 +6961,37 @@ def _is_move_source_facts(value: TpyExpr,
     """`_is_move_source`'s DEFAULT (movable-locals) question over the discrete
     facts rather than the lowering context, so the arg table can ask it: the
     table carries facts, never the context. `_is_move_source` delegates here
-    so the two cannot answer differently."""
+    so the two cannot answer differently. An owning sink's read whose
+    record moves it whole (`SourceRecord.moves_whole`) moves; any other read moves at its last use of
+    a name movable here (where its record copies, see `stamp_source`)."""
     inner = _peel_coerce(value)
-    return (isinstance(inner, TpyName)
-            and inner.name in movable_locals
+    if not isinstance(inner, TpyName):
+        return False
+    if (record_disposition(value, analyzer) is not None
+            and verdict(analyzer.ctx, value).moves_whole):
+        return True
+    return (inner.name in movable_locals
             and analyzer.ctx.is_last_use(inner))
+
+
+def record_disposition(value: TpyExpr, analyzer) -> 'Disposition | None':
+    """What an owning sink's record does with name read `value` (coercions
+    peeled), where it says anything: None for any other read, for a read no
+    owning sink took, for one whose every leaf passes or copies explicitly
+    (NONE: the read's own move rule decides, a value payload included),
+    and for a `@dynamic` local, whose move has no render
+    (BUGS.md#dyn-local-own-arg-ill-formed: it copies)."""
+    inner = _peel_coerce(value)
+    if analyzer.ctx.read_bindings.get(inner) is None:
+        return None
+    disposition = verdict(analyzer.ctx, inner).disposition
+    if disposition is Disposition.NONE:
+        return None
+    t = analyzer.ctx.get_expr_type(inner)
+    if t is not None and is_dyn_protocol(unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(_unwrap_own(t))))):
+        return None
+    return disposition
 
 
 def _own_opt_ptr_name_move_arg_facts(
@@ -7053,7 +7081,7 @@ def _own_tuple_move_arg_facts(
                      and mixed_slot_btuple_name(a, ptype, locals_,
                                                 narrowed))):
         return False
-    if a in analyzer.ctx.own_element_copies:
+    if verdict(analyzer.ctx, a).copied:
         return False
     return _is_move_source_facts(a, movable_locals, analyzer, func_name)
 
@@ -7071,7 +7099,8 @@ def _own_tuple_borrow_lift_arg_facts(
     au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
                                       inline_narrowed,
                                       own_borrow_tuple_locals)
-    if au is None or not declared_name_copy(a, analyzer):
+    if (au is None
+            or verdict(analyzer.ctx, a).disposition is not Disposition.COPY):
         return False
     if (a.name in pointers or a.name in storage_tuple_locals
             or a.name in own_param_names):
@@ -7100,7 +7129,7 @@ def _own_tuple_decay_copy_arg_facts(
         return False
     if _is_move_source_facts(a, movable_locals, analyzer, func_name):
         return False
-    return a.name not in pointers and a in analyzer.ctx.own_element_copies
+    return a.name not in pointers and bool(verdict(analyzer.ctx, a).copied)
 
 
 def mixed_slot_btuple_name(a: TpyExpr, ptype: 'TpyType | None',
@@ -7252,13 +7281,12 @@ def _copy_own_arg(a: TpyExpr, ptype: TpyType | None,
 def own_element_pass_slot(a: TpyExpr, ptype: TpyType | None,
                           analyzer) -> 'TpyType | None':
     """An owned tuple element `p[i]` at a plain `Own[T]` slot of its own
-    payload, with sema's verdict on it: the move at the tuple's last use
-    (`element_moves`) or the declared copy (`own_element_copies`). Returns
-    the payload, or None."""
+    payload, with its owning sink's record (the move at the tuple's last
+    use, or the copy). Returns the payload, or None."""
     w = _plain_own_slot(ptype)
     if (w is None or not isinstance(a, TpySubscript)
-            or not (a in analyzer.ctx.element_moves
-                    or a in analyzer.ctx.own_element_copies)):
+            or bare_tuple(analyzer.get_expr_type(a.obj)) is None
+            or not verdict(analyzer.ctx, a).leaves):
         return None
     at = analyzer.get_expr_type(a)
     at = (unwrap_readonly(_unwrap_own(unwrap_readonly(unwrap_ref_type(
@@ -7426,6 +7454,8 @@ def _own_move_arg(a: TpyExpr, ptype: TpyType | None,
         locals_[a.name])))
     if own is None or own.wrapped.is_value_type():
         return False
+    if record_disposition(a, analyzer) is not None:
+        return verdict(analyzer.ctx, a).moves_whole
     return analyzer.ctx.is_last_use(a)
 
 def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
@@ -11478,16 +11508,6 @@ def _r_own_open_t_tuple_storage_source(req: _ArgReq) -> bool:
         return False
     return unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         req.analyzer.get_expr_type(req.a)))) == bare
-
-
-def declared_name_copy(a: TpyExpr, analyzer) -> bool:
-    """A tuple NAME whose whole-tuple copy into an owning slot sema declared:
-    it warned every element the copy takes, and the binding holds no element
-    by value (`own_element_mixed`). The one admission test every name lift
-    shares -- a lift that skipped it copied undeclared or moved out of a
-    borrow."""
-    return (a in analyzer.ctx.own_element_copies
-            and a not in analyzer.ctx.own_element_mixed)
 
 
 def _r_own_tuple_storage(req: _ArgReq) -> bool:

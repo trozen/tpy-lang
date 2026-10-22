@@ -59,7 +59,7 @@ struct H {
     // n: int32
     int32_t n;
 
-    // def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
+    // def __init__(self, v: Own[A | B]):
     H() = default;
     explicit H(::tpy::Union<A, B>&& v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.H";
@@ -102,15 +102,10 @@ inline A::A(int32_t x) : x(x) {}
 //     self.y = y
 inline B::B(int32_t y) : y(y) {}
 
-// # Known sema false positive: the field-consumption check does not
-// # credit copy() at a field store, though the MIL genuinely moves v.
-// def __init__(self, v: Own[A | B]):  # tpyc: warning(/never consumed/)
+// def __init__(self, v: Own[A | B]):
 //     # The line under test: same-named `v` must NOT take the leaked
-//     # pointer-variant wrap. copy() is only here to silence a second
-//     # false positive -- the bare store warns "copies A | B into field"
-//     # although the emit moves it; the render is identical either way
-//     # (BUGS.md#own-union-field-store-copy-warning).
-//     self.u = copy(v)  # tpyc: ok
+//     # pointer-variant wrap.
+//     self.u = v  # tpyc: ok
 //     self.n = 0
 inline H::H(::tpy::Union<A, B>&& v)
     : u(std::move(v)),

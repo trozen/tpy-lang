@@ -43,7 +43,7 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import ReturnSeed, seeded_arg_hint
-from .context import CompTarget, PENDING_CONTAINER_TYPES, ReceiverMove
+from .context import CompTarget, PENDING_CONTAINER_TYPES
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls)
 from .pending_num import (ContainerCells, Entry, is_pending_num,
@@ -1072,16 +1072,10 @@ class MethodAnalyzer:
                                                binding=binding):
                 self.compat.declare_receiver_copy(recv)
             return
-        read = ReceiverMove(recv.name, recv)
-        if self.compat.claim_name_move(recv, read=read):
-            return
-        if self.compat._is_owned_var(recv.name):
-            # No last use (a live alias, a later read): settled after the
-            # body, which a use-after-consume error at a later read of the
-            # name never reaches.
-            self.compat.record_owning_read(read)
-            return
-        self.compat.declare_receiver_copy(recv)
+        # The receiver's copy is its record's: registered here.
+        self.compat.claim_name_move(recv, OwnType(bare), registers=False)
+        self.compat.register_own_source_copy(
+            OwnType(bare), recv, "the consuming receiver", "pass")
 
     def _analyze_type_call(self, expr: TpyMethodCall, ref: SymbolBinding) -> TpyType:
         """A call whose callee names a class or enum through a dotted path

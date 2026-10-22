@@ -1278,6 +1278,11 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
     owning slot makes is the divergence the diagnostic names. A callee
     returning a bare type param is such a call too -- the generic body must
     reach the same verdict its monomorphic twin does.
+
+    The freshness fact of a call at an owning slot for the whole result. A
+    member read off it also needs `call_result_is_fresh(proof=True)`: a
+    `Callable` value's by-value result is fresh here but may copy a borrow
+    (BUGS.md#callable-value-borrow-return-copies-unwarned).
     """
     inner = peel_value_wrappers(expr)
     # An if-expr emits its arms inline, so the slot is filled from whichever
@@ -1287,6 +1292,10 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
                 or returns_borrow(analyzer, inner.else_expr))
     if isinstance(inner, TpyAwait):
         return inner.await_result_is_borrow
+    # A getter handing back a reference may return any storage (a global),
+    # so however fresh its receiver is, the slot copies what it reads.
+    if property_access_returns_cpp_ref(analyzer, inner):
+        return True
     # A borrow-declared call sema stamped a fresh value is a borrowed source
     # exactly when holding it copies an object the program still reaches.
     if isinstance(inner, TpyCallLike) and inner.result_form.is_fresh:

@@ -79,7 +79,7 @@ __coro_fail fail() {
             if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
             a = std::move(__r0).value();
             __sub_0.reset();
-            result = a;
+            result = std::move(a);
             if (should_fail) {
                 __sub_1.emplace();
                 __state = S_RESUME_1;

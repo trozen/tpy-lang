@@ -17,7 +17,9 @@ class StorageIter[T, N: int]:
         if self._index < self._size:
             val = self._storage.load(uint32(self._index))
             self._index += 1
-            return val
+            # `val` refers to the storage's element (`load` lends it), so the
+            # owned result copies it: the hedge of an open `T`.
+            return val  # tpyc: warning(/may copy T into owned storage/)
         raise StopIteration
 
 

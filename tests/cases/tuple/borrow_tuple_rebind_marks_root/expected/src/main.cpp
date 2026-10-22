@@ -498,7 +498,7 @@ void main() {
     std::cout << "optional_from_field" << " " << ::tpyapp::main::optional_from_field(h, h, false) << " " << std::get<1>(h.pr).n << "\n" << ::tpy::check_signals;
     std::vector<H> hs2 = {H(1), H(2)};
     std::cout << "loop_hoisted" << " " << ::tpyapp::main::loop_hoisted(hs2, ::tpy::__getitem__(hs2, 1), true) << " " << std::get<0>(::tpy::__getitem__(hs2, 0).bp).n << " " << std::get<0>(::tpy::__getitem__(hs2, 1).bp).n << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, Box>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(4)})};
+    std::vector<std::tuple<int32_t, Box>> rows = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(4)}));
     int32_t w = ::tpyapp::main::walrus_const(rows, rows);
     std::cout << "walrus" << " " << w << " " << std::get<1>(::tpy::__getitem__(rows, 0)).n << "\n" << ::tpy::check_signals;
     std::vector<Box> __tmp_3 = {Box(3), Box(4)};

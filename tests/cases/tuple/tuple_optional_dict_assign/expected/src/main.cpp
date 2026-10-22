@@ -53,7 +53,7 @@ void main() {
     P a = P(1);
     P b = P(2);
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
-    ::tpy::__setitem__(d, 0, std::tuple<std::optional<P>, std::optional<P>>{a, std::move(b)});
+    ::tpy::__setitem__(d, 0, std::tuple<std::optional<P>, std::optional<P>>{P(a), std::move(b)});
     ::tpy::__setitem__(d, 1, std::tuple<std::optional<P>, std::optional<P>>{std::move(a), std::nullopt});
     ::tpy::__setitem__(d, 2, std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, std::nullopt});
     ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 0)));

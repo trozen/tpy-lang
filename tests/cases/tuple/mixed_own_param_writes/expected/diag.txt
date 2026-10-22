@@ -1,6 +1,5 @@
-main.py:430: warning: copies tuple[Box, Box] into owned storage; use copy() to make this explicit
-main.py:371: warning: copies Box into field (tuple element 0); use copy() to make this explicit
-main.py:371: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:429: warning: copies tuple[Box, Box] into owned storage; use copy() to make this explicit
+main.py:370: warning: copies Box into field (tuple element 1); use copy() to make this explicit
 main.py:33: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:47: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
 main.py:79: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
@@ -20,5 +19,5 @@ main.py:265: warning: owned tuple param 'p' is never consumed (not moved out by 
 main.py:274: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
 main.py:273: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
 main.py:280: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
-main.py:411: warning: Result borrows from temporary argument 'a'; the temporary is destroyed at end-of-statement
-main.py:419: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:410: warning: Result borrows from temporary argument 'a'; the temporary is destroyed at end-of-statement
+main.py:418: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)

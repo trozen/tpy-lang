@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     h.payload = n  # the last use moves the make_any result, not the source
 void store(Holder& h) {
     Node n = Node(1);
-    h.payload = std::move(::tpy::make_any(n));
+    h.payload = ::tpy::make_any(std::move(n));
 }
 
 // def main() -> None:

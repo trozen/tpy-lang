@@ -220,10 +220,9 @@ def find(x: int32) -> Own[P | None]:  # tpyc: mir(uncovered /unsupported return 
     return P(x)
 
 
-# kept refusal: the field takes a call's owned Optional result (moved; the copy warning is
-# BUGS.md#own-optional-param-field-store-copies)
+# kept refusal: the field takes a call's owned Optional result (moved, silently)
 def store_found(h: H) -> None:  # tpyc: mir(uncovered /record initializer type mismatch/)
-    h.p = find(11)  # tpyc: warning(/copies P \| None into field/)
+    h.p = find(11)  # tpyc: ok
 
 
 # the payload lent to a callee that writes it: published as a write of the whole field

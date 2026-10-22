@@ -1,24 +1,24 @@
 """Sema's per-element facts about a tuple SOURCE at an owning slot: which
 element paths it lends (`tuple_borrowed_paths`), which elements it hands
-over as objects of its own (`tuple_source_elem_owned`, derived from it),
-which elements the slot copies (`own_element_copies`, by index) and the
-per-leaf record built for every owning sink (`source_records`) -- and of the
-slot: which element paths it owns (`owned_slot_paths`). A scalar source
-gets the same record with one leaf, at path `()`, and a leaf's WARNED or
-HEDGED is the copy diagnostic that stands (`CopyDeclaration`). Every program
-this file compiles also checks that the records of its sources -- names,
-walrus reads and scalars included -- agree with the copy warnings, per leaf
-path, and with the copies the lowering is told (LOCKSTEP, `_compile`)."""
+over as objects of its own (`tuple_source_elem_owned`, derived from it)
+and the per-leaf record built for every owning sink (`source_records`) --
+and of the slot: which element paths it owns (`owned_slot_paths`). A
+scalar source gets the same record with one leaf, at path `()`; a copied
+leaf is WARNED, or HEDGED for an open payload. Every program this file
+compiles also checks that the records of its sources -- names, walrus
+reads and scalars included -- agree with the copy warnings, per leaf path
+(`_assert_records_agree_with_warnings`), and that each MOVE leaf is a
+move the lowered bodies make (`_assert_move_leaves_render_moves`)."""
 
+import dataclasses
 import re
 from dataclasses import replace
 from pathlib import Path
-from typing import Callable
-
 import pytest
 
 from ..diagnostics import SemanticError
-from ..identity_map import IdentitySet
+from ..identity_map import IdentityMap
+from ..codegen_cpp.context import ThirRejectError
 from ..parse import (TpyAssign, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpyIfExpr, TpyMethodCall, TpyName, TpyNamedExpr,
                      TpyReturn, TpySubscript, TpyTupleLiteral, TpyVarDecl,
@@ -26,16 +26,26 @@ from ..parse import (TpyAssign, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
 from ..parse.nodes import SourceLocation, TpyNestedDef, walk_body_stmts
 from ..sema import alias_rebind
 from ..sema.alias_rebind import (bare_tuple, direct_elements, owned_slot_paths,
-                                 peel_slot, reference_paths,
-                                 tuple_borrowed_paths,
+                                 peel_slot, tuple_borrowed_paths,
                                  tuple_source_elem_owned)
-from ..sema import analyzer as analyzer_module
+from ..sema.binding_ownership import ReadKind
 from ..sema.compatibility import TupleSink, TypeCompatibility
 from ..sema.context import NonOwningBind, SemanticContext
-from ..sema.source_records import (LeafPermission, SourceRecord,
-                                   source_record)
+from ..sema.source_records import (Disposition, Leaf, LeafPermission,
+                                   SourceRecord, read_record, verdict)
+from ..compilation_context import activate_compiler
+from ..thir.lower import checks as _lower_checks
+from ..thir.lower import expressions as _lower_expressions
+from ..thir.lower import bindings as _bindings
+from ..thir.lower import iter_module_callables
+from ..thir.validate import THIRValidationError
+from ..thir.nodes import (THIRCoerce, THIRConsumingIter, THIRFieldAccess,
+                          THIRFormConvert, THIRFunction, THIRMethodCall,
+                          THIRMove, THIRName, THIRNode, THIRResumableBody,
+                          THIRReturn, THIRSelf, THIRSubscript)
 from ..thir.testutil import _compile as _compile_program, _entry
-from ..typesys import (SendType, TpyType, TypeParamRef, UnionType,
+from ..thir.source import Held
+from ..typesys import (SendType, TpyType, TupleType, TypeParamRef, UnionType,
                        unwrap_own, unwrap_readonly)
 from ..value_category import peel_value_wrappers
 
@@ -53,167 +63,68 @@ _SCALAR_IN_WARNING = re.compile(r"^(?:copies|may copy) (?!tuple\[)"
 _TEMP_ARG_WARNING = re.compile(r" into argument (?:'[^']*'|[0-9]+) "
                                r"of '[^']*\(\.\.\.\)'")
 
-# Lines whose record is known to disagree with its warnings or with the copy
-# the lowering makes, keyed by a snippet the program must contain (which
-# program, and which parametrization of it) and the exact stripped line,
-# with the entry that tracks each. The rows keyed by `_B` are the blockers
-# to rendering from the record (`_BLOCKERS`): each is a copy no diagnostic
-# tells, which the record must never call a pass.
+# Lines whose record is known to disagree with the program's final copy
+# diagnostics (`_DIAGNOSTIC_DISAGREEMENTS`) or with the copy the lowering
+# makes (`_RENDER_DISAGREEMENTS`), keyed by a snippet the program must
+# contain (which program, and which parametrization of it) and the exact
+# stripped line, with the entry that tracks each. The rows keyed by `_B`
+# are the program of `test_blocker_rows_are_recorded` (`_BLOCKERS`).
 _B = "def row1(x: Own[P]) -> int32:"
-_F = "def sibling(a: A, xs: list[tuple[tuple[A, int32], A]]) -> None:"
-_MEMBER_RENDER_COPIES = "BUGS.md#tuple-literal-name-member-silent-copy"
-_KNOWN_DISAGREEMENTS: dict[tuple[str, str], str] = {
-    # An owned `Send[T]` element holds no reference leaf to its sink's
-    # check, so the copy the lowering is told of has no record.
-    ("class H[T]:\n    p: tuple[Send[T], int32]\n", "print(elem_arg(t))"):
-        "BUGS.md#send-own-tuple-leaf-copy-unwarned",
-    # A nested def's return of a captured `Own` name copies it.
+_DIAGNOSTIC_DISAGREEMENTS: dict[tuple[str, str], str] = {
+    # A nested def's return of a captured `Own` name copies it unwarned (an
+    # `Own[T | None]` one is moved out of the enclosing binding).
     (_B, "return x"): "BUGS.md#nested-def-captured-own-return-copies",
-    # A lambda copies what it captures, at the capture and at the return.
-    (_B, "f: Callable[[], Own[P]] = lambda: r"):
-        "BUGS.md#callable-local-lambda-copies-capture-silently",
-    # `lambda q: q` at a by-value result copies its parameter.
-    (_B, "f: Callable[[P], P] = lambda q: q"):
-        "BUGS.md#callable-value-borrow-return-copies-unwarned",
-    # A chained store is never checked: no record.
-    (_B, "h.p = h.q = a"): "BUGS.md#chained-field-assign-copies-silently",
-    # A nested def's local at its last use copies into the field; so does
-    # its `Own` parameter.
-    (_B, "h.p = p"): "BUGS.md#nested-def-owned-binding-copies",
-    (_B, "hp.p = pp"): "BUGS.md#nested-def-owned-binding-copies",
-    # A mixed tuple local's last use moves its owned element in the record;
-    # the C++ lifts it with `tuple_to_storage(t)`, a copy, at an append, an
-    # `Own` argument, a field and a return.
-    (_B, "mxs.append(mt)"): "BUGS.md#mixed-tuple-local-append-copies-owned",
-    (_B, "return take_pp(at)"):
-        "BUGS.md#mixed-tuple-local-append-copies-owned",
-    (_B, "ht.t = ft"): "BUGS.md#mixed-tuple-local-append-copies-owned",
-    (_B, "return rt"): "BUGS.md#mixed-tuple-local-append-copies-owned",
-    # An owned tuple loop variable's last-use append: the sink tells the
-    # lowering a copy (silent for an `Own` element, warned for `own_iter`)
-    # while the C++ moves.
-    (_B, "oout.append(ot)"): "BUGS.md#own-tuple-loop-var-told-copy-moves",
-    (_B, "iout.append(it)"): "BUGS.md#own-tuple-loop-var-told-copy-moves",
-    # The moving comprehension element moves in the record; the C++ lifts
-    # the lvalue first, a copy of each element.
-    (_B, "return [ct for ct in csrc]"):
-        "BUGS.md#own-comprehension-tuple-var-lift-copies",
-    # A `nonlocal` rebind writes in place: no owning sink, no record.
-    (_B, "r = q"): "BUGS.md#nonlocal-rebind-overwrites-in-place",
-    # A union local's last-use store copies the pointee.
-    (_B, "h.u = another"): "BUGS.md#union-local-last-use-store-copies",
-    # A last-use store into `Any` copies into `make_any`.
-    (_B, "h.x = n"): "BUGS.md#any-field-write-copies-source",
-    # `copy()` into an `Any` member-init loses the erasure in the C++.
-    (_B, "self.x = copy(a)"): "BUGS.md#any-member-init-copy-drops-erasure",
-    # A walrus stored into `Any` copies the object it names, unwarned.
+    # A walrus stored into `Any` copies the object it names, unwarned, and
+    # so does a borrowing call.
     (_B, "h.x = (w := a)"): "BUGS.md#any-store-walrus-copies-silently",
-    # A call through a `Fn` value bound to a lending function reads as a
-    # fresh result: the record moves what the C++ copies.
-    (_B, "return f(c)"): "BUGS.md#callable-value-borrow-return-copies-unwarned",
-    (_B, "out.append(f(c))"):
-        "BUGS.md#callable-value-borrow-return-copies-unwarned",
-    # A lambda's `Own` result copies its borrowed parameter or capture.
-    (_B, "g: Callable[[P], Own[P]] = lambda q: q"):
-        "BUGS.md#lambda-own-result-borrowed-param-copies-unwarned",
-    (_B, "f: Callable[[], Own[P]] = lambda: a"):
-        "BUGS.md#lambda-own-result-borrowed-param-copies-unwarned",
     # A tuple local stored into `Any` puts its element pointers in the cell.
     (_B, "h.x = t"): "BUGS.md#any-slot-rebound-local-holds-pointer",
-    # The mixed tuple parameter's owned element 0 moves into the field; the
-    # field store warns its copy all the same.
-    (_F, "self.t = p"): "BUGS.md#own-tuple-param-field-store-warns",
-    # The consuming loop moves its variable into the field; the store's
-    # warning is not held for the loop's mode.
-    (_F, "s.a = a"): "BUGS.md#consuming-loop-field-store-false-copy-warning",
-    # The walrus target owns its object; the C++ copies it.
-    (_F, "s.a = w"): "BUGS.md#walrus-owned-slot-store-copies",
-    # A `val_or_ref_t` local is a reference to the caller's object: the
-    # append copies it, unwarned.
-    (_F, "xs.append(y)"): "BUGS.md#generic-lending-local-copies-unwarned",
-    # The `try` hoist's owned slot moves into the field; the store warns,
-    # and the record follows the told copy, as a pointer hoist's does.
-    (_F, "s.a = x"): "BUGS.md#try-owned-slot-hoist-false-copy-warning",
-    # A call through a `Fn` value bound to a lending function reads as a
-    # fresh result, at a field, a member-init and `Any` too.
-    (_B, "self.p = f(c)"):
-        "BUGS.md#callable-value-borrow-return-copies-unwarned",
-    (_B, "h.p = f(c)"): "BUGS.md#callable-value-borrow-return-copies-unwarned",
-    (_B, "h.x = f(c)"): "BUGS.md#callable-value-borrow-return-copies-unwarned",
-    # A tuple name member's last use moves in the record and copies in the
-    # C++ (`{t, 3}`); so does a nested scalar member's at a container, a
-    # field or an argument (`tuple_to_storage` of a pointer tuple). These
-    # rows keep the agreement checks and only admit the MOVE.
-    (_B, "return (t, 3)"): _MEMBER_RENDER_COPIES,
-    (_B, "xs.append(((a, 1), 2))"): _MEMBER_RENDER_COPIES,
-    (_B, "self.p = ((na, 1), 2)"): _MEMBER_RENDER_COPIES,
-    (_B, "hn.p = ((fa, 1), 2)"): _MEMBER_RENDER_COPIES,
-    (_B, "lout.append((lt, 3))"): _MEMBER_RENDER_COPIES,
-    (_B, "return (nt, 3)"): _MEMBER_RENDER_COPIES,
-    # The planner's exception rows whose binding owns its object, while
-    # the C++ copies it at the sink: the record moves.
-    (_B, "h.o = r"): "BUGS.md#owned-optional-call-local-copies",
-    (_B, "h.p = pe"): "BUGS.md#error-return-bind-store-copies",
-    (_B, "h.p = b"): "BUGS.md#for-unpack-own-target-consume-copies",
-    (_B, "return keep(s)"): "BUGS.md#dyn-local-own-arg-ill-formed",
-    # The loop site owns its rebound step; the slot's render copies, warned
-    # by the binding after the loop.
-    (_B, "out.append(a)"): "BUGS.md#own-loop-var-rebind-slot-copies",
-    # A generator's consuming loop variable moves in the record; the frame
-    # copies it through its element pointer, unwarned.
-    (_B, "fouts.append(fa)"):
-        "BUGS.md#frame-consuming-loop-var-store-copies-unwarned",
-    # An `except` target reusing an owned local's name: the record copies,
-    # unwarned; the C++ copies the exception in flight.
-    (_B, "he.errs.append(ee)"): "BUGS.md#except-target-reused-name-copies",
-    # A `try`-hoisted local's last use inside the `try` body moves in the
-    # record; the pointer hoist copies, unwarned.
-    (_B, "touts.append(ty)"):
-        "BUGS.md#try-hoist-pointer-last-use-copies-unwarned",
-    # Undecided leaves no diagnostic tells, outside the blockers: a walrus
-    # and a borrowing call into `Any`, a module loop variable rebound to
-    # borrowed storage, a lambda's borrowed parameter at an `Own` result,
-    # an open `T` member of a tuple literal held by a list literal, a
-    # walrus-bound literal returned (the walrus target has no verdict).
     ("def borrow(h: H) -> A:", "h.b = (w := a)"):
         "BUGS.md#any-store-walrus-copies-silently",
     ("def borrow(h: H) -> A:", "h.b = borrow(h)"):
         "BUGS.md#any-store-walrus-copies-silently",
+    # An open `T` member of a tuple literal held by a list literal.
     ("def box[T](x: T) -> Own[list[tuple[T, int32]]]:", "return [(x, 1)]"):
         "BUGS.md#generic-tuple-member-list-literal-unhedged",
+    # A walrus-bound literal returned: the walrus target has no verdict.
     ("def ret() -> tuple[Own[A], int32]:", "return (t := (A(1), 2))"):
         "BUGS.md#walrus-tuple-owning-sink-rejects",
-    ("for a in mk():\n    a = b\n", "out.append(a)"):
-        "BUGS.md#module-own-loop-var-rebind-copies-silently",
+    # A lambda's tuple parameter returned at an `Own` tuple result copies
+    # its borrowed leaf unwarned (the lowering refuses the lambda).
     ("    g: Callable[[tuple[Own[A], int32]], tuple[Own[A], int32]] = "
      "lambda p: p",
      "h: Callable[[tuple[A, int32]], Own[tuple[A, int32]]] = lambda q: q"):
         "BUGS.md#lambda-own-result-borrowed-param-copies-unwarned",
-    (_B, "tts.append((tt, 1))"):
-        "BUGS.md#try-hoist-pointer-last-use-copies-unwarned",
-    ("def par(t: tuple[Own[A], A]) -> tuple[tuple[Own[A], Own[A]], int32]:",
-     "return (t, 3)"): _MEMBER_RENDER_COPIES,
-    ("def take_mixed(p: tuple[tuple[Own[A], N], int32]) -> None:",
-     "take_mixed((t, 3))"): _MEMBER_RENDER_COPIES,
-    ("def take_mixed(p: tuple[tuple[Own[A], N], int32]) -> None:",
-     "return take_deep((((a, 2), 3), 4))"): _MEMBER_RENDER_COPIES,
-    ("def last() -> tuple[tuple[Own[A], int32], int32]:",
-     "return (t, 3)"): _MEMBER_RENDER_COPIES,
-    ("def name(a: A) -> tuple[Own[tuple[A, A]], int32]:",
-     "return (t, 3)"): _MEMBER_RENDER_COPIES,
-    ("def take(x: tuple[tuple[N, Own[A]], int32]) -> int32:",
-     "return take((t, 3))"): _MEMBER_RENDER_COPIES,
-    ("def take_nc(p: tuple[tuple[Own[A], N], int32]) -> int32:",
-     "return take_nc((t, 3))"): _MEMBER_RENDER_COPIES,
-    ("def ret_last() -> tuple[tuple[Own[A], int32], int32]:",
-     "return (t, 3)  # tpyc: ok"): _MEMBER_RENDER_COPIES,
-    ("def ret_last() -> tuple[tuple[Own[A], int32], int32]:",
-     "return (u, t)  # tpyc: ok"): _MEMBER_RENDER_COPIES,
-    ("def ret_last() -> tuple[tuple[Own[A], int32], int32]:",
-     "yield (t, 3)  # tpyc: ok"): _MEMBER_RENDER_COPIES,
-    ("def ret_last() -> tuple[tuple[Own[A], int32], int32]:",
-     "yield (u, t)  # tpyc: ok"): _MEMBER_RENDER_COPIES,
 }
+_RENDER_DISAGREEMENTS: dict[tuple[str, str], str] = {
+    # A `@dynamic` local moves in the record; its move has no well-formed
+    # render, so the C++ copies it (ill-formed).
+    (_B, "return keep(s)"): "BUGS.md#dyn-local-own-arg-ill-formed",
+    # A nested def's return of a captured `Own[P | None]` moves the
+    # enclosing binding's optional, which the record copies.
+    (_B, "return x"): "BUGS.md#nested-def-captured-own-return-copies",
+    # A literal yielded into `Iterator[Own[tuple[...]]]` renders its borrow
+    # form into the storage step (ill-formed).
+    ("def ot_dead() -> Iterator[Own[tuple[A, int32]]]:", "yield (a, 3)"):
+        "BUGS.md#own-tuple-yield-member-unchecked",
+    ("def gen() -> Iterator[Own[tuple[N, int32]]]:", "yield (n, 3)"):
+        "BUGS.md#own-tuple-yield-member-unchecked",
+    # A storage tuple local rebound to a borrowed tuple copies at the
+    # rebind, which sema reads as a borrow: at the sink its record copies,
+    # the C++ moves the local's own copy on.
+    ("def deep(b: tuple[tuple[A, int32], int32]) -> None:", "xs = [t]"):
+        "BUGS.md#owned-local-rebound-from-lvalue-copies-silently",
+}
+
+
+def _copied_elems(ctx: SemanticContext,
+                  e: TpyExpr) -> frozenset[int] | None:
+    """The top-level elements the owning sink's record of source `e`
+    copies; None for its scalar leaf, empty for no copy."""
+    paths = verdict(ctx, e).copied
+    if () in paths:
+        return None
+    return frozenset(p[0] for p in paths)
 
 
 def _span(loc: SourceLocation) -> tuple[tuple[int, int], tuple[int, int]]:
@@ -264,7 +175,7 @@ def _leaves_under(ctx: SemanticContext,
     member of one -- by their path below it; None when no record reaches
     it."""
     node = peel_value_wrappers(node)
-    rec = source_record(ctx, node)
+    rec = read_record(ctx, node)
     if rec is not None:
         return list(rec.leaves.items())
     for e, rec in ctx.source_records.items():
@@ -273,23 +184,6 @@ def _leaves_under(ctx: SemanticContext,
             return [(p[len(at):], leaf) for p, leaf in rec.leaves.items()
                     if p[:len(at)] == at]
     return None
-
-
-def _under_member(compat: TypeCompatibility, src: TpyExpr,
-                  path: tuple[int, ...], *, returned: bool) -> bool:
-    """Whether the leaf at `path` of literal `src` lies under a tuple name
-    member of it, or is a scalar name member of a nested literal not
-    `returned`: the members whose move renders a copy. A top-level scalar
-    member moves, and so does a returned nested one."""
-    node = src
-    for depth, i in enumerate(path, 1):
-        lit = peel_value_wrappers(node)
-        if not (isinstance(lit, TpyTupleLiteral) and i < len(lit.elements)):
-            return False
-        node = lit.elements[i]
-        if compat.tuple_name_source(node):
-            return depth < len(path) or (depth > 1 and not returned)
-    return False
 
 
 def _under_name(compat: TypeCompatibility, src: TpyExpr,
@@ -327,23 +221,6 @@ def _silent_leaf(ctx: SemanticContext, src: TpyExpr,
             or isinstance(unwrap_readonly(unwrap_own(t)), SendType))
 
 
-def _returned_values(entry: object) -> IdentitySet:
-    """Every returned expression of the entry module's bodies, nested
-    defs' included, wrappers peeled."""
-    out = IdentitySet()
-    bodies = [f.body for f in entry.ast.functions] + [
-        m.body for r in entry.ast.all_records() for m in r.methods]
-
-    def on_stmt(s: object) -> None:
-        if isinstance(s, TpyReturn) and s.value is not None:
-            out.add(peel_value_wrappers(s.value))
-        if isinstance(s, TpyNestedDef):
-            walk_body_stmts(s.func.body, lambda e: None, on_stmt)
-    for body in bodies:
-        walk_body_stmts(body, lambda e: None, on_stmt)
-    return out
-
-
 def _value_bound(entry: object, line: int, t: TpyType | None) -> bool:
     """Whether `t`, read at `line`, is a type parameter its function
     bounds by `ValueType`: the one payload whose copy is proven harmless,
@@ -363,88 +240,46 @@ def _value_bound(entry: object, line: int, t: TpyType | None) -> bool:
     return False
 
 
-def _assert_lockstep(entry: object,
-                     excluded: Callable[[int], bool]) -> None:
-    """LOCKSTEP: every reference-bearing source the lowering is told copies
-    (`owned_slot_copies`, `own_element_copies`) has a record, and at each
-    element it names -- every reference element when it names none, the
-    one leaf of a scalar -- the leaves its slot owns are never all moves:
-    one copies or is EXPLICIT (a leaf the slot does not own passes, and
-    nothing copies it). A record with no leaf there passes only for a
-    value-bounded payload (`_value_bound`)."""
-    ctx = entry.analyzer.ctx
-    nodes = list(ctx.owned_slot_copies) + list(ctx.own_element_copies.keys())
-    for n in nodes:
-        if n.loc is None or excluded(n.loc.line):
-            continue
-        t = ctx.get_expr_type(peel_value_wrappers(n))
-        tt = bare_tuple(t)
-        refs = reference_paths(tt) if tt is not None else (
-            frozenset({()}) if t is not None
-            and not peel_slot(t).is_value_type() else frozenset())
-        if not refs:
-            continue
-        where = ("LOCKSTEP", n.loc.line, type(n).__name__)
-        leaves = _leaves_under(ctx, n)
-        assert leaves is not None, where
-        idxs = (ctx.own_element_copies.get(n)
-                if n in ctx.own_element_copies else None)
-        elems = ({p[:1] for p in refs} if idxs is None
-                 else {(i,) for i in idxs})
-        for at in sorted(elems):
-            if not any(p[:len(at)] == at for p in refs):
-                continue
-            here = [leaf for p, leaf in leaves if p[:len(at)] == at]
-            if not here:
-                elem_t = (tt.element_types[at[0]] if at and tt is not None
-                          else t)
-                assert _value_bound(entry, n.loc.line, elem_t), where + (at,)
-                continue
-            owned = [leaf for leaf in here if leaf.slot_owns]
-            assert not owned or any(
-                leaf.permission is not LeafPermission.MOVE
-                for leaf in owned), where + (
-                at, {p: leaf.permission for p, leaf in leaves})
-
-
 def _assert_records_agree_with_warnings(
         entry: object, registered: list[tuple[SemanticContext, TpyExpr]],
         source: str) -> None:
-    """Every registered owning sink has a record. For each source -- a name
-    and a walrus read included -- the leaves its record says the sink
-    copies (WARNED / HEDGED) are exactly the leaf paths its own warnings
-    name, a whole-tuple copy warning naming every leaf the record copies
-    (and requiring one, or an undecided leaf), a scalar's copy warning its
-    one leaf at `()`; an explicit `copy()` leaf is named by none, a
-    `copy()` source's owned leaves are EXPLICIT, and a warning names only
-    leaves the record copies. Whatever the source kind, a leaf is undecided
-    only nested under a tuple name, or as a union or `Send[T]` leaf.
-    LOCKSTEP holds (`_assert_lockstep`). A leaf under a tuple name member
-    of a literal moves only on a `_MEMBER_RENDER_COPIES` row. Lines
-    matching any other `_KNOWN_DISAGREEMENTS` key are skipped."""
+    """Records agree with the FINAL copy diagnostics (deduplicated, a hedge
+    an instantiation promoted in its place). Every registered owning sink
+    has a record. For each source -- a name and a walrus read included --
+    the leaves its record says the sink copies (WARNED / HEDGED) are
+    exactly the leaf paths its own warnings name -- HEDGED where a hedge
+    ("may copy") names it -- a whole-tuple copy warning naming every leaf
+    the record copies (and requiring one), a scalar's copy warning its one
+    leaf at `()`; an explicit `copy()` leaf is named by none, a `copy()`
+    source's owned leaves are EXPLICIT, and a warning names only leaves the
+    record copies. A copied leaf no warning names is nested under a tuple
+    name, or a union or `Send[T]` leaf (filed silent copies).
+    Lines matching a
+    `_DIAGNOSTIC_DISAGREEMENTS` key are skipped."""
     ctx = entry.analyzer.ctx
     compat = entry.analyzer.compat
     lines = source.splitlines()
     known = {text: slug for (marker, text), slug
-             in _KNOWN_DISAGREEMENTS.items() if marker in source}
+             in _DIAGNOSTIC_DISAGREEMENTS.items() if marker in source}
 
     def text_at(line: int) -> str:
         return (lines[line - 1] if 0 < line <= len(lines) else "").strip()
 
     def excluded(line: int) -> bool:
-        slug = known.get(text_at(line))
-        return slug is not None and slug != _MEMBER_RENDER_COPIES
+        return text_at(line) in known
 
     for owner, e in registered:
         # A library module's sources have their records in its own context.
         if owner is not ctx:
             continue
         if e.loc is not None and not excluded(e.loc.line):
-            assert source_record(ctx, e) is not None, (
+            assert read_record(ctx, e) is not None, (
                 e.loc.line, type(e).__name__)
     sources = [e for e in ctx.source_records.keys() if e.loc is not None]
     named: dict[int, set[tuple[int, ...]]] = {id(e): set() for e in sources}
-    whole: set[int] = set()
+    hedged: dict[int, set[tuple[int, ...]]] = {id(e): set()
+                                                for e in sources}
+    whole: dict[int, bool] = {}
     for d in ctx.diagnostics:
         if not (d.level.value == "warning" and d.loc is not None):
             continue
@@ -456,56 +291,46 @@ def _assert_records_agree_with_warnings(
             continue
         if excluded(d.loc.line):
             continue
+        hedge = d.message.startswith("may copy")
         # A warning outside every source is a sink's that keeps no record
         # (a local binding's member copy).
         for e in _source_of(d.loc, sources):
-            if m:
-                named[id(e)].add(
-                    tuple(int(i) for i in m.group(1).split(".")))
-            elif scalar:
-                named[id(e)].add(())
-            else:
-                whole.add(id(e))
-    returned = _returned_values(entry)
+            at = (tuple(int(i) for i in m.group(1).split(".")) if m
+                  else () if scalar else None)
+            if at is None:
+                whole[id(e)] = hedge or whole.get(id(e), False)
+                continue
+            named[id(e)].add(at)
+            if hedge:
+                hedged[id(e)].add(at)
     for e in sources:
         rec = ctx.source_records[e]
-        # A name member's move renders a copy until the per-leaf render
-        # lands: only a row of that entry may say MOVE there.
-        assert known.get(text_at(e.loc.line)) == _MEMBER_RENDER_COPIES or not any(
-            leaf.permission is LeafPermission.MOVE
-            and _under_member(compat, e, p, returned=e in returned)
-            for p, leaf in rec.leaves.items()), (
-            e.loc.line, text_at(e.loc.line), _MEMBER_RENDER_COPIES)
         if excluded(e.loc.line):
             continue
         perms = {p: leaf.permission for p, leaf in rec.leaves.items()}
         copied = {p for p, perm in perms.items() if perm.copies}
-        undecided = {p for p, perm in perms.items()
-                     if perm is LeafPermission.UNDECIDED}
         explicit = {p for p, perm in perms.items()
                     if perm is LeafPermission.EXPLICIT}
         mine = named[id(e)]
+        hedges = hedged[id(e)]
         where = (e.loc.line, type(e).__name__)
         if id(e) in whole:
-            assert copied | undecided, (where, perms)
+            assert copied, (where, perms)
             mine = mine | copied
-        assert copied <= mine, (where, copied, mine)
+            if whole[id(e)]:
+                hedges = hedges | copied
         assert mine <= copied, (where, copied, mine)
-        # Every source's leaf has a verdict but one nested under a tuple
-        # name (the source or a literal member of it) and a union or
-        # `Send[T]` leaf (a copy no diagnostic tells); any other undecided
-        # leaf is a row.
+        # A copied leaf no warning names: nested under a tuple name (the
+        # source or a literal member of it), or a union or `Send[T]` leaf.
         assert all(_under_name(compat, e, p) or _silent_leaf(ctx, e, p)
-                   for p in undecided), (where, perms)
-        # A scalar's one leaf always has a verdict, so its warning makes it
-        # WARNED or HEDGED.
-        assert () not in mine or () in copied, (where, perms)
+                   for p in copied - mine), (where, perms, mine)
+        assert all((perms[p] is LeafPermission.HEDGED) == (p in hedges)
+                   for p in mine), (where, perms, hedges)
         assert not (explicit & mine), (where, explicit, mine)
         if compat.is_copy_call(e):
             assert all(leaf.permission is LeafPermission.EXPLICIT
                        for leaf in rec.leaves.values() if leaf.slot_owns), (
                 where, perms)
-    _assert_lockstep(entry, excluded)
 
 
 def _compile(source: str) -> tuple[object, list]:
@@ -530,7 +355,302 @@ def _compile(source: str) -> tuple[object, list]:
     finally:
         TypeCompatibility.register_sink = register
     _assert_records_agree_with_warnings(_entry(modules), registered, source)
+    _assert_move_leaves_render_moves(compiler, _entry(modules), source)
     return compiler, modules
+
+
+# The reads an owning sink's record can move: a name, and the element or
+# the consuming method's field a sink moves out of storage the body owns.
+_READS = (THIRName, THIRSelf, THIRSubscript, THIRFieldAccess)
+# The render gate's two failures (`_assert_move_leaves_render_moves`).
+_MOVE_NOT_RENDERED = "RENDER: a moved leaf is not moved"
+_COPY_MOVED = "RENDER: a copied leaf is moved"
+_FRAMES_NOT_LOWERED = "RENDER: frames not lowered"
+
+
+def _peel_read(e: object) -> object:
+    """The read a conversion, coercion or move wraps."""
+    while not isinstance(e, _READS):
+        inner = getattr(e, "value", None) or getattr(e, "expr", None)
+        if inner is None or not isinstance(e, (THIRMove, THIRCoerce,
+                                               THIRFormConvert,
+                                               THIRConsumingIter)):
+            return e
+        e = inner
+    return e
+
+
+def _peel_moved(e: object) -> object:
+    """The read a move of `e` moves out of; None where a conversion between
+    them copies the read first (the move then takes the copy) or converts
+    it element by element (each element's own mode says)."""
+    while not isinstance(e, _READS):
+        if isinstance(e, THIRFormConvert):
+            if e.elem_modes or not e.move:
+                return None
+            e = e.value
+        elif isinstance(e, THIRCoerce):
+            e = e.expr
+        elif isinstance(e, (THIRMove, THIRConsumingIter)):
+            e = e.value
+        else:
+            return None
+    return e
+
+
+def _taken_paths(read: object) -> list[tuple[int, ...]]:
+    """What a whole move of `read` takes: a scalar's object (`()`), a
+    tuple's elements it holds by value (`(i,)`) -- a pointer element's
+    object stays where it is. A borrow-form tuple read with no element
+    layout holds its elements as its type spells them (an `Own` element
+    inline, a reference one as a pointer)."""
+    src = read.source
+    if src is not None and src.const:
+        # A const object's `std::move` copies it.
+        return []
+    if src is not None and src.elems is not None:
+        return [(i,) for i, el in enumerate(src.elems)
+                if not el.pointer_held]
+    t = bare_tuple(src.binding.type if src is not None
+                   and src.binding is not None else None)
+    if t is not None and src.held is Held.BORROWED:
+        return [(i,) for i, et in enumerate(t.element_types)
+                if not TupleType._element_is_pointer_repr(et)]
+    return [()]
+
+
+def _at(e: object) -> 'tuple[int, int] | None':
+    loc = getattr(e, "loc", None)
+    return (loc.line, loc.column) if loc is not None else None
+
+
+# Bodies of the sources under test that do not lower yet: their reject ends
+# emission before the resumable frames, which the render gate then cannot
+# read, so a reject is excused only in a program holding the entry's marker
+# snippet, at its (body, reject detail). Each names the test whose program
+# reaches it (`test_unlowered_bodies_still_reject` keeps every entry live)
+# and the entry tracking the reject. Any other frame left unlowered fails
+# the gate.
+_UNLOWERED_BODIES: dict[tuple[str, str, str], tuple[str, str]] = {
+    (", xs: list[tuple[T, int32]]) -> None:", "app",
+     "expr.call:call.ret_type.tuple"):
+        ("test_stamped_generic_lending_call_hedges_each_leaf",
+         "BUGS.md#open-t-tuple-generic-only-rejects"),
+    (", xs: list[tuple[T, int32]]) -> None:", "app",
+     "expr.method_call:method.ret_type"):
+        ("test_stamped_generic_lending_call_hedges_each_leaf",
+         "BUGS.md#open-t-tuple-generic-only-rejects"),
+    ("def comp(a: A) -> list[tuple[A, A]]:", "comp",
+     "expr.list_comprehension"):
+        ("test_every_position_publishes_the_record",
+         "scripts/thir_migration/review/bins_expr2.json"),
+    ("def elem_arg", "f", "stmt.var_decl:decl.tuple_literal_shape"):
+        ("test_wrapped_and_union_leaves_at_every_owning_sink",
+         "scripts/thir_migration/review/bins_stmt3.json"),
+    ("def elem_arg", "f",
+     "stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal"):
+        ("test_wrapped_and_union_leaves_at_every_owning_sink",
+         "BUGS.md#send-own-tuple-leaf-copy-unwarned"),
+    ("def gen(n: N) -> Iterator[tuple[tuple[Own[A], int32], int32]]:", "gen",
+     "res.btuple_yield_source"):
+        ("test_nested_slot_marker_at_owned_yield",
+         "scripts/thir_migration/review/bins_rest.json"),
+    ("def g(a: A, n: int32) -> Iterator[tuple[Own[A], int32]]:", "g",
+     "res.btuple_yield_source"):
+        ("test_yielded_name_is_settled_by_a_loop_back_edge",
+         "scripts/thir_migration/review/bins_rest.json"),
+    ("def lam() -> int32:", "lam", "stmt.return:subscript.tuple_shape"):
+        ("test_owning_yield_and_lambda_parameter_names_publish_records",
+         "scripts/thir_migration/review/bins_expr1.json"),
+    ("def nyield[T]", "nyield", "res.param_type:tuple"):
+        ("test_nested_yield_member_of_stamped_call_is_hedged",
+         "BUGS.md#open-t-tuple-generic-only-rejects"),
+    ("def oaa_name() -> Iterator[Own[tuple[A, A]]]:", "oaa_name",
+     "res.btuple_yield_source"):
+        ("test_own_tuple_yield_live_names_and_positions",
+         "BUGS.md#own-tuple-yield-member-unchecked"),
+    ("def ot_name() -> Iterator[Own[tuple[A, int32]]]:", "ot_name",
+     "res.btuple_yield_source"):
+        ("test_own_tuple_yield_takes_the_return_rule",
+         "BUGS.md#own-tuple-yield-member-unchecked"),
+    ("def par_alone(t: tuple[Own[A], A]) -> tuple[Own[A], Own[A]]:",
+     "par_alone", "stmt.return:return.tuple_source"):
+        ("test_tuple_name_member_borrowed_leaf_warns_at_return_and_yield",
+         "scripts/thir_migration/review/bins_stmt3.json"),
+    ("def r1(p: A) -> Own[tuple[A, int32]] | None:", "r1",
+     "expr.tuple_literal"):
+        ("test_nullable_own_tuple_yield_takes_the_return_rule",
+         "scripts/thir_migration/review/bins_expr3.json"),
+    ("def ret() -> tuple[Own[A], int32]:", "ret", "expr.tuple_literal"):
+        ("test_walrus_and_lambda_parameter_reads_keep_their_context",
+         "scripts/thir_migration/review/bins_expr3.json"),
+    ("def walrus_arg(a: A, b: B) -> None:", "walrus_arg", "expr.walrus"):
+        ("test_nested_members_and_walrus_args_follow_their_sites_rule",
+         "BUGS.md#walrus-tuple-owning-sink-rejects"),
+}
+# The `_UNLOWERED_BODIES` entries the render gate excused in this process.
+_UNLOWERED_USED: set[tuple[str, str, str]] = set()
+
+
+def _reject_key(err: Exception) -> 'tuple[str, str] | None':
+    m = re.search(r"in function '(\w+)'.*\(([\w.:]+)\)", str(err))
+    return (m.group(1), m.group(2)) if m is not None else None
+
+
+def _emitted_reads(compiler: object, entry: object, source: str
+                   ) -> tuple[set, set, set]:
+    """The bodies codegen lowers for the entry module -- every function,
+    method and constructor, and each resumable frame emission reached
+    (as `collect_thir` runs it; a body that does not lower contributes
+    nothing): the
+    name reads they render, by location, and the moves their consuming
+    operations make of them -- `(line, column, path)`, path `()` for the
+    whole read (a `std::move`, a moving conversion, a consuming iteration,
+    the `return` of the bare name a plain body moves implicitly), `(i,)`
+    for an element a tuple conversion moves out. The third set holds the
+    moves that take the read itself, not a copy a conversion made of it
+    first (`_peel_moved`): a scalar's at `()`, a tuple's per element it
+    holds by value."""
+    rendered: set = set()
+    moved: set = set()
+    taken: set = set()
+    seen: set[int] = set()
+
+    def mark(e: object, path: tuple, *, implicit: bool = False) -> None:
+        read = _peel_read(e)
+        at = _at(read)
+        if at is not None and isinstance(read, _READS):
+            moved.add(at + (path,))
+            binding = read.source.binding if read.source else None
+            # A returned name C++ moves by itself only where it names an
+            # object of the body's own (a reference or pointer copies).
+            if implicit and not (binding is not None and binding.owned
+                                 and not binding.pointer):
+                return
+            if path:
+                taken.add(at + (path,))
+            elif _peel_moved(e) is read:
+                # A whole tuple move takes each element the read holds by
+                # value; a pointer element's object stays where it is.
+                taken.update({at + (p,) for p in _taken_paths(read)})
+
+    def walk(node: object, frame: bool) -> None:
+        if isinstance(node, (list, tuple)):
+            for x in node:
+                walk(x, frame)
+            return
+        if isinstance(node, (dict, IdentityMap)):
+            for x in node.values():
+                walk(x, frame)
+            return
+        if not dataclasses.is_dataclass(node) or isinstance(node, type):
+            return
+        if not isinstance(node, (THIRNode, THIRFunction,
+                                 THIRResumableBody)) or id(node) in seen:
+            return
+        seen.add(id(node))
+        if isinstance(node, _READS) and _at(node) is not None:
+            rendered.add(_at(node))
+        if isinstance(node, (THIRMove, THIRConsumingIter)):
+            mark(node.value, ())
+        elif isinstance(node, THIRMethodCall) and node.move_receiver:
+            mark(node.receiver, ())
+        elif isinstance(node, THIRFormConvert):
+            if node.elem_modes:
+                for i, m in enumerate(node.elem_modes):
+                    if m in ("move_pointee", "move"):
+                        mark(node.value, (i,))
+            elif node.move:
+                mark(node.value, ())
+        elif (isinstance(node, THIRReturn) and not frame
+              and node.value is not None):
+            read = node.value
+            while isinstance(read, THIRCoerce):
+                read = read.expr
+            if isinstance(read, THIRName) and read.reads_binding:
+                mark(read, (), implicit=True)
+        for f in dataclasses.fields(node):
+            if f.name != "source":
+                walk(getattr(node, f.name), frame)
+
+    rejected: Exception | None = None
+    with activate_compiler(compiler):
+        codegen = compiler._make_codegen(entry, None)
+        compiler._thir_survey = True
+        try:
+            compiler._run_codegen(codegen, entry, entry.name)
+        except (ThirRejectError, THIRValidationError) as ex:
+            rejected = ex
+        finally:
+            compiler._thir_survey = False
+            compiler._thir_deferred_rejects = []
+    ctx = codegen.ctx
+    # A reject ends emission before the resumable frames are lowered, so a
+    # gate that skipped it would pass over every frame vacuously: a body
+    # that does not lower is skipped only where no frame is left out.
+    frames = [f.name for f, _ in iter_module_callables(entry.ast,
+                                                       entry.analyzer)
+              if (f.is_generator or f.is_async)
+              and ctx.thir_resumables.get(f) is None]
+    if frames:
+        at = (_reject_key(rejected) if isinstance(rejected, ThirRejectError)
+              else None)
+        excused = [k for k in _UNLOWERED_BODIES
+                   if k[0] in source and k[1:] == at]
+        assert excused, (_FRAMES_NOT_LOWERED, frames, rejected)
+        _UNLOWERED_USED.update(excused)
+    walk([ctx.thir_functions, ctx.thir_overload_functions,
+          ctx.thir_top_level, ctx.thir_constructors], False)
+    walk(ctx.thir_resumables, True)
+    return rendered, moved, taken
+
+
+def _assert_move_leaves_render_moves(compiler: object, entry: object,
+                                     source: str) -> None:
+    """Records agree with the render: a name read whose record moves a leaf
+    is a read the emitted C++ moves -- the read whole, or the element the
+    leaf is under -- or one the C++ moves by itself: a lambda's returned
+    parameter, and a comprehension clause's moving sink. And the inverse:
+    a read whose record copies a leaf is never moved out of whole, nor is
+    the element that leaf is under (a move of a copy a conversion made
+    first does not count). A read the C++ does not render (its body does
+    not lower) and a `_RENDER_DISAGREEMENTS` row are skipped."""
+    ctx = entry.analyzer.ctx
+    rendered, moved_at, taken_at = _emitted_reads(compiler, entry, source)
+    lines = source.splitlines()
+    skipped = {text for (marker, text) in _RENDER_DISAGREEMENTS
+               if marker in source}
+    # A walrus's record is keyed on its value: a name value is that name's
+    # read, a literal's members are member reads.
+    names = [e for e in (*ctx.source_records.keys(),
+                         *ctx.member_sources.keys())
+             if e.loc is not None and (
+                 isinstance(e, TpyName)
+                 or (isinstance(e, TpySubscript)
+                     and isinstance(e.obj, TpyName))
+                 or (isinstance(e, TpyFieldAccess) and e.consuming_move))]
+    for e in names:
+        text = (lines[e.loc.line - 1].strip()
+                if 0 < e.loc.line <= len(lines) else "")
+        at = (e.loc.line, e.loc.column)
+        if text in skipped or at not in rendered:
+            continue
+        rec = verdict(ctx, e)
+        for p in rec.copied:
+            assert not (at + ((),) in taken_at
+                        or (p and at + (p[:1],) in taken_at)), (
+                _COPY_MOVED, e.loc.line, text, p)
+        moved = sorted(rec.moved)
+        if not moved:
+            continue
+        binding = ctx.read_bindings.get(e)
+        if ((binding is not None and binding.kind is ReadKind.LAMBDA)
+                or ctx.comp_moves.get(e) is not None):
+            continue
+        for p in moved:
+            assert (at + ((),) in moved_at
+                    or (p and at + (p[:1],) in moved_at)), (
+                _MOVE_NOT_RENDERED, e.loc.line, text, p)
 
 PRELUDE = """\
 from tpy import int32, Own
@@ -551,12 +671,15 @@ def mixed(a: A) -> tuple[Own[A], A]:
     return (A(a.x), a)
 def owning(a: A) -> Own[tuple[A, A]]:
     return (A(a.x), A(a.x))
+# Only their signatures are read: these literals do not lower at these
+# results yet, and a body that rejects ends emission before the resumable
+# frames the render gate reads.
 def mk2(a: A) -> tuple[A, A]:
-    return (a, a)
+    raise ValueError("signature only")
 def nested_mark(a: A) -> tuple[A, tuple[Own[A], int32]]:
-    return (a, (A(2), 1))
+    raise ValueError("signature only")
 def nested_mixed(a: A) -> tuple[Own[tuple[A, int32]], A]:
-    return ((A(2), 1), a)
+    raise ValueError("signature only")
 """
 
 
@@ -601,7 +724,7 @@ def r_select_name(a: A, c: bool) -> Own[tuple[A, int32]]:
     expr, analyzer = returned[fn]
     assert isinstance(expr, kind)
     # Element 0 is the borrowed reference the owning slot copies.
-    assert analyzer.ctx.own_element_copies.get(expr) == frozenset({0})
+    assert _copied_elems(analyzer.ctx, expr) == frozenset({0})
 
 
 def test_name_keeps_its_return_check_record() -> None:
@@ -612,7 +735,7 @@ def r_name(a: A) -> Own[tuple[A, int32]]:
     return t
 """)["r_name"]
     assert isinstance(expr, TpyName)
-    assert analyzer.ctx.own_element_copies.get(expr) == frozenset({0})
+    assert _copied_elems(analyzer.ctx, expr) == frozenset({0})
 
 
 def test_owning_call_records_nothing() -> None:
@@ -620,7 +743,7 @@ def test_owning_call_records_nothing() -> None:
 def r_owning(a: A) -> Own[tuple[A, A]]:
     return owning(a)
 """)["r_owning"]
-    assert expr not in analyzer.ctx.own_element_copies
+    assert not _copied_elems(analyzer.ctx, expr)
 
 
 def _warnings(analyzer) -> list[str]:
@@ -647,7 +770,7 @@ class N:
     while isinstance(v, TpyCoerce):
         v = v.expr
     assert isinstance(v, TpyCall)
-    assert v not in entry.analyzer.ctx.own_element_copies
+    assert not _copied_elems(entry.analyzer.ctx, v)
     assert not [w for w in _warnings(entry.analyzer) if "tuple element" in w]
 
 
@@ -665,7 +788,7 @@ def test_owned_element_yield_of_borrow_call_records_copy() -> None:
     while isinstance(v, TpyCoerce):
         v = v.expr
     assert isinstance(v, TpyCall)
-    assert entry.analyzer.ctx.own_element_copies.get(v) == frozenset({0})
+    assert _copied_elems(entry.analyzer.ctx, v) == frozenset({0})
     assert any("copies A into owned storage (tuple element 0)" in w
                for w in _warnings(entry.analyzer))
 
@@ -788,16 +911,25 @@ def test_borrowed_paths_none_for_no_tuple() -> None:
 
 
 def _records(source: str) -> tuple[dict[int, object], list[str]]:
-    """Every `own_element_copies` record of `source` (after the prelude) by
-    line, with the warnings."""
+    """The elements each source of `source` (after the prelude) copies
+    (`_copied_elems`), by line, with the warnings."""
     _compiler, modules = _compile(PRELUDE + source)
     entry = _entry(modules)
-    ctx = entry.analyzer.ctx
-    out: dict[int, object] = {}
-    for e in list(ctx.own_element_copies.keys()):
-        if e.loc is not None:
-            out[e.loc.line - PRELUDE.count("\n")] = ctx.own_element_copies[e]
-    return out, _warnings(entry.analyzer)
+    return (_copied_by_line(entry.analyzer.ctx, PRELUDE.count("\n")),
+            _warnings(entry.analyzer))
+
+
+def _copied_by_line(ctx: SemanticContext,
+                    offset: int) -> dict[int, frozenset[int] | None]:
+    """Every source with a copying leaf, by line after `offset`: the
+    elements it copies (`_copied_elems`)."""
+    out: dict[int, frozenset[int] | None] = {}
+    for e in [*ctx.source_records.keys(), *ctx.member_sources.keys()]:
+        copied = _copied_elems(ctx, e)
+        if (e.loc is not None and e.loc.line > offset
+                and copied != frozenset()):
+            out[e.loc.line - offset] = copied
+    return out
 
 
 def test_select_with_name_arm_records_at_every_sink() -> None:
@@ -917,7 +1049,7 @@ def gen(n: N) -> Iterator[tuple[tuple[Own[A], int32], int32]]:
     while isinstance(v, TpyCoerce):
         v = v.expr
     assert isinstance(v, TpyFieldAccess)
-    assert entry.analyzer.ctx.own_element_copies.get(v) == frozenset({0})
+    assert _copied_elems(entry.analyzer.ctx, v) == frozenset({0})
     assert [w for w in _warnings(entry.analyzer) if "tuple" in w] == [
         "copies A into owned storage (tuple element 0.0); use copy() to "
         "make this explicit"]
@@ -949,10 +1081,10 @@ def app(x: tuple[tuple[A, int32], int32]) -> None:
                         "use copy() to make this explicit"] * 2
 
 
-def test_mixed_local_field_store_of_nocopy_element_is_an_error() -> None:
-    with pytest.raises(SemanticError, match=r"cannot copy non-copyable type "
-                       r"'G' into field \(tuple element 0\)"):
-        _compile(PRELUDE + """\
+def test_mixed_local_field_store_moves_its_nocopy_element() -> None:
+    # The local owns element 0 and the store is its last use: the
+    # `@nocopy` element moves, only the borrowed element 1 copies.
+    _compiler, modules = _compile(PRELUDE + """\
 from tpy import nocopy
 @nocopy
 class G:
@@ -966,6 +1098,10 @@ class F:
         t = (G(7), a)
         self.gp = t
 """)
+    assert [w for w in _warnings(_entry(modules).analyzer) if "cop" in w] == [
+        "copies A into field (tuple element 1); use copy() to make this "
+        f"explicit ('t' is bound to existing storage at line "
+        f"{PRELUDE.count(chr(10)) + 11})"]
 
 
 @pytest.mark.parametrize("slot, expected", [
@@ -990,7 +1126,7 @@ def test_generic_element_call_hedges_per_leaf() -> None:
 def gmk[T](a: T) -> tuple[T, int32]:
     return (a, 1)
 def gtake[T](p: tuple[Own[T], int32]) -> int32:
-    return p[1]
+    return 0
 def run[T](a: T) -> int32:
     return gtake(gmk(a))
 """)
@@ -1016,12 +1152,12 @@ class N:
         self.v = v
 class U:
     t: tuple[A | B, int32]
-    def __init__(self, t: tuple[A | B, int32]) -> None:
+    def __init__(self, t: Own[tuple[A | B, int32]]) -> None:
         self.t = t
 def mk[T](x: T) -> tuple[T, int32]:
     return (x, 1)
 def mk2[T](x: T) -> tuple[tuple[T, int32], int32]:
-    return ((x, 1), 2)
+    raise ValueError("signature only: the nested literal does not lower")
 def pair(a: A, b: A) -> tuple[A, A]:
     return (a, b)
 def opair(a: A) -> tuple[Own[A], A]:
@@ -1115,8 +1251,8 @@ class W:
 """)
     # No warning (BUGS.md#tuple-name-union-leaf-copy-silent); no verdict.
     assert not warnings
-    assert _perms(records[(2, "TpyName")]) == {(0,): P.UNDECIDED}
-    assert _perms(records[(9, "TpyName")]) == {(0,): P.UNDECIDED}
+    assert _perms(records[(2, "TpyName")]) == {(0,): P.WARNED}
+    assert _perms(records[(9, "TpyName")]) == {(0,): P.WARNED}
 
 
 def test_union_leaf_with_non_copyable_alternative_is_rejected() -> None:
@@ -1152,9 +1288,7 @@ def mixed_arms(a: A, b: A, c: bool) -> Own[tuple[A, A]]:
                         "use copy() to make this explicit"]
     # The declared copies agree: nothing for the fresh and explicit
     # selects, element 1 for the control.
-    declared = {e.loc.line - _LEAF_LINES: v
-                for e, v in ctx.own_element_copies.items()}
-    assert declared == {6: frozenset({1})}
+    assert _copied_by_line(ctx, _LEAF_LINES) == {6: frozenset({1})}
 
 
 def test_walrus_is_its_target_names_read() -> None:
@@ -1178,10 +1312,7 @@ def g() -> int32:
         "make this explicit",
         "copies A into owned storage (tuple element 0); use copy() to make "
         "this explicit"]
-    walrus = {e.loc.line - _LEAF_LINES: v
-              for e, v in ctx.own_element_copies.items()
-              if isinstance(e, TpyNamedExpr)}
-    assert walrus == {2: None}
+    assert _copied_by_line(ctx, _LEAF_LINES).get(2) == frozenset({0})
 
 
 def test_mixed_slot_passes_the_borrowed_leaf_it_does_not_own() -> None:
@@ -1272,7 +1403,7 @@ class HT[T]:
     def __init__(self, p: Own[tuple[T, int32]]) -> None:
         self.p = p
 def gtake[T](p: Own[tuple[T, int32]]) -> int32:
-    return p[1]
+    return 0
 """
 _LENDING_LINES = LENDING_DECLS.count("\n")
 
@@ -1792,7 +1923,10 @@ def whole(a: A) -> Own[tuple[tuple[A, int32], int32]]:
         (0, 0): (True, True, P.WARNED)}
     assert warnings == [
         "copies A into owned storage (tuple element 0.1); use copy() to "
-        "make this explicit"] * 2 + [
+        "make this explicit",
+        "copies A into owned storage (tuple element 0.1); use copy() to "
+        "make this explicit ('t' is bound to existing storage at line "
+        f"{_LEAF_LINES + 6})"] + [
         "copies A into owned storage (tuple element 0.0); use copy() to "
         "make this explicit"] * 2
 
@@ -1835,8 +1969,7 @@ def g(a: A, n: int32) -> Iterator[tuple[Own[A], int32]]:
     yielded = next(e for e in ctx.source_records.keys()
                    if isinstance(e, TpyName)
                    and e.loc.line - _LEAF_LINES == 7)
-    assert yielded in ctx.declared_tuple_reads
-    assert ctx.own_element_copies.get(yielded) == frozenset({0})
+    assert _copied_elems(ctx, yielded) == frozenset({0})
     assert [w for w in warnings if "tuple element" in w] == [
         "copies A into owned storage (tuple element 0); use copy() to make "
         "this explicit ('t' is bound to existing storage at line "
@@ -1860,13 +1993,13 @@ def lam() -> int32:
     # name's rule (no verdict for a read nothing declared; the lowering
     # refuses it, BUGS.md#walrus-tuple-owning-sink-rejects), the live
     # yield's copies the leaf under the whole-tuple warning.
-    assert _perms(records[(3, "TpyTupleLiteral")]) == {(0,): P.UNDECIDED}
+    assert _perms(records[(3, "TpyTupleLiteral")]) == {(0,): P.WARNED}
     assert _perms(records[(5, "TpyTupleLiteral")]) == {(0,): P.WARNED}
     # A lambda parameter hands over what its declared type owns.
     assert _leaves(records[(8, "TpyName")]) == {(0,): (False, True, P.MOVE)}
     # The borrowed parameter's copy is not warned yet
     # (BUGS.md#lambda-own-result-borrowed-param-copies-unwarned).
-    assert _perms(records[(9, "TpyName")]) == {(0,): P.UNDECIDED}
+    assert _perms(records[(9, "TpyName")]) == {(0,): P.WARNED}
     assert [w for w in warnings if "tuple element" in w] == []
 
 
@@ -1995,13 +2128,13 @@ def _registrations(source: str) -> list[tuple[int, str, object, str]]:
     kept: list[tuple[int, str, object, str]] = []
     build = TypeCompatibility.build_source_records
 
-    def collecting(self: TypeCompatibility) -> None:
+    def collecting(self: TypeCompatibility) -> list[TpyExpr]:
         for r in self.ctx.func.tuple_sinks.values():
             line = r.source.loc.line - _LEAF_LINES
             if line > 0:
                 kept.append((line, type(r.source).__name__, r.sink,
                              str(r.slot)))
-        build(self)
+        return build(self)
 
     TypeCompatibility.build_source_records = collecting
     try:
@@ -2244,9 +2377,9 @@ def f() -> int32:
     lit = next(e for e in ctx.source_records.keys()
                if isinstance(e, TpyTupleLiteral))
     walrus = TpyNamedExpr(target="u", value=lit)
-    assert source_record(ctx, walrus) is source_record(ctx, lit)
-    assert source_record(ctx, walrus) is not None
-    assert source_record(ctx, TpyName("nothing")) is None
+    assert read_record(ctx, walrus) is read_record(ctx, lit)
+    assert read_record(ctx, walrus) is not None
+    assert read_record(ctx, TpyName("nothing")) is None
 
 
 def test_non_name_record_agrees_with_the_declared_copies() -> None:
@@ -2265,9 +2398,7 @@ def d(a: A, b: A) -> tuple[Own[A], A]:
     for e, rec in ctx.source_records.items():
         if isinstance(e, (TpyName, TpyTupleLiteral)):
             continue
-        copied = rec.copied_top_level()
-        assert ctx.own_element_copies.get(e, frozenset()) == copied
-        checked += bool(copied)
+        checked += bool({p[0] for p in rec.copied if p})
     assert checked == 4
 
 
@@ -2323,9 +2454,9 @@ class H{G}:
     def __init__(self, a: {P}) -> None:
         self.p = (a, 0)
 def own_arg{G}(p: Own[tuple[{L}, int32]]) -> int32:
-    return p[1]
+    return 0
 def elem_arg{G}(p: tuple[Own[{L}], int32]) -> int32:
-    return p[1]
+    return 0
 def ret{G}(t: tuple[{L}, int32]) -> tuple[Own[{L}], int32]:
     return t
 def gen{G}(a: {P}) -> Iterator[tuple[Own[{L}], int32]]:
@@ -2348,16 +2479,16 @@ def f{G}(a: {P}) -> None:
     print(t[1])
 """
 _N, _L = "TpyName", "TpyTupleLiteral"
-_W, _U, _H = P.WARNED, P.UNDECIDED, P.HEDGED
+_W, _H = P.WARNED, P.HEDGED
 
 
 @pytest.mark.parametrize("leaf, records, warnings", [
     (dict(G="", L="A | B", P="A"),
      # The name's union leaf is copied unwarned at the field store (21), the
-     # append (24) and the `Own[tuple]` argument (26): a copy no diagnostic
-     # tells is UNDECIDED (BUGS.md#tuple-name-union-leaf-copy-silent).
-     {(6, _L): _W, (12, _N): _W, (15, _N): _W, (16, _L): _W, (21, _N): _U,
-      (22, _L): _W, (24, _N): _U, (25, _L): _W, (26, _N): _U, (27, _L): _W,
+     # append (24) and the `Own[tuple]` argument (26): WARNED by its type,
+     # with no warning yet (BUGS.md#tuple-name-union-leaf-copy-silent).
+     {(6, _L): _W, (12, _N): _W, (15, _N): _W, (16, _L): _W, (21, _N): _W,
+      (22, _L): _W, (24, _N): _W, (25, _L): _W, (26, _N): _W, (27, _L): _W,
       (28, _N): _W, (29, _L): _W},
      [(6, "copies A | B into field (tuple element 0)"),
       (12, "copies A | B into owned storage (tuple element 0)"),
@@ -2390,14 +2521,12 @@ _W, _U, _H = P.WARNED, P.UNDECIDED, P.HEDGED
     # (BUGS.md#send-own-tuple-leaf-copy-unwarned): the return of the name
     # (12), the yielded literal (16), and the field store (21), the append
     # (24) and the `Own[tuple]` argument (26) of the name copy with no
-    # warning or hedge, so they are UNDECIDED. A literal's leaf is told by
-    # its hedge: HEDGED, and so is the name at the `Own`-element argument
-    # (28), registered at the declared parameter. The literal at that
-    # argument (29) copies untold: UNDECIDED.
+    # warning or hedge, and so does the literal at the `Own`-element
+    # argument (29): each is HEDGED by its open type all the same.
     (dict(G="[T]", L="Send[T]", P="Send[T]"),
-     {(6, _L): _H, (12, _N): _U, (15, _N): _H, (16, _L): _U, (21, _N): _U,
-      (22, _L): _H, (24, _N): _U, (25, _L): _H, (26, _N): _U, (27, _L): _H,
-      (28, _N): _H, (29, _L): _U},
+     {(6, _L): _H, (12, _N): _H, (15, _N): _H, (16, _L): _H, (21, _N): _H,
+      (22, _L): _H, (24, _N): _H, (25, _L): _H, (26, _N): _H, (27, _L): _H,
+      (28, _N): _H, (29, _L): _H},
      [(6, "may copy Send[T] into field (tuple element 0) if not a value "
        "type"),
       (15, "may copy tuple[Send[T], int32] into owned storage if not a value "
@@ -2465,9 +2594,9 @@ def elem_nested(a: A) -> None:
     assert _perms(records[(15, "TpyTupleLiteral")]) == {
         (0, 0): P.WARNED, (0, 1): P.WARNED}
     # The field stores a copy of the borrowed `Send[Own[T]]` member, yet the
-    # field's check does not see it as owned and warns nothing: undecided
-    # (BUGS.md#send-own-tuple-leaf-copy-unwarned).
-    assert _perms(records[(19, "TpyTupleLiteral")]) == {(0,): P.UNDECIDED}
+    # field's check does not see it as owned and warns nothing: HEDGED by
+    # its open type all the same (BUGS.md#send-own-tuple-leaf-copy-unwarned).
+    assert _perms(records[(19, "TpyTupleLiteral")]) == {(0,): P.HEDGED}
     # An unmarked nested member of an `Own`-element argument stays a borrow:
     # the record moves the fresh `A(0)` and passes the borrowed `a`, which
     # the slot does not own, and the site warns nothing.
@@ -2793,14 +2922,15 @@ _MATRIX: dict[str, dict[str, LeafPermission | None]] = {
     "own_arg": dict(param=_E, last_use=_M, live=_E, field=_E, element=_E,
                     element_move=_M, call=_E, select=_E, walrus=_E, copy=_X,
                     fresh=_M, captured=_E),
-    # A borrowing call and a walrus into `Any` copy unwarned: UNDECIDED
-    # (BUGS.md#any-store-walrus-copies-silently; the call's store is
-    # refused by the lowering).
     "any": dict(param=_E, last_use=_M, live=_E, field=_E, element=_E,
-                element_move=_E, call=_U, select=_E, walrus=_U, copy=_X,
+                element_move=_E, call=_E, select=_E, walrus=_E, copy=_X,
                 fresh=_M, captured=_E),
     "receiver": dict(param=_E, last_use=_M),
 }
+# A borrowing call and a walrus into `Any` copy unwarned
+# (BUGS.md#any-store-walrus-copies-silently; the call's store is refused by
+# the lowering).
+_UNWARNED = {("any", "call"), ("any", "walrus")}
 
 
 def test_scalar_sources_at_every_owning_sink() -> None:
@@ -2821,12 +2951,11 @@ def test_scalar_sources_at_every_owning_sink() -> None:
         if () in rec.leaves:
             leaf = rec.leaves[()]
             assert leaf.borrowed == (leaf.permission is not P.MOVE), ln
-    # Each WARNED leaf is told by a standing declaration on its source.
-    standing = IdentitySet(entry.analyzer.ctx.diagnostics)
-    told = {(d.source.loc.line - _LEAF_LINES)
-            for d in entry.analyzer.ctx.copy_declarations
-            if d.diag in standing and d.source.loc is not None}
-    assert {lines[k] for k, v in got.items() if v is _E} <= told
+    # Each WARNED leaf is told by a warning at its source's line.
+    warned = {d.loc.line - _LEAF_LINES for d in entry.analyzer.ctx.diagnostics
+              if d.level.value == "warning" and d.loc is not None}
+    assert {lines[k] for k, v in got.items()
+            if v is _E and k not in _UNWARNED} <= warned
 
 
 def test_value_bounded_leaf_has_no_leaf() -> None:
@@ -2936,21 +3065,6 @@ def member(s: S) -> None:
     assert _scalar_perms(records)[8] == [P.MOVE]
     assert _perms(records[(11, "TpyTupleLiteral")]) == {(0,): P.MOVE}
     assert not [w for w in warnings if "cop" in w]
-
-
-def test_lockstep_requires_a_record_for_every_told_copy() -> None:
-    # The lowering is told the return copies `a`; without its record the
-    # copy has no leaf, which LOCKSTEP refuses.
-    _r, _w, entry = _copy_probe("""\
-def ret(a: A) -> Own[A]:
-    return a
-""")
-    ctx = entry.analyzer.ctx
-    _assert_lockstep(entry, lambda _line: False)
-    (node,) = list(ctx.owned_slot_copies)
-    del ctx.source_records[peel_value_wrappers(node)]
-    with pytest.raises(AssertionError, match="LOCKSTEP"):
-        _assert_lockstep(entry, lambda _line: False)
 
 
 def test_scalar_select_records_each_arm() -> None:
@@ -3139,20 +3253,9 @@ def store[T](g: G[T], x: T) -> None:
 
 # -- the lifecycle of a copy diagnostic ----------------------------------------
 
-def _declarations(ctx: SemanticContext) -> list[tuple[int, str, bool]]:
-    """Every copy declaration after the leaf prelude: (line, kind, whether
-    its diagnostic stands)."""
-    standing = IdentitySet(ctx.diagnostics)
-    return sorted((d.source.loc.line - _LEAF_LINES, d.kind.value,
-                   d.diag in standing)
-                  for d in ctx.copy_declarations
-                  if d.source.loc is not None
-                  and d.source.loc.line > _LEAF_LINES)
-
-
 def test_consuming_loop_drops_its_warning_and_moves() -> None:
-    # The held loop-copy warning is dropped when the loop consumes: it
-    # declares nothing, and the element moves out of the owning loop.
+    # The loop variable's copy is registered at the read; the consuming
+    # loop's element moves, so its record moves and nothing is emitted.
     records, warnings, entry = _copy_probe("""\
 def eat(a: Own[A]) -> int32:
     return a.v
@@ -3169,16 +3272,13 @@ def keep(xs: list[A]) -> int32:
 """)
     assert _leaves(records[(6, "TpyName")]) == {(): (False, True, P.MOVE)}
     assert _leaves(records[(11, "TpyName")]) == {(): (True, True, P.WARNED)}
-    # The dropped warning's declaration is there, and does not stand.
-    assert _declarations(entry.analyzer.ctx) == [(6, "warned", False),
-                                                 (11, "warned", True)]
     assert warnings == ["copies A into owned storage; use copy() to make "
                         "this explicit"]
 
 
 def test_reverted_consuming_loop_reemits_and_copies() -> None:
     # A later borrowing binding of the iterable reverts the consuming loop
-    # at settlement: the held warning comes back, and with it the copy.
+    # at settlement: the element copies, and its registered warning stands.
     records, warnings, _e = _copy_probe("""\
 def borrow(w: list[A]) -> list[A]:
     return w
@@ -3210,17 +3310,14 @@ def use() -> int32:
     # The definition-time hedge stands for a copyable instantiation.
     records, warnings, entry = _copy_probe(body.format(arg="3"))
     assert _perms(records[(3, "TpyName")]) == {(): P.HEDGED}
-    assert _declarations(entry.analyzer.ctx) == [(3, "hedged", True)]
     assert warnings == ["may copy T into owned storage if not a value type; "
                         "use copy() to make this explicit"]
-    # A `@nocopy` one replaces it with the located error: the hedge no
-    # longer stands, so nothing tells the copy. The program does not
-    # compile, so nothing consumes the record.
+    # A `@nocopy` one replaces it with the located error. The program does
+    # not compile, so nothing consumes the record.
     _c, modules = _compile_program(LEAF_PRELUDE + body.format(arg="N(1)"))
     ctx = _entry(modules).analyzer.ctx
     records, _w, _ctx = _records_of(ctx)
-    assert _perms(records[(3, "TpyName")]) == {(): P.UNDECIDED}
-    assert _declarations(ctx) == [(3, "hedged", False)]
+    assert _perms(records[(3, "TpyName")]) == {(): P.HEDGED}
     assert [d.message.split(" into")[0] for d in ctx.diagnostics
             if d.level.value == "error"] == [
         "cannot copy non-copyable type 'N'"]
@@ -3235,8 +3332,8 @@ def _clone_perms(entry: object, line: int) -> list[dict]:
 
 def test_auto_readonly_clones_share_one_warning() -> None:
     # The clone pair analyzes the body twice: each clone's source has its
-    # record, and the duplicate warning collapses onto one report that
-    # tells both.
+    # record, each told by its own warning, and the duplicate warnings
+    # collapse onto one report.
     records, warnings, entry = _copy_probe("""\
 from tpy import auto_readonly, readonly
 def eat(a: Own[A]) -> int32:
@@ -3251,14 +3348,13 @@ class K:
         return self.a
 """)
     assert _clone_perms(entry, 10) == [{(): P.WARNED}] * 2
-    assert _declarations(entry.analyzer.ctx) == [(10, "warned", True)] * 2
     assert warnings == ["copies A into owned storage; use copy() to make "
                         "this explicit"]
 
 
-def test_deduplicated_handler_clones_keep_their_declarations() -> None:
-    # `except (A, B)` analyzes its handler once per type: the repeated
-    # warning is dropped, and its declaration moves to the one that stays.
+def test_deduplicated_handler_clones_keep_their_records() -> None:
+    # `except (A, B)` analyzes its handler once per type: each clone's
+    # record is told by its own warning, and the repeated one is dropped.
     records, warnings, entry = _copy_probe("""\
 def eat(a: Own[A]) -> int32:
     return a.v
@@ -3269,14 +3365,13 @@ def handled(a: A) -> int32:
         return eat(a)
 """)
     assert _clone_perms(entry, 7) == [{(): P.WARNED}] * 2
-    assert _declarations(entry.analyzer.ctx) == [(7, "warned", True)] * 2
     assert len(warnings) == 1
 
 
-def test_rejected_trial_declares_nothing() -> None:
+def test_rejected_trial_registers_nothing() -> None:
     # Overload resolution analyzes the lambda body under each candidate's
-    # hint in a trial whose diagnostics are truncated: its declaration does
-    # not stand, the winner's analysis declares again.
+    # hint in a trial whose function state is rolled back: the copy it
+    # registered goes with it, the winner's analysis registers again.
     records, warnings, entry = _copy_probe("""\
 from tpy import dispatch, Fn
 def keep(x: Own[A]) -> int32:
@@ -3291,27 +3386,15 @@ def use(xs: list[A]) -> int32:
     return m(lambda q: keep(q), xs)
 """)
     assert _perms(records[(11, "TpyName")]) == {(): P.WARNED}
-    assert _declarations(entry.analyzer.ctx) == [
-        (11, "warned", False), (11, "warned", True), (11, "warned", True)]
     assert len(warnings) == 1
 
 
-def test_late_element_copy_declares_when_it_is_emitted() -> None:
+def test_late_element_copy_is_emitted_after_settlement() -> None:
     # An element copy deferred on a lending callee analyzed later is
-    # emitted after every body is settled, and declares then -- before the
-    # records are finalized, which reads every declaration standing at that
-    # point. Its source fills an `Iterable[Own[A]]` argument, which is no
+    # emitted after every body is settled, outside any walk: it stands as
+    # emitted. Its source fills an `Iterable[Own[A]]` argument, which is no
     # owning slot of the source itself, so no record reads it.
-    seen_at_finalize: list[list[tuple[int, str, bool]]] = []
-    finalize = analyzer_module.finalize_source_records
-
-    def watched(ctx: SemanticContext) -> None:
-        seen_at_finalize.append(_declarations(ctx))
-        finalize(ctx)
-
-    analyzer_module.finalize_source_records = watched
-    try:
-        records, warnings, entry = _copy_probe("""\
+    records, warnings, entry = _copy_probe("""\
 from typing import Iterable, Iterator
 def sink(xs: Iterable[Own[A]]) -> int32:
     n = 0
@@ -3324,11 +3407,6 @@ def gen(xs: list[A]) -> Iterator[A]:
     for x in xs:
         yield x
 """)
-    finally:
-        analyzer_module.finalize_source_records = finalize
-    # The entry module is finalized last, its late declaration in place.
-    assert seen_at_finalize[-1] == [(8, "warned", True)]
-    assert _declarations(entry.analyzer.ctx) == [(8, "warned", True)]
     assert not [k for k in records if k[0] == 8]
     assert warnings == ["copies A elements; use copy_iter() to make this "
                         "explicit"]
@@ -3348,9 +3426,9 @@ def elem_nested(a: A) -> None:
     assert not warnings
 
 
-def test_silent_union_leaf_copy_is_undecided() -> None:
-    # A tuple name's union leaf is copied with no diagnostic: a copy no
-    # one told is UNDECIDED, never a pass or a move
+def test_silent_union_leaf_copy_is_warned_in_its_record() -> None:
+    # A tuple name's union leaf is copied with no diagnostic: its record
+    # leaf is the copy, WARNED by its type, never a pass or a move
     # (BUGS.md#tuple-name-union-leaf-copy-silent).
     records, warnings, _e = _copy_probe("""\
 def f(t: tuple[A | B, int32]) -> int32:
@@ -3359,7 +3437,7 @@ def f(t: tuple[A | B, int32]) -> int32:
     return t[1]
 """)
     assert _leaves(records[(3, "TpyName")]) == {
-        (0,): (True, True, P.UNDECIDED)}
+        (0,): (True, True, P.WARNED)}
     assert not warnings
 
 
@@ -3508,23 +3586,6 @@ def frame_consume(fouts: list[P]) -> Iterator[int32]:
     for fa in fxs:
         yield fa.v
         fouts.append(fa)
-class EX(Exception):
-    def __init__(self, v: int32) -> None:
-        super().__init__("e")
-        self.v = v
-class HE:
-    errs: list[EX]
-    def __init__(self) -> None:
-        self.errs = []
-def throw(e: EX) -> None:
-    raise e
-def except_reuse(he: HE, g: EX) -> None:
-    ee = EX(1)
-    he.errs.append(ee)
-    try:
-        throw(g)
-    except EX as ee:
-        he.errs.append(ee)
 def mkp(k: int32) -> Own[P]:
     if k > 100:
         raise ValueError("x")
@@ -3597,79 +3658,90 @@ def comp_owned(csrc: Iterable[Own[tuple[P, P]]]) -> Own[list[tuple[P, P]]]:
 
 
 def test_blocker_rows_are_recorded() -> None:
-    # Each blocker is a copy no diagnostic tells, or tells for another
-    # binding's reason. Its record says what the source facts say -- a
-    # silent copy UNDECIDED, a move the binding's ownership and its read
-    # make although the C++ copies MOVE, a told copy WARNED -- or there is
-    # no record where no check
-    # takes the source. Every one is a `_KNOWN_DISAGREEMENTS` row.
+    # The copies the switch to the ownership record left filed, and the
+    # rows it fixed. A filed one's record says what the source facts say --
+    # a silent copy WARNED by its type, a move the binding's ownership and
+    # its read make MOVE -- or there is no record where no check takes the
+    # source; the rows that disagree with a check are its table's
+    # (`_DIAGNOSTIC_DISAGREEMENTS`, `_RENDER_DISAGREEMENTS`).
     records, warnings, _e = _copy_probe(_BLOCKERS)
     lines = _BLOCKERS.splitlines()
-    rows = {
+    filed = {
         13: ("TpyCall", P.EXPLICIT),     # `copy()` into an `Any` member-init
-        17: ("TpyName", P.UNDECIDED),    # captured `Own` name returned
-        22: ("TpyName", P.UNDECIDED),    # captured `Own[P | None]` returned
-        27: ("TpyName", P.UNDECIDED),    # lambda returning its capture
-        30: None,                        # `lambda q: q`: its result is no
-                                         # owning slot to sema
-        34: None,                        # chained store: never checked
-        38: ("TpyName", P.MOVE),         # nested def's local into a field
+                                         # (BUGS.md#any-member-init-copy-drops-erasure)
+        17: ("TpyName", P.WARNED),    # captured `Own` name returned
+        22: ("TpyName", P.WARNED),    # captured `Own[P | None]` returned
+                                         # (BUGS.md#nested-def-captured-own-return-copies)
         46: None,                        # `nonlocal` rebind: no sink
-        51: ("TpyName", P.MOVE),         # union local's last-use store
-        54: ("TpyName", P.MOVE),         # last-use store into `Any`
-        56: ("TpyName", P.UNDECIDED),    # walrus into `Any`
+                                         # (BUGS.md#nonlocal-rebind-overwrites-in-place)
+        56: ("TpyName", P.WARNED),    # walrus into `Any`
         61: ("TpyCall", P.MOVE),         # a call through a `Fn` value that
         63: ("TpyCall", P.MOVE),         # lends: its result reads as fresh
-        65: ("TpyName", P.UNDECIDED),    # `lambda q: q` at an `Own` result
-        69: ("TpyName", P.UNDECIDED),    # a lambda capturing a parameter
-        73: ("TpyName", P.UNDECIDED),    # a tuple local into `Any`
+        73: ("TpyName", P.WARNED),    # a tuple local into `Any`
         77: ("TpyCall", P.MOVE),         # the `Fn` call at a member-init,
         79: ("TpyCall", P.MOVE),         # a field
         81: ("TpyCall", P.MOVE),         # and `Any`
-        84: ("TpyTupleLiteral", P.MOVE),  # a last-use tuple name member
-        87: ("TpyTupleLiteral", P.MOVE),  # a nested scalar member
-        98: ("TpyName", P.MOVE),        # an `Own[R] | None` call's local,
-        110: ("TpyName", P.MOVE),       # an `@error_return` bind,
-        116: ("TpyName", P.MOVE),       # a loop-head `Own` target
-        131: ("TpyName", P.MOVE),       # and a `@dynamic` local
-        135: ("TpyName", P.WARNED),     # a rebound `Own` loop variable
-        142: ("TpyName", P.MOVE),       # a frame's consuming loop variable
-        159: ("TpyName", P.UNDECIDED),  # a reused `except` target
-        167: ("TpyName", P.MOVE),       # a `try` hoist's last use in the
-        173: ("TpyTupleLiteral", P.MOVE),  # body, scalar and tuple
-        # A mixed tuple local's last use at an append, an `Own` argument,
-        # a field and a return: element 0 moves, element 1 is the borrow.
-        180: ("TpyName", P.MOVE, P.WARNED),
-        185: ("TpyName", P.MOVE, P.WARNED),
-        192: ("TpyName", P.MOVE, P.WARNED),
-        195: ("TpyName", P.MOVE, P.PASS),
-        # A nested scalar member at a member-init and a field.
-        200: ("TpyTupleLiteral", P.MOVE),
-        203: ("TpyTupleLiteral", P.MOVE),
-        # A last-use tuple name member in a loop and in a nested def.
-        207: ("TpyTupleLiteral", P.MOVE),
-        211: ("TpyTupleLiteral", P.MOVE),
-        216: ("TpyName", P.MOVE),        # a nested def's `Own` parameter
-        # An owned tuple loop variable's last-use append: a silent told
-        # copy, then a warned one.
-        221: ("TpyName", P.UNDECIDED, P.UNDECIDED),
-        225: ("TpyName", P.WARNED),
-        227: ("TpyName", P.MOVE, P.MOVE),  # the moving comprehension element
+                                         # (BUGS.md#callable-value-borrow-return-copies-unwarned)
+        131: ("TpyName", P.MOVE),        # a `@dynamic` local
     }
-    for line, want in rows.items():
-        assert (_B, lines[line - 1].strip()) in _KNOWN_DISAGREEMENTS, line
+    tables = _DIAGNOSTIC_DISAGREEMENTS | _RENDER_DISAGREEMENTS
+    for line, want in filed.items():
         got = [(k, *_perms(r).values()) for (ln, k), r in records.items()
                if ln == line and (want is None or k == want[0])]
         assert got == ([] if want is None else [want]), line
+    # The rows the C++ and the copy diagnostics now both follow the record
+    # in: a copy warned exactly where the record copies, a move silent.
+    fixed = {
+        27: ("TpyName", P.WARNED),       # lambda returning its capture
+        30: ("TpyName", P.WARNED),       # `lambda q: q` at a by-value result
+        34: ("TpyName", P.WARNED),       # chained store (both targets)
+        38: ("TpyName", P.MOVE),         # nested def's local into a field
+        51: ("TpyName", P.MOVE),         # union local's last-use store
+        54: ("TpyName", P.MOVE),         # last-use store into `Any`
+        65: ("TpyName", P.WARNED),       # `lambda q: q` at an `Own` result
+        69: ("TpyName", P.WARNED),       # a lambda capturing a parameter
+        84: ("TpyTupleLiteral", P.MOVE),  # a last-use tuple name member
+        87: ("TpyTupleLiteral", P.MOVE),  # a nested scalar member
+        98: ("TpyName", P.MOVE),         # an `Own[R] | None` call's local,
+        110: ("TpyName", P.MOVE),        # an `@error_return` bind,
+        116: ("TpyName", P.MOVE),        # a loop-head `Own` target
+        135: ("TpyName", P.MOVE),        # a rebound `Own` loop variable
+        142: ("TpyName", P.MOVE),        # a frame's consuming loop variable
+        150: ("TpyName", P.MOVE),        # a `try` hoist's last use in the
+        156: ("TpyTupleLiteral", P.MOVE),  # body, scalar and tuple
+        # A mixed tuple local's last use at an append, an `Own` argument,
+        # a field and a return: element 0 moves, element 1 is the borrow.
+        163: ("TpyName", P.MOVE, P.WARNED),
+        168: ("TpyName", P.MOVE, P.WARNED),
+        175: ("TpyName", P.MOVE, P.WARNED),
+        178: ("TpyName", P.MOVE, P.PASS),
+        # A nested scalar member at a member-init and a field.
+        183: ("TpyTupleLiteral", P.MOVE),
+        186: ("TpyTupleLiteral", P.MOVE),
+        # A last-use tuple name member in a loop and in a nested def.
+        190: ("TpyTupleLiteral", P.MOVE),
+        194: ("TpyTupleLiteral", P.MOVE),
+        199: ("TpyName", P.MOVE),        # a nested def's `Own` parameter
+        204: ("TpyName", P.MOVE, P.MOVE),  # an owned tuple loop variable
+        208: ("TpyName", P.MOVE),        # an `own_iter` tuple loop variable
+        210: ("TpyName", P.MOVE, P.MOVE),  # the moving comprehension element
+    }
+    for line, want in fixed.items():
+        assert (_B, lines[line - 1].strip()) not in tables, line
+        got = [(k, *_perms(r).values()) for (ln, k), r in records.items()
+               if ln == line and k == want[0]]
+        assert got[:1] == [want], line
     assert [w.split(";")[0] for w in warnings] == [
-        "copies P into owned storage", "copies P into field",
+        "copies P into field",
         "lambda at line 53 copies the object 'r' refers to when it is created",
+        "copies P into owned storage", "copies P into owned storage",
+        "copies P into field",
+        "copies P into owned storage",
         "lambda at line 95 copies the object 'a' refers to when it is created",
+        "copies P into owned storage",
         "copies P into owned storage (tuple element 1)",
         "copies P into owned storage (tuple element 1)",
-        "copies P into field (tuple element 0)",
-        "copies P into field (tuple element 1)",
-        "copies P into owned storage (tuple element 0)"]
+        "copies P into field (tuple element 1)"]
 
 
 def _binding_facts(source: str, monkeypatch: pytest.MonkeyPatch
@@ -3796,10 +3868,10 @@ def direct_first(p: tuple[A, int32], q: tuple[tuple[A, int32], int32]) -> None:
     assert lines[("direct_first", "w")] == at["direct:w"]
     assert lines[("direct_first", "z")] is None
 
-def test_value_captured_member_keeps_its_copy_hazard() -> None:
-    # `t` captures the still-live `Own` member by value; its binding still
-    # reports that element held by reference, so the explicit copy() at the
-    # tuple's last use is not advised away.
+def test_value_captured_member_copy_is_advised_away() -> None:
+    # `t` captures the still-live `Own` member by value, so it owns every
+    # leaf: the bare name at its last use would move (`return t;`), and the
+    # explicit copy() is advised away.
     _compiler, modules = _compile(PRELUDE + """\
 from tpy import copy
 def own_str(s: Own[str]) -> Own[tuple[str, A]]:
@@ -3811,8 +3883,10 @@ def own_int(n: Own[int32]) -> Own[tuple[int32, A]]:
     print(n)
     return copy(t)
 """)
-    assert not [w for w in _warnings(_entry(modules).analyzer)
-                if "unnecessary copy()" in w]
+    assert [w for w in _warnings(_entry(modules).analyzer)
+            if "unnecessary copy()" in w] == [
+        "unnecessary copy() -- 't' is at its last use and would be moved "
+        "automatically"] * 2
 
 
 # -- the record's MOVE side: fact 1 (what the binding owns) and fact 2 ------------
@@ -3899,18 +3973,17 @@ def test_record_moves_where_the_binding_owns_and_a_read_rule_holds() -> None:
     def perms(line: int, kind: str = "TpyName") -> dict:
         return _perms(records[(line, kind)])
     # A mixed tuple parameter owns element 0 only: element 1 is the copy
-    # the C++ makes (`tuple_to_storage(std::move(p))`); element 0's warning
-    # is false (a `_KNOWN_DISAGREEMENTS` row).
+    # the C++ makes (`tuple_to_storage(std::move(p))`), the one warned.
     assert perms(16) == {(0,): P.MOVE, (1,): P.WARNED}
     # A consuming loop moves its variable at every sink, the field store
-    # included, whose warning is false (a row).
+    # included: no warning.
     assert perms(22) == {(): P.MOVE}
     assert perms(24) == {(): P.MOVE}
     # A walrus target owns its object; the C++ copies it (a row).
     assert perms(27) == {(): P.MOVE}
-    # A local off a `val_or_ref_t` result owns nothing: its silent copy is
-    # UNDECIDED (a row).
-    assert perms(32) == {(): P.UNDECIDED}
+    # A local off a `val_or_ref_t` result owns nothing: its copy is the
+    # open payload's, hedged.
+    assert perms(32) == {(): P.HEDGED}
     # Settlement revokes a consuming receiver a later binding borrows.
     assert perms(35) == {(): P.WARNED}
     # Only the leaf the local owns moves, never its borrowed sibling.
@@ -3930,16 +4003,14 @@ def test_record_moves_where_the_binding_owns_and_a_read_rule_holds() -> None:
     assert perms(59) == {(): P.WARNED}
     # A loop body's local appended at its last use moves.
     assert perms(65) == {(): P.MOVE}
-    # A `try`-hoisted local is a slot its binds may re-point: the copy its
-    # store tells takes the move back, as for a pointer hoist (whose C++
-    # copies). This owned slot's C++ moves: the warning is false (a row).
-    assert perms(72) == {(): P.WARNED}
+    # A `try`-hoisted local the binding owns moves at its last use: no
+    # warning.
+    assert perms(72) == {(): P.MOVE}
     assert [w for w in warnings if "cop" in w] == [
-        "copies A into field (tuple element 0); use copy() to make this "
-        "explicit",
         "copies A into field (tuple element 1); use copy() to make this "
         "explicit",
-        "copies A into field; use copy() to make this explicit",
+        "may copy T into owned storage if not a value type; use copy() to "
+        "make this explicit",
         "copies C into owned storage; use copy() to make this explicit ('b' "
         "is bound to existing storage at line "
         f"{_LEAF_LINES + 36})",
@@ -3948,8 +4019,7 @@ def test_record_moves_where_the_binding_owns_and_a_read_rule_holds() -> None:
         f"{_LEAF_LINES + 39})",
         "copies A into owned storage (tuple element 0.0); use copy() to make "
         "this explicit",
-        "copies A into owned storage; use copy() to make this explicit",
-        "copies A into field; use copy() to make this explicit"]
+        "copies A into owned storage; use copy() to make this explicit"]
 
 
 def test_owning_names_at_partly_owning_and_nested_slots() -> None:
@@ -4091,6 +4161,8 @@ def whole(t: tuple[A, A], xs: list[tuple[A, A]]) -> None:
     xs.append(t)
 def scalar(a: A, xs: list[A]) -> None:
     xs.append(a)
+def element(ts: list[tuple[A, A]], xs: list[tuple[A, A]]) -> None:
+    xs.append(ts[0])
 """
 
 
@@ -4119,17 +4191,12 @@ def test_the_agreement_checks_fail_on_a_broken_record() -> None:
     _broken(entry, by_line[2], (0,), LeafPermission.MOVE)
     with pytest.raises(AssertionError):
         _assert_records_agree_with_warnings(entry, registered, _CHECKED)
-    # LOCKSTEP: a source the lowering is told copies never moves every
-    # leaf it owns.
-    _broken(entry, by_line[2], (1,), LeafPermission.MOVE)
-    with pytest.raises(AssertionError):
-        _assert_lockstep(entry, lambda _line: False)
     _broken(entry, by_line[4], (), LeafPermission.MOVE)
     with pytest.raises(AssertionError):
         _assert_records_agree_with_warnings(entry, registered, _CHECKED)
 
 
-_UNDECIDED_GUARD = LEAF_PRELUDE + """\
+_UNWARNED_GUARD = LEAF_PRELUDE + """\
 def fresh() -> Own[tuple[A, int32]]:
     return (A(1), 2)
 def literal(xs: list[tuple[A, int32]]) -> None:
@@ -4140,25 +4207,25 @@ def call(xs: list[tuple[A, int32]]) -> None:
 
 
 @pytest.mark.parametrize("line", [4, 6], ids=["literal", "call"])
-def test_the_undecided_guard_fails_on_a_non_name_source(line: int) -> None:
-    # A flat leaf of a fresh literal or an owning call has a verdict: an
-    # UNDECIDED there fails the check, as it does for a name.
-    entry, registered = _registered_compile(_UNDECIDED_GUARD)
-    _assert_records_agree_with_warnings(entry, registered, _UNDECIDED_GUARD)
+def test_the_unwarned_copy_guard_fails_on_a_non_name_source(line: int) -> None:
+    # A flat leaf of a fresh literal or an owning call moves: a copy no
+    # warning names there fails the check.
+    entry, registered = _registered_compile(_UNWARNED_GUARD)
+    _assert_records_agree_with_warnings(entry, registered, _UNWARNED_GUARD)
     by_line = {e.loc.line - _LEAF_LINES: e for _c, e in registered}
     rec = entry.analyzer.ctx.source_records[
         peel_value_wrappers(by_line[line])]
     assert rec.leaves[(0,)].permission is LeafPermission.MOVE
-    _broken(entry, by_line[line], (0,), LeafPermission.UNDECIDED)
-    with pytest.raises(AssertionError, match="UNDECIDED"):
+    _broken(entry, by_line[line], (0,), LeafPermission.WARNED)
+    with pytest.raises(AssertionError, match="WARNED"):
         _assert_records_agree_with_warnings(entry, registered,
-                                            _UNDECIDED_GUARD)
+                                            _UNWARNED_GUARD)
 
 
 def test_generic_tuple_member_of_a_list_literal_is_unhedged() -> None:
     # An open `T` member of a tuple literal held by a list literal at an
-    # owning slot is neither hedged nor decided, where the concrete twin
-    # warns and the scalar twin hedges
+    # owning slot is HEDGED by its record with no hedge emitted, where the
+    # concrete twin warns and the scalar twin hedges
     # (BUGS.md#generic-tuple-member-list-literal-unhedged).
     records, warnings, _e = _probe("""\
 def box[T](x: T) -> Own[list[tuple[T, int32]]]:
@@ -4168,7 +4235,7 @@ def boxa(y: A) -> Own[list[tuple[A, int32]]]:
 def box1[T](x: T) -> Own[list[T]]:
     return [x]
 """)
-    assert _perms(records[(2, "TpyTupleLiteral")]) == {(0,): P.UNDECIDED}
+    assert _perms(records[(2, "TpyTupleLiteral")]) == {(0,): P.HEDGED}
     assert _perms(records[(4, "TpyTupleLiteral")]) == {(0,): P.WARNED}
     assert _perms(records[(6, "TpyName")]) == {(): P.HEDGED}
     assert [w.split(";")[0] for w in warnings] == [
@@ -4176,25 +4243,202 @@ def box1[T](x: T) -> Own[list[T]]:
         "may copy T into owned storage if not a value type"]
 
 
-_MEMBERS = LEAF_PRELUDE + """def tup(a: A, xs: list[tuple[tuple[A, int32], int32]]) -> None:
-    t = (a, 1)
-    xs.append((t, 2))
-def nested(a: A, xs: list[tuple[tuple[A, int32], int32]]) -> None:
-    xs.append(((a, 1), 2))
+def test_the_render_gate_fails_on_a_move_the_lowering_copies(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    source = LEAF_PRELUDE + """def keep(xs: list[A]) -> None:
+    a = A(1)
+    xs.append(a)
+"""
+    compiler, modules = _compile(source)
+    # A name read whose record moves its leaf while the lowering copies it
+    # fails the render gate.
+    original = _lower_expressions.record_disposition
+
+    def copying(value: object, analyzer: object) -> object:
+        return (None if isinstance(value, TpyName) and value.name == "a"
+                else original(value, analyzer))
+    monkeypatch.setattr(_lower_expressions, "record_disposition", copying)
+    monkeypatch.setattr(_lower_checks, "record_disposition", copying)
+    monkeypatch.setattr(_bindings, "with_movable",
+                        lambda rec, own: replace(rec, movable=False))
+    with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules), source)
+
+
+def test_the_render_gate_fails_on_a_copy_the_lowering_moves(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    source = LEAF_PRELUDE + """def keep(xs: list[A]) -> None:
+    b = A(1)
+    xs.append(b)
+    print(b.v)
+"""
+    compiler, modules = _compile(source)
+    # A name read whose record copies its leaf while the lowering moves it
+    # fails the render gate.
+    original = _lower_expressions.record_disposition
+
+    def moving(value: object, analyzer: object) -> object:
+        return (Disposition.MOVE
+                if isinstance(value, TpyName) and value.name == "b"
+                else original(value, analyzer))
+    original_verdict = _lower_checks.verdict
+
+    def moving_verdict(ctx: object, value: object) -> SourceRecord:
+        if isinstance(value, TpyName) and value.name == "b":
+            return SourceRecord({(): Leaf(False, True, LeafPermission.MOVE)})
+        return original_verdict(ctx, value)
+    monkeypatch.setattr(_lower_expressions, "record_disposition", moving)
+    monkeypatch.setattr(_lower_checks, "record_disposition", moving)
+    monkeypatch.setattr(_lower_checks, "verdict", moving_verdict)
+    monkeypatch.setattr(_lower_expressions, "_copies_owned_leaf",
+                        lambda e, lc: False)
+    with pytest.raises(AssertionError, match=_COPY_MOVED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules), source)
+
+
+_ONE_ELEMENT_COPIES = LEAF_PRELUDE + """def keep(xs: list[tuple[A, A]], b: A, c: bool) -> None:
+    if c:
+        t = (A(1), b)
+    else:
+        t = (A(2), b)
+    xs.append(t)
 """
 
 
-def test_the_member_move_gate_fails_on_an_unrowed_member_move() -> None:
-    entry, registered = _registered_compile(_MEMBERS)
-    _assert_records_agree_with_warnings(entry, registered, _MEMBERS)
-    # A tuple name member's leaf, and a nested scalar member's, may move
-    # only on a row of BUGS.md#tuple-literal-name-member-silent-copy.
-    for line in (3, 5):
-        entry, registered = _registered_compile(_MEMBERS)
-        by_line = {e.loc.line - _LEAF_LINES: e for _c, e in registered}
-        _broken(entry, by_line[line], (0, 0), LeafPermission.MOVE)
-        with pytest.raises(AssertionError, match="member-silent-copy"):
-            _assert_records_agree_with_warnings(entry, registered, _MEMBERS)
+def test_the_render_gate_passes_a_tuple_moved_element_by_element() -> None:
+    compiler, modules = _compile(_ONE_ELEMENT_COPIES)
+    _assert_move_leaves_render_moves(compiler, _entry(modules),
+                                     _ONE_ELEMENT_COPIES)
+
+
+def test_the_render_gate_fails_on_a_copied_tuple_element_moved(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # Element 1 of `t` borrows `b`, so its record copies it while element 0
+    # moves; a lowering that moved every element out of the pointer tuple
+    # would move out of `b`, which the gate fails.
+    monkeypatch.setattr(
+        _lower_expressions, "_read_owned_elements",
+        lambda e, rec, lc, arity: (True,) * arity)
+    compiler, modules = _compile_program(_ONE_ELEMENT_COPIES)
+    with pytest.raises(AssertionError, match=_COPY_MOVED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules),
+                                         _ONE_ELEMENT_COPIES)
+
+
+_MIXED_LITERAL = LEAF_PRELUDE + """def mixed(b: A) -> None:
+    a = A(1)
+    xs: list[tuple[A, A]] = [(a, b)]
+    print(len(xs))
+async def gen_mixed(b: A) -> int32:
+    a = A(1)
+    xs: list[tuple[A, A]] = [(a, b)]
+    return len(xs)
+"""
+
+
+def test_the_render_gate_fails_on_a_mixed_literal_copied_whole(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # A literal whose member `a` moves and `b` copies converts member by
+    # member; lifting the literal whole copies the moving member, which the
+    # gate fails -- in a plain body and in a resumable frame.
+    compiler, modules = _compile(_MIXED_LITERAL)
+    original = _lower_expressions._members_record_move
+
+    def whole(e: object, slot: object, lc: object) -> bool:
+        return original(e, slot, lc) and all(
+            _lower_expressions._member_record_moves(m, lc)
+            for m in e.elements if isinstance(m, TpyName))
+    monkeypatch.setattr(_lower_expressions, "_members_record_move", whole)
+    compiler, modules = _compile_program(_MIXED_LITERAL)
+    with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules),
+                                         _MIXED_LITERAL)
+
+
+_FRAME_ONLY = LEAF_PRELUDE + """async def gen_mixed(b: A) -> int32:
+    a = A(1)
+    xs: list[tuple[A, A]] = [(a, b)]
+    return len(xs)
+"""
+
+
+def test_the_render_gate_reads_a_frame_that_is_the_only_failing_body(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # The copied-whole literal of a resumable frame alone fails the gate;
+    # the frame as it lowers passes it.
+    _compile(_FRAME_ONLY)
+    original = _lower_expressions._members_record_move
+
+    def whole(e: object, slot: object, lc: object) -> bool:
+        return original(e, slot, lc) and all(
+            _lower_expressions._member_record_moves(m, lc)
+            for m in e.elements if isinstance(m, TpyName))
+    monkeypatch.setattr(_lower_expressions, "_members_record_move", whole)
+    compiler, modules = _compile_program(_FRAME_ONLY)
+    with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules),
+                                         _FRAME_ONLY)
+
+
+_FRAME_BLOCKED = LEAF_PRELUDE + """from typing import Iterator
+def blocked(t: tuple[Own[A], A]) -> tuple[Own[A], Own[A]]:
+    return t
+def gen(a: A) -> Iterator[int32]:
+    yield a.v
+"""
+
+
+def test_the_render_gate_fails_where_a_reject_hides_a_frame() -> None:
+    # A body that does not lower ends emission before the frames: the gate
+    # fails rather than pass over them, unless the reject is a registered
+    # one (`_UNLOWERED_BODIES`).
+    compiler, modules = _compile_program(_FRAME_BLOCKED)
+    with pytest.raises(AssertionError, match=_FRAMES_NOT_LOWERED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules),
+                                         _FRAME_BLOCKED)
+
+
+@pytest.mark.parametrize("entry", sorted(_UNLOWERED_BODIES))
+def test_unlowered_bodies_still_reject(entry: tuple[str, str, str]) -> None:
+    # Each excused reject is still reached by the test it names: a reject
+    # the lowering lost leaves no stale excuse behind.
+    test_name, _tracked = _UNLOWERED_BODIES[entry]
+    test = globals()[test_name]
+    _UNLOWERED_USED.discard(entry)
+    marks = [m for m in getattr(test, "pytestmark", [])
+             if m.name == "parametrize"]
+    if marks:
+        names = [n.strip() for n in marks[0].args[0].split(",")]
+        for values in marks[0].args[1]:
+            values = getattr(values, "values", values)
+            test(**dict(zip(names, values if len(names) > 1
+                            else (values,))))
+    else:
+        test()
+    assert entry in _UNLOWERED_USED, entry
+
+
+_ELEMENT_MOVE = LEAF_PRELUDE + """def keep(a: Own[A]) -> int32:
+    return a.v
+def give(t: tuple[Own[A], int32]) -> int32:
+    return keep(t[0])
+"""
+
+
+def test_the_render_gate_reads_an_element_move(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # An element read whose record moves it out of its tuple, rendered as a
+    # copy, fails the gate.
+    original = _lower_expressions.verdict
+
+    def no_element_move(ctx: object, e: object) -> object:
+        return (SourceRecord({}) if isinstance(e, TpySubscript)
+                else original(ctx, e))
+    compiler, modules = _compile(_ELEMENT_MOVE)
+    monkeypatch.setattr(_lower_expressions, "verdict", no_element_move)
+    with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
+        _assert_move_leaves_render_moves(compiler, _entry(modules),
+                                         _ELEMENT_MOVE)
 
 
 def _member_copy_warnings(source: str) -> list[tuple[int, str]]:
@@ -4240,11 +4484,8 @@ def test_tuple_name_member_param_owned_leaves() -> None:
     # not stop the move of the owned one, as in its scalar twin. A parameter
     # whose `Own` markers are only nested is passed by const reference, so
     # its member copies every owned leaf, at its last use too, under its
-    # full path, as it does passed alone (`deep_arg_alone`)
-    # (BUGS.md#nested-own-param-const-ref-abi). `deep_alone` pins a known
-    # defect of that entry: returned alone, the same copy is silent. `H`
-    # builds its field rather than storing an `Own` parameter, whose store
-    # warns spuriously (BUGS.md#own-tuple-param-field-store-warns).
+    # full path, as it does passed alone (`deep_arg_alone`) and returned
+    # alone (`deep_alone`) (BUGS.md#nested-own-param-const-ref-abi).
     assert _member_copy_warnings("""\
 def take_mixed(p: tuple[tuple[Own[A], N], int32]) -> None:
     pass
@@ -4291,10 +4532,12 @@ def take_one(p: tuple[tuple[Own[A], int32], int32]) -> int32:
 def deep_arg_alone(t: tuple[tuple[Own[A], int32], int32]) -> int32:
     return take_one(t)
 """) == [(11, "copies A into owned storage (tuple element 0.0.0)"),
+         (14, "copies A into owned storage (tuple element 0.0)"),
          (20, "copies A into owned storage (tuple element 0.0.0)"),
          (22, "copies A into owned storage (tuple element 0.0.0)"),
          (28, "copies A into owned storage (tuple element 0.0.0)"),
          (28, "copies A into owned storage (tuple element 0.0.1)"),
+         (31, "copies A into owned storage (tuple element 0.0)"),
          (31, "copies A into owned storage (tuple element 0.1)"),
          (37, "copies A into field (tuple element 0.0.0)"),
          (40, "copies A into owned storage (tuple element 0.0.0)"),
@@ -4376,13 +4619,11 @@ def f() -> None:
               "(argument 'p' tuple element 0.1.0)")]
 
 
-def test_tuple_name_member_nocopy_last_use_errors_where_render_copies() -> None:
-    # The scalar twins move a last-use `@nocopy` member: `return (n, 3)` and
-    # `self.p = (n, 3)` render `{std::move(n), 3}`. A tuple name member's
-    # render copies even at its last use (`{t, 3}`, at a return, a field and
-    # a container alike; BUGS.md#tuple-literal-name-member-silent-copy), so a
-    # non-copyable leaf has no copy to make: the located error replaces the
-    # C++ build's deleted-copy failure, and offers no auto-move.
+def test_tuple_name_member_nocopy_last_use_moves() -> None:
+    # A last-use `@nocopy` member moves as its scalar twin does: `return
+    # (n, 3)` and `self.p = (n, 3)` render `{std::move(n), 3}`, a tuple name
+    # member `{std::move(t), 3}`, at a return, a field and a container
+    # alike, so no copy is made and nothing errors.
     for body in ("""\
 def f() -> tuple[Own[N], int32]:
     n = N(1)
@@ -4393,28 +4634,22 @@ class H:
     def __init__(self) -> None:
         n = N(1)
         self.p = (n, 3)
-"""):
-        _compile(LEAF_PRELUDE + body)
-    for body, dest in (("""\
+""", """\
 def f() -> tuple[tuple[Own[N], int32], int32]:
     t = (N(1), 2)
     return (t, 3)
-""", "owned storage"), ("""\
+""", """\
 class H:
     p: tuple[tuple[N, int32], int32]
     def __init__(self) -> None:
         t = (N(1), 2)
         self.p = (t, 3)
-""", "field"), ("""\
+""", """\
 def f(xs: list[tuple[tuple[N, int32], int32]]) -> None:
     t = (N(1), 2)
     xs.append((t, 3))
-""", "owned storage")):
-        with pytest.raises(SemanticError, match=re.escape(
-                f"cannot copy non-copyable type 'N' into {dest} "
-                "(tuple element 0.0) (use Own[...] to transfer ownership, or "
-                "copy() if a copy is truly intended)")):
-            _compile(LEAF_PRELUDE + body)
+"""):
+        _compile(LEAF_PRELUDE + body)
 
 
 def test_tuple_walrus_member_reads_as_its_name() -> None:
@@ -4632,9 +4867,10 @@ def test_tuple_name_member_records_of_the_cases() -> None:
         _case_member_records("error_literal_name_member_nocopy")
 
 
-def test_a_hoisted_local_takes_its_move_back_where_its_copy_is_told() -> None:
-    # A `try`-hoisted local is a slot its binds re-point: the pointer
-    # hoist's read copies, told by its warning, scalar and tuple alike.
+def test_a_hoisted_local_moves_at_its_last_use() -> None:
+    # A `try`-hoisted local is a slot its binds re-point, which the C++
+    # moves out of where the binding owns it, scalar and tuple alike: no
+    # warning.
     records, warnings, _e = _probe("""\
 def mk(k: int32) -> Own[A]:
     if k > 100:
@@ -4653,17 +4889,14 @@ def ptr_tuple(out: list[tuple[A, int32]], k: int32) -> None:
         t = (A(7), 2)
     out.append(t)
 """)
-    assert _perms(records[(10, "TpyName")]) == {(): P.WARNED}
-    assert _perms(records[(16, "TpyName")]) == {(0,): P.WARNED}
-    assert [w.split(";")[0] for w in warnings] == [
-        "copies A into owned storage",
-        "copies A into owned storage (tuple element 0)"]
+    assert _perms(records[(10, "TpyName")]) == {(): P.MOVE}
+    assert _perms(records[(16, "TpyName")]) == {(0,): P.MOVE}
+    assert not [w for w in warnings if "cop" in w]
 
 
 def test_a_module_loop_variable_rebound_to_borrowed_storage_copies() -> None:
     # The module-level loop site's own rebind borrows: the append copies,
-    # UNDECIDED, since nothing warns it
-    # (BUGS.md#module-own-loop-var-rebind-copies-silently).
+    # warned with the binding inside the loop, as the function twin is.
     records, warnings, _e = _probe("""\
 from typing import Iterator
 def mk() -> Iterator[Own[A]]:
@@ -4674,5 +4907,7 @@ for a in mk():
     a = b
     out.append(a)
 """)
-    assert _perms(records[(8, "TpyName")]) == {(): P.UNDECIDED}
-    assert not [w for w in warnings if "cop" in w]
+    assert _perms(records[(8, "TpyName")]) == {(): P.WARNED}
+    assert [w for w in warnings if "cop" in w] == [
+        "copies A into owned storage; use copy() to make this explicit "
+        f"('a' is bound to existing storage at line {_LEAF_LINES + 7})"]

@@ -591,14 +591,15 @@ void main() {
 
 
 // def __init__(self, i: int32) -> None:
-//     # ctor: the unpack in a constructor body; storing it copies.
+//     # ctor: the unpack in a constructor body; storing its owned element
+//     # at its last use moves it.
 //     o, k = mko(i)  # tpyc: ok
 //     keep = o
 //     filler = [P(9), P(9), P(9)]
 //     if o is not None:
 //         o.n += 10
 //     show("ctor-keep", keep)
-//     self.o = o  # tpyc: warning(/copies P \| None into field/)
+//     self.o = o  # tpyc: ok
 //     print("ctor", k, len(filler))
 H::H(int32_t i) {
     auto __tup_1 = ::tpyapp::main::mko(i);

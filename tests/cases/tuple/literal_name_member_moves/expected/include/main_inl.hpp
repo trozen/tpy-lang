@@ -18,7 +18,7 @@ inline std::expected<std::tuple<std::tuple<A, int32_t>, int32_t>, ::tpy::StopIte
         __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, int32_t>{A(1), 2});
         __state = S_RESUME_0;
-        return std::tuple<std::tuple<A, int32_t>, int32_t>{(*t), 3};
+        return std::tuple<std::tuple<A, int32_t>, int32_t>{std::move((*t)), 3};
     }
     case S_RESUME_0: {  // after: yield (t, 3)  # tpyc: ok
         __state = S_DONE;
@@ -41,7 +41,7 @@ inline std::expected<std::tuple<std::tuple<A, int32_t>, std::tuple<A, int32_t>>,
         t.emplace(std::tuple<A, int32_t>{A(1), 2});
         u.emplace(std::tuple<A, int32_t>((*t)));
         __state = S_RESUME_0;
-        return std::tuple<std::tuple<A, int32_t>, std::tuple<A, int32_t>>{(*u), (*t)};
+        return std::tuple<std::tuple<A, int32_t>, std::tuple<A, int32_t>>{std::move((*u)), std::move((*t))};
     }
     case S_RESUME_0: {  // after: yield (u, t)  # tpyc: ok
         __state = S_DONE;

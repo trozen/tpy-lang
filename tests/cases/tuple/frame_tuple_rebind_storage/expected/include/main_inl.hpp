@@ -799,8 +799,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_bound_once::__next
     __builtin_unreachable();
 }
 
-// # stored into a field at the tuple's last use: the owned element is moved
-// # under a copy warning (BUGS.md#ptr-tuple-field-store-move-warned-copy)
+// # stored into a field at the tuple's last use: the owned element moves, the
+// # borrowed one copies (warned)
 // def gen_field_store(v: Box, h: H) -> Iterator[int32]:
 //     p = make_mixed(1, v)
 //     p = make_mixed(2, v)

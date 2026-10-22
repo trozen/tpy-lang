@@ -41,7 +41,7 @@ the tables live on the module's `SemanticContext` (`body_ownership`,
 
 from __future__ import annotations
 
-from collections.abc import Set as AbstractSet
+from collections.abc import Iterable, Set as AbstractSet
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Collection, Mapping
@@ -62,6 +62,7 @@ from ..typesys import (OptionalType, OwnType, ReadonlyType, TpyType,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
 from .alias_rebind import ElemPath, leaf_paths, owned_leaf_paths
+from .context import NonOwningBind, fold_nonowning
 from .call_lends import callee_lend_fact
 from .decl_types import declared_bound_type
 from .scope_tracker import binds_module_storage
@@ -100,6 +101,9 @@ class BindingOwnership:
     acquired: Acquired | None
     acquired_paths: frozenset[ElemPath] | None = None
     borrowed: frozenset[ElemPath] = frozenset()
+    # The line of the binding that made it refer to existing storage, for
+    # the copy diagnostics' note (`TypeCompatibility.ownership_note`).
+    line: int | None = field(default=None, compare=False)
 
     def __bool__(self) -> bool:
         return self.acquired is not None
@@ -115,6 +119,22 @@ class BindingOwnership:
                 p[:len(a)] == a for a in self.acquired_paths))
         return frozenset(p for p in leaves if not any(
             p[:len(b)] == b for b in self.borrowed))
+
+    def owns(self, t: TpyType | None, paths: Iterable[ElemPath]) -> bool:
+        """Whether the binding owns every path in `paths` of a value of
+        type `t`: each lies at or under a leaf it owns (`owned_paths`) --
+        an owned leaf owns what is under it, so an owned Optional tuple
+        owns its payload read at the tuple slot's paths."""
+        owned = self.owned_paths(t)
+        return all(any(p[:len(o)] == o for o in owned) for p in paths)
+
+    def owned_among(self, t: TpyType | None,
+                    paths: Iterable[ElemPath]) -> frozenset[ElemPath]:
+        """The paths among `paths` of a value of type `t` the binding owns
+        (`owns`, each on its own)."""
+        owned = self.owned_paths(t)
+        return frozenset(p for p in paths
+                         if any(p[:len(o)] == o for o in owned))
 
 
 NOT_OWNED = BindingOwnership(None)
@@ -508,16 +528,21 @@ class _BodyWalk:
 
     def _less_inside(self, name: str, acq: Acquired,
                      loop: TpyForEach) -> BindingOwnership:
-        borrowed: frozenset[ElemPath] = frozenset()
+        """The site's entry: `acq`, less what the bindings of `name` inside
+        `loop` borrow (a binding borrowing it whole owns nothing), with the
+        line of the first of them."""
+        inside: NonOwningBind | None = None
         entry = self.fs.nonowning_sites.get(name)
         for at, elems in entry.notes if entry is not None else ():
-            inside = self.within.get(at, ()) if at is not None else ()
-            if not any(loop is lp for lp in inside):
-                continue
-            if elems is None:
-                return NOT_OWNED
-            borrowed |= elems
-        return BindingOwnership(acq, None, borrowed)
+            within = self.within.get(at, ()) if at is not None else ()
+            if any(loop is lp for lp in within):
+                inside = fold_nonowning(inside, at, elems)
+        if inside is None:
+            return BindingOwnership(acq)
+        if inside.elems is None:
+            return BindingOwnership(None, None, frozenset({()}),
+                                    inside.line)
+        return BindingOwnership(acq, None, inside.elems, inside.line)
 
     def _loop(self, s: TpyForEach) -> Acquired | None:
         it_t = self.ctx.get_expr_type(s.iterable)

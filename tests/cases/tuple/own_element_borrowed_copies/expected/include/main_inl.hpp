@@ -20,7 +20,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_arg_generator::__next_
     case S_RESUME_0: {  // after: yield take((p, p))  # tpyc: warning(/argument 't' tuple element 0\)/) warning(/argument 't' tuple element 1\)/)
         t = std::tuple<P*, int32_t>{&(p), 1};
         __state = S_RESUME_1;
-        return ::tpyapp::main::sink(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::move(t)));
+        return ::tpyapp::main::sink(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t));
     }
     case S_RESUME_1: {  // after: yield sink(t)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
         __state = S_DONE;
@@ -42,7 +42,7 @@ inline std::expected<std::tuple<P, int32_t>, ::tpy::StopIteration> __gen_gen_own
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::tuple<P, int32_t>{p, 1};
+        return std::tuple<P, int32_t>{P(p), 1};
     }
     case S_RESUME_0: {  // after: yield (p, 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
         __state = S_DONE;

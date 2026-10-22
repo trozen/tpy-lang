@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     b.append("z")
 //     print("list_pop", a, b, c, d, stack)
 void list_pop() {
-    std::vector<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>> stack = {::tpy::tuple_to_storage<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>>(std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>{"s", {"p"}, {"q"}, true})};
+    std::vector<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>> stack = ::tpy::make_vector<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>>(::tpy::tuple_to_storage<std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>>(std::tuple<std::string, std::vector<std::string>, std::vector<std::string>, bool>{"s", {"p"}, {"q"}, true}));
     auto __tup_1 = ::tpy::pop_back(stack);
     std::string a = std::move(std::get<0>(__tup_1));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
@@ -130,7 +130,7 @@ void bound() {
 //     a.append("y")
 //     print("literal_stack", a, b, stack)
 void literal_stack() {
-    std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = {::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1})};
+    std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = ::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1}));
     auto __tup_1 = ::tpy::pop_back(stack);
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t b = std::get<1>(__tup_1);
@@ -146,7 +146,7 @@ void literal_stack() {
 //     a.append("y")
 //     print("literal_stack_bound", a, b, t, stack)
 void literal_stack_bound() {
-    std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = {::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1})};
+    std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = ::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1}));
     auto t = ::tpy::pop_back(stack);
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::vector<std::string>*, int32_t>>(t);
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
@@ -249,7 +249,7 @@ void module_qualified() {
 //     a.n = 9
 //     print("record_elem", a.n, b, len(stack))
 void record_elem() {
-    std::vector<std::tuple<R, int32_t>> stack = {::tpy::tuple_to_storage<std::tuple<R, int32_t>>(std::tuple<R, int32_t>{R(1), 1})};
+    std::vector<std::tuple<R, int32_t>> stack = ::tpy::make_vector<std::tuple<R, int32_t>>(::tpy::tuple_to_storage<std::tuple<R, int32_t>>(std::tuple<R, int32_t>{R(1), 1}));
     auto __tup_1 = ::tpy::pop_back(stack);
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t b = std::get<1>(__tup_1);

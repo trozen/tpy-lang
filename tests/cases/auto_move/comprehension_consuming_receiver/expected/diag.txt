@@ -1,6 +1,3 @@
-main.py:133: warning: copies Box into owned storage; use copy() to make this explicit
-main.py:143: warning: copies Box into owned storage; use copy() to make this explicit
-main.py:149: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:282: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:192: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:63: warning: copies Box into owned storage; use copy() to make this explicit
@@ -14,7 +11,9 @@ main.py:111: warning: copies Box into owned storage; use copy() to make this exp
 main.py:116: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:116: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:123: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:133: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:134: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:143: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:160: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:168: warning: copies Box into owned storage; use copy() to make this explicit
 main.py:180: warning: copies Box into owned storage; use copy() to make this explicit

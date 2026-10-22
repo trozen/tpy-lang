@@ -145,7 +145,6 @@ _PLAIN_FRAME_CLASSES = frozenset({
     FrameLocalClass.PLAIN, FrameLocalClass.VALUE_OPT_RECORD,
     FrameLocalClass.VALUE_TUPLE, FrameLocalClass.OPT_TUPLE_HOLDER})
 
-
 class ValueOptKind(Enum):
     """The value-repr `std::optional<T>` LOCAL binding families -- one
     kind-tagged registration where three parallel sets used to live. The
@@ -799,6 +798,12 @@ class _ExprUse:
     slot_target: 'TpyType | None' = None
     dest: 'Slot | None' = None
     lifetime: SlotLifetime = SlotLifetime.NONE
+    # Whether this position's container-literal render may take the
+    # reserve+emplace helpers for a copying lift alone (one copy less than
+    # the brace-init): False where that render is unwitnessed, which keeps
+    # the brace-init's extra copy
+    # (BUGS.md#list-literal-owned-elem-initializer-copy).
+    copy_lift_make: bool = True
 
     def admits(self, form: SinkForm) -> bool:
         """Whether this sink admits `form`. The one spelling every
@@ -2038,6 +2043,23 @@ class _LowerCtx:
             return name in self.move_region
         rec = self.lookup_binding(name)
         return rec is not None and rec.movable
+
+    def check_record_move(self, name: str) -> None:
+        """An owning sink's record moves a leaf of a read of `name`: the
+        planner must let the binding move here -- no exception row, or one
+        a record may move (`MoveRow.record_moves`). A disagreement is a
+        compiler bug (the record and the planner decide from different
+        facts), never a silent copy or a move the representation forbids."""
+        if self.move_region is not None:
+            assert name in self.move_region, (
+                "record moves a name outside the moves_only region", name)
+            return
+        rec = self.lookup_binding(name)
+        assert rec is not None, (
+            "record moves a name the binding table does not bind", name)
+        row = rec.move_exception
+        assert row is None or row.record_moves, (
+            "record moves a binding the planner does not move", name, row)
 
     def binding(self, name: str) -> BindingRepr:
         """The record `name` resolves to where the walk is -- the one

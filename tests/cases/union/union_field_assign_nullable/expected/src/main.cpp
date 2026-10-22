@@ -72,7 +72,7 @@ void main() {
     }
     ::tpy::Union<std::monostate, Cat, Dog> __slot_2 = Dog("Buddy");
     ::tpy::Union<std::monostate, Cat*, Dog*> another = ::tpy::to_ptr_variant(__slot_2);
-    s.pet = ::tpy::to_value_variant<::tpy::Union<std::monostate, Cat, Dog>>(another);
+    s.pet = ::tpy::to_value_variant_move<::tpy::Union<std::monostate, Cat, Dog>>(another);
     ::tpy::Union<std::monostate, Cat*, Dog*> p4 = ::tpy::to_ptr_variant(s.pet);
     if ((!std::holds_alternative<std::monostate>(p4))) {
         if (std::holds_alternative<Dog*>(p4)) {

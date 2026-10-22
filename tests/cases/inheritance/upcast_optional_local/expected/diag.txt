@@ -1,5 +1,5 @@
-main.py:147: warning: copies Dog into field; use copy() to make this explicit
 main.py:147: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
+main.py:147: warning: copies Dog into field; use copy() to make this explicit
 main.py:32: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
 main.py:40: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol
 main.py:49: warning: upcast narrows 'Dog' to 'Pet' -- only 'Pet' fields and methods will be accessible; keep the concrete type or make 'Pet' a @dynamic protocol

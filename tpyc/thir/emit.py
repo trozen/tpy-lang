@@ -1339,10 +1339,12 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
             helper = "ptr_to_optional_move" if e.move else "ptr_to_optional"
             return f"::tpy::{helper}({inner})"
         # F4 U2: a borrow pointer-variant into a storage `std::variant<A, B>`
-        # slot (a union field write) copies the active member out. Mirrors
+        # slot (a union field write) copies the active member out, or moves
+        # it out of pointees the source owns at its last use. Mirrors
         # context.convert's union STORAGE arm.
         if isinstance(t, UnionType):
-            return f"::tpy::to_value_variant<{t.to_cpp()}>({inner})"
+            helper = "to_value_variant_move" if e.move else "to_value_variant"
+            return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
         # F3 borrow tuple -> storage tuple: the helper absorbs the per-element
         # pointer->optional/value mask from the spelled storage destination. An
         # owned source at last use moves; a borrow copies. Mirrors context.convert's

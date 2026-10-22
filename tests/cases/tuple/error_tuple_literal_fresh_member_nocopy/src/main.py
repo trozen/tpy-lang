@@ -1,7 +1,6 @@
-# A fresh tuple LITERAL with a @nocopy reference member into owned container
-# storage is a clean error -- including at the member's LAST USE (codegen
-# copies the member via tuple_to_storage, never moves it, so no auto-move
-# exemption applies and a raw g++ deleted-ctor must not slip through).
+# A tuple LITERAL with a @nocopy reference member still read afterwards, into
+# owned container storage: the member has no copy to make, a clean error (at
+# its last use the member moves in, ownership_record_renders).
 from tpy import int32
 from tplib.box import Box
 
@@ -9,7 +8,7 @@ from tplib.box import Box
 def f() -> None:
     b = Box(5)
     xs: list[tuple[int32, Box[int32]]] = [(1, b)]  # tpyc: error(/cannot copy non-copyable type 'Box\[int32\]' into owned storage/)
-    print(len(xs))
+    print(len(xs), b.get())
 
 
 def main() -> None:

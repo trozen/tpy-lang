@@ -144,9 +144,9 @@ def shadow_for(ws: list[Box]) -> None:
         print("shadow_for", len(b.xs), heads(rs), lens(ws))
 
 
-# an owned variable passed to an `Own` parameter moves; the warning is a false positive (BUGS.md#comp-var-own-arg-false-copy-warning)
+# an owned variable passed to an `Own` parameter moves, silently
 def owned_arg(src: Iterable[Own[Box]]) -> Own[list[Box]]:
-    return [take(b) for b in src]  # tpyc: warning(/copies Box into owned storage/)
+    return [take(b) for b in src]  # tpyc: ok
 
 
 def fresh() -> Own[list[Box]]:

@@ -1,4 +1,3 @@
-main.py:26: warning: copies P | None into field; use copy() to make this explicit
 main.py:29: warning: Own[P | None] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:54: warning: Own[P | None] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:61: warning: Own[P | None] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

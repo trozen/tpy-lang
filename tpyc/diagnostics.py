@@ -106,13 +106,16 @@ class Diagnostic:
         return f"{filename}: {self.level.value}: {self.message}"
 
 
-def insert_in_source_order(diagnostics: list[Diagnostic], diagnostic: Diagnostic) -> None:
-    """Add a diagnostic a later phase found to a module's list, ahead of
-    the first one on a later line, so a reader sees the module's
-    diagnostics in source order whichever phase found them."""
+def insert_in_source_order(diagnostics: list[Diagnostic], diagnostic: Diagnostic,
+                           start: int = 0) -> None:
+    """Add a diagnostic a later phase found to a module's list (from index
+    `start` on), ahead of the first one on a later line, so a reader sees
+    the module's diagnostics in source order whichever phase found them. A
+    diagnostic with no line goes last."""
     line = diagnostic.loc.line if diagnostic.loc is not None else None
     if line is not None:
-        for index, existing in enumerate(diagnostics):
+        for index in range(start, len(diagnostics)):
+            existing = diagnostics[index]
             if existing.loc is not None and existing.loc.line > line:
                 diagnostics.insert(index, diagnostic)
                 return

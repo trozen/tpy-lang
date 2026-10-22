@@ -173,7 +173,7 @@ void nested() {
 //     for n, c in ps:
 //         print("mixed", n, c.k)
 void mixed() {
-    std::vector<std::tuple<int64_t, Cnt>> ps = {::tpy::tuple_to_storage<std::tuple<int64_t, Cnt>>(std::tuple<int64_t, Cnt>{1, Cnt()})};
+    std::vector<std::tuple<int64_t, Cnt>> ps = ::tpy::make_vector<std::tuple<int64_t, Cnt>>(::tpy::tuple_to_storage<std::tuple<int64_t, Cnt>>(std::tuple<int64_t, Cnt>{1, Cnt()}));
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

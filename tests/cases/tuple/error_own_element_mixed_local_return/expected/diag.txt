@@ -1,2 +1,0 @@
-main.py:24: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 22)
-main.py:24: error: in function 'f': this construct is not yet supported by C++ code generation (stmt.return:return.lift.borrow)

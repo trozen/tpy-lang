@@ -4079,6 +4079,10 @@ class Parser:
             anchor_name = f"__ma_{self._multi_assign_counter}"
             self._multi_assign_counter += 1
             stmts.append(TpyVarDecl(anchor_name, None, value_expr, loc=loc))
+            if isinstance(value_expr, TpyName):
+                # The temporary holds the variable it is assigned from.
+                stamp_stands_for(stmts[:1], value_expr.name,
+                                 TpyName(anchor_name, loc=loc))
         # Assign anchor to remaining targets (left-to-right, no source comment)
         for t in node.targets:
             if t is anchor:
@@ -4090,7 +4094,9 @@ class Parser:
                 if anchor is None:
                     stamp_stands_for(stmts[:1], target.name, ref)
             else:
-                stmts.append(TpyAssign(target, ref, loc=None))
+                # Located: a field or element target is an owning sink of
+                # the value, checked as the single-target store is.
+                stmts.append(TpyAssign(target, ref, loc=loc))
         if anchor is None:
             # With no variable among the targets, the first target as written.
             stamp_stands_for(stmts[:1], self._source_excerpt(node.targets[0]),

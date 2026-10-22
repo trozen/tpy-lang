@@ -101,8 +101,6 @@ from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
 from .compatibility import TypeCompatibility
-from .source_records import finalize_source_records
-from .binding_ownership import record_body_ownership
 from .capture_copies import CopyReason, warn_closure_captures
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
@@ -1080,9 +1078,6 @@ class SemanticAnalyzer:
         # Last diagnostic-emitting step for this analyzer, so it is where a
         # body analyzed once per clone collapses back to one report.
         self.ctx.collapse_duplicate_diagnostics()
-        # Every diagnostic has its final fate now, so each copy's
-        # declarations are read off the ones that stand.
-        finalize_source_records(self.ctx)
 
     def _normalize_function_info_refs(self) -> None:
         """Apply make_ref to all registered FunctionInfo param/return types.
@@ -3402,6 +3397,8 @@ class SemanticAnalyzer:
         self.ctx.func.current_function = MODULE_INIT_CONTEXT
         self.ctx.func.current_scope = Scope(parent=self.ctx.global_scope)
         self.ctx.is_top_level = True
+        # The top level settles its copy diagnostics as a body does.
+        self.ctx.func.copies_from = len(self.ctx.diagnostics)
 
         # Set up namespace - use global_ns for top-level (globals are visible)
         # New local variables will be added to global_ns as they're declared
@@ -3449,10 +3446,8 @@ class SemanticAnalyzer:
         self.deduction.resolve_all()
         self.compat.drain_deferred_escape_checks()
         warn_closure_captures(self.ctx, stmts)
-        # No module-level read waits for settlement; its iteration binders'
-        # ownership is written as every body's is.
-        record_body_ownership(self.ctx, stmts)
-        self.compat.build_source_records()
+        # The top level settles as every body does.
+        self.compat.settle_owning_reads(stmts)
         # A global some function rebinds through `global` can change between
         # two module-level statements: foreign storage for the replay.
         decide_rebind_storage(self.ctx, stmts, always_foreign=function_globals)

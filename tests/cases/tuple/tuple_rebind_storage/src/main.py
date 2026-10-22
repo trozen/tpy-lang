@@ -1061,10 +1061,9 @@ def branch_last_use_rebind(q: Own[tuple[Box, Box]], c: bool) -> None:
 def try_last_use_rebind(q: tuple[Own[Box], Box], v: Box) -> None:  # tpyc: warning(/owned tuple param 'q' is never consumed/)
     try:
         r = make_mixed(7, v)
-        # try-last-use-rebind: 'r' is declared ahead of the try, and such a
-        # local is not moved out of, so the rebind copies its object, warned
-        # (BUGS.md#own-param-last-use-rebind-copies).
-        q = r  # tpyc: warning(/copies tuple\[Own\[Box\], Box\] into owned storage; use copy\(\) to make this explicit/)
+        # try-last-use-rebind: 'r' is declared ahead of the try and owns its
+        # object at its last use, so the rebind moves it in, silently.
+        q = r  # tpyc: ok
     finally:
         print("try-last-use-rebind finally")
     q[0].n += 100

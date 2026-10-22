@@ -17,7 +17,7 @@ void bump(A& a) {
 //     return (t, 3)  # tpyc: ok
 std::tuple<std::tuple<A, int32_t>, int32_t> ret_last() {
     auto t = std::tuple<A, int32_t>{A(1), 2};
-    return std::tuple<std::tuple<A, int32_t>, int32_t>{t, 3};
+    return std::tuple<std::tuple<A, int32_t>, int32_t>{std::move(t), 3};
 }
 
 // # return: the explicit copy and the last-use member, both silent. The copy is
@@ -30,7 +30,7 @@ std::tuple<std::tuple<A, int32_t>, int32_t> ret_last() {
 std::tuple<std::tuple<A, int32_t>, std::tuple<A, int32_t>> ret_optout() {
     auto t = std::tuple<A, int32_t>{A(1), 2};
     auto u = std::tuple<A, int32_t>(t);
-    return std::tuple<std::tuple<A, int32_t>, std::tuple<A, int32_t>>{u, t};
+    return std::tuple<std::tuple<A, int32_t>, std::tuple<A, int32_t>>{std::move(u), std::move(t)};
 }
 
 

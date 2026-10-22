@@ -2340,7 +2340,7 @@ inline U::U(int32_t x) : x(x) {}
 
 // def __init__(self, a: Box, b: Box) -> None:
 //     self.bp = (a, b)  # tpyc: warning(/copies Box into field \(tuple element 0\)/) warning(/copies Box into field \(tuple element 1\)/)
-inline H::H(const Box& a, const Box& b) : bp(std::tuple<Box, Box>{a, b}) {}
+inline H::H(const Box& a, const Box& b) : bp(std::tuple<Box, Box>{Box(a), Box(b)}) {}
 
 // def __enter__(self) -> int32:
 //     return 0

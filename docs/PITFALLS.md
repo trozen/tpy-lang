@@ -41,10 +41,11 @@ actual copy of a reference type has a warning or an explicit `copy()`. Both dire
 **Example.** `s[0] = z` where `s` is a user class with `def __setitem__(self, index: int32,
 value: Data)`. The emit is `::tpy::__setitem__(s, 0, z)`, a by-reference pass, yet the line warns
 "copies Data into container; use copy()"; the copy, if any, is the callee's own `self.a = value`,
-which warns on its own line. Inverse: `self.u = v` in a constructor with `v: Own[A | B]` warns the
-same way although the member-init emits `u(std::move(v))`, so a `copy()` written to silence it
-would add the copy the warning claims.
-(open: `BUGS.md#setitem-copy-warning-at-call-site`, `BUGS.md#own-union-field-store-copy-warning`)
+which warns on its own line. Inverse: `self.u = v` in a constructor with `v: Own[A | B]` used to
+warn the same way although the member-init emits `u(std::move(v))`, so a `copy()` written to
+silence it would have added the copy the warning claimed (fixed: the warning is projected from the
+source record, which moves the parameter).
+(open: `BUGS.md#setitem-copy-warning-at-call-site`)
 
 **Check.** For every line under a copy warning, open the emitted C++ at that line and find the
 copy construction. A const-ref bind or a `std::move` under a copy warning is the defect; a

@@ -31,7 +31,7 @@ std::vector<T> make_empty() {
 //     return [x]  # tpyc: warning(/may copy T into owned storage/)
 template<typename T>
 std::vector<T> make_single(::tpy::param_val_or_ref_t<T> x) {
-    return {::tpy::param_to_storage<T>(x)};
+    return ::tpy::make_vector<T>(::tpy::param_to_storage<T>(x));
 }
 
 void __tpy_init();

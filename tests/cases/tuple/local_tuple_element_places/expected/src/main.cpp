@@ -330,7 +330,7 @@ int32_t readonly_elems(const std::vector<std::tuple<Box, int32_t>>& items) {
 //     s.take((4, Counter(2)))
 //     print("own_param", s.total)
 void main() {
-    std::vector<std::tuple<Box, int32_t>> xs = {::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(0), 3})};
+    std::vector<std::tuple<Box, int32_t>> xs = ::tpy::make_vector<std::tuple<Box, int32_t>>(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(0), 3}));
     Box __slot_1 = Box(0);
     Box* b = &__slot_1;
     ::tpyapp::main::literal_local((*b));

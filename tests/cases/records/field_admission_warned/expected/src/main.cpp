@@ -307,8 +307,7 @@ int32_t showu_deep(const Deep& h) {
 
 // def store_g(s: Slots, g: Own[P] | None) -> None:
 //     # local holder: an `Own[P] | None` param is the caller's transfer and
-//     # moves into the field (its `Own[P | None]` spelling still copies and
-//     # warns: BUGS.md#own-optional-param-field-store-copies).
+//     # moves into the field (as its `Own[P | None]` spelling does).
 //     s.g2 = g  # tpyc: ok
 void store_g(Slots& s, std::optional<P> g) {
     s.g2 = std::move(g);
@@ -320,7 +319,8 @@ void store_g(Slots& s, std::optional<P> g) {
 //     s.op = xs[0]  # tpyc: warning(/copies P \| None into field/)
 //     bump_at(xs, 0)
 //     print("holder.opt_elem", s.show_op(), show_at(xs, 0))
-//     s.pq = mk_pq(4)  # tpyc: warning(/copies P \| R into field/)
+//     # an owning call moves its result in, silently
+//     s.pq = mk_pq(4)  # tpyc: ok
 //     print("holder.pq_call", s.showu_pq())
 //     s.pq = u.f  # tpyc: warning(/copies P \| R into field/)
 //     bumpu_src(u)
@@ -599,9 +599,8 @@ void Holder::writes(std::vector<int32_t>& xs, std::vector<int32_t>* items, Src& 
 //     self.pq = du["k"]  # tpyc: warning(/copies P \| R into field/)
 //     bumpu_key(du, "k")
 //     print("method.pq_dict", self.showu_pq(), showu_key(du, "k"))
-//     # An owning call into a union field warns a copy that never happens
-//     # (BUGS.md#own-optional-param-field-store-copies, the CALL twin).
-//     self.pq = mk_pq(-8)  # tpyc: warning(/copies P \| R into field/)
+//     # an owning call into a union field moves its result in, silently
+//     self.pq = mk_pq(-8)  # tpyc: ok
 //     print("method.pq_call", self.showu_pq())
 void Slots::writes(OptSrc& o, PqSrc& u, Deep& h, std::vector<std::optional<P>>& xs, std::vector<::tpy::Union<P, R>>& us, ::tpy::ordered_map<std::string, std::optional<P>>& d, ::tpy::ordered_map<std::string, ::tpy::Union<P, R>>& du) {
     this->op = o.f;

@@ -134,7 +134,7 @@ void main() {
     ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>> groups = ::tpy::ordered_map<std::string, ::tpy::ordered_set<int32_t>>({{"a", ::tpy::ordered_set<int32_t>({1, 2})}});
     ::tpy::__getitem__(groups, "a").insert(3);
     std::cout << "set" << " " << ::tpy::__len__(::tpy::__getitem__(groups, "a")) << "\n" << ::tpy::check_signals;
-    ::tpy::ordered_map<std::string, std::tuple<std::vector<int32_t>, int32_t>> pairs = ::tpy::ordered_map<std::string, std::tuple<std::vector<int32_t>, int32_t>>({{"a", ::tpy::tuple_to_storage<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>, int32_t>{{1, 2}, 3})}});
+    ::tpy::ordered_map<std::string, std::tuple<std::vector<int32_t>, int32_t>> pairs = ::tpy::make_ordered_map<std::string, std::tuple<std::vector<int32_t>, int32_t>>("a", ::tpy::tuple_to_storage<std::tuple<std::vector<int32_t>, int32_t>>(std::tuple<std::vector<int32_t>, int32_t>{{1, 2}, 3}));
     std::cout << "tuple" << " " << ::tpy::DictPrinter(pairs) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::array<int32_t, 2>> fixed = ::tpy::ordered_map<std::string, std::array<int32_t, 2>>({{"a", {1, 2}}});
     std::cout << "array" << " " << ::tpy::__getitem__(::tpy::__getitem__(fixed, "a"), 0) << " " << ::tpy::__getitem__(::tpy::__getitem__(fixed, "a"), 1) << "\n" << ::tpy::check_signals;

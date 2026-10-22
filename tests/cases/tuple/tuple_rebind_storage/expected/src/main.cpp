@@ -2286,10 +2286,9 @@ void branch_last_use_rebind(std::tuple<Box, Box> q, bool c) {
 // def try_last_use_rebind(q: tuple[Own[Box], Box], v: Box) -> None:  # tpyc: warning(/owned tuple param 'q' is never consumed/)
 //     try:
 //         r = make_mixed(7, v)
-//         # try-last-use-rebind: 'r' is declared ahead of the try, and such a
-//         # local is not moved out of, so the rebind copies its object, warned
-//         # (BUGS.md#own-param-last-use-rebind-copies).
-//         q = r  # tpyc: warning(/copies tuple\[Own\[Box\], Box\] into owned storage; use copy\(\) to make this explicit/)
+//         # try-last-use-rebind: 'r' is declared ahead of the try and owns its
+//         # object at its last use, so the rebind moves it in, silently.
+//         q = r  # tpyc: ok
 //     finally:
 //         print("try-last-use-rebind finally")
 //     q[0].n += 100
@@ -2300,7 +2299,7 @@ void try_last_use_rebind(std::tuple<Box, Box*>&& q, Box& v) {
     {
         try {
             r = ::tpyapp::main::make_mixed(7, v);
-            q = r;
+            q = std::move(r);
         } catch (...) {
             std::cout << "try-last-use-rebind finally" << "\n" << ::tpy::check_signals;
             throw;
@@ -3347,7 +3346,7 @@ void main() {
     ::tpyapp::main::owned_call();
     Box __tmp_6 = Box(8);
     ::tpyapp::main::alias_after(__tmp_6);
-    std::vector<std::tuple<Box, Box>> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(1), Box(2)})};
+    std::vector<std::tuple<Box, Box>> xs = ::tpy::make_vector<std::tuple<Box, Box>>(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(1), Box(2)}));
     Box __tmp_7 = Box(7);
     ::tpyapp::main::subscript_source(xs, __tmp_7);
     std::vector<Box> __tmp_8 = {Box(90)};

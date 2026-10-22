@@ -156,8 +156,8 @@ std::vector<std::tuple<A, A>> forward_param(std::tuple<A, const A*>&& p) {
 }
 
 // # free function: a mixed literal local appended at its last use warns its
-// # borrowed element 1 only, though the store copies element 0 too
-// # (BUGS.md#mixed-tuple-local-append-copies-owned)
+// # borrowed element 1 only, and moves the element 0 it owns, element by
+// # element
 // def append_mixed_local(a: A) -> Own[list[tuple[A, A]]]:
 //     ys: list[tuple[A, A]] = []
 //     t = (A(5), a)
@@ -166,7 +166,7 @@ std::vector<std::tuple<A, A>> forward_param(std::tuple<A, const A*>&& p) {
 std::vector<std::tuple<A, A>> append_mixed_local(A& a) {
     std::vector<std::tuple<A, A>> ys = std::vector<std::tuple<A, A>>{};
     auto t = std::tuple<A, A*>{A(5), &(a)};
-    ys.push_back(::tpy::tuple_to_storage<std::tuple<A, A>>(t));
+    ys.push_back(std::tuple<A, A>{std::move(std::get<0>(t)), (*std::get<1>(t))});
     return ys;
 }
 

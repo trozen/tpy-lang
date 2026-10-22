@@ -136,6 +136,8 @@ from ...type_def_registry import (
 )
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
+from ...sema.alias_rebind import bare_tuple
+from ...sema.source_records import Disposition, read_record, verdict
 from ...sema.call_lends import expr_lends_storage
 from ...sema.context import UnnamedHolder
 from ...sema.aug_hold import holds_by_value
@@ -464,10 +466,11 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
 from .convert import (
     Plan, Refuse, borrowed_path_element_message, convert, landing,
-    open_param_result, spelled, view_to_owned,
+    open_param_result, spelled, tuple_storage_lift, view_to_owned,
 )
 from .expressions import (
-    _spell_brace, stamped, _hoisted, _select_result,
+    _spell_brace, stamped, _hoisted,
+    _select_result,
     _subscript_yields_borrow_ptr,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
     _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
@@ -5064,9 +5067,10 @@ def _lower_container_ptr_slot_decl(stmt: TpyVarDecl, rec: BindingRepr,
     if not _container_literal_shape_ok(stmt.init, vtu, analyzer):
         note_detail("container_lit.rebound")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    init = _lower_expr(stmt.init, lc, declared,
-                       use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                    slot_target=vtu))
+    init = _lower_expr(
+        stmt.init, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.STORAGE, slot_target=vtu,
+                     copy_lift_make=False))
     if getattr(init, "make_container", False):
         # The make_vector / make_ordered_* element path's slot render is
         # unverified -- reject rather than risk a divergent `__slot_N` init.
@@ -7438,7 +7442,7 @@ def _return_tuple_literal(stmt: TpyReturn, ret_slot: 'Slot', lc: '_LowerCtx',
                 mslot = _unwrap_own(ret_ost.element_types[i])
                 mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     mslot)))
-                if sub in analyzer.ctx.own_element_copies:
+                if verdict(analyzer.ctx, sub).disposition is Disposition.COPY:
                     if own_element_copy_type(sub, analyzer) != mbare:
                         note_detail("return.own_element_copy_source")
                         ok = False
@@ -7468,7 +7472,8 @@ def _return_tuple_literal(stmt: TpyReturn, ret_slot: 'Slot', lc: '_LowerCtx',
                     v.elements[i], "copy", _unwrap_own(
                         ret_ost.element_types[i]), lc, declared,
                     getattr(v.elements[i], "loc", None))
-                if v.elements[i] in analyzer.ctx.own_element_copies
+                if (verdict(analyzer.ctx, v.elements[i]).disposition
+                    is Disposition.COPY)
                 else _lower_container_elem(
                     v.elements[i], _unwrap_own(ret_ost.element_types[i]),
                     lc, declared, tuple_elem=True)
@@ -7660,7 +7665,11 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     # prvalue `?:`. A select's slot is not admitted: inside a nested block the
     # skeleton declares it after the block that uses it.
     # The move facts sit on the lowered name, which the view-owned wrap
-    # may enclose.
+    # may enclose. A record payload is taken as a value: a pointer-bound
+    # source reads through its deref, as the sync result's stored read does.
+    value_forms = (_ONLY_SELECT_PRVALUE | _ONLY_INDIRECT_READ
+                   if _ret_bare is not None and record_like(_ret_bare, lc.analyzer)
+                   else _ONLY_SELECT_PRVALUE)
     raw_value = _lower_expr(ret.value, lc, declared,
                             field_prechecked=res_str_field,
                             use=_ExprUse(result=(_ExprResultUse.BORROW_BIND
@@ -7668,7 +7677,7 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
                                                  else _ExprResultUse.STORAGE),
                                          forms=(_NO_FORMS
                                                 if form is AsyncReturnForm.BORROW
-                                                else _ONLY_SELECT_PRVALUE)))
+                                                else value_forms)))
     # The result slot's own conversions the payload takes so far: a view
     # source's owned copy and the open-`T` param lift.
     plan = (view_to_owned(raw_value, rslot, lc.analyzer)
@@ -7726,6 +7735,19 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
     return value
 
 
+def unpack_claim_agrees(stmt: TpyTupleUnpack, lc: _LowerCtx) -> bool:
+    """Whether the targets an unpack of a tuple NAME owns (`is_owned`, the
+    walk's tags taken before the body settled) are the elements its
+    record moves: a target the record does not move would take an element
+    out of storage the source does not own, so the unpack refuses it."""
+    rec = read_record(lc.analyzer.ctx, stmt.value)
+    if rec is None:
+        return True
+    return all(owned == rec.element_moves(i)
+               for i, owned in enumerate(stmt.is_owned)
+               if any(p[:1] == (i,) for p in rec.leaves))
+
+
 def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                               scope: '_LowerScope') -> THIRStmt:
     """Resumable frame-target tuple unpack (the reactor `a, b =
@@ -7764,6 +7786,9 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                 and lc.binding(nm).frame_slot):
             source_type = st if isinstance(st, TupleType) else None
             if any(stmt.is_owned):
+                if not unpack_claim_agrees(stmt, lc):
+                    note_detail("unpack.claim_disagrees_record")
+                    raise ThirUnsupported("res.unpack")
                 # A one-shot `__await_lift_*` holder with OWNED elements:
                 # the consumable source (`auto&& __tup_N = (*<name>);`,
                 # the one-shot arm) whose owned elements move out at their
@@ -8383,18 +8408,20 @@ def _unlifted_declared_copy(value: 'TpyExpr | None',
     instead of in the C++ build. A storage-form binding (a loop variable over
     stored tuples) copies correctly bare."""
     return (isinstance(value, TpyName)
-            and value in lc.analyzer.ctx.own_element_copies
+            and bare_tuple(lc.analyzer.get_expr_type(value)) is not None
+            and bool(verdict(lc.analyzer.ctx, value).copied)
             and not lc.binding(value.name).storage_tuple)
 
 
 def _own_tuple_name_copy(source: TpyName, slot: TpyType, lc: '_LowerCtx',
                          declared: dict[str, TpyType]) -> THIRExpr:
-    """The declared-copy lift of a tuple NAME into an owning return:
-    `tuple_to_storage<S>(t)` copies each borrowed element."""
+    """The lift of a tuple NAME into an owning return:
+    `tuple_to_storage<S>(t)` copies each borrowed element, and the elements
+    the read moves move (`tuple_storage_lift`)."""
     value = _lower_expr(source, lc, declared, allow_unrouted_name=True)
-    return THIRFormConvert(
-        result_type=unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))),
-        value=value, form=Form.STORAGE, loc=getattr(source, "loc", None))
+    return tuple_storage_lift(
+        value, unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))),
+        loc=getattr(source, "loc", None))
 
 
 def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
@@ -14197,8 +14224,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         if _src_elems is not None:
             _moved = [i for i, b in enumerate(bind_tags) if b is UnpackBind.MOVE]
             # A source holding an element as a pointer hands a consuming
-            # target the pointee to move out -- where the read owns it (sema
-            # declared no copy of it there, `own_element_copies`); a pointer
+            # target the pointee to move out -- where the read owns it (its
+            # record moves the element); a pointer
             # to storage a binding of the source borrows has no object to
             # take (BUGS.md#ptr-tuple-consuming-unpack-borrowed-element-rejects).
             for i in _moved:
@@ -14361,6 +14388,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # reaches this sync arm.)
                 if not _is_move_source(stmt.value, lc):
                     note_detail("tuple_unpack.owned_source_not_movable")
+                    raise ThirUnsupported("stmt.tuple_unpack")
+                if not unpack_claim_agrees(stmt, lc):
+                    note_detail("tuple_unpack.claim_disagrees_record")
                     raise ThirUnsupported("stmt.tuple_unpack")
                 src_bind = TupleSourceBind.NAME_MOVE
             else:

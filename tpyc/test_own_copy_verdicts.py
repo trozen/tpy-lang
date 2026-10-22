@@ -156,9 +156,9 @@ def test_clones_of_one_body_collapse_to_one_report(tmp_path):
 
 
 def test_withdrawn_hedge_takes_no_verdict(tmp_path):
-    # A consuming loop moves its elements, so the loop-copy path withdraws
-    # the hedge during body analysis; a non-copyable instantiation must not
-    # bring it back as an error.
+    # A consuming loop moves its elements, so the element's record leaf
+    # moves and the hedge is never emitted: no obligation, and a
+    # non-copyable instantiation has nothing to turn into an error.
     lib = tmp_path / "lib"
     lib.mkdir(exist_ok=True)
     (lib / "slots.py").write_text(
@@ -176,7 +176,6 @@ def test_withdrawn_hedge_takes_no_verdict(tmp_path):
         "    print(drain([Pinned(3)]))\n")
     compiler = Compiler.from_source(main, lib_dirs=[lib] + _STDLIB_DIRS)
     slots = {m.name: m for m in compiler.compile()}["slots"].analyzer
-    (obligation,) = slots.ctx.own_copy_obligations
-    assert all(d is not obligation.diag for d in slots.diagnostics)
+    assert not slots.ctx.own_copy_obligations
     assert not [d for d in slots.diagnostics
                 if d.level == DiagnosticLevel.ERROR]

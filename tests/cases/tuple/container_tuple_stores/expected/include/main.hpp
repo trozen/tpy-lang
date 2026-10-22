@@ -140,8 +140,8 @@ inline Keeper::Keeper()
 //     self.d["k"] = (b, 3)  # tpyc: warning(/tuple element 0\)/)
 inline void Keeper::keep(Box& b) {
     auto t = ::tpyapp::main::make_mixed(b);
-    this->xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(t)));
-    ::tpy::__setitem__(this->d, "k", std::tuple<Box, int32_t>{b, 3});
+    this->xs.push_back(std::tuple<Box, Box>{std::move(std::get<0>(t)), (*std::get<1>(t))});
+    ::tpy::__setitem__(this->d, "k", std::tuple<Box, int32_t>{Box(b), 3});
 }
 void __tpy_init();
 } // namespace tpyapp::main

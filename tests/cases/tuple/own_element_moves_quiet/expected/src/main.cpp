@@ -31,7 +31,7 @@ std::tuple<P, int32_t> ret_moves() {
 //     return [t]  # tpyc: ok
 std::vector<std::tuple<P, P>> fresh_into_list() {
     auto t = std::tuple<P, P>{P(1), P(2)};
-    return ::tpy::make_vector<std::tuple<P, P>>(t);
+    return ::tpy::make_vector<std::tuple<P, P>>(std::move(t));
 }
 
 // def fresh_into_dict() -> Own[dict[int32, tuple[P, P]]]:
@@ -40,7 +40,7 @@ std::vector<std::tuple<P, P>> fresh_into_list() {
 //     return {1: t}  # tpyc: ok
 ::tpy::ordered_map<int32_t, std::tuple<P, P>> fresh_into_dict() {
     auto t = std::tuple<P, P>{P(1), P(2)};
-    return ::tpy::make_ordered_map<int32_t, std::tuple<P, P>>(1, t);
+    return ::tpy::make_ordered_map<int32_t, std::tuple<P, P>>(1, std::move(t));
 }
 
 // def copy_into_list(p: P) -> Own[list[tuple[P, P]]]:
@@ -49,7 +49,7 @@ std::vector<std::tuple<P, P>> fresh_into_list() {
 //     return [copy(t)]  # tpyc: ok
 std::vector<std::tuple<P, P>> copy_into_list(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
+    return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
 }
 
 // def copy_module_into_list(p: P) -> Own[list[tuple[P, P]]]:
@@ -58,7 +58,7 @@ std::vector<std::tuple<P, P>> copy_into_list(P& p) {
 //     return [tpy.copy(t)]  # tpyc: ok
 std::vector<std::tuple<P, P>> copy_module_into_list(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
+    return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
 }
 
 // def copy_into_dict(p: P) -> Own[dict[int32, tuple[P, int32]]]:
@@ -67,7 +67,7 @@ std::vector<std::tuple<P, P>> copy_module_into_list(P& p) {
 //     return {1: copy(t)}  # tpyc: ok
 ::tpy::ordered_map<int32_t, std::tuple<P, int32_t>> copy_into_dict(P& p) {
     auto t = std::tuple<P*, int32_t>{&(p), 3};
-    return ::tpy::ordered_map<int32_t, std::tuple<P, int32_t>>({{1, ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t)}});
+    return ::tpy::make_ordered_map<int32_t, std::tuple<P, int32_t>>(1, ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t));
 }
 
 // def copy_into_comp(p: P) -> Own[list[tuple[P, P]]]:
@@ -119,7 +119,7 @@ std::vector<std::tuple<std::tuple<P, P>, int32_t>> copy_nested_member(P& p) {
 //     # the same for a tuple PARAMETER
 //     return [copy(t)]  # tpyc: ok
 std::vector<std::tuple<P, P>> copy_param(const std::tuple<const P*, const P*>& t) {
-    return {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
+    return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
 }
 
 // def values_into_list(n: int32) -> Own[list[tuple[int32, int32]]]:

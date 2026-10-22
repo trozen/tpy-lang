@@ -1,8 +1,5 @@
-main.py:36: warning: copies Box into field (tuple element 0); use copy() to make this explicit
 main.py:36: warning: copies Box into field (tuple element 1); use copy() to make this explicit
-main.py:55: warning: copies Box into field (tuple element 0); use copy() to make this explicit
 main.py:55: warning: copies Box into field (tuple element 1); use copy() to make this explicit
-main.py:42: warning: copies Box into field (tuple element 0); use copy() to make this explicit
-main.py:42: warning: copies Box into field (tuple element 1); use copy() to make this explicit
-main.py:62: warning: copies Box into field (tuple element 0); use copy() to make this explicit
-main.py:62: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:42: warning: copies Box into field (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 41)
+main.py:62: warning: copies Box into field (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 61)
+main.py:62: warning: copies Box into field (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 61)

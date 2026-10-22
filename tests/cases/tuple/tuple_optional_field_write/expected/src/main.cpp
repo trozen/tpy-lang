@@ -52,7 +52,7 @@ void main() {
     if ((b != nullptr)) {
         std::cout << b->x << "\n" << ::tpy::check_signals;
     }
-    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr})};
+    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = ::tpy::make_vector<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}));
     h.copy_from_subscript(items);
     auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h.pair);
     T* a2 = std::get<0>(__tup_2);

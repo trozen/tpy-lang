@@ -16,32 +16,29 @@ main.py:186: warning: copies P into owned storage; use copy() to make this expli
 main.py:182: warning: Own[P] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:362: warning: copies P | None into field; use copy() to make this explicit
 main.py:363: warning: copies P | R into field; use copy() to make this explicit
-main.py:367: warning: copies P | R into field; use copy() to make this explicit
-main.py:402: warning: copies P | None into field; use copy() to make this explicit
-main.py:405: warning: copies P | None into field; use copy() to make this explicit
-main.py:408: warning: copies P | None into field; use copy() to make this explicit
-main.py:411: warning: copies P | None into field; use copy() to make this explicit
-main.py:414: warning: copies P | None into field; use copy() to make this explicit
-main.py:420: warning: copies P | R into field; use copy() to make this explicit
-main.py:423: warning: copies P | R into field; use copy() to make this explicit
-main.py:426: warning: copies P | R into field; use copy() to make this explicit
-main.py:429: warning: copies P | R into field; use copy() to make this explicit
-main.py:432: warning: copies P | R into field; use copy() to make this explicit
-main.py:437: warning: copies P | R into field; use copy() to make this explicit
-main.py:442: warning: copies P | None into field; use copy() to make this explicit
-main.py:446: warning: copies P | R into field; use copy() to make this explicit
-main.py:453: warning: copies P | None into field; use copy() to make this explicit
-main.py:455: warning: copies P | R into field; use copy() to make this explicit
-main.py:528: warning: copies P into field; use copy() to make this explicit
-main.py:534: warning: copies P into field; use copy() to make this explicit
-main.py:545: warning: copies P into field; use copy() to make this explicit
+main.py:401: warning: copies P | None into field; use copy() to make this explicit
+main.py:404: warning: copies P | None into field; use copy() to make this explicit
+main.py:407: warning: copies P | None into field; use copy() to make this explicit
+main.py:410: warning: copies P | None into field; use copy() to make this explicit
+main.py:413: warning: copies P | None into field; use copy() to make this explicit
+main.py:419: warning: copies P | R into field; use copy() to make this explicit
+main.py:422: warning: copies P | R into field; use copy() to make this explicit
+main.py:425: warning: copies P | R into field; use copy() to make this explicit
+main.py:428: warning: copies P | R into field; use copy() to make this explicit
+main.py:431: warning: copies P | R into field; use copy() to make this explicit
+main.py:440: warning: copies P | None into field; use copy() to make this explicit
+main.py:444: warning: copies P | R into field; use copy() to make this explicit
+main.py:451: warning: copies P | None into field; use copy() to make this explicit
+main.py:453: warning: copies P | R into field; use copy() to make this explicit
+main.py:526: warning: copies P into field; use copy() to make this explicit
+main.py:532: warning: copies P into field; use copy() to make this explicit
+main.py:543: warning: copies P into field; use copy() to make this explicit
 main.py:77: warning: copies P into field; use copy() to make this explicit
 main.py:79: warning: copies list[int32] into field; use copy() to make this explicit
 main.py:138: warning: copies list[int32] into field; use copy() to make this explicit
 main.py:134: warning: Own[list[int32]] param 'p' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:162: warning: copies list[int32] into owned storage; use copy() to make this explicit
-main.py:471: warning: copies P | None into field; use copy() to make this explicit
+main.py:468: warning: copies P | None into field; use copy() to make this explicit
 main.py:474: warning: copies P | R into field; use copy() to make this explicit
-main.py:476: warning: copies P | R into field; use copy() to make this explicit
-main.py:514: warning: copies P into field (tuple element 1); use copy() to make this explicit
-main.py:555: warning: copies P into field; use copy() to make this explicit
+main.py:512: warning: copies P into field (tuple element 1); use copy() to make this explicit
+main.py:553: warning: copies P into field; use copy() to make this explicit

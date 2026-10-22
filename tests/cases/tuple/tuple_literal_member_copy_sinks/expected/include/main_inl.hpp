@@ -13,7 +13,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_p
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return std::tuple<int32_t, C>{1, c};
+        return std::tuple<int32_t, C>{1, C(c)};
     }
     case S_RESUME_0: {  // after: yield (1, c)  # tpyc: warning(/copies C into owned storage \(tuple element 1\)/)
         __state = S_DONE;
@@ -35,7 +35,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_l
         __state = S_DONE;  // until a yield sets where to resume
         c.emplace(C(10));
         __state = S_RESUME_0;
-        return std::tuple<int32_t, C>{1, (*c)};
+        return std::tuple<int32_t, C>{1, C((*c))};
     }
     case S_RESUME_0: {  // after: yield (1, c)  # tpyc: warning(/copies C into owned storage \(tuple element 1\)/)
         std::cout << "yield_live_local gen" << " " << (*c).v << "\n" << ::tpy::check_signals;
@@ -58,7 +58,7 @@ inline std::expected<std::tuple<int32_t, C>, ::tpy::StopIteration> __gen_yield_r
         __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<int32_t, C>{1, C(20)});
         __state = S_RESUME_0;
-        return std::tuple<int32_t, C>{std::get<0>((*t)), std::get<1>((*t))};
+        return std::tuple<int32_t, C>{std::get<0>((*t)), C(std::get<1>((*t)))};
     }
     case S_RESUME_0: {  // after: yield (t[0], t[1])  # tpyc: warning(/copies C into owned storage \(tuple element 1\)/)
         std::cout << "yield_repack gen" << " " << std::get<1>((*t)).v << "\n" << ::tpy::check_signals;

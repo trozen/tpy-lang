@@ -11,4 +11,3 @@ main.py:202: warning: copies P | None into field; use copy() to make this explic
 main.py:208: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
 main.py:214: warning: copies P into field; use copy() to make this explicit
 main.py:215: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
-main.py:226: warning: copies P | None into field; use copy() to make this explicit

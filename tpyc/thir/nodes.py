@@ -229,6 +229,16 @@ class THIRExpr(THIRNode):
         """The value under any passthrough coercions wrapping it."""
         return self
 
+    def moved(self) -> 'THIRMove':
+        """`std::move` of this value, in its own form."""
+        return THIRMove(result_type=self.result_type, value=self,
+                        form=self.form, loc=self.loc)
+
+    def moved_under_coercions(self) -> 'THIRExpr':
+        """This value with what its coercions wrap moved: the conversion
+        takes the source as an rvalue."""
+        return self.moved()
+
     @property
     def reads_raw_pointer(self) -> bool:
         """The C++ value is a raw pointer (`T*`) -- read off the node as it
@@ -1626,7 +1636,9 @@ class THIRContainerLiteral(THIRExpr):
     `::tpy::make_ordered_map`/`make_ordered_set` for dict/set, spelled from
     result_type like the brace arms). std::array aggregate-init moves fine,
     so the Array family never sets it. The union / protocol element branches
-    are gate-excluded.
+    are gate-excluded. A copying storage lift (a temporary the brace-init
+    would copy once more) takes the switch too, where its position allows
+    (`_ExprUse.copy_lift_make`).
 
     `typed_brace_cpp` applies `typed_brace_init` at the positions whose
     consumer cannot list-init from a bare brace: a template that cannot
@@ -1903,6 +1915,9 @@ class THIRCoerce(THIRExpr):
     @property
     def uncoerced(self) -> THIRExpr:
         return self.expr.uncoerced
+
+    def moved_under_coercions(self) -> THIRExpr:
+        return replace(self, expr=self.expr.moved_under_coercions())
 
     def _conversion(self) -> str:
         """One classification of the coercion for a loan model: "certified",

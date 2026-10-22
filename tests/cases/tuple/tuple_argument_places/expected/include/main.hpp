@@ -199,8 +199,7 @@ inline H::H() : t(std::tuple<Box, int32_t>{Box(0), 0}) {}
 //     self.t = (Box(0), 0)
 inline HN::HN() : t(std::tuple<Box, ::tpy::BigInt>{Box(0), ::tpy::BigInt(0)}) {}
 
-// # (the member-init moves `t`; the warning is
-// # BUGS.md#own-tuple-param-field-store-warns)
+// # (the member-init moves `t`, silently)
 // def __init__(self, t: Own[tuple[Box, int32]]) -> None:
 //     self.t = t
 inline K::K(std::tuple<Box, int32_t> t) : t(std::move(t)) {}

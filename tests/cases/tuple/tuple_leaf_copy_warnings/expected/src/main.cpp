@@ -139,7 +139,7 @@ void main() {
     A __tmp_1 = A(1);
     ::tpyapp::main::s1e(__tmp_1);
     ::tpyapp::main::s1f(::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(1), 2}));
-    std::vector<std::tuple<A, int32_t>> ps = {::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 2})};
+    std::vector<std::tuple<A, int32_t>> ps = ::tpy::make_vector<std::tuple<A, int32_t>>(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 2}));
     std::vector<std::tuple<A, int32_t>> out = std::vector<std::tuple<A, int32_t>>{};
     ::tpyapp::main::s2d<A>(ps, out);
     std::get<0>(::tpy::__getitem__(out, 0)).v = 7;

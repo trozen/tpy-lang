@@ -388,7 +388,7 @@ def handler(out: list[E]) -> None:
     try:
         raise E()
     except E as a:
-        out.append(a)
+        print(a)
 def withs(r: Ref) -> int32:
     with Val() as n:
         with r as a:

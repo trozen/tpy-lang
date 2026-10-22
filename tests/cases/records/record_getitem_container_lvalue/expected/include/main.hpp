@@ -408,7 +408,7 @@ inline Holder<T>::Holder() : box(Box<std::vector<T>>()) {}
 //     return len(self.box[0])  # tpyc: ok
 template<::tpy::ValueType T>
 inline int32_t Holder<T>::first(::tpy::param_val_or_ref_t<T> v) {
-    this->box.add(std::vector<T>{::tpy::param_to_storage<T>(v)});
+    this->box.add(::tpy::make_vector<T>(::tpy::param_to_storage<T>(v)));
     std::vector<T>& row = this->box[0];
     row.push_back(::tpy::param_to_storage<T>(v));
     return ::tpy::__len__(this->box[0]);

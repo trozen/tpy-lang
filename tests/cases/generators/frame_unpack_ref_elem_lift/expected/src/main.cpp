@@ -382,7 +382,7 @@ __coro_main_coro_chain main_coro_chain(std::vector<Holder>& hs) {
 //     ws: list[Holder] = [Holder(Box(120))]
 //     asyncio.run(main_coro_chain(ws))
 void main() {
-    std::vector<std::tuple<int32_t, Box>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)})};
+    std::vector<std::tuple<int32_t, Box>> xs = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}));
     {
         auto __src_0 = ::tpyapp::main::gen_subscript(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -416,7 +416,7 @@ void main() {
             std::cout << "local" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<std::tuple<int32_t, Box>> ys = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{30, Box(31)})};
+    std::vector<std::tuple<int32_t, Box>> ys = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{30, Box(31)}));
     {
         auto __src_6 = ::tpyapp::main::gen_try(ys);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -462,7 +462,7 @@ void main() {
             std::cout << "readonly" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<std::tuple<int32_t, Box>> zs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{60, Box(61)})};
+    std::vector<std::tuple<int32_t, Box>> zs = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{60, Box(61)}));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro(zs)));
     Holder ph = Holder(Box(90));
     {

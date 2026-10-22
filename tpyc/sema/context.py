@@ -18,7 +18,6 @@ from ..macro_loader import MacroRegistry
 from ..parse.nodes import SourceLocation, TryTier, name_path
 from .. import qnames
 from . import own_copy
-from .source_records import LeafPermission, declare_copy
 from .value_range import ValueRange
 
 if TYPE_CHECKING:
@@ -1198,6 +1197,18 @@ class NonOwningBind:
     (`direct_elems`). A local with no such binding is owning."""
     line: int | None
     elems: frozenset[ElemPath] | None
+    # Each binding folded in, in order: what it borrows and its line.
+    binds: tuple[tuple['frozenset[ElemPath] | None', 'int | None'], ...] = (
+        field(default=(), compare=False))
+
+    def line_at(self, path: ElemPath) -> int | None:
+        """The line of the first binding borrowing at, above or under
+        element `path`."""
+        for elems, line in self.binds:
+            if elems is None or any(path[:len(e)] == e or e[:len(path)] == path
+                                    for e in elems):
+                return line
+        return None
 
     def borrowed_paths(self,
                        paths: Iterable[ElemPath]) -> frozenset[ElemPath]:
@@ -1237,7 +1248,7 @@ def note_nonowning_bind(ctx: 'SemanticContext', name: str,
     entry.notes.append((at, elems))
     if (not ctx.is_top_level and isinstance(func, TpyFunction)
             and not any(p == name for p, _ in func.params)):
-        entry.local = _fold_nonowning(entry.local, at, elems)
+        entry.local = fold_nonowning(entry.local, at, elems)
 
 
 @dataclass(slots=True)
@@ -1251,7 +1262,7 @@ class NonOwningNotes:
     local: NonOwningBind | None = None
 
 
-def _fold_nonowning(rec: NonOwningBind | None, at: object,
+def fold_nonowning(rec: NonOwningBind | None, at: object,
                     elems: 'frozenset[ElemPath] | None') -> NonOwningBind:
     """`rec` with one more LOCAL binding at `at`: the union of what they
     borrow, and the line of the first one borrowing the whole value or a
@@ -1259,13 +1270,14 @@ def _fold_nonowning(rec: NonOwningBind | None, at: object,
     later one)."""
     loc = getattr(at, "loc", None)
     line = loc.line if loc is not None else None
+    binds = (rec.binds if rec is not None else ()) + ((elems, line),)
     if rec is not None:
         if not NonOwningBind(line, elems).borrows_direct() or (
                 rec.borrows_direct() and rec.line is not None):
             line = rec.line
         elems = (None if rec.elems is None or elems is None
                  else rec.elems | elems)
-    return NonOwningBind(line, elems)
+    return NonOwningBind(line, elems, binds)
 
 
 @dataclass(eq=False)
@@ -1296,50 +1308,6 @@ class SinkCopy:
 
 
 @dataclass(eq=False)
-class NameMove(OwningRead):
-    """A whole name moved into an owning slot -- `slot`, described as
-    `context` for a `return` or a `pass` (`action`); `whole_slot` False for
-    one member of a literal, whose warning names it. `sink` is the copy's
-    text where the slot is not an `Own` slot (None: the `Own` slot's), one
-    per element kind a container copies."""
-    slot: 'OwnType'
-    context: str
-    action: str
-    whole_slot: bool = True
-    sink: 'SinkCopy | tuple[SinkCopy, ...] | None' = None
-
-
-@dataclass(eq=False)
-class ElementMove(OwningRead):
-    """Element `index` of tuple local `name` read `name[index]` and moved
-    into the `Own` slot `slot` of a return (`returned`) or an argument."""
-    index: int
-    slot: 'OwnType'
-    returned: bool
-
-
-@dataclass(eq=False)
-class TupleNameMove(OwningRead):
-    """A tuple local read whole at a sink that takes the leaf paths `owned`
-    of the slot `tuple_type` (`owned_slot_paths`): all but those under the
-    elements `copied` move out of it. A `warns` sink declares each copy it
-    makes with the slot's warning; a consuming unpack has no copy to make
-    (it refuses a borrowed one). `prefix` is the element path of the
-    destination the read fills inside a tuple literal (`"1."`), which a
-    settled copy's warning names."""
-    tuple_type: 'TupleType'
-    copied: frozenset[int]
-    owned: frozenset[ElemPath]
-    warns: bool = True
-    prefix: str = ""
-
-
-@dataclass(eq=False)
-class ReceiverMove(OwningRead):
-    """The receiver of a consuming method call (`self: Own[Self]`)."""
-
-
-@dataclass(eq=False)
 class OwnIterMove(OwningRead):
     """`own_iter(name)`, the `call`."""
     call: Any
@@ -1362,6 +1330,14 @@ class FinallyCapture(OwningRead):
 
 
 @dataclass(eq=False)
+class UnpackClaim(OwningRead):
+    """The walk's claim on the tuple NAME an unpack (`stmt`) consumes:
+    which targets own the element they bind (`stmt.is_owned`), taken
+    before the body settles. Settlement holds it to the source's record."""
+    stmt: Any
+
+
+@dataclass(eq=False)
 class UnneededCopy(OwningRead):
     """`copy(name)` (the `call`) at an owning sink where the bare name
     would move: the advice to drop the copy holds only for an owning
@@ -1370,10 +1346,23 @@ class UnneededCopy(OwningRead):
 
 
 @dataclass(eq=False)
-class HeldLoopCopy(OwningRead):
-    """A copy warning about loop variable `name`, held until its loop's mode
-    is decided: a consuming loop moves the element it describes."""
-    diag: Diagnostic
+class PendingCopy(OwningRead):
+    """One owning sink's copy diagnostic, registered by the walk and
+    emitted at settlement iff a leaf of its source's record it speaks for
+    copies (`TypeCompatibility.project_copies`): the leaves of `source` (a
+    registered source, or a literal member of one) at and under `path`.
+    The walk decides no ownership: the record does. `text` builds the
+    message from the note on the read's binding (`note`, called at
+    settlement; None: no note); an ERROR is the copy a non-copyable payload
+    cannot make. `hedge` holds an open payload's obligation fields
+    (`own_copy.OwnCopyObligation`)."""
+    source: Any
+    path: tuple[int, ...]
+    level: DiagnosticLevel
+    text: Callable[[str], str]
+    loc: SourceLocation | None
+    note: Callable[[], str] | None = None
+    hedge: tuple | None = None
 
 
 class _ModuleInitSentinel:
@@ -1774,6 +1763,14 @@ class FunctionTrackingState:
     # complete (`TypeCompatibility.settle_owning_reads`), and the loop
     # variables' copy warnings, settled when their loop's mode is decided.
     owning_reads: list[OwningRead] = field(default_factory=list)
+    # Where the body's diagnostics start, while its walk registers its
+    # owning-sink copy diagnostics for settlement
+    # (`SemanticContext.register_copy`): a function's body and the module's
+    # top level, until they settle. None: emitted where they are found.
+    copies_from: int | None = None
+    # The body's ownership verdicts are settled: a sink checked after that
+    # (a repointed tuple's declared-slot check) reads them as it registers.
+    settled: bool = False
     # Every owning sink's registration of its source and slot
     # (`source_records.SinkRead`), one per canonical source node: their
     # per-leaf records are built from the settled verdicts once
@@ -2192,7 +2189,7 @@ class FunctionTrackingState:
         if rec is None:
             return None
         if path is not None:
-            return rec.line if rec.borrowed_paths((path,)) else None
+            return rec.line_at(path) if rec.borrowed_paths((path,)) else None
         return rec.line if rec.borrows_direct() else None
 
     # --- BindingProvenance accessors ---
@@ -2703,18 +2700,14 @@ class SemanticContext:
     # Name reads that run more than once per evaluation of their statement
     # (a comprehension's per-item part, a lambda body): never a last use.
     repeated_reads: IdentitySet = field(default_factory=IdentitySet)
-    # Sources that COPY into an `Own` slot, as declared by the warning: a
-    # tuple-literal member, a consuming call's receiver that does not own
-    # its value, or a tuple name some element of which arrives borrowed --
-    # mapped to the elements it copies (None: every borrowed one; None too
-    # for any other source). The lowering builds exactly these copies --
-    # never a move out of storage that outlives the call, never an
-    # undeclared copy.
-    own_element_copies: IdentityMap = field(default_factory=IdentityMap)
     # The per-leaf ownership record of every source an owning sink checked
     # (`source_records.SourceRecord`), keyed by the peeled source node and
-    # read through `source_records.source_record`.
+    # read through `source_records.read_record` / `verdict`.
     source_records: IdentityMap = field(default_factory=IdentityMap)
+    # Each member of a literal source with a record, by its peeled node:
+    # the record's key and the member's path in it
+    # (`source_records.read_record`).
+    member_sources: IdentityMap = field(default_factory=IdentityMap)
     # What each binding of the module's bodies owns
     # (`binding_ownership.BindingOwnership`), written once per body when its
     # owning reads settle: per function node its LOCAL entries
@@ -2737,36 +2730,11 @@ class SemanticContext:
     # (`binding_ownership.CompMove`): the source record and the lowering
     # both read it.
     comp_moves: IdentityMap = field(default_factory=IdentityMap)
-    # Every copy diagnostic's `source_records.CopyDeclaration`, linked to
-    # its `Diagnostic` by identity: a declaration counts only while its
-    # diagnostic stands (`source_records.finalize_source_records`).
-    copy_declarations: list = field(default_factory=list)
     # Name reads that resolve to a comprehension's own variable, mapped to
     # the clause binding it (`CompTarget`): an owning sink's verdict on one
     # is its clause's, never the function's name-keyed ownership fact,
     # which speaks for an enclosing binding of the name.
     comp_var_reads: IdentityMap = field(default_factory=IdentityMap)
-    # The declared-copy NAMES among them whose binding also holds an element
-    # by value (mixed): no whole-tuple lift may build their copy.
-    own_element_mixed: IdentitySet = field(default_factory=IdentitySet)
-    # Pointer-tuple NAME reads an owning sink takes elements out of, with
-    # their copies (if any) in `own_element_copies`: the lowering moves an
-    # element out of a read only where sema declared that read here.
-    declared_tuple_reads: IdentitySet = field(default_factory=IdentitySet)
-    # `t[i]` reads that MOVE owned element `i` out of a tuple the body
-    # owns, at the tuple's last use: a return (`check_own_lvalue_into_own`)
-    # or an `Own[T]` argument (`passed_owned_element`).
-    element_moves: IdentitySet = field(default_factory=IdentitySet)
-    # Returned NAMES a closure of the body still reads after the return
-    # (`returned_captured_name`) at an owning slot: sema warned the copy,
-    # and the read is copied, never moved.
-    live_name_copies: IdentitySet = field(default_factory=IdentitySet)
-    # Borrowed sources an owning slot copies, as sema declared the copy
-    # (`_check_own_borrowed_source`: its warning, or the bound that makes
-    # it unobservable), at the read or when a later binding settles a move
-    # into a copy: the lowering spells a copy of an existing object into a
-    # result only for these.
-    owned_slot_copies: IdentitySet = field(default_factory=IdentitySet)
     # Per call whose callable argument takes an `Own[X]` parameter fed by an
     # `Iterable[T]` argument (`map(take, ks, rows)`): argument index ->
     # the effective `Iterable[Own[X]]` slot, an owning element slot like a
@@ -3145,17 +3113,65 @@ class SemanticContext:
         self.diagnostics.append(diag)
         return diag
 
-    def copy_warning(self, message: str,
+    def copy_warning(self, message: 'str | Callable[[str], str]',
                      at: 'TpyExpr | TpyStmt | SourceLocation | None',
                      source: 'TpyExpr | None',
-                     path: 'tuple[int, ...]' = ()) -> Diagnostic:
-        """Warn of a copy into an owning slot at `at` and declare it: the
-        warning tells the copy of `source`'s leaves at `path`
-        (`source_records.CopyDeclaration`)."""
-        diag = (self.warning_from_loc(message, at)
-                if isinstance(at, SourceLocation) or at is None
-                else self.warning(message, at))
-        declare_copy(self, source, path, LeafPermission.WARNED, diag)
+                     path: 'tuple[int, ...]' = (), *,
+                     note: 'Callable[[], str] | None' = None) -> None:
+        """Warn of a copy into an owning slot at `at`: the copy of
+        `source`'s leaves at `path` (`register_copy`). `message` is the
+        text, or builds it from the note on the read's binding (`note`)."""
+        self.register_copy(message, at, source, path, note=note)
+
+    def copy_error(self, message: 'str | Callable[[str], str]',
+                   at: 'TpyExpr | TpyStmt | SourceLocation | None',
+                   source: 'TpyExpr | None',
+                   path: 'tuple[int, ...]' = (), *,
+                   note: 'Callable[[], str] | None' = None) -> None:
+        """The located error of an owning slot's copy of `source`'s leaves
+        at `path` whose payload has no copy to make (`register_copy`)."""
+        self.register_copy(message, at, source, path,
+                           level=DiagnosticLevel.ERROR, note=note)
+
+    def register_copy(self, message: 'str | Callable[[str], str]',
+                      at: 'TpyExpr | TpyStmt | SourceLocation | None',
+                      source: 'TpyExpr | None',
+                      path: 'tuple[int, ...]' = (), *,
+                      level: DiagnosticLevel = DiagnosticLevel.WARNING,
+                      note: 'Callable[[], str] | None' = None,
+                      hedge: 'tuple | None' = None) -> None:
+        """An owning sink's copy diagnostic. A body's walk only registers
+        it (`PendingCopy`), for settlement to emit iff the record leaf it
+        speaks for copies (`TypeCompatibility.project_copies`); outside a
+        walk that holds its copies (a check run after settlement) it is
+        emitted here, an error raised."""
+        text = (message if callable(message)
+                else (lambda _note, m=message: m))
+        loc = (at if isinstance(at, SourceLocation) or at is None
+               else self._resolve_loc(at))
+        name = (source.name if isinstance(source, TpyName) else "")
+        entry = PendingCopy(name, at, source, path, level, text, loc, note,
+                            hedge)
+        if self.func.copies_from is not None:
+            self.func.owning_reads.append(entry)
+            return
+        diag = self.copy_diagnostic(entry, note() if note is not None
+                                    else "")
+        if level is DiagnosticLevel.ERROR:
+            raise SemanticError(diag.message, loc if loc is not None
+                                else self._resolve_loc(None))
+        self.diagnostics.append(diag)
+
+    def copy_diagnostic(self, entry: 'PendingCopy',
+                        note: str) -> Diagnostic:
+        """The diagnostic of copy `entry` with `note`; a hedge's obligation
+        is recorded against it."""
+        diag = Diagnostic(entry.level, entry.text(note), entry.loc)
+        if entry.hedge is not None:
+            display, target, dest, kind, hint = entry.hedge
+            self.own_copy_obligations.append(own_copy.OwnCopyObligation(
+                display_type=display, target_type=target, dest=dest,
+                kind=kind, hint=hint, diag=diag))
         return diag
 
     def type_param_bound(self, type_param_name: str) -> 'TpyType | None':
@@ -3211,7 +3227,7 @@ class SemanticContext:
 
         Returns False -- the sink answers for itself -- when neither the
         stored value nor the slot names a type parameter. Otherwise the body
-        warns HERE, at declaration time, so a library author reads the copy
+        warns at declaration time, so a library author reads the copy
         contract without instantiating anything; the warning stands whatever
         the instantiations turn out to be, and a non-copyable one (`@nocopy`,
         or a record with `__del__`) later answers the obligation with the
@@ -3222,9 +3238,9 @@ class SemanticContext:
         makes the copy unobservable. `copy()` at the site is the other
         silencer, and it is handled before the sink is reached.
 
-        The warning declares the copy of `source`'s leaves at `path`
-        (`source_records.CopyDeclaration`): a hedge, or a plain warning for
-        a reference-type head, which copies whatever its arguments are.
+        The warning is the copy of `source`'s leaves at `path`, registered
+        for settlement (`register_copy`): a hedge, or a plain warning for a
+        reference-type head, which copies whatever its arguments are.
         """
         if not (own_copy.type_has_type_param(target)
                 or own_copy.type_has_type_param(display)):
@@ -3235,32 +3251,23 @@ class SemanticContext:
                       if own_copy.type_has_type_param(t)]
         if all(self._copy_is_unobservable(t) for t in open_sides):
             return True
-        head = unwrap_readonly(display)
-        if (kind != own_copy.KIND_ELEMENTS and isinstance(head, NominalType)
-                and not head.is_protocol and not head.is_value_type()):
+        if own_copy.copy_is_hedged(display, target, kind):
+            msg = own_copy.hedge_message(display, dest, kind, hint)
+        else:
             # A reference-type head is copied whatever its arguments are.
+            head = unwrap_readonly(display)
             msg = own_copy.slot_message(head, head, dest, kind, hint,
                                         non_copyable=False)[1]
-            told = LeafPermission.WARNED
-        else:
-            msg = own_copy.hedge_message(display, dest, kind, hint)
-            told = LeafPermission.HEDGED
-        diag = Diagnostic(DiagnosticLevel.WARNING, msg,
-                          self._resolve_loc(node))
-        self.diagnostics.append(diag)
-        declare_copy(self, source, path, told, diag)
-        obligation = own_copy.OwnCopyObligation(
-            display_type=display, target_type=target, dest=dest, kind=kind,
-            hint=hint, diag=diag)
-        self.own_copy_obligations.append(obligation)
+        self.register_copy(msg, node, source, path,
+                           hedge=(display, target, dest, kind, hint))
         return True
 
     def apply_own_copy_verdicts(self, verdicts: 'own_copy.OwnCopyVerdicts') -> None:
         """Compose this module's diagnostics from its hedges and the verdicts.
 
         A hedge some instantiation answered is replaced, at its position, by
-        the verdicts in the order they resolved; a hedge the loop-copy path
-        withdrew is no longer in the list and so gets nothing. Runs after
+        the verdicts in the order they resolved; a hedge settlement did not
+        emit has no obligation and so gets nothing. Runs after
         every module's discharge, since the verdicts come from any module
         that instantiated this one's bodies, and before the duplicate
         collapse, so a body analyzed once per clone still collapses to one
@@ -3353,32 +3360,22 @@ class SemanticContext:
         mutable/const method pair -- so each clone re-analyzes the same lines.
 
         Collapsing happens here, once analysis is over, rather than in the
-        recording methods above: during analysis, callers index into
-        `diagnostics` (`compatibility.py` records the position of a loop-copy
-        warning for `statements.py` to delete once the loop proves to move
-        rather than copy). A recorder that skipped a duplicate would shift
-        those positions onto unrelated diagnostics.
-
-        A dropped repeat's copy declarations move to the report that stays,
-        which tells the same copy.
+        recording methods above: a body's settlement merges its copy
+        diagnostics into the body's own span of the list, which starts at an
+        index (`copies_from`) a recorder that skipped a duplicate would
+        shift.
         """
         seen: dict[tuple[object, ...], Diagnostic] = {}
         kept: list[Diagnostic] = []
-        survivor: IdentityMap = IdentityMap()
         for d in self.diagnostics:
             loc = d.loc
             key = ((d.level, d.message, loc.file, loc.line, loc.column) if loc
                    else (d.level, d.message))
             if key in seen:
-                survivor[d] = seen[key]
                 continue
             seen[key] = d
             kept.append(d)
         self.diagnostics[:] = kept
-        if survivor:
-            self.copy_declarations[:] = [
-                replace(c, diag=survivor[c.diag]) if c.diag in survivor
-                else c for c in self.copy_declarations]
 
     def nocopy_reason(self, typ: TpyType) -> str:
         """Return a human-readable reason why a type is nocopy.

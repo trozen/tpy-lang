@@ -6560,6 +6560,7 @@ class ExpressionAnalyzer:
             # An owned result is an owning sink whatever the body.
             self.compat.register_owned_result(expr.body, fn_type.return_type,
                                               TupleSink.RETURN)
+            self._check_lambda_result_copy(expr, fn_type.return_type)
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",
@@ -6567,6 +6568,26 @@ class ExpressionAnalyzer:
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type
+
+    def _check_lambda_result_copy(self, expr: TpyLambda,
+                                  result: TpyType) -> None:
+        """A lambda's result of a reference payload -- an `Own` one, or a
+        by-value one, which holds its own object as well -- is an owning
+        slot of its body: a borrowed body copies into it, as at a
+        function's `-> Own[T]` return. A tuple payload is the per-leaf
+        checks'."""
+        bare = unwrap_readonly(result)
+        if isinstance(bare, OwnType):
+            slot = bare
+        elif (isinstance(result, (RefType, VoidType))
+              or bare.is_value_type()):
+            return
+        else:
+            slot = OwnType(bare)
+            self.compat.register_sink(expr.body, slot, TupleSink.RETURN)
+        if own_tuple_target(slot) is not None:
+            return
+        self.compat.check_own_lvalue_into_own(slot, expr.body, "return type")
 
     def _queue_lambda_borrow_check(self, expr: TpyLambda,
                                    result: TpyType | None) -> None:

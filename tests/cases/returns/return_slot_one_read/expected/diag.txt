@@ -1,27 +1,29 @@
 main.py:292: warning: copies A into owned storage; use copy() to make this explicit
-main.py:351: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('b' is bound to existing storage at line 353)
-main.py:542: warning: copies A into field; use copy() to make this explicit ('p' is bound to existing storage at line 539)
+main.py:544: warning: copies A into field; use copy() to make this explicit ('p' is bound to existing storage at line 541)
 main.py:278: warning: copies A into owned storage; use copy() to make this explicit
 main.py:283: warning: copies A into owned storage; use copy() to make this explicit
 main.py:329: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('p' is bound to existing storage at line 328)
 main.py:329: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit ('p' is bound to existing storage at line 328)
-main.py:447: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:461: warning: lambda at line 461 copies the object 'x' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
-main.py:459: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:520: warning: copies Sq into owned storage; use copy() to make this explicit
-main.py:575: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
-main.py:575: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:586: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:592: warning: may copy tuple[T, T] into owned storage if not a value type; use copy() to make this explicit
-main.py:592: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:592: warning: may copy T into owned storage (tuple element 1) if not a value type; use copy() to make this explicit
-main.py:602: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
-main.py:602: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:603: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
-main.py:603: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:610: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:614: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
-main.py:627: warning: copies list[int32] into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 626)
-main.py:627: warning: copies list[int32] into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 626)
-main.py:637: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:643: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:351: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('b' is bound to existing storage at line 353)
+main.py:366: warning: copies tuple[A, int32] into owned storage; use copy() to make this explicit
+main.py:448: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:463: warning: lambda at line 463 copies the object 'x' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:463: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:460: warning: Own[list[int32]] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:522: warning: copies Sq into owned storage; use copy() to make this explicit
+main.py:577: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
+main.py:577: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:588: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:594: warning: may copy tuple[T, T] into owned storage if not a value type; use copy() to make this explicit
+main.py:594: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:594: warning: may copy T into owned storage (tuple element 1) if not a value type; use copy() to make this explicit
+main.py:604: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
+main.py:604: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:605: warning: may copy tuple[T, int32] into owned storage if not a value type; use copy() to make this explicit
+main.py:605: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:612: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:616: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:629: warning: copies list[int32] into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 628)
+main.py:629: warning: copies list[int32] into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 628)
+main.py:639: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:645: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit

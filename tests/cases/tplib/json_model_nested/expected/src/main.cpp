@@ -250,8 +250,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                             if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_15.error()));
                             __elem_13 = ::tpy::unwrap_ref_move(*__try_tmp_15);
                         }
-                        std::string __tmp_1{__elem_13};
-                        tags.push_back(std::move(__tmp_1));
+                        tags.push_back(std::move(__elem_13));
                     }
                     {
                         auto __try_tmp_16 = __reader.read_array_end();
@@ -578,7 +577,7 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
                             if (!__try_tmp_52.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_52.error()));
                             __elem_16 = ::tpy::unwrap_ref_move(*__try_tmp_52);
                         }
-                        friends.push_back(__elem_16);
+                        friends.push_back(std::move(__elem_16));
                     }
                     {
                         auto __try_tmp_53 = __reader.read_array_end();

@@ -268,7 +268,7 @@ inline H::H() : q(std::tuple<int32_t, C>{0, C(0)}) {}
 //     print("method_repack", self.q[1].v)
 inline void H::repack() {
     std::tuple<int32_t, C> t = ::tpyapp::main::mk(2);
-    this->q = std::tuple<int32_t, C>{std::get<0>(t), std::get<1>(t)};
+    this->q = std::tuple<int32_t, C>{std::get<0>(t), C(std::get<1>(t))};
     std::get<1>(t).v = 99;
     std::cout << "method_repack" << " " << std::get<1>(this->q).v << "\n" << ::tpy::check_signals;
 }

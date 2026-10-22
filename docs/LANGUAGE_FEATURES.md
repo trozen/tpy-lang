@@ -435,15 +435,12 @@ and the yield included (where it then fails the C++ build,
 nested in a returned tuple (`(tuple element 0.0)`), an `Own` marker nested
 in the slot (`tuple[tuple[Own[A], int32], int32]`) included. Only the
 elements the source lends warn: a call's `Own[...]` element, at any depth,
-is handed over and copies nothing. A tuple NAME keeps its own rule: stored
-whole into a field it warns every reference element, the ones a last-use
-store moves in included (`BUGS.md#ptr-tuple-field-store-move-warned-copy`,
-`BUGS.md#own-tuple-param-field-store-warns`); at a container element, an
-`append` or an `Own`-element argument a local warns the elements it holds
-by reference, though a last-use local that also owns an element is copied
-whole there (`BUGS.md#mixed-tuple-local-append-copies-owned`), and a tuple
-parameter's declared type says which elements arrive borrowed at every one
-of these sinks. The warning is the whole story at an
+is handed over and copies nothing. A tuple NAME takes its binding's rule
+per element at every one of these sinks -- a field, a container element, an
+`append`, an `Own`-element argument, a return: at its last use the elements
+the binding owns move in, silently, and the elements it holds by reference
+copy and warn; read again later, every reference element copies; a tuple
+parameter's declared type says which elements arrive borrowed. The warning is the whole story at an
 `Own` argument, a field and a container insert of a call; a returned one,
 and any of these sinks fed by a select, still reject after the warning
 (`BUGS.md#borrow-tuple-source-own-return-rejects`). The same
@@ -455,14 +452,11 @@ fresh member, an owned local at its last use, and `copy()` stay quiet. A
 tuple PARAMETER passed whole to an `Own`-element argument warns once for the
 whole tuple (`copies tuple[C, int32] into owned storage`) rather than per
 element; a mixed one (`p: tuple[Own[C], C]`) at its last use warns each
-element its declared type borrows (`(tuple element 1)`). Not yet covered: a tuple name that also OWNS an element (`t =
-(Box(1), p)`, or a call returning `tuple[Own[Box], Box]`) returned into an
-`Own[tuple[...]]` slot -- its borrowed elements warn, then the compile
-rejects, since copying the whole tuple would copy the owned element too (a
-field store, an append and an `Own[tuple[...]]` argument of the same name
-compile and copy it, warned per element; an append at its last use also
-copies the owned element unwarned,
-`BUGS.md#mixed-tuple-local-append-copies-owned`) -- a borrowing tuple name
+element its declared type borrows (`(tuple element 1)`). A tuple name that
+also OWNS an element (`t = (Box(1), p)`) at its last use moves the element
+it owns and copies the borrowed ones, warned per borrowed element, at a
+return into an `Own[tuple[...]]` slot as at a field store, an append and an
+`Own[tuple[...]]` argument. Not yet covered: a borrowing tuple name
 nested in a returned literal, which warns and then fails the C++ build
 (`BUGS.md#nested-tuple-name-own-return`), `yield t`
 (`BUGS.md#yield-tuple-name-own-element`), an Optional member
@@ -2353,7 +2347,13 @@ callee's fresh containers, the same way `out.append(make(i))` and
 verdict shared with those argument positions. A moving literal renders
 through the `make_vector` / `make_ordered_*` helpers, whose operands are C++
 call arguments, so their evaluation order is the compiler's, not Python's
-(see "Evaluation Order" under Expressions). The BORROW-returning call at the
+(see "Evaluation Order" under Expressions). A literal holding one copying
+lift of a tuple with a reference element (`[t]` for a tuple local borrowing
+its object, `[copy(t)]`, `{1: copy(t)}`) and otherwise only literals and
+value-typed names builds through the same helpers, so the tuple's objects are
+copied once; any other literal keeps the brace-init, whose left-to-right
+order costs a second copy of such a member
+(`BUGS.md#list-literal-owned-elem-initializer-copy`). The BORROW-returning call at the
 same slot (`[h.rows() for h in hs]` with `rows() -> list[str]`) keeps the
 warning-then-reject above. The unannotated dict comprehension whose value
 is such a call infers `Own` into the value type and still rejects
@@ -2371,7 +2371,11 @@ exempt it -- what the callee hands back can reach past its receiver
 (`Wrapper(take_ptr(h.o)).get()` returns `h.o` through a pointer field), so
 `Point(n).updated()` at an `Own[Point]` return copies and warns like any
 other borrowed source. Declaration order cannot change the verdict, because
-no callee-body fact enters it.
+no callee-body fact enters it. The same holds for a getter returning a
+reference (`mk().items` with `items` a `@property`), and for a member read
+off a call: `h.f = get_b(h2).v` copies and warns when `get_b` lends its
+result, while `h.f = mk_b().v` with `mk_b() -> Own[B]` moves the member out
+of the dying temporary, silently -- a `@nocopy` member included.
 
 A slot whose `Own` payload is still an unresolved type parameter is no
 exception: the copy is the same one the monomorphic twin makes, and `copy()`
@@ -2516,6 +2520,22 @@ comp = [copy(p) for p in items]                     # OK: explicit copy
 comp = [Point() for _ in range(3)]                  # OK: rvalue element, no existing owner
 dc: dict[str, Point] = {k: v for k, v in src.items()}  # WARNING: copies Point (value) into owned storage
 ```
+
+The rule is one sentence: a copy into owned storage warns unless spelled
+`copy()`. Whether a NAME read copies is its binding's ownership at that read --
+the same verdict the C++ renders: at its last use a read moves what its binding
+owns, silently (a `try`-hoisted local, a consuming or `Own`-element loop's
+variable, a mixed tuple parameter's owned element included); a binding that
+refers to existing storage -- a borrowed parameter, an alias, an `except`
+target, a local rebound to an existing object -- copies, and the warning names
+the binding that made it refer there (`('a' is bound to existing storage at line
+12)`). The rule holds at module level (a module loop variable rebound to an
+existing object and appended copies, warned) and in a generic body, where a
+local bound off a lending call copies at an owning sink under the hedge (*may
+copy T into owned storage if not a value type*), as do a chained store
+(`self.p = self.q = a`, each target) and a lambda's `Own` or by-value result
+over an existing object. A `@nocopy` payload's copy is the located error; where
+the read moves there is nothing to copy and nothing is reported.
 
 The same per-element check covers list/set/dict comprehensions: a reference-type
 (or value-tuple-with-reference-member) lvalue element stored into the owned
@@ -3786,7 +3806,7 @@ result = w.take()   # w is consumed, moves self
 - Calling through `Ptr[T]` is an error (pointers don't own pointees)
 - Use after consume is a compile error
 - Reassignment revives a consumed variable
-- A comprehension variable as the receiver (`[b.finish() for b in src]`) moves only where its clause owns its elements (`src: Iterable[Own[Box]]`), the clause is the innermost one with a plain-name target, the call is not inside a nested comprehension or lambda, and the call is the variable's only read in the element -- the key and value together for a dict comprehension, a read inside a nested comprehension or lambda included, a filter's not (it runs first). Otherwise -- a borrowed source (a parameter, a local, a call returning a borrow), an outer clause, a second read -- the receiver is copied (`Box(b).finish()`), warned *copies Box into owned storage*, and a `@nocopy` element is an error. A comprehension over a dead local or a fresh `Own[list[T]]` source copies too, where a move would be safe (TODO.md "A comprehension over a dead or fresh source consumes it"). A local of the enclosing body sharing the variable's name decides nothing about it and is not consumed by it. An owned variable passed to an `Own[T]` parameter (`[take(b) for b in src]`) moves, but still warns *copies Box into owned storage* (`BUGS.md#comp-var-own-arg-false-copy-warning`), and a `@nocopy` element there is refused (`BUGS.md#comp-var-own-arg-nocopy-refused`)
+- A comprehension variable as the receiver (`[b.finish() for b in src]`) moves only where its clause owns its elements (`src: Iterable[Own[Box]]`), the clause is the innermost one with a plain-name target, the call is not inside a nested comprehension or lambda, and the call is the variable's only read in the element -- the key and value together for a dict comprehension, a read inside a nested comprehension or lambda included, a filter's not (it runs first). Otherwise -- a borrowed source (a parameter, a local, a call returning a borrow), an outer clause, a second read -- the receiver is copied (`Box(b).finish()`), warned *copies Box into owned storage*, and a `@nocopy` element is an error. A comprehension over a dead local or a fresh `Own[list[T]]` source copies too, where a move would be safe (TODO.md "A comprehension over a dead or fresh source consumes it"). A local of the enclosing body sharing the variable's name decides nothing about it and is not consumed by it. An owned variable passed to an `Own[T]` parameter (`[take(b) for b in src]`) moves, silently, a `@nocopy` element included
 - Branch-aware: consuming in one `if` branch makes the variable consumed after the `if`
 - A field of `self` MOVES out only inside a `return` of the consuming method itself (never one of a nested def, which may run any number of times) that nothing of the method runs after -- not in a `for` loop (its iterator's teardown, e.g. a generator's `finally`, could read the field), a `try` (body, handler, `else` or `finally`) or a `with` body, and not in a generator or `async` method; a `return` in a `while` loop qualifies -- and only when no non-scalar local exists anywhere in the method: every name the method binds, in any block and by any binding form (an assignment, a `for`, `with ... as` or `except ... as` target, a walrus, a `match` capture, a tuple-unpack target, a nested def, a comprehension variable), and every parameter the method owns (`Own[...]`, or a by-value tuple, callable or other value type) or rebinds, is a number, `bool`, `char`, enum, `str` or `bytes`. The method destroys its locals after the return value is built, so a local generator whose `finally` reads the field, or a `__del__` holding a `Ptr` into `self`, would otherwise observe the moved-from field (`g = self.gen(); next(g); return take((self.a, self.b))` copies both members). The rule reads the whole method rather than the scope at the `return`: a local bound only inside a loop body is not in scope after the loop, yet its storage may live in a function-level slot destroyed after the return, and a loop can reach a binding that sits after the `return` in source order. The test is by type, so it is blunt: a list or record local anywhere in the method keeps the field borrowed too, although it runs no code on destruction, as does a name whose type is not yet known at the `return`; a borrowed (reference-type, `str` or `bytes`) parameter the method never rebinds is not destroyed by it and does not count. The field also moves only when the returned expression reads that field once, does not use `self` as a whole (a method call, a property, `super()`), holds no lambda, comprehension or walrus, and every other name in it is a local or parameter of a number, `bool`, `char` or enum type, or a module-level function or class. Any other name -- a nested def (it may capture `self`), a module variable, a reference-type local or parameter -- could reach the field, so it keeps the field borrowed. When the expression reads more than one field, each must be unable to point at another by its declared type: a field read more than once must be a number, `bool`, `char`, enum, `str` or `bytes`, and a moved field must not be (or hold, through an Optional, union or tuple) a `Ptr`, a view, a callable, a protocol, a type parameter or another value type -- so `return take_peek((self.a, self.b), self.pa)` with `pa` aimed at `a` keeps both members borrowed (a moved record field whose own `Ptr` field aims at another moved field is not caught: `BUGS.md#self-aimed-ptr-field-borrow-unrecorded`). `return take((self.a, self.b))` moves both fields and `return self.n` renders `return std::move(this->n);`. Every other read of a field is a borrow, as in an ordinary method: an owning slot (an `Own` parameter or tuple member, a field store, a container insert) copies it and warns ``copies P into owned storage (argument 't' tuple element 0); use copy() to make this explicit, or move it in a `return` `` (the last clause only on a read outside any `return`, and not inside a lambda or nested def), and a `@nocopy` field there is an error (``... a field of a consuming method's `self` moves only in a `return` ``). So `r = take((self.a, self.b)); return r + len(self.a.xs)` copies both members: the later read sees the field unchanged by the call, which matches CPython only while the callee does not mutate what it received (CPython hands over the same object, so a mutation there shows in the field; the warning declares that divergence). A module-level function called in the return that reads the receiver through a module variable (`G.fin()` whose return calls `peek()` reading `G.a`) is not caught: `BUGS.md#consuming-global-receiver-field-read-after-move`. Some return shapes the rule lets move are still refused by the C++ lowering -- a field passed straight to an `Own` parameter (`return take1(self.a)`), a tuple of fields returned into `tuple[Own[P], Own[P]]`, a user-record `return self.a`, and a ternary or `and`/`or` over fields: `BUGS.md#consuming-field-last-use-sink-rejects`. (A stopgap: the precise rule -- no live reference still depends on the field -- is the MIR entry "Consuming-method field moves outside `return`" in TODO.md)
 - `self` itself is owned too, so `return self` at an `Own[Self]` return MOVES the receiver (`return std::move((*this));`) -- the builder-step idiom `def updated(self: Own[Self]) -> Own[Self]: ...; return self` needs no `copy()` and compiles for a `@nocopy` class. Reading `self` again on the same path after it has been moved into an owning slot is the ordinary use-after-move error

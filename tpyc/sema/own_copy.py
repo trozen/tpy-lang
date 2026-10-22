@@ -27,10 +27,10 @@ A stdlib generic instantiated by user code therefore keeps its own state
 untouched, which is what lets an analyzed module outlive one compilation.
 The module's final diagnostics are composed from its hedges and the table
 (`apply_own_copy_verdicts` in `context.py`), and the obligation holds the
-`Diagnostic` the sink emitted, not its index: the loop-copy suppression in
-`statements.py` deletes by index while a body is analysed, so an index
-recorded here would drift onto an unrelated line, and a hedge that was
-withdrawn that way is simply absent when the verdicts are composed.
+`Diagnostic` the sink emitted, not its index. A body's walk only registers
+its hedges; settlement emits one -- and records its obligation -- only where
+the source's record leaf copies (`TypeCompatibility.project_copies`), so a
+hedge whose leaf moves has no obligation for a verdict to answer.
 
 It is a channel of its own rather than one of the two nearby ones because
 what it defers is different: `representational_type_params` stamps a codegen
@@ -197,6 +197,21 @@ def type_param_names(typ: TpyType | None) -> set[str]:
 def type_has_type_param(typ: TpyType | None) -> bool:
     """Whether `typ` names any type parameter."""
     return bool(type_param_names(typ))
+
+
+def copy_is_hedged(display: TpyType, target: TpyType,
+                   kind: str = KIND_SLOT) -> bool:
+    """Whether an owning sink's copy of `display` into `target` is the
+    hedge an instantiation answers rather than a plain warning: a side names
+    a type parameter, and the copied head is no reference type, which copies
+    whatever its arguments are (an element copy names its elements, so its
+    head does not settle it). The one rule of the copy diagnostic and of
+    the record leaf it speaks for."""
+    if not (type_has_type_param(target) or type_has_type_param(display)):
+        return False
+    head = unwrap_readonly(display)
+    return not (kind != KIND_ELEMENTS and isinstance(head, NominalType)
+                and not head.is_protocol and not head.is_value_type())
 
 
 def reference_source_params(typ: TpyType) -> 'set[str] | None':

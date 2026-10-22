@@ -21,7 +21,7 @@ std::tuple<Box*, int32_t> make_pair(Box& b) {
 // def setitem_literal(d: dict[str, tuple[Box, int32]], b: Box) -> None:
 //     d["a"] = (b, 1)  # tpyc: warning(/copies Box into container \(tuple element 0\)/)
 void setitem_literal(::tpy::ordered_map<std::string, std::tuple<Box, int32_t>>& d, const Box& b) {
-    ::tpy::__setitem__(d, "a", std::tuple<Box, int32_t>{b, 1});
+    ::tpy::__setitem__(d, "a", std::tuple<Box, int32_t>{Box(b), 1});
 }
 
 // # free function: a MIXED call-bound local appended at its last use moves its
@@ -31,7 +31,7 @@ void setitem_literal(::tpy::ordered_map<std::string, std::tuple<Box, int32_t>>& 
 //     xs.append(t)  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
 void append_mixed_last_use(std::vector<std::tuple<Box, Box>>& xs, Box& b) {
     auto t = ::tpyapp::main::make_mixed(b);
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(t)));
+    xs.push_back(std::tuple<Box, Box>{std::move(std::get<0>(t)), (*std::get<1>(t))});
 }
 
 // # free function: the same local still live after the append copies both

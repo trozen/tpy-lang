@@ -272,10 +272,12 @@ class _ValueFieldPlan:
 
 
 def _closure_field_fence(lam: TpyLambda, slot: _ExprUse, analyzer) -> None:
-    """A closure stored in a field copies its by-value captures silently
-    (BUGS.md#callable-local-lambda-copies-capture-silently): a body field
-    write refuses one, a member-init takes the shapes the lambda gate
-    (`_lambda_routable`, no `self` capture) admits."""
+    """A closure stored in a field copies its by-value captures, which the
+    capture-copy warning names (`sema/capture_copies.py`): a body field
+    write still refuses one
+    (BUGS.md#callable-local-lambda-copies-capture-silently), a member-init
+    takes the shapes the lambda gate (`_lambda_routable`, no `self`
+    capture) admits."""
     if not _is_direct_init(slot):
         raise ThirUnsupported("expr.lambda")
     if not _lambda_routable(lam, analyzer):

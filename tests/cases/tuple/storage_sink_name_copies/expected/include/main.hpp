@@ -195,7 +195,7 @@ inline P::P(int32_t x) : xs(std::vector<int32_t>{x}) {}
 //     self.ys = [t]  # tpyc: warning(/copies P into .*tuple element 0/) warning(/copies P into .*tuple element 1/)
 inline Keeper::Keeper(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    this->ys = {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
+    this->ys = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
 }
 
 // def again(self, p: P) -> Own[list[tuple[P, P]]]:
@@ -204,7 +204,7 @@ inline Keeper::Keeper(P& p) {
 //     return [t]  # tpyc: warning(/copies P into .*tuple element 0/) warning(/copies P into .*tuple element 1/)
 inline std::vector<std::tuple<P, P>> Keeper::again(P& p) const {
     auto t = ::tpyapp::main::mk2(p);
-    return {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
+    return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
 }
 
 // def __enter__(self) -> int32:

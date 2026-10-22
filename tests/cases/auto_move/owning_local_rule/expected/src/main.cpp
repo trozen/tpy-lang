@@ -258,7 +258,7 @@ std::tuple<Box, Box> whole(Pair& h, bool c) {
     if (c) {
         p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
     }
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
+    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(p);
 }
 
 // # free function: a whole tuple a literal binding borrows and a mixed call half owns
@@ -275,7 +275,7 @@ std::tuple<Box, Box> whole_literal(Box& v, Box& w, bool c) {
         std::get<0>(p) = &*(__slot_1 = std::move(std::get<0>(__tup_1)));
         std::get<1>(p) = std::get<1>(__tup_1);
     }
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
+    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(p);
 }
 
 // # free function: a whole tuple whose borrowed Optional element copies null-checked
@@ -1301,7 +1301,7 @@ void main() {
     std::optional<Box> __slot_23;
     r = &*(__slot_23 = ::tpyapp::main::unpacked(pw, false));
     std::cout << "unpacked" << " " << ::tpy::ListPrinter(w.xs) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<Box, int32_t>> ps = {::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(3), 1})};
+    std::vector<std::tuple<Box, int32_t>> ps = ::tpy::make_vector<std::tuple<Box, int32_t>>(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(3), 1}));
     std::optional<Box> __slot_24;
     r = &*(__slot_24 = ::tpyapp::main::for_head(ps));
     std::cout << "for_head" << " " << ::tpy::__len__(ps) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;

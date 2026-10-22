@@ -1,0 +1,53 @@
+hoist_field 1 2
+hoist_append 2 2
+hoist_own_arg 2
+hoist_return 4 2
+method 5 1
+gen yield 1
+gen 6 1
+async 7 1
+async result 8 1
+async_return 8 1
+error_return 9 1
+nested_def 10 1
+consume yield 1
+consume yield 2
+consume 1 1
+consume appended 1
+own_elem yield 3
+own_elem yield 4
+own_elem 3 1
+own_iter yield 5
+own_iter yield 6
+own_iter 5 2
+loop_rebind after 11
+loop_rebind 4 1
+joined_fresh 0 1 1
+joined_fresh 1 2 1
+hoisted_mixed 0 13 1
+hoisted_mixed 1 12
+hoisted_finally 14 2
+hoisted_finally_async 15 2
+member_lift 3
+nested_member 1
+comp_clause 0 16 1
+comp_clause 1 17 1
+union_field 2 1
+any_field done
+any_return done
+consume_field 1
+consume_field 18 2
+try_finally_store finally
+try_finally_store 20 2
+try_finally_nocopy finally
+try_finally_nocopy 22
+put_mixed 22 2
+nocopy_member 1 24
+walrus yield 1
+walrus_gen 25 2
+opt_record 26 2
+head_own 2
+nocopy_list 31
+live_unpack 2 2 1
+nocopy_temp_member 41
+own_callable_member 42 2

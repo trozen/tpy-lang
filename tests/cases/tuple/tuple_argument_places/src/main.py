@@ -30,8 +30,7 @@ class HN:
 class K:
     t: tuple[Box, int32]
 
-    # (the member-init moves `t`; the warning is
-    # BUGS.md#own-tuple-param-field-store-warns)
+    # (the member-init moves `t`, silently)
     def __init__(self, t: Own[tuple[Box, int32]]) -> None:
         self.t = t
 

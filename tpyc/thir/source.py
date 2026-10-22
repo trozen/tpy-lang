@@ -212,39 +212,16 @@ class MoveRow(Enum):
     COMP_CLAUSE = "comp_clause"
     # A started generator frame is not moved.
     GENERATOR_OBJECT = "generator_object"
-    # `to_value_variant` copies the pointees.
-    PTR_VARIANT = "ptr_variant"
-    WALRUS = "walrus"
-    # The `is_value_type` filter of an `Own[R] | None` call result.
-    OPT_RECORD_CALL = "opt_record_call"
-    # An `@error_return` call's unwrap.
-    ER_BIND = "er_bind"
     # A `@dynamic` local or deferred coroutine frame read by an `Own` slot.
     DYN = "dyn"
-    # A loop-head unpack target taking an `Own` element.
-    FOR_UNPACK_OWN_TARGET = "for_unpack_own_target"
-    # A resumable frame field only loops bind: the frame copies the step.
-    FRAME_OWN_LOOP_VAR = "frame_own_loop_var"
     # A frame field the frame layout does not move: a borrowed pointer, a
     # field no declaration binds.
     FRAME_LAYOUT = "frame_layout"
-    # A frame field only a consuming loop binds: the frame copies the
-    # element through its pointer.
-    FRAME_CONSUMING_LOOP_VAR = "frame_consuming_loop_var"
-    # A nested def's binding.
-    NESTED_DEF = "nested_def"
     # A lambda parameter: its return moves (the C++ moves a returned
     # parameter), any other read copies.
     LAMBDA_PARAM = "lambda_param"
-    # A hoisted pointer slot, re-pointed by its binds.
-    POINTER_HOIST = "pointer_hoist"
-    # A rebound `Own` loop variable's slot: the render moves out of it only
-    # where the name's function-wide binding owns it.
-    LOOP_REBIND_SLOT = "loop_rebind_slot"
     # A pass slot: a hoisted loop variable, a loop's tuple-unpack holder.
     PASS_SLOT = "pass_slot"
-    # A borrow tuple: per-leaf render facts decide what it owns.
-    BORROW_TUPLE_LAYOUT = "borrow_tuple_layout"
     # A binding that refers to existing storage, a row only where fact 1
     # says it owns: an all-fresh Optional select planned as a call
     # passthrough, which the lowering refuses (`expr.ifexpr`).
@@ -273,6 +250,19 @@ class MoveRow(Enum):
         return self in _FORCED_MOVE_ROWS
 
     @property
+    def record_moves(self) -> bool:
+        """Whether an owning sink's record may move a read of a binding
+        this row excepts. A value row may (moving equals copying, or is the
+        cheaper render the row's copy stands in for), and so may a
+        generator object (its consumers take the frame in place, so no
+        move renders); a lambda parameter only as the lambda's own result,
+        which its result slot decides (`convert`). Every other row --
+        `DYN`, `ALIAS` and `MODULE_STORAGE` included -- is no move a record
+        may ask for: one reaching it is a compiler bug
+        (`check_record_move`)."""
+        return self in _RECORD_MOVE_ROWS
+
+    @property
     def slug(self) -> str | None:
         """The BUGS.md entry tracking the row, None where it is correct."""
         ref = _MOVE_ROW_SLUGS.get(self)
@@ -282,22 +272,14 @@ class MoveRow(Enum):
 _FORCED_MOVE_ROWS = frozenset({
     MoveRow.CLOSED_FRAME, MoveRow.OWNED_SLOT, MoveRow.BY_VALUE_OPTIONAL,
     MoveRow.UNPACK_PROMOTE, MoveRow.INHERITED_OUTER})
+_RECORD_MOVE_ROWS = frozenset({
+    MoveRow.TRIVIAL_VALUE, MoveRow.VIEWFAM_VALUE, MoveRow.OWNED_VALUE,
+    MoveRow.GENERATOR_OBJECT, MoveRow.LAMBDA_PARAM})
 _MOVE_ROW_SLUGS: dict[MoveRow, str] = {
     MoveRow.VIEWFAM_VALUE: "BUGS.md#owned-viewfam-local-last-use-copies",
     MoveRow.OWNED_VALUE: "BUGS.md#owned-value-local-last-use-copies",
     MoveRow.GENERATOR_OBJECT: "BUGS.md#generator-into-own-sink-rejects",
-    MoveRow.PTR_VARIANT: "BUGS.md#union-local-last-use-store-copies",
-    MoveRow.WALRUS: "BUGS.md#walrus-owned-slot-store-copies",
-    MoveRow.OPT_RECORD_CALL: "BUGS.md#owned-optional-call-local-copies",
-    MoveRow.ER_BIND: "BUGS.md#error-return-bind-store-copies",
     MoveRow.DYN: "BUGS.md#dyn-local-own-arg-ill-formed",
-    MoveRow.FOR_UNPACK_OWN_TARGET:
-        "BUGS.md#for-unpack-own-target-consume-copies",
-    MoveRow.FRAME_OWN_LOOP_VAR: "BUGS.md#frame-own-loop-var-copies-owned-step",
-    MoveRow.FRAME_CONSUMING_LOOP_VAR:
-        "BUGS.md#frame-consuming-loop-var-store-copies-unwarned",
-    MoveRow.NESTED_DEF: "BUGS.md#nested-def-owned-binding-copies",
-    MoveRow.LOOP_REBIND_SLOT: "BUGS.md#own-loop-var-rebind-slot-copies",
     MoveRow.OWNED_SLOT: "BUGS.md#generator-into-own-sink-rejects",
 }
 
@@ -378,7 +360,7 @@ class BindingRepr:
     # every binding when some binding owns a reference element: the
     # declared type's elements, `Own` collapsed, each owned element backed
     # by a reference local's slot at its own site. Whether a read may move
-    # an element is the read's (`own_element_copies`).
+    # an element is the read's (its record, `SourceRecord.element_moves`).
     ptr_tuple: 'TupleType | None' = None
     # A const binding: a const declaration (the decl families; a borrow
     # tuple's element pointers), a parameter under its function's const
@@ -581,11 +563,10 @@ class Source:
     # The type sema analyzed the source expression at (`get_expr_type`),
     # before lowering settled a still-pending literal type.
     analyzed_type: TpyType | None = None
-    # Sema declared the copy of this existing object into the owning
-    # result it is returned to (`owned_slot_copies`; a tuple name's
-    # whole-tuple copy, `declared_name_copy`): the only copy of one a
-    # result spells. A select's holds where each arm is fresh or declares
-    # its own.
+    # The owning sink's record copies this existing object whole
+    # (`SourceRecord.disposition` COPY): the only copy
+    # of one a result spells. A select's holds where each arm is fresh or
+    # declares its own.
     copy_declared: bool = False
     # The type a copy of this value constructs -- the source's own type,
     # never the slot's: a slot-typed copy of a subclass direct-initializes
@@ -594,8 +575,8 @@ class Source:
     # spells it.
     copy_type: TpyType | None = None
     # A pointer element of a pointer-tuple NAME read at its last use that
-    # sema declared no owning-sink verdict for (`declared_tuple_reads`): it
-    # is not movable, and a sink that would move it refuses.
+    # no owning sink's record covers (`verdict`): it is not movable,
+    # and a sink that would move it refuses.
     undeclared: bool = False
     # A tuple source's LEAF (`elems[i]`, built by `element_source`) held
     # through an open `T`'s trait (`val_or_ptr_t<T>`): a pointer or a value
@@ -612,6 +593,13 @@ class Source:
     def name(self) -> str | None:
         """The name of the binding a NAME read reads."""
         return self.binding.name if self.binding is not None else None
+
+    @property
+    def move_exception(self) -> 'MoveRow | None':
+        """The planner row excepting the binding a NAME read reads from a
+        move (`BindingRepr.move_exception`)."""
+        return (self.binding.move_exception if self.binding is not None
+                else None)
 
     @property
     def param_type(self) -> TpyType | None:

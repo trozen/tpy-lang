@@ -16,7 +16,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 //     h.t = t  # tpyc: warning(/tuple element 1/)
 void field_local(Holder& h, Box& b) {
     auto t = ::tpyapp::main::make_mixed(b);
-    h.t = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(t));
+    h.t = std::tuple<Box, Box>{std::move(std::get<0>(t)), (*std::get<1>(t))};
 }
 
 // # inverse: an ALL-BORROW local stored into a field copies both elements and

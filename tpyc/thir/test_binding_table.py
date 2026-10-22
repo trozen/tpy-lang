@@ -3041,9 +3041,11 @@ def er(s: S, k: int) -> None:
 def test_every_exception_and_forced_row_names_its_reason() -> None:
     func, table = _plan(_ROWS_PROGRAM, "rows")
     want = {
-        ("w", "walrus"): (M.WALRUS, None, False),
-        ("r", "decl"): (M.OPT_RECORD_CALL, None, False),
-        ("u", "decl"): (M.PTR_VARIANT, None, False),
+        # A walrus target, a local off an `Own[R] | None` call and a
+        # pointer-union local move what they own, as fact 1 says.
+        ("w", "walrus"): (None, None, True),
+        ("r", "decl"): (None, None, True),
+        ("u", "decl"): (None, None, True),
         # A generator object owns its frame, which never moves once
         # started: the concrete-generator decl row's exception.
         ("g", "decl"): (M.GENERATOR_OBJECT, None, False),
@@ -3060,22 +3062,20 @@ def test_every_exception_and_forced_row_names_its_reason() -> None:
            for r in node.bindings.values() if r.site_kind == "lambda"]
     assert {(r.name, r.move_exception, r.movable) for r in lam} == {
         ("q", M.LAMBDA_PARAM, False)}
+    # A nested def's parameters and locals move what they own.
     nested = [r for node in table.scope_at.values()
               for r in node.bindings.values()
               if r.site_kind == "nested_param"]
     assert {(r.name, r.move_exception, r.movable) for r in nested} == {
-        ("q", M.NESTED_DEF, False)}
+        ("q", None, True)}
     b = [r for r in table.records() if r.name == "b"]
-    assert [(r.move_exception, r.movable) for r in b] == [
-        (M.NESTED_DEF, False)]
+    assert [(r.move_exception, r.movable) for r in b] == [(None, True)]
+    # So does an `@error_return` call's unwrap.
     func, table = _plan(_ROWS_PROGRAM, "er")
     p = _rec(table, "p", "decl")
-    assert (p.move_exception, p.movable) == (M.ER_BIND, False)
+    assert (p.move_exception, p.movable) == (None, True)
     # The rows that are defects name the entry tracking them.
-    assert M.WALRUS.slug == "walrus-owned-slot-store-copies"
-    assert M.OPT_RECORD_CALL.slug == "owned-optional-call-local-copies"
-    assert M.ER_BIND.slug == "error-return-bind-store-copies"
-    assert M.NESTED_DEF.slug == "nested-def-owned-binding-copies"
+    assert M.DYN.slug == "dyn-local-own-arg-ill-formed"
     assert M.TRIVIAL_VALUE.slug is None and M.BY_VALUE_OPTIONAL.forced
 
 
@@ -3164,10 +3164,10 @@ def closed() -> int:
     def field(fn: str, name: str) -> BindingRepr:
         return tables[fn].root.bindings[name]
     want = {
-        # The frame copies a step an `Own` element loop or a consuming
-        # loop takes, through its element pointer.
-        ("own_loop", "a"): (M.FRAME_OWN_LOOP_VAR, None, False),
-        ("consuming_loop", "a"): (M.FRAME_CONSUMING_LOOP_VAR, None, False),
+        # The frame moves a step an `Own` element loop or a consuming loop
+        # takes out of its element pointer.
+        ("own_loop", "a"): (None, None, True),
+        ("consuming_loop", "a"): (None, None, True),
         # A borrowed frame field: the frame layout holds a pointer.
         ("borrowed_field", "alias"): (M.FRAME_LAYOUT, None, False),
         # A generator object owns its frame, which never moves.
@@ -3179,27 +3179,27 @@ def closed() -> int:
         got[(fn, name)] = (rec.move_exception, rec.move_forced, rec.movable)
     assert got == want
     func, table = _plan(_ROWS_PROGRAM_3, "ptr_hoist", prelude="")
-    # A pointer hoist is re-pointed by its binds: its read copies.
+    # A pointer hoist re-pointed by its binds moves out of the object it
+    # points at where it owns it.
     y = _rec(table, "y", "hoist")
-    assert (y.move_exception, y.movable) == (M.POINTER_HOIST, False)
+    assert (y.move_exception, y.movable) == (None, True)
     func, table = _plan(_ROWS_PROGRAM_3, "loop_fresh", prelude="")
-    # The loop site owns its step, but the rebound slot moves only where
-    # the name's function-wide binding owns it (the `a = b` after the loop
-    # borrows).
+    # The loop site owns its step and its body's rebind: the rebound slot
+    # moves whatever the `a = b` after the loop borrows.
     a = _rec(table, "a", "loop")
-    assert (a.move_exception, a.movable) == (M.LOOP_REBIND_SLOT, False)
-    assert M.LOOP_REBIND_SLOT.slug == "own-loop-var-rebind-slot-copies"
-    # Without the borrowing binding after the loop the slot moves.
+    assert (a.move_exception, a.movable) == (None, True)
+    # So it does without the borrowing binding after the loop.
     func, table = _plan(_ROWS_PROGRAM_3, "loop_fresh_alone", prelude="")
     a = _rec(table, "a", "loop")
     assert (a.move_exception, a.movable) == (None, True)
     func, table = _plan(_ROWS_PROGRAM_3, "nested_alias", prelude="")
     # A nested def's local bound at another's last use is a reference to
-    # the owner it takes over: owned, and the nested def's exception.
+    # the owner it takes over: owned, and the reference alias's exception
+    # (BUGS.md#nested-def-owned-binding-copies).
     target = [r for node in table.scope_at.values()
               for r in node.bindings.values() if r.name == "target"]
     assert {(r.move_exception, r.movable) for r in target} == {
-        (M.NESTED_DEF, False)}
+        (M.ALIAS, False)}
     func, table = _plan(_ROWS_PROGRAM_3, "values", prelude="")
     # An ownership-transfer tuple parameter moves, value leaves and all.
     p = table.root.lookup("p")
@@ -3301,10 +3301,11 @@ def test_more_rows_name_their_reason() -> None:
     func, table = _plan(_ROWS_PROGRAM_2, "rows2")
     want = {
         ("s", "decl"): (M.DYN, None, False),
-        ("b", "unpack"): (M.FOR_UNPACK_OWN_TARGET, None, False),
+        ("b", "unpack"): (None, None, True),
         ("x", "hoist"): (None, M.OWNED_SLOT, True),
         ("name", "decl"): (M.VIEWFAM_VALUE, None, False),
-        ("pair", "decl"): (M.BORROW_TUPLE_LAYOUT, None, False),
+        # A borrow tuple moves where its reads' element verdicts do.
+        ("pair", "decl"): (None, None, True),
         # A branch-first generator object's hoisted pointer owns the frame,
         # which never moves.
         ("g", "hoist"): (M.GENERATOR_OBJECT, None, False),
@@ -3381,8 +3382,9 @@ def test_frame_slots_const_hoists_and_globals_pin_their_move() -> None:
     # which moves: generator and coroutine alike.
     assert field("gen_slot", "y") == (None, None, True)
     assert field("async_slot", "y") == (None, None, True)
-    # A frame's try-hoisted local is a slot its binds re-point.
-    assert field("gen_hoist", "y") == (M.POINTER_HOIST, None, False)
+    # A frame's try-hoisted local is a slot its binds re-point, which moves
+    # out of the object it owns.
+    assert field("gen_hoist", "y") == (None, None, True)
     # An owned readonly result hoisted to a const pointer over its owning
     # slot: owned, and the const slot does not move.
     for fn in ("const_if", "const_try"):
@@ -3398,7 +3400,7 @@ def test_frame_slots_const_hoists_and_globals_pin_their_move() -> None:
     assert not any(r.movable for r in table.records() if r.name == "g")
 
 
-def test_a_module_level_rebound_loop_slot_takes_the_rebind_row(
+def test_a_module_level_rebound_loop_slot_moves_its_step(
         monkeypatch: pytest.MonkeyPatch) -> None:
     tables: list = []
     install = _bindings.plan_and_install
@@ -3421,9 +3423,9 @@ print(len(out))
 ''')
     a, = (r for t in tables for r in t.records()
           if r.name == "a" and r.site_kind == "loop")
-    # A module's names are module storage: the rebound slot never moves
-    # (BUGS.md#own-loop-var-rebind-slot-copies, its module-level face).
-    assert (a.move_exception, a.movable) == (M.LOOP_REBIND_SLOT, False)
+    # The loop site owns its step and its body's rebind, at module level
+    # too: the rebound slot moves out of it.
+    assert (a.move_exception, a.movable) == (None, True)
 
 
 def test_an_owned_optional_select_planned_as_a_passthrough_is_an_alias() -> None:

@@ -155,7 +155,7 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
                     if (!__try_tmp_15.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_15.error()));
                     __elem_1 = ::tpy::unwrap_ref_move(*__try_tmp_15);
                 }
-                events.push_back(__elem_1);
+                events.push_back(std::move(__elem_1));
             }
             {
                 auto __try_tmp_16 = __reader.read_array_end();

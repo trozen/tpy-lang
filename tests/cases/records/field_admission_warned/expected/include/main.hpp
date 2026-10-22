@@ -695,9 +695,8 @@ inline Deep::Deep(OptSrc&& a, PqSrc&& b)
 //     self.op = o.f  # tpyc: warning(/copies P \| None into field/)
 //     self.pq = u.f  # tpyc: warning(/copies P \| R into field/)
 //     self.g2 = mk_opt(2)
-//     # An owning call into a union field warns a copy that never happens
-//     # (BUGS.md#own-optional-param-field-store-copies, the CALL twin).
-//     self.g3 = mk_pq(-3)  # tpyc: warning(/copies P \| R into field/)
+//     # an owning call into a union field moves its result in, silently
+//     self.g3 = mk_pq(-3)  # tpyc: ok
 inline Slots::Slots(const OptSrc& o, const PqSrc& u)
     : op(o.f),
       pq(u.f),
