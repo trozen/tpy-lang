@@ -1,0 +1,1 @@
+The warned element copy is the list's own object, so a mutation of the original after the call is not seen through it; CPython stores the very object, so the outputs differ by design.

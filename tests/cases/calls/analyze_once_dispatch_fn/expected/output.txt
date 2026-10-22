@@ -1,0 +1,21 @@
+name: B 101 101
+call: B 102
+field: int32 3
+binop: int32 5
+walrus: int32 5
+walrus-target: 5
+select-cond: str a
+select-arm: str 7
+fstring: str 8
+list: list 9 1
+dict: dict 10
+set: set 1
+comprehension: list 12 1
+tuple: tuple 13 s
+nested-plain: B 114
+nested-generic: B 115
+method: int32 20
+generator: int32 30
+async: int32 40
+await: int32 41
+comprehension-position: ['int32 50', 'int32 51']

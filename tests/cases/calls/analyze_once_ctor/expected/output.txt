@@ -1,0 +1,14 @@
+generic-ctor: 1
+generic-ctor-field: 2
+group: 3
+group-fstring: 4
+group-select: 5
+raise-plain: 6
+raise-group: 7
+ctor-list-slot: 5000000000
+ctor-nested-slot: 5000000001
+ctor-dispatch-list: list 5000000002
+ctor-dispatch-dict: dict 5000000003
+ctor-dispatch-consume: list 8 5000000004
+ctor-method-list: list 5000000005
+ctor-method-keyword: list 5000000005

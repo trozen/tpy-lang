@@ -1,0 +1,1 @@
+main.py:105: warning: 'y' is bound again on each iteration; the lambda keeps the value from its own iteration, while a Python closure called after the loop sees the last one

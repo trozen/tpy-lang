@@ -44,7 +44,7 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import ReturnSeed, seeded_arg_hint
-from .context import CompTarget, PENDING_CONTAINER_TYPES
+from .context import CompTarget, GenericMethodRoute, PENDING_CONTAINER_TYPES
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls)
 from .pending_num import (ContainerCells, Entry, is_pending_num,
@@ -403,38 +403,23 @@ class MethodAnalyzer:
                     raise self.ctx.error(
                         f"Cannot use *unpacking: '{resolved.name}' "
                         f"does not accept *args", arg)
-            self._check_and_coerce_args(expr, resolved.params, arg_types,
-                                        target_is_readonly=resolved.is_readonly)
+            self._check_and_coerce_args(expr, resolved.params, arg_types)
 
     def _check_and_coerce_args(
         self, expr: TpyMethodCall,
         params: list[tuple[str, TpyType]],
         arg_types: list[TpyType] | None = None,
-        target_is_readonly: bool = False,
     ) -> None:
-        """Analyze, ownership-check, and coerce method arguments in place.
-
-        If arg_types is None, each arg is analyzed with a type hint from the
-        corresponding param (using pre-analyzed types from empty list inference
-        when available). Otherwise pre-analyzed arg_types are used.
-        """
+        """Receive the method's arguments at `params`
+        (`CallAnalyzer.receive_winner_args`). `arg_types`, or the types a
+        container method's preparation decided (`pre_analyzed_method_args`),
+        are taken where given instead of a re-entry."""
         pre = self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-        inferred = self._inferred_receiver_slots(expr)
-        for i, (arg, (pname, ptype)) in enumerate(zip(expr.args, params)):
-            if arg_types is not None:
-                at = arg_types[i]
-            elif pre is not None and i < len(pre):
-                at = pre[i]
-            else:
-                at = self.expr.analyze_arg_at_param(arg, ptype, ptype)
-            self.calls._maybe_coerce_empty_list_to_protocol(at, ptype)
-            at = self.calls._restore_readonly_arg(arg, at, target_is_readonly)
-            self.calls.check_own_param(arg, at, pname, ptype)
-            self.calls.mark_pending_arg_context(arg, at, ptype)
-            expr.args[i] = self.compat.coerce_expr(
-                arg, at, ptype, f"argument '{pname}'",
-                coercion_ctx=CoercionContext.ARG,
-                inferred_slot=inferred.get(i))
+        decided = arg_types if arg_types is not None else pre
+        self.calls.receive_winner_args(
+            self.calls.args_scope(expr.args), expr.args, decided, params,
+            expr.resolved_function_info, call=expr,
+            inferred_slots=self._inferred_receiver_slots(expr))
 
     def _inferred_receiver_slots(self, expr: TpyMethodCall
                                  ) -> dict[int, InferredSlot]:
@@ -505,27 +490,30 @@ class MethodAnalyzer:
                     expr.args, unresolved, type_subst, self.type_ops,
                     lambda msg: self.ctx.error(msg, expr))
         else:
+            resolved_overloads = [
+                self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
+                for m in overloads
+            ]
             with self.calls.open_call_args(
                     expr, [*expr.args, *(expr.kwargs or {}).values()],
-                    expr.method, scored=True) as scope:
-                resolved_overloads = [
-                    self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
-                    for m in overloads
-                ]
-                self.calls.open_written_literals(
-                    scope, expr.args, expr.kwargs, resolved_overloads)
+                    expr.method, scored=True,
+                    candidates=resolved_overloads) as scope:
                 pre = self.ctx.func.pre_analyzed_method_args.get(expr)
+                decided: list[TpyType] | None = None
                 if (pre is not None and len(pre) == len(expr.args)
                         and any(is_pending_num(t) for t in pre)):
                     # An argument passed at a container's pending leaf is typed
                     # already: analyzing it again would settle the leaf.
-                    arg_types = list(pre)
+                    arg_types = decided = list(pre)
                 else:
+                    self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                     arg_types = self.calls._probe_candidate_args(
                         expr, expr.args, resolved_overloads)
                 kwarg_types: dict[str, TpyType] | None = None
                 if expr.kwargs:
-                    kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
+                    with self.ctx.probe_slot_scope(True):
+                        kwarg_types = {k: self.expr.analyze_expr(v)
+                                       for k, v in expr.kwargs.items()}
                 enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
                 # The one ranking a dunder set's implicit call uses too
                 # (`rank_overload_candidates`, receiver kind first); this
@@ -554,12 +542,10 @@ class MethodAnalyzer:
                                          for t in arg_types)
                     raise self.ctx.error(
                         f"No matching overload for '{expr.method}' with argument types ({arg_strs})", expr)
-                arg_types = self.calls.apply_winner(
-                    scope, expr.args, resolved.params, arg_types, resolved)
                 expr.resolved_function_info = resolved
                 expr.const_receiver = pins_const_receiver(
                     resolved, resolved_overloads, is_readonly_receiver)
-                coerce_arg_types: list[TpyType] | None = arg_types
+                coerce_arg_types = decided
                 if expr.kwargs or resolved.materializes_defaults:
                     # Winner picked; expand kwargs into positional slots against its
                     # signature. A default with no C++ spelling must be filled even
@@ -587,13 +573,13 @@ class MethodAnalyzer:
         # method, `super()`), and the only place carrying the class-level
         # substitution merged with the method-level one -- so it is where a
         # method body's owning-slot copy obligations are answered.
-        if type_subst and expr.resolved_function_info is not None:
-            self.ctx.record_own_copy_instantiation(
-                expr.resolved_function_info.root, type_subst)
-
-        self.calls._check_borrow_arg_conflicts(expr)
-        self.calls._check_loop_var_arg_mutation(expr)
-        self.calls._record_mutation_call_edges(expr)
+        if self.ctx.slot_step_commits():
+            if type_subst and expr.resolved_function_info is not None:
+                self.ctx.record_own_copy_instantiation(
+                    expr.resolved_function_info.root, type_subst)
+            self.calls._check_borrow_arg_conflicts(expr)
+            self.calls._check_loop_var_arg_mutation(expr)
+            self.calls._record_mutation_call_edges(expr)
         self.calls._check_error_return_handled(expr, resolved)
         return resolved.return_type
 
@@ -695,23 +681,16 @@ class MethodAnalyzer:
                         name == expr.method for name, _ in protocol.fields or [])
             if has_field:
                 subscript = expr.subscript_callee
-                field = subscript.obj
-                receiver_type = self.ctx.get_raw_expr_type(expr.obj)
-                assert receiver_type is not None
-                # The brackets index the field the receiver already read.
-                with self.expr.reuse(field.obj, receiver_type):
-                    field_type = self.expr._analyze_field_access(field)
-                self.ctx.set_expr_type(field, field_type)
-                with self.expr.reuse(field, field_type):
-                    callee_type = self.expr._analyze_subscript(subscript)
-                self.ctx.set_expr_type(subscript, callee_type)
+                # The brackets index the field off the receiver the call
+                # already read, which the field's analysis meets through
+                # its record.
+                self.expr.analyze_expr(subscript)
                 expr.obj = subscript
                 expr.method = "__call__"
                 expr.subscript_callee = None
                 expr.type_args = ()
                 expr.type_args_parse_error = None
-                with self.expr.reuse(subscript, callee_type):
-                    return self.analyze_method_call(expr)
+                return self.analyze_method_call(expr)
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
         if result is not None:
             return result
@@ -766,6 +745,9 @@ class MethodAnalyzer:
         if expr.method == "cancel" and isinstance(expr.obj, TpyName):
             _coro_unread = self.ctx.func.unread_coro_locals.get(expr.obj.name)
         self._mark_coro_started(expr)
+        # The step route is this analysis's: none unless the method it
+        # resolves is a generic one (`_analyze_instance_method`).
+        self.expr.set_step_route(expr, None)
         try:
             result = self._analyze_method_call_impl(expr)
             # Walks after sema must see only the resolved receiver, never its alternative.
@@ -972,10 +954,13 @@ class MethodAnalyzer:
                             f"Cannot call non-readonly method '{expr.method}' on readonly reference"
                             + implicit_readonly_result_hint(self.ctx, expr.obj),
                             expr)
-                # Enforce consuming methods: receiver must be a local variable
+                # Enforce consuming methods: receiver must be a local variable.
+                # The receiver's move is the call's body, the same at
+                # whatever slot the call meets.
                 info = expr.resolved_function_info
                 if info is not None and info.is_consuming:
-                    self._validate_consuming_call(expr)
+                    with self.ctx.probe_slot_scope(False):
+                        self._validate_consuming_call(expr)
                 # Track non-readonly method calls on for-each loop variables
                 # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
@@ -1090,6 +1075,9 @@ class MethodAnalyzer:
                                                binding=binding):
                 self.compat.declare_receiver_copy(recv)
             return
+        # The receiver moves when the call runs, before an alias read later
+        # in the statement: not a last use, so its record copies.
+        self.compat.move_before_alias_reads(recv)
         # The receiver's copy is its record's: registered here.
         self.compat.claim_name_move(recv, OwnType(bare), registers=False)
         self.compat.register_own_source_copy(
@@ -1721,15 +1709,17 @@ class MethodAnalyzer:
 
     def try_resolve_pending_from_expected_type(
         self, pending: PendingGenericInstanceType, expected: TpyType,
-        loc: 'SourceLocation | None' = None, commit: bool = True,
+        loc: 'SourceLocation | None' = None,
     ) -> NominalType | None:
         """Try to resolve a pending generic instance from an expected type.
 
         Used when a pending-type variable is passed to a typed parameter or
         returned where the function return type is known. Returns the resolved
-        concrete type, or None if the expected type doesn't match. Without
-        `commit` it only answers: the instance is left pending."""
+        concrete type, or None if the expected type doesn't match. A slot step
+        that does not commit (`SemanticContext.slot_step_commits`) only
+        answers: the instance is left pending."""
         info = self.ctx.func.pending_generic_instances.get(pending.instance_id)
+        commit = self.ctx.slot_step_commits()
         if info is None:
             return None
 
@@ -1746,7 +1736,7 @@ class MethodAnalyzer:
         if not target.type_args or len(target.type_args) != len(info.type_params):
             return None
 
-        # Inferred on a copy: only `commit` writes it back.
+        # Inferred on a copy: only a committing step writes it back.
         inferred = dict(info.inferred)
         # Build pattern with TypeParamRefs for unresolved params
         pattern = NominalType(
@@ -1775,6 +1765,8 @@ class MethodAnalyzer:
             if isinstance(v, TpyType):
                 inferred[k] = resolve_int_literals(v, self.ctx.default_int_for_literal)
         if commit:
+            self.ctx.assert_slot_effect(
+                "a pending generic instance's inferred type arguments")
             info.inferred.update(inferred)
 
         # Check if all type params are now resolved
@@ -1782,8 +1774,8 @@ class MethodAnalyzer:
             return None
         if not commit:
             resolved = self._pending_generic_type(info, inferred)
-            return resolved if self._pending_generic_bound_error(
-                info, resolved) is None else None
+            return resolved if self.calls.construction_bound_error(
+                info.record_info, resolved.name, inferred) is None else None
         return self._eagerly_resolve_pending_generic(info)
 
     def _pending_generic_type(self, info: 'PendingGenericInstanceInfo',
@@ -1795,53 +1787,14 @@ class MethodAnalyzer:
             _module_qname=info.record_info.qualified_name(),
         )
 
-    def _pending_generic_bound_error(self, info: 'PendingGenericInstanceInfo',
-                                     resolved: NominalType) -> str | None:
-        """Why `resolved` breaks a bound of the instance's record, or None."""
-        for param_name, type_arg in zip(info.type_params, resolved.type_args):
-            if param_name in info.record_info.type_param_bounds:
-                bound = info.record_info.type_param_bounds[param_name]
-                if not self.protocols.satisfies_bound(type_arg, bound):
-                    return (f"Inferred type '{type_arg}' does not satisfy bound "
-                            f"'{bound}' for type parameter '{param_name}' of "
-                            f"'{info.record_name}'")
-        return None
-
     def _eagerly_resolve_pending_generic(self, info: 'PendingGenericInstanceInfo') -> NominalType:
-        """Resolve a pending generic instance to a concrete NominalType."""
-        resolved_type = self._pending_generic_type(info, info.inferred)
-        bound_error = self._pending_generic_bound_error(info, resolved_type)
-        if bound_error is not None:
-            raise self.ctx.error(bound_error, info.expr)
-
-        # Update constructor expression
-        info.expr.call_type = resolved_type
-        self.ctx.set_expr_type(info.expr, resolved_type)
-
-        # Update scope and var_types (only when bound to a local variable,
-        # not for inline expressions like Container().set(...) which would
-        # corrupt the class binding in scope)
-        if info.decl_line is not None:
-            if self.ctx.func.current_scope:
-                self.ctx.func.current_scope.define(info.variable_name, resolved_type)
-            if self.ctx.func.current_ns:
-                self.ctx.func.current_ns.bind_variable(info.variable_name, resolved_type)
-            var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
-            if var_decl:
-                self.ctx.var_types[var_decl] = resolved_type
-            self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved_type
-            self.ctx.func.inferred_generic_locals[info.variable_name] = (
-                resolved_type, info.decl_line)
-
-        # Set constructor info now that we have concrete types
-        type_subst = info.inferred
-        self.calls._set_record_constructor_info(info.expr, info.record_info, resolved_type, type_subst)
-
-        # Clean up tracking
-        del self.ctx.func.pending_generic_instances[info.instance_id]
-        self.ctx.func.variable_to_generic_instance.pop(info.variable_name, None)
-
-        return resolved_type
+        """Resolve a pending generic instance to a concrete NominalType: its
+        construction completed at the type arguments its uses gave, at a
+        use and not at its own slot, so its arguments are not received
+        there."""
+        return self.calls.complete_construction(
+            info.expr, info.record_info, info.inferred, receive=False,
+            commit=True)
 
     def _analyze_typed_dict_get(self, expr: TpyMethodCall, record_info, obj_type: TpyType) -> TpyType:
         """Analyze td.get("key") or td.get("key", default) on a TypedDict."""
@@ -1948,6 +1901,11 @@ class MethodAnalyzer:
             if len(overloads) > 1:
                 raise self.ctx.error(
                     f"Overloaded generic methods are not supported for '{expr.method}'", expr)
+            if not isinstance(obj_type, PENDING_CONTAINER_TYPES):
+                # A pending receiver's step resolves the method again: its
+                # type params bind to the literal's element types.
+                self.expr.set_step_route(expr, GenericMethodRoute(
+                    method_info, record_info, type_subst))
             return self._analyze_generic_method_call(
                 expr, method_info, record_info, type_subst)
 
@@ -2005,36 +1963,60 @@ class MethodAnalyzer:
         for @inline bodies constrained to a single call. Future: support
         multi-statement bodies via expression blocks.
         """
-        sub = MethodAnalyzer._substitute_inline_body
+        if receiver is not None:
+            param_map = {**param_map, "self": receiver}
+        MethodAnalyzer._substitute_inline_node(node, param_map)
+
+    @staticmethod
+    def _inline_use(name: str, param_map: dict[str, TpyExpr]) -> TpyExpr:
+        """The argument for one use of parameter `name`: each use is the
+        argument evaluated again, its own node, since one node is analyzed
+        once (the receiver is the `self` parameter's argument)."""
+        arg = param_map[name]
+        param_map[name] = copy.deepcopy(arg)
+        return arg
+
+    @staticmethod
+    def _substitute_inline_node(node: TpyExpr,
+                                param_map: dict[str, TpyExpr]) -> None:
+        use = MethodAnalyzer._inline_use
         sub_args = MethodAnalyzer._substitute_inline_args
         if isinstance(node, TpyCall):
             if isinstance(node.func, TpyName) and node.func.name in param_map:
-                node.func = param_map[node.func.name]
-            sub_args(node.args, receiver, param_map)
+                node.func = use(node.func.name, param_map)
+            sub_args(node.args, param_map)
         elif isinstance(node, TpyMethodCall):
-            if receiver and isinstance(node.obj, TpyName) and node.obj.name == "self":
-                node.obj = receiver
-            sub_args(node.args, receiver, param_map)
+            if isinstance(node.obj, TpyName) and node.obj.name == "self" \
+                    and "self" in param_map:
+                node.obj = use("self", param_map)
+            sub_args(node.args, param_map)
 
     @staticmethod
-    def _substitute_inline_args(
-        args: list[TpyExpr], receiver: TpyExpr | None,
-        param_map: dict[str, TpyExpr],
-    ) -> None:
+    def _substitute_inline_args(args: list[TpyExpr],
+                                param_map: dict[str, TpyExpr]) -> None:
         """Substitute names in a list of positional arguments."""
-        sub = MethodAnalyzer._substitute_inline_body
+        use = MethodAnalyzer._inline_use
+        sub = MethodAnalyzer._substitute_inline_node
         for i, arg in enumerate(args):
             if isinstance(arg, TpyName) and arg.name in param_map:
-                args[i] = param_map[arg.name]
-            elif receiver and isinstance(arg, TpyName) and arg.name == "self":
-                args[i] = receiver
+                args[i] = use(arg.name, param_map)
             elif isinstance(arg, TpyFieldAccess):
-                if receiver and isinstance(arg.obj, TpyName) and arg.obj.name == "self":
-                    arg.obj = receiver
+                if (isinstance(arg.obj, TpyName) and arg.obj.name == "self"
+                        and "self" in param_map):
+                    arg.obj = use("self", param_map)
                 else:
-                    sub(arg, receiver, param_map)
+                    sub(arg, param_map)
             elif isinstance(arg, (TpyCall, TpyMethodCall)):
-                sub(arg, receiver, param_map)
+                sub(arg, param_map)
+
+    def complete_generic_method_call(
+            self, expr: TpyMethodCall,
+            route: GenericMethodRoute) -> TpyType:
+        """The slot step of generic method call `expr`: the method the
+        receiver resolved to (`route`, as `_analyze_instance_method`
+        recorded it) inferred and received again at the slot in force."""
+        return self._analyze_generic_method_call(
+            expr, route.method_info, route.record_info, route.class_subst)
 
     def _analyze_generic_method_call(
         self, expr: TpyMethodCall, method_info: FunctionInfo,
@@ -2207,7 +2189,8 @@ class MethodAnalyzer:
                         arg, seeded_arg_hint(_pf.params, i, _seed))
                     for i, arg in enumerate(expr.args)]
 
-        arg_types = _analyze_args()
+        with self.ctx.probe_slot_scope(True):
+            arg_types = _analyze_args()
         method_subst = self.type_ops.infer_type_params_for_function(
             partial_func, arg_types, self.protocols.satisfies_bound,
             expected_return_type=self.expr.slot_hint_for(expr),

@@ -8,7 +8,7 @@ from __future__ import annotations
 import copy
 from contextlib import contextmanager
 from dataclasses import dataclass, replace as dc_replace
-from typing import Callable, Iterator, NamedTuple, NoReturn, TYPE_CHECKING
+from typing import Callable, Iterator, Mapping, NamedTuple, NoReturn, TYPE_CHECKING
 
 from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
@@ -59,7 +59,8 @@ from .call_lends import (
     call_lend_sources, escaping_borrow_writes, expr_lends_storage,
     proven_lend_roots,
 )
-from .context import OpenCallArgs, PENDING_CONTAINER_TYPES
+from .context import (GenericCallRoute, GenericCtorRoute, OpenCallArgs,
+                      PENDING_CONTAINER_TYPES, ProbeSlot)
 from ..parse.nodes import name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
@@ -75,6 +76,7 @@ from .overloads import (
     resolve_overload, OverloadAmbiguityError,
     OverloadCandidate, rank_overload_candidates, _expand_arg_types_with_kwargs,
     call_resolves_param, call_resolves_params,
+    declared_readonly,
 )
 from .context import CallOperands
 from .int_narrowing import (proven_cast, select_template_ctor,
@@ -86,7 +88,7 @@ from .receiver_calls import call_mutates_receiver, record_truth_calls
 from .narrowing import truthy_operands
 from .scope_tracker import lend_places
 from .alias_rebind import owned_slot_paths
-from .compatibility import TupleSink
+from .compatibility import InferredSlot, TupleSink
 from .alias_rebind import owned_slot_paths
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import ReturnSeed, partial_substitute, seeded_arg_hint
@@ -730,7 +732,23 @@ def validate_type_param_bounds(
     substitute,
     detail: str = "",
 ) -> None:
-    """Validate that resolved type args satisfy their type parameter bounds.
+    """Validate that resolved type args satisfy their type parameter bounds
+    (`type_param_bound_error`), raising `error_fn` of the message."""
+    msg = type_param_bound_error(type_subst, bounds, func_name,
+                                 satisfies_bound, substitute, detail)
+    if msg is not None:
+        raise error_fn(msg)
+
+
+def type_param_bound_error(
+    type_subst: dict[str, TpyType],
+    bounds: dict[str, TpyType],
+    func_name: str,
+    satisfies_bound,
+    substitute,
+    detail: str = "",
+) -> str | None:
+    """Why a resolved type arg breaks its type parameter's bound, or None.
 
     A bound may name sibling type parameters (`[R, T: Proto[R]]`); `substitute`
     resolves them against `type_subst` before the conformance check so `T`'s
@@ -744,11 +762,12 @@ def validate_type_param_bounds(
         if param_name in bounds:
             bound = substitute(bounds[param_name], type_subst)
             if not satisfies_bound(type_arg, bound):
-                raise error_fn(
+                return (
                     f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
                     f"for type parameter '{param_name}' of '{func_name}'"
                     f"{detail}"
                     f"{_send_sync_bound_detail(bound, type_arg)}")
+    return None
 
 
 def _send_sync_bound_detail(bound: TpyType, type_arg: TpyType) -> str:
@@ -1175,7 +1194,10 @@ class CallAnalyzer:
             td_call.args[i] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
                 coercion_ctx=CoercionContext.ARG)
-        self.ctx.set_expr_type(td_call, NominalType(record.name, _module_qname=record.qualified_name()))
+        td_type = NominalType(record.name, _module_qname=record.qualified_name())
+        self.ctx.set_expr_type(td_call, td_type)
+        # Built analyzed: the receive meets it through its record.
+        self.expr.note_analysis(td_call, td_type, None)
         return td_call
 
     def _resolve_inferred_type_arg(self, t: "TpyType | int") -> "TpyType | int":
@@ -1228,14 +1250,17 @@ class CallAnalyzer:
         record: RecordInfo,
         return_type: TpyType,
         type_subst: dict[str, TpyType] | None = None,
+        commit: bool = True,
     ) -> None:
-        """Attach resolved constructor metadata for readonly/effect checks."""
+        """Attach resolved constructor metadata for readonly/effect checks;
+        the records a committed construction owns only where it `commit`s
+        (`complete_construction`)."""
         # The one funnel every constructor resolution reaches, and the only
         # place that sees a generic record's INFERRED args: `Box(1)` binds
         # `Box[int32]` here and nowhere else, so a program that only ever
         # constructs the record would otherwise leave its bodies' owning-slot
         # copy obligations unanswered (sema/own_copy.py).
-        if type_subst:
+        if type_subst and commit:
             self.ctx.record_own_copy_instantiation(record, type_subst,
                                                    is_record=True)
         init_overloads = record.get_method_overloads("__init__")
@@ -1250,9 +1275,10 @@ class CallAnalyzer:
                 is_constructor=True,
                 canonical_fi=ctor.root,
             )
-            self._check_borrow_arg_conflicts(expr)
-            self._check_loop_var_arg_mutation(expr)
-            self._record_mutation_call_edges(expr)
+            if commit:
+                self._check_borrow_arg_conflicts(expr)
+                self._check_loop_var_arg_mutation(expr)
+                self._record_mutation_call_edges(expr)
             return
 
         # Implicit default constructor (no user __init__)
@@ -1809,8 +1835,7 @@ class CallAnalyzer:
             if (expr.func_name == "list"
                     and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
-                literal_id = self.ctx.literal_counter
-                self.ctx.literal_counter += 1
+                literal_id = self.expr.literal_id_for(expr)
                 info = ListLiteralInfo(
                     literal_id=literal_id,
                     expr=expr,
@@ -1818,43 +1843,38 @@ class CallAnalyzer:
                     size=0,
                     is_mutated=True,
                 )
-                self.ctx.container_literals[literal_id] = info
-                self.ctx.func.pending_resolutions.append(literal_id)
+                self.expr.keep_literal(info)
                 result_type = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
-                self._provisional_call_type(expr, result_type)
+                expr.call_type = result_type
                 return result_type
             # dict() with no args -- create empty dict with unknown key/value types.
             if (expr.func_name == "dict"
                     and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
-                literal_id = self.ctx.literal_counter
-                self.ctx.literal_counter += 1
+                literal_id = self.expr.literal_id_for(expr)
                 info = DictLiteralInfo(
                     literal_id=literal_id,
                     expr=expr,
                     key_type=UNKNOWN_ELEMENT,
                     value_type=UNKNOWN_ELEMENT,
                 )
-                self.ctx.container_literals[literal_id] = info
-                self.ctx.func.pending_resolutions.append(literal_id)
+                self.expr.keep_literal(info)
                 result_type = PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
-                self._provisional_call_type(expr, result_type)
+                expr.call_type = result_type
                 return result_type
             # set() with no args -- create empty set with unknown element type.
             if (expr.func_name == "set"
                     and isinstance(self.ctx.func.current_function, TpyFunction)
                     and record_info.type_factory):
-                literal_id = self.ctx.literal_counter
-                self.ctx.literal_counter += 1
+                literal_id = self.expr.literal_id_for(expr)
                 info = SetLiteralInfo(
                     literal_id=literal_id,
                     expr=expr,
                     element_type=UNKNOWN_ELEMENT,
                 )
-                self.ctx.container_literals[literal_id] = info
-                self.ctx.func.pending_resolutions.append(literal_id)
+                self.expr.keep_literal(info)
                 result_type = PendingSetType(UNKNOWN_ELEMENT, literal_id)
-                self._provisional_call_type(expr, result_type)
+                expr.call_type = result_type
                 return result_type
             raise self.ctx.error(
                 f"Cannot infer element type for {expr.func_name}(); "
@@ -2064,8 +2084,7 @@ class CallAnalyzer:
         # Delegate to method-call analysis so arg coercion (e.g. into-Any) applies.
         synth = TpyMethodCall(
             obj=obj_arg, method="__setattr__", args=[name_arg, value_arg], loc=expr.loc)
-        with self.expr.reuse(obj_arg, obj_type):
-            self.expr.analyze_expr(synth)
+        self.expr.analyze_expr(synth)
         expr.macro_expansion = synth
         return VOID
 
@@ -2086,8 +2105,7 @@ class CallAnalyzer:
             )
         synth = TpyMethodCall(
             obj=obj_arg, method="__delattr__", args=[name_arg], loc=expr.loc)
-        with self.expr.reuse(obj_arg, obj_type):
-            self.expr.analyze_expr(synth)
+        self.expr.analyze_expr(synth)
         expr.macro_expansion = synth
         return VOID
 
@@ -2209,11 +2227,12 @@ class CallAnalyzer:
         """A bound coroutine lent to a parameter that may change it (a
         protocol param a generic driver polls, `poll_once(c)`) may come back
         started: record it, so a later move is rejected. A readonly param
-        cannot poll it."""
-        if (isinstance(arg, TpyName)
+        cannot poll it. The committed slot's record."""
+        if (self.ctx.slot_step_commits() and isinstance(arg, TpyName)
                 and isinstance(unwrap_readonly(arg_type.wrapped),
                                ConcreteCoroType)
                 and not isinstance(unwrap_send_sync(ptype), ReadonlyType)):
+            self.ctx.assert_slot_effect("a lent coroutine's started record")
             self.ctx.func.started_coro_locals.setdefault(
                 arg.name, arg.loc.line if arg.loc else 0)
 
@@ -3483,23 +3502,27 @@ class CallAnalyzer:
         Handles both bare Own[T] and Own[T] | None parameter types.
         Call this for every parameter that might be ownership-taking.
         Non-nocopy implicit copies are warned by the coercion path.
+
+        The ownership verdict is the committed slot's: a receive that does
+        not commit (`SemanticContext.slot_step_commits`) checks nothing.
         """
+        if not self.ctx.slot_step_commits():
+            return
         self.warn_cond_operand_eager_arg(arg, arg_type, ptype)
         # Peel the transparent Send/Sync marker so a Send[Own[T]] destination
         # param gets the same ownership checks as a bare Own[T] param.
         ptype = unwrap_send_sync(ptype)
-        if isinstance(arg, TpyName) and arg in self.ctx.same_stmt_alias_reads:
+        if isinstance(arg, TpyName):
             # A by-VALUE slot (a tuple, `Own[value type]`) moves the name
-            # while the arguments bind, which C++ may sequence before an
-            # alias read in the same statement (`q = t; f(q[0].n, take(t))`):
-            # the slot copies instead (warned by the checks below). A
-            # reference slot (`T&&`) moves inside the callee, after every
-            # argument is bound, so it keeps the move.
+            # while the arguments bind (`q = t; f(q[0].n, take(t))`): the
+            # slot copies instead (warned by the checks below). A reference
+            # slot (`T&&`) moves inside the callee, after every argument is
+            # bound, so it keeps the move.
             bare = unwrap_readonly(ptype)
             own = unwrap_optional_own(bare)
             if (isinstance(bare, TupleType)
                     or (own is not None and own.wrapped.is_value_type())):
-                self.ctx.all_last_uses.discard(arg)
+                self.compat.move_before_alias_reads(arg)
         passed = peel_coerce(arg)
         own_ptype = unwrap_optional_own(ptype)
         # A parameter owning a leaf is an owning result sink, as a return
@@ -3573,8 +3596,11 @@ class CallAnalyzer:
         must become list, not Array; empty-`[]` element inference and dict/set
         element widening flow the same way). Call from every arg-check loop --
         an unmarked path leaves the literal defaulting to Array and fails the
-        C++ build.
+        C++ build. The committed slot's record
+        (`SemanticContext.slot_step_commits`).
         """
+        if not self.ctx.slot_step_commits():
+            return
         if isinstance(arg_type, PENDING_CONTAINER_TYPES):
             self.deduction.mark_container_param_context(arg, arg_type, ptype)
         if isinstance(arg_type, PendingViewType):
@@ -3964,6 +3990,7 @@ class CallAnalyzer:
 
     def _record_mutation_call_edges(self, expr: TpyCall | TpyMethodCall) -> None:
         """Record parameter flow through calls for Phase 2 mutation propagation."""
+        self.ctx.assert_slot_effect("a mutation call edge")
         fi = expr.resolved_function_info
         if fi is None or fi.is_pure:
             return
@@ -4415,6 +4442,13 @@ class CallAnalyzer:
         self, expr: TpyCall, func: FunctionInfo,
         seed: ReturnSeed | None = None,
     ) -> list[TpyType]:
+        with self.ctx.probe_slot_scope(True):
+            return self._infer_arg_types_in(expr, func, seed)
+
+    def _infer_arg_types_in(
+        self, expr: TpyCall, func: FunctionInfo,
+        seed: ReturnSeed | None = None,
+    ) -> list[TpyType]:
         """Analyze args for type param inference, with two-phase for Fn/Callable params.
 
         When a generic function has Fn/Callable params (e.g. map[T,U](fn: Fn[[T],U], ...)),
@@ -4681,13 +4715,14 @@ class CallAnalyzer:
         if len(shapes) >= 2 or (
             fn_bearing_supplied and any_kwarg_fn_slot
         ):
-            return self._resolve_regime_c(
-                expr, fn_bearing_supplied,
-                deref_checker=deref_checker,
-                explicit_type_args=explicit_type_args,
-                strip_ref_own=strip_ref_own,
-                resolve_pending_view=resolve_pending_view,
-            )
+            with self.ctx.probe_slot_scope(True):
+                return self._resolve_regime_c(
+                    expr, fn_bearing_supplied,
+                    deref_checker=deref_checker,
+                    explicit_type_args=explicit_type_args,
+                    strip_ref_own=strip_ref_own,
+                    resolve_pending_view=resolve_pending_view,
+                )
 
         # Regime A (0) or B (1): single fn_generic candidate (or none).
         fn_generic = fn_bearing_supplied[0][0] if fn_bearing_supplied else None
@@ -4714,7 +4749,9 @@ class CallAnalyzer:
         if expr.kwargs:
             # A keyword argument gets no hint of its own; the enclosing one
             # stays in force with its provenance, as for any unhinted arg.
-            kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
+            with self.ctx.probe_slot_scope(True):
+                kwarg_types = {k: self.expr.analyze_expr(v)
+                               for k, v in expr.kwargs.items()}
 
         # Build the unified candidate pool. Pool ordering matters for
         # ambiguity tiebreak in resolve_overload's stable-sort dedupe,
@@ -4784,6 +4821,12 @@ class CallAnalyzer:
 
     def _probe_candidate_args(self, call: TpyExpr, args: list[TpyExpr],
                               func_infos: list[FunctionInfo]) -> list[TpyType]:
+        with self.ctx.probe_slot_scope(True):
+            return self._probe_candidate_args_in(call, args, func_infos)
+
+    def _probe_candidate_args_in(self, call: TpyExpr, args: list[TpyExpr],
+                                 func_infos: list[FunctionInfo]
+                                 ) -> list[TpyType]:
         """The overload probe's pre-analysis of `args`, shared by function
         and method calls.
 
@@ -4824,10 +4867,9 @@ class CallAnalyzer:
         # Require a single LHS-matching candidate to avoid cross-candidate
         # hint mixing. With 2+ matching candidates, per-position "first
         # non-None wins" would splice hints across overloads, and an inner
-        # generic-ctor/call arg analyzed under one candidate's hint would
-        # cache the wrong T -- a type the post-selection cache short-circuit
-        # at ``_analyze_record_constructor`` / ``_analyze_generic_function_call``
-        # can't refresh. ``candidate_arg_hints`` returns None for non-matching
+        # generic construction analyzed under one candidate's hint would keep
+        # the wrong T: its slot step does not infer it again.
+        # ``candidate_arg_hints`` returns None for non-matching
         # candidates, so the count below tracks LHS-matchers specifically (a
         # candidate that matches LHS but has all-None per-arg hints still
         # counts -- otherwise a different LHS-matching candidate could win
@@ -5299,131 +5341,40 @@ class CallAnalyzer:
             return
         with self.open_call_args(
                 expr, [*expr.args, *(expr.kwargs or {}).values()],
-                viable[0].name, scored=len(viable) > 1) as scope:
-            self.open_written_literals(scope, expr.args, expr.kwargs, viable)
+                viable[0].name, scored=len(viable) > 1,
+                candidates=viable) as scope:
             yield scope
-
-    @staticmethod
-    def open_written_literals(scope: OpenCallArgs, args: list[TpyExpr],
-                              kwargs: 'dict[str, TpyExpr] | None',
-                              candidates: list[FunctionInfo]) -> None:
-        """Mark the dict and set literals among a scored call's arguments
-        that stay open while the candidates are scored
-        (`ExpressionAnalyzer._scored_arg_scope`): those every candidate
-        receives at a parameter that is neither a view nor names a type
-        parameter. A candidate that reads the literal through a protocol or
-        binds a type parameter from it reads the type its own values give,
-        so there the literal is typed at once, as outside a call."""
-        if not scope.scored:
-            return
-
-        def declared_plainly(node: TpyExpr, index: int | None,
-                             name: str | None) -> bool:
-            for f in candidates:
-                if index is None:
-                    at = next((p for p in f.params if p.name == name), None)
-                elif index < len(f.params):
-                    at = f.params[index]
-                else:
-                    at = f.params[-1] if f.has_variadic else None
-                if at is None:
-                    continue
-                t = unwrap_qualifiers(at.type)
-                if is_protocol_type(t) or contains_type_param(t):
-                    return False
-            return True
-
-        for i, arg in enumerate(args):
-            if (isinstance(arg, (TpyDictLiteral, TpySetLiteral))
-                    and declared_plainly(arg, i, None)):
-                scope.open_literals.append(arg)
-        for name, arg in (kwargs or {}).items():
-            if (isinstance(arg, (TpyDictLiteral, TpySetLiteral))
-                    and declared_plainly(arg, None, name)):
-                scope.open_literals.append(arg)
 
     @contextmanager
     def open_call_args(self, use: TpyExpr | TpyStmt, nodes: list[TpyExpr],
-                       name: str, scored: bool) -> Iterator[OpenCallArgs]:
+                       name: str, scored: bool,
+                       candidates: 'list[FunctionInfo] | None' = None,
+                       ) -> Iterator[OpenCallArgs]:
         """Analyze the call `use` with its argument nodes `nodes` open: a
         container argument whose leaves are not decided yet is scored and
         inferred from as it holds them so far (`PendingNums.adaptive_view`)
         and decided by a parameter only once one is chosen -- the generic
-        callee's resolved one, or with several candidates (`scored`) the
-        winner's (`apply_winner`). A leaf nothing decided by the end of the
-        call is settled then, as an argument to `name`."""
+        callee's resolved one, or with several `candidates` (`scored`) the
+        winner's (`receive_winner_args`). A leaf nothing decided by the end
+        of the call is settled then, as an argument to `name` -- at the
+        call's committed slot (`SemanticContext.slot_step_commits`): a
+        probe's parameter is not the one that decides it."""
         keywords = getattr(use, "kwargs", None)
         scope = OpenCallArgs(nodes, resolved=not scored, scored=scored,
-                             keywords=dict(keywords or {}))
+                             keywords=dict(keywords or {}),
+                             candidates=list(candidates or ()))
         self.ctx.open_call_args.append(scope)
         try:
             yield scope
         finally:
             self.ctx.open_call_args.pop()
-        if self.ctx.trial_depth:
+        if self.ctx.trial_depth or not self.ctx.slot_step_commits():
             return
         open_cells = {c.cid for c in scope.cells if c.settled is None}
         if open_cells:
             self.pend.settle(open_cells, use=use,
                              what=f"an argument to '{name}()'")
             self.pend.resolve_ready()
-
-    def apply_winner(self, scope: OpenCallArgs | None, args: list[TpyExpr],
-                     params: 'list[ParamInfo] | None',
-                     arg_types: list[TpyType], declared: FunctionInfo,
-                     ) -> list[TpyType]:
-        """The winner `declared` (as declared, before any substitution) of
-        the call whose arguments its own `scope` scored open receives them
-        as a call to that one function would: a parameter the call
-        resolves (`call_resolves_param`) decides its argument as a generic
-        call's does (the argument stays open, the coercion decides); any
-        other parameter is a declared slot (`OpenCallArgs.declare`), so
-        each container argument the scoring left undecided there is
-        analyzed again at it (`analyze_arg_at_param`) and the coercion that
-        follows decides it there. `scope` None: the call opened no scope,
-        so there is nothing to apply. `params` None: the caller analyzes
-        every argument at the winner's slots itself (the single-function
-        call path). Returns the argument types the coercion takes."""
-        if scope is None or not scope.scored:
-            return arg_types
-        if (not scope.handed and not scope.awaiting
-                and not any(isinstance(unwrap_qualifiers(t),
-                                       PendingContainerType)
-                            for t in arg_types)):
-            # No container argument was scored open: nothing to receive.
-            return arg_types
-        scope.resolved = any(call_resolves_params(declared))
-        # A dict or set literal scored with its numbers still literals has
-        # no type of its own to keep: the winner's parameter types it,
-        # declared or resolved by the call.
-        written = [r.expr for r in scope.awaiting
-                   if literal_entries(r.expr, r.pending_type())]
-        at_declared = [n for n in scope.nodes
-                       if any(n is w for w in written)
-                       or not self._param_resolved(scope, n, args, declared)]
-        scope.declare(at_declared)
-        if params is None:
-            return arg_types
-        out = list(arg_types)
-        for i, (arg, param) in enumerate(zip(args, params)):
-            if (i < len(out) and scope.declares(arg)
-                    and isinstance(unwrap_qualifiers(out[i]),
-                                   PendingContainerType)):
-                out[i] = self.expr.analyze_arg_at_param(arg, param.type,
-                                                        param.type)
-        return out
-
-    def _provisional_call_type(self, expr: TpyCall,
-                               t: PendingContainerType) -> None:
-        """Record `t`, the type an empty `list()` / `dict()` / `set()` call
-        has until its record resolves, as the call's own -- unless the call
-        is an argument scored against several candidates: the winner's slot
-        analyzes it again, which would read a cached type as an explicit
-        container type (`list[...]()`), and the record that resolves is the
-        one the slot gives it."""
-        scope = self.ctx.call_scope_of_node(expr)
-        if scope is None or not scope.scored:
-            expr.call_type = t
 
     @staticmethod
     def _param_resolved(scope: OpenCallArgs, node: TpyExpr,
@@ -5442,24 +5393,206 @@ class CallAnalyzer:
         return index is not None and call_resolves_param(declared, index)
 
     def receive_winner_args(self, scope: OpenCallArgs | None,
-                            args: list[TpyExpr], arg_types: list[TpyType],
-                            params: 'list[ParamInfo]',
-                            declared: FunctionInfo) -> None:
-        """The winner of an overloaded call takes its arguments `args` as a
-        call to it alone would (`apply_winner`), each checked and coerced
-        to its parameter in place -- the receive step of the overload paths
-        that have no single-candidate checker of their own (a constructor
-        group, the overloaded `raise`, a record's operator dunder)."""
-        arg_types = self.apply_winner(scope, args, params, arg_types,
-                                      declared)
-        for i, (arg, arg_type, (pname, ptype)) in enumerate(
-                zip(args, arg_types, params)):
-            arg_type = self._restore_readonly_arg(arg, arg_type)
-            self.check_own_param(arg, arg_type, pname, ptype)
-            self.mark_pending_arg_context(arg, arg_type, ptype)
+                            args: list[TpyExpr],
+                            arg_types: 'list[TpyType | None] | None',
+                            params: 'list[ParamInfo] | list[tuple[str, TpyType]]',
+                            declared: FunctionInfo | None, *,
+                            call: 'TpyExpr | TpyStmt | None' = None,
+                            declared_types: 'list[TpyType] | None' = None,
+                            fresh_own: str = "keep",
+                            char_literal_init: bool = False,
+                            builtin_form: bool = False,
+                            own_checks: bool = True,
+                            contexts: 'list[str] | None' = None,
+                            inferred_slots: 'Mapping[int, InferredSlot] | None' = None,
+                            ) -> list[TpyType]:
+        """The one receive step every winner and commit runs: each argument
+        of `args` re-enters through the analysis entry rule at its
+        parameter of `params` (closed, it hands back its one analysis; open,
+        its slot step decides it there), then takes the per-argument duties
+        once -- the empty-list protocol pin, the readonly restore, the
+        ownership checks, the pending-literal context -- and is coerced to
+        the parameter in place. `arg_types[i]`, when given, is a type the
+        call's own preparation decided for the argument (a pending leaf, a
+        container receiver's entries), taken instead of a re-entry.
+
+        `scope`, the call's open arguments: a parameter the winner
+        `declared` resolves leaves its argument open (the coercion decides),
+        any other is a declared slot that decides it. `declared`, the
+        callee, also says how it takes every argument: a `@readonly` callee
+        makes each parameter readonly (it cannot be handed a write), and a
+        `@value_ptr_coercion` one takes a value at a `Ptr` parameter by
+        address. `declared_types` are
+        the parameters as the callee spells them (a numeric one passes a
+        pending number open); `call` the call node, the step whose receive
+        this is: at a slot that does not commit it decides types only
+        (`SemanticContext.slot_step_commits`), the per-argument duties
+        writing nothing.
+
+        The mode flags keep the per-path behavior each caller had before
+        the paths shared this step:
+        - `fresh_own` "reject_coro" (plain and varargs functions) /
+          "note_lend" (generic commit) / "keep" (methods, constructors,
+          builtins): a function strips an owned rvalue lent to a borrow
+          parameter, and a bound coroutine handle lent there is refused /
+          recorded as maybe started -- two rules for one shape, kept apart
+          until one is chosen (BUGS.md#coroutine-handle-lend-paths-disagree).
+        - `char_literal_init`: a free function's one-char `str` literal at a
+          `char` parameter initializes it; methods and constructors still
+          refuse it (BUGS.md#char-literal-arg-free-function-only).
+        - `builtin_form`: a builtin's argument is taken bare (no Own / Ref)
+          and coerced only where its type differs, as the builtin overload
+          path always received it. The callee does not say it: a generic
+          builtin taken through the generic commit receives in the
+          function form.
+        - `own_checks` False for a `*args` element: the pack copies it
+          whatever its parameter, so it takes no ownership check
+          (BUGS.md#vararg-pack-copies-own-element).
+        `inferred_slots` maps an argument position to the parameter typed by
+        a type argument an earlier call inferred (`coerce_expr`'s
+        `inferred_slot`).
+        Returns the argument types received."""
+        with self.expr.step_scope(call):
+            probing = not self.ctx.slot_step_commits()
+        # A callee Phase 2 inferred const may still write its argument
+        # (inference reads `self` only), so only a declared one waives
+        # the readonly restore.
+        readonly = declared is not None and declared_readonly(declared)
+        value_ptr = declared is not None and declared.value_ptr_coercion
+        if scope is not None and scope.scored and declared is not None:
+            scope.resolved = any(call_resolves_params(declared))
+        out: list[TpyType] = []
+        for i, (arg, param) in enumerate(zip(list(args), params)):
+            given = (arg_types[i] if arg_types is not None
+                     and i < len(arg_types) else None)
+            if given is None:
+                arg = self._own_receive_peeled(arg)
+                args[i] = arg
+            at_declared = (given is None and scope is not None
+                           and scope.scored and declared is not None
+                           and not self._param_resolved(scope, arg, args,
+                                                        declared))
+            saved = scope.receiving if scope is not None else None
+            if at_declared:
+                scope.release(arg)
+                scope.receiving = arg
+            try:
+                with self.expr.step_scope(call), \
+                        self.ctx.probe_slot_scope(probing):
+                    out.append(self._receive_arg(
+                        i, args, given, param, call=call,
+                        declared_types=declared_types, readonly=readonly,
+                        fresh_own=fresh_own,
+                        char_literal_init=char_literal_init,
+                        value_ptr=value_ptr, builtin_form=builtin_form,
+                        own_checks=own_checks, contexts=contexts,
+                        inferred_slot=(inferred_slots.get(i)
+                                       if inferred_slots is not None
+                                       else None)))
+            finally:
+                if at_declared:
+                    scope.receiving = saved
+        return out
+
+    def _receive_arg(self, i: int, args: list[TpyExpr],
+                     given: TpyType | None,
+                     param: 'ParamInfo | tuple[str, TpyType]', *,
+                     call: 'TpyExpr | TpyStmt | None',
+                     declared_types: 'list[TpyType] | None', readonly: bool,
+                     fresh_own: str, char_literal_init: bool,
+                     value_ptr: bool, builtin_form: bool, own_checks: bool,
+                     contexts: 'list[str] | None',
+                     inferred_slot: 'InferredSlot | None' = None) -> TpyType:
+        """`receive_winner_args` for argument `args[i]` at `param`, under
+        the receive's slot: its duties write only where it commits."""
+        arg = args[i]
+        pname, ptype = param
+        context = (contexts[i] if contexts is not None
+                   else f"argument '{pname}'")
+        vpc = value_ptr and isinstance(ptype, PtrType)
+        check_ptype = ptype.pointee if vpc else ptype
+        if given is not None:
+            arg_type = given
+        else:
+            decl = (declared_types[i] if declared_types is not None
+                    and i < len(declared_types) else ptype)
+            arg_type = self.expr.analyze_arg_at_param(arg, check_ptype, decl)
+        if builtin_form:
+            arg_type = unwrap_own(unwrap_ref_type(arg_type))
+        if own_checks:
+            self._maybe_coerce_empty_list_to_protocol(arg_type, check_ptype)
+        arg_type = self._restore_readonly_arg(arg, arg_type, readonly)
+        if (fresh_own != "keep" and isinstance(arg_type, OwnType)
+                and not isinstance(check_ptype, OwnType)):
+            # A fresh owned rvalue lent to a borrow parameter: codegen
+            # materializes a named temporary that outlives the call.
+            if fresh_own == "reject_coro":
+                self._reject_coro_handle_borrow(arg, arg_type, pname)
+            else:
+                self._note_coro_lend(arg, arg_type, check_ptype)
+            arg_type = arg_type.wrapped
+        if not own_checks and isinstance(arg_type, OwnType):
+            arg_type = arg_type.wrapped
+        if own_checks:
+            self.check_own_param(arg, arg_type, pname, check_ptype)
+        skip_coerce = ((char_literal_init
+                        and is_char_literal_init(check_ptype, arg_type, arg))
+                       or (builtin_form and arg_type == check_ptype))
+        if not skip_coerce:
             args[i] = self.compat.coerce_expr(
-                arg, arg_type, ptype, f"argument '{pname}'",
-                coercion_ctx=CoercionContext.ARG)
+                arg, arg_type, check_ptype, context,
+                coercion_ctx=CoercionContext.ARG,
+                inferred_slot=inferred_slot)
+        if vpc:
+            args[i] = self._address_of_arg(args[i], arg, ptype, pname, call)
+        if own_checks:
+            self.mark_pending_arg_context(arg, arg_type, ptype)
+        return arg_type
+
+    def args_scope(self, args: list[TpyExpr]) -> OpenCallArgs | None:
+        """The open scope of the call whose arguments are `args`, if its
+        candidates were scored or its type parameters inferred."""
+        peeled = [self._own_receive_peeled(a) for a in args]
+        for scope in reversed(self.ctx.open_call_args):
+            if any(n is a for n in scope.nodes for a in peeled):
+                return scope
+        return None
+
+    def _own_receive_peeled(self, arg: TpyExpr) -> TpyExpr:
+        """Argument `arg` without the coercion an earlier receive of it
+        placed: a call met again at another slot receives the analyzed
+        argument anew, replacing that coercion."""
+        while (isinstance(arg, TpyCoerce)
+               and arg.context_kind == CoercionContext.ARG
+               and arg.expr in self.ctx.analysis_records):
+            arg = arg.expr
+        return arg
+
+    def _address_of_arg(self, source: TpyExpr, arg: TpyExpr,
+                        ptype: PtrType, pname: str,
+                        call: 'TpyExpr | TpyStmt | None') -> TpyExpr:
+        """`@value_ptr_coercion`: the value `source` passed by address at
+        `Ptr` parameter `pname`."""
+        if not self.compat.is_mutable_lvalue(source):
+            raise self.ctx.error(
+                f"argument '{pname}' must be a variable, attribute, "
+                f"or container element (not a temporary or expression)",
+                call if call is not None else arg)
+        if not self.ctx.slot_step_commits():
+            return source
+        self.compat._mark_addr_taken(source)
+        inner_type = self.ctx.get_expr_type(source)
+        vpc_node = TpyCoerce(
+            expr=source,
+            actual_type=inner_type,
+            expected_type=ptype,
+            coercion=VALUE_TO_PTR,
+            context_kind=CoercionContext.ARG,
+            context_msg=f"argument '{pname}'",
+            loc=arg.loc,
+        )
+        self.ctx.set_expr_type(vpc_node, ptype)
+        return vpc_node
 
     def _analyze_builtin_function_overloads(self, expr: TpyCall, overloads: list[FunctionInfo]) -> TpyType:
         """Type-check a call to a builtin function using unified FunctionInfo overloads.
@@ -5509,33 +5642,31 @@ class CallAnalyzer:
         matched = result.matched
 
         if matched is not None:
-            arg_types = [unwrap_own(unwrap_ref_type(t)) for t in self.apply_winner(
-                scope, expr.args, matched.params, arg_types, result.declared)]
             expr.resolved_function_info = matched
             self._validate_lvalue_params(expr)
             self._check_error_return_handled(expr, matched)
-            self._record_mutation_call_edges(expr)
+            if self.ctx.slot_step_commits():
+                self._record_mutation_call_edges(expr)
             if result.matched_origin is not None:
                 self.check_own_callback_feeds(
-                    expr, result.matched_origin[0].params, expr.args, arg_types)
-            for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
-                self._maybe_coerce_empty_list_to_protocol(arg_t, ptype)
-                self.check_own_param(arg, arg_t, pname, ptype)
-                self.mark_pending_arg_context(arg, arg_t, ptype)
-                if arg_t != ptype:
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_t, ptype,
-                                                            f"argument '{pname}'",
-                                                            coercion_ctx=CoercionContext.ARG)
+                    expr, result.matched_origin[0].params, expr.args,
+                    [unwrap_own(unwrap_ref_type(t)) for t in arg_types])
+            self.receive_winner_args(scope, expr.args, None, matched.params,
+                                     result.declared, call=expr,
+                                     builtin_form=True)
             self._mark_key_lambda(key_arg)
             if result.matched_origin is not None:
                 overload, type_subst = result.matched_origin
+                self.expr.set_step_route(expr, GenericCallRoute(builtin=True))
                 expr.inferred_type_args = tuple(
                     self._resolve_inferred_type_arg(type_subst[p])
                     for p in overload.type_params)
                 expr.representational_subst_params = (
                     self.type_ops.compute_representational_subst_params(
                         overload, expr.inferred_type_args))
-                self.ctx.record_own_copy_instantiation(overload.root, type_subst)
+                if self.ctx.slot_step_commits():
+                    self.ctx.record_own_copy_instantiation(overload.root,
+                                                           type_subst)
                 ret = self.type_ops.substitute_type_params(
                     overload.return_type,
                     dict(zip(overload.type_params, expr.inferred_type_args)))
@@ -5749,10 +5880,8 @@ class CallAnalyzer:
                 except OverloadAmbiguityError as e:
                     raise self._ambiguous_overload_error(expr, expr.func_name, e)
                 if result.declared is not None:
-                    # The single-function call analyzes every argument at
+                    # The single-function call receives every argument at
                     # the winner's slots.
-                    self.apply_winner(scope, expr.args, None,
-                                      result.arg_types, result.declared)
                     return self._analyze_single_function_call(
                         expr, result.declared)
 
@@ -5794,15 +5923,11 @@ class CallAnalyzer:
                     except OverloadAmbiguityError as e:
                         raise self._ambiguous_overload_error(expr, expr.func_name, e)
                     if matched is not None:
-                        self.apply_winner(scope, expr.args, None, arg_types,
-                                          matched)
                         return self._analyze_single_function_call(expr, matched)
                     for func in func_infos:
-                        if func.is_generic():
-                            try:
-                                return self._analyze_single_function_call(expr, func)
-                            except SemanticError:
-                                continue
+                        if func.is_generic() and self._validates(expr, func):
+                            self.expr._peel_step_coercions(expr)
+                            return self._analyze_single_function_call(expr, func)
                 elif result.first_contextual_error is not None:
                     # Surface the most informative per-candidate rejection.
                     raise result.first_contextual_error
@@ -5821,6 +5946,21 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"No matching overload for {expr.func_name}({arg_type_strs})", expr)
         return self._analyze_single_function_call(expr, func_infos[0])
+
+    def _validates(self, expr: TpyCall, func: FunctionInfo) -> bool:
+        """Whether generic candidate `func` takes call `expr`: checked at
+        an overload probe's slot, which decides types only, inside a trial
+        that rolls back what the check analyzed -- only the candidate that
+        passes is committed."""
+        try:
+            with self.ctx.trial_scope(), \
+                    self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                self._analyze_single_function_call(expr, func)
+        except SemanticError:
+            return False
+        finally:
+            self.expr._peel_step_coercions(expr)
+        return True
 
     def _marker_bound_note(
             self, type_arg: TpyType, bound: TpyType,
@@ -5969,9 +6109,10 @@ class CallAnalyzer:
         else:
             self._typecheck_call_args(expr, func)
 
-        self._check_borrow_arg_conflicts(expr)
-        self._check_loop_var_arg_mutation(expr)
-        self._record_mutation_call_edges(expr)
+        if self.ctx.slot_step_commits():
+            self._check_borrow_arg_conflicts(expr)
+            self._check_loop_var_arg_mutation(expr)
+            self._record_mutation_call_edges(expr)
         self._check_error_return_handled(expr, func)
         return func.return_type
 
@@ -5987,9 +6128,11 @@ class CallAnalyzer:
         `Iterable[T]`. Kept out of `type_conforms_to_protocol` to keep that
         check pure -- writing the coerced element type during overload probes
         would cement the first-probed overload's element type even if that
-        overload is later rejected.
+        overload is later rejected -- and so does a receive that does not
+        commit (`SemanticContext.slot_step_commits`).
         """
-        if not (isinstance(arg_type, PendingListType)
+        if not (self.ctx.slot_step_commits()
+                and isinstance(arg_type, PendingListType)
                 and isinstance(arg_type.element_type, UnknownElementType)):
             return
         inner = unwrap_readonly(unwrap_ref_type(ptype))
@@ -6012,6 +6155,7 @@ class CallAnalyzer:
             return
         info = self.ctx.list_literal(arg_type.literal_id)
         if info is not None and info.coerced_element_type is None:
+            self.ctx.assert_slot_effect("an empty list's protocol element")
             info.coerced_element_type = elem_type
 
     def _typecheck_call_args(self, expr: TpyCall, func: FunctionInfo) -> None:
@@ -6021,47 +6165,24 @@ class CallAnalyzer:
             if isinstance(arg, TpyStarUnpack):
                 raise self.ctx.error(
                     f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
-        for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-            arg_type = self.expr.analyze_arg_at_param(arg, ptype, ptype)
-            self._maybe_coerce_empty_list_to_protocol(arg_type, ptype)
-            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
-
-            # A fresh Own[...] rvalue lent to a borrow param is safe: codegen
-            # materializes a named temp that outlives the call. Strip the Own
-            # and let coercion handle the rest (create-lend-drop is intentional;
-            # ownership-transfer params declare Own[T] and skip this).
-            if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
-                self._reject_coro_handle_borrow(arg, arg_type, pname)
-                arg_type = arg_type.wrapped
-
-            self.check_own_param(arg, arg_type, pname, ptype)
-
-            if not is_char_literal_init(ptype, arg_type, arg):
-                coerced_arg = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                       coercion_ctx=CoercionContext.ARG)
-                expr.args[i] = coerced_arg
-
-            self.mark_pending_arg_context(arg, arg_type, ptype)
+        self.receive_winner_args(
+            self.args_scope(expr.args), expr.args, None, func.params, func,
+            call=expr, fresh_own="reject_coro", char_literal_init=True)
 
     def _typecheck_and_coerce_arg(
-        self, arg: TpyExpr, pname: str, ptype: TpyType, func_is_readonly: bool,
+        self, arg: TpyExpr, pname: str, ptype: TpyType,
+        func: FunctionInfo | None,
     ) -> TpyExpr:
-        """Per-arg type check and coercion shared by the fixed and kwonly
-        branches of `_analyze_and_pack_varargs` and by callable-value calls.
-        Returns the (possibly rewrapped) expression to store back into the
-        args list."""
-        arg_type = self.expr.analyze_arg_at_param(arg, ptype, ptype)
-        arg_type = self._restore_readonly_arg(arg, arg_type, func_is_readonly)
-        if isinstance(arg_type, OwnType) and not isinstance(ptype, OwnType):
-            self._reject_coro_handle_borrow(arg, arg_type, pname)
-            arg_type = arg_type.wrapped
-        self.check_own_param(arg, arg_type, pname, ptype)
-        self.mark_pending_arg_context(arg, arg_type, ptype)
-        if is_char_literal_init(ptype, arg_type, arg):
-            return arg
-        return self.compat.coerce_expr(
-            arg, arg_type, ptype, f"argument '{pname}'",
-            coercion_ctx=CoercionContext.ARG)
+        """One argument received at parameter `pname` of `func`
+        (`receive_winner_args`) for the fixed and keyword-only parameters of
+        `_analyze_and_pack_varargs` and for callable-value calls (no
+        `func`). Returns the (possibly rewrapped) expression to store back
+        into the args list."""
+        args = [arg]
+        self.receive_winner_args(None, args, None, [(pname, ptype)], func,
+                                 fresh_own="reject_coro",
+                                 char_literal_init=True)
+        return args[0]
 
     def _analyze_and_pack_varargs(self, expr: TpyCall | TpyMethodCall, func: FunctionInfo) -> None:
         """Analyze call with variadic params: type-check fixed args, pack trailing args."""
@@ -6101,9 +6222,10 @@ class CallAnalyzer:
 
         # Type-check fixed positional args
         for i, ((pname, ptype), arg) in enumerate(zip(func.params[:va_idx], fixed_args)):
-            fixed_args[i] = self._typecheck_and_coerce_arg(arg, pname, ptype, func.is_readonly)
+            fixed_args[i] = self._typecheck_and_coerce_arg(arg, pname, ptype, func)
 
         # Type-check each variadic arg against element type T
+        packed: list[int] = []
         for i, arg in enumerate(vararg_exprs):
             if isinstance(arg, TpyStarUnpack):
                 # *expr unpacking: validate + analyze the inner container
@@ -6150,20 +6272,19 @@ class CallAnalyzer:
                         f"that *unpacking cannot apply (call to '{func.name}')",
                         arg)
                 continue
-            arg_type = self.expr.analyze_at_slot(arg, elem_type,
-                                                 CoercionContext.ARG)
-            arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
-            if isinstance(arg_type, OwnType):
-                arg_type = arg_type.wrapped
-            coerced_arg = self.compat.coerce_expr(
-                arg, arg_type, elem_type, f"*args element {i}",
-                coercion_ctx=CoercionContext.ARG)
-            vararg_exprs[i] = coerced_arg
+            packed.append(i)
+        elements = [vararg_exprs[i] for i in packed]
+        self.receive_winner_args(
+            None, elements, None, [(va_param.name, elem_type)] * len(packed),
+            func, call=expr, own_checks=False,
+            contexts=[f"*args element {i}" for i in packed])
+        for i, element in zip(packed, elements):
+            vararg_exprs[i] = element
 
         # Type-check keyword-only args (resolve_kwargs has filled all slots)
         kwonly_params = [p for p in func.params if p.keyword_only]
         for i, (p, arg) in enumerate(zip(kwonly_params, kwonly_args)):
-            kwonly_args[i] = self._typecheck_and_coerce_arg(arg, p.name, p.type, func.is_readonly)
+            kwonly_args[i] = self._typecheck_and_coerce_arg(arg, p.name, p.type, func)
 
         # Build pack node and reconstruct args list:
         # [fixed_args..., vararg_pack, kwonly_args...]
@@ -6201,12 +6322,6 @@ class CallAnalyzer:
 
     def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a call to a generic function."""
-        # Skip re-analysis: when a call appears as an arg to an outer call,
-        # analyze_expr is called again. Args are already wrapped in coercions
-        # from the first analysis, so re-processing would corrupt them.
-        cached = self.ctx.get_expr_type(expr)
-        if cached is not None:
-            return cached
         with self._adaptive_list_args(expr, [func]):
             return self._generic_function_call(expr, func)
 
@@ -6289,6 +6404,7 @@ class CallAnalyzer:
 
         # type_subst keeps literal-marked types for per-arg coercion below;
         # codegen needs them resolved so they don't reach C++ as template args.
+        self.expr.set_step_route(expr, GenericCallRoute(builtin=False))
         expr.inferred_type_args = tuple(
             self._resolve_inferred_type_arg(type_subst[p]) for p in func.type_params
         )
@@ -6296,7 +6412,6 @@ class CallAnalyzer:
         expr.representational_subst_params = (
             self.type_ops.compute_representational_subst_params(
                 func, expr.inferred_type_args))
-        self.ctx.record_own_copy_instantiation(func.root, type_subst)
 
         # Validate defaults for generic params not covered by explicit args
         self._validate_generic_defaults(expr, func, type_subst)
@@ -6333,53 +6448,15 @@ class CallAnalyzer:
             # parameters, which are slots and never literals, so it takes the
             # finalized bindings; every other parameter keeps the markers its
             # literal argument coerces against.
-            for i, ((pname, ptype), arg) in enumerate(zip(func.params, expr.args)):
-                resolved_ptype = self.type_ops.substitute_param_type(
-                    ptype, final_subst if _is_fn_slot_param(ptype) else type_subst)
-
-                # @value_ptr_coercion: Ptr[T] params accept T values via address-of coercion.
-                vpc_active = func.value_ptr_coercion and isinstance(resolved_ptype, PtrType)
-                check_ptype = resolved_ptype.pointee if vpc_active else resolved_ptype
-
-                arg_type = self.expr.analyze_at_slot(arg, check_ptype,
-                                                     CoercionContext.ARG)
-                self._maybe_coerce_empty_list_to_protocol(arg_type, check_ptype)
-                arg_type = self._restore_readonly_arg(arg, arg_type, func.is_readonly)
-
-                # See the non-generic call site: a fresh Own[...] rvalue lent to
-                # a borrow param is safe via codegen's named-temp materialization.
-                if isinstance(arg_type, OwnType) and not isinstance(check_ptype, OwnType):
-                    self._note_coro_lend(arg, arg_type, check_ptype)
-                    arg_type = arg_type.wrapped
-
-                self.check_own_param(arg, arg_type, pname, check_ptype)
-
-                if not is_char_literal_init(check_ptype, arg_type, arg):
-                    coerced_arg = self.compat.coerce_expr(arg, arg_type, check_ptype, f"argument '{pname}'",
-                                                           coercion_ctx=CoercionContext.ARG)
-                    expr.args[i] = coerced_arg
-
-                if vpc_active:
-                    source = expr.args[i]
-                    if not self.compat.is_mutable_lvalue(source):
-                        raise self.ctx.error(
-                            f"argument '{pname}' must be a variable, attribute, "
-                            f"or container element (not a temporary or expression)", expr)
-                    self.compat._mark_addr_taken(source)
-                    inner_type = self.ctx.get_expr_type(source)
-                    vpc_node = TpyCoerce(
-                        expr=source,
-                        actual_type=inner_type,
-                        expected_type=resolved_ptype,
-                        coercion=VALUE_TO_PTR,
-                        context_kind=CoercionContext.ARG,
-                        context_msg=f"argument '{pname}'",
-                        loc=arg.loc,
-                    )
-                    self.ctx.set_expr_type(vpc_node, resolved_ptype)
-                    expr.args[i] = vpc_node
-
-                self.mark_pending_arg_context(arg, arg_type, resolved_ptype)
+            resolved_params = [
+                (p.name, self.type_ops.substitute_param_type(
+                    p.type, final_subst if _is_fn_slot_param(p.type)
+                    else type_subst))
+                for p in func.params]
+            self.receive_winner_args(
+                self.args_scope(expr.args), expr.args, None, resolved_params,
+                func, call=expr, declared_types=[p.type for p in func.params],
+                fresh_own="note_lend", char_literal_init=True)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(
@@ -6402,9 +6479,13 @@ class CallAnalyzer:
                     expr,
                 )
 
-        self._check_borrow_arg_conflicts(expr)
-        self._check_loop_var_arg_mutation(expr)
-        self._record_mutation_call_edges(expr)
+        if self.ctx.slot_step_commits():
+            # After the arguments were received: a candidate the @dispatch
+            # fallback refuses leaves no instantiation behind.
+            self.ctx.record_own_copy_instantiation(func.root, type_subst)
+            self._check_borrow_arg_conflicts(expr)
+            self._check_loop_var_arg_mutation(expr)
+            self._record_mutation_call_edges(expr)
         self._check_error_return_handled(expr, func)
         return resolved_return
 
@@ -6458,7 +6539,8 @@ class CallAnalyzer:
             return None
         with self.open_call_args(expr, list(expr.args), record.name,
                                  scored=True) as scope:
-            arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
+            with self.ctx.probe_slot_scope(True):
+                arg_types = [self.expr.analyze_expr(arg) for arg in expr.args]
             try:
                 winner = resolve_overload(
                     overloads, arg_types,
@@ -6475,8 +6557,8 @@ class CallAnalyzer:
                                       for t in arg_types)
                 raise self.ctx.error(
                     f"No matching overload for '{record.name}({types_str})'", expr)
-            self.receive_winner_args(scope, expr.args, arg_types,
-                                     winner.params, winner)
+            self.receive_winner_args(scope, expr.args, None, winner.params,
+                                     winner, call=expr)
         return winner
 
     def _attach_ctor_overload_info(
@@ -6508,10 +6590,6 @@ class CallAnalyzer:
         # through the same INTO_ANY path used for annotated targets.
         if record.qualified_name() == "typing.Any":
             return self._analyze_any_construct(expr)
-        # Skip re-analysis for already-analyzed synthetic constructor calls
-        cached = self.ctx.get_expr_type(expr)
-        if cached is not None:
-            return cached
         # Normalize expr.call_type to carry `_module_qname` so that the result
         # type flowing back to the caller is TypeDef-resolvable (Post-Phase-D
         # invariant #1). Parser emits bare NominalType("Dog") for `Dog()`.
@@ -6587,16 +6665,11 @@ class CallAnalyzer:
                             f"got {len(expr.call_type.type_args)}",
                             expr
                         )
-                    # Validate type parameter bounds
-                    for param_name, type_arg in zip(record.type_params, expr.call_type.type_args):
-                        if param_name in record.type_param_bounds:
-                            bound = record.type_param_bounds[param_name]
-                            if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                                raise self.ctx.error(
-                                    f"Type argument '{type_arg}' does not satisfy bound '{bound}' "
-                                    f"for type parameter '{param_name}' of '{record.name}'",
-                                    expr
-                                )
+                    bound_error = self.construction_bound_error(
+                        record, record.name,
+                        dict(zip(record.type_params, expr.call_type.type_args)))
+                    if bound_error is not None:
+                        raise self.ctx.error(bound_error, expr)
         if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
@@ -6614,14 +6687,13 @@ class CallAnalyzer:
                         arity_error_msg(f"{record.name}()", min_args, max_args, len(expr.args)),
                         expr
                     )
-                for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                    resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst) if type_subst else ptype
-                    arg_type = self.expr.analyze_arg_at_param(arg, resolved_ptype, ptype)
-                    arg_type = self._restore_readonly_arg(arg, arg_type)
-                    self.check_own_param(arg, arg_type, pname, resolved_ptype)
-                    self.mark_pending_arg_context(arg, arg_type, resolved_ptype)
-                    expr.args[i] = self.compat.coerce_expr(arg, arg_type, resolved_ptype, f"argument '{pname}'",
-                                                           coercion_ctx=CoercionContext.ARG)
+                self.receive_winner_args(
+                    None, expr.args, None,
+                    [(pname, self.type_ops.substitute_param_type(ptype, type_subst)
+                      if type_subst else ptype)
+                     for pname, ptype, _ in record.init_params],
+                    None, call=expr,
+                    declared_types=[ptype for _, ptype, _ in record.init_params])
             elif expr.args:
                 raise self.ctx.error(
                     f"'{record.name}' has no __init__ and cannot be constructed with arguments",
@@ -6633,7 +6705,6 @@ class CallAnalyzer:
         # Generic record without explicit type args - try type inference
         if record.is_generic():
             # Validate _ wildcard type args if present
-            wildcard_type_args: tuple[TpyType | None, ...] | None = None
             if expr.type_args and None in expr.type_args:
                 if len(expr.type_args) != len(record.type_params):
                     raise self.ctx.error(
@@ -6658,7 +6729,6 @@ class CallAnalyzer:
                         self.type_ops.validate_type(
                             type_arg, allow_type_param_ref=in_generic,
                             loc=expr.loc, allow_forward_ref=False)
-                wildcard_type_args = expr.type_args
             if record.has_init:
                 # Arity check up-front so the diagnostic matches what the
                 # function-call path emits (`expects N got M`) instead of
@@ -6671,117 +6741,12 @@ class CallAnalyzer:
                         arity_error_msg(f"{record.name}()", min_args, max_args, len(expr.args)),
                         expr
                     )
-
-                # Seed type-param bindings from the LHS hint vs the record
-                # pattern so nested generic-constructor chains see a
-                # contextual hint on their first analysis pass -- symmetric
-                # to the function/method-call seeding in
-                # `_analyze_generic_function_call`. Wildcard explicit type
-                # args overlay the seed at their positions; concrete explicit
-                # type args take priority over both.
-                seed = self.type_ops.seed_subst_from_record_pattern(
-                    record, self.expr.slot_hint_for(expr),
-                ).with_explicit(record.type_params, wildcard_type_args)
-
-                # The arguments the type parameters are inferred from stay
-                # open until the resolved parameters decide them.
-                with self.open_call_args(expr, list(expr.args), record.name,
-                                         scored=False):
-                    arg_types: list[TpyType] = []
-                    for i, arg in enumerate(expr.args):
-                        hint: SlotHint | None = None
-                        if i < len(record.init_params):
-                            _, ptype, _ = record.init_params[i]
-                            hint = seed.arg_hint(unwrap_ref_type(ptype))
-                        arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
-
-                    inferred = self.type_ops.infer_type_params_for_record(
-                        record, arg_types, expected_type=self.expr.slot_hint_for(expr),
-                        explicit_type_args=wildcard_type_args,
-                    )
-                    if inferred:
-                        for k, v in list(inferred.items()):
-                            inferred[k] = self._resolve_inferred_type_arg(v)
-                        # Validate type parameter bounds
-                        for param_name, type_arg in inferred.items():
-                            if param_name in record.type_param_bounds:
-                                bound = record.type_param_bounds[param_name]
-                                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                                    raise self.ctx.error(
-                                        f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
-                                        f"for type parameter '{param_name}' of '{record.name}'",
-                                        expr
-                                    )
-                        type_args = tuple(inferred[p] for p in record.type_params)
-                        # Use expr.func (local name) not record.name (original) for alias support
-                        inferred_type = NominalType(self._ctor_type_name(expr, record), type_args,
-                                                    _module_qname=record.qualified_name())
-                        expr.call_type = inferred_type
-                        # Coerce arguments with substitution
-                        type_subst = inferred
-                        for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                            resolved_ptype = self.type_ops.substitute_param_type(ptype, type_subst)
-                            at = self._restore_readonly_arg(arg, arg_types[i])
-                            self.check_own_param(arg, at, pname, resolved_ptype)
-                            self.mark_pending_arg_context(arg, at, resolved_ptype)
-                            expr.args[i] = self.compat.coerce_expr(
-                                arg, at, resolved_ptype,
-                                f"argument '{pname}'", coercion_ctx=CoercionContext.ARG
-                            )
-                        self._set_record_constructor_info(expr, record, inferred_type, type_subst)
-                        return inferred_type
-            else:
-                if expr.args:
-                    raise self.ctx.error(
-                        f"'{record.name}' has no __init__; "
-                        f"use @dataclass or define __init__ to accept constructor arguments",
-                        expr)
-                # No __init__ -- try contextual inference only
-                result_hint = self.expr.slot_hint_for(expr)
-                if result_hint is not None or wildcard_type_args is not None:
-                    inferred: dict[str, TpyType] = {}
-                    if wildcard_type_args:
-                        for tp, arg in zip(record.type_params, wildcard_type_args):
-                            if arg is not None:
-                                inferred[tp] = arg
-                    # Route LHS-hint matching through the shared helper so
-                    # the no-__init__ branch uses the same qualifier-strip
-                    # (Own/Readonly/Ref via unwrap_qualifiers) and useful-
-                    # binding filter as the has_init=True seed path.
-                    # Explicit wildcard args (already in `inferred`) take
-                    # precedence over the LHS-derived seed at their slots.
-                    seeded = self.type_ops.seed_subst_from_record_pattern(
-                        record, result_hint
-                    ).subst
-                    for tp, val in seeded.items():
-                        inferred.setdefault(tp, val)
-                    if all(tp in inferred for tp in record.type_params):
-                        # Validate type parameter bounds
-                        for param_name, type_arg in inferred.items():
-                            if param_name in record.type_param_bounds:
-                                bound = record.type_param_bounds[param_name]
-                                if not self.protocols.type_conforms_to_protocol(type_arg, bound):
-                                    raise self.ctx.error(
-                                        f"Inferred type '{type_arg}' does not satisfy bound '{bound}' "
-                                        f"for type parameter '{param_name}' of '{record.name}'",
-                                        expr
-                                    )
-                        type_args = tuple(inferred[p] for p in record.type_params)
-                        inferred_type = NominalType(self._ctor_type_name(expr, record), type_args,
-                                                    _module_qname=record.qualified_name())
-                        expr.call_type = inferred_type
-                        self._set_record_constructor_info(expr, record, inferred_type, inferred)
-                        for arg in expr.args:
-                            self.expr.analyze_expr(arg)
-                        return inferred_type
-            # Inference failed -- try deferred resolution (Phase 7a)
-            if self._can_defer_generic_inference(record, expr):
-                return self._create_pending_generic_instance(record, expr)
-            raise self.ctx.error(
-                f"Cannot infer type arguments for '{record.name}'. "
-                f"Please specify explicitly: {record.name}[{', '.join(record.type_params)}](...)",
-                expr
-            )
+            elif expr.args:
+                raise self.ctx.error(
+                    f"'{record.name}' has no __init__; "
+                    f"use @dataclass or define __init__ to accept constructor arguments",
+                    expr)
+            return self.infer_generic_construction(expr, record)
         # Non-generic record
         winner = self._resolve_ctor_overload_group(expr, record)
         if winner is not None:
@@ -6798,13 +6763,10 @@ class CallAnalyzer:
                     arity_error_msg(f"{record.name}()", min_args, max_args, len(expr.args)),
                     expr
                 )
-            for i, (arg, (pname, ptype, _)) in enumerate(zip(expr.args, record.init_params)):
-                arg_type = self.expr.analyze_arg_at_param(arg, ptype, ptype)
-                arg_type = self._restore_readonly_arg(arg, arg_type)
-                self.check_own_param(arg, arg_type, pname, ptype)
-                self.mark_pending_arg_context(arg, arg_type, ptype)
-                expr.args[i] = self.compat.coerce_expr(arg, arg_type, ptype, f"argument '{pname}'",
-                                                        coercion_ctx=CoercionContext.ARG)
+            self.receive_winner_args(
+                None, expr.args, None,
+                [(pname, ptype) for pname, ptype, _ in record.init_params],
+                None, call=expr)
         elif expr.args:
             raise self.ctx.error(
                 f"'{record.name}' has no __init__; "
@@ -6820,6 +6782,166 @@ class CallAnalyzer:
         result_type = NominalType(record.name, _module_qname=record.qualified_name())
         self._set_record_constructor_info(expr, record, result_type)
         return result_type
+
+    def infer_generic_construction(self, expr: TpyCall,
+                                   record: RecordInfo) -> TpyType:
+        """The construction `expr` of generic `record` whose type arguments
+        its arguments and its slot give: inferred, then completed
+        (`complete_construction`), or left pending for its uses to give
+        them. Its slot step runs this again (`GenericCtorRoute`), each
+        argument met through its record."""
+        self.expr.set_step_route(expr, GenericCtorRoute(record))
+        wildcard_type_args = (expr.type_args
+                              if expr.type_args and None in expr.type_args
+                              else None)
+        if record.has_init:
+            # Seed type-param bindings from the LHS hint vs the record
+            # pattern so nested generic-constructor chains see a
+            # contextual hint on their first analysis pass -- symmetric
+            # to the function/method-call seeding in
+            # `_analyze_generic_function_call`. Wildcard explicit type
+            # args overlay the seed at their positions; concrete explicit
+            # type args take priority over both.
+            seed = self.type_ops.seed_subst_from_record_pattern(
+                record, self.expr.slot_hint_for(expr),
+            ).with_explicit(record.type_params, wildcard_type_args)
+
+            # The arguments the type parameters are inferred from stay
+            # open until the resolved parameters decide them.
+            with self.open_call_args(expr, list(expr.args), record.name,
+                                     scored=False):
+                arg_types: list[TpyType] = []
+                with self.ctx.probe_slot_scope(True):
+                    for i, arg in enumerate(expr.args):
+                        hint: SlotHint | None = None
+                        if i < len(record.init_params):
+                            _, ptype, _ = record.init_params[i]
+                            hint = seed.arg_hint(unwrap_ref_type(ptype))
+                        arg_types.append(
+                            self.expr.analyze_expr_with_hint(arg, hint))
+
+                inferred = self.type_ops.infer_type_params_for_record(
+                    record, arg_types, expected_type=self.expr.slot_hint_for(expr),
+                    explicit_type_args=wildcard_type_args,
+                )
+                if inferred:
+                    for k, v in list(inferred.items()):
+                        inferred[k] = self._resolve_inferred_type_arg(v)
+                    return self.complete_construction(expr, record, inferred,
+                                                      receive=True)
+        else:
+            # No __init__ -- try contextual inference only
+            result_hint = self.expr.slot_hint_for(expr)
+            if result_hint is not None or wildcard_type_args is not None:
+                inferred: dict[str, TpyType] = {}
+                if wildcard_type_args:
+                    for tp, arg in zip(record.type_params, wildcard_type_args):
+                        if arg is not None:
+                            inferred[tp] = arg
+                # Route LHS-hint matching through the shared helper so
+                # the no-__init__ branch uses the same qualifier-strip
+                # (Own/Readonly/Ref via unwrap_qualifiers) and useful-
+                # binding filter as the has_init=True seed path.
+                # Explicit wildcard args (already in `inferred`) take
+                # precedence over the LHS-derived seed at their slots.
+                seeded = self.type_ops.seed_subst_from_record_pattern(
+                    record, result_hint
+                ).subst
+                for tp, val in seeded.items():
+                    inferred.setdefault(tp, val)
+                if all(tp in inferred for tp in record.type_params):
+                    return self.complete_construction(expr, record, inferred,
+                                                      receive=False)
+        pending = self._pending_instance_of(expr)
+        if pending is not None:
+            # A slot that gives no more than an earlier one did.
+            return PendingGenericInstanceType(
+                record_name=pending.record_name,
+                instance_id=pending.instance_id)
+        # Inference failed -- try deferred resolution (Phase 7a)
+        if self._can_defer_generic_inference(record, expr):
+            return self._create_pending_generic_instance(record, expr)
+        raise self.ctx.error(
+            f"Cannot infer type arguments for '{record.name}'. "
+            f"Please specify explicitly: {record.name}[{', '.join(record.type_params)}](...)",
+            expr
+        )
+
+    def construction_bound_error(self, record: RecordInfo, name: str,
+                                 subst: dict[str, TpyType]) -> str | None:
+        """Why the type arguments `subst` of a construction of generic
+        `record`, spelled `name`, break a bound of its type parameters, or
+        None."""
+        return type_param_bound_error(
+            {p: subst[p] for p in record.type_params},
+            record.type_param_bounds, name, self.protocols.satisfies_bound,
+            self.type_ops.substitute_type_params)
+
+    def complete_construction(self, expr: TpyCall, record: RecordInfo,
+                              subst: dict[str, TpyType], *, receive: bool,
+                              commit: bool | None = None) -> NominalType:
+        """Construction `expr` of generic `record` completed at the type
+        arguments `subst`, when its own inference finds them
+        (`infer_generic_construction`) or, left pending, when a use gives
+        them (`MethodAnalyzer._eagerly_resolve_pending_generic`): its type
+        checked against the bounds and stamped, its arguments received at
+        the substituted parameters where `receive` says it receives them,
+        and its constructor's records written where its step commits
+        (`commit`, by default `SemanticContext.slot_step_commits`)."""
+        resolved = NominalType(
+            self._ctor_type_name(expr, record),
+            tuple(subst[p] for p in record.type_params),
+            _module_qname=record.qualified_name())
+        bound_error = self.construction_bound_error(record, resolved.name,
+                                                    subst)
+        if bound_error is not None:
+            raise self.ctx.error(bound_error, expr)
+        expr.call_type = resolved
+        self.ctx.set_expr_type(expr, resolved)
+        if receive:
+            self.receive_winner_args(
+                None, expr.args, None,
+                [(pname, self.type_ops.substitute_param_type(ptype, subst))
+                 for pname, ptype, _ in record.init_params],
+                None, call=expr,
+                declared_types=[ptype for _, ptype, _ in record.init_params])
+        if commit is None:
+            commit = self.ctx.slot_step_commits()
+        pending = self._pending_instance_of(expr)
+        if pending is not None and commit:
+            self._settle_pending_instance(pending, resolved)
+        self._set_record_constructor_info(expr, record, resolved, subst,
+                                          commit=commit)
+        return resolved
+
+    def _pending_instance_of(self, expr: TpyCall
+                             ) -> 'PendingGenericInstanceInfo | None':
+        """The pending generic instance construction `expr` created, while
+        it is pending."""
+        return next((info for info
+                     in self.ctx.func.pending_generic_instances.values()
+                     if info.expr is expr), None)
+
+    def _settle_pending_instance(self, info: 'PendingGenericInstanceInfo',
+                                 resolved: NominalType) -> None:
+        """Pending generic instance `info`, completed to `resolved`, is
+        pending no more: a local it was bound to takes the type."""
+        # Only a local bound to the construction holds the pending type: an
+        # inline construction (`Container().set(...)`) must not rebind the
+        # class name in scope.
+        if info.decl_line is not None:
+            if self.ctx.func.current_scope:
+                self.ctx.func.current_scope.define(info.variable_name, resolved)
+            if self.ctx.func.current_ns:
+                self.ctx.func.current_ns.bind_variable(info.variable_name, resolved)
+            var_decl = self.ctx.func.var_decl_by_name.get(info.variable_name)
+            if var_decl:
+                self.ctx.var_types[var_decl] = resolved
+            self.ctx.declared_var_types[(info.decl_line, info.variable_name)] = resolved
+            self.ctx.func.inferred_generic_locals[info.variable_name] = (
+                resolved, info.decl_line)
+        del self.ctx.func.pending_generic_instances[info.instance_id]
+        self.ctx.func.variable_to_generic_instance.pop(info.variable_name, None)
 
     def _validate_aggregate_zero_arg(
         self, record: RecordInfo, expr: TpyCall,
@@ -7038,7 +7160,7 @@ class CallAnalyzer:
             )
         for i, ptype in enumerate(param_types):
             expr.args[i] = self._typecheck_and_coerce_arg(
-                expr.args[i], f"arg{i + 1}", ptype, func_is_readonly=False)
+                expr.args[i], f"arg{i + 1}", ptype, None)
         expr.resolved_function_info = FunctionInfo(
             name=label,
             params=[ParamInfo(f"arg{i + 1}", t) for i, t in enumerate(param_types)],
@@ -7113,6 +7235,12 @@ class CallAnalyzer:
         qname = f"{module_name}.{func_name}"
         expansion = expand_call_macro(
             macro_fn, ctx, macro_args, macro_kwargs, qname, loc)
+        # The expansion holds the argument nodes themselves, evaluated where
+        # it places them: they are analyzed there again, as the expansion's,
+        # until a macro states how it evaluates its arguments
+        # (BUGS.md#call-macro-arg-evaluated-per-field).
+        for a in [*args, *kwargs.values()]:
+            self.expr.forget(a)
         return expansion, self.expr.analyze_expr(expansion)
 
     def _build_fstring_parts(self, fstr: TpyFString) -> list[MacroFStringPart]:

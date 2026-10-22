@@ -6,12 +6,12 @@ Core expression analysis including literals, names, operators, field access, and
 
 from __future__ import annotations
 import copy
+import os
 from contextlib import AbstractContextManager, ExitStack, contextmanager, nullcontext
-from dataclasses import replace as dc_replace
+from dataclasses import dataclass, fields as dc_fields, replace as dc_replace
 from typing import Callable, Iterable, Iterator, Literal, Sequence, TYPE_CHECKING
 
 from ..holders import IterHolder
-from ..identity_map import IdentityMap
 from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target
@@ -52,7 +52,7 @@ from ..parse import (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, SubscriptDunder, SubscriptDunders, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyAwait,
-    TpyLambda, TpyStarUnpack,
+    TpyLambda, TpyStarUnpack, TpyVarargPack,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign, TpyNonlocal,
     collect_name_refs,
@@ -77,7 +77,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import CompTarget, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -298,8 +298,12 @@ def generic_constructor_factory(ctx: 'SemanticContext',
     context can give; None for any other expression. A filled parameter
     default's callee is looked up by the binding it has where the default
     is written (`DefaultReferent.ctor`), as `analyze_call` dispatches it."""
+    # The empty container's own analysis spells its record as the call's
+    # type; met again at a slot, it is still the factory.
     if not (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
-            and not expr.args and expr.call_type is None):
+            and not expr.args
+            and (expr.call_type is None
+                 or isinstance(expr.call_type, PENDING_CONTAINER_TYPES))):
         return None
     ref = expr.func.default_referent
     if ref is not None and ref.ctor is not None:
@@ -329,6 +333,15 @@ def _find_dict_member(ut: TpyType) -> NominalType | None:
 # this the per-element pack expansion in tpy::array_from_index (and the stack
 # footprint) outweigh the heap save, so resolution falls back to list.
 _COMP_ARRAY_MAX_SIZE = 1024
+
+# The fields of a container literal's record its analysis decides: a slot
+# step that meets the literal again writes them anew (`keep_literal`).
+_LITERAL_ANALYSIS_FIELDS = ("size", "is_global", "has_explicit_annotation",
+                            "explicit_type", "coerced_element_type")
+
+# The test harness checks that no expression's analysis runs twice outside
+# a trial (`ExpressionAnalyzer._first_analysis`).
+_ASSERT_ANALYZED_ONCE = bool(os.environ.get("TPY_ASSERT_ANALYZED_ONCE"))
 
 
 def _identity_object(t: TpyType) -> 'TpyType | str':
@@ -426,6 +439,15 @@ def _temp_root_spelling(root: TpyExpr) -> str | None:
     return None
 
 
+@dataclass
+class _RouteFrame:
+    """An analysis of `expr` now running and the step route it chose
+    (`ExpressionAnalyzer.set_step_route`)."""
+    expr: TpyExpr
+    route: StepRoute | None = None
+    chosen: bool = False
+
+
 class _LambdaResultMismatch(SemanticError):
     """A lambda body whose type does not fit the slot's return type; a
     class-factory lambda rewords it in terms of the class the user wrote."""
@@ -454,6 +476,35 @@ CONTAINER_KINDS: tuple[type, ...] = (
 # (`generic_constructor_factory`) is one too.
 SLOT_READER_KINDS: tuple[type, ...] = (
     *CONTAINER_KINDS, TpyFString, TpyTypeParamConstruct, TpyLambda)
+
+# The other shapes `_analyze_hinted_shape` types from a hint: unhinted,
+# their analysis consults nothing (a name or dotted path is a function or
+# class only at a callable slot, an and/or or a ternary joins under a hint
+# only, a tuple takes per-element hints).
+HINTED_ONLY_KINDS: tuple[type, ...] = (
+    TpyName, TpyFieldAccess, TpyBinOp, TpyIfExpr, TpyTupleLiteral)
+
+# Every shape `_analyze_hinted_shape` dispatches on.
+HINTED_SHAPE_KINDS: tuple[type, ...] = (*SLOT_READER_KINDS,
+                                        *HINTED_ONLY_KINDS)
+
+
+def _carried(expr: TpyExpr) -> list[TpyExpr]:
+    """The children of `expr` whose slot reads climb to it
+    (`ExpressionAnalyzer.read_slot`): a call reads its slot only through
+    its receiver, a lambda or generator expression is a body of its own."""
+    if isinstance(expr, (TpyCall, TpyLambda, TpyGeneratorExpression)):
+        return []
+    if isinstance(expr, TpyMethodCall):
+        return [expr.obj]
+    return expr.children()
+
+
+def _all_children(expr: TpyExpr) -> list[TpyExpr]:
+    """Every child of `expr`, a lambda's body included."""
+    if isinstance(expr, TpyLambda):
+        return [expr.body]
+    return expr.children()
 
 
 def _use_as_part_of(parent: TpyExpr, child: TpyExpr) -> str:
@@ -524,10 +575,13 @@ class ExpressionAnalyzer:
         # The expressions whose analysis is open, innermost last: what a
         # forced pending read is part of (`describe_pending_use`).
         self._expr_stack: list[TpyExpr] = []
-        # The nodes `reuse` hands their result back for, with the slot hint
-        # each was analyzed under.
-        self._reused: IdentityMap[TpyExpr, tuple[TpyType, SlotHint | None]] = (
-            IdentityMap())
+        # The node whose slot step runs now (`reenter`): its own analysis
+        # runs again, every node below it is met through its record.
+        self._stepping: TpyExpr | None = None
+        # The analyses running now, innermost last, each with the step route
+        # it chose (`set_step_route`), carried into its record.
+        self._route_frames: list[_RouteFrame] = []
+        ctx.probe_step_commits = self._top_step_commits
         self.describe_statement_use: Callable[[TpyExpr | None], str] = (
             lambda _e=None: "this use")
 
@@ -726,26 +780,260 @@ class ExpressionAnalyzer:
                 call)
 
     @contextmanager
-    def reuse(self, node: TpyExpr, typ: TpyType) -> Iterator[None]:
-        """`node`, which its site has just analyzed to `typ`, entered again
-        by that site's next step (a dunder call synthesized over the same
-        receiver, a chained comparison's next pair): the entry hands back
-        `typ` rather than analyzing the node a second time, so what its
-        analysis did -- a consume, a move, a nested call's commit -- is done
-        once, as the expression is evaluated once. Only for an entry under
-        the hint in force where `reuse` is opened (asserted on re-entry): a
-        different hint is a different analysis. The pending gate still runs
-        on the reused entry, and the node's slot read is not re-marked on
-        its new parent (its argument root already carries it)."""
-        prev = self._reused.get(node)
-        self._reused[node] = (typ, self.ctx.slot_hint_at(node))
+    def _route_frame(self, expr: TpyExpr) -> Iterator['_RouteFrame']:
+        """The frame of an analysis of `expr` now running, holding the step
+        route it chooses (`set_step_route`)."""
+        frame = _RouteFrame(expr)
+        self._route_frames.append(frame)
+        try:
+            yield frame
+        finally:
+            self._route_frames.pop()
+
+    def set_step_route(self, expr: TpyExpr, route: StepRoute | None) -> None:
+        """The route the analysis of `expr` now running chose for its slot
+        step (None: none, its step runs its analysis again), recorded with
+        the analysis (`AnalysisRecord.route`) -- by every entry the analysis
+        runs under (an entry may hand the node to another one). An analysis
+        that runs outside the entry rule records no route."""
+        for frame in self._route_frames:
+            if frame.expr is expr:
+                frame.route = route
+                frame.chosen = True
+
+    def note_analysis(self, expr: TpyExpr, typ: TpyType,
+                      slot: SlotHint | None,
+                      route: StepRoute | None = None) -> None:
+        """Record that `expr` was analyzed to `typ` at `slot`, its slot step
+        to take `route`: met again, it goes through `reenter`."""
+        self.ctx.analysis_records[expr] = AnalysisRecord(
+            typ, slot, self.ctx.at_probe_slot, route)
+
+    def _top_step_commits(self) -> bool:
+        """At an overload probe's slot, whether the step of the innermost
+        expression under analysis writes its records (`commits`)."""
+        return not self._expr_stack or self.commits(self._expr_stack[-1])
+
+    @contextmanager
+    def step_scope(self, node: 'TpyExpr | TpyStmt | None') -> Iterator[None]:
+        """Run the step of `node` -- a call's receive -- as the innermost
+        expression under analysis, whose openness says whether the step
+        writes at a probe slot (`SemanticContext.slot_step_commits`)."""
+        pushed = (isinstance(node, TpyExpr)
+                  and (not self._expr_stack or self._expr_stack[-1] is not node))
+        if pushed:
+            self._expr_stack.append(node)
         try:
             yield
         finally:
-            if prev is None:
-                del self._reused[node]
-            else:
-                self._reused[node] = prev
+            if pushed:
+                self._expr_stack.pop()
+
+    def reenter(self, expr: TpyExpr, slot: SlotHint | None,
+                coercion_ctx: CoercionContext | None,
+                rec: AnalysisRecord, hinted: bool) -> TpyType:
+        """`expr`, analyzed once already (`rec`), met again at `slot`: a
+        node whose analysis does not depend on its slot hands back what it
+        returned; an open one (`is_open`) runs only its slot step there,
+        its children met through their own records. A step met again at
+        the slot it last decided for -- committed, or a probe again --
+        decides nothing new. `hinted` says `slot` is the entry's own hint;
+        an unhinted entry meets the hint in force."""
+        at_probe_slot = self.ctx.at_probe_slot
+        if slot == rec.slot and (not rec.at_probe_slot or at_probe_slot):
+            return rec.typ
+        if not self.is_open(expr):
+            return rec.typ
+        with self.step_scope(expr), self._route_frame(expr) as frame:
+            typ = self._slot_step(expr, slot, coercion_ctx, rec, hinted)
+        self._drop_decided_literal(expr, rec.typ, typ)
+        self.ctx.analysis_records[expr] = AnalysisRecord(
+            typ, slot, at_probe_slot,
+            frame.route if frame.chosen else rec.route)
+        return typ
+
+    def commits(self, node: TpyExpr) -> bool:
+        """Whether the analysis of `node` now writes the records its
+        committed slot owns (ownership facts, copy warnings, borrow and
+        mutation edges): not an open node under an overload probe, whose
+        committed slot runs its step again (`at_probe_slot`). A carrier
+        writes them where it is analyzed: its step runs only when a child
+        changed its type; so does a call whose step keeps its record (one
+        that inferred no type arguments, `_slot_step`)."""
+        if not (self.ctx.at_probe_slot and self.is_open(node)):
+            return True
+        if isinstance(node, TpyCall) and not self.slot_typed_kind(node):
+            return not self._infers_type_args(node)
+        return self._is_carrier(node)
+
+    def _infers_type_args(self, node: 'TpyCall | TpyMethodCall') -> bool:
+        """Whether call `node` infers its callee's type arguments from its
+        slot -- a generic function call, record construction or method call
+        (`GenericCallRoute`, `GenericCtorRoute`, `GenericMethodRoute`), by
+        the route its analysis now running chose or its record holds. A call
+        macro's expansion is analyzed in its place."""
+        if node.macro_expansion is not None:
+            return False
+        route: StepRoute | None = None
+        for frame in reversed(self._route_frames):
+            if frame.expr is node and frame.chosen:
+                route = frame.route
+                break
+        else:
+            rec = self.ctx.analysis_records.get(node)
+            route = rec.route if rec is not None else None
+        return isinstance(route, (GenericCallRoute, GenericCtorRoute,
+                                  GenericMethodRoute))
+
+    def is_open(self, expr: TpyExpr) -> bool:
+        """Whether the analysis of `expr` depends on the slot it meets: a
+        shape typed from its slot (`slot_typed_kind`), one whose analysis
+        consulted the slot (`read_slot`), or one carrying an open child
+        along the edges `read_slot` climbs."""
+        if self.slot_typed_kind(expr) or expr in self.ctx.slot_reads:
+            return True
+        return any(self.is_open(c) for c in _carried(expr))
+
+    def slot_typed_kind(self, expr: TpyExpr) -> bool:
+        """Whether `expr` is a shape `_analyze_hinted_shape` types from the
+        slot it is analyzed for (`HINTED_SHAPE_KINDS`, or an argument-less
+        generic constructor)."""
+        if not isinstance(expr, HINTED_SHAPE_KINDS):
+            return generic_constructor_factory(self.ctx, expr) is not None
+        if isinstance(expr, TpyBinOp):
+            return expr.op in ("&&", "||")
+        if isinstance(expr, (TpyName, TpyFieldAccess)):
+            # A function or class its analysis typed as a callable value; a
+            # name is otherwise a read of what it binds.
+            return (getattr(expr, "is_function_ref", False)
+                    or expr.factory_expansion is not None)
+        return True
+
+    def _slot_step(self, expr: TpyExpr, slot: SlotHint | None,
+                   coercion_ctx: CoercionContext | None,
+                   rec: AnalysisRecord, hinted: bool) -> TpyType:
+        """The decision of open `expr` at `slot`, replacing the one it made
+        at its earlier slot: its own analysis run again, every node below
+        met through its record (the children that are open complete at
+        their own slots first). A carrier -- a node open only through a
+        child -- keeps its record when no child's completed type changed.
+        A lambda is analyzed again whole: its slot decides what it is."""
+        if self._reanalyzed_whole(expr):
+            self.forget(expr)
+            return self._run_analysis(expr, slot, coercion_ctx, hinted)
+        # A call typed from its slot (an empty factory) decides it again.
+        completes = not (isinstance(expr, TpyCall)
+                         and self.slot_typed_kind(expr))
+        if isinstance(expr, TpyCall) and completes:
+            if not self._infers_type_args(expr):
+                # A call chooses its callee once; only inferred type
+                # arguments read the slot after that.
+                return rec.typ
+        elif self._is_carrier(expr) and not self._carried_changed(
+                expr, slot, hinted):
+            return rec.typ
+        self._peel_step_coercions(expr)
+        saved = self._stepping
+        self._stepping = expr
+        try:
+            typ = (self._complete_call(expr, rec.route, slot, hinted)
+                   if completes else None)
+            if typ is not None:
+                return typ
+            return self._run_analysis(expr, slot, coercion_ctx, hinted)
+        finally:
+            self._stepping = saved
+
+    def _peel_step_coercions(self, expr: TpyExpr) -> None:
+        """Take off the coercions an earlier step of `expr` placed on its
+        children (a select's arms, a literal's elements, a received
+        operand): the step decides them anew, replacing them. A call's
+        arguments are its receive's (`CallAnalyzer.receive_winner_args`)."""
+        if isinstance(expr, (TpyCall, TpyMethodCall)):
+            # The pack its receive built is written as the arguments it holds.
+            flat: list[TpyExpr] = []
+            for arg in expr.args:
+                if isinstance(arg, TpyVarargPack):
+                    flat.extend(arg.args)
+                else:
+                    flat.append(arg)
+            expr.args = flat
+            if isinstance(getattr(expr, "call_type", None),
+                          PENDING_CONTAINER_TYPES):
+                # An empty factory's record spelled as its type: decided anew.
+                expr.call_type = None
+            return
+        records = self.ctx.analysis_records
+
+        def peel(node: object) -> object:
+            while isinstance(node, TpyCoerce) and node.expr in records:
+                node = node.expr
+            return node
+
+        for f in dc_fields(expr):
+            value = getattr(expr, f.name)
+            if isinstance(value, TpyCoerce):
+                setattr(expr, f.name, peel(value))
+            elif isinstance(value, list):
+                for i, item in enumerate(value):
+                    if isinstance(item, TpyCoerce):
+                        value[i] = peel(item)
+
+    def _run_analysis(self, expr: TpyExpr, slot: SlotHint | None,
+                      coercion_ctx: CoercionContext | None,
+                      hinted: bool) -> TpyType:
+        """The analysis an entry at `slot` runs (`analyze_expr`,
+        `_analyze_expr_under_hint`), without the record check."""
+        if not hinted or slot is None:
+            return self._first_analysis(expr, slot)
+        return self._analyze_expr_under_hint_raw(expr, slot, coercion_ctx)
+
+    def _is_carrier(self, expr: TpyExpr) -> bool:
+        """A node open only through the children it carries: its own
+        analysis neither types it from the slot nor consulted it. A call
+        may have read its slot itself (an inferred or overloaded callee),
+        except a method call that infers no type arguments
+        (`_infers_type_args`), open through its receiver."""
+        if self.slot_typed_kind(expr) or isinstance(expr, TpyCall):
+            return False
+        if isinstance(expr, TpyMethodCall):
+            return not self._infers_type_args(expr)
+        return True
+
+    def _carried_changed(self, expr: TpyExpr, slot: SlotHint | None,
+                         hinted: bool) -> bool:
+        """Complete the open children `expr` carries at the slot they meet
+        under it; whether any completed to another type than it had."""
+        scope = (self.ctx.slot_hint_scope(slot.map(unwrap_ref_type))
+                 if hinted and slot is not None else nullcontext())
+        changed = False
+        with scope:
+            for child in _carried(expr):
+                crec = self.ctx.analysis_records.get(child)
+                if crec is None or not self.is_open(child):
+                    continue
+                after = self.analyze_expr(child, pending_gate=False)
+                changed = changed or after != crec.typ
+        return changed
+
+    @staticmethod
+    def _reanalyzed_whole(expr: TpyExpr) -> bool:
+        """A lambda: its slot gives its parameters their types, so meeting
+        another slot analyzes its body again (`_slot_step`). A class used
+        as a factory and a call macro expand into nodes of their own at
+        each slot."""
+        return isinstance(expr, TpyLambda)
+
+    def forget(self, expr: TpyExpr) -> None:
+        """Drop the analysis records of `expr` and everything below it,
+        for an analysis of the whole again."""
+        records = self.ctx.analysis_records
+        stack = [expr]
+        while stack:
+            node = stack.pop()
+            if node in records:
+                del records[node]
+            stack.extend(_all_children(node))
 
     def read_slot(self, node: TpyExpr) -> None:
         """Record that the analysis of `node` consulted the slot it is
@@ -795,32 +1083,33 @@ class ExpressionAnalyzer:
             self.read_slot(self._expr_stack[-1])
         return self.ctx.expr_type_hint
 
-    def _reused_result(self, expr: TpyExpr,
-                       hint: SlotHint | None) -> TpyType | None:
-        """The type `reuse` hands back for `expr` entered under `hint`."""
-        reused = self._reused.get(expr)
-        if reused is None:
-            return None
-        typ, registered = reused
-        if hint != registered:
-            raise AssertionError(
-                f"Internal error: an expression at line "
-                f"{getattr(expr.loc, 'line', None)} handed back by `reuse` "
-                f"is entered under another slot hint")
-        return typ
-
-    def analyze_expr(self, expr: TpyExpr) -> TpyType:
+    def analyze_expr(self, expr: TpyExpr, *,
+                     pending_gate: bool = True) -> TpyType:
         """Analyze an expression and return its type.
 
         A pending numeric type (`tpyc/sema/pending_num.py`) reaches only
         the consumer that asked for one, by naming the node it analyzes
-        (`PendingNums.sink`); any other gets the local settled first."""
+        (`PendingNums.sink`); any other gets the local settled first --
+        except a carrier's step meeting its open child again
+        (`_carried_changed`, `pending_gate=False`), which only compares
+        the child's completed type.
+
+        The entry rule runs here and the first analysis is one call below
+        it: a left-deep operand chain recurses through this entry once per
+        level, so each frame added on the way costs nesting depth."""
         self._expr_stack.append(expr)
         try:
-            typ = self._analyze_expr_raw(expr)
+            own = self.ctx.slot_hint_at(expr)
+            rec = self.ctx.analysis_records.get(expr)
+            if rec is not None:
+                typ = self.reenter(expr, own, None, rec, hinted=False)
+            else:
+                with self._route_frame(expr) as frame:
+                    typ = self._first_analysis(expr, own)
+                self.note_analysis(expr, typ, own, frame.route)
         finally:
             self._expr_stack.pop()
-        return self._pending_gate(expr, typ)
+        return self._pending_gate(expr, typ) if pending_gate else typ
 
     def _warn_frame_held_copies(self, call: 'TpyCall | TpyMethodCall') -> None:
         """A generator / coroutine factory's frame keeps its arguments past
@@ -839,8 +1128,15 @@ class ExpressionAnalyzer:
         is keyed on node identity: a consumer that re-analyzes a copy or a
         rewrite of the node it named loses the pass and settles the local.
         `slot` is the declared slot the node's value is then coerced to
-        (`analyze_at_slot`), None for any other analysis."""
-        self._written_empty_gate(expr, typ)
+        (`analyze_at_slot`), None for any other analysis.
+
+        The gate is the consumer's read of `expr`, part of its body: it
+        settles what it settles whatever slot the consumer meets."""
+        with self.ctx.probe_slot_scope(False):
+            return self._pending_gate_at(expr, typ, slot)
+
+    def _pending_gate_at(self, expr: TpyExpr, typ: TpyType,
+                         slot: SlotHint | None) -> TpyType:
         lc = self.pend.container_cells(typ)
         if lc is not None:
             return self._cell_container_gate(expr, typ, lc, slot)
@@ -861,76 +1157,75 @@ class ExpressionAnalyzer:
         self.ctx.set_expr_type(expr, forced)
         return forced
 
-    def _written_empty_gate(self, expr: TpyExpr, typ: TpyType) -> None:
-        """An empty container written as an argument of a call whose
-        candidates are scored (`[]`, `list()`, `{}`, `set()`) holds nothing
-        to be scored by: the record the scoring gave it awaits the winner's
-        slot (`OpenCallArgs.awaiting`), as a written dict or set literal's
-        does (`_await_winner`). When the winner's slot analyzes the
-        node again and gives it a record of its own (or a typed container),
-        that supersedes the scoring's, which is dropped unresolved; a slot
-        that keeps the node's record (a view) decides that one."""
-        if self.ctx.trial_depth or not self.ctx.open_call_args:
-            return
-        bare = unwrap_qualifiers(typ)
-        info = (self.pend.record_of(bare)
-                if isinstance(bare, PendingContainerType) else None)
-        written_empty = (info is not None and info.expr is expr
-                         and info.variable_name is None
-                         and not info.has_explicit_annotation
-                         and all(isinstance(p, UnknownElementType)
-                                 for p in bare.parts()))
-        if not written_empty and not any(s.awaiting
-                                         for s in self.ctx.open_call_args):
-            return
-        scope = self.ctx.call_scope_of_node(expr)
-        if scope is None:
-            return
-        if not scope.hands_over(expr):
-            for awaited in [r for r in scope.awaiting if r.expr is expr]:
-                if awaited is info:
-                    continue
-                scope.awaiting.remove(awaited)
-                if awaited.literal_id in self.ctx.func.pending_resolutions:
-                    self.ctx.func.pending_resolutions.remove(
-                        awaited.literal_id)
-            return
-        if written_empty and not any(r is info for r in scope.awaiting):
-            scope.awaiting.append(info)
-
-    def _scored_arg_scope(self, expr: TpyExpr,
-                          *hints: SlotHint | None) -> 'OpenCallArgs | None':
-        """The call that scores dict or set literal `expr` as an argument
-        against several candidates, each declaring the parameter it lands
-        at plainly (`OpenCallArgs.open_literals`), with no declared
-        parameter to type it at yet (`hints`): the literal stays open
-        there, its numbers the literals they are written as, as a list
-        literal's always are."""
-        if (self.ctx.trial_depth
+    def _probe_keeps_open(self, expr: TpyExpr,
+                          *hints: SlotHint | None) -> bool:
+        """Whether written dict or set literal `expr`, analyzed with no
+        declared slot (`hints`), meets the probe of a call whose candidates
+        all declare its parameter plainly (`OpenCallArgs.declares_plainly`):
+        a pure type decision there, it is ranked as the literal it is
+        written as -- its numbers the literals written, as a list literal's
+        always are -- and the winner's slot step decides its record."""
+        if (not self.ctx.at_probe_slot or self.ctx.trial_depth
                 or any(h is not None and h.is_declared for h in hints)
                 or not is_body_like_scope(self.ctx.func.current_function)):
-            return None
+            return False
         scope = self.ctx.call_scope_of_node(expr)
-        if (scope is None or not scope.hands_over(expr)
-                or not any(n is expr for n in scope.open_literals)):
-            return None
-        return scope
+        return scope is not None and scope.declares_plainly(expr)
 
     def _new_literal_id(self) -> int:
         literal_id = self.ctx.literal_counter
         self.ctx.literal_counter += 1
         return literal_id
 
-    def _await_winner(self, scope: 'OpenCallArgs',
-                      info: 'ContainerLiteralInfo') -> TpyType:
-        """The type of a written dict or set literal the call of `scope`
-        scores open: its record awaits the winner's slot
-        (`OpenCallArgs.awaiting`), which analyzes the literal again at its
-        parameter."""
-        self.ctx.container_literals[info.literal_id] = info
-        self.ctx.func.pending_resolutions.append(info.literal_id)
-        scope.awaiting.append(info)
-        return info.pending_type()
+    def literal_id_for(self, expr: TpyExpr) -> int:
+        """The id of the record of container literal `expr`: the one its
+        analysis made already when the node meets another slot -- its slot
+        step decides that record, it makes no second one -- else a new
+        one."""
+        own = self._own_literal_id(expr)
+        return own if own is not None else self._new_literal_id()
+
+    def _own_literal_id(self, expr: TpyExpr,
+                        typ: TpyType | None = None) -> int | None:
+        """The literal id the type `expr`'s analysis returned (`typ`, by
+        default its record's) names, when that literal record is `expr`'s
+        own."""
+        if typ is None:
+            rec = self.ctx.analysis_records.get(expr)
+            if rec is None:
+                return None
+            typ = rec.typ
+        lid = getattr(unwrap_qualifiers(typ), "literal_id", None)
+        info = (self.ctx.container_literals.get(lid)
+                if lid is not None else None)
+        return lid if info is not None and info.expr is expr else None
+
+    def keep_literal(self, info: 'ContainerLiteralInfo') -> None:
+        """Register container literal record `info` for resolution; when
+        its id names its node's record already (`literal_id_for`), that
+        record takes what the analysis decides (`_LITERAL_ANALYSIS_FIELDS`)
+        and keeps what its uses recorded since."""
+        old = self.ctx.container_literals.get(info.literal_id)
+        if old is not None and type(old) is type(info) and old is not info:
+            for name in (*old.PART_FIELDS, *_LITERAL_ANALYSIS_FIELDS):
+                if hasattr(info, name):
+                    setattr(old, name, getattr(info, name))
+            if getattr(info, "is_mutated", False):
+                old.is_mutated = True
+        else:
+            self.ctx.container_literals[info.literal_id] = info
+        if info.literal_id not in self.ctx.func.pending_resolutions:
+            self.ctx.func.pending_resolutions.append(info.literal_id)
+
+    def _drop_decided_literal(self, expr: TpyExpr, before: TpyType,
+                              after: TpyType) -> None:
+        """A slot step that typed container literal `expr` without the
+        pending record its earlier slot gave it (`before`): the slot
+        decided it, and the record resolves nothing."""
+        lid = self._own_literal_id(expr, before)
+        if (lid is not None and self._own_literal_id(expr, after) != lid
+                and lid in self.ctx.func.pending_resolutions):
+            self.ctx.func.pending_resolutions.remove(lid)
 
     def _pending_composite_gate(self, expr: TpyExpr,
                                 typ: TpyType) -> TpyType:
@@ -1061,11 +1356,12 @@ class ExpressionAnalyzer:
             return _use_as_part_of(parent, expr)
         return self.describe_statement_use(expr)
 
-    def _analyze_expr_raw(self, expr: TpyExpr) -> TpyType:
-        own = self.ctx.slot_hint_at(expr)
-        reused = self._reused_result(expr, own)
-        if reused is not None:
-            return reused
+    def _first_analysis(self, expr: TpyExpr,
+                        own: SlotHint | None = None) -> TpyType:
+        """The analysis of `expr` under `own`, the hint in force: its
+        children's analyses, then its own decision. Runs once per node;
+        again only as the node's own slot step (`reenter`), where every node
+        below it is met through its record."""
         if own is not None and own.is_fill and self._fill_types(expr):
             # What the literal or empty constructor leaves open -- its
             # empty element types, its float literals' width -- is filled
@@ -1074,6 +1370,12 @@ class ExpressionAnalyzer:
             # gives.
             self.read_slot(expr)
             return self._analyze_expr_under_hint(expr, own.as_local())
+        if (_ASSERT_ANALYZED_ONCE and self._stepping is not expr
+                and not self.ctx.trial_depth
+                and expr in self.ctx.analysis_records):
+            raise AssertionError(
+                f"Internal error: the expression at line "
+                f"{getattr(expr.loc, 'line', None)} is analyzed twice")
         if (isinstance(expr, SLOT_READER_KINDS)
                 or generic_constructor_factory(self.ctx, expr) is not None):
             self.read_slot(expr)
@@ -1122,32 +1424,14 @@ class ExpressionAnalyzer:
         elif isinstance(expr, TpyUnaryOp):
             typ = self._analyze_unaryop(expr)
         elif isinstance(expr, TpyCall):
-            # Cleared first: a re-analysis that raises must not leave the
+            # Cleared first: a slot step that raises must not leave the
             # previous resolution's verdict on the node.
             expr.result_form = ResultForm.NOT_DECLARED
-            typ = self._concrete_generator_call(
-                expr, self.calls.analyze_call(expr))
-            if self.calls.stamp_result_borrow(expr, typ):
-                # What lends the result is read-only, so the result is too.
-                typ = _readonly_result(typ)
-            self._warn_frame_held_copies(expr)
-            self.calls.defer_argument_copies(expr)
-            record_protocol_arg_calls(self.ctx, expr)
-            self.narrowing.invalidate_field_facts_for_call(expr)
-            self.narrowing.invalidate_closure_written_facts()
+            typ = self._call_result(expr, self.calls.analyze_call(expr))
         elif isinstance(expr, TpyMethodCall):
             expr.result_form = ResultForm.NOT_DECLARED
-            typ = self._concrete_generator_call(
+            typ = self._method_call_result(
                 expr, self.methods.analyze_method_call(expr))
-            self._warn_narrowed_lookup_arg(expr)
-            if self.calls.stamp_result_borrow(expr, typ):
-                typ = _readonly_result(typ)
-            self._warn_frame_held_copies(expr)
-            self.calls.defer_argument_copies(expr)
-            self.calls.defer_copy_receiver_call(expr)
-            record_protocol_arg_calls(self.ctx, expr)
-            self.narrowing.invalidate_field_facts_for_method_call(expr)
-            self.narrowing.invalidate_closure_written_facts()
         elif isinstance(expr, TpyFieldAccess):
             typ = self._analyze_field_access(expr)
         elif isinstance(expr, TpyArrayLiteral):
@@ -1206,6 +1490,85 @@ class ExpressionAnalyzer:
         else:
             raise self.ctx.error(f"Unknown expression type: {type(expr).__name__}", expr)
 
+        self.ctx.set_expr_type(expr, typ)
+        return typ
+
+    def _call_result(self, expr: TpyCall, typ: TpyType) -> TpyType:
+        """The type of call `expr`, whose callee returned `typ`, with what
+        its result records: the borrow it lends, the copies it makes, the
+        facts it invalidates."""
+        typ = self._concrete_generator_call(expr, typ)
+        if self.calls.stamp_result_borrow(expr, typ):
+            # What lends the result is read-only, so the result is too.
+            typ = _readonly_result(typ)
+        if self.ctx.slot_step_commits():
+            self._warn_frame_held_copies(expr)
+            self.calls.defer_argument_copies(expr)
+        record_protocol_arg_calls(self.ctx, expr)
+        self.narrowing.invalidate_field_facts_for_call(expr)
+        self.narrowing.invalidate_closure_written_facts()
+        return typ
+
+    def _method_call_result(self, expr: TpyMethodCall,
+                            typ: TpyType) -> TpyType:
+        """`_call_result` for method call `expr`."""
+        typ = self._concrete_generator_call(expr, typ)
+        if self.calls.stamp_result_borrow(expr, typ):
+            typ = _readonly_result(typ)
+        if self.ctx.slot_step_commits():
+            self._warn_narrowed_lookup_arg(expr)
+            self._warn_frame_held_copies(expr)
+            self.calls.defer_argument_copies(expr)
+            self.calls.defer_copy_receiver_call(expr)
+        record_protocol_arg_calls(self.ctx, expr)
+        self.narrowing.invalidate_field_facts_for_method_call(expr)
+        self.narrowing.invalidate_closure_written_facts()
+        return typ
+
+    def _complete_call(self, expr: TpyExpr, route: StepRoute | None,
+                       slot: SlotHint | None,
+                       hinted: bool) -> TpyType | None:
+        """The slot step of a call whose callee's type parameters were
+        inferred, by the route its record holds: the callee -- chosen once,
+        the selection is its body -- is inferred again from its arguments'
+        records and the slot, and receives them at the parameters that
+        gives. A generic function call takes its winner again
+        (`GenericCallRoute`), a generic record construction the one
+        completion a pending instance's late resolution takes too
+        (`GenericCtorRoute`, `CallAnalyzer.infer_generic_construction`), a
+        generic method call the method its receiver resolved to
+        (`GenericMethodRoute`). None when there is no such route, or the
+        method call's receiver, met through its record, completed to
+        another type: the call is analyzed again."""
+        if isinstance(route, GenericMethodRoute):
+            recv_rec = self.ctx.analysis_records.get(expr.obj)
+            if recv_rec is None or self.analyze_expr(expr.obj) != recv_rec.typ:
+                return None
+        elif not isinstance(route, (GenericCallRoute, GenericCtorRoute)):
+            return None
+        scope = (self.ctx.slot_hint_scope(slot.map(unwrap_ref_type))
+                 if hinted and slot is not None else nullcontext())
+        expr.result_form = ResultForm.NOT_DECLARED
+        with scope:
+            if isinstance(route, GenericMethodRoute):
+                typ = self._method_call_result(
+                    expr, self.methods.complete_generic_method_call(
+                        expr, route))
+            elif isinstance(route, GenericCtorRoute):
+                # The type its earlier step stamped would read as written
+                # type arguments.
+                expr.call_type = None
+                typ = self._call_result(
+                    expr, self.calls.infer_generic_construction(
+                        expr, route.record_info))
+            elif route.builtin:
+                typ = self._call_result(
+                    expr, self.calls._analyze_builtin_function_overloads(
+                        expr, [expr.resolved_function_info.root]))
+            else:
+                typ = self._call_result(
+                    expr, self.calls._analyze_single_function_call(
+                        expr, expr.resolved_function_info.root))
         self.ctx.set_expr_type(expr, typ)
         return typ
 
@@ -1334,14 +1697,18 @@ class ExpressionAnalyzer:
         """`coercion_ctx` is the context the caller coerces the value to
         the declared slot under (`analyze_at_slot`); None when the hint
         only types the value."""
-        typ = self._reused_result(expr, slot)
-        if typ is None:
+        rec = self.ctx.analysis_records.get(expr)
+        if rec is not None:
+            typ = self.reenter(expr, slot, coercion_ctx, rec, hinted=True)
+        else:
             self._expr_stack.append(expr)
             try:
-                typ = self._analyze_expr_under_hint_raw(expr, slot,
-                                                        coercion_ctx)
+                with self._route_frame(expr) as frame:
+                    typ = self._analyze_expr_under_hint_raw(expr, slot,
+                                                            coercion_ctx)
             finally:
                 self._expr_stack.pop()
+            self.note_analysis(expr, typ, slot, frame.route)
         return self._pending_gate(
             expr, typ, slot if coercion_ctx is not None else None)
 
@@ -1357,7 +1724,7 @@ class ExpressionAnalyzer:
         # for functions that need it (e.g. unsafe_cast). The caller's gate
         # is the node's one gate: it knows the slot.
         with self.ctx.slot_hint_scope(slot):
-            return self._analyze_expr_raw(expr)
+            return self._first_analysis(expr, self.ctx.slot_hint_at(expr))
 
     def _analyze_hinted_shape(self, expr: TpyExpr, slot: SlotHint,
                               coercion_ctx: CoercionContext | None,
@@ -1495,8 +1862,7 @@ class ExpressionAnalyzer:
                     if self.ctx.func.current_function is None:
                         typ = make_list(elem_type)
                     else:
-                        literal_id = self.ctx.literal_counter
-                        self.ctx.literal_counter += 1
+                        literal_id = self.literal_id_for(expr)
                         info = ListLiteralInfo(
                             literal_id=literal_id,
                             expr=expr,
@@ -1506,8 +1872,7 @@ class ExpressionAnalyzer:
                             has_explicit_annotation=True,
                             explicit_type=list_hint,
                         )
-                        self.ctx.container_literals[literal_id] = info
-                        self.ctx.func.pending_resolutions.append(literal_id)
+                        self.keep_literal(info)
                         typ = PendingListType(elem_type, 0, literal_id)
                     self.ctx.set_expr_type(expr, typ)
                     return typ
@@ -1920,10 +2285,11 @@ class ExpressionAnalyzer:
         return (not verdict.nested and not verdict.through_optional
                 and not self._hint_converts_int(verdict.int_side, slot))
 
-    def _analyze_select_operand(self, e: TpyExpr, declared: SlotHint,
+    def _analyze_select_operand(self, select: TpyExpr, e: TpyExpr,
+                                declared: SlotHint,
                                 coercion_ctx: CoercionContext | None = None,
                                 ) -> TpyType:
-        """Analyze a select's operand against the declared type of the
+        """Analyze an operand of `select` against the declared type of the
         select's slot, so a literal pins to it before the join sees the
         operands. A container literal takes the declared type while it is
         analysed; a tuple literal keeps its literal leaves, so they pin to
@@ -1931,7 +2297,8 @@ class ExpressionAnalyzer:
         converts it. `coercion_ctx` says the select's value is coerced to
         that slot, in that context: the operand is a value the slot
         receives, so a list literal it hands over undecided meets the
-        slot's container here."""
+        slot's container here -- decided at the select's committed slot
+        (`list_at_slot`)."""
         if coercion_ctx is not None:
             t = self.analyze_at_slot(e, declared, coercion_ctx)
             if self.pend.open_list(t):
@@ -1950,14 +2317,26 @@ class ExpressionAnalyzer:
         return t
 
     def _select_join(self, t: TpyType, e: TpyType,
-                     t_expr: TpyExpr, e_expr: TpyExpr) -> InferredJoin:
+                     t_expr: TpyExpr, e_expr: TpyExpr,
+                     slot: SlotHint | None = None) -> InferredJoin:
         """The one result type of a select -- `a if c else b`, `a or b`,
         `a and b` -- over operand types already stripped of Ref/Own. An
         inferred join, so an int meeting a float is refused (`type_join`).
 
         A literal or a pending container resolves against the OTHER operand,
         since the two must share one C++ type; readonly on either side stays
-        on a reference result, which may alias that side."""
+        on a reference result, which may alias that side. Two int literals
+        meet a declared fixed-int `slot` at its type, as one literal would
+        (each arm's conversion range-checks it); an overload probe, which
+        has no slot yet, ranks the join as any other int-literal select
+        (BUGS.md#select-int-literals-rank-as-default-int)."""
+        if (isinstance(t, IntLiteralType) and isinstance(e, IntLiteralType)
+                and t != e and t.value is not None and e.value is not None):
+            slot_int = (unwrap_readonly(unwrap_own(slot.type))
+                        if slot is not None and slot.is_declared else None)
+            if slot_int is not None and is_fixed_int_type(slot_int):
+                return InferredJoin(JoinOutcome.JOINED, slot_int)
+
         def join(t: TpyType, e: TpyType) -> TpyType | InferredJoin | None:
             if t == e:
                 return t
@@ -2068,8 +2447,8 @@ class ExpressionAnalyzer:
             # A float element beside an integer container is not assignable
             # at all, but it is the same int/float mix the pin names the
             # other way round.
-            verdict = deduction.pin_pending_container(pending, target,
-                                                      commit=False)
+            with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                verdict = deduction.pin_pending_container(pending, target)
             return (verdict if verdict.outcome is JoinOutcome.INT_FLOAT_MIX
                     else InferredJoin(JoinOutcome.INCOMPATIBLE))
         return deduction.pin_pending_container(pending, target)
@@ -2090,6 +2469,8 @@ class ExpressionAnalyzer:
                     info = self.ctx.list_literal(pt.literal_id)
                     if info is not None:
                         info.needs_list_type = True
+        # At a slot that does not commit the join is decided only: the
+        # operands keep their nodes (`coerce_expr`).
         for attr, operand_type in operands:
             # A readonly qualifier on the result only restricts the use.
             if unwrap_readonly(operand_type) != unwrap_readonly(result):
@@ -2114,7 +2495,8 @@ class ExpressionAnalyzer:
                for x in (lt, rt)):
             # A nullable operand's select typing is not designed yet.
             return lt if lt == rt else BOOL
-        verdict = self._select_join(lt, rt, expr.left, expr.right)
+        verdict = self._select_join(lt, rt, expr.left, expr.right,
+                                    declared_slot)
         result = verdict.joined
         if verdict.outcome is JoinOutcome.INT_FLOAT_MIX:
             slot_float = declared_float_slot(
@@ -2274,7 +2656,7 @@ class ExpressionAnalyzer:
                           operand_scope: ExitStack) -> TpyType:
         def operand(e: TpyExpr) -> TpyType:
             if declared_slot is not None and coercion_ctx is not None:
-                return self._analyze_select_operand(e, declared_slot,
+                return self._analyze_select_operand(expr, e, declared_slot,
                                                     coercion_ctx)
             if declared_slot is not None:
                 return self.analyze_expr_with_hint(e, declared_slot)
@@ -3165,11 +3547,8 @@ class ExpressionAnalyzer:
             # comparator sits behind a compare that has to pass.
             pair = TpyBinOp(prev, op, comp, loc=expr.loc, cond_right=i >= 1)
             # A middle operand is evaluated once, as the previous pair's
-            # right side, and this pair compares that value.
-            middle = self.ctx.get_raw_expr_type(prev) if i else None
-            with (self.reuse(prev, middle) if middle is not None
-                  else nullcontext()):
-                self.analyze_expr(pair)
+            # right side: this pair meets it through its record.
+            self.analyze_expr(pair)
             pairs.append(pair)
             prev = comp
         expr.pairs = pairs
@@ -3749,18 +4128,20 @@ class ExpressionAnalyzer:
             args=[TpyStrLiteral(value=expr.field)],
             loc=expr.loc,
         )
-        with self.reuse(expr.obj, obj_type):
-            ret_type = self.analyze_expr(getter_call)
+        ret_type = self.analyze_expr(getter_call)
         expr.dyn_getattr_call = getter_call
         return ret_type
 
     def _materialize_narrowing_element_coercion(
-        self, elem: TpyExpr, actual: TpyType, expected: TpyType,
-        ctx_msg: str, target_is_storage_form: bool,
-    ) -> TpyExpr:
-        """`compat.materialize_fresh_value` for an aggregate-literal element
-        whose caller holds no resolved coercion (the tuple-literal hint path,
-        which validates the element against the whole tuple afterwards).
+        self, elem: TpyExpr, actual: TpyType,
+        expected: TpyType, ctx_msg: str, target_is_storage_form: bool,
+    ) -> tuple[TpyExpr, bool]:
+        """`compat.materialize_fresh_value` for an element of an aggregate
+        literal whose caller holds no resolved coercion (the tuple-literal
+        hint path, which validates the element against the whole tuple
+        afterwards): the node to store back, and whether the element
+        converts to `expected`. A slot step that does not commit
+        (`SemanticContext.slot_step_commits`) decides the conversion only.
         Caller-side validation still rejects genuinely incompatible
         elements."""
         # A literal's element slot owns what it is handed, so a borrow-only
@@ -3768,10 +4149,13 @@ class ExpressionAnalyzer:
         coercion = resolve_coercion(
             unwrap_own(actual), unwrap_own(expected), CoercionContext.INIT,
             sink_owns=True)
-        return self.compat.materialize_fresh_value(
+        if not self.ctx.slot_step_commits():
+            return elem, coercion is not None and coercion.builds_fresh_value
+        node = self.compat.materialize_fresh_value(
             elem, actual, expected, ctx_msg, coercion,
             CoercionContext.INIT,
             target_is_storage_form=target_is_storage_form)
+        return node, node is not elem
 
     def _join_fixed_int_peers(
         self, nodes: list[TpyExpr], types: list[TpyType],
@@ -3818,14 +4202,14 @@ class ExpressionAnalyzer:
         if expected is None:
             return
         for i, elem_type in enumerate(types):
-            new_elem = self._materialize_narrowing_element_coercion(
+            nodes[i], converts = self._materialize_narrowing_element_coercion(
                 nodes[i], elem_type, expected, f"{ctx_label} {i + 1}",
                 target_is_storage_form=True)
-            if new_elem is not nodes[i]:
-                nodes[i] = new_elem
+            if converts:
                 types[i] = expected
 
-    def _warn_storage_element_copy(self, elem: TpyExpr, elem_type: TpyType) -> None:
+    def _warn_storage_element_copy(self, elem: TpyExpr,
+                                   elem_type: TpyType) -> None:
         """A reference-type container-literal element is stored by value (the
         container owns its elements -- storage form), so an lvalue source is
         copied, diverging from CPython aliasing. Fire the same diagnostic the
@@ -3834,7 +4218,11 @@ class ExpressionAnalyzer:
         last-use/copy() suppression are the only effects). A value type,
         rvalue, copy(), or last-use auto-move does not warn. A generic element
         reaches the same path: the verdict is unknowable here, so -- like
-        `.append` -- it is recorded and answered at the instantiation."""
+        `.append` -- it is recorded and answered at the instantiation.
+        The copy is the committed slot's record of the literal or
+        comprehension holding `elem` (`SemanticContext.slot_step_commits`)."""
+        if not self.ctx.slot_step_commits():
+            return
         bare = unwrap_ref_type(unwrap_own(unwrap_readonly(elem_type)))
         # Not gated on has_pointer_repr_element: a literal's members come back
         # Own-wrapped (storage form, not pointer-repr), so the dispatch unwraps
@@ -3852,7 +4240,10 @@ class ExpressionAnalyzer:
     def _register_moved_element(self, elem: TpyExpr,
                                 elem_type: TpyType) -> None:
         """A comprehension element its clause moves warns nothing, but its
-        owning sink still has its record."""
+        owning sink still has its record, written at the comprehension's
+        committed slot (`SemanticContext.slot_step_commits`)."""
+        if not self.ctx.slot_step_commits():
+            return
         self.compat.register_sink(
             elem, OwnType(unwrap_ref_type(unwrap_own(unwrap_readonly(
                 elem_type)))),
@@ -3879,19 +4270,7 @@ class ExpressionAnalyzer:
             # Empty list with no annotation -- create PendingListType with unknown
             # element type. The element type will be inferred from subsequent usage
             # (e.g. .append(v), xs[i] = v, param context, return context).
-
-            # Reuse an existing PendingListType for this expr if one was
-            # already created. analyze_expr can be called multiple times for
-            # the same arg expr (pre-overload arg-type collection, then post-
-            # overload _typecheck_call_args). Without this cache, each call
-            # mints a new literal_id and a new ListLiteralInfo added to
-            # pending_resolutions -- coercion writes to one, but the resolver
-            # still fails on the stale one.
-            cached = self.ctx.get_expr_type(expr)
-            if isinstance(cached, PendingListType) and cached.size == 0:
-                return cached
-            literal_id = self.ctx.literal_counter
-            self.ctx.literal_counter += 1
+            literal_id = self.literal_id_for(expr)
             info = ListLiteralInfo(
                 literal_id=literal_id,
                 expr=expr,
@@ -3899,8 +4278,7 @@ class ExpressionAnalyzer:
                 size=0,
                 is_mutated=True,  # empty list is always list, never Array
             )
-            self.ctx.container_literals[literal_id] = info
-            self.ctx.func.pending_resolutions.append(literal_id)
+            self.keep_literal(info)
             typ = PendingListType(UNKNOWN_ELEMENT, 0, literal_id)
             self.ctx.set_expr_type(expr, typ)
             return typ
@@ -4031,8 +4409,7 @@ class ExpressionAnalyzer:
             return make_list(owned_element_type(first_type))
 
         # Function-local context -> create PendingListType for deferred resolution
-        literal_id = self.ctx.literal_counter
-        self.ctx.literal_counter += 1
+        literal_id = self.literal_id_for(expr)
 
         info = ListLiteralInfo(
             literal_id=literal_id,
@@ -4041,8 +4418,7 @@ class ExpressionAnalyzer:
             size=size,
             is_global=self.ctx.is_top_level
         )
-        self.ctx.container_literals[literal_id] = info
-        self.ctx.func.pending_resolutions.append(literal_id)
+        self.keep_literal(info)
 
         return PendingListType(first_type, size, literal_id)
 
@@ -4412,6 +4788,16 @@ class ExpressionAnalyzer:
         if is_global:
             return self._analyze_global_walrus(expr, name, value_type)
 
+        if (existing is not None and self._stepping is expr
+                and expr in self.ctx.func.bind_kinds
+                and unwrap_readonly(resolved).is_value_type()):
+            # This walrus's own slot step: the binding it made takes the
+            # type its value completed to.
+            target_scope.define(name, resolved)
+            if self.ctx.func.current_ns:
+                self.ctx.func.current_ns.bind_variable(name, resolved)
+            return _walrus_result_type(resolved, value_type)
+
         if cell is not None and existing is not None:
             # One more binding of a local whose type its bindings decide.
             var_type = self.pend.record_binding(cell, value_type, expr.value,
@@ -4610,7 +4996,7 @@ class ExpressionAnalyzer:
         try:
             if type_hint is not None:
                 then_type = self._analyze_select_operand(
-                    expr.then_expr, type_hint, coercion_ctx)
+                    expr, expr.then_expr, type_hint, coercion_ctx)
             else:
                 with self._forward_fill(expr, expr.then_expr):
                     then_type = self.analyze_expr(expr.then_expr)
@@ -4619,7 +5005,7 @@ class ExpressionAnalyzer:
             self.ctx.func.narrowed_types.update(else_facts)
             if type_hint is not None:
                 else_type = self._analyze_select_operand(
-                    expr.else_expr, type_hint, coercion_ctx)
+                    expr, expr.else_expr, type_hint, coercion_ctx)
             else:
                 with self._forward_fill(expr, expr.else_expr):
                     else_type = self.analyze_expr(expr.else_expr)
@@ -4634,7 +5020,7 @@ class ExpressionAnalyzer:
         else_type = unwrap_own(unwrap_ref_type(else_type))
 
         verdict = self._select_join(then_type, else_type,
-                                    expr.then_expr, expr.else_expr)
+                                    expr.then_expr, expr.else_expr, type_hint)
         common = verdict.joined
         # A truth test takes each arm on its own, so arms with no one value
         # type (an int and a float, or a truth-tested and/or beside a float)
@@ -4752,7 +5138,8 @@ class ExpressionAnalyzer:
         if not isinstance(hint, NominalType):
             return False
         if isinstance(t, PendingListType) and is_array(hint):
-            return self.type_ops.pending_list_matches_array(t, hint)
+            with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                return self.type_ops.pending_list_matches_array(t, hint)
         td_t = type_def_of(t)
         td_h = type_def_of(hint)
         return td_t is not None and td_h is not None and td_t.category is td_h.category
@@ -4784,16 +5171,14 @@ class ExpressionAnalyzer:
             if not is_body_like_scope(self.ctx.func.current_function):
                 raise self.ctx.error(
                     "Empty dict literal requires explicit type annotation", expr)
-            literal_id = self.ctx.literal_counter
-            self.ctx.literal_counter += 1
+            literal_id = self.literal_id_for(expr)
             info = DictLiteralInfo(
                 literal_id=literal_id,
                 expr=expr,
                 key_type=UNKNOWN_ELEMENT,
                 value_type=UNKNOWN_ELEMENT,
             )
-            self.ctx.container_literals[literal_id] = info
-            self.ctx.func.pending_resolutions.append(literal_id)
+            self.keep_literal(info)
             return PendingDictType(UNKNOWN_ELEMENT, UNKNOWN_ELEMENT, literal_id)
 
         key_types = [self._analyze_and_strip(k, key_hint) for k in expr.keys]
@@ -4810,7 +5195,8 @@ class ExpressionAnalyzer:
         self._materialize_fresh_value_elements(
             expr.keys, key_types, expected_key, "dict literal key")
         self._materialize_fresh_value_elements(
-            expr.values, value_types, expected_value, "dict literal value")
+            expr.values, value_types, expected_value,
+            "dict literal value")
 
         # Unify key types
         if is_union_or_optional_type(expected_key) or isinstance(expected_key, AnyType):
@@ -4918,11 +5304,12 @@ class ExpressionAnalyzer:
                 for v, vt in zip(expr.values, value_types):
                     self._warn_storage_element_copy(v, vt)
 
-        scope = self._scored_arg_scope(expr, key_hint, value_hint)
-        if scope is not None:
-            return self._await_winner(scope, DictLiteralInfo(
-                literal_id=self._new_literal_id(), expr=expr,
-                key_type=key_type, value_type=value_type))
+        if self._probe_keeps_open(expr, key_hint, value_hint):
+            info = DictLiteralInfo(literal_id=self.literal_id_for(expr),
+                                   expr=expr, key_type=key_type,
+                                   value_type=value_type)
+            self.keep_literal(info)
+            return info.pending_type()
 
         # Resolve any literal types (bare or nested in tuples) using the
         # annotation as a structural hint.
@@ -4957,7 +5344,8 @@ class ExpressionAnalyzer:
             elem_hint = expected_elem = None
 
         self._materialize_fresh_value_elements(
-            expr.elements, elem_types, expected_elem, "set literal element")
+            expr.elements, elem_types, expected_elem,
+            "set literal element")
 
         # Unify element types
         if (is_union_or_optional_type(expected_elem) or isinstance(expected_elem, AnyType)
@@ -5011,11 +5399,11 @@ class ExpressionAnalyzer:
             for elem, et in zip(expr.elements, elem_types):
                 self._warn_storage_element_copy(elem, et)
 
-        scope = self._scored_arg_scope(expr, elem_hint)
-        if scope is not None:
-            return self._await_winner(scope, SetLiteralInfo(
-                literal_id=self._new_literal_id(), expr=expr,
-                element_type=elem_type))
+        if self._probe_keeps_open(expr, elem_hint):
+            info = SetLiteralInfo(literal_id=self.literal_id_for(expr),
+                                  expr=expr, element_type=elem_type)
+            self.keep_literal(info)
+            return info.pending_type()
 
         elem_type = self._resolve_literals_with_hint(elem_type, elem_hint)
         # Container elements must be owned -- views can't be stored in a set.
@@ -5087,8 +5475,7 @@ class ExpressionAnalyzer:
         else:
             size = -1  # Variable count -- cannot resolve to Array
 
-        literal_id = self.ctx.literal_counter
-        self.ctx.literal_counter += 1
+        literal_id = self.literal_id_for(expr)
 
         info = ListLiteralInfo(
             literal_id=literal_id,
@@ -5097,8 +5484,7 @@ class ExpressionAnalyzer:
             size=size,
             is_global=self.ctx.is_top_level,
         )
-        self.ctx.container_literals[literal_id] = info
-        self.ctx.func.pending_resolutions.append(literal_id)
+        self.keep_literal(info)
 
         return PendingListType(first_type, size, literal_id)
 
@@ -5119,7 +5505,10 @@ class ExpressionAnalyzer:
         # off the head (an `Iterator[Own[T]]` source has no genexpr lowering
         # yet).
         self._stamp_comp_source_facts(expr, 0, elem_type)
-        return self._analyze_genexpr_function(expr, elem_type)
+        # The generator is a function of its own, analyzed once: its body
+        # meets its own slots, never a probe's.
+        with self.ctx.probe_slot_scope(False):
+            return self._analyze_genexpr_function(expr, elem_type)
 
     def _check_comp_clause_names(
         self,
@@ -5444,17 +5833,23 @@ class ExpressionAnalyzer:
         expected: SlotHint | None,
         kind: Literal["list", "set"],
     ) -> TpyType:
-        """Shared analysis for list and set comprehensions."""
-        self._check_comp_clause_names(expr)
-        elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
-        # An Own[T]-yielding source (e.g. a generator) hands ownership to the
-        # comprehension: a last-use bare-loop-var element is MOVED into the
-        # result (codegen mirrors the consuming for-append), not copied.
-        self._stamp_comp_source_facts(expr, 0, elem_type)
+        """Shared analysis for list and set comprehensions. Its slot step
+        (`reenter`) runs only the element's: the clauses, their scope and
+        their loans are its body."""
+        if self._stepping is expr:
+            result_elem_type = self._step_comp_elements(expr, expected)
+        else:
+            self._check_comp_clause_names(expr)
+            elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
+            # An Own[T]-yielding source (e.g. a generator) hands ownership to
+            # the comprehension: a last-use bare-loop-var element is MOVED
+            # into the result (codegen mirrors the consuming for-append), not
+            # copied.
+            self._stamp_comp_source_facts(expr, 0, elem_type)
 
-        if self.scopes is None:
-            raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
-        result_elem_type = self._enter_comp_scope(expr, elem_type, expected)
+            if self.scopes is None:
+                raise RuntimeError(f"{kind} comprehension requires ScopeTracker")
+            result_elem_type = self._enter_comp_scope(expr, elem_type, expected)
         expected_elem = expected.type if expected is not None else None
         if self._converting_element([result_elem_type], expected) is not None:
             expected_elem = None
@@ -5480,9 +5875,11 @@ class ExpressionAnalyzer:
                                             is_last_sink=True)
         if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
                 and not moves):
-            self._warn_storage_element_copy(expr.element_expr, result_elem_type)
+            self._warn_storage_element_copy(expr.element_expr,
+                                            result_elem_type)
         elif moves:
-            self._register_moved_element(expr.element_expr, result_elem_type)
+            self._register_moved_element(expr.element_expr,
+                                         result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
             # Subclass coercion excluded: storing Child in list/set[Base] silently
@@ -5519,8 +5916,7 @@ class ExpressionAnalyzer:
         if kind == "list":
             array_size = self._try_comp_array_size(expr)
             if array_size is not None and self.ctx.func.current_function is not None:
-                literal_id = self.ctx.literal_counter
-                self.ctx.literal_counter += 1
+                literal_id = self.literal_id_for(expr)
                 info = ListLiteralInfo(
                     literal_id=literal_id,
                     expr=expr,
@@ -5528,8 +5924,7 @@ class ExpressionAnalyzer:
                     size=array_size,
                     is_global=self.ctx.is_top_level,
                 )
-                self.ctx.container_literals[literal_id] = info
-                self.ctx.func.pending_resolutions.append(literal_id)
+                self.keep_literal(info)
                 return PendingListType(result_elem_type, array_size, literal_id)
 
         return make_set(result_elem_type) if kind == "set" else make_list(result_elem_type)
@@ -5601,16 +5996,22 @@ class ExpressionAnalyzer:
         key_hint: SlotHint | None = None,
         value_hint: SlotHint | None = None,
     ) -> TpyType:
-        """Analyze a dict comprehension: {key: value for var in iterable if cond}"""
-        self._check_comp_clause_names(expr)
-        elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
-        self._stamp_comp_source_facts(expr, 0, elem_type)
+        """Analyze a dict comprehension: {key: value for var in iterable if
+        cond}. Its slot step runs only the key's and value's (as a list
+        comprehension's)."""
         innermost = expr.generators[-1]
+        if self._stepping is expr:
+            key_type, value_type = self._step_comp_elements(
+                expr, (key_hint, value_hint))
+        else:
+            self._check_comp_clause_names(expr)
+            elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
+            self._stamp_comp_source_facts(expr, 0, elem_type)
 
-        if self.scopes is None:
-            raise RuntimeError("dict comprehension requires ScopeTracker")
-        key_type, value_type = self._enter_comp_scope(
-            expr, elem_type, (key_hint, value_hint))
+            if self.scopes is None:
+                raise RuntimeError("dict comprehension requires ScopeTracker")
+            key_type, value_type = self._enter_comp_scope(
+                expr, elem_type, (key_hint, value_hint))
         expected_key = key_hint.type if key_hint is not None else None
         expected_value = value_hint.type if value_hint is not None else None
         if self._converting_element([key_type], key_hint) is not None:
@@ -5678,8 +6079,11 @@ class ExpressionAnalyzer:
     def _resolve_comp_iterable(
         self, gen: TpyComprehensionGenerator, expr: TpyExpr
     ) -> TpyType:
-        """Analyze the iterable and extract its element type (shared by all comprehensions)."""
-        iterable_type = self.analyze_expr(gen.iterable)
+        """Analyze the iterable and extract its element type (shared by all
+        comprehensions): the comprehension's body, analyzed once whatever
+        slot its element meets, so never at an overload probe's."""
+        with self.ctx.probe_slot_scope(False):
+            iterable_type = self.analyze_expr(gen.iterable)
         inner = unwrap_readonly(iterable_type)
         # The implicit `__iter__()` call, as the for statement records it;
         # before the comp scope, where a target named like the source's root
@@ -5704,8 +6108,30 @@ class ExpressionAnalyzer:
         scope, clause 0's iterable already analyzed (`elem_type` is its
         element) in the enclosing scope."""
         assert self.scopes is not None
+        clause_types = [elem_type]
         with self.scopes.comprehension_scope(expr.generators) as inner_scope:
-            return self._enter_comp_clause(expr, 0, elem_type, inner_scope, hint)
+            result = self._enter_comp_clause(expr, 0, elem_type, inner_scope,
+                                             hint, clause_types)
+        self.set_step_route(expr, CompClauseRoute(tuple(clause_types)))
+        return result
+
+    def _step_comp_elements(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
+    ) -> TpyType | tuple[TpyType, TpyType]:
+        """The slot step of a comprehension: its element(s) met at `hint`
+        inside the scope they were analyzed in -- every clause's targets
+        bound to the element types recorded then -- with none of the
+        clauses' body (sources, filters, loans) run again."""
+        assert self.scopes is not None
+        route = self.ctx.analysis_records[expr].route
+        assert isinstance(route, CompClauseRoute)
+        clause_types = list(route.elem_types)
+        with self.scopes.comprehension_scope(expr.generators) as inner_scope:
+            return self._enter_comp_clause(
+                expr, 0, clause_types[0], inner_scope, hint, clause_types,
+                step=True)
 
     def _enter_comp_clause(
         self,
@@ -5714,9 +6140,13 @@ class ExpressionAnalyzer:
         elem_type: TpyType,
         inner_scope: Scope,
         hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
+        clause_types: list[TpyType],
+        step: bool = False,
     ) -> TpyType | tuple[TpyType, TpyType]:
         """Bind clause `k`'s targets and analyze what runs inside it: its
-        filters, then the next clause or, in the innermost, the element(s)."""
+        filters, then the next clause or, in the innermost, the element(s).
+        A `step` (`_step_comp_elements`) binds the targets and meets the
+        element(s) only."""
         assert self.scopes is not None
         gen = expr.generators[k]
         # unwrap_qualifiers (not unwrap_readonly) so a wrapped value-type
@@ -5726,19 +6156,20 @@ class ExpressionAnalyzer:
         worth_const_ref = (not unwrapped.is_value_type()
                            or unwrapped.is_expensive_copy())
         names = gen.targets
-        # Clear any prior marks in case an outer scope already used these
-        # names; the post-body check at the bottom must see only marks from
-        # this comp's body.
-        for n in names:
-            self.ctx.func.mutated_loop_vars.discard(n)
-            self.ctx.func.consumed_loop_vars.discard(n)
+        if not step:
+            # Clear any prior marks in case an outer scope already used these
+            # names; the post-body check at the bottom must see only marks
+            # from this comp's body.
+            for n in names:
+                self.ctx.func.mutated_loop_vars.discard(n)
+                self.ctx.func.consumed_loop_vars.discard(n)
 
-        # Clause 0's source is evaluated in the enclosing scope, where a name
-        # any clause binds is still the ENCLOSING binding; an inner clause's
-        # source reads the comprehension's own variables.
-        excluded = ([n for g in expr.generators for n in g.targets]
-                    if k == 0 else [])
-        self._register_comp_iter_loans(gen, names, excluded)
+            # Clause 0's source is evaluated in the enclosing scope, where a
+            # name any clause binds is still the ENCLOSING binding; an inner
+            # clause's source reads the comprehension's own variables.
+            excluded = ([n for g in expr.generators for n in g.targets]
+                        if k == 0 else [])
+            self._register_comp_iter_loans(gen, names, excluded)
         if gen.unpack_vars is not None:
             if (isinstance(elem_type, ReadonlyType)
                     and isinstance(elem_type.wrapped, TupleType)):
@@ -5765,12 +6196,15 @@ class ExpressionAnalyzer:
             self.ctx.func.comp_targets.extend(
                 CompTarget(n, expr, k, inner_scope.depth) for n in names)
             try:
-                result = self._analyze_comp_body(expr, k, inner_scope, hint)
+                result = self._analyze_comp_body(expr, k, inner_scope, hint,
+                                                 clause_types, step)
             finally:
                 # Re-read: a trial scope inside the body restores the
                 # function state as a copy.
                 comp_targets = self.ctx.func.comp_targets
                 del comp_targets[len(comp_targets) - len(names):]
+        if step:
+            return result
         # The edge reaches only another comprehension's target: an enclosing
         # `for` variable marked mutable may turn its loop consuming while a
         # borrow of an element outlives the loop
@@ -5837,15 +6271,32 @@ class ExpressionAnalyzer:
         k: int,
         inner_scope: Scope,
         hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
+        clause_types: list[TpyType],
+        step: bool = False,
     ) -> TpyType | tuple[TpyType, TpyType]:
-        for cond in expr.generators[k].conditions:
-            self.analyze_condition(cond)
-        if k + 1 < len(expr.generators):
-            # The next clause's source runs once per element that passed
-            # this clause's filters, with every outer target bound.
-            elem_type = self._resolve_comp_iterable(expr.generators[k + 1], expr)
-            self._stamp_comp_source_facts(expr, k + 1, elem_type)
-            return self._enter_comp_clause(expr, k + 1, elem_type, inner_scope, hint)
+        """What clause `k` runs inside it; `clause_types` the element type
+        each clause binds its targets to, filled in by the first analysis
+        and met again by a step."""
+        if step:
+            if k + 1 < len(expr.generators):
+                return self._enter_comp_clause(
+                    expr, k + 1, clause_types[k + 1], inner_scope, hint,
+                    clause_types, step=True)
+        else:
+            # The filters are the comprehension's body: analyzed once, at
+            # their own slots, whatever slot the element meets.
+            with self.ctx.probe_slot_scope(False):
+                for cond in expr.generators[k].conditions:
+                    self.analyze_condition(cond)
+            if k + 1 < len(expr.generators):
+                # The next clause's source runs once per element that passed
+                # this clause's filters, with every outer target bound.
+                elem_type = self._resolve_comp_iterable(
+                    expr.generators[k + 1], expr)
+                self._stamp_comp_source_facts(expr, k + 1, elem_type)
+                clause_types.append(elem_type)
+                return self._enter_comp_clause(expr, k + 1, elem_type,
+                                               inner_scope, hint, clause_types)
         if isinstance(expr, TpyDictComprehension):
             key_hint, value_hint = hint
             return (self.analyze_expr_with_hint(expr.key_expr, key_hint),
@@ -5886,12 +6337,12 @@ class ExpressionAnalyzer:
                 # char->str) so it reaches codegen; other element coercions are
                 # handled by the outer tuple compat + the tuple-literal slot
                 # codegen, so this is a no-op for them.
-                new_elem = self._materialize_narrowing_element_coercion(
-                    elem, analyzed, hint, f"tuple element {i + 1}",
-                    target_is_storage_form=False)
-                expr.elements[i] = new_elem
+                expr.elements[i], converts = (
+                    self._materialize_narrowing_element_coercion(
+                        elem, analyzed, hint, f"tuple element {i + 1}",
+                        target_is_storage_form=False))
                 # A fired coercion retypes the element to the hint it produced.
-                elem_types.append(hint if new_elem is not elem else analyzed)
+                elem_types.append(hint if converts else analyzed)
             else:
                 self.analyze_expr(elem)
                 # Use get_expr_type to strip expression-level OwnType/Ref:
@@ -6554,10 +7005,12 @@ class ExpressionAnalyzer:
 
         expr.inferred_param_types = list(fn_type.param_types)
         # A lambda's reads of the enclosing locals are captures, typed where
-        # the lambda is written.
-        self.pend.settle_names(
-            collect_name_refs(expr.body, into_lambdas=True)
-            - set(expr.param_names), expr, "captured by a lambda")
+        # the lambda is written: its body, met again at each slot until it
+        # is analyzed once, settles them whatever slot it meets.
+        with self.ctx.probe_slot_scope(False):
+            self.pend.settle_names(
+                collect_name_refs(expr.body, into_lambdas=True)
+                - set(expr.param_names), expr, "captured by a lambda")
 
         # Save outer scope locals for capture filtering
         outer_locals = set(self.ctx.func.definitely_assigned)
@@ -6650,7 +7103,10 @@ class ExpressionAnalyzer:
         # in place, as a nested def's is.
         body_value = peel_value_wrappers(expr.body)
         tuple_target = own_tuple_target(fn_type.return_type)
-        if (isinstance(body_value, TpyName) and tuple_target is not None
+        if not self.ctx.slot_step_commits():
+            # The result's ownership verdict is the committed slot's.
+            pass
+        elif (isinstance(body_value, TpyName) and tuple_target is not None
                 and body_value.name in expr.captured_names):
             self.compat.check_captured_tuple_read(
                 body_value.name, tuple_target, body_value,
@@ -6819,9 +7275,11 @@ class ExpressionAnalyzer:
                                 expr.name, expr)
                         # Escape tracking: passing nested def to Callable (type-erased)
                         # marks it as escaping. Fn (template) stays inline -- no escape.
+                        # The committed slot's mark.
                         if (isinstance(hint, CallableType) and not hint.is_template
-                                and expr.name in self.ctx.func.nested_def_names):
-                            self.ctx.func.nested_def_escapes.add(expr.name)
+                                and expr.name in self.ctx.func.nested_def_names
+                                and self.ctx.slot_step_commits()):
+                            self.ctx.mark_nested_def_escape(expr.name)
                         return self._concrete_fn_type(matched, expr, hint)
 
         # Check registry (covers imported functions not yet in namespace)

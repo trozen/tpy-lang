@@ -1,0 +1,12 @@
+call: 1
+field: 2
+binop: 4
+select-arm: 4
+fstring: 6
+list: 7
+tuple: 9
+nested-generic: 10
+name: 1 111
+protocol-slot: 3
+protocol-slot-key: 2
+protocol-slot-str: 3

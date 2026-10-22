@@ -267,6 +267,8 @@ def _is_useful_seed_binding(t: object) -> bool:
       they never substitute into per-arg hints, but they would still leak
       into ``partial_inferred`` and conflict with arg-derived ``N`` during
       Phase-2 array matching.
+    - A static (non-``@dynamic``) protocol: the slot is any type that
+      conforms, so it bounds the param rather than binding it.
     - ``IntLiteralType`` / ``FloatLiteralType`` literal markers: like the
       pending types, these are transient seed values that
       ``infer_type_params_for_function`` resolves post-arg-inference (to
@@ -274,6 +276,9 @@ def _is_useful_seed_binding(t: object) -> bool:
       type param to a literal type before arg evidence widens it.
     """
     if isinstance(t, int):  # int-kind binding (Array[T, N])
+        return False
+    if (isinstance(t, NominalType) and is_protocol_type(t)
+            and not is_dyn_protocol(t)):
         return False
     return not isinstance(
         t,
@@ -943,9 +948,11 @@ class TypeOperations:
             # monomorphic twin into being, whether that happens at a
             # constructor, a method call, a field access or a
             # `class Child(Base[X])` header -- so this is where the record's
-            # owning-slot copy obligations are discharged.
-            self.ctx.record_own_copy_instantiation(record_info, subst,
-                                                   is_record=True)
+            # owning-slot copy obligations are discharged, by a check that
+            # commits: a query names the type without instantiating it.
+            if self.ctx.slot_step_commits():
+                self.ctx.record_own_copy_instantiation(record_info, subst,
+                                                       is_record=True)
             return subst
         return builtin_modules.extract_type_params(record_type)
 
@@ -2166,10 +2173,12 @@ class TypeOperations:
                 return None
         return inferred
 
-    def pending_list_matches_array(self, actual: PendingListType, expected: NominalType,
-                                   commit: bool = True) -> bool:
+    def pending_list_matches_array(self, actual: PendingListType,
+                                   expected: NominalType) -> bool:
         """Check if a pending list literal can match an Array type (including
-        nested arrays). Under `commit` a literal element takes the Array's."""
+        nested arrays). Where the slot step commits
+        (`SemanticContext.slot_step_commits`) a literal element takes the
+        Array's."""
         if actual.size != expected.type_args[1]:
             return False
 
@@ -2177,14 +2186,15 @@ class TypeOperations:
         expected_elem = expected.type_args[0]
 
         if isinstance(actual_elem, PendingListType) and is_array(expected_elem):
-            return self.pending_list_matches_array(actual_elem, expected_elem, commit)
+            return self.pending_list_matches_array(actual_elem, expected_elem)
 
         if actual_elem == expected_elem:
             return True
 
         if isinstance(actual_elem, IntLiteralType) and is_integer_type(expected_elem):
             info = self.ctx.list_literal(actual.literal_id)
-            if info and commit:
+            if info and self.ctx.slot_step_commits():
+                self.ctx.assert_slot_effect("a list literal's element type")
                 info.coerced_element_type = expected_elem
             return True
 

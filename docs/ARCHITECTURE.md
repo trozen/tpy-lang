@@ -939,15 +939,46 @@ writing one.
 
 ### Analysis lifecycle
 
-An expression is analyzed once; a decision that depends on its destination slot is meant to stay
-open and be completed once when the slot is decided (TODO.md "An expression is analyzed once").
-In place today: a node analyzed a second time under the same hint (a chained comparison's middle
-operand, an attribute-write or `__getattr__` receiver, `del obj.attr`, `setattr` / `delattr`)
-reads its first result back through `ExpressionAnalyzer.reuse`, which asserts the hint is the
-same; macro output reaches sema with one node per evaluation (`unshare`, applied where class,
-builder and function macro output enters); and every slot-hint reader in the reader table records
-the node in `ctx.slot_reads`, not consumed yet (structural tests in `tpyc/sema/test_slot_reads.py`). Overload probe -> winner,
-generic inference -> commit, pending redispatch and the lambda trial still analyze twice.
+An expression is analyzed once. Its analysis is kept beside its type
+(`SemanticContext.analysis_records`, rolled back by a trial like the type table), and the entry
+rule (`ExpressionAnalyzer.reenter`) meets a node again without analyzing it again: a node whose
+analysis does not depend on its slot hands back its record; an OPEN one -- a shape typed from its
+slot (`slot_typed_kind`: a select, a container literal or comprehension, a tuple, an f-string, a
+function reference, an empty factory), one whose analysis read its slot (`ctx.slot_reads`), or a
+carrier of such a child along the edges `read_slot` climbs -- runs only its slot step at the new
+slot, its children met through their own records, replacing what its earlier step decided (its arm
+and element coercions, its literal record's analysis fields). A carrier keeps its record when no
+child's completed type changed; a call whose callee inferred type arguments (`GenericCallRoute`)
+infers its one winner again from its arguments' records and the slot, and so does a generic record
+construction (`GenericCtorRoute`), completed through the one helper a pending instance's late
+resolution takes (`CallAnalyzer.complete_construction`), and a generic method call
+(`GenericMethodRoute`) -- one completion step (`ExpressionAnalyzer._complete_call`) dispatching on
+the route; a comprehension's step is its element's. The route a step takes again -- a generic
+call's (through the builtin overload route or not), a generic construction's record, a generic
+method's resolution, a comprehension's clause element types -- is a field of the node's record
+(`AnalysisRecord.route`), and it is the one fact that says a call infers its type arguments.
+
+A slot step writes the records its committed slot owns -- ownership records (owning reads, sinks,
+copies registered for settlement (`register_copy`), consumed `Own` parameters), coercion nodes, pending settlements --
+only where it commits (`SemanticContext.slot_step_commits`): always at the committed slot (a winner's
+receive, whose ONE receive step `CallAnalyzer.receive_winner_args` every call path takes), never
+under a query (`ProbeSlot.QUERY`: a `@dispatch` fallback candidate validated, a
+compatibility check asked as a query), and at an overload probe's slot (`ProbeSlot.PROBE`: ranking,
+generic inference, Regime C, a constructor or `raise` group) unless the innermost step running is
+that of a node open to its slot. Where it does not commit, a step decides types only:
+`check_type_compatible` runs the committed check -- its source expression, its pre-checks and its
+refusals -- with the ownership verdict and every write left for the committed slot, `coerce_expr`
+hands its expression back, and a pending number forced there is the type the settle would decide.
+A node's body -- its children's analyses, a consuming call's receiver move, the pending gate a
+consumer runs on its operand, a lambda's capture settlement -- runs once, at the committed slot's
+effect context; under a query it stays a query, the trial around it rolling back what it
+analyzed. A check that only asks inside a committed one (a union member tried, an element type
+probed) runs under a query of its own. Still analyzed
+again: a lambda met at another slot, a call macro's arguments inside its expansion and an `@inline`
+parameter at each use (one node per use). Under the test harness a second analysis of a node
+outside a trial is an internal error (`TPY_ASSERT_ANALYZED_ONCE`), and so is a record written where
+the step does not commit (`TPY_ASSERT_SLOT_EFFECTS`), both set by `conftest.py`; structural tests in
+`tpyc/sema/test_analyze_once.py` and `tpyc/sema/test_slot_reads.py`.
 
 ## Design decisions
 
@@ -1362,25 +1393,21 @@ every other consumer. Every path that scores candidates opens that scope
 overloaded `raise` constructor, a record's operator dunder) and so do the
 single generic method and the inferred generic record constructor. The
 candidates are scored with nothing decided (the pure query of
-`docs/OVERLOAD_DESIGN.md` "Undecided container arguments"); ONE step then
-applies the winner (`CallAnalyzer.apply_winner`): a generic winner's
-resolved parameters decide the arguments as a generic call's do (the scope's
-`resolved` flag, which also lets a resolved view such as `Iterable[T]`
-decide), any other winner's parameter is a declared slot, so each container
-the scoring left open is analyzed again at it (`analyze_arg_at_param`, with
-the scope no longer handing it open) and the coercion decides it there --
-what a call to that one function does; the user-function path gets the same
-from the single-function call analysis it runs on the winner. Whether the
-winner is generic has one source (`overloads.winner_resolves_params`, on
-the winner as declared). The scope is a value: the path that opened it
-hands it to `apply_winner`, a call that opened none applies nothing, and the
-gate and the coercion find the scope that owns a node or a cell
-(`SemanticContext.call_scope_of_node` / `call_scope_of`), never "the
-innermost one". An empty container written as an argument (`[]`,
-`list()`, `{}`, `set()`) gets a record from the scoring analysis; the
-gate hands it to the scope (`OpenCallArgs.awaiting`), and when the
-winner's slot analyzes the node again and gives it a record of its own
-the scoring's is dropped (a view slot keeps it and decides it). Leaves
+`docs/OVERLOAD_DESIGN.md` "Undecided container arguments"); the ONE receive
+step then takes the winner's arguments (`CallAnalyzer.receive_winner_args`):
+a generic winner's resolved parameters decide the arguments as a generic
+call's do (the scope's `resolved` flag, which also lets a resolved view such
+as `Iterable[T]` decide), any other winner's parameter is a declared slot
+(`OpenCallArgs.receiving`), so each container the scoring left open meets it
+through its slot step (`analyze_arg_at_param`, with the scope no longer
+handing it open) and the coercion decides it there -- what a call to that
+one function does. The scope is a value: the gate and the coercion find the
+scope that owns a node or a cell (`SemanticContext.call_scope_of_node` /
+`call_scope_of`), never "the innermost one". An empty container written as
+an argument (`[]`, `list()`, `{}`, `set()`) gets a record from the scoring
+analysis; when the winner's slot step types it, that record takes the
+slot's decision, or is dropped when the slot gives a typed container
+(`ExpressionAnalyzer._drop_decided_literal`). Leaves
 still open when a generic call ends are settled then, as an argument to
 the call; a non-generic winner leaves nothing to settle, as a call to
 that one function would; under an overload trial nothing is collected or

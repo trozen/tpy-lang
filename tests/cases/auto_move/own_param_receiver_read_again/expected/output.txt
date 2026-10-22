@@ -1,0 +1,7 @@
+same_call 4
+dispatch_method 4
+later_alias 4 7
+last_use 5
+alias_plain 2 1
+alias_dispatch 11 1
+alias_generic 21 1

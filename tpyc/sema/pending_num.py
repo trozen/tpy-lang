@@ -2337,17 +2337,11 @@ class PendingNums:
         cells = self._reach(cids)
         if not cells:
             return
-        cur, clash = self._joined(cells)
-        if clash is not None:
-            # Arms that bind together are refused in their own words.
-            self.check_arm_group(clash[0], cur)
-            self._raise_no_common(*clash)
-        for cell in cells:
-            self.check_arm_group(cell, cur)
+        cur = self._settled_types(cells)
+        self.ctx.assert_slot_effect("a pending number's settlement")
         self.ctx.pending_num_epoch += 1
         for cell in cells:
-            t = cur[cell.cid]
-            cell.settled = t if t is not None else self.default_type(cell.is_float)
+            cell.settled = cur[cell.cid]
             if use is not None:
                 cell.frozen_by = (use, what or "a use that needs its type",
                                   via if via != cell.name else None)
@@ -2356,6 +2350,22 @@ class PendingNums:
                 self._check_fits(cell, self._eval(ft, {}, set()), node)
             cell.must_fit.clear()
         self._publish(cells)
+
+    def _settled_types(self, cells: list[PendingNumCell]
+                       ) -> dict[int, TpyType]:
+        """The type each of `cells` (a `_reach` set) settles at from its
+        evidence so far, deciding nothing: the refusals of a settle -- arms
+        with no common type -- raised as it raises them."""
+        cur, clash = self._joined(cells)
+        if clash is not None:
+            # Arms that bind together are refused in their own words.
+            self.check_arm_group(clash[0], cur)
+            self._raise_no_common(*clash)
+        for cell in cells:
+            self.check_arm_group(cell, cur)
+        return {cell.cid: (t if (t := cur[cell.cid]) is not None
+                           else self.default_type(cell.is_float))
+                for cell in cells}
 
     def _publish(self, cells: list[PendingNumCell]) -> None:
         """Make later reads see the settled type directly. Reads through a
@@ -3046,13 +3056,18 @@ class PendingNums:
                 return self.finalize_values(t)
         return t
 
-    def concrete(self, t: PendingNumType) -> TpyType:
+    def concrete(self, t: PendingNumType,
+                 would: Mapping[int, TpyType] | None = None) -> TpyType:
+        """The type pending number `t` has once its cells settled; `would`
+        gives the types the cells not settled yet would settle at."""
         settled = []
         for cid in t.cells:
             cell = self.ctx.pending_num_cells[cid]
-            assert cell.settled is not None, (
+            got = (cell.settled if cell.settled is not None or would is None
+                   else would.get(cid))
+            assert got is not None, (
                 f"pending local '{cell.name}' read before it settled")
-            settled.append(cell.settled)
+            settled.append(got)
         out = lub_int([t.floor] + settled)
         # An operation over types with none in common is refused when its
         # operator is resolved, which runs before anything reads its type.
@@ -3062,9 +3077,14 @@ class PendingNums:
     def force(self, expr: TpyExpr | None, t: TpyType, what: str | None = None
               ) -> TpyType:
         """Settle what `t` (the type `expr` analyzed to) depends on: `expr`
-        is a use that needs a concrete type now."""
+        is a use that needs a concrete type now. A slot step that does not
+        commit (`SemanticContext.slot_step_commits`) settles nothing: it
+        gets the type the settle would decide."""
         inner = strip_int(t)
         assert isinstance(inner, PendingNumType)
+        if not self.ctx.slot_step_commits():
+            return self.concrete(inner, self._settled_types(
+                self._reach(inner.cells)))
         if not self.settled_all(inner):
             via = expr.name if isinstance(expr, TpyName) else None
             if via is None:
@@ -3090,6 +3110,9 @@ class PendingNums:
             return self.force(expr, t, what)
         cids = {cid for leaf in value_leaves(t) for cid in leaf.cells
                 if self.ctx.pending_num_cells[cid].settled is None}
+        if not self.ctx.slot_step_commits():
+            return self.finalize_values(
+                t, self._settled_types(self._reach(cids)))
         if cids:
             if what is None:
                 what = (self.describe_use(expr) if expr is not None
@@ -3155,6 +3178,7 @@ class PendingNums:
 
     def defer(self, node: TpyExpr | TpyStmt | None, types: tuple[TpyType, ...],
               resolve: Callable[[tuple[TpyType, ...]], None]) -> None:
+        self.ctx.assert_slot_effect("a deferred pending-number operation")
         self.ctx.func.pending_num_deferred.append(
             DeferredIntOp(node, tuple(strip_int(t) for t in types), resolve))
 
@@ -3203,6 +3227,7 @@ class PendingNums:
         settles: a placeholder filled then, or spliced out if it is none.
         `rebind_of` names the typed local a store rebinds, which a wider
         value may not widen."""
+        self.ctx.assert_slot_effect("a coercion node")
         node = TpyCoerce(expr=expr, actual_type=actual, expected_type=expected,
                          coercion=PENDING_NUM_COERCION,
                          context_kind=coercion_ctx, context_msg=context,
@@ -3404,14 +3429,17 @@ class PendingNums:
             return self.concrete(t)
         return t.map_inner_types(self.finalize)
 
-    def finalize_values(self, t: TpyType) -> TpyType:
+    def finalize_values(self, t: TpyType,
+                        would: Mapping[int, TpyType] | None = None
+                        ) -> TpyType:
         """`finalize` for the numbers `t` holds by value (`value_leaves`):
-        a list literal in it keeps its type, which its resolution gives."""
+        a list literal in it keeps its type, which its resolution gives.
+        `would`: as for `concrete`."""
         if isinstance(t, PendingNumType):
-            return self.concrete(t)
+            return self.concrete(t, would)
         if isinstance(t, PendingContainerType):
             return t
-        return t.map_inner_types(self.finalize_values)
+        return t.map_inner_types(lambda u: self.finalize_values(u, would))
 
     def decided_by_own_cells(self, t: TpyType) -> bool:
         """Whether every pending leaf of `t` is a number of the function

@@ -5,7 +5,7 @@ Statement analysis including variable declarations, assignments, and control flo
 """
 
 from __future__ import annotations
-from contextlib import AbstractContextManager, contextmanager, nullcontext
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping, NamedTuple
 
 from ..holders import IterHolder
@@ -1215,7 +1215,7 @@ class StatementAnalyzer:
                 if stmt.value.name in self.ctx.func.nested_def_names:
                     self.ctx.reject_resumable_nested_def_escape(
                         stmt.value.name, stmt)
-                    self.ctx.func.nested_def_escapes.add(stmt.value.name)
+                    self.ctx.mark_nested_def_escape(stmt.value.name)
             # A returned borrow -- a reference, a borrowing view, a borrow
             # tuple's element pointers -- records its provenance and, unless
             # the slot is readonly or a view, keeps its roots writable.
@@ -3074,7 +3074,9 @@ class StatementAnalyzer:
                 with self.expr.calls.open_call_args(
                         stmt, list(stmt.args), stmt.exception_type,
                         scored=True) as scope:
-                    arg_types = [self.expr.analyze_expr(a) for a in stmt.args]
+                    with self.ctx.probe_slot_scope(True):
+                        arg_types = [self.expr.analyze_expr(a)
+                                     for a in stmt.args]
                     try:
                         winner = resolve_overload(
                             init_overloads, arg_types,
@@ -3096,7 +3098,8 @@ class StatementAnalyzer:
                             f"No matching overload for '{stmt.exception_type}"
                             f"({types_str})'", stmt)
                     self.expr.calls.receive_winner_args(
-                        scope, stmt.args, arg_types, winner.params, winner)
+                        scope, stmt.args, None, winner.params, winner,
+                        call=stmt)
                 stmt.resolved_ctor_init = winner
             elif record.has_init:
                 min_args = sum(1 for _, _, d in record.init_params if d is None)
@@ -3108,14 +3111,10 @@ class StatementAnalyzer:
                         f"'raise {stmt.exception_type}()' expects "
                         f"{expected} arguments, got {len(stmt.args)}",
                         stmt)
-                for i, (arg, (pname, ptype, _)) in enumerate(
-                        zip(stmt.args, record.init_params)):
-                    arg_type = self.expr.analyze_at_slot(
-                        arg, ptype, CoercionContext.ARG)
-                    self.expr.calls.mark_pending_arg_context(arg, arg_type, ptype)
-                    stmt.args[i] = self.compat.coerce_expr(
-                        arg, arg_type, ptype, f"argument '{pname}'",
-                        coercion_ctx=CoercionContext.ARG)
+                self.expr.calls.receive_winner_args(
+                    None, stmt.args, None,
+                    [(pname, ptype) for pname, ptype, _ in record.init_params],
+                    None, call=stmt)
                 # Carry the resolved __init__ so codegen routes the ctor args
                 # through the same shared arg-lowering loop a normal `X(args)`
                 # construction uses -- otherwise a raise site re-derives only
@@ -7063,6 +7062,7 @@ class StatementAnalyzer:
                                           TupleSink.LOCAL, per_leaf=True)
                 source_consumed = self.compat.claim_name_move(stmt.value)
                 if self.compat.holds_reference_leaf(rhs_type):
+                    self.ctx.assert_slot_effect("an unpack's ownership claim")
                     self.ctx.func.owning_reads.append(
                         UnpackClaim(stmt.value.name, stmt.value, stmt))
             else:
@@ -7568,21 +7568,12 @@ class StatementAnalyzer:
         # AND the class has __setattr__, the read-side analysis would either
         # resolve via __getattr__ (handled below) or raise "no field". Detect
         # the latter from the receiver, analyzed ahead of the target, which
-        # then reads it back rather than evaluating it again.
-        recv = (stmt.target.obj if isinstance(stmt.target, TpyFieldAccess)
-                else None)
+        # then meets it through its record rather than evaluating it again.
         recv_type = (self._write_target_receiver(stmt.target)
                      if isinstance(stmt.target, TpyFieldAccess) else None)
-
-        def recv_reuse() -> AbstractContextManager[None]:
-            return (self.expr.reuse(recv, recv_type)
-                    if recv is not None and recv_type is not None
-                    else nullcontext())
-
         if (recv_type is not None
                 and self._target_is_dyn_writable_only(stmt.target, recv_type)):
-            with recv_reuse():
-                self._analyze_dyn_setattr_assign(stmt)
+            self._analyze_dyn_setattr_assign(stmt)
             return
         if isinstance(stmt.target, TpyFieldAccess):
             # Pin the write position before the target is analysed as a read:
@@ -7601,8 +7592,7 @@ class StatementAnalyzer:
                 self.pend.list_sink(stmt.target
                                     if isinstance(stmt.target,
                                                   (TpyName, TpySubscript))
-                                    else None), \
-                recv_reuse():
+                                    else None):
             target_type = self.expr.analyze_expr(stmt.target)
         into = self._target_cell_list(stmt.target)
         elem_cell = self._target_elem_cell(stmt.target)
@@ -7643,8 +7633,7 @@ class StatementAnalyzer:
                 args=[TpyStrLiteral(value=stmt.target.field), stmt.value],
                 loc=stmt.loc,
             )
-            with recv_reuse():
-                self.expr.analyze_expr(setter_call)
+            self.expr.analyze_expr(setter_call)
             stmt.target.dyn_setattr_call = setter_call
             # Mark mutation: writing through a dyn-attr is mutating self/obj.
             mark_roots(self.ctx, storage_roots(
@@ -8387,8 +8376,7 @@ class StatementAnalyzer:
                 args=[TpyStrLiteral(value=field_name)],
                 loc=stmt.loc,
             )
-            with self.expr.reuse(target.obj, obj_type):
-                self.expr.analyze_expr(synth)
+            self.expr.analyze_expr(synth)
             target.dyn_delattr_call = synth
             # Mark mutation: deletion through dunder mutates the receiver.
             mark_roots(self.ctx, storage_roots(

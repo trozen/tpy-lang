@@ -701,16 +701,15 @@ container wherever it is written (its storage is decided later). A dict
 or set literal is one only where it has to wait:
 written as an argument of a call that scores several candidates, each
 declaring the parameter it lands at plainly -- no view, no type parameter
-(`CallAnalyzer.open_written_literals`; a candidate that reads the literal
+(`OpenCallArgs.declares_plainly`; a candidate that reads the literal
 through `Iterable[T]` reads the type its own values give, so for `max`,
 `sum` or a generic candidate it is typed at once) -- and with no
-declared parameter to type it at, it keeps its numbers as the literals
-written (`ExpressionAnalyzer._await_winner`) and its record awaits the
-winner's slot, like a written empty container's
-(`OpenCallArgs.awaiting`); a candidate accepts it when every written
-value fits the part it is written at
-(`TypeCompatibility._written_arg_entries`), and the winner's slot analyzes
-the literal again at its parameter, which types it. Anywhere else a dict
+declared parameter to type it at, the overload probe ranks it with its
+numbers as the literals written (`ExpressionAnalyzer._probe_keeps_open`);
+a candidate accepts it when every written value fits the part it is
+written at (`TypeCompatibility._written_arg_entries`), and the winner's
+receive meets the literal at its parameter, where its slot step types it
+and decides the record the probe made, as a written empty container's. Anywhere else a dict
 or set literal takes its type from its own values at once.
 
 **Undecided container arguments.** An argument whose type is a pending
@@ -756,9 +755,9 @@ arguments -- an overload never widens a list that another applicable
 overload takes as it is -- and among equal container widening the order
 above applies unchanged. An applicable container at a
 concrete parameter is an `EXACT_CONCRETE` match at cost 0: its widening
-is counted once, in the first key. Nothing is decided while scoring: the winner is
-applied afterwards (`CallAnalyzer.apply_winner`, see `docs/ARCHITECTURE.md`
-"pending_num"). A pending dict is ranked at a one-argument protocol as
+is counted once, in the first key. Nothing is decided while scoring: the winner
+receives the arguments afterwards (`CallAnalyzer.receive_winner_args`, see
+`docs/ARCHITECTURE.md` "pending_num"). A pending dict is ranked at a one-argument protocol as
 the dict it spells, never by its value type.
 
 **Concrete-over-generic invariant.** Because generic tiers (2, 6, 7, 8) all

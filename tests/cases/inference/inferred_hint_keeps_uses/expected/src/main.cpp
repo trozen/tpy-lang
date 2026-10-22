@@ -498,8 +498,8 @@ struct __genexpr_overload_args_pick_1_frame : public ::tpy::next_iter_mixin<__ge
     }
 };
 
-// # A generator-expression argument to an overloaded call (the snapshot
-// # keeps a dead frame, BUGS.md#dispatch-arg-genexpr-reanalysis).
+// # A generator-expression argument to an overloaded call: one frame, the
+// # expression is analyzed once.
 // g = twice(sum(v * 1.0 for v in [n, 2]))  # tpyc: ok  # -> S_RESUME_0
 template <::tpystd::typing::Iterable<int32_t> T___src>
 std::expected<double, ::tpy::StopIteration> __genexpr_overload_args_pick_1_frame<T___src>::__next__() {
@@ -532,74 +532,6 @@ __genexpr_overload_args_pick_1_frame<std::invoke_result_t<F_make>> __genexpr_ove
     return __genexpr_overload_args_pick_1_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
 }
 
-// g = twice(sum(v * 1.0 for v in [n, 2]))  # tpyc: ok
-template <::tpystd::typing::Iterable<int32_t> T___src>
-struct __genexpr_overload_args_pick_2_frame : public ::tpy::next_iter_mixin<__genexpr_overload_args_pick_2_frame<T___src>, double> {
-    ::tpy::frame_state __state;
-    T___src __src;
-    int32_t v;
-    using __for_src_0_t = decltype((__src));
-    ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
-    ::tpy::frame_loop_slot<::tpy::iter_result_t<__for_src_0_t>> __for_r_0;
-
-    enum : int32_t {
-        S_INITIAL = 0,
-        S_RESUME_0 = 1,
-        S_JOIN_0 = 2,
-        S_DONE = 3,
-    };
-
-    __genexpr_overload_args_pick_2_frame(T___src&& __src_)
-        : __state(S_INITIAL),
-          __src(std::forward<T___src>(__src_)) {}
-
-    template <typename F_make>
-    __genexpr_overload_args_pick_2_frame(std::in_place_t, F_make&& make_)
-        : __state(S_INITIAL),
-          __src(std::forward<F_make>(make_)()) {}
-
-    std::expected<double, ::tpy::StopIteration> __next__();
-    __genexpr_overload_args_pick_2_frame& __iter__() { return *this; }
-
-    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_overload_args_pick_2_frame<T___src>&) {
-        return os << "<generator __genexpr_overload_args_pick_2>";
-    }
-};
-
-// # A generator-expression argument to an overloaded call (the snapshot
-// # keeps a dead frame, BUGS.md#dispatch-arg-genexpr-reanalysis).
-// g = twice(sum(v * 1.0 for v in [n, 2]))  # tpyc: ok  # -> S_RESUME_0
-template <::tpystd::typing::Iterable<int32_t> T___src>
-std::expected<double, ::tpy::StopIteration> __genexpr_overload_args_pick_2_frame<T___src>::__next__() {
-    if (__state == S_DONE) return ::tpy::make_unexpected(::tpy::StopIteration{});
-    if (__state != S_JOIN_0) {
-        if (__state != S_INITIAL) return ::tpy::make_unexpected(::tpy::StopIteration{});
-        __state = S_DONE;  // until the seed completes
-        ::tpy::resumable_iter_init(__for_itr_0, __src);
-        __state = S_JOIN_0;
-    }
-    for (;;) {
-        __for_r_0.emplace(::tpy::resumable_iter_next(__for_itr_0, __src));
-        if (!(*__for_r_0).has_value()) {
-            __state = S_DONE;
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        v = ::tpy::unwrap_ref(*(*__for_r_0));
-        return (static_cast<double>(v) * (1.0));
-    }
-    __builtin_unreachable();
-}
-
-// g = twice(sum(v * 1.0 for v in [n, 2]))  # tpyc: ok
-template <::tpystd::typing::Iterable<int32_t> T___src>
-__genexpr_overload_args_pick_2_frame<T___src> __genexpr_overload_args_pick_2(T___src&& __src) {
-    return __genexpr_overload_args_pick_2_frame<T___src>(std::forward<T___src>(__src));
-}
-template <typename F_make>
-__genexpr_overload_args_pick_2_frame<std::invoke_result_t<F_make>> __genexpr_overload_args_pick_2(std::in_place_t, F_make&& make) {
-    return __genexpr_overload_args_pick_2_frame<std::invoke_result_t<F_make>>(std::in_place, std::forward<F_make>(make));
-}
-
 }  // namespace
 
 // def overload_args_pick(n: int32) -> None:
@@ -618,8 +550,8 @@ __genexpr_overload_args_pick_2_frame<std::invoke_result_t<F_make>> __genexpr_ove
 //     w = width_g(3000000000)  # tpyc: ok
 //     print("args_pick_int64", w)
 //     g = 0.5
-//     # A generator-expression argument to an overloaded call (the snapshot
-//     # keeps a dead frame, BUGS.md#dispatch-arg-genexpr-reanalysis).
+//     # A generator-expression argument to an overloaded call: one frame, the
+//     # expression is analyzed once.
 //     g = twice(sum(v * 1.0 for v in [n, 2]))  # tpyc: ok
 //     print("args_pick_genexpr", g)
 void overload_args_pick(int32_t n) {
@@ -634,7 +566,7 @@ void overload_args_pick(int32_t n) {
     w = ::tpyapp::main::width_g__int64(static_cast<int64_t>(3000000000));
     std::cout << "args_pick_int64" << " " << w << "\n" << ::tpy::check_signals;
     double g = 0.5;
-    g = ::tpyapp::main::twice__float(::tpy::builtin_sum_float(::tpyapp::main::__genexpr_overload_args_pick_2(std::in_place, [&]() { return std::array<int32_t, 2>{n, 2}; })));
+    g = ::tpyapp::main::twice__float(::tpy::builtin_sum_float(::tpyapp::main::__genexpr_overload_args_pick_1(std::in_place, [&]() { return std::array<int32_t, 2>{n, 2}; })));
     std::cout << "args_pick_genexpr" << " " << ::tpy::print_float(g) << "\n" << ::tpy::check_signals;
 }
 
@@ -649,8 +581,8 @@ void overload_args_pick(int32_t n) {
 //     # ... the T of a generic call typing a lambda inside the argument.
 //     y = keep(call0(lambda: 2.5))  # tpyc: ok
 //     print("fill_lambda_generic", y)
-//     # ... but converts none of the lambda's ints: call0 returns the int,
-//     # which keep's declared float parameter converts.
+//     # ... and types the lambda's int return at keep's float parameter, as
+//     # the single-callee call does: call0 returns the float.
 //     y = keep(call0(lambda: 2))  # tpyc: ok
 //     # y is the float 2.0 where CPython keeps the int 2 (a documented declared
 //     # slot conversion); printing y / 2 does not show that difference.
@@ -687,7 +619,7 @@ void overload_fills() {
     std::cout << "fill_empty_set" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     y = ::tpyapp::main::keep__float(::tpyapp::main::call0<double>([]() -> double { return 2.5; }));
     std::cout << "fill_lambda_generic" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
-    y = ::tpyapp::main::keep__float(static_cast<double>(::tpyapp::main::call0<int32_t>([]() -> int32_t { return 2; })));
+    y = ::tpyapp::main::keep__float(::tpyapp::main::call0<double>([]() -> double { return static_cast<double>(2); }));
     std::cout << "fill_lambda_int_return" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n" << ::tpy::check_signals;
     Bag<double> __tmp_3 = Bag<double>();
     y = ::tpyapp::main::usebag__Bag_float(__tmp_3);

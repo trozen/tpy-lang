@@ -1,0 +1,7 @@
+name: pair 1001 1001
+keyword: B 2
+field: int32 4
+select-arm: str 5
+dict: dict 7
+nested-generic: B 8
+own-param: pair 1009

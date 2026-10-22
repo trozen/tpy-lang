@@ -1,0 +1,2 @@
+plain: 6
+generic: 2

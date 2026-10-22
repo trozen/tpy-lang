@@ -66,7 +66,8 @@ from ..typesys import (
 )
 from .call_lends import TempLend, ViewLend
 from .context import (
-    PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT, contains_pending_leaf,
+    PENDING_CONTAINER_TYPES, MODULE_INIT_CONTEXT, ProbeSlot,
+    contains_pending_leaf,
 )
 from ..namespace import BindingKind
 from .receiver_calls import method_writes_receiver
@@ -692,11 +693,13 @@ class LocalTypeDeduction:
         would pin to, which the type walk does not descend itself."""
         pending = PENDING_CONTAINER_TYPES
         if isinstance(new, pending) and not isinstance(current, pending):
-            verdict = self.pin_pending_container(new, current, commit=False)
+            with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                verdict = self.pin_pending_container(new, current)
             return (flipped(verdict)
                     if verdict.outcome is JoinOutcome.INT_FLOAT_MIX else None)
         if isinstance(current, pending) and not isinstance(new, pending):
-            verdict = self.pin_pending_container(current, new, commit=False)
+            with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                verdict = self.pin_pending_container(current, new)
             return (verdict if verdict.outcome is JoinOutcome.INT_FLOAT_MIX
                     else None)
         return None
@@ -895,6 +898,7 @@ class LocalTypeDeduction:
         no cell decides; one whose cells decide met the parameter where the
         argument was analyzed (`PendingNums.elem_context`) -- its parts.
         """
+        self.ctx.assert_slot_effect("a container's parameter context")
         if isinstance(arg_expr, TpyCoerce):
             arg_expr = arg_expr.expr
         if not isinstance(arg_expr, TpyName):
@@ -949,8 +953,8 @@ class LocalTypeDeduction:
             return make_list(elem), view
         return None, None
 
-    def pin_pending_container(self, pending: TpyType, target: TpyType,
-                              commit: bool = True) -> InferredJoin:
+    def pin_pending_container(self, pending: TpyType,
+                              target: TpyType) -> InferredJoin:
         """Resolve a pending container toward the concrete container `target`
         it must share one C++ type with (the other operand of a select).
 
@@ -959,8 +963,11 @@ class LocalTypeDeduction:
         literal element is an inferred join with `target`'s element type: an
         int meeting a float is refused (`[5]` beside a `list[float]` is a
         list of ints under CPython), and a value must fit (`[300]` has no
-        `list[uint8]` spelling). `commit=False` asks for the verdict alone,
-        leaving the container unpinned."""
+        `list[uint8]` spelling). A slot step that does not commit
+        (`SemanticContext.slot_step_commits`, a `ProbeSlot.QUERY` scope
+        included) asks for the verdict alone, leaving the container
+        unpinned."""
+        commit = self.ctx.slot_step_commits()
         joined = InferredJoin(JoinOutcome.JOINED, target)
         incompatible = InferredJoin(JoinOutcome.INCOMPATIBLE)
 

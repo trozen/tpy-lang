@@ -1,0 +1,1 @@
+The CPython @dispatch stand-in does not type keyword arguments, so it runs the first variant (the one the compiler refuses), and only keyword arguments reach the compiler's generic fallback (BUGS.md#stub-first-applicable-cannot-split-calls).

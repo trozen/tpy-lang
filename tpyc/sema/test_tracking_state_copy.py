@@ -25,16 +25,17 @@ from enum import Enum
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse import nodes as N
 from ..parse.nodes import is_parse_node
-from ..diagnostics import Scope
+from ..diagnostics import Diagnostic, DiagnosticLevel, Scope
 from ..namespace import Namespace
-from ..typesys import (INT32, FunctionInfo, MutationCallEdge,
+from ..thir.testutil import _compile, _entry
+from ..typesys import (INT32, FunctionInfo, MutationCallEdge, TypeRegistry,
                        PendingGenericInstanceInfo, RecordInfo, TpyType)
 from .alias_rebind import BindKind
 from .pending_num import DeferredIntOp
-from .source_records import SinkRead
+from .source_records import LeafPermission, SinkRead
 from .context import (BorrowTracker, CompTarget, FunctionTrackingState,
-                      NonOwningNotes, OwnIterMove, PendingLocal,
-                      LIVE_HANDLE_FIELDS)
+                      NonOwningNotes, OwnIterMove, PendingCopy, PendingLocal,
+                      SemanticContext, LIVE_HANDLE_FIELDS)
 
 
 class _Recorder:
@@ -46,6 +47,14 @@ class _Recorder:
 
     def __call__(self, _elem: TpyType) -> None:
         pass
+
+
+def _pending_copy(source: N.TpyName) -> PendingCopy:
+    """A copy warning the walk registered for settlement to emit."""
+    return PendingCopy(source.name, source, source, (),
+                       DiagnosticLevel.WARNING,
+                       lambda note: "copies B into owned storage" + note,
+                       None)
 
 
 def _populated() -> FunctionTrackingState:
@@ -105,7 +114,8 @@ def _populated() -> FunctionTrackingState:
         arm_decl_sites=[(N.TpyIf(N.TpyName("c"), [], []), "r",
                          N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
-        owning_reads=[OwnIterMove("b", N.TpyName("b"), N.TpyName("c"))],
+        owning_reads=[OwnIterMove("b", N.TpyName("b"), N.TpyName("c")),
+                      _pending_copy(N.TpyName("e"))],
         tuple_sinks=[SinkRead(N.TpyName("t"), INT32)],
         nonowning_sites={'a': NonOwningNotes([(N.TpyName("b"), None)])},
         comp_targets=[CompTarget("b", N.TpyName("comp"), 0, 1)],
@@ -265,6 +275,7 @@ def test_the_copy_holds_no_cloned_node() -> None:
     assert (copied.current_call_edges[0].callee_fi
             is state.current_call_edges[0].callee_fi)
     assert copied.current_awaited_subframes[0] is state.current_awaited_subframes[0]
+    assert copied.owning_reads[1].source is state.owning_reads[1].source
     assert (copied.pending_generic_instances[1].expr
             is state.pending_generic_instances[1].expr)
     assert (copied.current_ns.lookup("bound").func_infos[0]
@@ -299,3 +310,63 @@ def test_snapshot_still_copies_the_containers() -> None:
     copied.write_history['x'].append((INT32, N.TpyName("y")))
     assert len(state.compound_stack) == 1
     assert len(state.write_history['x']) == 1
+
+
+def test_a_trial_keeps_a_registered_copy_on_its_source() -> None:
+    """A copy warning registered in the function state while a trial runs
+    survives the restore on the source it speaks for (by identity), and
+    what the rejected candidate reported goes with the trial."""
+    ctx = SemanticContext(TypeRegistry(), Scope())
+    source = N.TpyName("x")
+    ctx.func.owning_reads.append(_pending_copy(source))
+    with ctx.trial_scope():
+        ctx.diagnostics.append(
+            Diagnostic(DiagnosticLevel.ERROR, "trial candidate rejected"))
+    assert ctx.diagnostics == []
+    (held,) = ctx.func.owning_reads
+    assert isinstance(held, PendingCopy) and held.source is source
+
+
+# The loop variable's copy into `eat`'s Own parameter is registered when the
+# Regime C lambda trial on the next line snapshots and restores the state.
+_TRIAL_AFTER_HELD_COPY = """\
+from tpy import Fn, Own, int32, dispatch
+
+
+class B:
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+def eat(x: Own[B]) -> int32:
+    return x.v
+
+
+@dispatch
+def m[T, U](f: Fn[[T], U], xs: list[T]) -> int32:
+    return len(xs)
+
+
+@dispatch
+def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> int32:
+    return 2 * len(xs)
+
+
+def run(bs: list[B]) -> None:
+    ys: list[int32] = [1, 2]
+    for x in bs:
+        print(eat(x))
+        print(m(lambda a: a + 1, ys))
+"""
+
+
+def test_a_lambda_trial_keeps_the_loop_copy_warned() -> None:
+    _compiler, modules = _compile(_TRIAL_AFTER_HELD_COPY)
+    ctx = _entry(modules).analyzer.ctx
+    warned = [d for d in ctx.diagnostics
+              if d.message.startswith("copies B into owned storage")]
+    assert len(warned) == 1
+    perms = [leaf.permission for key, record in ctx.source_records.items()
+             if isinstance(key, N.TpyName) and key.name == "x"
+             for leaf in record.leaves.values()]
+    assert perms == [LeafPermission.WARNED]

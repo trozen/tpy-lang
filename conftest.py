@@ -13,10 +13,17 @@ inspection in ``activate_compiler(compiler)`` -- see the
 
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass, field
 from typing import Any
 
 import pytest
+
+# Set before tpyc is imported: under the test harness an expression whose
+# analysis runs twice outside a trial is an internal error.
+os.environ.setdefault("TPY_ASSERT_ANALYZED_ONCE", "1")
+# Likewise a slot step that writes a record at a slot that does not commit.
+os.environ.setdefault("TPY_ASSERT_SLOT_EFFECTS", "1")
 
 from tpyc.compilation_context import activate_compiler
 from tpyc.typesys import BUILTIN_RETURN_EXCEPTIONS, clear_all_compilation_state

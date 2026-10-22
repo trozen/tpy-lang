@@ -1,0 +1,13 @@
+tuple-narrow: 120
+loser-first: int64 300
+select-mixed-sign: int64 200 int64 -1
+select-declared: int8 1
+two-slots: list 3000000001
+pending-cells: list 3000000001
+comp-lambda: 12
+genexpr: 244.0
+unary: int64 -5000000000
+binop: int64 5000000001
+walrus: int64 5000000000
+walrus-target: 5000000000
+escape: 11 11

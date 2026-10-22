@@ -1135,7 +1135,7 @@ def rank_overload_candidates(
     applies. A tie among the preferred variants stays ambiguous. On a
     readonly receiver a mutating fallback winner is then refused by the
     receiver's readonly check, as a call to that variant alone is."""
-    declared = [_declared_readonly(c.overload) for c in candidates]
+    declared = [declared_readonly(c.overload) for c in candidates]
     split = readonly_receiver is not None and len(set(declared)) > 1
     if not split:
         return _rank_stages(candidates, protocol_checker, classifier,
@@ -1153,7 +1153,7 @@ def rank_overload_candidates(
     return OverloadPick(None)
 
 
-def _declared_readonly(fi: FunctionInfo) -> bool:
+def declared_readonly(fi: FunctionInfo) -> bool:
     """Whether variant `fi` is readonly by declaration (`@readonly`, a
     dunder's default, an `@auto_readonly` clone) -- never by the const
     inference, which a call may be analyzed before or after."""

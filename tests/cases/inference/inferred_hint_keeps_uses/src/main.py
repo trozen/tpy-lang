@@ -353,8 +353,8 @@ def overload_args_pick(n: int32) -> None:
     w = width_g(3000000000)  # tpyc: ok
     print("args_pick_int64", w)
     g = 0.5
-    # A generator-expression argument to an overloaded call (the snapshot
-    # keeps a dead frame, BUGS.md#dispatch-arg-genexpr-reanalysis).
+    # A generator-expression argument to an overloaded call: one frame, the
+    # expression is analyzed once.
     g = twice(sum(v * 1.0 for v in [n, 2]))  # tpyc: ok
     print("args_pick_genexpr", g)
 
@@ -370,8 +370,8 @@ def overload_fills() -> None:
     # ... the T of a generic call typing a lambda inside the argument.
     y = keep(call0(lambda: 2.5))  # tpyc: ok
     print("fill_lambda_generic", y)
-    # ... but converts none of the lambda's ints: call0 returns the int,
-    # which keep's declared float parameter converts.
+    # ... and types the lambda's int return at keep's float parameter, as
+    # the single-callee call does: call0 returns the float.
     y = keep(call0(lambda: 2))  # tpyc: ok
     # y is the float 2.0 where CPython keeps the int 2 (a documented declared
     # slot conversion); printing y / 2 does not show that difference.

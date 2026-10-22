@@ -5,10 +5,11 @@ Contains the shared state that is passed to all semantic analysis components.
 """
 
 from __future__ import annotations
+import os
 from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
-from enum import Enum
+from enum import Enum, auto
 from typing import (Any, Callable, Container, Iterable, Iterator, NamedTuple,
                     TYPE_CHECKING)
 
@@ -43,7 +44,7 @@ from ..typesys import (
     unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
     FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, TypeParamRef,
-    is_indirection_type, record_owner,
+    is_indirection_type, record_owner, is_protocol_type, contains_type_param,
 )
 from ..namespace import BindingKind, NameBinding, Namespace
 from ..symbol_binding import (SymbolBinding, SymbolKind, resolve_type_path,
@@ -2370,15 +2371,15 @@ class OpenCallArgs:
     scored against, or a generic callee's type parameters are inferred
     from, before any parameter decides them: a container argument whose
     leaves are still open is handed over open (`PendingNums.adaptive_view`)
-    unless the winner `declared` its node's parameter, and its cells are
-    collected, to be settled when the call ends if nothing decided them.
-    `resolved` says the parameters the call resolved -- a generic
-    candidate's (`overloads.call_resolves_param`) -- decide such an
+    unless the winner receives it at a parameter it declares, and its
+    cells are collected, to be settled when the call ends if nothing
+    decided them. `resolved` says the parameters the call resolved -- a
+    generic candidate's (`overloads.call_resolves_param`) -- decide such an
     argument where they are a view (`Iterable[T]`); a declared view
     converts per element and decides nothing. `scored` says several
-    candidates compete, so the winner is applied to the arguments after
-    selection (`CallAnalyzer.apply_winner`). `keywords` names the keyword
-    arguments among `nodes`."""
+    candidates compete, so the winner receives the arguments after
+    selection (`CallAnalyzer.receive_winner_args`). `keywords` names the
+    keyword arguments among `nodes`."""
     nodes: list['TpyExpr']
     resolved: bool
     scored: bool
@@ -2387,50 +2388,132 @@ class OpenCallArgs:
     # Which node handed over which of `cells`.
     handed: list[tuple['TpyExpr', list['PendingNumCell']]] = field(
         default_factory=list)
-    # The argument nodes the winner takes at a parameter it DECLARES (every
-    # node of a non-generic winner; a generic winner's `xs: Iterable[int64]`
-    # beside `t: T`): each is received as at a declared slot -- analyzed
-    # again there, not handed over open, not decided by a view.
-    declared: list['TpyExpr'] = field(default_factory=list)
-    # The records of the containers written as arguments that the scope
-    # handed over with no parameter to type them at yet -- an empty one
-    # (`[]`, `list()`, `{}`, `set()`), a dict or set literal with its
-    # numbers still the literals written: each awaits the winner's slot,
-    # which analyzes its node again and gives it the type or record it
-    # keeps (`CallAnalyzer.apply_winner`).
-    awaiting: list['ContainerLiteralInfo'] = field(default_factory=list)
-    # The dict and set literal arguments that stay open while the
-    # candidates are scored: every candidate declares the parameter that
-    # receives them plainly (`CallAnalyzer.open_written_literals`).
-    open_literals: list['TpyExpr'] = field(default_factory=list)
+    # The argument the winner receives now at a parameter it DECLARES (a
+    # non-generic winner's, a generic winner's `xs: Iterable[int64]` beside
+    # `t: T`): it meets that slot as a declared one -- not handed over
+    # open, not decided by a view.
+    receiving: 'TpyExpr | None' = None
+    # The candidates a scored call ranks its arguments against.
+    candidates: list['FunctionInfo'] = field(default_factory=list)
 
-    def declares(self, node: 'TpyExpr | None') -> bool:
-        return node is not None and any(n is node for n in self.declared)
+    def declares_plainly(self, node: 'TpyExpr') -> bool:
+        """Whether every candidate of this scored call takes argument `node`
+        at a parameter that is neither a view nor names a type parameter:
+        one that reads it through a protocol or binds a type parameter from
+        it reads the type its own values give."""
+        index = next((i for i, n in enumerate(self.nodes) if n is node), None)
+        if not self.scored or index is None:
+            return False
+        name = next((k for k, v in self.keywords.items() if v is node), None)
+        for f in self.candidates:
+            if name is not None:
+                at = next((p for p in f.params if p.name == name), None)
+            elif index < len(f.params):
+                at = f.params[index]
+            else:
+                at = f.params[-1] if f.has_variadic else None
+            if at is None:
+                continue
+            t = unwrap_qualifiers(at.type)
+            if is_protocol_type(t) or contains_type_param(t):
+                return False
+        return True
 
     def hands_over(self, node: 'TpyExpr') -> bool:
         """Whether argument `node` is handed over open."""
-        return not self.declares(node)
+        return node is not self.receiving
 
     def resolves(self, node: 'TpyExpr | None') -> bool:
         """Whether the parameter that receives `node` -- or, asked of no
         node (a query), any parameter of the call -- is one the call
         resolved."""
-        return self.resolved and not self.declares(node)
+        return self.resolved and (node is None or node is not self.receiving)
 
     def hand_over(self, node: 'TpyExpr',
                   cells: list['PendingNumCell']) -> None:
         self.cells.extend(cells)
         self.handed.append((node, list(cells)))
 
-    def declare(self, nodes: list['TpyExpr']) -> None:
-        """The winner takes `nodes` at declared parameters: a call to it
-        alone settles nothing of theirs when it ends -- whatever its slots
-        leave open (a Span's list, decided where its storage is) stays open
-        as it would there."""
-        self.declared.extend(nodes)
-        released = {id(c) for node, cells in self.handed
-                    if any(node is n for n in nodes) for c in cells}
+    def release(self, node: 'TpyExpr') -> None:
+        """The winner takes `node` at a declared parameter: a call to it
+        alone settles nothing of its when it ends -- whatever its slot
+        leaves open (a Span's list, decided where its storage is) stays
+        open as it would there."""
+        released = {id(c) for n, cells in self.handed if n is node
+                    for c in cells}
         self.cells = [c for c in self.cells if id(c) not in released]
+
+
+# The test harness checks that no slot step writes a record at a slot that
+# does not commit (`SemanticContext.assert_slot_effect`).
+_ASSERT_SLOT_EFFECTS = bool(os.environ.get("TPY_ASSERT_SLOT_EFFECTS"))
+
+
+class ProbeSlot(Enum):
+    """The slot the expressions analyzed now meet
+    (`SemanticContext.probe_slot`)."""
+    # A committed slot -- a winner's receive, or no call at all.
+    COMMITTED = auto()
+    # An overload probe's slot, one a candidate is ranked or a type
+    # parameter inferred at before the winner receives the arguments: the
+    # step of a node open to its slot decides types only there
+    # (`ExpressionAnalyzer.commits`).
+    PROBE = auto()
+    # A check that commits nothing -- a fallback candidate validated, a
+    # compatibility query: every slot step decides types only.
+    QUERY = auto()
+
+
+@dataclass(frozen=True)
+class GenericMethodRoute:
+    """The resolution a generic method call's slot step infers its type
+    parameters again from (`MethodAnalyzer.complete_generic_method_call`)."""
+    method_info: object
+    record_info: object
+    class_subst: 'dict[str, TpyType | int]'
+
+
+@dataclass(frozen=True)
+class GenericCallRoute:
+    """A function call whose callee's type arguments were inferred, which
+    its slot step infers again from its arguments' records and the slot --
+    through the builtin overload route
+    (`CallAnalyzer._analyze_builtin_function_overloads`) when `builtin`, the
+    route of the overload set rather than of its winner."""
+    builtin: bool
+
+
+@dataclass(frozen=True)
+class GenericCtorRoute:
+    """A generic record construction whose type arguments were inferred
+    (`CallAnalyzer.infer_generic_construction`), which its slot step infers
+    again from its arguments' records and the slot."""
+    record_info: object
+
+
+@dataclass(frozen=True)
+class CompClauseRoute:
+    """The element type each clause of a comprehension binds its targets
+    to, in clause order: its slot step meets the element(s) in that
+    scope."""
+    elem_types: 'tuple[TpyType, ...]'
+
+
+StepRoute = (GenericMethodRoute | GenericCtorRoute | GenericCallRoute
+             | CompClauseRoute)
+
+
+@dataclass(frozen=True)
+class AnalysisRecord:
+    """The one analysis of an expression (`SemanticContext.analysis_records`):
+    the type it returned, `Own` / `Ref` kept, and the slot its slot step
+    last met -- `at_probe_slot` when that slot did not commit
+    (`SemanticContext.at_probe_slot`), where the step decided types only --
+    and the route its slot step takes again, where the analysis chose one."""
+    typ: TpyType
+    slot: 'SlotHint | None'
+    at_probe_slot: bool
+    route: 'StepRoute | None' = None
 
 
 class UnnamedHolder(Enum):
@@ -2472,6 +2555,20 @@ class SemanticContext:
 
     # --- Type cache ---
     expr_types: IdentityMap = field(default_factory=IdentityMap)
+    # Per expression, its one analysis (`AnalysisRecord`): a node met again
+    # is not analyzed again -- it hands back what it returned, or, when its
+    # analysis depends on the slot it meets, runs only that slot step
+    # (`ExpressionAnalyzer.reenter`).
+    analysis_records: IdentityMap = field(default_factory=IdentityMap)
+    # The slot the expressions analyzed now meet: where it is not the
+    # committed one, a slot step decides types only -- the ownership
+    # records, coercions and pending settlements wait for the committed
+    # slot (`slot_step_commits`).
+    probe_slot: ProbeSlot = ProbeSlot.COMMITTED
+    # Installed by the expression analyzer: whether the slot step running
+    # now at a PROBE slot writes its records -- not the step of a node open
+    # to its slot (`ExpressionAnalyzer.commits`).
+    probe_step_commits: 'Callable[[], bool] | None' = None
     var_types: IdentityMap = field(default_factory=IdentityMap)
     # Per tuple binding (a var-decl, an assignment to a name, a walrus), the
     # elements it holds as objects of its own (`alias_rebind.tuple_elem_owned`):
@@ -3170,8 +3267,11 @@ class SemanticContext:
         entry = PendingCopy(name, at, source, path, level, text, loc, note,
                             hedge)
         if self.func.copies_from is not None:
+            self.assert_slot_effect("a copy diagnostic")
             self.func.owning_reads.append(entry)
             return
+        if level is not DiagnosticLevel.ERROR:
+            self.assert_slot_effect("a copy warning")
         diag = self.copy_diagnostic(entry, note() if note is not None
                                     else "")
         if level is DiagnosticLevel.ERROR:
@@ -3322,6 +3422,7 @@ class SemanticContext:
         )
         if not pairs:
             return
+        self.assert_slot_effect("a copy-verdict instantiation root")
         edge = own_copy.OwnCopyEdge(callee, pairs, is_record)
         if any(own_copy.type_has_type_param(value) for _, value in pairs):
             self.own_copy_forwards.append(edge)
@@ -3825,6 +3926,66 @@ class SemanticContext:
         finally:
             self.current_slot_hint = saved
 
+    @property
+    def at_probe_slot(self) -> bool:
+        """Whether the expressions analyzed now meet a slot that does not
+        commit (`probe_slot`)."""
+        return self.probe_slot is not ProbeSlot.COMMITTED
+
+    @contextmanager
+    def probe_slot_scope(self, probing: 'bool | ProbeSlot') -> Iterator[None]:
+        """Analyze under an overload probe's slot, or -- `probing` False --
+        at a committed one: a winner's receive, a body analyzed once
+        whatever slot its node meets. Inside a query either stays a query:
+        nothing under it commits, and the trial around it rolls back what
+        a body analyzed there."""
+        saved = self.probe_slot
+        if isinstance(probing, ProbeSlot):
+            self.probe_slot = probing
+        elif saved is ProbeSlot.QUERY:
+            pass
+        elif not probing:
+            self.probe_slot = ProbeSlot.COMMITTED
+        else:
+            self.probe_slot = ProbeSlot.PROBE
+        try:
+            yield
+        finally:
+            self.probe_slot = saved
+
+    def slot_step_commits(self) -> bool:
+        """Whether the slot step running now writes what its committed slot
+        owns -- the ownership records, the coercions, the pending
+        settlements: always at the committed slot, never under a query, and
+        at an overload probe unless the step is that of a node open to its
+        slot."""
+        if self.probe_slot is ProbeSlot.COMMITTED:
+            return True
+        if self.probe_slot is ProbeSlot.QUERY:
+            return False
+        return self.probe_step_commits is None or self.probe_step_commits()
+
+    def assert_slot_effect(self, what: str) -> None:
+        """Under the test harness, a record a slot step writes at a slot
+        that does not commit (`slot_step_commits`) is an internal error:
+        its writer missed the gate."""
+        if _ASSERT_SLOT_EFFECTS and not self.slot_step_commits():
+            raise AssertionError(
+                f"Internal error: {what} written at a slot that does not "
+                f"commit ({self.probe_slot.name.lower()})")
+
+    def mark_nested_def_escape(self, name: str) -> None:
+        """Nested def `name` escapes: its value reaches a type-erased
+        `Callable` or a return, so it is materialized as a closure object."""
+        self.assert_slot_effect("a nested def's escape")
+        self.func.nested_def_escapes.add(name)
+
+    def mark_representational_param(self, name: str) -> None:
+        """Type parameter `name` met a coercion its structural conformers
+        need an adapter for (`FunctionInfo.representational_type_params`)."""
+        self.assert_slot_effect("a representational type parameter")
+        self.func.current_representational_params.add(name)
+
     def call_scope_of(self, cells: 'list[PendingNumCell]'
                       ) -> OpenCallArgs | None:
         """The innermost open call whose arguments handed over one of
@@ -3860,7 +4021,8 @@ class SemanticContext:
           live scope, namespaces and function node are NOT part of the rollback
           -- `save_function_state` hands them back as themselves; the trial
           binds only into the lambda's own child scope/namespace.
-        - Module-level type cache (``expr_types``) and the literal/view
+        - Module-level type cache (``expr_types``), the analysis records
+          (``analysis_records``) and the literal/view
           counters and registries (``literal_counter``,
           ``container_literals``, ``pending_generic_counter``,
           ``str_var_counter``, ``str_vars``, ``bytes_var_counter``,
@@ -3879,6 +4041,7 @@ class SemanticContext:
         """
         saved_func = self.save_function_state()
         saved_expr_types = self.expr_types.copy()
+        saved_records = self.analysis_records.copy()
         saved_literal_counter = self.literal_counter
         saved_container_literals = dict(self.container_literals)
         saved_pending_generic_counter = self.pending_generic_counter
@@ -3901,6 +4064,8 @@ class SemanticContext:
             self.restore_function_state(saved_func)
             self.expr_types.clear()
             self.expr_types.update(saved_expr_types)
+            self.analysis_records.clear()
+            self.analysis_records.update(saved_records)
             self.literal_counter = saved_literal_counter
             self.container_literals.clear()
             self.container_literals.update(saved_container_literals)
@@ -3975,6 +4140,7 @@ class SemanticContext:
         This triggers auto-consuming iteration when the container is at last
         use, so elements are moved instead of copied.
         """
+        self.assert_slot_effect("a loop variable's consumption")
         if name in self.func.loop_vars:
             self.func.consumed_loop_vars.add(name)
 
@@ -4430,6 +4596,7 @@ class SemanticContext:
 
     def mark_own_param_consumed(self, name: str) -> None:
         """Mark an Own[T] param as consumed (stored, forwarded, or returned)."""
+        self.assert_slot_effect("an Own parameter's consumption")
         if name in self.func.current_param_names:
             self.func.current_consumed_own_params.add(OwnSlot(name))
         elif name in self.func.own_consume_aliases:
@@ -4438,6 +4605,7 @@ class SemanticContext:
     def mark_own_element_consumed(self, name: str, index: int) -> None:
         """Mark owned element `index` of tuple param `name` consumed -- moved
         out on its own while the tuple's other elements stay."""
+        self.assert_slot_effect("an Own element's consumption")
         if name in self.func.current_param_names:
             self.func.current_consumed_own_params.add(OwnSlot(name, index))
 

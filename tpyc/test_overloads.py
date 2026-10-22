@@ -880,8 +880,7 @@ def test_overload_query_leaves_the_literal_record_alone(slot):
     assert compat.is_type_compatible(lit, slot, CoercionContext.ARG)
     assert info.coerced_element_type is None
     assert not info.passed_to_span_param
-    compat._check_compat(lit, slot, "", coercion_ctx=CoercionContext.ARG,
-                         commit=True)
+    compat._check_compat(lit, slot, "", coercion_ctx=CoercionContext.ARG)
     assert info.coerced_element_type == INT64
 
 

@@ -11,7 +11,8 @@ from ..parse import TpyCall, TpyExpr, TpyName
 from ..parse.nodes import TpyStarUnpack, walk_body_stmts
 from ..thir.testutil import _compile, _entry
 from . import expressions as expressions_module
-from .expressions import SLOT_READER_KINDS
+from .expressions import (HINTED_ONLY_KINDS, HINTED_SHAPE_KINDS,
+                          SLOT_READER_KINDS)
 
 _TPYC = pathlib.Path(__file__).resolve().parent.parent
 
@@ -24,11 +25,13 @@ _UNMARKED_READS = frozenset(("slot_hint_at", "expr_slot_hint",
 # marking, each with how many reads it holds and why they decide nothing
 # about the node: a further read in one of them is a new reader.
 _PLUMBING = {
-    "ExpressionAnalyzer.reuse":
-        (1, "records the hint a handed-back node was analyzed under"),
-    "ExpressionAnalyzer._analyze_expr_raw":
-        (1, "the hint for the reuse check and the fill peek, which marks "
-            "when the fill applies"),
+    "ExpressionAnalyzer.analyze_expr":
+        (1, "the slot an unhinted entry meets -- a carried open child's "
+            "included -- for its record and the fill peek, which marks when "
+            "the fill applies"),
+    "ExpressionAnalyzer._analyze_expr_under_hint_raw":
+        (1, "the hint just put in force, for the fill peek of the first "
+            "analysis"),
     "ExpressionAnalyzer._forward_fill":
         (1, "hands a select's fill hint to the operand, whose own analysis "
             "reads it"),
@@ -94,7 +97,7 @@ def test_every_hint_read_outside_the_context_marks():
 def test_every_hinted_shape_is_a_reader_or_hinted_only():
     """Each shape `_analyze_hinted_shape` types from a hint is either one
     whose unhinted analysis takes a default (`SLOT_READER_KINDS`, marked in
-    `_analyze_expr_raw`) or one listed above as consulting nothing
+    `_first_analysis`) or one listed above as consulting nothing
     unhinted -- so a new hinted shape is a decision about its unhinted
     twin, not a reader that goes unrecorded without a hint."""
     source = inspect.getsource(
@@ -115,6 +118,10 @@ def test_every_hinted_shape_is_a_reader_or_hinted_only():
     assert not unlisted, (
         f"hinted shapes neither in SLOT_READER_KINDS nor known to read "
         f"nothing unhinted: {sorted(unlisted)}")
+    # The table `slot_typed_kind` (what a slot step reruns) reads is the
+    # dispatch's own: a new arm is an entry there, not a fourth list.
+    assert {k.__name__ for k in HINTED_ONLY_KINDS} == set(_HINTED_ONLY)
+    assert {k.__name__ for k in HINTED_SHAPE_KINDS} == kinds
 
 
 _PROGRAM = """\

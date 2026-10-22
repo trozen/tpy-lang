@@ -79,7 +79,7 @@ from .call_lends import (
     every_lent_operand,
 )
 from .context import (
-    CompTarget, ConsumingLoop, FinallyCapture,
+    CompTarget, ConsumingLoop, FinallyCapture, ProbeSlot,
     OwnIterMove, OwningRead, PendingCopy, SinkCopy,
     UnneededCopy, UnpackClaim, OwnSlot, ParkedFunctionState, ParkedRebind,
     BorrowKind,
@@ -666,6 +666,7 @@ class TypeCompatibility:
         to their source iterables -- both are storage that the address-take
         could mutate via the resulting pointer.
         """
+        self.ctx.assert_slot_effect("an address-taken mark")
         mark_roots(self.ctx, storage_roots(expr, Use.PLACE,
                                            self.ctx.get_expr_type,
                                            MayLend(self.ctx)),
@@ -677,24 +678,26 @@ class TypeCompatibility:
         `coercion_ctx`: an argument converts as one does)? A query: it
         writes nothing -- no container literal's element or storage, no
         pending generic instance -- so an overload candidate can ask it and
-        lose without leaving a trace (only `commit` writes)."""
-        return not isinstance(
-            self._check_compat(actual, expected, "", coercion_ctx=coercion_ctx),
-            CompatError)
+        lose without leaving a trace (`ProbeSlot.QUERY`)."""
+        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+            return not isinstance(
+                self._check_compat(actual, expected, "",
+                                   coercion_ctx=coercion_ctx),
+                CompatError)
 
     def _list_at_container(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None, source_expr: TpyExpr | None,
-        coercion_ctx: CoercionContext | None, commit: bool,
+        coercion_ctx: CoercionContext | None,
     ) -> 'TpyType | CompatError | None':
         """A list literal checked against a slot that holds a typed
         container of numbers (`PendingNums.slot_containers`). One whose
         element a cell decides may be confirmed by the container or widened
         within its family: returns the list as the container sees it, the
         refusal, or None when `expected` holds no such container. The
-        element is DECIDED here only under `commit` -- the check that
-        produces the coercion, outside an overload trial; any other gets
-        the verdict alone. A literal with no cell adapts to the container,
+        element is DECIDED here only where the slot step commits
+        (`SemanticContext.slot_step_commits`), outside an overload trial;
+        any other gets the verdict alone. A literal with no cell adapts to the container,
         so each number written in it must fit the container's element."""
         into = self.pend.cell_container(actual)
         if into is None:
@@ -713,7 +716,8 @@ class TypeCompatibility:
             return CompatError(refusal, loc)
         if container is None:
             return None
-        if commit and not self.ctx.trial_depth:
+        if self.ctx.slot_step_commits() and not self.ctx.trial_depth:
+            self.ctx.assert_slot_effect("a list literal's decision")
             decided = self.pend.decide_list(actual, into, container,
                                             source_expr, verb, shown,
                                             declared=not adaptive)
@@ -733,14 +737,15 @@ class TypeCompatibility:
                      coercion_ctx: CoercionContext | None = None) -> TpyType:
         """A select operand, bare or a tuple literal, that hands a list
         literal over undecided: a value the declared slot `expected`
-        receives, so it goes through the coercion check to that slot with
-        `commit`, which decides the list where the select's own coercion
-        -- of the joined type -- no longer can. Returns the operand's type
-        as the slot sees it."""
+        receives, so it goes through the coercion check to that slot,
+        which decides the list where the select's own coercion -- of the
+        joined type -- no longer can (a slot step that does not commit asks
+        for the verdict alone: `slot_step_commits`). Returns the operand's
+        type as the slot sees it."""
         result = self._check_compat(
             actual, expected, "select operand",
             getattr(source_expr, "loc", None), source_expr,
-            coercion_ctx=coercion_ctx, commit=True)
+            coercion_ctx=coercion_ctx)
         if isinstance(result, CompatError):
             raise SemanticError(result.message, result.loc)
         return self.pend.lists_as_known(actual)
@@ -749,7 +754,7 @@ class TypeCompatibility:
                              ) -> 'list[tuple[object, ...]] | None':
         """The entries of a dict or set literal written as a call argument
         and scored open against several candidates
-        (`ExpressionAnalyzer._await_winner`: no local, no cells, its
+        (`ExpressionAnalyzer._probe_keeps_open`: no local, no cells, its
         numbers still the literals written), meeting a container of its
         own kind `expected`; None for anything else."""
         if not (isinstance(actual, PendingDictType) and is_dict(expected)
@@ -1025,7 +1030,32 @@ class TypeCompatibility:
         Raises SemanticError on incompatible types.
         Returns a Coercion if a conversion should be applied at codegen time,
         or None if compatible with no coercion needed.
+
+        A slot step that does not commit (`SemanticContext.slot_step_commits`)
+        asks it as a query, as does a caller that opens a `ProbeSlot.QUERY`
+        scope: the check decides the type only and writes nothing -- no copy
+        warning or declaration, no owning sink, no pending settlement, no
+        list literal decided -- so a candidate can ask it and lose without
+        leaving a trace. The query runs the check the committed slot runs,
+        its refusals included; only its writes wait.
         """
+        if self.ctx.slot_step_commits():
+            return self._check_type_compatible(
+                actual, expected, context, loc, source_expr, is_return,
+                coercion_ctx, target_is_storage_form)
+        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+            return self._check_type_compatible(
+                actual, expected, context, loc, source_expr, is_return,
+                coercion_ctx, target_is_storage_form)
+
+    def _check_type_compatible(
+        self, actual: TpyType, expected: TpyType, context: str,
+        loc: SourceLocation | None, source_expr: TpyExpr | None,
+        is_return: bool, coercion_ctx: CoercionContext | None,
+        target_is_storage_form: bool,
+    ) -> Optional[Coercion]:
+        """`check_type_compatible`, its writes made only where the slot
+        step commits (`SemanticContext.slot_step_commits`)."""
         # Phase 20 Stage 5a: reject the slicing shape -- storing a borrow
         # of a polymorphic class into an owned slot of the same type would
         # silently drop the dynamic type. Fires before _check_compat so the
@@ -1034,7 +1064,7 @@ class TypeCompatibility:
         self._check_polymorphic_slicing(actual, expected, source_expr, context, loc)
         pending = self._pending_num_ends(actual, expected, source_expr, context)
         if pending is not None:
-            if pending:
+            if pending and self.ctx.slot_step_commits():
                 self.pend.check(strip_int(actual), strip_int(expected), context,
                                 coercion_ctx, source_expr)
             return None
@@ -1048,7 +1078,7 @@ class TypeCompatibility:
                 loc)
         # A check that produces the coercion is where a list literal's
         # element is decided by the typed container it meets.
-        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, commit=True)
+        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
         if isinstance(result, CompatError):
             # A literal-seeded local takes its type from what is stored in
             # it, never from a use: say what declares the type the use wants.
@@ -1183,7 +1213,6 @@ class TypeCompatibility:
         coercion_ctx: CoercionContext | None = None,
         target_is_storage_form: bool = False,
         sink_owns: bool | None = None,
-        commit: bool = False,
         *,
         slot_readonly: bool = False,
     ) -> CompatResult:
@@ -1191,12 +1220,11 @@ class TypeCompatibility:
 
         Returns Coercion or None on success, CompatError on failure.
 
-        commit: the check produces the coercion of this very value into
-        this very slot, so it decides the element of a list literal that
-        meets a typed container (`_list_at_container`). Handed down only
-        where the recursion peels a wrapper off the same value and slot,
-        pairs a tuple's elements, or re-checks the union member that
-        admitted the value; a probe never passes it.
+        Its writes -- a list literal's element decided by the typed
+        container it meets (`_list_at_container`), owning sinks, copy
+        warnings -- are made only where the slot step commits
+        (`SemanticContext.slot_step_commits`): a check that only asks runs
+        under a query (`ProbeSlot.QUERY`).
 
         target_is_storage_form: True when the destination is a field or
         container element (value-storage form). Used to suppress address-
@@ -1224,7 +1252,7 @@ class TypeCompatibility:
         if (pending_list_of(actual) is not None
                 or self.pend.cell_container(actual) is not None):
             met = self._list_at_container(actual, expected, context, loc,
-                                          source_expr, coercion_ctx, commit)
+                                          source_expr, coercion_ctx)
             if isinstance(met, CompatError):
                 return met
             if met is not None:
@@ -1293,15 +1321,13 @@ class TypeCompatibility:
                     f"'{expected}' is expected in {context}{detail}", loc)
             return self._check_compat(
                 unwrap_send_sync(actual), expected.wrapped, context, loc,
-                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                commit)
+                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
         if isinstance(actual, (SendType, SyncType)):
             # Marker-typed value into an unmarked slot: the marker only adds
             # a guarantee, so it converts freely to the bare type.
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr,
-                is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                commit)
+                is_return, coercion_ctx, target_is_storage_form, sink_owns)
         # CallableType (Fn and Callable): inner param/return types may carry
         # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
         if (is_callable_type(actual)
@@ -1322,9 +1348,11 @@ class TypeCompatibility:
         # Pending generic instance: try to resolve from the expected type
         if isinstance(actual, PendingGenericInstanceType):
             resolved = self.methods.try_resolve_pending_from_expected_type(
-                actual, expected, loc, commit=commit)
+                actual, expected, loc)
             if resolved is not None:
-                if commit and source_expr is not None:
+                if self.ctx.slot_step_commits() and source_expr is not None:
+                    self.ctx.assert_slot_effect(
+                        "a resolved pending generic instance's type")
                     self.ctx.set_expr_type(source_expr, resolved)
                 return self._check_compat(
                     resolved, expected, context, loc, source_expr,
@@ -1342,13 +1370,13 @@ class TypeCompatibility:
             return self._check_compat(
                 unwrap_ref_type(actual), expected.wrapped, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                commit, slot_readonly=slot_readonly)
+                slot_readonly=slot_readonly)
         # Strip Ref from actual too (Ref[T] is compatible with T)
         if isinstance(actual, RefType):
             return self._check_compat(
                 actual.wrapped, expected, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                commit, slot_readonly=slot_readonly)
+                slot_readonly=slot_readonly)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
@@ -1363,7 +1391,7 @@ class TypeCompatibility:
                 actual_inner = PtrType(actual_inner.inner_pointee)
             return self._check_compat(
                 actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns, commit, slot_readonly=True
+                sink_owns, slot_readonly=True
             )
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
@@ -1385,7 +1413,7 @@ class TypeCompatibility:
                     TupleType(tuple(make_readonly(e)
                                     for e in actual.wrapped.element_types)),
                     expected, context, loc, source_expr, is_return, coercion_ctx,
-                    target_is_storage_form, sink_owns, commit)
+                    target_is_storage_form, sink_owns)
                 if isinstance(result, CompatError) and result.copy_admits:
                     result.tuple_copy_remedy = True
                 return result
@@ -1406,7 +1434,7 @@ class TypeCompatibility:
                     )
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns, commit
+                sink_owns
             )
 
         # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
@@ -1433,6 +1461,8 @@ class TypeCompatibility:
             # for rvalue sources (no other handle), copy()-wrapped sources,
             # and last-use auto-move (matches the dict.update convention).
             inner = unwrap_own(unwrap_readonly(actual_for_check))
+            if not self.ctx.slot_step_commits():
+                return INTO_ANY
             # `Any` owns its contents, so it is an owning slot of the
             # concrete payload it erases.
             self.register_sink(source_expr, inner, TupleSink.ANY)
@@ -1511,10 +1541,10 @@ class TypeCompatibility:
                     and isinstance(actual_unwrapped, (UnionType, RecursiveAliasInstanceType))):
                 return self._check_compat(
                     actual_unwrapped, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                    commit)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns)
             for member in _union_member_order(actual_unwrapped, union_members):
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+                with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                    result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
                 if (isinstance(result, Coercion) and result.narrows_checked
                         and is_fixed_int_type(unwrap_own(actual))):
                     # A union stores a fixed-width value as one of its
@@ -1522,12 +1552,12 @@ class TypeCompatibility:
                     # into a member (an `int` keeps its checked one).
                     continue
                 if not isinstance(result, CompatError):
-                    if commit:
+                    if self.ctx.slot_step_commits():
                         # The member that admits the value is the slot it
                         # goes to: what the check writes about the value is
                         # written against that member, not against one
                         # tried and refused.
-                        return self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit, slot_readonly=slot_readonly)
+                        return self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
                     return result
             # A concrete container variable whose elements would each fit a union
             # member is NOT implicitly converted: an element-wise rebuild into the
@@ -1570,7 +1600,8 @@ class TypeCompatibility:
                     and source_expr is not None
                     and not actual_inner.is_value_type()
                     and not isinstance(actual_inner, (OptionalType, PtrType, NoneType))
-                    and not target_is_storage_form):
+                    and not target_is_storage_form
+                    and self.ctx.slot_step_commits()):
                 self._mark_addr_taken(source_expr)
             # Ptr[T] -> T | None (pointer-repr): byte-identical T* at C++ level.
             # Per-context idiom: Ptr[T] for storage, T | None for nullable returns.
@@ -1603,7 +1634,7 @@ class TypeCompatibility:
                     source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if inner_result is None:
                     return None
-            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit, slot_readonly=slot_readonly)
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
@@ -1667,7 +1698,8 @@ class TypeCompatibility:
                 if (source_expr is not None
                         and not explicit_own
                         and not actual_provides_own
-                        and not self.is_copy_call(source_expr)):
+                        and not self.is_copy_call(source_expr)
+                        and self.ctx.slot_step_commits()):
                     is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
                     # CPython when the source is dead after this point (Framing A).
@@ -1734,6 +1766,8 @@ class TypeCompatibility:
                                     # before the copy verdicts discharge, so it
                                     # assumes the pending callee lends.
                                     if not own_copy.type_has_type_param(display_type):
+                                        self.ctx.assert_slot_effect(
+                                            "an iterator copy check")
                                         self.pending_iter_copy_checks.append(
                                             PendingIterCopyCheck(
                                                 prov_src, elem_type, display_type,
@@ -1808,9 +1842,11 @@ class TypeCompatibility:
         if (isinstance(actual, NominalType) and actual.is_user_record
                 and isinstance(expected, NominalType) and expected.is_user_record):
             if self.ctx.registry.is_subclass_of(actual, expected):
-                if coercion_ctx in (CoercionContext.ASSIGN,
-                                    CoercionContext.INIT,
-                                    CoercionContext.RETURN):
+                if (coercion_ctx in (CoercionContext.ASSIGN,
+                                     CoercionContext.INIT,
+                                     CoercionContext.RETURN)
+                        and self.ctx.slot_step_commits()):
+                    self.ctx.assert_slot_effect("an upcast warning")
                     msg = (f"upcast narrows '{actual}' to '{expected}' -- "
                            f"only '{expected}' fields and methods will be accessible; "
                            f"keep the concrete type or make '{expected}' a @dynamic protocol")
@@ -1907,103 +1943,105 @@ class TypeCompatibility:
             # borrower's demotion is applied here, where the return's
             # verdict has always been taken (a lambda's return has no other
             # check), retracting the last-use mark the lowering reads.
-            binding = self.ctx.comp_var_reads.get(source_expr)
-            if is_return:
-                is_auto_moved = False
-                self.retract_hidden_borrowed_last_use(source_expr)
-            elif binding is not None:
-                # A comprehension variable's move is its clause's
-                # (`comp_moves`, the record's); sema claims none, and the
-                # name-keyed ownership fact belongs to an outer local.
-                is_auto_moved = False
-            else:
-                is_auto_moved = self.claim_name_move(
-                    source_expr, expected, context)
-            self.check_own_consumption(source_expr)
-            # Mark loop variables as consumed for auto-consuming heuristic;
-            # a comprehension variable is not the enclosing `for` variable.
-            if isinstance(source_expr, TpyName) and binding is None:
-                self.ctx.mark_loop_var_consumed(source_expr.name)
-            # A value-tuple with pointer-repr (reference) members copies each
-            # member its source lends into owned storage where CPython
-            # aliases, even though the tuple itself is a value type.
-            ew = expected.wrapped
-            self.register_sink(source_expr, expected, None)
-            # A tuple source other than a name is checked per reference
-            # leaf (`check_owned_tuple_sink`), a union or an open `T` leaf
-            # included; a name's copies are its binding facts'.
-            ptr_repr_tuple = isinstance(ew, TupleType) and (
-                ew.has_nested_pointer_repr_element()
-                if self.tuple_name_source(source_expr)
-                else bool(reference_paths(ew)))
-            ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
-            # A call that hands back a borrow is copied into the owning slot
-            # exactly as a name or a field is, so it belongs to the same
-            # family. An open type-param payload is no exception: the copy is
-            # the same one the monomorphic twin makes, and `copy()` is
-            # spellable there now that it takes a readonly source.
+            # The ownership verdict -- move or copy, the copy's warning --
+            # is the committed slot's; a query decides the type only.
             warned_ptr_repr_tuple = False
-            # An owned element's pass was decided (moved, or its copy
-            # warned) by the argument check, which runs first.
-            element_decided = (isinstance(source_expr, TpySubscript)
-                               and self.element_read(source_expr)
-                               is not None)
-            # A returned NAME's elements are its own return check's
-            # (`check_name_borrow_into_own`).
-            returned_name = is_return and isinstance(
-                peel_value_wrappers(source_expr), TpyName)
-            if (ptr_repr_tuple and not element_decided and not returned_name
-                    and source_expr is not None and not is_auto_moved):
-                self.check_owned_tuple_sink(
-                    source_expr, expected, "owned storage", source_expr)
-                warned_ptr_repr_tuple = True
-            elif (not element_decided and not is_return and ref_scalar
-                    and self.source_copies_into_storage(source_expr,
-                                                        is_auto_moved)):
-                value_type = self.diag_type(self.ctx.get_expr_type(source_expr))
-                deferred = self.ctx.defer_own_copy_verdict(
-                    value_type, expected.wrapped, "owned storage", source_expr,
-                    source=source_expr)
-                note = self.binding_note(source_expr)
-                copied = self.pend.list_cells(
-                    self.ctx.get_expr_type(source_expr))
-                remedy = self.copy_remedy(source_expr, note="")
-                if not deferred and self.ctx.is_type_non_copyable(
-                        expected.wrapped):
-                    hint = self.nocopy_hint(source_expr, note="")
-                    noted = not self.is_consuming_field_borrow(source_expr)
-                    target = expected.wrapped
-                    if value_type == target:
-                        head = (f"cannot copy non-copyable type '{target}' "
-                                f"into owned storage{hint}")
-                    else:
-                        head = (f"cannot copy {value_type} into owned storage "
-                                f"of type '{target}'; target is "
-                                f"non-copyable{hint}")
-                    self.ctx.copy_error(
-                        lambda n: head + (n if noted else ""), source_expr,
-                        source_expr, note=note)
-                elif not deferred and copied is not None and not copied.settled:
-                    # The copied list's element is decided later: the
-                    # warning names it as it ends up.
-                    list_t = self.ctx.get_expr_type(source_expr)
-                    self.pend.defer(
-                        source_expr, (copied.tree,),
-                        lambda ts: self.ctx.copy_warning(
-                            lambda n: f"copies "
-                            f"{self.diag_type(with_container(list_t, ts[0]))} "
-                            f"into owned storage; {remedy}{n}", source_expr,
-                            source_expr, note=note))
-                elif not deferred:
-                    self.ctx.copy_warning(
-                        lambda n: f"copies {unwrap_readonly(value_type)} into "
-                        f"owned storage; {remedy}{n}", source_expr,
-                        source_expr, note=note)
+            ew = expected.wrapped
+            if self.ctx.slot_step_commits():
+                binding = self.ctx.comp_var_reads.get(source_expr)
+                if is_return:
+                    is_auto_moved = False
+                    self.retract_hidden_borrowed_last_use(source_expr)
+                elif binding is not None:
+                    # A comprehension variable's move is its clause's
+                    # (`comp_moves`, the record's); sema claims none, and the
+                    # name-keyed ownership fact belongs to an outer local.
+                    is_auto_moved = False
+                else:
+                    is_auto_moved = self.claim_name_move(
+                        source_expr, expected, context)
+                self.check_own_consumption(source_expr)
+                # Mark loop variables as consumed for auto-consuming heuristic;
+                # a comprehension variable is not the enclosing `for` variable.
+                if isinstance(source_expr, TpyName) and binding is None:
+                    self.ctx.mark_loop_var_consumed(source_expr.name)
+                # A value-tuple with pointer-repr (reference) members copies each
+                # member its source lends into owned storage where CPython
+                # aliases, even though the tuple itself is a value type.
+                self.register_sink(source_expr, expected, None)
+                # A tuple source other than a name is checked per reference
+                # leaf (`check_owned_tuple_sink`), a union or an open `T` leaf
+                # included; a name's copies are its binding facts'.
+                ptr_repr_tuple = isinstance(ew, TupleType) and (
+                    ew.has_nested_pointer_repr_element()
+                    if self.tuple_name_source(source_expr)
+                    else bool(reference_paths(ew)))
+                ref_scalar = not ew.is_value_type() and not self._is_value_type_param(ew)
+                # A call that hands back a borrow is copied into the owning slot
+                # exactly as a name or a field is, so it belongs to the same
+                # family. An open type-param payload is no exception: the copy is
+                # the same one the monomorphic twin makes, and `copy()` is
+                # spellable there now that it takes a readonly source.
+                # An owned element's pass was decided (moved, or its copy
+                # warned) by the argument check, which runs first.
+                element_decided = (isinstance(source_expr, TpySubscript)
+                                   and self.element_read(source_expr)
+                                   is not None)
+                # A returned NAME's elements are its own return check's
+                # (`check_name_borrow_into_own`).
+                returned_name = is_return and isinstance(
+                    peel_value_wrappers(source_expr), TpyName)
+                if (ptr_repr_tuple and not element_decided and not returned_name
+                        and source_expr is not None and not is_auto_moved):
+                    self.check_owned_tuple_sink(
+                        source_expr, expected, "owned storage", source_expr)
+                    warned_ptr_repr_tuple = True
+                elif (not element_decided and not is_return and ref_scalar
+                        and self.source_copies_into_storage(source_expr,
+                                                            is_auto_moved)):
+                    value_type = self.diag_type(self.ctx.get_expr_type(source_expr))
+                    deferred = self.ctx.defer_own_copy_verdict(
+                        value_type, expected.wrapped, "owned storage", source_expr,
+                        source=source_expr)
+                    note = self.binding_note(source_expr)
+                    copied = self.pend.list_cells(
+                        self.ctx.get_expr_type(source_expr))
+                    remedy = self.copy_remedy(source_expr, note="")
+                    if not deferred and self.ctx.is_type_non_copyable(
+                            expected.wrapped):
+                        hint = self.nocopy_hint(source_expr, note="")
+                        noted = not self.is_consuming_field_borrow(source_expr)
+                        target = expected.wrapped
+                        if value_type == target:
+                            head = (f"cannot copy non-copyable type '{target}' "
+                                    f"into owned storage{hint}")
+                        else:
+                            head = (f"cannot copy {value_type} into owned storage "
+                                    f"of type '{target}'; target is "
+                                    f"non-copyable{hint}")
+                        self.ctx.copy_error(
+                            lambda n: head + (n if noted else ""), source_expr,
+                            source_expr, note=note)
+                    elif not deferred and copied is not None and not copied.settled:
+                        # The copied list's element is decided later: the
+                        # warning names it as it ends up.
+                        list_t = self.ctx.get_expr_type(source_expr)
+                        self.pend.defer(
+                            source_expr, (copied.tree,),
+                            lambda ts: self.ctx.copy_warning(
+                                lambda n: f"copies "
+                                f"{self.diag_type(with_container(list_t, ts[0]))} "
+                                f"into owned storage; {remedy}{n}", source_expr,
+                                source_expr, note=note))
+                    elif not deferred:
+                        self.ctx.copy_warning(
+                            lambda n: f"copies {unwrap_readonly(value_type)} into "
+                            f"owned storage; {remedy}{n}", source_expr,
+                            source_expr, note=note)
             if warned_ptr_repr_tuple:
                 return self._check_compat(actual, ew, context, loc,
                                           source_expr, is_return,
-                                          coercion_ctx, target_is_storage_form, sink_owns,
-                                          commit)
+                                          coercion_ctx, target_is_storage_form, sink_owns)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
             # Only applies when record names differ (different types, not parametric covariance).
@@ -2012,11 +2050,11 @@ class TypeCompatibility:
                     and actual.name != expected.wrapped.name):
                 return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
-            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit)
+            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit)
+            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
 
         # Tuple-to-tuple: same length, element-wise compatible
         if isinstance(actual, TupleType) and isinstance(expected, TupleType):
@@ -2059,7 +2097,7 @@ class TypeCompatibility:
                     source_expr=None if i in decided else sub,
                     is_return=is_return,
                     coercion_ctx=coercion_ctx, target_is_storage_form=True,
-                    sink_owns=True, commit=commit,
+                    sink_owns=True,
                 )
                 if isinstance(result, CompatError):
                     return result
@@ -2118,9 +2156,12 @@ class TypeCompatibility:
         # two cannot disagree on what matches. The demotion hook converges a
         # jagged peer (different-size nested lists) to vector on the same pass.
         if isinstance(expected, (PendingListType, PendingDictType, PendingSetType)):
+            def demote(a: TpyType, b: TpyType) -> None:
+                self.ctx.assert_slot_effect("a pending list pair's demotion")
+                self._demote_pending_pair(a, b)
             if unify_literal_types(
                     expected, actual,
-                    on_pending_pair=(self._demote_pending_pair if commit
+                    on_pending_pair=(demote if self.ctx.slot_step_commits()
                                      else None)) is not None:
                 return None
             # A list stored as a row of a list whose leaves cells decide:
@@ -2173,7 +2214,6 @@ class TypeCompatibility:
                         actual_elem, e_elem,
                         context, loc, source_expr, is_return, coercion_ctx,
                         target_is_storage_form=True, sink_owns=True,
-                        commit=commit,
                     )
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
@@ -2184,7 +2224,7 @@ class TypeCompatibility:
             # Compatible with Array[T, N] if element types and sizes match
             if is_array(expected):
                 if self.type_ops and self.type_ops.pending_list_matches_array(
-                        actual, expected, commit=commit):
+                        actual, expected):
                     return None
                 # Specific error for list repeat size mismatch
                 e_size = expected.type_args[1]
@@ -2438,13 +2478,14 @@ class TypeCompatibility:
                 if deref_target is not None and unwrap_readonly(deref_target) == expected:
                     # The slot binds the target itself, so a readonly target
                     # meets the readonly rule a readonly value would.
-                    ro_err = (self._check_compat(
-                                  deref_target, expected, context, loc,
-                                  None, is_return, coercion_ctx,
-                                  target_is_storage_form, sink_owns, False)
-                              if (isinstance(deref_target, ReadonlyType)
-                                  and not slot_readonly)
-                              else None)
+                    ro_err = None
+                    if (isinstance(deref_target, ReadonlyType)
+                            and not slot_readonly):
+                        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                            ro_err = self._check_compat(
+                                deref_target, expected, context, loc, None,
+                                is_return, coercion_ctx,
+                                target_is_storage_form, sink_owns)
                     if ro_err is not None:
                         return ro_err
                     coercion = DEREF_COERCION
@@ -2455,9 +2496,10 @@ class TypeCompatibility:
                 f"{self._conversion_hint(actual, expected, ctx, sink_owns)}",
                 loc)
 
-        if commit and isinstance(actual, PendingListType) and is_span(expected):
+        if self.ctx.slot_step_commits() and isinstance(actual, PendingListType) and is_span(expected):
             info = self.ctx.list_literal(actual.literal_id)
             if info:
+                self.ctx.assert_slot_effect("a list literal passed to a Span")
                 info.coerced_element_type = expected.type_args[0]
                 info.passed_to_span_param = True
 
@@ -2489,7 +2531,8 @@ class TypeCompatibility:
             # emits as_mut_span(source), which can't bind to a const
             # source.
             if (is_span(expected) and not is_readonly_span(expected)
-                    and source_expr is not None):
+                    and source_expr is not None
+                    and self.ctx.slot_step_commits()):
                 self._mark_addr_taken(source_expr)
 
         if coercion.forbid_return_local and is_return:
@@ -2595,16 +2638,21 @@ class TypeCompatibility:
         pointer-repr-Optional address-take mark is suppressed.
         inferred_slot: the slot's type is a type argument an earlier call
         inferred (`site_coercion` refuses a narrowing into it).
+
+        A slot step that does not commit (`SemanticContext.slot_step_commits`)
+        validates the conversion and hands `expr` back untouched: its
+        committed slot places the coercion.
         """
         # The slot receives the callable a class-name factory stands for, so
         # the node the caller stores back is that lambda.
         expr = lambda_of(expr)
+        commits = self.ctx.slot_step_commits()
         pending = self._pending_num_ends(actual, expected, expr, context)
         if pending is not None:
             return (self.pend.coerce(expr, strip_int(actual),
                                      strip_int(expected), context, coercion_ctx,
                                      inferred_slot=inferred_slot)
-                    if pending else expr)
+                    if pending and commits else expr)
         actual = self.pend.current(actual)
         expected = self.pend.current(expected)
         # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
@@ -2667,6 +2715,8 @@ class TypeCompatibility:
             coercion_ctx=coercion_ctx,
             target_is_storage_form=target_is_storage_form,
         )
+        if not commits:
+            return expr
         if coercion is None and coercion_ctx is CoercionContext.RETURN:
             # A result erases a @dynamic source into its owner here; the
             # call-argument and binding sinks erase at their own rows.
@@ -2696,6 +2746,7 @@ class TypeCompatibility:
         if coercion.name == "into_any":
             actual = self._resolve_pending_for_any_storage(actual)
         actual = literal_conversion_source(actual, expected)
+        self.ctx.assert_slot_effect("a coercion node")
         coercion = self.site_coercion(coercion, actual, expected, expr,
                                       inferred_slot=inferred_slot)
         coerced = TpyCoerce(
@@ -2936,14 +2987,15 @@ class TypeCompatibility:
         # source_expr=None: these probe the *element* types, so the list RHS
         # node must not drive _check_compat's expr-identity side effects
         # (set_expr_type / mutable-lvalue marking).
-        fwd = self._check_compat(new_elem, existing_elem, context, loc, None,
-                                 False, CoercionContext.ASSIGN,
-                                 target_is_storage_form=True)
-        if not isinstance(fwd, CompatError):
-            return None
-        bwd = self._check_compat(existing_elem, new_elem, context, loc, None,
-                                 False, CoercionContext.ASSIGN,
-                                 target_is_storage_form=True)
+        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+            fwd = self._check_compat(new_elem, existing_elem, context, loc,
+                                     None, False, CoercionContext.ASSIGN,
+                                     target_is_storage_form=True)
+            if not isinstance(fwd, CompatError):
+                return None
+            bwd = self._check_compat(existing_elem, new_elem, context, loc,
+                                     None, False, CoercionContext.ASSIGN,
+                                     target_is_storage_form=True)
         if not isinstance(bwd, CompatError):
             return None
         return CompatError(
@@ -3238,6 +3290,16 @@ class TypeCompatibility:
         if self._owned_last_use(expr):
             self.demoted_by_hidden_borrow(expr)
 
+    def move_before_alias_reads(self, read: TpyName) -> None:
+        """Name `read` moves where C++ may sequence the move before an alias
+        read of its object in the same statement (`same_stmt_alias_reads`),
+        and a moved owner no longer shares its object with the alias: not a
+        last use, so it settles as an alias read in a later statement
+        does."""
+        if read in self.ctx.same_stmt_alias_reads:
+            self.ctx.assert_slot_effect("a last-use retraction")
+            self.ctx.all_last_uses.discard(read)
+
     def _owned_last_use(self, expr: 'TpyExpr | None') -> TypeGuard[TpyName]:
         """A name read carrying the last-use mark of a name that owns its
         value (`_is_owned_var`)."""
@@ -3361,6 +3423,7 @@ class TypeCompatibility:
         type, decided here (False: nothing is kept)."""
         if not self.settles_body_local(read.name):
             return False
+        self.ctx.assert_slot_effect("an owning read")
         self.ctx.func.owning_reads.append(read)
         return True
 
@@ -3672,6 +3735,7 @@ class TypeCompatibility:
         this only decides and applies the demotion.
         """
         if self._has_hidden_borrower(expr):
+            self.ctx.assert_slot_effect("a last-use retraction")
             self.ctx.all_last_uses.discard(expr)
             return True
         return False
@@ -4174,11 +4238,12 @@ class TypeCompatibility:
         # elements (no conversion, handled by the literal path), whereas a
         # concrete container variable (e.g. dict[str, int32]) has a genuinely
         # different element. The leaf must also coerce to a union member.
-        # `_check_compat` with no source_expr has no side effects.
         if self._resolve_recursive_refs(elem) == union:
             return False
-        return not isinstance(
-            self._check_compat(elem, union, "deep-union leaf"), CompatError)
+        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+            return not isinstance(
+                self._check_compat(elem, union, "deep-union leaf"),
+                CompatError)
 
     def _check_union_member_type_args(
         self, actual: NominalType, expected: NominalType,
@@ -4214,7 +4279,8 @@ class TypeCompatibility:
                 return False
         # Rewrite expression type so codegen emits correct template args
         # (e.g. Box<Expr> not Box<Lit>)
-        if source_expr is not None:
+        if source_expr is not None and self.ctx.slot_step_commits():
+            self.ctx.assert_slot_effect("a union-member type rewrite")
             self.ctx.set_expr_type(source_expr, expected)
             # Also rewrite call_type on constructor calls (codegen uses this
             # for template args: Box<Expr> vs Box<Lit>)
@@ -4291,13 +4357,15 @@ class TypeCompatibility:
             if bound is None:
                 return False
             if bound == parent:
-                if origin_param is not None:
-                    self.ctx.func.current_representational_params.add(origin_param)
+                if (origin_param is not None
+                        and self.ctx.slot_step_commits()):
+                    self.ctx.mark_representational_param(origin_param)
                 return True
             if isinstance(bound, NominalType) and bound.is_user_record:
                 if self._is_covariant_target(bound, parent):
-                    if origin_param is not None:
-                        self.ctx.func.current_representational_params.add(origin_param)
+                    if (origin_param is not None
+                            and self.ctx.slot_step_commits()):
+                        self.ctx.mark_representational_param(origin_param)
                     return True
                 return False
             if isinstance(bound, TypeParamRef):
@@ -4319,12 +4387,13 @@ class TypeCompatibility:
         """
         if len(actual_params) != len(expected.param_types):
             return False
-        if not all(self._check_compat(e, a, "param", loc) is None
-                   for a, e in zip(actual_params, expected.param_types)):
-            return False
-        return (self._check_compat(actual_return, expected.return_type,
-                                   "return", loc) is None
-                or isinstance(expected.return_type, VoidType))
+        with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+            if not all(self._check_compat(e, a, "param", loc) is None
+                       for a, e in zip(actual_params, expected.param_types)):
+                return False
+            return (self._check_compat(actual_return, expected.return_type,
+                                       "return", loc) is None
+                    or isinstance(expected.return_type, VoidType))
 
     def _is_covariant_target(self, child: TpyType, parent: TpyType) -> bool:
         """Check if child -> parent is valid for covariant conversion.
@@ -5293,8 +5362,9 @@ class TypeCompatibility:
         owned = owned_slot_paths(expected)
         if not owned:
             return none
-        self.check_owned_tuple_sink(source_expr, expected, "owned storage",
-                                    source_expr)
+        if self.ctx.slot_step_commits():
+            self.check_owned_tuple_sink(source_expr, expected,
+                                        "owned storage", source_expr)
         if self.per_leaf_source(source_expr):
             return top_level(owned)
         # A name read behind a wrapper keeps its open `T` leaf for the
@@ -6032,6 +6102,7 @@ class TypeCompatibility:
         prev = sinks.get(key)
         if prev is not None and (prev.sink is not None or sink is None):
             return
+        self.ctx.assert_slot_effect("an owning sink's registration")
         sinks[key] = SinkRead(source, slot, sink)
         if self.ctx.func.settled:
             # A sink checked once the body settled reads its verdicts now.
