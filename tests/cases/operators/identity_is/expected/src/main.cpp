@@ -368,11 +368,11 @@ A* first_ptr(std::vector<A>& xs) {
 
 // # a narrowed field through a `Ptr` receiver, as an `is` operand
 // def via_ptr(h: Ptr[Holder], a: A) -> bool:
-//     if h is not None and h.kid is not None:
+//     if h is not None and h.kid is not None:  # tpyc: non_null(h)
 //         return h.kid is a  # tpyc: ok
 //     return False
 bool via_ptr(Holder* h, const A& a) {
-    if (((h != nullptr) && (::tpy::deref_check(h).kid.has_value()))) {
+    if (((h != nullptr) && (h->kid.has_value()))) {
         return ::tpy::same_object(::tpy::optional_to_ptr(h->kid), &(a));
     }
     return false;
@@ -380,11 +380,11 @@ bool via_ptr(Holder* h, const A& a) {
 
 // # ... and returned at a pointer-repr Optional result
 // def kid_via_ptr(h: Ptr[Holder]) -> A | None:
-//     if h is not None and h.kid is not None:
+//     if h is not None and h.kid is not None:  # tpyc: non_null(h)
 //         return h.kid  # tpyc: ok
 //     return None
 A* kid_via_ptr(Holder* h) {
-    if (((h != nullptr) && (::tpy::deref_check(h).kid.has_value()))) {
+    if (((h != nullptr) && (h->kid.has_value()))) {
         return ::tpy::optional_to_ptr(h->kid);
     }
     return nullptr;

@@ -26,7 +26,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_byte_vals::__nex
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(data))) {
             __state = S_RESUME_0;
-            return ::tpy::BigInt(data[static_cast<std::size_t>(i)]);
+            return ::tpy::BigInt(::tpy::bytes_getitem(data, i));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

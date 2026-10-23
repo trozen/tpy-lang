@@ -2895,7 +2895,9 @@ class TypeCompatibility:
         if narrowing_proven_safe(value, slot, rng):
             return
         here = self.ctx.func.current_function
-        where = (f" from '{here.name}'" if isinstance(here, TpyFunction)
+        where = (" from a generator expression"
+                 if isinstance(here, TpyFunction) and here.is_genexpr
+                 else f" from '{here.name}'" if isinstance(here, TpyFunction)
                  else "")
         at = f" (line {line})" if line is not None else ""
         slot_name = python_type_name(slot)
@@ -2973,8 +2975,14 @@ class TypeCompatibility:
         if (isinstance(inner_existing, (PendingViewType, LiteralType))
                 and (vf := view_family_for_type(inner_existing)) is not None):
             inner_value_owned = unwrap_own(inner_value)
+            # A store from another body (`nonlocal`, a generator expression's
+            # walrus) outlives that body's own storage: only a static source
+            # keeps the enclosing variable a view.
+            foreign = (name in self.ctx.func.current_nonlocal_names
+                       and self.deduction.has_nonstatic_view_source(value_expr))
             if vf.is_any_member(inner_value_owned):
-                if not self.deduction.is_view_compatible_source(value_expr, inner_value_owned):
+                if foreign or not self.deduction.is_view_compatible_source(
+                        value_expr, inner_value_owned):
                     self.deduction.mark_view_reassigned_from_owned(name, vf)
                 else:
                     self.deduction.track_view_reassign_source(name, inner_value_owned, vf)
@@ -4550,17 +4558,12 @@ class TypeCompatibility:
         return False
 
     def is_local_shadow(self, name: str) -> bool:
-        """Check if a name is bound in a local scope, shadowing a global.
-
-        NarrowingTracker._is_rebindable_global (narrowing.py) walks the same
-        chain with a depth-based terminator and a param exclusion -- keep the
-        two in sync when changing shadow semantics."""
+        """Check if a name is bound in a local scope, shadowing a global:
+        it resolves here, and not to the module slot
+        (`SemanticContext.reads_module_slot`)."""
         scope = self.ctx.func.current_scope
-        while scope and scope is not self.ctx.global_scope:
-            if name in scope.bindings:
-                return True
-            scope = scope.parent
-        return False
+        return (scope is not None and scope.lookup(name) is not None
+                and not self.ctx.reads_module_slot(name))
 
     def write_binds_local(self, name: str) -> bool:
         """Whether a store into module global `name` from here binds a local
@@ -4684,13 +4687,9 @@ class TypeCompatibility:
 
         The global arm of `_name_is_param_or_global`, which calls it, so a
         caller that needs to know WHY that predicate said durable asks the
-        same question it did. (`is_local_shadow` and
-        `NarrowingTracker._is_rebindable_global` walk the same chain.)
+        same question it did (`SemanticContext.reads_module_slot`).
         """
-        if name in self.ctx.func.current_param_names:
-            return False
-        return (name in self.ctx.global_scope.bindings
-                and not self.is_local_shadow(name))
+        return self.ctx.reads_module_slot(name)
 
     def _return_borrows_global_storage(self, name: str,
                                        return_type: TpyType) -> str | None:

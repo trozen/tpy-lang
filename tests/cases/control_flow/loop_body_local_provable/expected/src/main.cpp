@@ -522,7 +522,7 @@ int32_t while_walrus_or() {
 // def while_walrus_and_subscript(s: str) -> int32:
 //     i = 0
 //     hits = 0
-//     while i < len(s) and (c := s[i]) != " ":
+//     while i < len(s) and (c := s[i]) != " ":  # tpyc: bounds_safe(s)
 //         if c == "a":  # tpyc: ok
 //             hits += 1
 //         i += 1
@@ -531,7 +531,7 @@ int32_t while_walrus_and_subscript(std::string_view s) {
     int32_t i = 0;
     int32_t hits = 0;
     char c;
-    while (((i < ::tpy::__len__(s)) && ((c = ::tpy::__getitem__(s, i)) != ' '))) {
+    while (((i < ::tpy::__len__(s)) && ((c = s[static_cast<std::size_t>(i)]) != ' '))) {
         if ((c == 'a')) {
             hits = ::tpy::add_check<int32_t>(hits, 1);
         }

@@ -31,7 +31,7 @@ void loop_carried_section() {
         q = &(*p);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "loop_carried:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
+    std::cout << "loop_carried:" << " " << ::tpy::deref_check(q).x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # the `for` spelling

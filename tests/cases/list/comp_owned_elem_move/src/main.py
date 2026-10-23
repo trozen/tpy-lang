@@ -40,11 +40,12 @@ def filtered(n: int32) -> None:
     print(len(zs))
 
 
-def walrus_owned(n: int32) -> None:
+def walrus_owned() -> None:
     # walrus target leaks to the enclosing scope (PEP 572) so its declaration
     # must stay at function scope, while the owned move-temp in the condition
-    # expression must still land inside the loop body.
-    zs = [x for x in range(n) if (y := score(Box(x))) > 0]
+    # expression must still land inside the loop body. The source provably
+    # yields, so the comprehension binds the target.
+    zs = [x for x in range(6) if (y := score(Box(x))) > 0]
     print(len(zs), y)
 
 
@@ -53,7 +54,7 @@ def main() -> None:
     list_comp(3)
     genexpr(6)
     filtered(6)
-    walrus_owned(6)
+    walrus_owned()
 
 
 main()

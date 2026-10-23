@@ -13,6 +13,11 @@ namespace tpyapp::main {
 //     accumulate(20)
 //     accumulate(30)
 //     print(total)
+//     k = 4
+//     print("param", bump(k), k)
+//     print("str", grow())
+//     print("str-static", relabel())
+//     print("view-holder", view_holder())
 void main() {
     int32_t total = 0;
     auto accumulate = [&total](int32_t x) {
@@ -22,6 +27,86 @@ void main() {
     accumulate(20);
     accumulate(30);
     std::cout << total << "\n" << ::tpy::check_signals;
+    int32_t k = 4;
+    std::cout << "param" << " " << ::tpyapp::main::bump(::tpy::BigInt(k)) << " " << k << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << ::tpyapp::main::grow() << "\n" << ::tpy::check_signals;
+    std::cout << "str-static" << " " << ::tpyapp::main::relabel() << "\n" << ::tpy::check_signals;
+    std::cout << "view-holder" << " " << ::tpyapp::main::view_holder() << "\n" << ::tpy::check_signals;
+}
+
+// # param: the closure rebinds the enclosing function's parameter, which then
+// # holds storage of its own instead of the caller's.
+// def bump(n: int) -> int:
+//     def step() -> None:
+//         nonlocal n
+//         n = n + 1  # tpyc: ok
+//     step()
+//     step()
+//     return n
+::tpy::BigInt bump(const ::tpy::BigInt& __param_n) {
+    ::tpy::BigInt n = __param_n;
+    auto step = [&n]() {
+        n = ((n) + (::tpy::BigInt(1)));
+    };
+    step();
+    step();
+    return n;
+}
+
+// # str: the store concatenates, so the enclosing local owns its text.
+// def grow() -> str:
+//     s = "a"  # tpyc: type(str)
+//     def more() -> None:
+//         nonlocal s
+//         s = s + "b"  # tpyc: ok
+//     more()
+//     more()
+//     return s
+std::string grow() {
+    std::string s = "a";
+    auto more = [&s]() {
+        s += "b";
+    };
+    more();
+    more();
+    return s;
+}
+
+// # str-static: a literal store keeps the enclosing local a view.
+// def relabel() -> str:
+//     s = "a"  # tpyc: type(StrView)
+//     def change() -> None:
+//         nonlocal s
+//         s = "b"
+//     change()
+//     return s
+std::string relabel() {
+    std::string_view s = "a";
+    auto change = [&s]() {
+        s = "b";
+    };
+    change();
+    return std::string(s);
+}
+
+// # view-holder: the store reads text out of a tuple local to the closure, so
+// # the enclosing local owns a copy that outlives the closure's frame.
+// def view_holder() -> str:
+//     v = "start"  # tpyc: type(str)
+//     def inner() -> None:
+//         nonlocal v
+//         t = (N("hello" + str(len(v))), 5)
+//         v = t[0].s  # tpyc: ok
+//     inner()
+//     return v
+std::string view_holder() {
+    std::string v = "start";
+    auto inner = [&v]() {
+        auto t = std::tuple<N, int32_t>{N((::tpy::str_concat("hello", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(v))))), 5};
+        v = std::get<0>(t).s;
+    };
+    inner();
+    return v;
 }
 
 // main()

@@ -80,7 +80,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Source_windowed::__next__() {
         try {
             if ((i < ::tpy::__len__(xs))) {
                 __state = S_RESUME_0;
-                return (::tpy::add_check<int32_t>(xs[static_cast<std::size_t>(i)], __self.base));
+                return (::tpy::add_check<int32_t>(::tpy::__getitem__(xs, i), __self.base));
             } else {
                 __fin_ran_3 = true;
                 this->__finally_0();

@@ -172,7 +172,7 @@ __coro_owning owning() {
     }
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(rows))) {
-            std::cout << "borrow len" << " " << ::tpy::__len__((row = &(rows[static_cast<std::size_t>(i)]), *row)) << "\n" << ::tpy::check_signals;
+            std::cout << "borrow len" << " " << ::tpy::__len__((row = &(::tpy::__getitem__(rows, i)), *row)) << "\n" << ::tpy::check_signals;
             __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_0;
             continue;

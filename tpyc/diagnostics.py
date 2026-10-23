@@ -41,6 +41,12 @@ OPTIONAL_NONE_ACCESS_WARNING = (
     "Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning."
 )
 
+def not_assigned_message(name: str) -> str:
+    """The definite-assignment error for a read of `name` some path
+    reaches with no binding of it."""
+    return f"variable '{name}' may not be assigned at this point"
+
+
 OPTIONAL_VALUE_TRUTHINESS_WARNING = (
     "Truthiness check on optional value may also exclude falsy non-None values; "
     "use 'is not None' for None-only checks."

@@ -145,7 +145,7 @@ void named_like_sink(bool go) {
         __escaped = &(*p);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "named_like_sink" << " " << __escaped->v << " " << p->v << "\n" << ::tpy::check_signals;
+    std::cout << "named_like_sink" << " " << ::tpy::deref_check(__escaped).v << " " << p->v << "\n" << ::tpy::check_signals;
 }
 
 // # iterating_wording: each mutation of storage a loop runs over says so,

@@ -308,7 +308,7 @@ def while_walrus_or() -> int32:
 def while_walrus_and_subscript(s: str) -> int32:
     i = 0
     hits = 0
-    while i < len(s) and (c := s[i]) != " ":
+    while i < len(s) and (c := s[i]) != " ":  # tpyc: bounds_safe(s)
         if c == "a":  # tpyc: ok
             hits += 1
         i += 1

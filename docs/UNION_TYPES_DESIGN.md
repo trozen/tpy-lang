@@ -319,8 +319,10 @@ narrowed_types: dict[str, TpyType]  # variable -> current narrowed type (Optiona
 
 File: `tpyc/sema/narrowing.py`
 
-`condition_type_facts()` returns `(true_facts: dict[str, TpyType], false_facts: dict[str, TpyType])`
--- maps variable names to their narrowed types.
+`ExpressionAnalyzer.branch_states()` (`tpyc/sema/expressions.py`) walks a
+condition in the order it runs and returns its TRUE / FALSE path states; a
+test no operator splits contributes `NarrowingTracker.leaf_facts()` -- maps of
+variable names to their narrowed types, one per path.
 
 File: `tpyc/sema/init_tracker.py`
 
@@ -391,13 +393,13 @@ def update_after_write(self, name, target_type, rhs_type=None, rhs_expr=None):
 
 ### Condition facts for isinstance
 
-`condition_type_facts()` returns type-aware facts for isinstance and
-Optional narrowing conditions:
+`NarrowingTracker.leaf_facts()` returns type-aware facts for one isinstance or
+Optional test; the condition walk (`branch_states`) composes them over `and` /
+`or` / `not`:
 
 ```python
-def condition_type_facts(self, condition: TpyExpr
-) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
-    """Get (true_facts, false_facts) for isinstance narrowing."""
+def leaf_facts(self, test: TpyExpr) -> tuple[GuardFacts, GuardFacts]:
+    """What one test proves on its TRUE / FALSE path."""
 ```
 
 For `isinstance(x, T)` where `x: Union[A, B, C]`:
@@ -710,7 +712,7 @@ last branch is not a plain `else:`.
   members via tuple syntax is future work.
 
 - **While-loop union narrowing codegen**: condition-proven type facts are now
-  preserved in loops (via `condition_type_facts`), but codegen doesn't emit
+  preserved in loops (via the head's TRUE path), but codegen doesn't emit
   `std::get<T>()` extraction for loop-body union narrowing.
 
 ---

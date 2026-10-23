@@ -3,11 +3,11 @@
 PEP 572: a walrus inside a comprehension or generator expression binds its
 target in the first enclosing function or module scope S, through any
 nesting of comprehensions. TPy builds each generator expression as a
-generator function of its own, so a walrus target there binds in that frame;
-that is unobservable unless some occurrence of the name outside the
-generator expression resolves to S. This pass finds those walruses, per
-generator expression (the innermost one around the walrus), for sema to
-refuse.
+generator function of its own, so a walrus target there is a variable of
+that frame unless some occurrence of the name outside the generator
+expression resolves to S. This pass finds those walruses, per generator
+expression (the innermost one around the walrus), whose frame then writes
+S's variable instead.
 
 Python's symtable does all the scoping, in two runs over copies of the
 module. Run 1 (the module as written) finds each generator expression's S.

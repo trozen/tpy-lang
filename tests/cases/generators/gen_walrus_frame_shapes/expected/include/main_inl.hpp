@@ -74,7 +74,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_val_str::__next_
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(words))) {
             __state = S_RESUME_1;
-            return ::tpy::BigInt(::tpy::__len__((s = words[static_cast<std::size_t>(i)])));
+            return ::tpy::BigInt(::tpy::__len__((s = ::tpy::__getitem__(words, i))));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -199,7 +199,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_alias::__next__
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(rows))) {
             __state = S_RESUME_1;
-            return ::tpy::__len__((row = &(rows[static_cast<std::size_t>(i)]), *row));
+            return ::tpy::__len__((row = &(::tpy::__getitem__(rows, i)), *row));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -292,7 +292,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_borrow_tuple::__next__
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(nodes))) {
             __state = S_RESUME_1;
-            return std::get<0>((bt = ::tpyapp::main::borrow_pair(nodes[static_cast<std::size_t>(i)]), bt));
+            return std::get<0>((bt = ::tpyapp::main::borrow_pair(::tpy::__getitem__(nodes, i)), bt));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

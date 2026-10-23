@@ -1,0 +1,1 @@
+main.py:9: error: assignment expression in a generator expression cannot yet bind 'y' in the enclosing scope; use a for loop or a list comprehension

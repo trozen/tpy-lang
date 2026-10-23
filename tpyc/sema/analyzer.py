@@ -113,6 +113,8 @@ from .expressions import ExpressionAnalyzer
 from .calls import CallAnalyzer
 from .methods import MethodAnalyzer
 from .statements import StatementAnalyzer
+from .nonlocal_binding import (EnclosingScopeFacts, bind_nonlocals,
+                               enter_enclosing_scope)
 
 from ..prescan import ScanResult
 from .alias_rebind import finalize_pointer_tuples, global_write_facts
@@ -403,6 +405,7 @@ class SemanticAnalyzer:
         )
         self.stmts.pend = self.pend
         self.compat.init = self.stmts.init
+        self.expr.init = self.stmts.init
         self.expr.set_scopes(self.stmts.scopes)
 
         # Per-function/method pre-scan results (shared with codegen)
@@ -1712,7 +1715,9 @@ class SemanticAnalyzer:
         self.ctx.deferred_generic_yield_settles.clear()
 
     def _analyze_function(self, func: TpyFunction, *,
-                          genexpr_source_loans: tuple[tuple[StorageKey, LoanInfo], ...] = ()
+                          genexpr_source_loans: tuple[tuple[StorageKey, LoanInfo], ...] = (),
+                          genexpr_enclosing: 'EnclosingScopeFacts | None' = None,
+                          genexpr_scope_owner: 'TpyFunction | None' = None,
                           ) -> None:
         """Analyze a function body."""
         self.ctx.reset_function_tracking()
@@ -1731,7 +1736,11 @@ class SemanticAnalyzer:
         # element, at the yield.
         if not (func.is_genexpr and func.return_type is None):
             func.return_type = make_ref(self.type_ops.resolve_type(func.return_type))
-        scope = Scope(parent=self.ctx.global_scope)
+        # A genexpr's frame is linked to the function it is written in, whose
+        # variables a store from its body reaches (`enclosing_function`).
+        scope = Scope(parent=self.ctx.global_scope,
+                      function_root=func.is_genexpr,
+                      outer_function=genexpr_scope_owner)
         self.ctx.func.current_scope = scope
 
         # Resolve and normalize params (@readonly wraps all non-value params).
@@ -1781,8 +1790,16 @@ class SemanticAnalyzer:
 
         self._validate_named_defaults(func)
 
+        if genexpr_enclosing is not None:
+            enter_enclosing_scope(self.ctx, genexpr_enclosing)
+            bind_nonlocals(self.ctx, genexpr_enclosing, scope,
+                           set(func.genexpr_nonlocals), declare=True)
+            self.ctx.func.global_declarations |= set(func.genexpr_globals)
+
         # Shared core: bind params, prescan, analyze body
-        scan = self.stmts._prescan_and_analyze_body(func, resolved_params, scope, local_ns)
+        scan = self.stmts._prescan_and_analyze_body(
+            func, resolved_params, scope, local_ns,
+            nonlocal_params=frozenset(func.genexpr_nonlocals))
         if func.is_genexpr:
             self._hand_up_pending_types()
         self.deduction.resolve_all()
@@ -1888,7 +1905,9 @@ class SemanticAnalyzer:
 
     def _analyze_genexpr_function(
             self, func: TpyFunction,
-            source_loans: tuple[tuple[str, LoanInfo], ...]) -> None:
+            source_loans: tuple[tuple[str, LoanInfo], ...],
+            enclosing: 'EnclosingScopeFacts',
+            scope_owner: 'TpyFunction | None') -> None:
         """Analyze a generator expression's function at the expression that
         creates it, in the middle of the enclosing body's analysis.
 
@@ -1911,7 +1930,9 @@ class SemanticAnalyzer:
         # No enclosing `for` head is one of the body's own.
         self.ctx.for_head_bodies = []
         try:
-            self._analyze_function(func, genexpr_source_loans=source_loans)
+            self._analyze_function(func, genexpr_source_loans=source_loans,
+                                   genexpr_enclosing=enclosing,
+                                   genexpr_scope_owner=scope_owner)
         finally:
             self._genexpr_enclosing.pop()
             self.ctx.func = live

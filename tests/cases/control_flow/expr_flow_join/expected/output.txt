@@ -1,0 +1,84 @@
+module-step 18
+ternary-walrus False 6
+walrus-none True True
+ternary-call 1 8
+or True 8
+and False 8
+chained False 8
+contains 7
+comp-local ['HELLO', 'HELLO'] hello
+comp-back-edge [0, 1]
+comp-shadow [2, 3] 5
+assert-fact 3
+assert-kill HI
+match-guard 8
+ternary-both 3 4
+ternary-range 2 1
+and-receiver True
+ternary-receiver 2
+and-container True
+and-walrus-index True
+filter-container [7, 5]
+if-head-walrus 5
+while-head 21
+comp-alias [1] None
+chained-walrus True
+comp-zero-trip [0, 1] 6
+comp-zero-trip-div [0, 1] 2
+ternary-fresh 3 3
+control-bounds True
+control-pointer True
+literal-w
+literal-join w
+assert-kill-op 8
+while-receiver 4
+while-ptr-or 5
+pending-and 2
+while-chain 5
+while-chain 10
+while-chain zero
+while-head-rebind 3
+break-exit 1
+break-finally 2
+step-up 21
+step-up-spelled 21
+step-down 1
+step-down 3
+step-mixed 1
+step-mixed 2
+step-mixed 1
+step-mixed 2
+step-closure 1
+step-closure 2
+step-closure 3
+step-rebind 21
+finally-step 10
+for-break-exit 2
+with-exit 9
+with-exit-break 9
+with-exit-loop 9
+two-finally-outer
+break-two-finally 2
+finally-around 1
+for-break-finally 2
+step-neg-literal 1
+step-neg-literal 2
+step-neg-literal 2
+step-walrus 1
+step-walrus 2
+step-walrus 3
+step-suspends [1, 2, 3]
+for-target 10
+terminating-else 2
+terminating-else-inner 2
+for-else-assert 1
+for-else-assert-gen [1]
+inner-else-break 1
+break-under-head 1
+finally-narrow-in 2
+finally-narrow 2
+with-clears-none True
+with-clears 5
+with-clears-break 5
+with-clears-gen [1, 5]
+with-later-bound 15

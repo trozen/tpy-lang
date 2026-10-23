@@ -5,7 +5,7 @@ Centralizes type narrowing (Optional + Union) and fact invalidation on writes.
 """
 
 from __future__ import annotations
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from itertools import chain
 from typing import TYPE_CHECKING
 
@@ -26,6 +26,7 @@ from ..parse import (
     TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr, TpyAssign,
 )
 from ..value_category import peel_coerce
+from ..parse.nodes import TpyFunction, TpyGeneratorExpression, walk_expr_tree
 from .literal_utils import (
     literal_value_from_expr, fixed_int_literal_value_from_expr,
 )
@@ -38,11 +39,17 @@ from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
 from ..type_def_registry import protocol_info_of
 from .context import binds_value_copy
+from .flow_facts import GuardFacts
 
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .type_ops import TypeOperations
     from .protocols import ProtocolChecker
+    # A test's (TRUE, FALSE) facts of one family: narrowings, non-null
+    # pointers, or value ranges.
+    _FactPair = (tuple[dict[str, TpyType], dict[str, TpyType]]
+                 | tuple[set[str], set[str]]
+                 | tuple[dict[str, ValueRange], dict[str, ValueRange]])
 
 
 def nonempty_container_literal(expr: TpyExpr) -> bool | None:
@@ -145,7 +152,7 @@ class NarrowingTracker:
 
         If the variable is narrowed to a concrete (non-union) type by assignment
         narrowing, returns the declared union type instead, since isinstance and
-        condition_type_facts need the full union to compute branch facts.
+        `leaf_facts` needs the full union to compute branch facts.
         """
         effective = self.ctx.func.narrowed_types.get(name)
         if effective is None:
@@ -382,78 +389,7 @@ class NarrowingTracker:
             if facts is not None:
                 return facts
 
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            true_facts, false_facts = self._isinstance_facts(expr.operand)
-            return false_facts, true_facts
-
-        if isinstance(expr, TpyBinOp):
-            if expr.op == "&&":
-                left_true, left_false = self._isinstance_facts(expr.left)
-                right_true, right_false = self._isinstance_facts(expr.right)
-                merged_true = self._merge_facts_both_hold(left_true, right_true)
-                merged_false = {k: v for k, v in left_false.items()
-                                if k in right_false and right_false[k] == v}
-                return merged_true, merged_false
-            if expr.op == "||":
-                left_true, left_false = self._isinstance_facts(expr.left)
-                right_true, right_false = self._isinstance_facts(expr.right)
-                merged_true = self._merge_facts_either_holds(left_true, right_true)
-                merged_false = self._merge_facts_both_hold(left_false, right_false)
-                return merged_true, merged_false
-
         return {}, {}
-
-    @staticmethod
-    def _merge_facts_either_holds(
-        left: dict[str, TpyType], right: dict[str, TpyType],
-    ) -> dict[str, TpyType]:
-        """Merge facts where at least one holds (||-true, &&-false).
-
-        For same key with LiteralType on both sides, union the value sets.
-        For same key with non-Literal types, keep only if they agree exactly.
-        Keys present in only one side are dropped (can't assume which held).
-        """
-        merged = {}
-        for k, lv in left.items():
-            if k not in right:
-                continue
-            rv = right[k]
-            if (isinstance(lv, LiteralType) and isinstance(rv, LiteralType)
-                    and lv.base_type == rv.base_type):
-                seen = set(lv.values)
-                combined = list(lv.values) + [v for v in rv.values if v not in seen]
-                merged[k] = LiteralType(base_type=lv.base_type, values=tuple(combined))
-            elif lv == rv:
-                merged[k] = lv
-        return merged
-
-    @staticmethod
-    def _merge_facts_both_hold(
-        left: dict[str, TpyType], right: dict[str, TpyType],
-    ) -> dict[str, TpyType]:
-        """Merge facts where both must hold (&&-true, ||-false).
-
-        For distinct keys, include both. For same key with LiteralType on
-        both sides, intersect the value sets. For non-Literal same-key
-        conflicts, right overrides left (preserves pre-existing behavior
-        where isinstance narrows further after is-not-None).
-        """
-        merged = dict(left)
-        for k, rv in right.items():
-            if k not in merged:
-                merged[k] = rv
-                continue
-            lv = merged[k]
-            if (isinstance(lv, LiteralType) and isinstance(rv, LiteralType)
-                    and lv.base_type == rv.base_type):
-                common = tuple(v for v in lv.values if v in rv.values)
-                if common:
-                    merged[k] = LiteralType(base_type=lv.base_type, values=common)
-                else:
-                    merged[k] = lv.base_type
-            else:
-                merged[k] = rv
-        return merged
 
     def _literal_equality_facts(
         self, expr: TpyBinOp,
@@ -486,55 +422,62 @@ class NarrowingTracker:
         else:
             return {key: false_type}, {key: true_type}
 
-    def condition_type_facts(
-        self, condition: TpyExpr,
-    ) -> tuple[dict[str, TpyType], dict[str, TpyType]]:
-        """Get (true_facts, false_facts) for type narrowing (isinstance, is None, truthiness)."""
-        return self._strip_call_unstable(
-            self._isinstance_facts(condition), condition)
-
-    def condition_ptr_null_facts(
-        self, condition: TpyExpr,
-    ) -> tuple[set[str], set[str]]:
-        """Get (true_nonnull, false_nonnull) for Ptr is/is not None checks.
-
-        Returns names proven non-null in the true branch and names proven
-        non-null in the false branch, respectively. When `p is not None`
-        and p is a Ptr[T], returns ({p}, {}) -- p is non-null when the
-        condition is true. When `p is None`, returns ({}, {p}) -- p is
-        non-null when the condition is false.
-        """
-        return self._strip_call_unstable(
-            self._ptr_null_facts(condition), condition)
-
     def _condition_contains_call(self, expr: TpyExpr) -> bool:
         """True when the condition subtree contains any fact-invalidating
         call -- the same trigger set as the sequential call-site kill,
         minus the pure narrowing primitives (isinstance/len), which ARE
         the condition's fact source and rebind nothing. Their arguments
         still walk (a nested user call inside them kills)."""
-        if isinstance(expr, TpyMethodCall):
-            return True
-        if isinstance(expr, TpyCall):
-            pure = (expr.isinstance_var is not None
-                    or expr.func_name in ("isinstance", "len"))
-            if not pure:
-                return True
-        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
-        return any(self._condition_contains_call(c) for c in expr.children())
+        found = False
+
+        def visit(node: TpyExpr) -> bool:
+            nonlocal found
+            if (isinstance(node, TpyMethodCall)
+                    or (isinstance(node, TpyCall)
+                        and node.isinstance_var is None
+                        and node.func_name not in ("isinstance", "len"))
+                    # A membership test calling `__contains__`, and a pull
+                    # of an iteration source running TPy code, are calls no
+                    # node kind shows.
+                    or (isinstance(node, TpyBinOp)
+                        and node.contains_call is not None)
+                    or node.pull_runs_code):
+                found = True
+            return not found
+
+        walk_expr_tree(expr, visit)
+        return found
+
+    def _read_after_value(self, test: TpyExpr) -> set[str]:
+        """The walrus targets `test` reads as an operand (the tested value
+        itself, a comparison side, an `isinstance` argument) with no call
+        in an operand evaluated after it: their facts are about the value
+        the walrus stored, whatever its value's calls rebound."""
+        test = peel_coerce(test)
+        if isinstance(test, TpyBinOp):
+            operands = [test.left, test.right]
+        elif isinstance(test, TpyCall):
+            operands = list(test.args)
+        else:
+            operands = [test]
+        out: set[str] = set()
+        for i, operand in enumerate(operands):
+            operand = peel_coerce(operand)
+            if (isinstance(operand, TpyNamedExpr) and not any(
+                    self._condition_contains_call(later)
+                    for later in operands[i + 1:])):
+                out.add(operand.target)
+        return out
 
     def _strip_call_unstable(self, pair, condition: TpyExpr):
-        """Drop condition-derived facts a call inside the SAME condition may
-        falsify.
+        """Drop a test's facts a call inside the SAME test may falsify.
 
-        The structural derivation walks the condition with no notion of
-        evaluation order, so it re-establishes facts even when a call
-        operand runs after (or before) the test that proved them -- e.g.
-        `if GO is not None and clear():` where clear() rebinds GO. Any
-        fact rooted at a closure-written name or a rebindable value-type
-        global is dropped when a call shares the condition, conservatively
-        covering both operand orderings (mirrors the call-site kill), as is
-        one a closure's write through captured storage reaches.
+        A test's operands are read before a call among them runs (`i < f()`
+        reads `i`, then `f` may rebind it), so the fact the comparison
+        proves may be about the old value. Any fact rooted at a
+        closure-written name or a rebindable value-type global is dropped
+        when a call shares the test (mirrors the call-site kill), as is one
+        a closure's write through captured storage reaches.
         """
         t, f = pair
         if not t and not f:
@@ -543,10 +486,11 @@ class NarrowingTracker:
         check_globals = self._module_has_rebindable_globals()
         paths = func.closure_mutated_paths
         written = func.closure_mutated_receivers | paths.keys()
+        frame_written = genexpr_written_names(condition)
         if (not func.closure_written_names and not written
-                and not check_globals):
+                and not check_globals and not frame_written):
             return pair
-        if not self._condition_contains_call(condition):
+        if not frame_written and not self._condition_contains_call(condition):
             return pair
         rel = func.in_place_writes
 
@@ -567,13 +511,20 @@ class NarrowingTracker:
         reached_t = reached_in(t) if written else set()
         reached_f = reached_in(f) if written else set()
 
+        # A walrus the test reads as an operand is read after everything its
+        # value ran: the fact keyed on its target holds unless an operand
+        # read after it runs code.
+        read_after = self._read_after_value(condition)
+
         def stable(key: str, reached: set[str]) -> bool:
             if key in reached:
                 return False
             root = key.split(".")[0]
-            if root in func.closure_written_names:
+            if root in read_after:
+                return True
+            if root in func.closure_written_names or root in frame_written:
                 return False
-            return not (check_globals and self._is_rebindable_global(root))
+            return not (check_globals and self.is_rebindable_global(root))
 
         def len_stable(v: object) -> bool:
             hi = getattr(v, "hi_len_of", None)
@@ -604,32 +555,22 @@ class NarrowingTracker:
                 else:
                     return set(), {key}
 
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            non_null, null = self._ptr_null_facts(expr.operand)
-            return null, non_null
-
-        if isinstance(expr, TpyBinOp):
-            if expr.op == "&&":
-                l_nn, l_n = self._ptr_null_facts(expr.left)
-                r_nn, r_n = self._ptr_null_facts(expr.right)
-                return l_nn | r_nn, l_n & r_n
-            if expr.op == "||":
-                l_nn, l_n = self._ptr_null_facts(expr.left)
-                r_nn, r_n = self._ptr_null_facts(expr.right)
-                return l_nn & r_nn, l_n | r_n
-
         return set(), set()
 
     # -- Integer range facts from conditions ----------------------------
 
-    def condition_provably_true(self, condition: TpyExpr) -> bool:
+    def condition_provably_true(
+            self, condition: TpyExpr,
+            ran: Callable[[TpyExpr], None]) -> bool:
         """Whether `condition` holds on entry given the value ranges proven
         so far: a `True` literal, a conjunction or disjunction of such, or
         an integer comparison the operand ranges decide (`i = 0; while
         i < 3`). A while head's answer to "does the body run at least
         once" -- what lets a body-bound name count as assigned after the
-        loop without a runtime check."""
-        return self._range_truth(condition) is True
+        loop without a runtime check. The operands are read in the order
+        they run: `ran(operand)` applies what one may write before the
+        next is read."""
+        return self._range_truth(condition, ran) is True
 
     def for_head_provably_runs(self, stmt: TpyForEach) -> bool:
         """Whether this `for` head provably runs the body at least once.
@@ -656,7 +597,13 @@ class NarrowingTracker:
             return False
         if stmt.enum_iterable is not None:
             return True
-        expr = peel_coerce(stmt.iterable)
+        return self.source_provably_nonempty(stmt.iterable)
+
+    def source_provably_nonempty(self, source: TpyExpr) -> bool:
+        """Whether iterating `source` (a `for` head's, a comprehension
+        clause's) provably yields at least once: `for_head_provably_runs`
+        past the heads only a `for` statement has."""
+        expr = peel_coerce(source)
         # A tuple literal has no arm HERE because iterating a tuple is
         # rejected at the head itself, so the shared predicate's answer for
         # it must not be taken.
@@ -726,34 +673,36 @@ class NarrowingTracker:
         _, rhs = writes[0]
         return nonempty_container_literal(peel_coerce(rhs)) is True
 
-    def _range_truth(self, expr: TpyExpr) -> bool | None:
+    def _range_truth(self, expr: TpyExpr,
+                     ran: Callable[[TpyExpr], None]) -> bool | None:
         if isinstance(expr, TpyBoolLiteral):
             return expr.value
         if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            inner = self._range_truth(expr.operand)
+            inner = self._range_truth(expr.operand, ran)
             return None if inner is None else not inner
-        if isinstance(expr, TpyBinOp):
-            if expr.op in ("&&", "||"):
-                left = self._range_truth(expr.left)
-                right = self._range_truth(expr.right)
-                if expr.op == "&&":
-                    if left is True and right is True:
-                        return True
-                    if left is False or right is False:
-                        return False
-                    return None
-                if left is True or right is True:
-                    return True
-                if left is False and right is False:
-                    return False
-                return None
-            return self._comparison_truth(expr)
+        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
+            left = self._range_truth(expr.left, ran)
+            # The short circuit decides without the right operand running.
+            if left is (expr.op == "||"):
+                return left
+            ran(expr.left)
+            right = self._range_truth(expr.right, ran)
+            if right is (expr.op == "||"):
+                return right
+            if left is not None and right is not None:
+                return left
+            return None
         if isinstance(expr, TpyChainedCompare) and expr.pairs:
-            truths = [self._comparison_truth(p) for p in expr.pairs]
-            if all(t is True for t in truths):
-                return True
-            if any(t is False for t in truths):
-                return False
+            truths: list[bool | None] = []
+            for pair in expr.pairs:
+                truths.append(self._comparison_truth(pair))
+                if truths[-1] is False:
+                    return False
+                ran(pair)
+            return True if all(t is True for t in truths) else None
+        ran(expr)
+        if isinstance(expr, TpyBinOp):
+            return self._comparison_truth(expr)
         return None
 
     def _operand_range(self, expr: TpyExpr) -> ValueRange | None:
@@ -771,40 +720,25 @@ class NarrowingTracker:
             return None
         return left.compare(expr.op, right)
 
-    def condition_range_facts(
-        self, condition: TpyExpr,
-    ) -> tuple[dict[str, ValueRange], dict[str, ValueRange]]:
-        """Get (true_facts, false_facts) for integer range narrowing.
-
-        Handles comparisons (!=, ==, <, <=, >, >=), including symbolic
-        len() comparisons, and logical composition (and/or/not).
-        """
-        return self._strip_call_unstable(
-            self._range_facts(condition), condition)
+    def leaf_facts(self, test: TpyExpr) -> tuple[GuardFacts, GuardFacts]:
+        """What one test proves on its TRUE / FALSE path, read off its
+        syntax after it was analyzed: an `isinstance`, a None test, a
+        truthiness or literal test, a comparison. A test is what the
+        condition walk (`ExpressionAnalyzer.branch_states`) does not split
+        further; the facts of `a and b` are the states the walk reaches."""
+        def stripped(pair: _FactPair) -> _FactPair:
+            return self._strip_call_unstable(pair, test)
+        t_types, f_types = stripped(self._isinstance_facts(test))
+        t_ptrs, f_ptrs = stripped(self._ptr_null_facts(test))
+        t_ranges, f_ranges = stripped(self._range_facts(test))
+        return (GuardFacts(t_types, frozenset(t_ptrs), t_ranges),
+                GuardFacts(f_types, frozenset(f_ptrs), f_ranges))
 
     def _range_facts(
         self, expr: TpyExpr,
     ) -> tuple[dict[str, ValueRange], dict[str, ValueRange]]:
-        if isinstance(expr, TpyUnaryOp) and expr.op == "!":
-            true_facts, false_facts = self._range_facts(expr.operand)
-            return false_facts, true_facts
-
         if isinstance(expr, TpyBinOp):
-            if expr.op == "&&":
-                l_true, l_false = self._range_facts(expr.left)
-                r_true, r_false = self._range_facts(expr.right)
-                merged_true = _intersect_range_dicts(l_true, r_true)
-                merged_false = _merge_range_dicts(l_false, r_false)
-                return merged_true, merged_false
-            if expr.op == "||":
-                l_true, l_false = self._range_facts(expr.left)
-                r_true, r_false = self._range_facts(expr.right)
-                merged_true = _merge_range_dicts(l_true, r_true)
-                merged_false = _intersect_range_dicts(l_false, r_false)
-                return merged_true, merged_false
-
             return self._comparison_range_facts(expr)
-
         return {}, {}
 
     def _is_integer_typed(self, expr: TpyExpr) -> bool:
@@ -992,6 +926,17 @@ class NarrowingTracker:
             return
         self.ctx.func.narrowed_types[name] = self._optional_inner_type(target_type)
 
+    def forget(self, name: str) -> None:
+        """Drop every flow fact about `name`, as a write of an unknown value
+        into it does."""
+        func = self.ctx.func
+        func.narrowed_types.pop(name, None)
+        func.narrowed_types.pop(deref_view_key(name), None)
+        self._invalidate_field_facts(name)
+        func.non_null_ptr_vars.discard(name)
+        func.value_ranges.pop(name, None)
+        self._invalidate_len_ranges(name)
+
     def holds_copy(self, name: str) -> bool:
         """Whether `name` is a local or parameter of a value type, holding
         its own copy of what it was bound from. A name with no type yet
@@ -1070,6 +1015,17 @@ class NarrowingTracker:
         field path) holds, under every spelling of that object."""
         self._kill_written(name, own=False)
 
+    def invalidate_for_code_run(
+            self, call: TpyCall | TpyMethodCall | None = None) -> None:
+        """Kill what running TPy code may falsify: the fields of what `call`
+        hands the callee (its receiver and arguments), then what any call
+        may rebind. An iteration step that runs TPy code passes no call."""
+        if isinstance(call, TpyMethodCall):
+            self.invalidate_field_facts_for_method_call(call)
+        elif call is not None:
+            self.invalidate_field_facts_for_call(call)
+        self.invalidate_closure_written_facts()
+
     def invalidate_closure_written_facts(self) -> None:
         """Kill facts a call may falsify: closure-rebindable names and
         value-type module globals.
@@ -1094,15 +1050,10 @@ class NarrowingTracker:
             roots.update(func.non_null_ptr_vars)
             roots.update(func.value_ranges)
             for name in roots - stale:
-                if self._is_rebindable_global(name):
+                if self.is_rebindable_global(name):
                     stale.add(name)
         for name in stale:
-            self.ctx.func.narrowed_types.pop(name, None)
-            self.ctx.func.narrowed_types.pop(deref_view_key(name), None)
-            self._invalidate_field_facts(name)
-            self.ctx.func.non_null_ptr_vars.discard(name)
-            self.ctx.func.value_ranges.pop(name, None)
-            self._invalidate_len_ranges(name)
+            self.forget(name)
         if func.closure_mutated_receivers or func.closure_mutated_paths:
             self._invalidate_closure_writes()
 
@@ -1142,6 +1093,13 @@ class NarrowingTracker:
         """
         self.invalidate_closure_written_facts()
         func = self.ctx.func
+        here = func.current_function
+        if isinstance(here, TpyFunction) and here.is_genexpr:
+            # A generator expression's captures are no frame-private
+            # bindings: each is the enclosing variable, which the code that
+            # runs while the frame is suspended may rebind.
+            for name in here.capture_params:
+                self.forget(name)
         for k in [k for k in func.narrowed_types
                   if "." in k or parse_deref_view_key(k) is not None]:
             del func.narrowed_types[k]
@@ -1169,29 +1127,22 @@ class NarrowingTracker:
         self._rebindable_globals_cache = (gns, has)
         return has
 
-    def _is_rebindable_global(self, name: str) -> bool:
+    def is_rebindable_global(self, name: str) -> bool:
         """True for a module global a callee could rebind via `global g`:
-        a VARIABLE binding in the module namespace, not shadowed by a
-        function-level binding or param, of value type.
-
-        The shadow walk parallels TypeCompatibility.is_local_shadow
-        (compatibility.py) but terminates on scope depth (module = 0) and
-        additionally excludes params -- keep the two in sync."""
+        a VARIABLE binding of value type in the module namespace that `name`
+        reads here (`SemanticContext.reads_module_slot`: no parameter or
+        local shadows it). In the module's own statements only a global some
+        function rebinds counts: nothing else runs code that rebinds it."""
         gns = self.ctx.global_ns
         if gns is None:
             return False
         binding = gns.lookup_local(name)
         if binding is None or binding.kind != BindingKind.VARIABLE:
             return False
-        if name in self.ctx.func.current_param_names:
+        if not self.ctx.reads_module_slot(name):
             return False
-        # A function-level scope binding shadows the global; the fact then
-        # belongs to the (call-safe) local. Module scope sits at depth 0.
-        scope = self.ctx.func.current_scope
-        while scope is not None and scope.depth > 0:
-            if name in scope.bindings:
-                return False
-            scope = scope.parent
+        if self.ctx.is_top_level and name not in self.ctx.rebound_globals:
+            return False
         t = unwrap_ref_type(binding.type) if binding.type else None
         return t is not None and t.is_value_type()
 
@@ -1282,32 +1233,16 @@ def deref_view_narrowed(ctx, obj, deref_target: TpyType) -> 'NominalType | None'
     return narrowed if isinstance(narrowed, NominalType) else None
 
 
-def _intersect_range_dicts(
-    a: dict[str, ValueRange], b: dict[str, ValueRange],
-) -> dict[str, ValueRange]:
-    """Combine two range fact dicts (and-composition): tighten overlapping keys."""
-    if not a:
-        return b
-    if not b:
-        return a
-    result = dict(a)
-    for k, v in b.items():
-        if k in result:
-            result[k] = ValueRange.intersect(result[k], v)
-        else:
-            result[k] = v
-    return result
+def genexpr_written_names(expr: TpyExpr) -> set[str]:
+    """The enclosing variables the generator expressions created in `expr`
+    write (`TpyFunction.genexpr_nonlocals` / `genexpr_globals`)."""
+    out: set[str] = set()
 
+    def visit(node: TpyExpr) -> bool:
+        if isinstance(node, TpyGeneratorExpression) and node.frame_func is not None:
+            out.update(node.frame_func.genexpr_nonlocals)
+            out.update(node.frame_func.genexpr_globals)
+        return True
 
-def _merge_range_dicts(
-    a: dict[str, ValueRange], b: dict[str, ValueRange],
-) -> dict[str, ValueRange]:
-    """Combine two range fact dicts (or-composition): widen overlapping keys, drop unique."""
-    if not a or not b:
-        return {}
-    result = {}
-    for k, v in a.items():
-        if k in b:
-            result[k] = ValueRange.merge(v, b[k])
-    return result
-
+    walk_expr_tree(expr, visit)
+    return out

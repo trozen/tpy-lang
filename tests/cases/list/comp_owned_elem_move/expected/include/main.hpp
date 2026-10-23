@@ -25,8 +25,8 @@ void list_comp(int32_t n);
 void genexpr(int32_t n);
 // def filtered(n: int32) -> None:
 void filtered(int32_t n);
-// def walrus_owned(n: int32) -> None:
-void walrus_owned(int32_t n);
+// def walrus_owned() -> None:
+void walrus_owned();
 // def main() -> None:
 void main();
 

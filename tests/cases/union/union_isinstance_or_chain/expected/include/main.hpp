@@ -60,6 +60,8 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
 struct C {
     // tag: int
     ::tpy::BigInt tag;
+    // ctag: int
+    ::tpy::BigInt ctag;
 
     // def __init__(self, tag: int) -> None:
     C() = default;
@@ -83,6 +85,9 @@ inline B::B(const ::tpy::BigInt& tag) : tag(tag) {}
 
 // def __init__(self, tag: int) -> None:
 //     self.tag = tag
-inline C::C(const ::tpy::BigInt& tag) : tag(tag) {}
+//     self.ctag = tag * 10
+inline C::C(const ::tpy::BigInt& tag)
+    : tag(tag),
+      ctag(((tag) * (::tpy::BigInt(10)))) {}
 void __tpy_init();
 } // namespace tpyapp::main

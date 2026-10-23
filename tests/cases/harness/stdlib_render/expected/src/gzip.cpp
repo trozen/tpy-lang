@@ -161,7 +161,7 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
         }
         members.push_back(decompressed);
         int32_t start = 8;
-        while (((start < ::tpy::__len__(tail)) && (::tpy::bytes_getitem(tail, start) == 0))) {
+        while (((start < ::tpy::__len__(tail)) && (tail[static_cast<std::size_t>(start)] == 0))) {
             start = ::tpy::add_check<int32_t>(start, 1);
         }
         rest = ::tpy::Bytes(::tpy::bytes_slice(tail, ::tpy::BasicSlice{start, std::nullopt}));

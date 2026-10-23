@@ -438,9 +438,9 @@ def list_comp_section() -> None:
     # an owned str element moves too (the generated C++ pins the move)
     st = [q[0] for q in str_steps("abcdefghijklmnopqrstuvwxyz")]  # tpyc: ok
     print("list_comp_str", st[0])
-    # an owned optional step filtered on its None test (the filter does not
-    # narrow: BUGS.md#comp-filter-none-test-not-narrowing)
-    ls = [o.v for o in opt_a() if o is not None]  # tpyc: warning(/Potential None access/)
+    # an owned optional step filtered on its None test: the filter narrows
+    # the element it tests
+    ls = [o.v for o in opt_a() if o is not None]  # tpyc: ok
     print("list_comp_opt", ls)
 
 

@@ -205,7 +205,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_indexed::__next__() {
     case S_JOIN_0: {
         if ((i < ::tpy::__len__(xs))) {
             __state = S_RESUME_0;
-            return xs[static_cast<std::size_t>(i)];
+            return ::tpy::__getitem__(xs, i);
         } else {
             __state = S_RESUME_1;
             return -1;

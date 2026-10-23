@@ -60,7 +60,7 @@ void EpollReactor::poll(int32_t timeout_ms) {
     int32_t n = ::tpy_epoll_wait(this->_epfd, this->_out_fds.data(), this->_out_events.data(), _REACTOR_BATCH, timeout_ms);
     int32_t i = 0;
     while ((i < n)) {
-        int32_t fd = this->_out_fds.data()[::tpy::int_cast_check<uint32_t>(i)];
+        int32_t fd = this->_out_fds.data()[static_cast<uint32_t>(i)];
         ::tpy_epoll_ctl(this->_epfd, _EPOLL_CTL_DEL, fd, 0);
         if ((this->_waiters.contains(fd))) {
             ::tpystd::coro::Waker w = ::tpy::__getitem__(this->_waiters, fd);

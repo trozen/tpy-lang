@@ -757,7 +757,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
             m = ::tpy::__len__(__self.fieldnames);
             while ((i < m)) {
                 name = ::tpy::__getitem__(__self.fieldnames, i);
-                ::tpy::__setitem__((*out), name, (((i < ::tpy::__len__((*row)))) ? (::tpy::__getitem__((*row), i)) : ("")));
+                ::tpy::__setitem__((*out), name, (((i < ::tpy::__len__((*row)))) ? ((*row)[static_cast<std::size_t>(i)]) : ("")));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             __state = S_RESUME_0;
