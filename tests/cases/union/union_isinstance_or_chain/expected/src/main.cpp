@@ -19,12 +19,14 @@ std::string two_member(::tpy::Union<const A*, const B*> v) {
 // def three_member(v: A | B | C) -> str:
 //     if isinstance(v, A) or isinstance(v, B):
 //         return "ab"
-//     return "c"
+//     # Past the or-chain's FALSE path `v` is a C: a field only C has.
+//     return "c" + str(v.ctag)  # tpyc: ok
 std::string three_member(::tpy::Union<const A*, const B*, const C*> v) {
     if ((std::holds_alternative<const A*>(v) || std::holds_alternative<const B*>(v))) {
         return "ab";
     }
-    return "c";
+    auto& __v = *std::get<const C*>(v);
+    return (::tpy::str_concat("c", (__v.ctag).to_string()));
 }
 
 // def and_chain(v: A | B, flag: bool) -> str:

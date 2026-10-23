@@ -18,7 +18,7 @@ from .parse import (
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
     TpyBoolLiteral, TpyNoneLiteral,
     TpyCoerce, TpyFieldAccess, TpyIfExpr, TpyNamedExpr,
-    TpyNestedDef,
+    TpyNestedDef, TpyFunction,
     TpyFStringValue, TpyComprehensionGenerator,
     TpyTupleLiteral, TpyFString,
     TpyDelVar, TpyDelAttr, TpyDelItem, TpyNonlocal, TpyGlobal, TpyTry,
@@ -395,7 +395,7 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
         result.first_bindings = scan_first_bindings(stmts, params)
         result.literal_locals = scan_pending_num_locals(
             stmts, params, result.first_bindings)
-    _scan_stmts(stmts, declared, result)
+    _scan_stmts(stmts, declared, result, frozenset(declared))
     result.initial_alias_names = set(result.alias_sources.keys())
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map
     for name in result.reassigned:
@@ -600,8 +600,29 @@ def _scan_walrus_in_stmt(stmt: TpyStmt, declared: set[str],
         _scan_walrus_in_expr(expr, declared, result)
 
 
+def _scan_nonlocal_writes(func: TpyFunction, params: frozenset[str],
+                          result: ScanResult) -> None:
+    """Record the writes nested def `func` makes to the enclosing body's
+    parameters through `nonlocal`, as the enclosing body's own writes: the
+    parameter's storage is the caller's, so a write needs storage of the
+    body's own. A local the closure rebinds is written in place, through
+    the reference the closure captures."""
+    nonlocals: set[str] = set()
+    collect_nonlocals(func.body, nonlocals)
+    outer = nonlocals & params
+    if not outer:
+        return
+    inner = ScanResult()
+    _scan_stmts(func.body, set(outer), inner)
+    result.reassigned |= inner.reassigned & outer
+    result.rvalue_reassigned |= inner.rvalue_reassigned & outer
+    result.lvalue_reassigned |= inner.lvalue_reassigned & outer
+    result.aug_assigned |= inner.aug_assigned & outer
+
+
 def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
-                result: ScanResult) -> None:
+                result: ScanResult,
+                params: frozenset[str] = frozenset()) -> None:
     for stmt in stmts:
         # Scan for walrus bindings inside expressions before normal stmt scanning
         _scan_walrus_in_stmt(stmt, declared, result)
@@ -654,7 +675,10 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                 result.rvalue_reassigned.add(name)
             else:
                 _declare(name, stmt.loc, declared, result)
-            # Do NOT recurse into nested body (separate scope)
+            # The body is a scope of its own, save the names it declares
+            # `nonlocal`. (A generator expression's walrus, which writes the
+            # enclosing variable too, is scanned with its statement.)
+            _scan_nonlocal_writes(stmt.func, params, result)
         # Recurse into sub-bodies (if/while/for/with)
         if isinstance(stmt, TpyForEach):
             # A for-loop over an existing local REBINDS it (CPython: the
@@ -690,7 +714,7 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                     else:
                         result.scoped_bind_loc.setdefault(cap.name, case.loc)
         for body in stmt.sub_bodies():
-            _scan_stmts(body, declared, result)
+            _scan_stmts(body, declared, result, params)
 
 
 def object_leaves(e: TpyExpr | None) -> list[tuple[str, TpyExpr]]:
@@ -737,8 +761,10 @@ def _subject_captures(pattern: TpyPattern) -> list[str]:
     return []
 
 
-def _key_root(key: str) -> str:
-    return key.split(".", 1)[0]
+def fact_key_root(key: str) -> str:
+    """The variable a flow-fact or place key is about: the root of a field
+    path, of a deref-view key included."""
+    return (parse_deref_view_key(key) or key).split(".", 1)[0]
 
 
 # The three guards bound the closure's work on layouts the type system
@@ -920,7 +946,7 @@ class InPlaceWrites:
         names: set[str] = set(bound)
         reads: dict[str, list[str]] = {}
         for n, ks in bound.items():
-            rs = sorted({_key_root(k) for k in ks})
+            rs = sorted({fact_key_root(k) for k in ks})
             reads[n] = rs
             names.update(rs)
         order = sorted(names)
@@ -932,8 +958,8 @@ class InPlaceWrites:
         for n, ks in bound.items():
             kept[n] = sorted(k for k in ks
                              if "." not in k
-                             or cycle[_key_root(k)] != cycle[n])
-        edges = {n: sorted({_key_root(k) for k in ks})
+                             or cycle[fact_key_root(k)] != cycle[n])
+        edges = {n: sorted({fact_key_root(k) for k in ks})
                  for n, ks in kept.items()}
         steps = 0
         for comp in _scc_order(order, edges):
@@ -952,7 +978,7 @@ class InPlaceWrites:
                 nonlocal overflow
                 if len(paths) >= _NAME_BUDGET:
                     return False
-                root = _key_root(place)
+                root = fact_key_root(place)
                 if place in paths:
                     return True
                 if per_root[root] < _HOLD_BUDGET:
@@ -987,7 +1013,7 @@ class InPlaceWrites:
                         steps += 1
                         place = q + "." + suffix
                         if place.count(".") > _KEY_DEPTH:
-                            overflow |= self._bit(_key_root(q))
+                            overflow |= self._bit(fact_key_root(q))
                         elif not admit(place):
                             overflow |= self._shape(root)[1]
                             break
@@ -1006,7 +1032,7 @@ class InPlaceWrites:
             overflow = self._overflow.get(name, 0)
             by_root: dict[str, list[str]] = {}
             for p in self._paths.get(name, ()):
-                by_root.setdefault(_key_root(p), []).append(p)
+                by_root.setdefault(fact_key_root(p), []).append(p)
             roots = bare | overflow
             for r in by_root:
                 roots |= self._bit(r)
@@ -1373,6 +1399,23 @@ class FactKills:
     # defined before the body, so the closure-written kills apply at the
     # meet as they do at every call on the live path.
     calls: bool = False
+    # The direction each name in `names` is stepped by a whole-name store
+    # of the step shape (`i += 1`, `i = i - 2`: a non-negative int literal
+    # added or subtracted), and the names bound any other way; see
+    # `stepped`.
+    steps: dict[str, set[str]] = field(default_factory=dict)
+    rebinds: set[str] = field(default_factory=set)
+    # Names a `del` statement in the body unbinds.
+    deletes: set[str] = field(default_factory=set)
+
+    def stepped(self) -> dict[str, str]:
+        """The names every bind of which in the body is a step in ONE
+        direction (`+` or `-`), in a body that does not suspend: a bound on
+        the other side of the step survives the meet."""
+        if self.suspends:
+            return {}
+        return {n: next(iter(s)) for n, s in self.steps.items()
+                if len(s) == 1 and n not in self.rebinds}
 
     def __bool__(self) -> bool:
         return bool(self.names or self.paths or self.receivers
@@ -1385,6 +1428,10 @@ class FactKills:
         self.receivers |= other.receivers
         self.suspends |= other.suspends
         self.calls |= other.calls
+        for name, signs in other.steps.items():
+            self.steps.setdefault(name, set()).update(signs)
+        self.rebinds |= other.rebinds
+        self.deletes |= other.deletes
 
 
 def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
@@ -1392,8 +1439,11 @@ def _kills_in_expr(expr: TpyExpr | None, kills: FactKills) -> None:
         return
     if isinstance(expr, TpyNamedExpr):
         kills.names.add(expr.target)
+        kills.rebinds.add(expr.target)
     elif isinstance(expr, TpyMethodCall):
         _object_leaf_keys(expr.obj, kills.receivers)
+    if expr.pull_runs_code:
+        kills.calls = True
     if isinstance(expr, (TpyCall, TpyMethodCall)):
         # A hidden call (`dunder_call`, a property setter, a `__getattr__`
         # fallback) is a TpyMethodCall field the walk below reaches.
@@ -1440,6 +1490,31 @@ def _kills_assign_target(target: TpyExpr, kills: FactKills,
             kills.receivers.add(root)
 
 
+def _step_of(stmt: TpyStmt) -> tuple[str, str] | None:
+    """`(name, "+" | "-")` for a whole-name step by a non-negative int
+    literal: `i += 1`, `i -= 2`, `i = i + 1` (unannotated)."""
+    def literal(e: TpyExpr) -> bool:
+        e = peel_coerce(e)
+        return isinstance(e, TpyIntLiteral) and e.value >= 0
+
+    if (isinstance(stmt, TpyAugAssign) and isinstance(stmt.target, TpyName)
+            and stmt.op in ("+", "-") and literal(stmt.value)):
+        return stmt.target.name, stmt.op
+    if isinstance(stmt, TpyVarDecl) and stmt.type is None:
+        name, value = stmt.name, stmt.init
+    elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
+        name, value = stmt.target.name, stmt.value
+    else:
+        return None
+    value = peel_coerce(value) if value is not None else None
+    if (isinstance(value, TpyBinOp) and value.op in ("+", "-")
+            and isinstance(peel_coerce(value.left), TpyName)
+            and peel_coerce(value.left).name == name
+            and literal(value.right)):
+        return name, value.op
+    return None
+
+
 def collect_fact_kills(stmts: list[TpyStmt],
                        extra_exprs: 'tuple[TpyExpr, ...] | list[TpyExpr]' = (),
                        table: 'IdentityMap | None' = None) -> FactKills:
@@ -1465,6 +1540,25 @@ def _fact_kills_walk(block: BlockSummary, kills: FactKills) -> None:
     current expressions; a nested def's body is its own scope."""
     for ss in block.stmts:
         stmt = ss.stmt
+        step = _step_of(stmt)
+        if step is not None:
+            kills.steps.setdefault(step[0], set()).add(step[1])
+        else:
+            kills.rebinds |= ss.binds | ss.extra_binds | ss.decl_outside
+        if ss.closure is not None:
+            kills.rebinds |= ss.closure.closure_decls()
+        if isinstance(stmt, TpyDelVar):
+            kills.deletes.update(stmt.names)
+        if isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.exit_call is not None:
+                    _kills_in_expr(item.exit_call, kills)
+                    continue
+                if item.exit_runs_code is not False:
+                    # A loop meet runs before its body is analyzed: an exit
+                    # not known to be native is a call on the manager.
+                    kills.calls = True
+                    _object_leaf_keys(item.context_expr, kills.receivers)
         if isinstance(stmt, (TpyAssign, TpyAugAssign)):
             _kills_assign_target(
                 stmt.target, kills,
@@ -1586,7 +1680,7 @@ def _closure_exports(ss: StmtSummary) -> ClosureExports:
 
     def resolve(key: str) -> list[str]:
         nonlocal rel, overflow
-        root = _key_root(key)
+        root = fact_key_root(key)
         if root not in own:
             return [key]
         if rel is None:
@@ -1594,7 +1688,7 @@ def _closure_exports(ss: StmtSummary) -> ClosureExports:
         if rel.overflowed(root):
             overflow = True
             return []
-        return [p for p in rel.holds(key) if _key_root(p) in free]
+        return [p for p in rel.holds(key) if fact_key_root(p) in free]
 
     for key, stores in raw.paths.items():
         for place in resolve(key):

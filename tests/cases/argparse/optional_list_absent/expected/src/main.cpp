@@ -171,7 +171,7 @@ __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<s
     int32_t __tpy_argparse_i = 0;
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
-        std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
+        std::string __tpy_argparse_tok = ::tpy::__getitem__(argv, __tpy_argparse_i);
         if ((__tpy_argparse_tok == "--coord")) {
             __tpy_argparse_acc_coord = &*(__slot_2 = std::vector<::tpy::BigInt>{});
             int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));

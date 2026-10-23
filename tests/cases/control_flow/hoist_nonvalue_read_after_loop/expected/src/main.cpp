@@ -459,10 +459,11 @@ void while_unpack() {
 
 // # A walrus inside a comprehension binds in the enclosing function (PEP 572);
 // # the comprehension's own variable does not leak, the target is read after
-// # the loop that holds the comprehension.
+// # the loop that holds the comprehension. Its source provably yields, so the
+// # comprehension binds the target (one that may run zero times must not).
 // def comp_walrus_in_loop() -> None:
 //     for i in range(2):  # tpyc: ok
-//         ys = [(y := x * 10) for x in range(i + 1)]
+//         ys = [(y := x * 10) for x in range(2)]
 //     print("comp_walrus_in_loop", y, ys)
 void comp_walrus_in_loop() {
     int32_t y;
@@ -470,9 +471,8 @@ void comp_walrus_in_loop() {
     for (int32_t i = 0; i < 2; ++i) {
         ys = ({
             std::vector<int32_t> __result;
-            int32_t __stop_1 = (::tpy::add_check<int32_t>(i, 1));
-            if (__stop_1 > 0) __result.reserve(static_cast<size_t>(__stop_1));
-            for (int32_t x = 0; x < __stop_1; ++x) {
+            if (2 > 0) __result.reserve(static_cast<size_t>(2));
+            for (int32_t x = 0; x < 2; ++x) {
                 __result.push_back((y = (::tpy::mul_check<int32_t>(x, 10))));
             }
             std::move(__result);

@@ -266,7 +266,10 @@ class MatchAnalyzer:
         assigned_before = frozenset(self.ctx.func.definitely_assigned)
         bindings_before = dict(self.ctx.func.current_scope.bindings)
         ns_types_before = self.stmts._save_ns_var_types()
-        before = self.stmts.init.save()
+        # An arm is reached when no earlier arm matched, or one matched and
+        # its guard failed: the paths the guards leave on join here.
+        fall_through = self.stmts.init.join()
+        fall_through.leave()
 
         arm_states: list[FlowFacts] = []
         arm_bindings: list[dict[str, TpyType]] = []
@@ -306,7 +309,7 @@ class MatchAnalyzer:
                         "matched by an earlier arm", case.pattern
                     )
             carried = self.stmts._enter_sibling_arm(
-                bindings_before, ns_types_before, before,
+                bindings_before, ns_types_before, fall_through.state(),
                 arm_only=prev_arm_captures)
             self.ctx.func.current_consumed_own_params = consumed_before.copy()
 
@@ -476,7 +479,8 @@ class MatchAnalyzer:
                             self.ctx, node.name, stmt.subject)
             # Analyze guard expression (pattern bindings are in scope)
             if case.guard is not None:
-                self.expr.analyze_condition(case.guard)
+                fall_through.leave(
+                    self.expr.analyze_branch(case.guard).on_false)
 
             for s in case.body:
                 self.stmts.analyze_stmt(s)
@@ -593,7 +597,7 @@ class MatchAnalyzer:
 
         # Merge flow states across all arms. A non-exhaustive match can fall
         # through with no arm taken, so the pre-match state joins the merge.
-        self._merge_match_arms(arm_states, before,
+        self._merge_match_arms(arm_states, fall_through.state(),
                                can_fall_through=bool(missing))
 
         # Merge consumed Own[T] params: intersect non-terminated arms.

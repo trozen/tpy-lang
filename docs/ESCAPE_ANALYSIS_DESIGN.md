@@ -389,7 +389,7 @@ def with_assert(p: Ptr[Point]) -> int32:
     return p.x           # skip deref_check
 ```
 
-**Files**: `sema/narrowing.py` (`condition_ptr_null_facts`, `_ptr_null_facts`),
+**Files**: `sema/narrowing.py` (`leaf_facts`, `_ptr_null_facts`), `sema/expressions.py` (`branch_states`),
 `sema/statements.py` (if/while/assert application sites).
 
 ### 6. Intra-Function Borrow Checking
@@ -1076,7 +1076,7 @@ is especially common in latency-sensitive code.
   `non_zero` flag + symbolic `hi_len_of` (container name for `len(x)-1` bound).
 - `value_ranges: dict[str, ValueRange]` on `SemanticContext`, saved/restored in
   `FlowFacts` and `InitTracker`.
-- `condition_range_facts()` on `NarrowingTracker` extracts facts from comparisons,
+- `leaf_facts()` on `NarrowingTracker` extracts facts from comparisons (one test; `branch_states` composes them),
   `!=`, assert, etc. Applied at if/while/assert branch points.
 - `for i in range(len(arr))` detected in `statements.py`, sets
   `ValueRange(lo=0, hi_len_of="arr")` for the loop variable.

@@ -219,7 +219,7 @@ inline void Random::_init_genrand(uint32_t s) {
     int32_t mti = 1;
     while ((mti < _N)) {
         uint32_t prev = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(mti, 1)));
-        ::tpy::__setitem__(this->_state, mti, static_cast<uint32_t>(static_cast<uint32_t>(1812433253 * (static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30))))) + ::tpy::int_cast_check<uint32_t>(mti)));
+        ::tpy::__setitem__(this->_state, mti, static_cast<uint32_t>(static_cast<uint32_t>(1812433253 * (static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30))))) + static_cast<uint32_t>(mti)));
         mti = ::tpy::add_check<int32_t>(mti, 1);
     }
     this->_index = _N;

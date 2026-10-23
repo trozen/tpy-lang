@@ -9,19 +9,21 @@ non-null status, type narrowing, and consumed-variable tracking.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 from .context import (
     LoanInfo, combine_loan_info,
     BindingProvenance, _DEFAULT_PROVENANCE,
 )
 from .value_range import ValueRange
+from ..typesys import LiteralType
 from ..parse.nodes import (
-    TpyBinOp, TpyChainedCompare, TpyDictComprehension, TpyExpr,
-    TpyGeneratorExpression, TpyIfExpr, TpyLambda, TpyListComprehension,
-    TpyNamedExpr, TpySetComprehension, TpyUnaryOp,
+    TpyDictComprehension, TpyExpr,
+    TpyGeneratorExpression, TpyLambda, TpyListComprehension,
+    TpyNamedExpr, TpySetComprehension,
 )
 
 if TYPE_CHECKING:
@@ -37,75 +39,12 @@ _DEFERRED_BODY = (
     TpySetComprehension, TpyGeneratorExpression,
 )
 
-_NO_TARGETS: frozenset[str] = frozenset()
-
-
-def condition_walrus_assigned(
-        cond: TpyExpr) -> tuple[frozenset[str], frozenset[str]]:
-    """The walrus targets `cond` definitely assigns on its TRUE / FALSE path.
-
-    One rule: a walrus target in a condition counts as assigned on a branch
-    only when EVERY way of reaching that branch evaluated it. `a and b`
-    reaches true only through both operands but false either through `a`
-    alone or through both; `a or b` is the mirror; `not a` swaps the two
-    answers. So the answer is a pair of sets, and an `if` gives the true set
-    to its then-body and the false set to its else-body, while a `while`
-    gives the true set to its body and the false set to the edge that leaves
-    through the head.
-    """
-    return _walrus_paths(cond)
-
-
-def _walrus_paths(e: TpyExpr) -> tuple[frozenset[str], frozenset[str]]:
-    if isinstance(e, TpyBinOp) and e.op in ("&&", "||"):
-        t_l, f_l = _walrus_paths(e.left)
-        t_r, f_r = _walrus_paths(e.right)
-        if e.op == "&&":
-            return t_l | t_r, f_l & (t_l | f_r)
-        return t_l & (f_l | t_r), f_l | f_r
-    if isinstance(e, TpyUnaryOp) and e.op == "!":
-        t, f = _walrus_paths(e.operand)
-        return f, t
-    if isinstance(e, TpyIfExpr):
-        # The condition always runs; each arm answers for its own path only.
-        cond = _walrus_certain(e.condition)
-        t_then, f_then = _walrus_paths(e.then_expr)
-        t_else, f_else = _walrus_paths(e.else_expr)
-        return cond | (t_then & t_else), cond | (f_then & f_else)
-    if isinstance(e, TpyChainedCompare):
-        # `a < b < c` stops at the first comparison that fails, so only the
-        # first PAIR of operands is evaluated whatever the chain answers.
-        head = _walrus_certain(e.left)
-        if e.comparators:
-            head |= _walrus_certain(e.comparators[0])
-        rest = _NO_TARGETS
-        for later in e.comparators[1:]:
-            rest |= _walrus_certain(later)
-        return head | rest, head
-    if isinstance(e, _DEFERRED_BODY):
-        return _NO_TARGETS, _NO_TARGETS
-    certain = _NO_TARGETS
-    if isinstance(e, TpyNamedExpr):
-        certain = frozenset({e.target})
-    # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
-    for child in e.children():
-        if isinstance(child, TpyExpr):
-            certain |= _walrus_certain(child)
-    return certain, certain
-
-
-def _walrus_certain(e: TpyExpr) -> frozenset[str]:
-    """The targets `e` assigns however it evaluated -- true on both paths."""
-    t, f = _walrus_paths(e)
-    return t & f
-
-
 def condition_walrus_targets(cond: TpyExpr) -> frozenset[str]:
-    """Every walrus target `condition_walrus_assigned` answers for.
+    """Every walrus target a condition binds itself.
 
-    A deferred body is left out for the same reason it contributes nothing
-    there: its walrus binds the enclosing scope on its own terms
-    (`BUGS.md#lambda-body-walrus-binds-enclosing-scope`), not on the head's.
+    A deferred body is left out: its walrus binds the enclosing scope on its
+    own terms (`BUGS.md#lambda-body-walrus-binds-enclosing-scope`), not on
+    the head's.
     """
     found: set[str] = set()
 
@@ -174,8 +113,16 @@ def _merge_narrowed(
         return then_narrowed
     then_dict = dict(then_narrowed)
     else_dict = dict(else_narrowed)
-    merged = {k: v for k, v in then_dict.items()
-              if k in else_dict and else_dict[k] == v}
+    merged: dict[str, TpyType] = {}
+    for k, v in then_dict.items():
+        other = else_dict.get(k)
+        if other == v:
+            merged[k] = v
+        elif (isinstance(v, LiteralType) and isinstance(other, LiteralType)
+              and v.base_type == other.base_type):
+            # Either path's literal values may be the one held.
+            merged[k] = LiteralType(base_type=v.base_type, values=v.values + tuple(
+                x for x in other.values if x not in v.values))
     return frozenset(merged.items())
 
 
@@ -298,6 +245,21 @@ def merge_binding_provenance(
 
 
 @dataclass(frozen=True, slots=True)
+class GuardFacts:
+    """What one test (an operand no `and` / `or` / `not` / ternary
+    splits further) proves on one of its paths, read off its syntax: the
+    narrowings, the non-null pointers and the integer ranges."""
+
+    types: Mapping[str, TpyType] = field(default_factory=dict)
+    non_null_ptrs: frozenset[str] = frozenset()
+    ranges: Mapping[str, ValueRange] = field(default_factory=dict)
+
+    def keys(self) -> frozenset[str]:
+        """The keys these facts are under."""
+        return frozenset(self.types) | self.non_null_ptrs | frozenset(self.ranges)
+
+
+@dataclass(frozen=True, slots=True)
 class FlowFacts:
     """Immutable snapshot of flow-sensitive analysis state."""
 
@@ -370,3 +332,47 @@ class FlowFacts:
                 then_term, else_term,
             ),
         )
+
+
+class Branch(NamedTuple):
+    """The states on the TRUE and FALSE paths out of a condition, and the
+    keys its tests proved facts under on each path."""
+
+    on_true: FlowFacts
+    on_false: FlowFacts
+    true_keys: frozenset[str] = frozenset()
+    false_keys: frozenset[str] = frozenset()
+
+    def then(self, after: Branch) -> Branch:
+        """`self and after`: `after` ran on this TRUE path."""
+        return Branch(after.on_true,
+                      FlowFacts.merge(self.on_false, after.on_false),
+                      self.true_keys | after.true_keys,
+                      self.false_keys | after.false_keys)
+
+    def orelse(self, after: Branch) -> Branch:
+        """`self or after`: `after` ran on this FALSE path."""
+        return Branch(FlowFacts.merge(self.on_true, after.on_true),
+                      after.on_false,
+                      self.true_keys | after.true_keys,
+                      self.false_keys | after.false_keys)
+
+    def join(self, other: Branch) -> Branch:
+        """Either of two conditions ran (a ternary's arms)."""
+        return Branch(FlowFacts.merge(self.on_true, other.on_true),
+                      FlowFacts.merge(self.on_false, other.on_false),
+                      self.true_keys | other.true_keys,
+                      self.false_keys | other.false_keys)
+
+    def negated(self) -> Branch:
+        """`not self`: the two paths swap."""
+        return Branch(self.on_false, self.on_true,
+                      self.false_keys, self.true_keys)
+
+    def proven_types(self, on_true: bool) -> dict[str, TpyType]:
+        """The narrowings one path holds under the keys its tests proved:
+        what the condition established there, as it stands once the whole
+        condition ran (the lowering's extraction facts)."""
+        state, keys = ((self.on_true, self.true_keys) if on_true
+                       else (self.on_false, self.false_keys))
+        return {k: v for k, v in state.narrowed_types if k in keys}

@@ -268,10 +268,11 @@ def while_unpack() -> None:
 
 # A walrus inside a comprehension binds in the enclosing function (PEP 572);
 # the comprehension's own variable does not leak, the target is read after
-# the loop that holds the comprehension.
+# the loop that holds the comprehension. Its source provably yields, so the
+# comprehension binds the target (one that may run zero times must not).
 def comp_walrus_in_loop() -> None:
     for i in range(2):  # tpyc: ok
-        ys = [(y := x * 10) for x in range(i + 1)]
+        ys = [(y := x * 10) for x in range(2)]
     print("comp_walrus_in_loop", y, ys)
 
 

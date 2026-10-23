@@ -12,7 +12,7 @@ class C:
 def main() -> None:
     xs = [C(1), C(2)]
     # the walrus target would keep a reference to an element past the comprehension
-    out = [c for c in xs if (last := c).n > 0]  # tpyc: error(/a walrus inside a comprehension cannot bind 'last' to a reference to an object; use a `for` loop/)
+    out = [c for c in xs if (last := c).n > 0]  # tpyc: error(/a walrus inside a comprehension or generator expression cannot bind 'last' to a reference to an object; use a `for` loop/)
     print(len(out), last.n)
 
 

@@ -453,9 +453,9 @@ __gen_str_steps str_steps(std::string_view s) {
 //     # an owned str element moves too (the generated C++ pins the move)
 //     st = [q[0] for q in str_steps("abcdefghijklmnopqrstuvwxyz")]  # tpyc: ok
 //     print("list_comp_str", st[0])
-//     # an owned optional step filtered on its None test (the filter does not
-//     # narrow: BUGS.md#comp-filter-none-test-not-narrowing)
-//     ls = [o.v for o in opt_a() if o is not None]  # tpyc: warning(/Potential None access/)
+//     # an owned optional step filtered on its None test: the filter narrows
+//     # the element it tests
+//     ls = [o.v for o in opt_a() if o is not None]  # tpyc: ok
 //     print("list_comp_opt", ls)
 void list_comp_section() {
     std::vector<A> xs = ({
@@ -515,7 +515,7 @@ void list_comp_section() {
         for (; __beg_4 != __end_4; ++__beg_4) {
             std::optional<A> o(::tpy::take_elem(__beg_4));
             if ((o.has_value())) {
-                __result.push_back(::tpy::deref_optional_check(o).v);
+                __result.push_back((*o).v);
             }
         }
         std::move(__result);

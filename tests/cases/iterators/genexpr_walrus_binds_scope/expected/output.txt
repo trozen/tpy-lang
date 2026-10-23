@@ -1,0 +1,37 @@
+module 9 4
+module-nested 22 11
+module-str 2 cd
+module-branch True 2
+function 12 5
+method 705
+generator [7, 0]
+async 700
+nested 22 11
+listcomp 9 4
+global 2 1
+nonlocal-in 7 4 xz z
+nonlocal 4 z
+kept 4 4
+kept 6 6
+lazy True 2
+match 6 3
+finally 3
+try 6 3
+with 6 3
+param 6 3
+optional 3 none
+str 2 cd
+bytes 2 b'rs'
+pull 16
+in 4
+resume 5
+resume 10
+cond-if 8
+cond-and True
+comp-pull 9
+record-iter 11
+genexpr-in-listcomp [1, 21] 11
+nested-def-own 3 2
+zip 15
+ternary-genexpr True 7
+array-list 7

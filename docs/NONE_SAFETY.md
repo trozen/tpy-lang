@@ -100,8 +100,15 @@ def g(p: Point | None) -> int32:
 - `if x is not None:`
 - `if x is None: ... else:`
 - `if x:` / `while x:` / `assert x` (name-based; value-optionals warn)
-- short-circuit condition flow (`and` / `or`)
+- short-circuit condition flow (`and` / `or`), for the right operand
+- a ternary's condition, for each arm
+- a comprehension's `if` filter, for the clauses and the element after it
 - `assert x is not None`
+
+What a conditionally evaluated part of an expression proves or kills (an
+`and` / `or` right operand, a ternary arm, a later operand of a chained
+comparison, a comprehension clause) joins with the paths that skip it, as an
+`if` statement's branches join.
 
 ## Assert
 
@@ -113,7 +120,9 @@ Supported:
 Behavior:
 
 - At runtime: panics if condition is false.
-- In sema: contributes narrowing facts after the assertion.
+- In sema: contributes narrowing facts after the assertion. The message runs
+  only on the failing path, so what it binds or kills does not reach past the
+  statement.
 
 Current limitation:
 
@@ -236,10 +245,10 @@ where a fact may have died on some path:
   binding form -- assignment and rebind, ternary and `and`/`or` arms,
   walrus, unpack, for / with targets, `match` captures, a nested def's
   own bindings (they join the outer body's relation), field chains
-  (`t = a.inner`). Two kills do not: the loop / handler sweep for a
-  rebound name kills only facts spelled through that name, and a call
-  inside a condition does not kill the facts that condition derives
-  (`BUGS.md#condition-call-keeps-field-fact`).
+  (`t = a.inner`). One kill does not: the loop / handler sweep for a
+  rebound name kills only facts spelled through that name. A call inside a
+  condition kills the facts the operands before it proved, as a call
+  between two statements does.
   A mutating call or a call argument kills the facts beneath the object
   under every spelling it may have. A field store kills what lies beneath
   the stored slot under every spelling; a store of a value that may be
@@ -279,9 +288,7 @@ where a fact may have died on some path:
   store both inside a nested def, the store through an alias bound in
   the outer body (`BUGS.md#may-hold-relation-unmodelled-shapes`); a
   nested def calling a sibling closure that writes a capture
-  (`BUGS.md#sibling-closure-writes-unseen`); a lazy iterator stepped by
-  a `for`, which runs a closure without a call
-  (`BUGS.md#lazy-iterator-runs-closure-uncounted`); a call result, a
+  (`BUGS.md#sibling-closure-writes-unseen`); a call result, a
   `@property` result, a `with ... as` target, a subscript or an
   iteration variable as an origin (a name bound from one holds only
   itself: `BUGS.md#borrowed-origin-not-related-to-source`,
@@ -291,9 +298,7 @@ where a fact may have died on some path:
   `BUGS.md#field-store-destructor-skips-fact-kill`,
   `BUGS.md#iadd-target-keeps-facts-beneath`); a `Ptr` argument skipped
   by the call kill (`BUGS.md#ptr-or-tuple-argument-skips-fact-kill`); a
-  mutating call inside a narrowing condition
-  (`BUGS.md#condition-call-keeps-field-fact`); a call that replaces a
-  narrowed `Box` payload through its receiver
+  call that replaces a narrowed `Box` payload through its receiver
   (`BUGS.md#deref-view-survives-receiver-call`).
 
 ## Planned (Detailed)

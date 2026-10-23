@@ -155,6 +155,9 @@ type TypeRefNode = ResolverInputNode | TpyInferFromDefaultRef
 class TpyExpr:
     """Base class for expressions."""
     loc: SourceLocation | None = field(default=None, kw_only=True)
+    # Set by sema (`iter_loans.record_iteration_pull`): a step of iterating
+    # this source may run TPy code, a call no node kind shows.
+    pull_runs_code: bool = field(default=False, kw_only=True)
 
     def children(self) -> list['TpyExpr']:
         """Return child expression nodes for generic tree walking."""
@@ -902,7 +905,7 @@ class TpyGeneratorExpression(TpyExpr):
     frame_creation: 'TpyCall | None' = None
     # Set by the parser: the walruses this is the innermost generator
     # expression of whose target the enclosing scope (PEP 572's binding
-    # scope) uses outside it. The frame cannot bind that scope's variable.
+    # scope) uses outside it: the frame writes that scope's variable.
     walrus_used_outside: 'tuple[TpyNamedExpr, ...]' = ()
 
     def children(self) -> list[TpyExpr]:
@@ -1632,6 +1635,11 @@ class TpyWithItem:
     # Set by sema: True iff the manager is an lvalue, so the with-region must
     # borrow it -- a by-value ctx slot would mutate a throwaway copy.
     manager_borrowed: bool = False
+    # Set by sema where it resolves `__exit__`: whether the exit step runs
+    # TPy code (None: not decided yet), and then the hidden call on the
+    # manager every call-recognizer reads, as `TpyBinOp.contains_call`.
+    exit_runs_code: bool | None = None
+    exit_call: 'TpyMethodCall | None' = None
     # Set by sema: False iff `__enter__` demonstrably lends storage that is NOT
     # the manager's own (a global, a parameter) -- then a target aliasing it does
     # not force the manager to outlive the statement, and forcing that anyway
@@ -2074,6 +2082,14 @@ class TpyFunction:
     # holds each by reference whatever its type, since the enclosing body may
     # rebind the name between two pulls.
     capture_params: 'tuple[str, ...]' = ()
+    # The captures a genexpr's body WRITES: the target of a walrus the
+    # enclosing scope also uses, which PEP 572 binds there. The body reads
+    # each as an implicit `nonlocal` of the enclosing scope, never as a
+    # parameter of its own.
+    genexpr_nonlocals: 'tuple[str, ...]' = ()
+    # The module globals a genexpr's body writes the same way, by name:
+    # its enclosing scope is the module, or declares them `global`.
+    genexpr_globals: 'tuple[str, ...]' = ()
     # Set by sema on a genexpr's function: its deduced source slot is bound to
     # a native container LVALUE (a nested def cannot give that one its concrete
     # type), whose adaptor copies a value-tuple step result -- so an unpack

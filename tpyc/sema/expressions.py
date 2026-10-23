@@ -12,6 +12,7 @@ from dataclasses import dataclass, fields as dc_fields, replace as dc_replace
 from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, TYPE_CHECKING
 
 from ..holders import IterHolder
+from ..identity_map import IdentityMap
 from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
@@ -37,7 +38,7 @@ from ..typesys import (
     unwrap_own, coro_struct_owner, collapse_tuple_own_elements, global_binds_by_reference, owned_element_type,
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
-from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling, name_path
+from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling, name_path, walk_expr_tree
 from ..parse import (
     const_tuple_index,
     ResultForm,
@@ -75,7 +76,7 @@ from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import (
     _expr_to_narrowing_key, bound_names_of, fold_int_constant,
     int_constant_too_wide, storage_spelling, walrus_names_of)
-from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
+from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
 from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from .arg_binding import peel_coercions
@@ -86,6 +87,7 @@ from .alias_rebind import bind_kind_of, note_tuple_elem_borrows, tuple_elem_owne
 from .binding_ownership import resolve_read
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
+from .flow_facts import Branch, FlowFacts
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
 from .list_elem import (Role, container_call, container_calls, iterated_step,
                         without_mutable_twins,
@@ -121,7 +123,8 @@ from .receiver_calls import (check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, receiver_is_readonly,
                              record_protocol_arg_calls, record_truth_calls)
 from .storage_walk import StorageKey
-from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage,
+from .nonlocal_binding import enclosing_scope_facts
+from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage, record_iteration_pull,
                          iteration_yields_copies, register_iteration_loans)
 from .loop_frames import comp_live_region, note_source_writes
 
@@ -135,6 +138,7 @@ if TYPE_CHECKING:
     from .calls import CallAnalyzer
     from .methods import MethodAnalyzer
     from .scope_tracker import ScopeTracker
+    from .init_tracker import FlowJoin, InitTracker
     from ..type_def_registry import TypeDef
 
 from tpyc import modules as builtin_modules
@@ -246,6 +250,18 @@ def reject_rebound_iterated_capture(ctx: SemanticContext,
             raise ctx.error(
                 f"'{name}' is iterated by this generator expression, but {why}; "
                 f"bind it to a local first", gx)
+
+
+def _comp_clause_body(
+    expr: 'TpyListComprehension | TpySetComprehension | TpyDictComprehension',
+    k: int,
+) -> list[TpyExpr]:
+    """What runs on every iteration of clause `k`: its filters, every inner
+    clause's source and filters, and the element(s)."""
+    body = list(expr.generators[k].conditions)
+    for later in expr.generators[k + 1:]:
+        body += [later.iterable, *later.conditions]
+    return body + comp_sinks(expr)
 
 
 def _comp_free_names(expr: TpyExpr) -> set[str]:
@@ -584,6 +600,7 @@ class ExpressionAnalyzer:
         self.scopes: ScopeTracker | None = None
         # Set after construction, as the statement analyzer is.
         self.pend: PendingNums
+        self.init: InitTracker
         # The expressions whose analysis is open, innermost last: what a
         # forced pending read is part of (`describe_pending_use`).
         self._expr_stack: list[TpyExpr] = []
@@ -593,6 +610,11 @@ class ExpressionAnalyzer:
         # The analyses running now, innermost last, each with the step route
         # it chose (`set_step_route`), carried into its record.
         self._route_frames: list[_RouteFrame] = []
+        # Per node, the TRUE / FALSE paths of an `and` / `or` / `not` /
+        # ternary / chained comparison its analysis just recorded, for
+        # `branch_states` to take (with the function state they belong to: a
+        # trial scope replaces it); cleared when the node's analysis starts.
+        self._branches: IdentityMap = IdentityMap()
         ctx.probe_step_commits = self._top_step_commits
         self.describe_statement_use: Callable[[TpyExpr | None], str] = (
             lambda _e=None: "this use")
@@ -1095,6 +1117,9 @@ class ExpressionAnalyzer:
         it: a left-deep operand chain recurses through this entry once per
         level, so each frame added on the way costs nesting depth."""
         self._expr_stack.append(expr)
+        # A path record is the analysis's own: one this analysis does not
+        # make (a re-entry met through the record) is not reused.
+        self._branches.pop(expr, None)
         try:
             own = self.ctx.slot_hint_at(expr)
             rec = self.ctx.analysis_records.get(expr)
@@ -1502,8 +1527,7 @@ class ExpressionAnalyzer:
             self._warn_frame_held_copies(expr)
             self.calls.defer_argument_copies(expr)
         record_protocol_arg_calls(self.ctx, expr)
-        self.narrowing.invalidate_field_facts_for_call(expr)
-        self.narrowing.invalidate_closure_written_facts()
+        self.narrowing.invalidate_for_code_run(expr)
         return typ
 
     def _method_call_result(self, expr: TpyMethodCall,
@@ -1518,8 +1542,7 @@ class ExpressionAnalyzer:
             self.calls.defer_argument_copies(expr)
             self.calls.defer_copy_receiver_call(expr)
         record_protocol_arg_calls(self.ctx, expr)
-        self.narrowing.invalidate_field_facts_for_method_call(expr)
-        self.narrowing.invalidate_closure_written_facts()
+        self.narrowing.invalidate_for_code_run(expr)
         return typ
 
     def _complete_call(self, expr: TpyExpr, route: StepRoute | None,
@@ -1585,6 +1608,52 @@ class ExpressionAnalyzer:
             self.ctx.truth_ok_node = saved
         record_truth_calls(self.ctx, truthy_operands(expr))
         return typ
+
+    def analyze_branch(self, cond: TpyExpr) -> Branch:
+        """Analyze truth-tested `cond`: its two paths (`branch_states`); the
+        analysis goes on from their merge."""
+        self.analyze_condition(cond)
+        return self.branch_states(cond)
+
+    def branch_states(self, e: TpyExpr) -> Branch:
+        """The TRUE and FALSE paths out of `e`, analyzed just now. An `and` /
+        `or` / `not` / ternary / chained comparison splits into its operands
+        in the order they ran (`_record_branches`): each operand's facts hold
+        for the operands after it, so a later operand's writes kill them on
+        the ordinary path. Any other test proves what its syntax says
+        (`NarrowingTracker.leaf_facts`)."""
+        rec = self._branches.pop(e, None)
+        if rec is not None and rec[0] is self.ctx.func:
+            return rec[1]
+        holds, fails = self.narrowing.leaf_facts(e)
+        here = self.init.save()
+        true_keys = holds.keys()
+        false_keys = fails.keys()
+        if not (true_keys or false_keys):
+            return Branch(here, here)
+        self.init.apply_guard(holds)
+        on_true = self.init.save()
+        self.init.restore(here)
+        self.init.apply_guard(fails)
+        on_false = self.init.save()
+        self.init.restore(here)
+        return Branch(on_true, on_false, true_keys, false_keys)
+
+    def _record_branches(self, e: TpyExpr, branch: Branch) -> None:
+        """Leave `e`'s analysis at the merge of its two paths, and keep them
+        for the `branch_states` that asks next."""
+        self.init.restore(FlowFacts.merge(branch.on_true, branch.on_false))
+        self._branches[e] = (self.ctx.func, branch)
+
+    @contextmanager
+    def _runs_conditionally(self) -> Iterator[None]:
+        """Analyze an operand that may not run: its temporaries are built
+        where it runs (`cond_operand_depth`)."""
+        self.ctx.cond_operand_depth += 1
+        try:
+            yield
+        finally:
+            self.ctx.cond_operand_depth -= 1
 
     def mark_truth_test(self, expr: TpyExpr) -> None:
         """Record that `expr` is only tested for truth. The `and` / `or` /
@@ -2087,8 +2156,7 @@ class ExpressionAnalyzer:
                 and expr.name in self.ctx.func.var_scope_depth
                 and self.ctx.func.var_scope_depth[expr.name] >= 1
                 and expr.name not in self.ctx.func.definitely_assigned):
-            raise self.ctx.error(
-                f"variable '{expr.name}' may not be assigned at this point", expr)
+            raise self.ctx.error(not_assigned_message(expr.name), expr)
 
     def _pending_decl_anchor(self, bind_stack: tuple[TpyStmt, ...]) -> TpyStmt:
         """The statement a loop-body-first local pre-declares in front of.
@@ -2689,28 +2757,16 @@ class ExpressionAnalyzer:
                                                   operand_scope)
         if expr.op in ("&&", "||"):
             record_truth_calls(self.ctx, truthy_operands(expr.left))
-            type_true, type_false = self.narrowing.condition_type_facts(expr.left)
-            saved_types = dict(self.ctx.func.narrowed_types)
-            # Save definitely_assigned: RHS may not execute due to short-circuit
-            saved_assigned = frozenset(self.ctx.func.definitely_assigned)
+            left = self.branch_states(expr.left)
+            self.init.restore(left.on_true if expr.op == "&&"
+                              else left.on_false)
+            with self._runs_conditionally():
+                right_type = operand(expr.right)
+            right = self.branch_states(expr.right)
             if expr.op == "&&":
-                self.ctx.func.narrowed_types.update(type_true)
+                self._record_branches(expr, left.then(right))
             else:
-                self.ctx.func.narrowed_types.update(type_false)
-            self.ctx.cond_operand_depth += 1
-            try:
-                right_type = operand(expr.right)
-            finally:
-                self.ctx.cond_operand_depth -= 1
-                self.ctx.func.narrowed_types = saved_types
-                # Rollback: RHS walrus vars are not definitely assigned
-                self.ctx.func.definitely_assigned = set(saved_assigned)
-        elif expr.cond_right:
-            self.ctx.cond_operand_depth += 1
-            try:
-                right_type = operand(expr.right)
-            finally:
-                self.ctx.cond_operand_depth -= 1
+                self._record_branches(expr, left.orelse(right))
         else:
             right_type = operand(expr.right)
         if expr.op in _PENDING_NUM_BINOPS and (
@@ -3082,6 +3138,9 @@ class ExpressionAnalyzer:
                             loc=expr.loc)
                         self.ctx.set_expr_type(expr.contains_call,
                                                matched.return_type)
+                        # It runs TPy code: the kills of the explicit call.
+                        self.narrowing.invalidate_for_code_run(
+                            expr.contains_call)
                         return BOOL
                     # No __contains__ overload matched. Defer to
                     # check_type_compatible: it raises for genuine mismatches
@@ -3162,6 +3221,10 @@ class ExpressionAnalyzer:
                         # operand must hold it, as a looked-up key must.
                         expr.left = self.pend.pass_at_leaf(
                             expr.left, left_type, leaf, "membership test")
+                # The test pulls the haystack, each step a call when it runs
+                # TPy code.
+                if record_iteration_pull(self.ctx, expr.right, right_type):
+                    self.narrowing.invalidate_for_code_run()
                 return BOOL
             raise self.ctx.error(f"Cannot use '{op_spelling(expr.op)}' with non-iterable type {right_type}", expr)
 
@@ -3535,22 +3598,35 @@ class ExpressionAnalyzer:
         """Analyze a chained comparison (a < b < c, etc.)."""
         pairs: list[TpyBinOp] = []
         prev = expr.left
+        branch: Branch | None = None
         for i, (op, comp) in enumerate(zip(expr.ops, expr.comparators)):
             # Only the first two operands always evaluate; every later
-            # comparator sits behind a compare that has to pass.
+            # comparator sits behind a compare that has to pass, and goes on
+            # from what that one proved.
             pair = TpyBinOp(prev, op, comp, loc=expr.loc, cond_right=i >= 1)
             # A middle operand is evaluated once, as the previous pair's
             # right side: this pair meets it through its record.
-            self.analyze_expr(pair)
+            if branch is None:
+                self.analyze_expr(pair)
+                branch = self.branch_states(pair)
+            else:
+                self.init.restore(branch.on_true)
+                with self._runs_conditionally():
+                    self.analyze_expr(pair)
+                branch = branch.then(self.branch_states(pair))
             pairs.append(pair)
             prev = comp
         expr.pairs = pairs
+        assert branch is not None
+        self._record_branches(expr, branch)
         return BOOL
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
         if expr.op == "!":
             operand_type = self.analyze_condition(expr.operand)
+            self._branches[expr] = (
+                self.ctx.func, self.branch_states(expr.operand).negated())
         else:
             with self.pend.sink(expr.operand):
                 operand_type = self.analyze_expr(expr.operand)
@@ -4765,14 +4841,17 @@ class ExpressionAnalyzer:
                     else target_scope.lookup(name))
         if existing is not None and self.compat.write_binds_local(name):
             existing = None
-        # The target outlives the comprehension, while what an element
-        # reaches may die with the source or with one outer iteration;
-        # which source a reference comes from is not tracked here.
-        if self.ctx.in_comprehension and _may_keep_reference(
+        # The target binds outside this body -- a comprehension's walrus binds
+        # the enclosing body's variable, a generator expression's frame the
+        # enclosing scope's -- and outlives it, while what an element reaches
+        # may die with the source or with one outer iteration; which source
+        # a reference comes from is not tracked here.
+        if self._walrus_binds_outside(name) and _may_keep_reference(
                 existing if existing is not None else resolved):
             raise self.ctx.error(
-                f"a walrus inside a comprehension cannot bind '{name}' to a "
-                f"reference to an object; use a `for` loop", expr)
+                f"a walrus inside a comprehension or generator expression "
+                f"cannot bind '{name}' to a reference to an object; use a "
+                f"`for` loop", expr)
 
         # A `global`-declared target writes the MODULE variable, like the plain
         # assignment path -- the global lives in `global_scope`, which is not in
@@ -4791,6 +4870,7 @@ class ExpressionAnalyzer:
                 self.ctx.func.current_ns.bind_variable(name, resolved)
             return _walrus_result_type(resolved, value_type)
 
+        rebinds = existing is not None
         if cell is not None and existing is not None:
             # One more binding of a local whose type its bindings decide.
             var_type = self.pend.record_binding(cell, value_type, expr.value,
@@ -4875,6 +4955,9 @@ class ExpressionAnalyzer:
             result_type = _walrus_result_type(resolved, value_type,
                                               declared=declared)
 
+        if rebinds:
+            self.narrowing.update_after_write(name, resolved, value_type,
+                                              expr.value)
         self.ctx.func.definitely_assigned.add(name)
         self.ctx.func.rvalue_vars.add(name)
         if name not in self.ctx.func.var_scope_depth:
@@ -4973,37 +5056,25 @@ class ExpressionAnalyzer:
         self.analyze_condition(expr.condition)
         self.narrowing.warn_truthy_value_optionals(expr.condition)
 
-        then_facts, else_facts = self.narrowing.condition_type_facts(
-            expr.condition)
+        cond = self.branch_states(expr.condition)
 
-        # Save narrowed_types (ternary doesn't create vars, so we only
-        # need to save/restore narrowing, not the full InitTracker state).
-        saved_narrowed = dict(self.ctx.func.narrowed_types)
-
-        self.ctx.func.narrowed_types.update(then_facts)
         # Both arms are conditionally evaluated; only the condition above is
         # not.
-        self.ctx.cond_operand_depth += 1
-        try:
-            if type_hint is not None:
-                then_type = self._analyze_select_operand(
-                    expr, expr.then_expr, type_hint, coercion_ctx)
-            else:
-                with self._forward_fill(expr, expr.then_expr):
-                    then_type = self.analyze_expr(expr.then_expr)
-
-            self.ctx.func.narrowed_types = dict(saved_narrowed)
-            self.ctx.func.narrowed_types.update(else_facts)
-            if type_hint is not None:
-                else_type = self._analyze_select_operand(
-                    expr, expr.else_expr, type_hint, coercion_ctx)
-            else:
-                with self._forward_fill(expr, expr.else_expr):
-                    else_type = self.analyze_expr(expr.else_expr)
-        finally:
-            self.ctx.cond_operand_depth -= 1
-
-        self.ctx.func.narrowed_types = saved_narrowed
+        arms: list[Branch] = []
+        arm_types: list[TpyType] = []
+        for arm, start in ((expr.then_expr, cond.on_true),
+                           (expr.else_expr, cond.on_false)):
+            self.init.restore(start)
+            with self._runs_conditionally():
+                if type_hint is not None:
+                    arm_types.append(self._analyze_select_operand(
+                        expr, arm, type_hint, coercion_ctx))
+                else:
+                    with self._forward_fill(expr, arm):
+                        arm_types.append(self.analyze_expr(arm))
+            arms.append(self.branch_states(arm))
+        then_type, else_type = arm_types
+        self._record_branches(expr, arms[0].join(arms[1]))
 
         # Strip Ref/Own from branch types -- these are provenance qualifiers,
         # not part of the result type.  The ternary produces a value.
@@ -5490,15 +5561,6 @@ class ExpressionAnalyzer:
         return self._analyze_elem_comprehension(expr, expected_elem, kind="set")
 
     def _analyze_generator_expression(self, expr: TpyGeneratorExpression) -> TpyType:
-        if expr.walrus_used_outside:
-            # The body is a generator frame of its own, so its walrus binds
-            # there, where PEP 572 binds the enclosing scope's variable
-            # (BUGS.md#genexpr-walrus-target-stays-in-frame).
-            walrus = expr.walrus_used_outside[0]
-            raise self.ctx.error(
-                f"assignment expression in a generator expression cannot "
-                f"yet bind '{walrus.target}' in the enclosing scope; use a "
-                f"for loop or a list comprehension", walrus)
         self._check_comp_clause_names(expr)
         elem_type = self._resolve_comp_iterable(expr.generators[0], expr)
         # Stamped where the comprehensions stamp it: lowering reads the fact
@@ -5593,11 +5655,16 @@ class ExpressionAnalyzer:
             for cond in g.conditions:
                 body_names |= collect_name_refs(cond)
         targets = {n for g in gens for n in g.targets}
+        written, written_globals = self._genexpr_written_names(expr)
         # Its body is analyzed under a function state of its own; its loop
         # variables only shadow an enclosing name.
         self.pend.settle_names(
-            body_names - targets, expr, "read by a generator expression")
-        body_names |= targets
+            body_names - targets - set(written) - written_globals, expr,
+            "read by a generator expression")
+        self.pend.settle_names(
+            set(written) | written_globals, expr,
+            "written by a generator expression")
+        body_names |= targets | set(written)
 
         def fresh(base: str) -> str:
             # A frame's constructor spells a param `<name>_`, so a name one
@@ -5717,16 +5784,28 @@ class ExpressionAnalyzer:
         assigned = (self.ctx.func.definitely_assigned
                     | (self.ctx.func.outer_scope_locals or set()))
         free_names = _nested_def_free_names(func)
-        captures = [n for n in sorted(free_names) if n in assigned]
+        # The written names are captured like the read ones -- the frame holds
+        # the enclosing variable by reference -- and are rebound by every pull.
+        captures = sorted({n for n in free_names
+                           if n in assigned and n not in written_globals}
+                          | set(written))
         reads = tuple(TpyName(name, loc=loc) for name in captures)
         narrowed: list[str] = []
-        rebindable = [n for n in captures if self._capture_may_be_rebound(n)]
+        rebindable = [n for n in captures
+                      if n in written or self._capture_may_be_rebound(n)]
         for read in reads:
             # A capture borrows the enclosing variable whatever that variable
             # owns, so the param never takes its `Own`.
             captured = unwrap_own(self.analyze_expr(read))
             declared = (self.ctx.func.current_scope.lookup(read.name)
                         if self.ctx.func.current_scope is not None else None)
+            if read.name in written:
+                # The body stores into the enclosing variable, so it holds the
+                # variable's own type, never the narrowing proved here.
+                captured = unwrap_own(unwrap_ref_type(declared))
+                self.ctx.set_expr_type(read, captured)
+                func.params.append((read.name, captured))
+                continue
             bare = (unwrap_readonly(unwrap_ref_type(declared))
                     if declared is not None else None)
             is_narrowed = (isinstance(bare, (OptionalType, UnionType))
@@ -5747,6 +5826,8 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(read, captured)
             func.params.append((read.name, captured))
         func.capture_params = tuple(captures)
+        func.genexpr_nonlocals = tuple(written)
+        func.genexpr_globals = tuple(sorted(written_globals))
         root = self.ctx.func.body_root
         if root is not None and outer is not None:
             # A capture bound by a comprehension or lambda around the
@@ -5765,7 +5846,14 @@ class ExpressionAnalyzer:
             for key, loan in iterated_storage(self.ctx, gen.iterable).loans
             if key.root in free_names)
         assert self.ctx.analyze_genexpr_function is not None
-        self.ctx.analyze_genexpr_function(func, source_loans)
+        self.ctx.analyze_genexpr_function(
+            func, source_loans,
+            enclosing_scope_facts(self.ctx, set(written)),
+            self._genexpr_scope_owner())
+        # The frame's stores reach the enclosing variables from its creation
+        # on: a consumer in this statement pulls it here.
+        for name in written + sorted(written_globals):
+            self.narrowing.forget(name)
         assert func.generator_yield_type is not None
         reject_rebound_iterated_capture(
             self.ctx, expr, func, rebindable,
@@ -5807,6 +5895,95 @@ class ExpressionAnalyzer:
         expr.frame_range_args = tuple(range_args)
         expr.result_elem_type = func.generator_yield_type
         return GenExprType(func.generator_yield_type)
+
+    def _genexpr_written_names(
+            self, expr: TpyGeneratorExpression
+    ) -> tuple[list[str], set[str]]:
+        """The enclosing variables this generator expression's frame writes:
+        the targets of the walruses PEP 572 binds in the enclosing scope S
+        (`walrus_used_outside`), its own and those of the generator
+        expressions nested in its body, whose frames reach S through this
+        one. Each is an implicit `nonlocal` of the frame (S a function), or
+        an implicit `global` (S the module, or S declares it `global`):
+        returned as (nonlocal names, global names). Each must be bound
+        before the expression: a target S has not bound yet is a variable
+        that may not be assigned where the frame takes it."""
+        carried: dict[str, TpyNamedExpr] = {}
+        first_source = expr.generators[0].iterable
+
+        def visit(node: TpyExpr) -> bool:
+            if node is first_source:
+                return False
+            if isinstance(node, TpyGeneratorExpression):
+                for w in node.walrus_used_outside:
+                    carried.setdefault(w.target, w)
+            return True
+
+        walk_expr_tree(expr, visit)
+        if not carried:
+            return [], set()
+        if self._in_lambda_body():
+            # A lambda is S, and the frame cannot reach a lambda's local.
+            walrus = next(iter(carried.values()))
+            raise self.ctx.error(
+                f"assignment expression in a generator expression cannot "
+                f"yet bind '{walrus.target}' in the enclosing scope; use a "
+                f"for loop or a list comprehension", walrus)
+        fs = self.ctx.func
+        module_scope = not self.ctx.in_function_body()
+        written: list[str] = []
+        written_globals: set[str] = set()
+        for name, walrus in carried.items():
+            # A module variable bound only inside a block (`if`, `try`,
+            # `with`) is a local of the module's init body, not a slot.
+            is_global = (name in fs.global_declarations
+                         or (module_scope and self.ctx.global_scope.lookup(
+                             name) is not None))
+            if name in fs.global_declarations:
+                bound = self.ctx.global_scope.lookup(name) is not None
+            else:
+                bound = name in fs.definitely_assigned
+            if not bound:
+                # The frame holds S's variable from its creation on, and
+                # may never run: S has to bind it first.
+                raise self.ctx.error(not_assigned_message(name), walrus)
+            if is_global:
+                written_globals.add(name)
+            else:
+                written.append(name)
+        return written, written_globals
+
+    def _walrus_binds_outside(self, name: str) -> bool:
+        """Whether a walrus of `name` here binds a variable of a scope around
+        the body being analyzed: inside a comprehension, or a target a
+        generator expression's frame writes for its enclosing scope."""
+        if self.ctx.in_comprehension:
+            return True
+        here = self.ctx.func.current_function
+        return (isinstance(here, TpyFunction) and here.is_genexpr
+                and (name in here.genexpr_nonlocals
+                     or name in here.genexpr_globals))
+
+    def _in_lambda_body(self) -> bool:
+        """Whether the code being analyzed is a lambda's body (of this
+        function, not of one around a generator expression it sits in)."""
+        scope = self.ctx.func.current_scope
+        while scope is not None and scope is not self.ctx.global_scope:
+            if scope.lambda_node is not None:
+                return True
+            if scope.function_root:
+                return False
+            scope = scope.parent
+        return False
+
+    def _genexpr_scope_owner(self) -> 'TpyFunction | None':
+        """The function a generator expression created here is written in:
+        the one around an enclosing generator expression's frame, whose
+        variables a store from the frame reaches; None at module level."""
+        here = self.ctx.func.current_function
+        if isinstance(here, TpyFunction) and here.is_genexpr:
+            return self.ctx.enclosing_function()
+        return here if self.ctx.in_function_body() else None
 
     def _capture_may_be_rebound(self, name: str) -> bool:
         """Whether something that runs between two pulls of a genexpr created
@@ -6091,6 +6268,9 @@ class ExpressionAnalyzer:
         _record_iter_receiver_mutation(
             self.ctx, gen.iterable,
             unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type))))
+        # Each step of the clause is a call when it runs TPy code.
+        if record_iteration_pull(self.ctx, gen.iterable, iterable_type):
+            self.narrowing.invalidate_for_code_run()
         if isinstance(inner, TypeParamRef):
             bound = self.type_ops.get_type_param_bound(inner.name)
             if bound is not None and is_protocol_type(bound):
@@ -6110,8 +6290,17 @@ class ExpressionAnalyzer:
         assert self.scopes is not None
         clause_types = [elem_type]
         with self.scopes.comprehension_scope(expr.generators) as inner_scope:
+            # The clauses are loops: the comprehension is left after zero
+            # iterations or wherever an iteration ends, and joined inside
+            # the scope, whose end releases the iterators' loans.
+            join = self.init.join()
+            if not self.narrowing.source_provably_nonempty(
+                    expr.generators[0].iterable):
+                join.leave()
             result = self._enter_comp_clause(expr, 0, elem_type, inner_scope,
-                                             hint, clause_types)
+                                             hint, clause_types, join=join)
+            join.close(scoped=frozenset(
+                n for g in expr.generators for n in g.targets))
         self.set_step_route(expr, CompClauseRoute(tuple(clause_types)))
         return result
 
@@ -6142,11 +6331,13 @@ class ExpressionAnalyzer:
         hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
         clause_types: list[TpyType],
         step: bool = False,
+        join: FlowJoin | None = None,
     ) -> TpyType | tuple[TpyType, TpyType]:
         """Bind clause `k`'s targets and analyze what runs inside it: its
-        filters, then the next clause or, in the innermost, the element(s).
-        A `step` (`_step_comp_elements`) binds the targets and meets the
-        element(s) only."""
+        filters, then the next clause or, in the innermost, the element(s);
+        `join` collects where an iteration ends. A `step`
+        (`_step_comp_elements`) binds the targets and meets the element(s)
+        only."""
         assert self.scopes is not None
         gen = expr.generators[k]
         # unwrap_qualifiers (not unwrap_readonly) so a wrapped value-type
@@ -6197,7 +6388,7 @@ class ExpressionAnalyzer:
                 CompTarget(n, expr, k, inner_scope.depth) for n in names)
             try:
                 result = self._analyze_comp_body(expr, k, inner_scope, hint,
-                                                 clause_types, step)
+                                                 clause_types, step, join)
             finally:
                 # Re-read: a trial scope inside the body restores the
                 # function state as a copy.
@@ -6236,10 +6427,7 @@ class ExpressionAnalyzer:
         if (gen.owns_elements or iterable_type is None
                 or iteration_yields_copies(self.ctx, iterable_type)):
             return
-        live: list[TpyExpr] = list(gen.conditions)
-        for later in expr.generators[k + 1:]:
-            live += [later.iterable, *later.conditions]
-        live += comp_sinks(expr)
+        live = _comp_clause_body(expr, k)
         note_source_writes(self.ctx, gen, gen.iterable, comp_live_region(live),
                            elem_type)
 
@@ -6273,21 +6461,31 @@ class ExpressionAnalyzer:
         hint: SlotHint | tuple[SlotHint | None, SlotHint | None] | None,
         clause_types: list[TpyType],
         step: bool = False,
+        join: FlowJoin | None = None,
     ) -> TpyType | tuple[TpyType, TpyType]:
         """What clause `k` runs inside it; `clause_types` the element type
         each clause binds its targets to, filled in by the first analysis
-        and met again by a step."""
+        and met again by a step. Clause `k` is a loop body: it is entered
+        with the facts its back edge kills dropped, as a `for` body is, each
+        filter's facts hold for what follows it, and an iteration ends where
+        a filter fails, where an inner clause runs zero times, or after the
+        element(s) (`join`)."""
         if step:
             if k + 1 < len(expr.generators):
                 return self._enter_comp_clause(
                     expr, k + 1, clause_types[k + 1], inner_scope, hint,
                     clause_types, step=True)
         else:
+            assert join is not None
+            self.init.apply_fact_kills(self.ctx.fact_kills(
+                [], extra_exprs=_comp_clause_body(expr, k)))
             # The filters are the comprehension's body: analyzed once, at
             # their own slots, whatever slot the element meets.
             with self.ctx.probe_slot_scope(False):
                 for cond in expr.generators[k].conditions:
-                    self.analyze_condition(cond)
+                    branch = self.analyze_branch(cond)
+                    join.leave(branch.on_false)
+                    self.init.restore(branch.on_true)
             if k + 1 < len(expr.generators):
                 # The next clause's source runs once per element that passed
                 # this clause's filters, with every outer target bound.
@@ -6295,13 +6493,22 @@ class ExpressionAnalyzer:
                     expr.generators[k + 1], expr)
                 self._stamp_comp_source_facts(expr, k + 1, elem_type)
                 clause_types.append(elem_type)
+                if not self.narrowing.source_provably_nonempty(
+                        expr.generators[k + 1].iterable):
+                    join.leave()
                 return self._enter_comp_clause(expr, k + 1, elem_type,
-                                               inner_scope, hint, clause_types)
+                                               inner_scope, hint, clause_types,
+                                               join=join)
         if isinstance(expr, TpyDictComprehension):
             key_hint, value_hint = hint
-            return (self.analyze_expr_with_hint(expr.key_expr, key_hint),
-                    self.analyze_expr_with_hint(expr.value_expr, value_hint))
-        return self.analyze_expr_with_hint(expr.element_expr, hint)
+            result: TpyType | tuple[TpyType, TpyType] = (
+                self.analyze_expr_with_hint(expr.key_expr, key_hint),
+                self.analyze_expr_with_hint(expr.value_expr, value_hint))
+        else:
+            result = self.analyze_expr_with_hint(expr.element_expr, hint)
+        if join is not None:
+            join.leave()
+        return result
 
     def _analyze_and_strip(self, expr: TpyExpr, hint: SlotHint | None = None) -> TpyType:
         """Analyze an expression and strip sema-internal wrappers (Own/Ref).

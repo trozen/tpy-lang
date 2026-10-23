@@ -7,10 +7,40 @@
 
 namespace tpyapp::main {
 
+struct N;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
 void main();
+// def bump(n: int) -> int:
+::tpy::BigInt bump(const ::tpy::BigInt& __param_n);
+// def grow() -> str:
+std::string grow();
+// def relabel() -> str:
+std::string relabel();
+// def view_holder() -> str:
+std::string view_holder();
 
+// class N:
+struct N {
+    // self.s = s
+    std::string s;
+
+    // def __init__(self, s: str) -> None:
+    N() = default;
+    explicit N(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.N";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const N& obj) {
+    ::tpy::print_object_default(os, "N", obj);
+    return os;
+}
+
+
+// def __init__(self, s: str) -> None:
+//     self.s = s
+inline N::N(std::string_view s) : s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

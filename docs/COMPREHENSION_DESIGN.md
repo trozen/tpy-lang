@@ -212,7 +212,12 @@ All clauses share ONE scope, which gives two refusals:
   variable, not the later clause's (`_comp_free_names`).
 
 A filter walrus binds in the ENCLOSING scope (PEP 572), so the inner sources,
-the element and the code after the comprehension read it. Each clause's
+the element and the code after the comprehension read it -- the code after it
+only where every way out of the comprehension bound it: a clause runs zero
+times unless its source provably yields (`source_provably_nonempty`, the
+`for` statement's rule), and an iteration ends at a filter that fails, so
+`[x for x in xs if (last := x) > 0]` then `print(last)` is *variable 'last'
+may not be assigned at this point* unless `last` is bound before. Each clause's
 source is classified while that clause lowers, against exactly the names in
 scope there -- the earlier clauses' targets and the earlier filters' walrus
 targets -- so `[c for i in r if (s := str(i)) for c in s]` iterates the
@@ -223,15 +228,16 @@ rebuilt per outer element), a walrus whose target can hold a REFERENCE -- a
 reference type, an open type parameter, a pointer or borrowing view, or an
 Optional / tuple / union holding one (`_may_keep_reference`) -- is refused
 inside a list / set / dict comprehension whatever it iterates: *a walrus
-inside a comprehension cannot bind 'last' to a reference to an object; use a
-`for` loop*. Which source a reference comes from is not tracked, so a named
+inside a comprehension or generator expression cannot bind 'last' to a
+reference to an object; use a `for` loop*. Which source a reference comes from is not tracked, so a named
 source is refused too. The check runs once in `_analyze_named_expr`, on the
 target's type, before the binding branches split. A value-type target is
 legal everywhere (a `str` slice is a view and is refused; a value tuple is
 refused for now, BUGS.md#value-tuple-walrus-rejects). CPython runs every refused shape. A generator expression's
-walrus binds a local of its frame, and is refused where the enclosing scope
-uses the target (BUGS.md#genexpr-walrus-target-stays-in-frame), so the rule
-does not arise there.
+walrus whose target the enclosing scope uses binds the enclosing variable too
+(see "A walrus in a generator expression" below), and takes the same rule: the
+check asks one predicate, whether the target binds outside the body being
+analyzed (`_walrus_binds_outside`).
 
 ### Type inference details
 
@@ -753,6 +759,56 @@ types of statements it has not reached yet, so ANY statement that reads the
 kept name and binds another counts as handing it on, a consuming one included
 (BUGS.md#genexpr-kept-scan-consumer-binding).
 
+### A walrus in a generator expression
+
+PEP 572 binds the target in the first enclosing function or module scope S.
+The parser records, per generator expression, the walruses whose target S
+also uses (`TpyGeneratorExpression.walrus_used_outside`,
+`tpyc/parse/genexpr_walrus.py`, from Python's symtable); a target S does not
+use is the frame's own variable, which nothing can observe. Every other one
+is an implicit `nonlocal` (S a function, a method, a generator or a nested
+def) or `global` (S the module, or S declares it `global`) of the frame and
+of every frame between the walrus and S (`_genexpr_written_names` in
+`tpyc/sema/expressions.py`).
+
+- A `nonlocal` one is a capture the frame WRITES (`TpyFunction.genexpr_nonlocals`,
+  a subset of `capture_params`): its param is the enclosing variable held by
+  mutable reference (the `CAPTURE` forwarding slot), at the variable's own
+  type rather than a narrowing proved at the creation. The body does not take
+  it as a parameter: the nested def's `nonlocal` path binds it
+  (`tpyc/sema/nonlocal_binding.py`, the one helper both use), so a store that
+  narrows into an inferred variable warns and checks as a `nonlocal` store does,
+  and a `str` / `bytes` variable owns its text unless every store is static.
+  The lowering gives the param the record of the variable's local slot
+  (`_param_row`), never the frame's owned view copy.
+- A `global` one is written by name (`TpyFunction.genexpr_globals`, seeded into
+  the frame's `global_declarations`).
+- S must bind the target before the expression (a generator may never run,
+  and the frame takes S's variable at its creation): a target S has not bound
+  there -- even one S binds later -- is *variable 'hit' may not be assigned at
+  this point* at the walrus, the definite-assignment error. A lambda as S
+  keeps the refusal (BUGS.md#genexpr-walrus-lambda-enclosing-scope).
+
+The stores invalidate S's facts about the target at the creation (an
+argument-position consumer pulls there), and for a kept generator expression
+at every later call (`_check_retained_genexprs` adds them to
+`closure_written_names`). Any pull that runs TPy code is a call
+(`iter_loans.iteration_runs_code`, stamped by `record_iteration_pull` as
+`TpyExpr.pull_runs_code` on the iteration source of the `for`, the
+comprehension clause or the membership test, where every call-recognizer's walk
+meets it); a record's own `__iter__` / `__next__` counts even when it hands
+out a view of its storage. Every expression that evaluates a part of itself
+conditionally -- the right operand of `and` / `or`, a ternary's arms, a
+chained comparison's later operands, an `assert` message, a comprehension's
+clauses -- joins its paths as an `if` statement joins its branches
+(`ExpressionAnalyzer.branch_states`; a comprehension's exits through
+`FlowJoin`, `tpyc/sema/init_tracker.py`): each operand starts from what the
+operands before it proved, a later operand's write kills those facts, and a
+fact or a walrus binding holds after it only where every path established it. A comprehension clause is a loop body: it is entered with what
+its back edge kills dropped, as a `for` body is, and each filter's facts hold
+for what follows the filter. A frame's captures lose
+the narrowing proved in its body at its own suspensions.
+
 ### Emit shape
 
 A single-clause genexpr frame has one resume point and it is the loop head, so
@@ -834,7 +890,8 @@ This is deferred -- the frame is correct and efficient enough as baseline. Fusio
 | Name bound by two clauses | `[row for row in rows for row in row]` | "'row' is bound by two `for` clauses of this comprehension; rename one" |
 | Read before the binding clause | `[x for row in rows if x > 0 for x in row]` | "'x' is read before the `for` clause that binds it" |
 | Owned source of a multi-clause generator expression | `sum(p.v + k for p in widgets() for k in range(2))` | "a generator expression cannot iterate a source that yields owned values; use a list comprehension or a `for` loop" |
-| Walrus binding a reference (CPython runs it) | `[c for c in xs if (last := c).n > 0]` | "a walrus inside a comprehension cannot bind 'last' to a reference to an object; use a `for` loop" |
+| Walrus binding a reference (CPython runs it) | `[c for c in xs if (last := c).n > 0]` | "a walrus inside a comprehension or generator expression cannot bind 'last' to a reference to an object; use a `for` loop" |
+| Genexpr walrus target not bound before | `any((hit := x) > 1 for x in xs)`, then `print(hit)` (or a later `hit = 0`) | "variable 'hit' may not be assigned at this point", at the walrus |
 | Genexpr inner-clause capture rebound | `for v in (a + b for a in xs for b in ys): ys = [v]` | "'ys' is iterated by this generator expression, but the loop it feeds rebinds it between pulls; bind it to a local first" |
 
 ---
@@ -875,4 +932,10 @@ tests/cases/iterators/
     error_genexpr_multi_for_capture_rebound/    # consuming loop rebinds an
                                                 # inner-iterated capture
     error_genexpr_multi_for_retained_rebound/   # kept genexpr, same capture rebound
+    genexpr_walrus_binds_scope/                 # walrus target of the enclosing
+                                                # scope, every position
+    error_genexpr_walrus_reference_target/      # ... bound to an object
+    error_genexpr_walrus_first_bound/           # ... not bound before
+    error_genexpr_walrus_bound_later/           # ... bound only after it
+    error_genexpr_walrus_in_lambda/             # ... of a lambda
 ```

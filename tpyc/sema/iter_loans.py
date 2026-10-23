@@ -34,7 +34,7 @@ from ..typesys import (
     FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
     ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
     make_list, make_set, yield_always_borrows,
-    is_protocol_type, type_param_names,
+    is_callable_type, is_fn_type, is_protocol_type, type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
@@ -126,6 +126,62 @@ def iter_element_source(iterable_type: 'TpyType | None',
                 if _declares_element_cursor(t, registry)
                 else IterElementSource.FRESH_ITERATOR)
     return IterElementSource.OTHER
+
+
+def iteration_runs_code(ctx: 'SemanticContext', iterable: TpyExpr | None,
+                        iterable_type: 'TpyType | None') -> bool:
+    """Whether a step of iterating `iterable` (of `iterable_type`) may run
+    TPy code -- a generator's or a generator expression's body, a user
+    `__iter__` / `__next__`, a callable a runtime combinator applies --
+    which, like a call, may rebind what a `global` or `nonlocal` reaches. A
+    native container, view or range, and a runtime combinator over those,
+    step in runtime code only; a protocol, which any of them may stand
+    for, runs code. Iteration sites record it through
+    `record_iteration_pull`."""
+    if iterable_type is None:
+        return True
+    t = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
+    if isinstance(t, NominalType) and not t.is_protocol:
+        # A record's own `__iter__` / `__next__` is TPy code even when it
+        # hands out a view of its storage.
+        rec = ctx.registry.get_record_for_type(t)
+        return rec is not None and not rec.is_native
+    if iter_element_source(t, ctx.registry) is IterElementSource.CONTAINER:
+        return False
+    call = iterable.expr if isinstance(iterable, TpyCoerce) else iterable
+    if isinstance(call, (TpyCall, TpyMethodCall)):
+        fi = call.resolved_function_info
+        if fi is not None and fi.cpp_template is not None:
+            operands = list(call.args) + list(call.kwargs.values())
+            if isinstance(call, TpyMethodCall):
+                operands.append(call.obj)
+            return any(_operand_runs_code(ctx, a) for a in operands)
+    return True
+
+
+def record_iteration_pull(ctx: 'SemanticContext', iterable: TpyExpr,
+                          iterable_type: 'TpyType | None') -> bool:
+    """Decide whether pulling `iterable` runs TPy code
+    (`iteration_runs_code`) and stamp it on the source
+    (`TpyExpr.pull_runs_code`), the one place every call-recognizer reads
+    it from; returns the answer."""
+    iterable.pull_runs_code = iteration_runs_code(ctx, iterable, iterable_type)
+    return iterable.pull_runs_code
+
+
+def _operand_runs_code(ctx: 'SemanticContext', operand: TpyExpr) -> bool:
+    """Whether a runtime combinator's operand makes its steps run TPy code:
+    a callable it applies, or an iterable whose steps do."""
+    t = ctx.get_expr_type(operand)
+    if t is None:
+        return True
+    bare = unwrap_readonly(unwrap_own(unwrap_ref_type(t)))
+    if is_callable_type(bare) or is_fn_type(bare):
+        return True
+    if builtin_modules.get_iterable_element_type(
+            bare, registry=ctx.registry) is None:
+        return False
+    return iteration_runs_code(ctx, operand, t)
 
 
 def _yield_elem_sources(fi: FunctionInfo,

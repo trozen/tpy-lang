@@ -1682,10 +1682,14 @@ std::vector<::tpy::BigInt> inner_src(const std::vector<::tpy::BigInt>& row) {
 //     # free function: empty inner sources contribute nothing
 //     empties: list[list[int]] = [[], [7], []]
 //     print("lc empty", [x for row in empties for x in row])  # tpyc: ok
-//     # free function: an inner-filter walrus binds in the enclosing scope
+//     # free function: an inner-filter walrus binds in the enclosing scope; an
+//     # inner clause may run zero times, so the target is bound before
+//     last = 0
 //     big = [y for row in grid if len(row) == 1 for y in range(row[0]) if (last := y * 2) > 0]  # tpyc: ok
 //     print("lc walrus", big, last)
-//     # free function: an outer-filter walrus is read by the inner source
+//     # free function: an outer-filter walrus is read by the inner source; the
+//     # outer clause may run zero times, so the target is bound before
+//     m = 0
 //     spans = [y for row in grid if (m := len(row)) > 1 for y in range(m)]  # tpyc: ok
 //     print("lc walrus outer", spans, m)
 void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vector<std::string>& words, const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>& ps, const std::vector<std::tuple<::tpy::BigInt, std::string>>& tagged) {
@@ -1887,7 +1891,7 @@ void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vec
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt last;
+    ::tpy::BigInt last = ::tpy::BigInt(0);
     std::vector<::tpy::BigInt> big = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_24 = grid;
@@ -1907,7 +1911,7 @@ void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vec
         std::move(__result);
     });
     std::cout << "lc walrus" << " " << ::tpy::ListPrinter(big) << " " << last << "\n" << ::tpy::check_signals;
-    int32_t m;
+    int32_t m = 0;
     std::vector<int32_t> spans = ({
         std::vector<int32_t> __result;
         auto& __obj_26 = grid;
@@ -2221,11 +2225,14 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
 
 // def lc_src_temps() -> None:
 //     # a walrus with a value-type target over a temporary source copies the
-//     # value out, so it outlives the source
+//     # value out, so it outlives the source; the source may be empty, so the
+//     # target is bound before
+//     last = 0
 //     out = [c.bump() for c in pick([C(100), C(200)]) for k in range(1) if (last := c.n) > k]  # tpyc: ok
 //     junk = [C(7), C(8), C(9)]
 //     print("lc src walrus", out, last, len(junk))
 //     # ... and over an inner clause's temporary source, rebuilt per outer element
+//     both = 0
 //     out_in = [c.n for x in [1, 2] for c in pick([C(x)]) if (both := c.n + x) > 0]  # tpyc: ok
 //     print("lc src walrus inner", out_in, both)
 //     # clause 0's source is evaluated in the enclosing scope: the temporary
@@ -2240,7 +2247,7 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
 //     # rebuilt per outer element
 //     print("lc src nested", [[c.n + k for c in pick([C(k), C(9)])] for k in range(2)])  # tpyc: ok
 void lc_src_temps() {
-    ::tpy::BigInt last;
+    ::tpy::BigInt last = ::tpy::BigInt(0);
     std::vector<C> __tmp_1 = {C(::tpy::BigInt(100)), C(::tpy::BigInt(200))};
     std::vector<::tpy::BigInt> out = ({
         std::vector<::tpy::BigInt> __result;
@@ -2259,7 +2266,7 @@ void lc_src_temps() {
     });
     std::array<C, 3> junk = {C(::tpy::BigInt(7)), C(::tpy::BigInt(8)), C(::tpy::BigInt(9))};
     std::cout << "lc src walrus" << " " << ::tpy::ListPrinter(out) << " " << last << " " << ::tpy::__len__(junk) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt both;
+    ::tpy::BigInt both = ::tpy::BigInt(0);
     std::vector<::tpy::BigInt> out_in = ({
         std::vector<::tpy::BigInt> __result;
         auto __obj_2 = {1, 2};
@@ -2324,7 +2331,9 @@ void lc_src_temps() {
 //     out = [c.bump() for c in xs if (last := c.n) > 0]  # tpyc: ok
 //     print("lc walrus value", out, last)
 //     grid = [[C(1)], [C(2)]]
-//     # ... and over an inner clause whose source is a name
+//     # ... and over an inner clause whose source is a name (bound before: the
+//     # inner clause may run zero times)
+//     inner = 0
 //     out2 = [c.bump() for row in grid for c in row if (inner := c.n) > 0]  # tpyc: ok
 //     print("lc walrus value inner", out2, inner)
 void lc_walrus_values() {
@@ -2346,7 +2355,7 @@ void lc_walrus_values() {
     });
     std::cout << "lc walrus value" << " " << ::tpy::ListPrinter(out) << " " << last << "\n" << ::tpy::check_signals;
     std::array<std::array<C, 1>, 2> grid = {{{C(::tpy::BigInt(1))}, {C(::tpy::BigInt(2))}}};
-    ::tpy::BigInt inner;
+    ::tpy::BigInt inner = ::tpy::BigInt(0);
     std::vector<::tpy::BigInt> out2 = ({
         std::vector<::tpy::BigInt> __result;
         auto& __obj_1 = grid;

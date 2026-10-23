@@ -33,7 +33,7 @@ from ..parse.nodes import (TpyCall, TpyComprehensionGenerator, TpyExpr,
                            TpyNestedDef, TpyStmt, TpyTupleUnpack, TpyWhile,
                            value_capture_lambdas, walk_body_stmts,
                            walk_expr_tree)
-from ..prescan import collect_fact_kills, loop_bindings_of
+from ..prescan import loop_bindings_of
 from ..type_def_registry import has_view_param_form
 from ..typesys import (FrameType, OptionalType, TpyType,
                        TupleType, UnionType, is_dyn_protocol,
@@ -445,7 +445,7 @@ def _warn_rebound_after(ctx: 'SemanticContext', body: list[TpyStmt],
             stale = [n for n in names if n in later]
             if stale:
                 found.append((closure, stale[0]))
-        later |= collect_fact_kills([stmt]).names
+        later |= ctx.fact_kills([stmt]).names
     for closure, name in reversed(found):
         warn_once(ctx, rebound_after_message(name), closure)
 

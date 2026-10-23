@@ -273,10 +273,14 @@ def lc_free(grid: list[list[int]], words: list[str], ps: list[tuple[int, int]],
     # free function: empty inner sources contribute nothing
     empties: list[list[int]] = [[], [7], []]
     print("lc empty", [x for row in empties for x in row])  # tpyc: ok
-    # free function: an inner-filter walrus binds in the enclosing scope
+    # free function: an inner-filter walrus binds in the enclosing scope; an
+    # inner clause may run zero times, so the target is bound before
+    last = 0
     big = [y for row in grid if len(row) == 1 for y in range(row[0]) if (last := y * 2) > 0]  # tpyc: ok
     print("lc walrus", big, last)
-    # free function: an outer-filter walrus is read by the inner source
+    # free function: an outer-filter walrus is read by the inner source; the
+    # outer clause may run zero times, so the target is bound before
+    m = 0
     spans = [y for row in grid if (m := len(row)) > 1 for y in range(m)]  # tpyc: ok
     print("lc walrus outer", spans, m)
 
@@ -332,11 +336,14 @@ def grow(row: list[int], x: int) -> int:
 
 def lc_src_temps() -> None:
     # a walrus with a value-type target over a temporary source copies the
-    # value out, so it outlives the source
+    # value out, so it outlives the source; the source may be empty, so the
+    # target is bound before
+    last = 0
     out = [c.bump() for c in pick([C(100), C(200)]) for k in range(1) if (last := c.n) > k]  # tpyc: ok
     junk = [C(7), C(8), C(9)]
     print("lc src walrus", out, last, len(junk))
     # ... and over an inner clause's temporary source, rebuilt per outer element
+    both = 0
     out_in = [c.n for x in [1, 2] for c in pick([C(x)]) if (both := c.n + x) > 0]  # tpyc: ok
     print("lc src walrus inner", out_in, both)
     # clause 0's source is evaluated in the enclosing scope: the temporary
@@ -359,7 +366,9 @@ def lc_walrus_values() -> None:
     out = [c.bump() for c in xs if (last := c.n) > 0]  # tpyc: ok
     print("lc walrus value", out, last)
     grid = [[C(1)], [C(2)]]
-    # ... and over an inner clause whose source is a name
+    # ... and over an inner clause whose source is a name (bound before: the
+    # inner clause may run zero times)
+    inner = 0
     out2 = [c.bump() for row in grid for c in row if (inner := c.n) > 0]  # tpyc: ok
     print("lc walrus value inner", out2, inner)
 

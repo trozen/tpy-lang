@@ -62,7 +62,10 @@ from ..diagnostics import Diagnostic, DiagnosticLevel, SemanticError, Scope
 from ..value_category import (
     CallOperands, ExprTypeOf, is_rvalue_source, peel_coerce,
 )
-from ..prescan import InPlaceWrites, bound_names_of, loop_bindings_of, walrus_names_of
+from ..prescan import (
+    FactKills, InPlaceWrites, bound_names_of, collect_fact_kills,
+    loop_bindings_of, walrus_names_of,
+)
 from .call_lends import (
     NO_CALLS, MayLend, escaping_borrow_tuple, frame_operands,
     escaping_borrow_writes, frame_call,
@@ -4308,7 +4311,7 @@ class SemanticContext:
         is a module global's namespace-scope storage, not a `__tpy_init`
         local: `body` is the carrier and its binding has `module_slot`."""
         if body is None or body is self.func.current_function:
-            return self.is_top_level and self.reads_module_slot(name)
+            return self.is_top_level and self._slot_binding(name)
         return self.is_module_init(body) and self.is_module_slot_name(name)
 
     def is_module_slot_name(self, name: str) -> bool:
@@ -4319,13 +4322,44 @@ class SemanticContext:
                    if self.global_ns is not None else None)
         return binding is not None and binding.module_slot
 
+    def fact_kills(self, stmts: 'list[TpyStmt]',
+                   extra_exprs: 'list[TpyExpr] | tuple[TpyExpr, ...]' = (),
+                   ) -> 'FactKills':
+        """`prescan.collect_fact_kills` over the shared statement
+        summaries."""
+        return collect_fact_kills(stmts, extra_exprs=extra_exprs,
+                                  table=self.write_summaries)
+
+    def manager_exit_runs_code(self, manager_type: 'TpyType') -> bool | None:
+        """Whether leaving a `with` over a manager of `manager_type` runs
+        TPy code: a record that is not native (None: not a record)."""
+        rec = self.registry.get_record_for_type(
+            unwrap_readonly(unwrap_own(unwrap_ref_type(manager_type))))
+        return None if rec is None else not rec.is_native
+
+    def _slot_binding(self, name: str) -> bool:
+        """Whether the binding `name` resolves to here is itself the module
+        slot's (`NameBinding.module_slot`)."""
+        ns = self.func.current_ns or self.global_ns
+        binding = ns.lookup(name) if ns is not None else None
+        return binding is not None and binding.module_slot
+
     def reads_module_slot(self, name: str) -> bool:
         """Whether `name` read here resolves to a module global's
         namespace-scope storage (`NameBinding.module_slot`), not to a local
         of the body being analyzed."""
+        if self._slot_binding(name):
+            return True
         ns = self.func.current_ns or self.global_ns
         binding = ns.lookup(name) if ns is not None else None
-        return binding is not None and binding.module_slot
+        if binding is None:
+            return False
+        # The module's own statements are one Python scope: a block's
+        # binding of a name they bind in a module slot is that slot's
+        # (`is_module_slot_name`) -- a comprehension's target is not.
+        return (self.is_top_level and not self.in_comprehension
+                and binding.kind == BindingKind.VARIABLE
+                and self.is_module_slot_name(name))
 
     def is_module_slot_stmt(self, stmt: 'TpyStmt') -> bool:
         """True when `stmt` is the module-level statement whose bindings get

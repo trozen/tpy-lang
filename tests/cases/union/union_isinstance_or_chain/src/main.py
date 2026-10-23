@@ -12,8 +12,10 @@ class B:
 
 class C:
     tag: int
+    ctag: int
     def __init__(self, tag: int) -> None:
         self.tag = tag
+        self.ctag = tag * 10
 
 
 def two_member(v: A | B) -> str:
@@ -25,7 +27,8 @@ def two_member(v: A | B) -> str:
 def three_member(v: A | B | C) -> str:
     if isinstance(v, A) or isinstance(v, B):
         return "ab"
-    return "c"
+    # Past the or-chain's FALSE path `v` is a C: a field only C has.
+    return "c" + str(v.ctag)  # tpyc: ok
 
 
 def and_chain(v: A | B, flag: bool) -> str:

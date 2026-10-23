@@ -332,14 +332,14 @@ def first_ptr(xs: list[A]) -> Ptr[A]:
 
 # a narrowed field through a `Ptr` receiver, as an `is` operand
 def via_ptr(h: Ptr[Holder], a: A) -> bool:
-    if h is not None and h.kid is not None:
+    if h is not None and h.kid is not None:  # tpyc: non_null(h)
         return h.kid is a  # tpyc: ok
     return False
 
 
 # ... and returned at a pointer-repr Optional result
 def kid_via_ptr(h: Ptr[Holder]) -> A | None:
-    if h is not None and h.kid is not None:
+    if h is not None and h.kid is not None:  # tpyc: non_null(h)
         return h.kid  # tpyc: ok
     return None
 

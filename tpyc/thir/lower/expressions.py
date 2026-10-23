@@ -8750,7 +8750,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      and not is_bytes_view_type(wal_bytes) else None)
         if not rung_value:
             raise ThirUnsupported("expr.walrus")
-        if wal_owned is not None and not resumable:
+        # A genexpr frame's written capture is the enclosing variable itself,
+        # through the reference field, and a global it writes is the module's
+        # by name: neither is a frame field, so each takes the sync store.
+        writes_enclosing = (e.target in lc.func.genexpr_nonlocals
+                            or e.target in lc.func.genexpr_globals)
+        if wal_owned is not None and (not resumable or writes_enclosing):
             # Owned str/bytes walrus (`(s := s + "!")` reassign, or a
             # FIRST-DECL like `(hostname := host)` off a view param -- the
             # view->owned promotion already resolved the binding owned):

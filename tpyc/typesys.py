@@ -4577,7 +4577,7 @@ class OptionalType(TpyType):
     (and `OptionalType(ReadonlyType(PtrType(T)))` to `ReadonlyType(PtrType(T))`).
     Both spellings already lower to `T*` / `const T*` in C++, both are nullable,
     and `is None` narrowing handles `Ptr[T]` directly (`sema/narrowing.py`'s
-    `condition_ptr_null_facts`). Representing them as two distinct TPy types
+    `leaf_facts`). Representing them as two distinct TPy types
     forced every boundary (assignment, call, generic substitution, container
     element) to bridge the duplication with its own coercion rule. The
     collapse makes `Ptr[T] | None` unrepresentable: there is one type for one

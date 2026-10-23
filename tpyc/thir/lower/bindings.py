@@ -890,8 +890,11 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
     ptype = next((t for n, t in inp.params if n == name), None)
     if inp.frame is not None and name in inp.frame.fields:
         f["frame_class"] = inp.frame.classes.get(name, FrameLocalClass.PLAIN)
-        if isinstance(typ, TpyType) and is_owned_in_coro_frame(
-                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(typ)))):
+        # A genexpr's written capture is the enclosing variable's storage,
+        # never a copy the frame owns.
+        if (name not in func.genexpr_nonlocals
+                and isinstance(typ, TpyType) and is_owned_in_coro_frame(
+                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(typ))))):
             f["frame_owned_view"] = True
     # The const verdicts of the function whose parameter it is; `THIRParam`
     # and every reader in the body read them off this record.
@@ -901,6 +904,20 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
         _p._param_is_deep_const(name, func, analyzer, inp.record_name)
         or _p._vararg_pack_is_const(name, func)
         or _p._ptr_pointee_is_readonly(name, func))
+    if name in func.genexpr_nonlocals:
+        # A generator expression's written capture is the enclosing scope's
+        # variable, held by mutable reference: the record of that variable's
+        # local slot, never an owned copy and never const.
+        f["const"] = f["deep_const"] = False
+        vo = (_declared_value_opt_kind(typ, analyzer)
+              if isinstance(typ, TpyType) else None)
+        if vo is not None:
+            f["value_opt"] = vo
+        return BindingRepr(name=name, site=None, type=typ,
+                           form=_seeded_form(f), site_kind=site.kind,
+                           is_param=True,
+                           param_type=ptype if isinstance(ptype, TpyType)
+                           else None, **f)
     # A generator expression's capture of its creator's pointer tuple
     # (sema's final set of the frame) is that pointer tuple.
     ptt = (pointer_tuple_of(typ) if typ is not None and name

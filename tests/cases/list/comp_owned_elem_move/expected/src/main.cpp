@@ -135,19 +135,19 @@ void filtered(int32_t n) {
     std::cout << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
 }
 
-// def walrus_owned(n: int32) -> None:
+// def walrus_owned() -> None:
 //     # walrus target leaks to the enclosing scope (PEP 572) so its declaration
 //     # must stay at function scope, while the owned move-temp in the condition
-//     # expression must still land inside the loop body.
-//     zs = [x for x in range(n) if (y := score(Box(x))) > 0]
+//     # expression must still land inside the loop body. The source provably
+//     # yields, so the comprehension binds the target.
+//     zs = [x for x in range(6) if (y := score(Box(x))) > 0]
 //     print(len(zs), y)
-void walrus_owned(int32_t n) {
+void walrus_owned() {
     int32_t y;
     std::vector<int32_t> zs = ({
         std::vector<int32_t> __result;
-        int32_t __stop_0 = n;
-        if (__stop_0 > 0) __result.reserve(static_cast<size_t>(__stop_0));
-        for (int32_t x = 0; x < __stop_0; ++x) {
+        if (6 > 0) __result.reserve(static_cast<size_t>(6));
+        for (int32_t x = 0; x < 6; ++x) {
             int32_t __tmp_1 = x;
             ::tpystd::tplib::box::Box<int32_t> __tmp_2 = ::tpystd::tplib::box::Box<int32_t>(std::move(__tmp_1));
             if (((y = ::tpyapp::main::score(__tmp_2)) > 0)) {
@@ -164,13 +164,13 @@ void walrus_owned(int32_t n) {
 //     list_comp(3)
 //     genexpr(6)
 //     filtered(6)
-//     walrus_owned(6)
+//     walrus_owned()
 void main() {
     ::tpyapp::main::array_comp();
     ::tpyapp::main::list_comp(3);
     ::tpyapp::main::genexpr(6);
     ::tpyapp::main::filtered(6);
-    ::tpyapp::main::walrus_owned(6);
+    ::tpyapp::main::walrus_owned();
 }
 
 // from tplib.box import Box
