@@ -49,14 +49,14 @@ void main() {
     }
     {
         try {
-            throw MyError{};
+            throw MyError("");
         } catch (const MyError&) {
             std::cout << "MyError caught" << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            throw ::tpy::ValueError{};
+            throw ::tpy::ValueError("");
         } catch (const ::tpy::ValueError&) {
             std::cout << "builtins.ValueError caught" << "\n" << ::tpy::check_signals;
         }

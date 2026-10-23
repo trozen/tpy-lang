@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //     return ("hello-world-long", "another-long-str")
 std::tuple<std::string, std::string> maybe_pair(bool fail) {
     if (fail) {
-        ::tpy::OSError("x").__raise__();
+        ::tpy::OSError(std::string_view("x")).__raise__();
     }
     return std::tuple<std::string, std::string>{"hello-world-long", "another-long-str"};
 }

@@ -11,9 +11,9 @@ namespace tpyapp::main {
 //     raise BErr()
 void boom(const ::tpy::BigInt& which) {
     if ((which == 0)) {
-        throw AErr{};
+        throw AErr("");
     }
-    throw BErr{};
+    throw BErr("");
 }
 
 // def gen() -> Iterator[int]:

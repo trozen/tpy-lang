@@ -44,7 +44,7 @@ void main() {
     }
     {
         try {
-            throw ::tpy::ValueError{};
+            throw ::tpy::ValueError("");
         } catch (const ::tpy::ValueError&) {
             std::cout << "caught bare ValueError" << "\n" << ::tpy::check_signals;
         }

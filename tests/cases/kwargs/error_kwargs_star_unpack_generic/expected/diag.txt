@@ -1,0 +1,1 @@
+main.py:19: error: 'f' does not accept **kwargs

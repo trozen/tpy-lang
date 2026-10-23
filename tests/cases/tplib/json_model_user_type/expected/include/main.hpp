@@ -259,7 +259,7 @@ inline Event Event::load_json(std::string_view __path) {
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -278,7 +278,7 @@ inline std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::try
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -362,7 +362,7 @@ inline Schedule Schedule::load_json(std::string_view __path) {
     auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_5.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
@@ -381,7 +381,7 @@ inline std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedul
     auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_6.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_6;
     } catch (::tpy::BaseException& __exc_6) {
         __ctx_6.__exit__({}, &__exc_6, {});

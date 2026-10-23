@@ -44,6 +44,11 @@ def _record(name: str, parents: list[NominalType], mro_ancestors: list[NominalTy
     return info
 
 
+def _as_written(_parent, _parent_info, entries: list) -> list:
+    """No generic edges here: a parent's MRO entries carry over unchanged."""
+    return entries
+
+
 def _type_names(types: list) -> list[str]:
     return [t.name for t in types]
 
@@ -109,7 +114,7 @@ class TestRegistryMRO:
         reg = TypeRegistry()
         a = _record("A", parents=[], mro_ancestors=[])
         reg.register_record(a)
-        assert reg.compute_mro_ancestors(a) == []
+        assert reg.compute_mro_ancestors(a, _as_written) == []
 
     def test_single_parent_linear(self) -> None:
         reg = TypeRegistry()
@@ -121,7 +126,7 @@ class TestRegistryMRO:
         b_ref = _nom("B")
         c = _record("C", parents=[b_ref], mro_ancestors=[])
         reg.register_record(c)
-        result = reg.compute_mro_ancestors(c)
+        result = reg.compute_mro_ancestors(c, _as_written)
         assert _type_names(result) == ["B", "A"]
 
     def test_multi_parent_no_diamond(self) -> None:
@@ -133,7 +138,7 @@ class TestRegistryMRO:
         a_ref, b_ref = _nom("A"), _nom("B")
         d = _record("D", parents=[a_ref, b_ref], mro_ancestors=[])
         reg.register_record(d)
-        result = reg.compute_mro_ancestors(d)
+        result = reg.compute_mro_ancestors(d, _as_written)
         assert _type_names(result) == ["A", "B"]
 
 

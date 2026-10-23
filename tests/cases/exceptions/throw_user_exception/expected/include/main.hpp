@@ -44,7 +44,7 @@ inline std::ostream& operator<<(std::ostream& os, const AppError& obj) {
 //     self.code = code
 //     self.detail = detail
 inline AppError::AppError(int32_t code, std::string_view detail)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       code(code),
       detail(detail) {}
 void __tpy_init();

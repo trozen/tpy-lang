@@ -124,7 +124,7 @@ inline CancellableForever::CancellableForever() : __cancel_pending(false) {}
 //     return poll_pending[None]()
 inline ::tpystd::tpy::Poll<std::monostate> CancellableForever::__poll__(::tpystd::coro::Waker waker) const {
     if (this->__cancel_pending) {
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     return ::tpystd::coro::poll_pending<std::monostate>();
 }

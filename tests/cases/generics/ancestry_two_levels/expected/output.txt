@@ -1,0 +1,8 @@
+method: 2 1
+method_put: 3
+ctor: g 3
+base_call: 3
+field: k 4 7
+property: 4 4
+super_multi: M+G.describe 1
+alias: 5 12

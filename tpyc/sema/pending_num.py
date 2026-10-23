@@ -3231,16 +3231,18 @@ class PendingNums:
     def coerce(self, expr: TpyExpr, actual: TpyType, expected: TpyType,
                context: str, coercion_ctx: CoercionContext | None,
                rebind_of: str | None = None,
-               inferred_slot: 'InferredSlot | None' = None) -> TpyExpr:
+               inferred_slot: 'InferredSlot | None' = None,
+               by_step: bool = True) -> TpyExpr:
         """A conversion of `expr` whose two ends are known when the function
         settles: a placeholder filled then, or spliced out if it is none.
         `rebind_of` names the typed local a store rebinds, which a wider
-        value may not widen."""
+        value may not widen. `by_step`: the step placing it decides it anew
+        whenever it runs (`TpyCoerce.by_step`)."""
         self.ctx.assert_slot_effect("a coercion node")
         node = TpyCoerce(expr=expr, actual_type=actual, expected_type=expected,
                          coercion=PENDING_NUM_COERCION,
                          context_kind=coercion_ctx, context_msg=context,
-                         loc=expr.loc)
+                         by_step=by_step, loc=expr.loc)
         self.ctx.set_expr_type(node, expected)
         # The range check is elided by the value's range HERE, not by the
         # one the function ends with.
@@ -3341,8 +3343,9 @@ class PendingNums:
         it settles."""
         if isinstance(t, (IntLiteralType, FloatLiteralType)):
             return arg
+        # The call is written with it (`relayout`), so no step peels it.
         return self.coerce(arg, strip_int(t), leaf, context,
-                           CoercionContext.ARG)
+                           CoercionContext.ARG, by_step=False)
 
     def check(self, actual: TpyType, expected: TpyType, context: str,
               coercion_ctx: CoercionContext | None,

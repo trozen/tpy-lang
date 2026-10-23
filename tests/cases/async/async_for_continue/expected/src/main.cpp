@@ -120,7 +120,7 @@ __coro_main main() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n >= __self.limit)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         __self.n = (__self.n) + (::tpy::BigInt(1));
         __state = S_DONE;

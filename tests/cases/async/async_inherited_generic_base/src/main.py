@@ -1,6 +1,7 @@
 # Inherited await / async with / async for on a generic base: a concrete
 # subclass reuses the base's templated coro struct with the bound element type.
 # Mutate-and-observe confirms the receiver is aliased across the boundary.
+# The multilevel section inherits through two generic levels.
 import asyncio
 from tpy import int32
 
@@ -20,6 +21,16 @@ class Box[T]:
 
 
 class IntBox(Box[int32]):
+    def __init__(self, v: int32) -> None:
+        super().__init__(v)
+
+
+class Mid[U](Box[U]):
+    def __init__(self, v: U) -> None:
+        super().__init__(v)
+
+
+class Leaf(Mid[int32]):
     def __init__(self, v: int32) -> None:
         super().__init__(v)
 
@@ -93,6 +104,13 @@ async def main_coro() -> None:
     async for x in IntCounter(3, 10):
         total += x
     print("total:", total)
+
+    # multilevel: Leaf(Mid[int32]) over Mid[U](Box[U]) awaits Box's coro at
+    # T = int32; the refetch after put proves the receiver was aliased.
+    leaf = Leaf(5)
+    print("multilevel:", await leaf.fetch())  # tpyc: ok
+    leaf.put(6)
+    print("multilevel refetch:", await leaf.fetch())
 
 
 def main() -> None:

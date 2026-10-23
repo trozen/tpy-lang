@@ -50,7 +50,7 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
 //     super().__init__()
 //     self.code = code
 inline Err::Err(const ::tpy::BigInt& code)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

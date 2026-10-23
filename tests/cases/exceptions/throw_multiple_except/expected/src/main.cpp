@@ -13,7 +13,7 @@ void throw_value_error() {
 // def throw_my_error() -> None:
 //     raise MyError
 void throw_my_error() {
-    throw MyError{};
+    throw MyError("");
 }
 
 // def main() -> None:

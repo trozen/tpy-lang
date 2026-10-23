@@ -54,7 +54,7 @@ inline std::ostream& operator<<(std::ostream& os, const BadKey& obj) {
 //     super().__init__()
 //     self.key = key
 inline BadKey::BadKey(std::string_view key)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       key(key) {}
 void __tpy_init();
 } // namespace tpyapp::main

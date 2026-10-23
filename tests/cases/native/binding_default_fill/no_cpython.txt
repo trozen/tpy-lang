@@ -1,0 +1,1 @@
+The @native classes and functions bind C++ in native_types.hpp and have no CPython implementation.

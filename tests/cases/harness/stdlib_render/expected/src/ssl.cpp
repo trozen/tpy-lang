@@ -181,14 +181,14 @@ int32_t _bundled_ca_count() {
 SSLSocket SSLContext::wrap_socket(::tpystd::socket::socket&& sock, std::string_view server_hostname, bool do_handshake_on_connect, bool server_side) const {
     if (server_side) {
         if ((::tpy::__len__(server_hostname) > 0)) {
-            throw SSLError("server_hostname can only be specified in client mode");
+            throw SSLError(std::string_view("server_hostname can only be specified in client mode"));
         }
     } else if ((this->check_hostname && (::tpy::__len__(server_hostname) == 0))) {
-        throw SSLError("check_hostname requires server_hostname");
+        throw SSLError(std::string_view("check_hostname requires server_hostname"));
     }
     ::tpy_tls_session* s = ::tpy_tls_new();
     if ((s == nullptr)) {
-        throw SSLError("could not allocate TLS session");
+        throw SSLError(std::string_view("could not allocate TLS session"));
     }
     if (server_side) {
         this->_config_server(s);
@@ -276,7 +276,7 @@ bool SSLSocket::do_handshake() {
         return false;
     }
     if ((c == 4)) {
-        throw SSLCertVerificationError("certificate verify failed");
+        throw SSLCertVerificationError(std::string_view("certificate verify failed"));
     }
     throw SSLError((::tpy::str_concat("handshake failed: ", ::tpystd::ssl::_errstr(rc))));
 }

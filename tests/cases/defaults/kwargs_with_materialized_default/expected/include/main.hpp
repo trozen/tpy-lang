@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 struct Fixed;
 struct Options;
+struct R;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def g3[T](x: T, u: R | None = None, k: int = 3) -> T:
+template<typename T>
+::tpy::val_or_ref_t<T> g3(::tpy::param_val_or_ref_t<T> x, const R* u = nullptr, const ::tpy::BigInt& k = ::tpy::BigInt(3));
 // def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> int64:
 int64_t probe(std::optional<Fixed> x, const Options& kwargs);
 // def spread(a: int64, b: int64 = 4, *rest: int64, tag: int64 = 9) -> int64:
@@ -54,9 +58,38 @@ inline std::ostream& operator<<(std::ostream& os, const Options& obj) {
     return os;
 }
 
+// class R:
+struct R {
+    // self.v = v
+    ::tpy::BigInt v;
+
+    // def __init__(self, v: int) -> None:
+    R() = default;
+    explicit R(const ::tpy::BigInt& v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.R";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const R& obj) {
+    ::tpy::print_object_default(os, "R", obj);
+    return os;
+}
+
 
 // def __init__(self, off: int64) -> None:
 //     self.off = off
 inline Fixed::Fixed(int64_t off) : off(off) {}
+
+// def __init__(self, v: int) -> None:
+//     self.v = v
+inline R::R(const ::tpy::BigInt& v) : v(v) {}
+// def g3[T](x: T, u: R | None = None, k: int = 3) -> T:
+//     print("g3-gap-body", k, u is None)
+//     return x
+template<typename T>
+::tpy::val_or_ref_t<T> g3(::tpy::param_val_or_ref_t<T> x, const R* u, const ::tpy::BigInt& k) {
+    std::cout << "g3-gap-body" << " " << k << " " << ::tpy::print_bool((u == nullptr)) << "\n" << ::tpy::check_signals;
+    return ::tpy::param_to_return<T>(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

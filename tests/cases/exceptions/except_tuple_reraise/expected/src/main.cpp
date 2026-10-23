@@ -16,9 +16,9 @@ void inner(const ::tpy::BigInt& which) {
     {
         try {
             if ((which == 0)) {
-                throw AErr{};
+                throw AErr("");
             }
-            throw BErr{};
+            throw BErr("");
         } catch (const AErr&) {
             std::cout << "inner saw it, re-raising" << "\n" << ::tpy::check_signals;
             throw;

@@ -25,7 +25,7 @@ MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 
 from ..typesys import make_readonly, pointer_repr_optional, readonly_access
 from ..typesys import (
-    default_emittable_at, none_default_cpp_spelling,
+    default_emittable_at, emits_cpp_defaults, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
     BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, FunctionInfo, TypeParamRef, unwrap_readonly,
@@ -94,17 +94,21 @@ def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
 
 
 def default_emittable(defaults: list, i: int, n_params: int,
-                      ptype: 'TpyType | None' = None,
-                      params: 'list | None' = None,
-                      is_member: bool = False) -> bool:
+                      ptype: 'TpyType | None',
+                      params: 'list | None',
+                      is_member: bool,
+                      func: 'TpyFunction | None') -> bool:
     """Can parameter `i`'s default be a C++ default argument? Thin adapter over
     `default_emittable_at`, which is the one definition the call-site fill is
-    the complement of."""
+    the complement of. `func` is the def whose declaration is written; a
+    declaration written for no def (a record's constructor) is TPy's own."""
     slots = [(t, defaults[j] if j < len(defaults) else None)
              for j, (_n, t) in enumerate(params or [])] if params else [
         (ptype, defaults[j] if j < len(defaults) else None)
         for j in range(n_params)]
-    return default_emittable_at(slots, i, is_member) if i < len(slots) else False
+    emits = func is None or emits_cpp_defaults(func)
+    return (default_emittable_at(slots, i, is_member, emits)
+            if i < len(slots) else False)
 
 
 def _narrow_overload_param(impl_ptype: TpyType, concrete: TpyType) -> TpyType | None:
@@ -496,7 +500,7 @@ class FunctionGenerator:
             if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
-                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
+                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member, func):
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
@@ -507,7 +511,7 @@ class FunctionGenerator:
             if func and func.vararg_name and pname == func.vararg_name and is_varargs(bare_ptype):
                 inner_cpp = self.types.varargs_elem_cpp(bare_ptype.type_args[0])
                 part = f"::tpy::varargs<{inner_cpp}> {escape_cpp_name(pname)}"
-                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
+                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member, func):
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 parts.append(part)
                 continue
@@ -537,7 +541,7 @@ class FunctionGenerator:
                     and ptype.wrapped.name in class_type_params):
                 tp_cpp = ptype.wrapped.to_cpp()
                 part = part.replace(f"std::type_identity_t<{tp_cpp}>&&", f"{tp_cpp}&&")
-            if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
+            if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member, func):
                 part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             parts.append(part)
         return ", ".join(parts)
@@ -589,7 +593,7 @@ class FunctionGenerator:
             if is_fn_type(ptype):
                 part = f"__F{fn_idx}&& {cpp_pname}"
                 fn_idx += 1
-                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
+                if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member, func):
                     part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
                 result.append(part)
                 continue
@@ -642,7 +646,7 @@ class FunctionGenerator:
                         const_params=const_params,
                     )
                     part = self._emit_param_with_decision(decision, ptype, cpp_pname)
-            if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member):
+            if emit_defaults and defaults and default_emittable(defaults, i, len(params), ptype, params, member, func):
                 part += f" = {default_to_cpp(self.ctx, defaults[i], ptype)}"
             result.append(part)
         return ", ".join(result)

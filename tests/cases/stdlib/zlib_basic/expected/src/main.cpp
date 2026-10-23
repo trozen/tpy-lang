@@ -429,7 +429,7 @@ void with_body() {
     auto __ctx_2 = ::tpy::builtin_open_binary("zlib_basic.bin", "rb");
     f = &(__ctx_2.__enter__());
     try {
-        std::cout << "with" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(f->read()) == RAW)) << "\n" << ::tpy::check_signals;
+        std::cout << "with" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(f->read(-1)) == RAW)) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});

@@ -59,7 +59,7 @@ void main() {
     try {
         {
             try {
-                f->read();
+                f->read(-1);
             } catch (const ::tpy::OSError& e) {
                 std::cout << "read on write-only:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
             }

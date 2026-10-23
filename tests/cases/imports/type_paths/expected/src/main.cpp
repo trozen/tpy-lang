@@ -822,7 +822,7 @@ void exceptions() {
     }
     {
         try {
-            throw ::tpyapp::mx::Err{};
+            throw ::tpyapp::mx::Err("");
         } catch (const ::tpyapp::mx::Outer::Err&) {
             std::cout << "except: wrong" << "\n" << ::tpy::check_signals;
         } catch (const ::tpyapp::mx::Err&) {
@@ -831,7 +831,7 @@ void exceptions() {
     }
     {
         try {
-            throw ::tpyapp::mx::Outer::Err{};
+            throw ::tpyapp::mx::Outer::Err("");
         } catch (const ::tpy::KeyError&) {
             std::cout << "except: tuple" << "\n" << ::tpy::check_signals;
         } catch (const ::tpyapp::mx::Outer::Err&) {
@@ -840,7 +840,7 @@ void exceptions() {
     }
     {
         try {
-            throw Err{};
+            throw Err("");
         } catch (const Outer::Err&) {
             std::cout << "except: wrong local" << "\n" << ::tpy::check_signals;
         } catch (const Err&) {
@@ -849,7 +849,7 @@ void exceptions() {
     }
     {
         try {
-            throw Outer::Err{};
+            throw Outer::Err("");
         } catch (const Outer::Err&) {
             std::cout << "except: local nested" << "\n" << ::tpy::check_signals;
         }
@@ -863,7 +863,7 @@ void exceptions() {
     }
     {
         try {
-            throw ::tpyapp::mx::TimeoutError{};
+            throw ::tpyapp::mx::TimeoutError("");
         } catch (const ::tpy::TimeoutError&) {
             std::cout << "except: wrong builtin" << "\n" << ::tpy::check_signals;
         } catch (const ::tpyapp::mx::TimeoutError&) {
@@ -1103,7 +1103,7 @@ void Shade::run() const {
     std::cout << "shade:" << " " << static_cast<int32_t>(x) << "\n" << ::tpy::check_signals;
     {
         try {
-            throw ::tpyapp::main::LErr{};
+            throw ::tpyapp::main::LErr("");
         } catch (const ::tpyapp::main::Shade::LErr&) {
             std::cout << "shade: wrong nested" << "\n" << ::tpy::check_signals;
         } catch (const ::tpyapp::main::LErr&) {
@@ -1112,7 +1112,7 @@ void Shade::run() const {
     }
     {
         try {
-            throw ::tpyapp::main::Shade::LErr{};
+            throw ::tpyapp::main::Shade::LErr("");
         } catch (const ::tpyapp::main::LErr&) {
             std::cout << "shade: wrong module" << "\n" << ::tpy::check_signals;
         } catch (const ::tpyapp::main::Shade::LErr&) {

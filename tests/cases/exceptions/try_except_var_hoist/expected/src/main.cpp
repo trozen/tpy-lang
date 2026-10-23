@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return 5
 int32_t risky(bool fail) {
     if (fail) {
-        ::tpy::OSError("boom").__raise__();
+        ::tpy::OSError(std::string_view("boom")).__raise__();
     }
     return 5;
 }

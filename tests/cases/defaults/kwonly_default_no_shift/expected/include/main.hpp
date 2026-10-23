@@ -4,8 +4,26 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "kwmod.hpp"
 
 namespace tpyapp::main {
+
+template<typename T> struct Bag;
+struct Gen;
+struct Opts;
+struct M;
+struct Base;
+struct Child;
+template<typename T> struct Opt;
+struct KwPick;
+struct OptPick;
+template<typename T> struct OptBox;
+struct Scaler;
+struct Outer;
+struct Coded;
+struct Shower;
+struct Calc;
+struct Disp;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -13,8 +31,608 @@ inline constexpr std::string_view __name__ = "__main__";
 int64_t combine(int64_t a, int64_t b = 10, int64_t c = 20);
 // def partial(a: int64, b: int64 = 10, c: int64 = 30, *, d: int64 = 40) -> int64:
 int64_t partial(int64_t a, int64_t b = 10, int64_t c = 30, int64_t d = 40);
+// def total[T](*xs: T, k: int64 = 5) -> int64:
+template<typename T>
+int64_t total(::tpy::varargs<const T> xs, int64_t k = 5);
+// def total2[T](*xs: T, k: str = "") -> str:
+template<typename T>
+std::string total2(::tpy::varargs<const T> xs, std::string_view k = "");
+// def g(a: int64, *, k: int64 = 5) -> int64:
+int64_t g(int64_t a, int64_t k = 5);
+// @dispatch
+// def outer(x: int64) -> int64:
+int64_t outer__int64(int64_t x);
+// @dispatch
+// def outer(x: str) -> int64:
+int64_t outer__str(std::string_view x);
+// @dispatch
+// def apply[U](f: Fn[[int64], U], x: int64) -> U:
+template<typename U, typename __F0>
+  requires requires(__F0& __fn, int64_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<U>;
+  }
+::tpy::val_or_ref_t<U> apply__Fn_int64_U__int64(__F0&& f, int64_t x);
+// @dispatch
+// def apply[U](f: Fn[[str], U], x: str) -> U:
+template<typename U, typename __F0>
+  requires requires(__F0& __fn, std::string_view __a0) {
+      { __fn(__a0) } -> std::convertible_to<U>;
+  }
+::tpy::val_or_ref_t<U> apply__Fn_str_U__str(__F0&& f, std::string_view x);
+// def add(a: int64, b: int64) -> int64:
+int64_t add(int64_t a, int64_t b);
+// def kw_sum(**kw: Unpack[Opts]) -> int64:
+int64_t kw_sum(const Opts& kw);
+// def kw_infer[T](x: T, *, k: T = 1) -> T:
+template<typename T>
+::tpy::val_or_ref_t<T> kw_infer(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> k = 1);
+// def kw_only[T](*, k: T) -> T:
+template<typename T>
+::tpy::val_or_ref_t<T> kw_only(::tpy::param_val_or_ref_t<T> k);
+// def kw_after_args[T](*xs: T, k: T) -> T:
+template<typename T>
+::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const T> xs, ::tpy::param_val_or_ref_t<T> k);
+// def opt[T](x: T, *, k: T | None = None) -> T:
+template<typename T>
+::tpy::val_or_ref_t<T> opt(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_param_t<T> k = nullptr);
+// def optp[T](x: T, k: T | None = None) -> T:
+template<typename T>
+::tpy::val_or_ref_t<T> optp(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_param_t<T> k = nullptr);
+// @dispatch
+// def fk[T](*, k: T, fn: Fn[[int64], int64]) -> T:
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, int64_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int64_t>;
+  }
+::tpy::val_or_ref_t<T> fk__T__Fn_int64_int64(::tpy::param_val_or_ref_t<T> k, __F0&& fn);
+// @dispatch
+// def fk(*, k: str, fn: Fn[[str], str]) -> str:
+template<typename __F0>
+  requires requires(__F0& __fn, std::string_view __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string fk__str__Fn_str_str(std::string_view k, __F0&& fn);
+// def apply_opt[T](maybe: T | None, value: T, fn: Fn[[T], T]) -> T:
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<T>;
+  }
+::tpy::val_or_ref_t<T> apply_opt(::tpy::opt_cparam_t<T> maybe, ::tpy::param_val_or_ref_t<T> value, __F0&& fn);
+// def none_arm_and_trials() -> None:
+void none_arm_and_trials();
+// @dispatch
+// def describe(x: str) -> int64:
+int64_t describe__str(std::string_view x);
+// def raise_coded(n: int64) -> None:
+void raise_coded(int64_t n);
+// @dispatch
+// def outer_f(x: float) -> float:
+double outer_f__float(double x);
+// @dispatch
+// def outer_f(x: str) -> float:
+double outer_f__str(std::string_view x);
+// def h(x: int64, k: int64 = 5) -> int64:
+int64_t h(int64_t x, int64_t k = 5);
+// def ht(t: tuple[int64, int64]) -> int64:
+int64_t ht(const std::tuple<int64_t, int64_t>& t);
+// @dispatch
+// def outer_seq(x: list[int64]) -> int64:
+int64_t outer_seq__list_int64(const std::vector<int64_t>& x);
+// @dispatch
+// def outer_seq(x: str) -> int64:
+int64_t outer_seq__str(std::string_view x);
+// def neg(v: int64) -> int64:
+int64_t neg(int64_t v);
+// def builtin_keywords() -> None:
+void builtin_keywords();
+// def td_x(o: Opts) -> int64:
+int64_t td_x(const Opts& o);
+// def callee_reentry() -> None:
+void callee_reentry();
+// def walrus_reentry(c: bool) -> None:
+void walrus_reentry(bool c);
+// def pending_reentry(c: bool) -> None:
+void pending_reentry(bool c);
+// def sections() -> None:
+void sections();
+// def sections_reentry() -> None:
+void sections_reentry();
 // def main() -> None:
 void main();
+
+// class Bag[T]:
+template<typename T>
+struct Bag {
+
+    // def __init__(self) -> None:
+    Bag();
+
+    // def put(self, v: T, *, n: int64 = 2) -> None:
+    void put(::tpy::readonly_form_t<T> v, int64_t n = 2) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Bag<T>& obj) {
+    ::tpy::print_object_default(os, "Bag", obj);
+    return os;
+}
+
+// class Gen:
+struct Gen {
+
+
+    // def pick[T](self, x: T, y: int64 = 7) -> T:
+    template<typename T>
+    ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> x, int64_t y = 7) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Gen";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Gen& obj) {
+    ::tpy::print_object_default(os, "Gen", obj);
+    return os;
+}
+
+// class Opts(TypedDict):
+struct Opts {
+    // x: int64
+    int64_t x;
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Opts";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Opts& obj) {
+    ::tpy::print_object_default(os, "Opts", obj);
+    return os;
+}
+
+// class M:
+struct M {
+
+
+    // def m(self, a: int64 = 0, **kw: Unpack[Opts]) -> int64:
+    int64_t m(int64_t a, const Opts& kw) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.M";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const M& obj) {
+    ::tpy::print_object_default(os, "M", obj);
+    return os;
+}
+
+// class Base:
+struct Base {
+
+
+    // def m(self, x: int64, *, k: int64 = 4) -> int64:
+    int64_t m(int64_t x, int64_t k = 4) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
+    ::tpy::print_object_default(os, "Base", obj);
+    return os;
+}
+
+// class Opt[T]:
+template<typename T>
+struct Opt {
+
+    // def __init__(self) -> None:
+    Opt();
+
+    // def f(self, x: int64 | None = 0, *, k: int64 = 2) -> None:
+    void f(std::optional<int64_t> x = 0, int64_t k = 2) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Opt";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Opt<T>& obj) {
+    ::tpy::print_object_default(os, "Opt", obj);
+    return os;
+}
+
+// class KwPick:
+struct KwPick {
+
+
+    // def pick[T](self, x: T, *, k: T) -> T:
+    template<typename T>
+    ::tpy::val_or_ref_t<T> pick(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> k) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.KwPick";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const KwPick& obj) {
+    ::tpy::print_object_default(os, "KwPick", obj);
+    return os;
+}
+
+// class OptPick:
+struct OptPick {
+
+
+    // def pick[T](self, x: T, *, k: T | None = None) -> T:
+    template<typename T>
+    ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_cparam_t<T> k = nullptr) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptPick";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptPick& obj) {
+    ::tpy::print_object_default(os, "OptPick", obj);
+    return os;
+}
+
+// class OptBox[T]:
+template<typename T>
+struct OptBox {
+    // self.x = x
+    T x;
+
+    // def __init__(self, x: T, *, k: T | None = None) -> None:
+    OptBox() = default;
+    explicit OptBox(::tpy::readonly_form_t<T> x, ::tpy::opt_cparam_t<T> k = nullptr);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptBox";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const OptBox<T>& obj) {
+    ::tpy::print_object_default(os, "OptBox", obj);
+    return os;
+}
+
+// class Scaler:
+struct Scaler {
+
+
+    // def __call__(self, a: int64, *, k: int64 = 5) -> int64:
+    int64_t __call__(int64_t a, int64_t k = 5) const;
+
+    int64_t operator()(int64_t a, int64_t k) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Scaler";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Scaler& obj) {
+    ::tpy::print_object_default(os, "Scaler", obj);
+    return os;
+}
+
+// class Outer:
+struct Outer {
+    // class Inner:
+    struct Inner {
+        // v: int64
+        int64_t v;
+
+        // def __init__(self, a: int64, k: int64 = 5) -> None:
+        Inner() = default;
+        explicit Inner(int64_t a, int64_t k = 5);
+        static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Inner";
+    };
+
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Outer& obj) {
+    ::tpy::print_object_default(os, "Outer", obj);
+    return os;
+}
+
+inline std::ostream& operator<<(std::ostream& os, const Outer::Inner& obj) {
+    ::tpy::print_object_default(os, "Outer.Inner", obj);
+    return os;
+}
+
+// @dispatch
+// def describe(x: Outer.Inner) -> int64:
+int64_t describe__Outer_Inner(const Outer::Inner& x);
+
+// class Coded(Exception):
+struct Coded : ::tpy::Exception {
+    // self.code = code
+    int64_t code;
+
+    // def __init__(self, msg: str, code: int64 = 0) -> None:
+    Coded() = default;
+    explicit Coded(std::string_view msg, int64_t code = 0);
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Coded>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Coded";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Coded& obj) {
+    ::tpy::print_object_default(os, "Coded", obj);
+    return os;
+}
+
+// class Shower:
+struct Shower {
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shower";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shower& obj) {
+    ::tpy::print_object_default(os, "Shower", obj);
+    return os;
+}
+
+// class Calc:
+struct Calc {
+
+
+    // def scale(self, f: float | None = None) -> float:
+    double scale(std::optional<double> f = std::nullopt) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Calc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Calc& obj) {
+    ::tpy::print_object_default(os, "Calc", obj);
+    return os;
+}
+
+// class Disp:
+struct Disp {
+
+    // def __init__(self) -> None:
+    Disp();
+
+    // @dispatch
+    // def m(self, x: int64, k: int64) -> int64:
+    int64_t m(int64_t x, int64_t k) const;
+
+    // @dispatch
+    // def m(self, x: str, k: int64) -> int64:
+    int64_t m(std::string_view x, int64_t k) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Disp";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Disp& obj) {
+    ::tpy::print_object_default(os, "Disp", obj);
+    return os;
+}
+
+// class Child(Base):
+struct Child : Base {
+
+
+    // def run(self) -> int64:
+    int64_t run() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
+    ::tpy::print_object_default(os, "Child", obj);
+    return os;
+}
+
+
+// def m(self, a: int64 = 0, **kw: Unpack[Opts]) -> int64:
+//     return a * 10 + kw["x"]
+inline int64_t M::m(int64_t a, const Opts& kw) const {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10)), kw.x));
+}
+
+// def m(self, x: int64, *, k: int64 = 4) -> int64:
+//     return x * 10 + k
+inline int64_t Base::m(int64_t x, int64_t k) const {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(x, 10)), k));
+}
+
+// def __call__(self, a: int64, *, k: int64 = 5) -> int64:
+//     return a * 10 + k
+inline int64_t Scaler::__call__(int64_t a, int64_t k) const {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10)), k));
+}
+
+inline int64_t Scaler::operator()(int64_t a, int64_t k) const {
+    return __call__(a, k);
+}
+
+// def __init__(self, a: int64, k: int64 = 5) -> None:
+//     self.v = a * 10 + k
+inline Outer::Inner::Inner(int64_t a, int64_t k) : v((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10)), k))) {}
+
+// def __init__(self, msg: str, code: int64 = 0) -> None:
+//     super().__init__(msg)
+//     self.code = code
+inline Coded::Coded(std::string_view msg, int64_t code)
+    : ::tpy::Exception(msg),
+      code(code) {}
+
+// def scale(self, f: float | None = None) -> float:
+//     return f if f is not None else 0.0
+inline double Calc::scale(std::optional<double> f) const {
+    return (((f.has_value())) ? ((*f)) : (0.0));
+}
+
+// def __init__(self) -> None:
+//     pass
+inline Disp::Disp() {
+}
+
+// @dispatch
+// def m(self, x: int64, k: int64) -> int64:
+//     return x * 10 + k
+inline int64_t Disp::m(int64_t x, int64_t k) const {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(x, 10)), k));
+}
+
+// @dispatch
+// def m(self, x: str, k: int64) -> int64:
+//     return k
+inline int64_t Disp::m(std::string_view x, int64_t k) const {
+    return k;
+}
+
+// def run(self) -> int64:
+//     return outer(Base.m(self, 3, k=1))  # tpyc: ok
+inline int64_t Child::run() const {
+    return ::tpyapp::main::outer__int64(this->Base::m(3, 1));
+}
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Bag<T>::Bag() {
+}
+
+// def put(self, v: T, *, n: int64 = 2) -> None:
+//     print("pending", v, n)
+template<typename T>
+inline void Bag<T>::put(::tpy::readonly_form_t<T> v, int64_t n) const {
+    std::cout << "pending" << " " << ::tpy::ValuePrinter(v) << " " << n << "\n" << ::tpy::check_signals;
+}
+
+// def pick[T](self, x: T, y: int64 = 7) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Gen::pick(::tpy::param_val_or_ref_t<T> x, int64_t y) const {
+    return ::tpy::param_to_return<T>(x);
+}
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Opt<T>::Opt() {
+}
+
+// def f(self, x: int64 | None = 0, *, k: int64 = 2) -> None:
+//     print("method-optional-default", x, k)
+template<typename T>
+inline void Opt<T>::f(std::optional<int64_t> x, int64_t k) const {
+    std::cout << "method-optional-default" << " " << ::tpy::print_optional_val(x) << " " << k << "\n" << ::tpy::check_signals;
+}
+
+// def pick[T](self, x: T, *, k: T) -> T:
+//     return k
+template<typename T>
+inline ::tpy::val_or_ref_t<T> KwPick::pick(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> k) const {
+    return ::tpy::param_to_return<T>(k);
+}
+
+// def pick[T](self, x: T, *, k: T | None = None) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> OptPick::pick(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_cparam_t<T> k) const {
+    return ::tpy::param_to_return<T>(x);
+}
+
+// def __init__(self, x: T, *, k: T | None = None) -> None:
+//     self.x = x
+template<typename T>
+inline OptBox<T>::OptBox(::tpy::readonly_form_t<T> x, ::tpy::opt_cparam_t<T> k) : x(x) {}
+
+// # generic *args: the keyword-only parameter after the pack is no element.
+// def total[T](*xs: T, k: int64 = 5) -> int64:
+//     return len(xs) * 100 + k
+template<typename T>
+int64_t total(::tpy::varargs<const T> xs, int64_t k) {
+    return (::tpy::add_check<int64_t>(static_cast<int64_t>((::tpy::mul_check<int32_t>(::tpy::__len__(xs), 100))), k));
+}
+// def total2[T](*xs: T, k: str = "") -> str:
+//     return str(len(xs)) + k
+template<typename T>
+std::string total2(::tpy::varargs<const T> xs, std::string_view k) {
+    return (::tpy::str_concat(::tpy::fixed_to_str<int32_t>(::tpy::__len__(xs)), k));
+}
+// @dispatch
+// def apply[U](f: Fn[[int64], U], x: int64) -> U:
+//     return f(x)
+template<typename U, typename __F0>
+  requires requires(__F0& __fn, int64_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<U>;
+  }
+::tpy::val_or_ref_t<U> apply__Fn_int64_U__int64(__F0&& f, int64_t x) {
+    return f(x);
+}
+// @dispatch
+// def apply[U](f: Fn[[str], U], x: str) -> U:
+//     return f(x)
+template<typename U, typename __F0>
+  requires requires(__F0& __fn, std::string_view __a0) {
+      { __fn(__a0) } -> std::convertible_to<U>;
+  }
+::tpy::val_or_ref_t<U> apply__Fn_str_U__str(__F0&& f, std::string_view x) {
+    return f(x);
+}
+// # Keyword-only arguments are inference evidence, as positional ones are: an
+// # argument that agrees with `x` infers `T`, and one alone decides it.
+// def kw_infer[T](x: T, *, k: T = 1) -> T:
+//     return k
+template<typename T>
+::tpy::val_or_ref_t<T> kw_infer(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> k) {
+    return ::tpy::param_to_return<T>(k);
+}
+// def kw_only[T](*, k: T) -> T:
+//     return k
+template<typename T>
+::tpy::val_or_ref_t<T> kw_only(::tpy::param_val_or_ref_t<T> k) {
+    return ::tpy::param_to_return<T>(k);
+}
+// def kw_after_args[T](*xs: T, k: T) -> T:
+//     return k
+template<typename T>
+::tpy::val_or_ref_t<T> kw_after_args(::tpy::varargs<const T> xs, ::tpy::param_val_or_ref_t<T> k) {
+    return ::tpy::param_to_return<T>(k);
+}
+// # A `None` at a `T | None` parameter fills its None arm: no evidence for `T`
+// # beside an argument that is, keyword or positional.
+// def opt[T](x: T, *, k: T | None = None) -> T:
+//     if k is not None:
+//         return k
+//     return x
+template<typename T>
+::tpy::val_or_ref_t<T> opt(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_param_t<T> k) {
+    if ((::tpy::opt_has_value(k))) {
+        return (*k);
+    }
+    return ::tpy::param_to_return<T>(x);
+}
+// def optp[T](x: T, k: T | None = None) -> T:
+//     if k is not None:
+//         return k
+//     return x
+template<typename T>
+::tpy::val_or_ref_t<T> optp(::tpy::param_val_or_ref_t<T> x, ::tpy::opt_param_t<T> k) {
+    if ((::tpy::opt_has_value(k))) {
+        return (*k);
+    }
+    return ::tpy::param_to_return<T>(x);
+}
+// # A candidate tried per lambda infers `T` from its keyword-only `k`.
+// @dispatch
+// def fk[T](*, k: T, fn: Fn[[int64], int64]) -> T:
+//     return k
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, int64_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int64_t>;
+  }
+::tpy::val_or_ref_t<T> fk__T__Fn_int64_int64(::tpy::param_val_or_ref_t<T> k, __F0&& fn) {
+    return ::tpy::param_to_return<T>(k);
+}
+// @dispatch
+// def fk(*, k: str, fn: Fn[[str], str]) -> str:
+//     return k
+template<typename __F0>
+  requires requires(__F0& __fn, std::string_view __a0) {
+      { __fn(__a0) } -> std::convertible_to<std::string>;
+  }
+std::string fk__str__Fn_str_str(std::string_view k, __F0&& fn) {
+    return std::string(k);
+}
+// # The partial inference that types the lambda leaves `T` to `value`, not to
+// # the `None`.
+// def apply_opt[T](maybe: T | None, value: T, fn: Fn[[T], T]) -> T:
+//     return fn(value)
+template<typename T, typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      { __fn(__a0) } -> std::convertible_to<T>;
+  }
+::tpy::val_or_ref_t<T> apply_opt(::tpy::opt_cparam_t<T> maybe, ::tpy::param_val_or_ref_t<T> value, __F0&& fn) {
+    return fn(value);
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

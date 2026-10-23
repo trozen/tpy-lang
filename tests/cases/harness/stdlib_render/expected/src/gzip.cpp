@@ -154,10 +154,10 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
             throw ::tpy::EOFError(_TRUNCATED);
         }
         if ((::tpystd::gzip::_u32le(tail, 0) != ::tpystd::zlib::crc32(decompressed))) {
-            throw BadGzipFile("CRC check failed");
+            throw BadGzipFile(std::string_view("CRC check failed"));
         }
         if ((::tpystd::gzip::_u32le(tail, 4) != static_cast<uint32_t>((static_cast<int64_t>(::tpy::int_cast_check<int64_t>(::tpy::__len__(decompressed)) & static_cast<int64_t>(4294967295)))))) {
-            throw BadGzipFile("Incorrect length of data produced");
+            throw BadGzipFile(std::string_view("Incorrect length of data produced"));
         }
         members.push_back(decompressed);
         int32_t start = 8;
@@ -306,7 +306,7 @@ void _GzipReader::_read_eof() {
         throw BadGzipFile(std::format("CRC check failed {} != {}", ::tpy::builtin_hex(crc), ::tpy::builtin_hex(this->_crc)));
     }
     if ((isize != static_cast<uint32_t>((static_cast<int64_t>(this->_stream_size & static_cast<int64_t>(4294967295)))))) {
-        throw BadGzipFile("Incorrect length of data produced");
+        throw BadGzipFile(std::string_view("Incorrect length of data produced"));
     }
     ::tpy::Bytes c = ::tpy::bytes_literal_owned("\000", 1);
     while ((c == ::tpy::bytes_literal("\000", 1))) {

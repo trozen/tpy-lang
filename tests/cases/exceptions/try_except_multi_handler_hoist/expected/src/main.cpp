@@ -15,7 +15,7 @@ int32_t risky(int32_t n) {
         throw ::tpy::ValueError("v");
     }
     if ((n == 2)) {
-        ::tpy::OSError("o").__raise__();
+        ::tpy::OSError(std::string_view("o")).__raise__();
     }
     return 10;
 }

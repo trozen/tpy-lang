@@ -1,0 +1,16 @@
+return-only 3 ''
+return-only-explicit 4 ''
+thrown-subclass ''
+raise-builtin ''
+inherited-arg 'hello'
+inherited-argless ''
+inherited-two-level 2 True
+method-two-level 1
+method-two-level-parent 2 1
+raise-generic-inferred 'eb'
+generator-value 1
+generatorexit-abandoned ''
+generatorexit-direct ''
+cancel-task ''
+cancel-raise ''
+cancel-direct ''

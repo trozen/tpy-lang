@@ -40,7 +40,7 @@ std::string matched(const ::tpy::Exception& e) {
 void run() {
     {
         try {
-            throw ::tpyapp::mx::TimeoutError{};
+            throw ::tpyapp::mx::TimeoutError("");
         } catch (const ::tpy::Exception& e) {
             std::cout << "shadow builtin:" << " " << ::tpyapp::shadow_builtin::classify(e) << " " << ::tpyapp::shadow_builtin::matched(e) << "\n" << ::tpy::check_signals;
         }

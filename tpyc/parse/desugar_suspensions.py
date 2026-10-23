@@ -36,7 +36,7 @@ from .nodes import (
     TpyMatch, TpyWith, TpyAssert, TpyUnaryOp, SourceLocation,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression, TpyFunction, TpyNamedExpr, ParseError,
-    stamp_stands_for, walk_expr_tree,
+    keeps_argument_layout, stamp_stands_for, walk_expr_tree,
 )
 
 
@@ -178,6 +178,7 @@ class _Desugarer:
                     p, ne = self._lower(e)
                     prefix.extend(p)
                     new_list.append(ne)
+                assert keeps_argument_layout(f.name, v, new_list)
                 setattr(stmt, f.name, new_list)
         # with-item context expressions live inside TpyWithItem objects, not a
         # plain expr field; each is evaluated once before the with, so its
@@ -279,6 +280,7 @@ class _Desugarer:
                     p, ne = self._lower(e)
                     prefix.extend(p)
                     new_list.append(ne)
+                assert keeps_argument_layout(f.name, v, new_list)
                 setattr(expr, f.name, new_list)
         return prefix, expr
 

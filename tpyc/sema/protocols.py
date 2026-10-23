@@ -1096,27 +1096,22 @@ class ProtocolChecker:
         E.g., if Container[T] has field `value: T` and IntContainer extends Container[int32],
         looking up `value` on IntContainer returns FieldInfo with type int32.
         """
-        # Check this record's own fields first
         for fld in record_info.fields:
             if fld.name == field_name:
                 return fld
-        # Walk each direct parent's chain (source / MRO order; diamond-free invariant
-        # guarantees no ancestor contributes twice).
-        for parent_type in record_info.parents:
-            parent_info = self.ctx.registry.get_record_for_type(parent_type)
-            if parent_info is None:
+        for anc_type, anc_info in self.ctx.registry.iter_mro_entries(
+                record_info, fields_only=True):
+            inherited = next((f for f in anc_info.fields if f.name == field_name), None)
+            if inherited is None:
                 continue
-            if not self.ctx.registry.is_struct_base(record_info, parent_info):
-                continue
-            inherited = self.lookup_record_field(parent_info, field_name)
-            if inherited:
-                type_subst = self.get_parent_type_subst(parent_type, parent_info)
-                if type_subst:
-                    substituted_type = self.type_ops.substitute_type_params(inherited.type, type_subst)
-                    # Preserve every other FieldInfo fact (native_name, loc,
-                    # ...) -- only the type is substituted.
-                    return dataclasses.replace(inherited, type=substituted_type)
-                return inherited
+            type_subst = self.get_parent_type_subst(anc_type, anc_info)
+            if type_subst:
+                # Preserve every other FieldInfo fact (native_name, loc,
+                # ...) -- only the type is substituted.
+                return dataclasses.replace(
+                    inherited,
+                    type=self.type_ops.substitute_type_params(inherited.type, type_subst))
+            return inherited
         return None
 
     def find_field_parent_branches(
@@ -1179,28 +1174,26 @@ class ProtocolChecker:
         """Look up a property by name, including inherited properties.
 
         For generic parent classes, substitutes type parameters in the
-        inherited property's accessor signatures with concrete types --
-        in-walk, level by level, mirroring lookup_record_field. Without it a
-        subclass of an instantiation (class Sub(Holder[int32, Rec])) reads an
-        inherited `-> K` getter with K unsubstituted.
+        inherited property's accessor signatures with concrete types, from
+        the MRO entry that declares it. Without it a subclass of an
+        instantiation (class Sub(Holder[int32, Rec])) reads an inherited
+        `-> K` getter with K unsubstituted.
         """
         prop = record_info.properties.get(prop_name)
         if prop:
             return prop
-        for parent_type in record_info.parents:
-            parent_info = self.ctx.registry.get_record_for_type(parent_type)
-            if parent_info is None:
+        for anc_type, anc_info in self.ctx.registry.iter_mro_entries(record_info):
+            inherited = anc_info.properties.get(prop_name)
+            if not inherited:
                 continue
-            inherited = self.lookup_record_property(parent_info, prop_name)
-            if inherited:
-                type_subst = self.get_parent_type_subst(parent_type, parent_info)
-                if type_subst:
-                    return PropertyInfo(
-                        name=inherited.name,
-                        accessors=[self.type_ops.substitute_method_type_params(fi, type_subst)
-                                   for fi in inherited.accessors],
-                    )
-                return inherited
+            type_subst = self.get_parent_type_subst(anc_type, anc_info)
+            if type_subst:
+                return PropertyInfo(
+                    name=inherited.name,
+                    accessors=[self.type_ops.substitute_method_type_params(fi, type_subst)
+                               for fi in inherited.accessors],
+                )
+            return inherited
         return None
 
     def lookup_record_method_overloads(
@@ -1214,25 +1207,15 @@ class ProtocolChecker:
         For inherited methods from builtin types with multiple overloads (like pop()),
         this returns all overloads so proper overload resolution can be done.
         """
-        # Check this record's own methods first
-        overloads = record_info.get_method_overloads(method_name)
-        if overloads:
-            return (overloads, {})
-
-        # Check parents (user-defined or builtin) -- unified recursive path over each base.
         # Multi-base conflict-check in registration ensures we don't silently pick between
         # two conflicting definitions here, so first-match-wins is safe.
-        for parent_type in record_info.parents:
-            parent_info = self.ctx.registry.get_record_for_type(parent_type)
-            if parent_info is None:
-                continue
-            inherited, parent_subst = self.lookup_record_method_overloads(parent_info, method_name)
-            if inherited:
-                type_subst = self.get_parent_type_subst(parent_type, parent_info)
-                combined_subst = {**parent_subst, **type_subst}
-                return (inherited, combined_subst)
-
-        return ([], {})
+        found = self.ctx.registry.mro_method_definer(record_info, method_name)
+        if found is None:
+            return ([], {})
+        owner_type, owner = found
+        return (owner.get_method_overloads(method_name),
+                self.get_parent_type_subst(owner_type, owner)
+                if owner_type is not None else {})
 
     def get_parent_type_subst(
         self, parent_type: TpyType, parent_info: RecordInfo
@@ -1254,26 +1237,18 @@ class ProtocolChecker:
     def resolve_ancestor_instantiation(
         self, current_rec: RecordInfo, ancestor_info: RecordInfo,
     ) -> tuple[TpyType, dict[str, TpyType | int]]:
-        """Find the concrete NominalType for `ancestor_info` on current_rec's
-        MRO, plus its type-param substitution.
-
-        Handles generic ancestors where the same `ancestor_info` may appear
-        with different type args on the MRO. Falls back to an unparameterized
-        nominal when no instantiation carries the ancestor (simple non-generic
-        inheritance).
-        """
-        parent_type: TpyType | None = None
-        for anc_type in current_rec.mro_ancestors:
-            if isinstance(anc_type, NominalType):
-                anc_info = self.ctx.registry.get_record_for_type(anc_type)
-                if anc_info is ancestor_info:
-                    parent_type = anc_type
-                    break
-        if parent_type is None:
-            parent_type = NominalType(
-                ancestor_info.name,
-                _module_qname=ancestor_info.qualified_name(),
-            )
+        """The instantiation of `ancestor_info` that `current_rec` inherits,
+        spelled in `current_rec`'s own type parameters (its MRO entry, see
+        `compute_mro_ancestors`), plus the substitution from the ancestor's
+        parameters to it. Falls back to an unparameterized nominal when the
+        ancestor is not in the MRO."""
+        for anc_type, anc_info in self.ctx.registry.iter_mro_entries(current_rec):
+            if anc_info is ancestor_info:
+                return anc_type, self.get_parent_type_subst(anc_type, ancestor_info)
+        parent_type = NominalType(
+            ancestor_info.name,
+            _module_qname=ancestor_info.qualified_name(),
+        )
         return parent_type, self.get_parent_type_subst(parent_type, ancestor_info)
 
     def get_protocol_conformance_issues(self, record_type: NominalType, protocol: NominalType) -> list[str]:

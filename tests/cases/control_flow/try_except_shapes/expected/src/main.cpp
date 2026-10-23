@@ -20,7 +20,7 @@ namespace tpyapp::main {
         throw AppError(::tpy::BigInt(7));
     }
     if ((n > 99)) {
-        throw ::tpy::RuntimeError{};
+        throw ::tpy::RuntimeError("");
     }
     return ((n) * (::tpy::BigInt(2)));
 }

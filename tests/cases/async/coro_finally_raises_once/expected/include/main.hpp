@@ -335,7 +335,7 @@ struct __coro_main {
 //     super().__init__()
 //     self.code = code
 inline Err::Err(const ::tpy::BigInt& code)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       code(code) {}
 
 // def __enter__(self) -> int:

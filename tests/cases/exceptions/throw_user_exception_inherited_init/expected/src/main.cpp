@@ -37,7 +37,7 @@ void main() {
     }
     {
         try {
-            throw MyError{};
+            throw MyError("");
         } catch (const MyError&) {
             std::cout << "bare" << "\n" << ::tpy::check_signals;
         }

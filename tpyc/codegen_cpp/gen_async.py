@@ -1010,7 +1010,7 @@ class AsyncCoroCodegen:
         defaults = func.defaults or []
         ptype = func.params[param_index][1]
         if not default_emittable(defaults, param_index, len(func.params),
-                                 ptype, func.params, func.is_method):
+                                 ptype, func.params, func.is_method, func):
             return ""
         return f" = {default_to_cpp(self.ctx, defaults[param_index], ptype)}"
 

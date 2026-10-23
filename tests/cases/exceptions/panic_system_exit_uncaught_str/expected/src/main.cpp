@@ -18,7 +18,7 @@ void main() {
     {
         try {
             std::cout << "main: exiting" << "\n" << ::tpy::check_signals;
-            throw Fatal("fatal: bad config");
+            throw Fatal(std::string_view("fatal: bad config"));
         } catch (...) {
             std::cout << "main: finally" << "\n" << ::tpy::check_signals;
             throw;

@@ -88,7 +88,7 @@ void main() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n >= __self.limit)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         __self.n = ::tpy::add_check<int32_t>(__self.n, 1);
         __state = S_DONE;

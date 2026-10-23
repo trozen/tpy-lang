@@ -24,24 +24,29 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyStrLiteral, TpyStmt,
     TpyStarUnpack,
     is_docstring,
-    TpyFString, TpyExpr, TpySubscript,
+    TpyExpr, TpySubscript,
     is_super_del_call,
 )
-from ..parse.nodes import name_path
+from ..parse.nodes import comp_free_reads, name_path
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from .compatibility import InferredSlot, inferred_receiver
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
-from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type, protocol_info_of
+from ..type_def_registry import is_list, is_set, is_borrowing_view_type, is_varargs, protocol_info_of
 from .bound_check import raise_if_class_param_bound_violated
+from .arg_binding import (
+    CallSource, SlotKind, adopt_temp_call, relayout, source_view,
+    temp_call_args,
+)
 from .calls import (
-    arity_error_msg, call_shape, resolve_kwargs, validate_generic_defaults,
+    ArgLayout, call_shape,
+    validate_generic_defaults,
     validate_type_param_bounds,
     resolve_inferred_type_arg,
 )
-from .type_ops import ReturnSeed, seeded_arg_hint
+from .type_ops import seeded_arg_hint
 from .context import CompTarget, GenericMethodRoute, PENDING_CONTAINER_TYPES
 from .overloads import CallShape
 from .list_elem import (ContainerCall, Effect, Role, container_call,
@@ -476,7 +481,7 @@ class MethodAnalyzer:
 
     def _check_args_or_pack_varargs(
         self, expr: TpyMethodCall,
-        resolved: FunctionInfo,
+        resolved: FunctionInfo, layout: ArgLayout,
         arg_types: list[TpyType] | None = None,
     ) -> None:
         """Dispatch arg checking based on whether the method has *args.
@@ -489,35 +494,52 @@ class MethodAnalyzer:
         """
         if resolved.has_variadic:
             self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-            self.calls._analyze_and_pack_varargs(expr, resolved)
+            self.calls._analyze_and_pack_varargs(expr, resolved, layout)
         else:
             # `*unpack` is only valid at a variadic param position; a
             # non-variadic method must reject it (mirrors the free-function
             # guard in CallAnalyzer._typecheck_call_args). Without this the
             # pre-analyzed element type would be silently coerced as if the
             # unpack were a single positional arg.
-            for arg in expr.args:
+            for arg in layout.args:
                 if isinstance(arg, TpyStarUnpack):
                     raise self.ctx.error(
                         f"Cannot use *unpacking: '{resolved.name}' "
                         f"does not accept *args", arg)
-            self._check_and_coerce_args(expr, resolved.params, arg_types)
+            self._check_and_coerce_args(expr, resolved.params, layout,
+                                        arg_types)
 
     def _check_and_coerce_args(
         self, expr: TpyMethodCall,
-        params: list[tuple[str, TpyType]],
+        params: list[tuple[str, TpyType]], layout: ArgLayout,
         arg_types: list[TpyType] | None = None,
     ) -> None:
-        """Receive the method's arguments at `params`
+        """Receive the method's arguments, laid out as `layout`
+        (`CallAnalyzer.commit_args`), at `params`
         (`CallAnalyzer.receive_winner_args`). `arg_types`, or the types a
         container method's preparation decided (`pre_analyzed_method_args`),
         are taken where given instead of a re-entry."""
         pre = self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-        decided = arg_types if arg_types is not None else pre
+        binding = layout.binding
+        param_at = binding.param_order()
+        decided: list[TpyType | None] | None = arg_types
+        if decided is None and pre is not None:
+            # The pre-analysis typed the written positionals.
+            slots = binding.slots
+            decided = []
+            for slot in param_at:
+                written_at = (slots[slot].index
+                              if slots[slot].kind is SlotKind.POSITIONAL
+                              else None)
+                decided.append(pre[written_at] if written_at is not None
+                               and written_at < len(pre) else None)
+        inferred = self._inferred_receiver_slots(expr)
         self.calls.receive_winner_args(
-            self.calls.args_scope(expr.args), expr.args, decided, params,
-            expr.resolved_function_info, call=expr,
-            inferred_slots=self._inferred_receiver_slots(expr))
+            self.calls.args_scope(layout.args), layout.args, decided,
+            [params[k] for k in param_at], expr.resolved_function_info,
+            call=expr,
+            inferred_slots={j: inferred[k] for j, k in enumerate(param_at)
+                            if k in inferred})
 
     def _inferred_receiver_slots(self, expr: TpyMethodCall
                                  ) -> dict[int, InferredSlot]:
@@ -544,117 +566,101 @@ class MethodAnalyzer:
 
         Sets expr.resolved_function_info. Returns the return type.
         """
-        # Pack **kwargs into TypedDict construction for methods with **kwargs param
-        if len(overloads) == 1 and overloads[0].kwarg_name:
-            func = overloads[0]
-            resolved_func = (self.type_ops.substitute_method_type_params(func, type_subst)
-                             if type_subst else func)
-            self.calls._pack_kwargs_into_typed_dict_method(expr, resolved_func)
-        elif expr.double_star_unpack is not None:
-            raise self.ctx.error(
-                f"'{expr.method}' does not accept **kwargs", expr)
-
-        # Resolve kwargs before arity check. For the single-overload path we
-        # expand kwargs here; the multi-overload path defers resolution to
-        # after overload resolution so kwargs can participate in tier ranking.
-        sole = overloads[0] if len(overloads) == 1 else None
-        has_kwonly = any(p.keyword_only for p in (sole.params if sole else []))
-        # A default with no C++ spelling must be filled here or the emitted
-        # call drops the argument entirely.
-        needs_fill = sole.materializes_defaults if sole else False
-        if len(overloads) == 1 and (expr.kwargs or has_kwonly or needs_fill):
-            target = overloads[0]
-            resolved_target = (self.type_ops.substitute_method_type_params(target, type_subst)
-                               if type_subst else target)
-            expr.args = resolve_kwargs(
-                expr.args, expr.kwargs, resolved_target.params, expr.method,
-                lambda msg: self.ctx.error(msg, expr),
-                call_loc=expr.loc, is_member=True, ctx=self.ctx,
-            )
-            expr.kwargs = {}
-
+        # The single-overload path binds the arguments here; the
+        # multi-overload path binds them to the winner, after the keywords
+        # took part in its ranking.
         if len(overloads) == 1:
             unresolved = overloads[0]
             resolved = (self.type_ops.substitute_method_type_params(unresolved, type_subst)
                         if type_subst else unresolved)
-            if len(expr.args) < resolved.min_args or len(expr.args) > resolved.max_args:
-                raise self.ctx.error(
-                    arity_error_msg(expr.method, resolved.min_args, resolved.max_args, len(expr.args)),
-                    expr)
+            binding = self.calls.bind_args(expr, resolved.params, expr.method)
+            kwargs_arg = self.calls.kwargs_region_arg(
+                expr, resolved, binding, expr.method)
+            layout = self.calls.commit_args(
+                expr, resolved, binding, type_subst, analyze=False,
+                fill=self._renders_call(expr), kwargs_arg=kwargs_arg)
             expr.resolved_function_info = resolved
-            self._check_args_or_pack_varargs(expr, resolved)
+            self._check_args_or_pack_varargs(expr, resolved, layout)
             if type_subst:
                 validate_generic_defaults(
-                    expr.args, unresolved, type_subst, self.type_ops,
-                    lambda msg: self.ctx.error(msg, expr))
+                    binding, unresolved, type_subst, self.type_ops,
+                    lambda msg: self.ctx.error(msg, expr), layout.filled)
         else:
+            # Ranked on the call as written, also when an earlier analysis
+            # committed it (a call macro's argument analyzed again).
+            written = source_view(expr, peel=False)
+            positional = list(written.positional)
+            keywords = dict(written.keywords)
+            if written.double_star is not None:
+                raise self.ctx.error(
+                    f"'{expr.method}' does not accept **kwargs", expr)
             resolved_overloads = [
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
             ]
             with self.calls.open_call_args(
-                    expr, [*expr.args, *(expr.kwargs or {}).values()],
+                    expr, written.operands,
                     expr.method, scored=True,
                     candidates=resolved_overloads) as scope:
                 pre = self.ctx.func.pre_analyzed_method_args.get(expr)
                 known = ({i: t for i, t in enumerate(pre) if t is not None}
-                         if pre is not None and len(pre) == len(expr.args)
+                         if pre is not None and len(pre) == len(positional)
                          else None)
                 if known is None:
                     self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                 arg_types, ranked_types = self.calls.probe_overload_args(
-                    expr, expr.args, resolved_overloads, known)
+                    expr, positional, resolved_overloads, known)
                 # The winner receives the arguments the preparation typed
                 # as it typed them; every other one re-enters at its slot.
-                decided = ([known.get(i) for i in range(len(expr.args))]
+                decided = ([known.get(i) for i in range(len(positional))]
                            if known else None)
                 kwarg_types: dict[str, TpyType] | None = None
-                if expr.kwargs:
+                if keywords:
                     kwarg_types = self.calls.probe_kwargs(
-                        expr.kwargs, resolved_overloads,
-                        call_shape(expr, expr.args))
+                        keywords, resolved_overloads,
+                        call_shape(expr, positional))
                 resolved, const_receiver = self.calls.rank_method_call(
-                    expr.method, resolved_overloads, ranked_types, expr.args,
+                    expr.method, resolved_overloads, ranked_types, positional,
                     expr, readonly_receiver=is_readonly_receiver,
                     consuming_receiver=is_consuming_receiver,
                     kwarg_types=kwarg_types)
                 if resolved is None:
-                    if kwarg_types:
-                        accepted_names = {p.name for o in overloads for p in o.params}
-                        for kw_name in kwarg_types:
-                            if kw_name not in accepted_names:
-                                raise self.ctx.error(
-                                    f"'{expr.method}' got unexpected keyword argument '{kw_name}'",
-                                    expr)
+                    self.calls.reject_unaccepted_keyword(
+                        expr, expr.method, overloads, kwarg_types or ())
                     self.calls.raise_no_match(
                         expr.method, resolved_overloads, ranked_types,
-                        expr.args, expr,
+                        positional, expr,
                         [self.compat.call_type_text(t) for t in arg_types])
                 expr.resolved_function_info = resolved
                 expr.const_receiver = const_receiver
                 coerce_arg_types = decided
-                if expr.kwargs or resolved.materializes_defaults:
-                    # Winner picked; expand kwargs into positional slots against its
-                    # signature. A default with no C++ spelling must be filled even
-                    # with no kwargs, or the emitted call is an argument short.
-                    expr.args = resolve_kwargs(
-                        expr.args, expr.kwargs, resolved.params, expr.method,
-                        lambda msg: self.ctx.error(msg, expr),
-                        call_loc=expr.loc, is_member=True, ctx=self.ctx,
-                    )
-                    expr.kwargs = {}
-                    # Pre-analyzed types no longer align with expanded expr.args;
-                    # discard any stale empty-list inference cache so
-                    # _check_and_coerce_args re-analyzes every arg with a param hint.
+                binding = self.calls.bind_args(expr, resolved.params,
+                                               expr.method)
+                if keywords or (resolved.materializes_defaults
+                                and self._renders_call(expr)):
+                    # Winner picked; its binding spells the keywords in
+                    # their slots. A default with no C++ spelling must be
+                    # filled even with no kwargs, or the emitted call is an
+                    # argument short.
+                    layout = self.calls.commit_args(
+                        expr, resolved, binding, type_subst, analyze=False,
+                        fill=self._renders_call(expr))
+                    # The arguments are analyzed again at the winner's slots.
                     self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                     coerce_arg_types = None
-                self._check_args_or_pack_varargs(expr, resolved, coerce_arg_types)
+                else:
+                    # The written positionals stand as the argument list.
+                    layout = self.calls.commit_args(
+                        expr, resolved, binding, type_subst, analyze=False,
+                        fill=False)
+                self._check_args_or_pack_varargs(expr, resolved, layout,
+                                                 coerce_arg_types)
                 # Overloaded methods with generic defaults: find unresolved counterpart
                 if type_subst:
                     idx = resolved_overloads.index(resolved)
                     validate_generic_defaults(
-                        expr.args, overloads[idx], type_subst, self.type_ops,
-                        lambda msg: self.ctx.error(msg, expr))
+                        binding, overloads[idx], type_subst, self.type_ops,
+                        lambda msg: self.ctx.error(msg, expr), layout.filled)
 
         # The one funnel every dispatch path reaches (instance call, generic
         # method, `super()`), and the only place carrying the class-level
@@ -669,6 +675,18 @@ class MethodAnalyzer:
             self.calls._record_mutation_call_edges(expr)
         self.calls._check_error_return_handled(expr, resolved)
         return resolved.return_type
+
+    def _renders_call(self, expr: TpyMethodCall) -> bool:
+        """Whether the method call renders as a call at all: a return
+        exception's parent-initializer call builds no C++ base and renders
+        the class's own `message` field init instead
+        (`base_init_sets_message`), so there is no argument to fill."""
+        base = expr.base_init_direct_base
+        current = self.ctx.record_ctx.record
+        child = (self.ctx.registry.get_record(current.name)
+                 if base is not None and current is not None else None)
+        return child is None or not self.ctx.registry.base_init_sets_message(
+            child, base)
 
     @staticmethod
     def _analyze_super_call_static(ctx: SemanticContext, expr: TpyCall) -> TpyType:
@@ -882,21 +900,17 @@ class MethodAnalyzer:
             if dotted_name:
                 flat_obj = TpyName(name=dotted_name, loc=expr.obj.loc)
                 flat_expr = TpyMethodCall(
-                    obj=flat_obj, method=expr.method, args=expr.args,
-                    kwargs=expr.kwargs,
+                    obj=flat_obj, method=expr.method,
+                    **temp_call_args(expr),
                     type_args=expr.type_args,
                     type_args_parse_error=expr.type_args_parse_error,
                     loc=expr.loc,
                 )
                 result = self._analyze_module_method_call(flat_expr, module_name=dotted_name)
                 if result is not None:
-                    expr.args = flat_expr.args
-                    expr.kwargs = flat_expr.kwargs
+                    adopt_temp_call(expr, flat_expr)
                     expr.builtin_module_call = flat_expr.builtin_module_call
                     expr.user_module_call = flat_expr.user_module_call
-                    expr.resolved_function_info = flat_expr.resolved_function_info
-                    expr.inferred_type_args = flat_expr.inferred_type_args
-                    expr.representational_subst_params = flat_expr.representational_subst_params
                     return result
 
         # A method of a list literal's own may leave its element open
@@ -951,10 +965,17 @@ class MethodAnalyzer:
         # For any method on a pending container, check if params involve the
         # container's type parameters. If so, pre-analyze the args and infer
         # the element type (generalizes append/insert/add/etc.).
+        written = source_view(expr)
+        args = list(written.positional)
         prepared = self.prepare_container_call(
-            expr, expr.obj, obj_type, expr.method, expr.args,
-            plain=not expr.kwargs and not any(
-                isinstance(a, TpyStarUnpack) for a in expr.args))
+            expr, expr.obj, obj_type, expr.method, args,
+            plain=not written.keywords and not any(
+                isinstance(a, TpyStarUnpack) for a in args))
+        if any(a is not w for a, w in zip(args, written.positional)):
+            # The value passed is the leaf's from here on, in every later
+            # analysis of the call too: the call is written with it.
+            relayout(expr, CallSource(tuple(args), written.keywords,
+                                      written.double_star), None)
         obj_type = prepared.receiver
         if prepared.args is not None:
             self.ctx.func.pre_analyzed_method_args[expr] = prepared.args
@@ -972,9 +993,10 @@ class MethodAnalyzer:
                      or isinstance(obj_type, (PendingListType, PendingSetType)))):
             elem_t = obj_type.get_element_type()
             ai = _VIEW_ELEM_INSERTS[expr.method]
+            positional = source_view(expr).positional
             if (elem_t is not None and is_borrowing_view_type(unwrap_readonly(elem_t))
-                    and ai < len(expr.args)):
-                arg = expr.args[ai]
+                    and ai < len(positional)):
+                arg = positional[ai]
                 if view_source_is_temporary(self.ctx, arg):
                     raise self.ctx.error(
                         f"Cannot store a temporary in '{expr.method}' on a "
@@ -1174,8 +1196,7 @@ class MethodAnalyzer:
         call's expansion, with the call-level passes a bare one gets."""
         call = TpyCall(
             func=TpyName(name=ref.info.name, loc=expr.loc),
-            args=expr.args, kwargs=expr.kwargs,
-            double_star_unpack=expr.double_star_unpack,
+            **temp_call_args(expr),
             type_args=expr.type_args,
             type_args_parse_error=expr.type_args_parse_error,
             loc=expr.loc,
@@ -1196,9 +1217,7 @@ class MethodAnalyzer:
         record_protocol_arg_calls(self.ctx, call)
         # The call is its expansion; its arguments are the expansion's,
         # keywords resolved to positions.
-        expr.args = call.args
-        expr.kwargs = call.kwargs
-        expr.double_star_unpack = call.double_star_unpack
+        adopt_temp_call(expr, call, resolution=False, type_args=False)
         expr.macro_expansion = call
         return result
 
@@ -1279,10 +1298,9 @@ class MethodAnalyzer:
             return
         if record_info.get_method_overloads(expr.method):
             return
-        owner = next(
-            (a for a in self.ctx.registry.iter_ancestor_records(record_info)
-             if a.get_method_overloads(expr.method)), None)
-        owner_name = owner.name if owner is not None else "its base"
+        found = self.ctx.registry.mro_method_definer(record_info, expr.method,
+                                                     own=False)
+        owner_name = found[1].name if found is not None else "its base"
         raise self.ctx.error(
             f"classmethod '{expr.method}' is inherited from '{owner_name}', so "
             f"'cls' binds to '{owner_name}', not '{record_info.name}' -- this "
@@ -1398,8 +1416,10 @@ class MethodAnalyzer:
             )
 
         # First arg must be the literal name 'self'.
-        if not expr.args or not (isinstance(expr.args[0], TpyName)
-                                 and expr.args[0].name == "self"):
+        written = source_view(expr)
+        if not written.positional or not (
+                isinstance(written.positional[0], TpyName)
+                and written.positional[0].name == "self"):
             raise self.ctx.error(
                 f"'{parent_name}.{method_name}(...)' must pass 'self' as the first "
                 f"argument (e.g. '{parent_name}.{method_name}(self, ...)')",
@@ -1410,34 +1430,37 @@ class MethodAnalyzer:
         # `overloads` is the authoritative list of non-static candidates here.
         assert overloads and not overloads[0].is_staticmethod
 
-        parent_type, type_subst = self.protocols.resolve_ancestor_instantiation(
+        parent_type, _ = self.protocols.resolve_ancestor_instantiation(
             current_rec, record_info)
-        method_owner = record_info
+        method_owner = self.ctx.registry.method_owner(record_info, method_name)
+        _, type_subst = self.protocols.resolve_ancestor_instantiation(
+            current_rec, method_owner)
         if method_name == "__init__":
             expr.base_init_direct_base = self.ctx.registry.init_direct_base(
                 current_rec, record_info)
             init_owner, init_overloads, init_subst = self._parent_init_target(
                 expr, current_rec, record_info,
-                has_args=len(expr.args) > 1 or bool(expr.kwargs))
+                has_args=(len(written.positional) > 1
+                          or bool(written.keywords)))
             if init_owner is not None:
                 method_owner, overloads, type_subst = (
                     init_owner, init_overloads, init_subst)
 
         # Rebind to instance-method machinery via a temp TpyMethodCall with
-        # obj=self and self dropped from args. _resolve_and_check_args mutates
-        # the temp's args (coercions), so copy them back after. self itself
-        # is then dropped from expr.args so codegen sees the same shape as
-        # super().method(...) -- base-qualified call with method args only.
-        self_arg = expr.args[0]
+        # obj=self, the written `self` its receiver. Its argument list is
+        # the call's: codegen sees the shape super().method(...) has -- a
+        # base-qualified call with method args only -- while the call as
+        # written keeps its `self`, so it binds again from the source.
+        self_arg = written.positional[0]
         # Analyze self so downstream (mutation tracking, type queries) has a type.
         self.expr.analyze_expr(self_arg)
         fake_expr = TpyMethodCall(
             obj=self_arg,
             method=method_name,
-            args=list(expr.args[1:]),
-            kwargs=expr.kwargs,
+            **temp_call_args(expr, drop_receiver=True),
             type_args=expr.type_args,
             type_args_parse_error=expr.type_args_parse_error,
+            base_init_direct_base=expr.base_init_direct_base,
             loc=expr.loc,
         )
 
@@ -1465,13 +1488,10 @@ class MethodAnalyzer:
                 f"Cannot call non-readonly method '{method_name}' on readonly reference",
                 expr)
 
-        # Drop self from the outer expr so codegen emits Parent::method(args)
-        # with args matching resolved_function_info.params shape.
-        expr.args = fake_expr.args
-        expr.kwargs = fake_expr.kwargs
-        expr.resolved_function_info = resolved_info
-        expr.inferred_type_args = fake_expr.inferred_type_args
-        expr.representational_subst_params = fake_expr.representational_subst_params
+        # Codegen emits Parent::method(args) with args matching
+        # resolved_function_info.params shape; the written `self` stays the
+        # call's receiver.
+        adopt_temp_call(expr, fake_expr, receiver=self_arg)
         expr.unbound_self_parent_type = parent_type
         if method_name == "__init__":
             self._check_message_base_init(expr, current_rec)
@@ -1528,17 +1548,13 @@ class MethodAnalyzer:
             native_name=method.native_name,
             canonical_fi=method.root,
         )
-        temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
-                            kwargs=expr.kwargs,
+        temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc),
+                            **temp_call_args(expr),
                             type_args=expr.type_args,
                             type_args_parse_error=expr.type_args_parse_error,
                             loc=expr.loc)
         result = self.calls._analyze_user_function_call(temp_call, [virtual_func])
-        expr.args = temp_call.args
-        expr.kwargs = temp_call.kwargs
-        expr.resolved_function_info = temp_call.resolved_function_info
-        expr.inferred_type_args = temp_call.inferred_type_args
-        expr.representational_subst_params = temp_call.representational_subst_params
+        adopt_temp_call(expr, temp_call)
         expr.is_static_call = True
         expr.static_call_owner = record_info
         return result
@@ -1566,17 +1582,13 @@ class MethodAnalyzer:
             _qname = f"{module_name}.{expr.method}"
             if _qname in (qnames.ASYNCIO_RUN, qnames.ASYNCIO_CREATE_TASK):
                 expr.user_module_call = module_name
-                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
-                                    kwargs=expr.kwargs,
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc),
+                                    **temp_call_args(expr),
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
                 result = self.calls._analyze_asyncio_spawn_call(temp_call, _qname, overloads)
-                expr.args = temp_call.args
-                expr.kwargs = temp_call.kwargs
-                expr.resolved_function_info = temp_call.resolved_function_info
-                expr.inferred_type_args = temp_call.inferred_type_args
-                expr.representational_subst_params = temp_call.representational_subst_params
+                adopt_temp_call(expr, temp_call)
                 return result
             # Route through builtin path if the function is from a builtin module
             # or has a cpp_template (inline expansion, no C++ function body).
@@ -1585,8 +1597,8 @@ class MethodAnalyzer:
                                or overloads[0].cpp_template is not None)
             if is_builtin_func:
                 expr.builtin_module_call = module_name
-                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
-                                    kwargs=expr.kwargs,
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc),
+                                    **temp_call_args(expr),
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
@@ -1594,36 +1606,26 @@ class MethodAnalyzer:
                     result = self.calls._analyze_special_builtin(temp_call, overloads)
                 else:
                     result = self.calls._analyze_builtin_function_overloads(temp_call, overloads)
-                expr.args = temp_call.args
-                expr.kwargs = temp_call.kwargs
-                expr.resolved_function_info = temp_call.resolved_function_info
-                expr.inferred_type_args = temp_call.inferred_type_args
-                expr.representational_subst_params = temp_call.representational_subst_params
+                adopt_temp_call(expr, temp_call)
                 return result
             else:
                 expr.user_module_call = module_name
-                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args,
-                                    kwargs=expr.kwargs,
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc),
+                                    **temp_call_args(expr),
                                     type_args=expr.type_args,
                                     type_args_parse_error=expr.type_args_parse_error,
                                     loc=expr.loc)
                 result = self.calls._analyze_user_function_call(temp_call, overloads)
-                expr.args = temp_call.args
-                expr.kwargs = temp_call.kwargs
-                expr.resolved_function_info = temp_call.resolved_function_info
-                expr.inferred_type_args = temp_call.inferred_type_args
-                expr.representational_subst_params = temp_call.representational_subst_params
+                adopt_temp_call(expr, temp_call)
                 return result
 
         qname = f"{module_name}.{expr.method}"
         if record_info := self.ctx.registry.get_builtin_record(qname):
             if record_info.get_method_overloads("__init__") and not record_info.type_params:
                 expr.builtin_module_call = module_name
-                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
+                temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), **temp_call_args(expr), loc=expr.loc)
                 result = self.calls._analyze_record_constructor(temp_call, record_info)
-                expr.args = temp_call.args
-                expr.kwargs = temp_call.kwargs
-                expr.resolved_function_info = temp_call.resolved_function_info
+                adopt_temp_call(expr, temp_call, type_args=False)
                 return result
 
         # User record constructor invoked via qualified access (e.g.
@@ -1635,11 +1637,9 @@ class MethodAnalyzer:
                 and not module_info.records[expr.method].type_params):
             record_info = module_info.records[expr.method]
             expr.user_module_call = module_name
-            temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), args=expr.args, kwargs=expr.kwargs, loc=expr.loc)
+            temp_call = TpyCall(func=TpyName(expr.method, loc=expr.loc), **temp_call_args(expr), loc=expr.loc)
             result = self.calls._analyze_record_constructor(temp_call, record_info)
-            expr.args = temp_call.args
-            expr.kwargs = temp_call.kwargs
-            expr.resolved_function_info = temp_call.resolved_function_info
+            adopt_temp_call(expr, temp_call, type_args=False)
             return result
 
         # Check for call-site macro (e.g. dataclasses.asdict(...)).
@@ -1686,29 +1686,18 @@ class MethodAnalyzer:
         # For MVP: use first overload (user records have single overloads per name)
         method = overloads[0]
 
-        # Resolve kwargs (also enforces keyword-only constraints when no kwargs)
-        if (expr.kwargs or method.has_keyword_only
-                or method.materializes_defaults):
-            expr.args = resolve_kwargs(
-                expr.args, expr.kwargs, method.params, expr.method,
-                lambda msg: self.ctx.error(msg, expr),
-                call_loc=expr.loc, is_member=True, ctx=self.ctx,
-            )
-            expr.kwargs = {}
-
-        # Check arity
-        if len(expr.args) < method.min_args or len(expr.args) > method.max_args:
-            raise self.ctx.error(
-                arity_error_msg(expr.method, method.min_args, method.max_args, len(expr.args)),
-                expr)
+        binding = self.calls.bind_args(expr, method.params, expr.method)
 
         # Analyze arguments and accumulate constraints. analyze_call_arg so a
         # `*xs` arg yields the unpacked element type rather than crashing the
         # structural analyzer; non-variadic reject gate handles validity.
-        arg_types = [self.expr.analyze_call_arg(arg)
-                     for arg in expr.args]
+        typed = [(slot, self.expr.analyze_call_arg(arg))
+                 for slot, arg in binding.evidence(source_view(expr))]
         type_param_names = set(info.type_params)
-        for (pname, ptype), arg_type in zip(method.params, arg_types):
+        for slot, arg_type in typed:
+            pname, ptype = method.params[slot]
+            if method.params[slot].is_variadic and is_varargs(unwrap_ref_type(ptype)):
+                ptype = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
             if not contains_type_param(ptype, type_param_names):
                 continue
             # Resolve a literal marker before binding
@@ -1741,7 +1730,9 @@ class MethodAnalyzer:
 
         if all_resolved:
             resolved_type = self._eagerly_resolve_pending_generic(info)
-            # Re-dispatch: analyze the method call on the now-concrete type
+            # Re-dispatch: analyze the method call on the now-concrete type,
+            # which binds the written arguments again and fills the defaults
+            # against the resolved receiver.
             self.ctx.set_expr_type(expr.obj, resolved_type)
             if isinstance(expr.obj, TpyName) and self.ctx.func.current_scope:
                 self.ctx.func.current_scope.define(expr.obj.name, resolved_type)
@@ -1766,6 +1757,12 @@ class MethodAnalyzer:
                 )
             # All params in return type are resolved, substitute
             return_type = self.type_ops.substitute_type_params(return_type, info.inferred)
+
+        # The call keeps the pending signature, so its omitted defaults are
+        # filled against it; a re-dispatched one fills against its resolved
+        # receiver above.
+        self.calls.commit_args(expr, method, binding, info.inferred,
+                               analyze=True)
 
         # Set minimal function info for void methods
         expr.resolved_function_info = FunctionInfo(
@@ -1877,8 +1874,9 @@ class MethodAnalyzer:
         use and not at its own slot, so its arguments are not received
         there."""
         return self.calls.complete_construction(
-            info.expr, info.record_info, info.inferred, receive=False,
-            commit=True)
+            info.expr, info.record_info, info.inferred,
+            self.calls.ctor_binding(info.expr, info.record_info),
+            receive=False, commit=True)
 
     def _analyze_typed_dict_get(self, expr: TpyMethodCall, record_info, obj_type: TpyType) -> TpyType:
         """Analyze td.get("key") or td.get("key", default) on a TypedDict."""
@@ -1968,15 +1966,19 @@ class MethodAnalyzer:
         # @inline: clone body and substitute at call site.
         # For FStr params, validate that f-string literals are passed.
         if method_info.inline_body is not None:
-            for i, (pi, arg) in enumerate(zip(method_info.params, expr.args)):
-                if is_fstr_type(pi.type) and not isinstance(arg, TpyFString):
-                    if isinstance(arg, TpyStrLiteral):
-                        expr.args[i] = TpyFString(parts=[arg.value], loc=arg.loc)
-                    else:
-                        raise self.ctx.error(
-                            f"Parameter '{pi.name}' has type FStr -- only f-string "
-                            f"or string literals are accepted", arg)
-            return self._inline_method_call(expr, method_info)
+            # Every parameter the body names takes an argument: the call has
+            # no C++ declaration to leave a default to (`emits_cpp_defaults`).
+            binding = self.calls.bind_args(expr, method_info.params, expr.method)
+            if not self.calls.step_commits(expr):
+                # A probe binds and reads: the expansion is the commit's.
+                return VOID
+            kwargs_arg = self.calls.kwargs_region_arg(
+                expr, method_info, binding, expr.method)
+            self.calls.commit_args(expr, method_info, binding, type_subst,
+                                   analyze=False, kwargs_arg=kwargs_arg)
+            return self._inline_method_call(
+                expr, method_info,
+                self.calls.fstr_operands(expr, method_info))
 
         # Check if the method has its own type parameters (generic method).
         # Generic methods don't support multiple overloads; user-defined methods
@@ -1999,6 +2001,7 @@ class MethodAnalyzer:
 
     def _inline_method_call(
         self, expr: TpyMethodCall, method_info: FunctionInfo,
+        operands: list[TpyExpr],
     ) -> TpyType:
         """Inline a method with FStr parameter at the call site.
 
@@ -2012,11 +2015,12 @@ class MethodAnalyzer:
         # Build the substitution map: param name -> call-site argument.
         # method_info.params does NOT include 'self' (it's implicit for methods).
         param_map: dict[str, TpyExpr] = {}
-        for pi, arg in zip(method_info.params, expr.args):
+        for pi, arg in zip(method_info.params, operands):
             param_map[pi.name] = arg
 
         # Substitute names in the cloned body
-        MethodAnalyzer._substitute_inline_body(body, expr.obj, param_map)
+        MethodAnalyzer._substitute_inline_body(body, expr.obj, param_map,
+                                               method_info, expr)
 
         # Store the inlined expression on the method call node for codegen
         expr.fstr_expansion = body
@@ -2028,7 +2032,8 @@ class MethodAnalyzer:
     @staticmethod
     def _substitute_inline_body(
         node: TpyExpr, receiver: TpyExpr | None,
-        param_map: dict[str, TpyExpr],
+        param_map: dict[str, TpyExpr], func: FunctionInfo,
+        call: TpyExpr,
     ) -> None:
         """In-place substitute names in a cloned @inline body expression.
 
@@ -2036,6 +2041,8 @@ class MethodAnalyzer:
             node: The cloned body expression to substitute in.
             receiver: The ``self`` replacement (method calls), or None (free functions).
             param_map: Parameter name -> call-site argument expression.
+            func: The @inline callee; call: the call expanded, where a use
+                of the callee's `*args` parameter is refused.
 
         Replaces TpyName references matching param_map keys or "self" (when
         receiver is provided) in positional args, function refs, and method
@@ -2047,6 +2054,12 @@ class MethodAnalyzer:
         for @inline bodies constrained to a single call. Future: support
         multi-statement bodies via expression blocks.
         """
+        # The expansion has no spelling for the packed `*args` yet.
+        va = next((p.name for p in func.params if p.is_variadic), None)
+        if va is not None and any(r.name == va for r in comp_free_reads(node)):
+            raise SemanticError(
+                f"@inline function '{func.name}' cannot use its *args "
+                f"parameter '{va}' yet", call.loc)
         if receiver is not None:
             param_map = {**param_map, "self": receiver}
         MethodAnalyzer._substitute_inline_node(node, param_map)
@@ -2064,16 +2077,30 @@ class MethodAnalyzer:
     def _substitute_inline_node(node: TpyExpr,
                                 param_map: dict[str, TpyExpr]) -> None:
         use = MethodAnalyzer._inline_use
-        sub_args = MethodAnalyzer._substitute_inline_args
+
+        def sub_args(call: TpyCall | TpyMethodCall) -> None:
+            written = source_view(call)
+            args = list(written.positional)
+            MethodAnalyzer._substitute_inline_args(args, param_map)
+            values = [e for _, e in written.keywords]
+            MethodAnalyzer._substitute_inline_args(values, param_map)
+            star = ([written.double_star]
+                    if written.double_star is not None else [])
+            MethodAnalyzer._substitute_inline_args(star, param_map)
+            relayout(call, CallSource(
+                tuple(args),
+                tuple(zip((k for k, _ in written.keywords), values)),
+                star[0] if star else None), None)
+
         if isinstance(node, TpyCall):
             if isinstance(node.func, TpyName) and node.func.name in param_map:
                 node.func = use(node.func.name, param_map)
-            sub_args(node.args, param_map)
+            sub_args(node)
         elif isinstance(node, TpyMethodCall):
             if isinstance(node.obj, TpyName) and node.obj.name == "self" \
                     and "self" in param_map:
                 node.obj = use("self", param_map)
-            sub_args(node.args, param_map)
+            sub_args(node)
 
     @staticmethod
     def _substitute_inline_args(args: list[TpyExpr],
@@ -2180,8 +2207,10 @@ class MethodAnalyzer:
                 expr, method_info, new_params, partial_func, class_subst)
         # The arguments the method's type parameters are inferred from stay
         # open until the resolved parameters decide them.
+        written = source_view(expr)
         with self.calls.open_call_args(
-                expr, [*expr.args, *(expr.kwargs or {}).values()],
+                expr, [*written.positional,
+                       *(e for _, e in written.keywords)],
                 method_info.name, scored=False):
             return self._generic_method_tail(
                 expr, method_info, new_params, partial_func, class_subst)
@@ -2263,22 +2292,19 @@ class MethodAnalyzer:
             partial_func, self.expr.slot_hint_for(expr),
         ).with_explicit(new_params, explicit_type_args)
 
-        # Default-arg capture freezes ``partial_func`` and ``merged_seed`` at
-        # def-time so this closure isn't sensitive to later rebinding.
-        def _analyze_args(
-            _pf: FunctionInfo = partial_func,
-            _seed: ReturnSeed = merged_seed,
-        ) -> list[TpyType]:
-            return [self.expr.analyze_call_arg(
-                        arg, seeded_arg_hint(_pf.params, i, _seed))
-                    for i, arg in enumerate(expr.args)]
-
+        # Inference reads the written arguments each parameter binds.
+        evidence = self.calls.bind_args(
+            expr, partial_func.params, expr.method).evidence(source_view(expr))
         with self.ctx.probe_slot_scope(True):
-            arg_types = _analyze_args()
+            arg_types = [self.expr.analyze_call_arg(
+                             arg, seeded_arg_hint(partial_func.params, slot,
+                                                  merged_seed))
+                         for slot, arg in evidence]
         method_subst = self.type_ops.infer_type_params_for_function(
             partial_func, arg_types, self.protocols.satisfies_bound,
             expected_return_type=self.expr.slot_hint_for(expr),
             explicit_type_args=explicit_type_args,
+            slots=[slot for slot, _ in evidence],
         )
         if method_subst is None:
             raise self.ctx.error(
@@ -2392,13 +2418,14 @@ class MethodAnalyzer:
                 child_rec, parent_info)
             self._check_message_base_init(expr, child_rec)
 
+            written = source_view(expr)
             init_owner, init_overloads, init_subst = self._parent_init_target(
                 expr, child_rec, parent_info,
-                has_args=bool(expr.args or expr.kwargs))
+                has_args=bool(written.positional or written.keywords))
             if not init_overloads:
                 # No __init__ anywhere in the parent's ancestry: allow with no
                 # arguments
-                if expr.args:
+                if written.positional:
                     raise self.ctx.error(
                         f"Parent class '{parent_type}' has no __init__, "
                         "super().__init__() must be called with no arguments",
@@ -2459,7 +2486,11 @@ class MethodAnalyzer:
         if expr.method == "__init__":
             type_subst = init_subst
         else:
-            type_subst = self.protocols.get_parent_type_subst(parent_type, parent_info)
+            child_rec = self.ctx.registry.get_record(super_type.child_record_name)
+            assert child_rec is not None
+            _, type_subst = self.protocols.resolve_ancestor_instantiation(
+                child_rec, self.ctx.registry.method_owner(parent_info,
+                                                          expr.method))
 
         # Must be set before arg resolution: mutation-call-edge recording
         # treats super() receivers as self for self-mutation propagation.
@@ -2569,23 +2600,8 @@ class MethodAnalyzer:
             return None, [], {}
         self._check_init_forwarding(expr, parent_info, init_owner,
                                     has_args=has_args)
-        _parent_type, parent_subst = self.protocols.resolve_ancestor_instantiation(
-            current_rec, parent_info)
-        if init_owner is parent_info:
-            subst = parent_subst
-        else:
-            # An MRO entry keeps the spelling of the class that names it as a
-            # direct base (`B[T](A[list[T]])` records `A[list[T]]`, and every
-            # subclass's MRO copies that entry), so the parent's arguments
-            # substitute it only when the owner is the parent's direct base;
-            # a deeper owner is spelled in an intermediate class's params
-            # (BUGS.md#parent-call-generic-subst-one-level).
-            _owner_type, owner_subst = self.protocols.resolve_ancestor_instantiation(
-                parent_info, init_owner)
-            # An `N: int` param's binding is a plain int -- nothing to substitute.
-            subst = {k: (self.type_ops.substitute_type_params(v, parent_subst)
-                         if isinstance(v, TpyType) and parent_subst else v)
-                     for k, v in owner_subst.items()}
+        _owner_type, subst = self.protocols.resolve_ancestor_instantiation(
+            current_rec, init_owner)
         return init_owner, self.ctx.registry.init_overloads(init_owner), subst
 
     @staticmethod

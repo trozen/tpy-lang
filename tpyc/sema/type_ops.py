@@ -35,6 +35,7 @@ from ..type_def_registry import (
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
+from .arg_binding import positional_param_index
 from .overloads import call_ranking
 from .slot_hint import SlotHint, params_at_inferred
 from .type_join import NumKind, numeric_kind
@@ -97,6 +98,14 @@ def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     """Substitute known type params, preserve unknown TypeParamRefs as-is;
     the result is settled (`settled_substitution`)."""
     return settled_substitution(typ, _substitute_types(typ, subst))
+
+
+def _fills_none_arm(ptype: TpyType, arg_type: TpyType) -> bool:
+    """A `None` argument at a `T | None` parameter fills its None arm: it
+    says nothing about `T` unless nothing else does
+    (`TypeOperations._bind_none_arms`)."""
+    return (isinstance(arg_type, NoneType)
+            and isinstance(unwrap_ref_type(ptype), OptionalType))
 
 
 def _substitute_types(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
@@ -213,37 +222,26 @@ class ReturnSeed:
 
 
 def seeded_arg_hint(
-    params: list[ParamInfo], idx: int, seed: ReturnSeed | None,
+    params: list[ParamInfo], slot: int | None, seed: ReturnSeed | None,
 ) -> SlotHint | None:
     """Per-arg ``expr_type_hint`` from a seeded type-param substitution.
 
-    Resolves the param the call argument at position ``idx`` targets, then
-    delegates to ``post_substitute_hint`` for the substitute+unwrap step.
+    ``slot`` is the index of the parameter the argument binds
+    (``ArgBinding.evidence`` / ``positional_param_index``): a ``*args``
+    element binds the variadic parameter, whose element type (the
+    ``Span[readonly[T]]`` packing stripped) is its target. Delegates to
+    ``post_substitute_hint`` for the substitute+unwrap step.
 
-    Variadic positions: every arg at or beyond the ``*args`` slot maps to
-    the variadic param's element type (with the ``Span[readonly[T]]``
-    packing stripped), mirroring how ``infer_type_params_for_function``
-    matches variadic args.
-
-    Returns None when there's no valid target param for the index, or when
+    Returns None when the argument binds no parameter, or when
     ``post_substitute_hint`` rejects the result. Caller dispatches on None
     to fall back to hint-less arg analysis.
     """
-    if seed is None or not seed.subst:
+    if seed is None or not seed.subst or slot is None:
         return None
-    ptype = _seeded_arg_param_type(params, idx)
-    return seed.arg_hint(ptype) if ptype is not None else None
+    return seed.arg_hint(_seeded_arg_param_type(params[slot]))
 
 
-def _seeded_arg_param_type(params: list[ParamInfo],
-                           idx: int) -> TpyType | None:
-    if idx < len(params):
-        target = params[idx]
-    elif params and params[-1].is_variadic:
-        target = params[-1]
-    else:
-        return None
-
+def _seeded_arg_param_type(target: ParamInfo) -> TpyType:
     ptype = unwrap_ref_type(target.type)
     if target.is_variadic and is_varargs(ptype):
         # *args: T has the varargs[T] (or varargs[readonly[T]]) body view; expose the element.
@@ -1523,13 +1521,19 @@ class TypeOperations:
     def infer_type_params_for_function(
         self,
         func: FunctionInfo,
-        arg_types: list[TpyType],
+        arg_types: list[TpyType | None],
         type_conforms_to_protocol: callable,
         expected_return_type: SlotHint | TpyType | None = None,
         explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
         joined: set[str] | None = None,
+        slots: 'list[int | None] | None' = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
+
+        `slots` gives the parameter each of `arg_types` binds (a bound call's
+        `ArgBinding.evidence`); without it `arg_types` are a call's
+        positional arguments in order, which bind the positional parameters
+        and past them the `*args` one.
 
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         If expected_return_type is provided, unresolved params are matched against the return type
@@ -1544,8 +1548,12 @@ class TypeOperations:
         # A fill-only hint prefers no protocol form for the result.
         expected_return_type = (return_hint.type if return_hint is not None
                                 and not return_hint.is_fill else None)
-        if len(arg_types) < func.min_args or len(arg_types) > func.max_args:
-            return None
+        if slots is None:
+            if (len(arg_types) < func.min_args
+                    or len(arg_types) > func.max_args):
+                return None
+            slots = [positional_param_index(func.params, i)
+                     for i in range(len(arg_types))]
 
         inferred: dict[str, TpyType] = {}
         if explicit_type_args:
@@ -1565,32 +1573,27 @@ class TypeOperations:
                 return True
             return self.match_type_with_inference(ptype, arg_t, inferred)
 
-        arg_idx = 0
-        for p in func.params:
-            if arg_idx >= len(arg_types):
-                break
-            ptype = p.type
-            if p.is_variadic and is_varargs(unwrap_ref_type(ptype)):
-                # Variadic param: match each remaining arg against element
-                # type. `varargs<T>` elements are bare-T slots, so canonicalize
-                # the arg side (see to_bare_slot_form) -- the non-variadic
-                # ref-param path gets the equivalent strip via the Ref-vs-Ref
-                # rule in match_type_with_inference.
-                elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
-                while arg_idx < len(arg_types):
-                    arg_t = to_bare_slot_form(arg_types[arg_idx])
-                    if not match_arg(elem_type, arg_t):
-                        return None
-                    arg_idx += 1
+        none_arms: list[tuple[TpyType, TpyType]] = []
+        for slot, arg_t in zip(slots, arg_types):
+            if slot is None or arg_t is None:
                 continue
-            if p.keyword_only:
-                # Skip keyword-only params in arg_types matching (they were
-                # appended by resolve_kwargs, not from positional args)
+            p = func.params[slot]
+            ptype = p.type
+            if _fills_none_arm(ptype, arg_t):
+                none_arms.append((ptype, arg_t))
+                continue
+            if p.is_variadic and is_varargs(unwrap_ref_type(ptype)):
+                # A `*args` element: `varargs<T>` elements are bare-T slots,
+                # so canonicalize the arg side (see to_bare_slot_form) --
+                # the non-variadic ref-param path gets the equivalent strip
+                # via the Ref-vs-Ref rule in match_type_with_inference.
+                elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
+                if not match_arg(elem_type, to_bare_slot_form(arg_t)):
+                    return None
                 continue
             # @value_ptr_coercion: Ptr[T] params accept T values, so match
             # the arg against the pointee type for inference purposes.
             match_type = ptype
-            arg_t = arg_types[arg_idx]
             if func.value_ptr_coercion and isinstance(ptype, PtrType):
                 match_type = ptype.pointee
                 # A pointer names the STORAGE it points at, so a str/bytes
@@ -1600,7 +1603,6 @@ class TypeOperations:
                 arg_t = self.ctx.view_storage_verdict(arg_t) or arg_t
             if not match_arg(match_type, arg_t):
                 return None
-            arg_idx += 1
 
         for name, bindings in direct_ints.items():
             if not self._bind_direct_fixed_ints(name, bindings, inferred, joined):
@@ -1611,6 +1613,9 @@ class TypeOperations:
             inferred.update(self.result_bindings(
                 func.return_type, func.type_params, inferred, return_hint,
                 func=func))
+
+        if not self._bind_none_arms(none_arms, inferred):
+            return None
 
         # LHS-hint @dynamic-protocol preference for function-call inference;
         # mirrors the equivalent block in `infer_type_params_for_record`.
@@ -1722,10 +1727,23 @@ class TypeOperations:
 
         return inferred
 
+    def _bind_none_arms(self, none_arms: list[tuple[TpyType, TpyType]],
+                        inferred: dict[str, TpyType]) -> bool:
+        """Bind what the `None` arguments at Optional parameters
+        (`_fills_none_arm`) alone decide: a type parameter nothing else
+        bound. False when one does not match."""
+        for ptype, none_t in none_arms:
+            only_none: dict[str, TpyType] = {}
+            if not self.match_type_with_inference(ptype, none_t, only_none):
+                return False
+            for name, t in only_none.items():
+                inferred.setdefault(name, t)
+        return True
+
     def infer_type_params_for_record(
         self,
         record: RecordInfo,
-        arg_types: list[TpyType],
+        arg_types: list[TpyType | None],
         expected_type: SlotHint | TpyType | None = None,
         explicit_type_args: tuple['TpyType | None', ...] | None = None,
     ) -> dict[str, TpyType] | None:
@@ -1748,7 +1766,13 @@ class TypeOperations:
             for tp, arg in zip(record.type_params, explicit_type_args):
                 if arg is not None:
                     inferred[tp] = arg
+        none_arms: list[tuple[TpyType, TpyType]] = []
         for (pname, ptype, _), arg_type in zip(record.init_params, arg_types):
+            if arg_type is None:  # left to its default: no evidence
+                continue
+            if _fills_none_arm(ptype, arg_type):
+                none_arms.append((ptype, arg_type))
+                continue
             # A record field is owned storage, so a constructor arg binds the
             # storage form -- a borrowed element (Ref[T]) must not leak into the
             # record's type argument (Record[Ref[T]]).
@@ -1761,6 +1785,8 @@ class TypeOperations:
             inferred.update(self.result_bindings(
                 self.record_pattern(record), record.type_params, inferred,
                 hint))
+        if not self._bind_none_arms(none_arms, inferred):
+            return None
 
         # Verify all type params were inferred
         for tp in record.type_params:
@@ -2074,7 +2100,10 @@ class TypeOperations:
             seed = self.seed_subst_from_return_hint(func, lhs)
             if not seed.subst:
                 return None
-            return [seeded_arg_hint(func.params, i, seed) for i in range(n_args)]
+            return [seeded_arg_hint(
+                        func.params, positional_param_index(func.params, i),
+                        seed)
+                    for i in range(n_args)]
         # Non-generic / substituted candidate. Gate on a structural match
         # between return type and LHS hint so we only bias toward LHS-aligned
         # overloads. Direction: ``lhs_hint`` is param-side, ``return_type`` is
@@ -2102,18 +2131,11 @@ class TypeOperations:
             return None
         out: list[SlotHint | None] = []
         for i in range(n_args):
-            # Mirrors ``seeded_arg_hint``: trailing args beyond fixed positional
-            # slots target the variadic param's element type.
-            if i < len(func.params):
-                target = func.params[i]
-            elif func.params and func.params[-1].is_variadic:
-                target = func.params[-1]
-            else:
+            slot = positional_param_index(func.params, i)
+            if slot is None:
                 out.append(None)
                 continue
-            ptype = unwrap_ref_type(target.type)
-            if target.is_variadic and is_varargs(ptype):
-                ptype = unwrap_readonly(ptype.type_args[0])
+            ptype = _seeded_arg_param_type(func.params[slot])
             # An ``Optional[T]`` param accepts a bare T arg, so the hint
             # exposes the inner T (``post_substitute_hint``'s shape).
             out.append(SlotHint.declared(_hint_shape(ptype)))

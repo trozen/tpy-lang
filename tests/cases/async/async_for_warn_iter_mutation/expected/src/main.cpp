@@ -680,7 +680,7 @@ void main() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((__self.cursor >= __self.limit)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         val = __self.cursor;
         __self.cursor = (__self.cursor) + (::tpy::BigInt(1));
@@ -706,7 +706,7 @@ void main() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((__self.cur >= ::tpy::deref_check(__self.p).lim)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         v = __self.cur;
         __self.cur = (__self.cur) + (::tpy::BigInt(1));

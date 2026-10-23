@@ -344,7 +344,7 @@ void files() {
     auto __ctx_3 = ::tpy::builtin_open_binary("gzip_basic.gz", "rb");
     auto& raw_file = __ctx_3.__enter__();
     try {
-        std::cout << "file decompress" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(raw_file.read()) == RAW)) << "\n" << ::tpy::check_signals;
+        std::cout << "file decompress" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(raw_file.read(-1)) == RAW)) << "\n" << ::tpy::check_signals;
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});

@@ -393,7 +393,6 @@ class InertWalk:
                      and e.dunder_call is None
                      and e.dyn_hasattr_call is None
                      and e.dyn_getattr_default_call is None
-                     and e.kwarg_td_call is None
                      and e.double_star_unpack is None
                      and e.subscript_callee is None)
         if (e.isinstance_type is not None or e.cast_target_type is not None

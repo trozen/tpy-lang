@@ -1,0 +1,1 @@
+main.py:8: error: 'OSError()' parameter 'strerror' is positional-only and cannot be passed by keyword

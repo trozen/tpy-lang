@@ -549,7 +549,7 @@ FileIO::FileIO(int64_t fd, std::string_view mode, bool closefd, bool timeout_mod
 ::tpy::Bytes FileIO::read(int32_t size) const {
     this->_check_open();
     if ((!(this->_readable))) {
-        ::tpy::OSError("File not open for reading").__raise__();
+        ::tpy::OSError(std::string_view("File not open for reading")).__raise__();
     }
     if ((size < 0)) {
         return this->_readall();

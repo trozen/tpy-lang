@@ -1,0 +1,46 @@
+method 3 0
+method-gap 99 5
+final-own 99 0
+free 1005
+c-binding 1005
+export-c 1005
+ctor 1012
+fn-method 1057
+group 1005 x6
+group-kw-lambda 4
+group-kw-shared-name number
+group-raise y6
+template 1004
+template-qualified 1004
+final-other 1007 2007
+str 103
+enum 12
+bytes 102
+generic 3
+generic-kw 4
+generic-qualified 2
+generic-ctor 3000
+generic-method 2000
+dispatch-method 1005 2006
+overload-stub 5
+pending-ctor 5
+varargs-kwonly 1007 6007 305 305
+kwonly 1005 1002
+keyword 1005 1012
+generic-gap 105
+generic-ctor-inferred 3000
+inherited-two-level 3000
+generic-str ab/
+pending-method 5005
+generic-raise 3005
+protocol 3
+filled-call-default 1003 99
+tpy-default 1005
+pos-method 99 0 2005
+pos-ctor 3005
+pos-generator 5005 4 0
+pos-async 6005 6 0
+pos-comprehension [5, 1005]
+pos-lambda 7005
+pos-module 4005 4012
+filled-call-default-module 1003

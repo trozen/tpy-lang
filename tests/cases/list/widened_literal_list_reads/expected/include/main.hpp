@@ -271,7 +271,7 @@ struct __gen_gen_lists : public ::tpy::next_iter_mixin<__gen_gen_lists, std::vec
 //     super().__init__()
 //     xs.append(w64())
 //     self.total = xs[0] + xs[-1]
-inline Wide::Wide(std::vector<int64_t>& xs) : ::tpy::Exception() {
+inline Wide::Wide(std::vector<int64_t>& xs) : ::tpy::Exception("") {
     xs.push_back(::tpyapp::main::w64());
     this->total = (::tpy::add_check<int64_t>(::tpy::__getitem__(xs, 0), ::tpy::__getitem__(xs, -1)));
 }

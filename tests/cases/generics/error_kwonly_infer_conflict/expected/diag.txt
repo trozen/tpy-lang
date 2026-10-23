@@ -1,0 +1,1 @@
+main.py:14: error: Cannot infer type arguments for 'kw_infer'. Specify explicitly: kw_infer[T](...)

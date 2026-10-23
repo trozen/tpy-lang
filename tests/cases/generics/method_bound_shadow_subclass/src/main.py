@@ -2,8 +2,8 @@
 # must resolve through SUBCLASS receivers: the declaring base's params reach
 # the dispatch site only via the composed class subst, so classification must
 # use it (regression: such calls failed "Cannot infer type arguments").
-# Covers a plain subclass, a grandchild (MRO-composed subst), and a generic
-# subclass (subst composition through the child's own param).
+# Covers a plain subclass, a grandchild (MRO-composed subst), a generic
+# subclass (subst composition through the child's own param) and two levels.
 from tpy import int32, Equatable, Comparable
 
 
@@ -44,6 +44,10 @@ class WideBag[U](Bag[U, 8]):
     pass
 
 
+class WiderBag[V](WideBag[tuple[V, V]]):
+    pass
+
+
 def main() -> None:
     b = IntBag()
     b.add(3)
@@ -63,6 +67,12 @@ def main() -> None:
     w.add(4)
     print(w.contains(11))
     print(w.biggest())
+
+    # Two generic levels: the declaring base's params compose through both.
+    x = WiderBag[int32]()
+    x.add((1, 2))
+    x.add((3, 0))
+    print("two-level", x.contains((3, 0)), x.biggest())  # tpyc: ok
 
 
 main()

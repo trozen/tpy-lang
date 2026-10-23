@@ -18,6 +18,8 @@ End-to-end overload dispatch is covered by the snippet tests under
 """
 from __future__ import annotations
 
+import dataclasses
+
 import pytest
 
 from tpyc.sema.overloads import (
@@ -43,7 +45,7 @@ from tpyc import get_lib_dir
 from tpyc.coercions import CoercionContext
 from tpyc.compiler import Compiler
 from tpyc.diagnostics import Scope, SemanticError
-from tpyc.parse import TpyArrayLiteral
+from tpyc.parse import TpyArrayLiteral, TpyCall
 from tpyc.sema.compatibility import TypeCompatibility
 from tpyc.sema.context import SemanticContext
 from tpyc.sema.pending_num import PendingNums
@@ -900,6 +902,20 @@ def a64() -> int64: return 1099511627776
 """
 
 
+# A user class's constructor group, which does not lower
+# (BUGS.md#dispatch-ctor-group-unlowered): `k` is shared, `b` and the
+# defaults differ per candidate.
+_KW_GROUP = """class G:
+    v: int32
+    @dispatch
+    def __init__(self, a: int32, *, k: int32 = 5) -> None:
+        self.v = a + k
+    @dispatch
+    def __init__(self, s: str, b: int32 = 7, *, k: int32 = 6) -> None:
+        self.v = b * 10 + k
+"""
+
+
 @pytest.mark.parametrize(
     ("body", "message"),
     [
@@ -965,6 +981,16 @@ def a64() -> int64: return 1099511627776
             "def main() -> None:\n    ms = [1, 2]\n    print(K(ms).n)\n",
             r"^No matching overload for 'K' with argument types \(list\[int32\]\)",
             id="ctor-group-no-match"),
+        # A keyword construction ranks every candidate of the group; a
+        # keyword no candidate declares is named.
+        pytest.param(
+            _KW_GROUP + "def main() -> None:\n    print(G(s='x', a=1).v)\n",
+            r"^No matching overload for 'G' with argument types \(s=str, a=int\)$",
+            id="ctor-group-kwargs-no-match"),
+        pytest.param(
+            _KW_GROUP + "def main() -> None:\n    print(G(zz=1).v)\n",
+            r"^'G' got unexpected keyword argument 'zz'$",
+            id="ctor-group-kwargs-unknown"),
         # An empty container no candidate takes is named by its container.
         pytest.param(
             "@dispatch\ndef fn(x: int) -> str:\n    return 'int'\n"
@@ -1037,3 +1063,37 @@ def test_overload_paths_without_an_end_to_end_case(body: str,
     with pytest.raises(SemanticError, match=message):
         Compiler.from_source(_SEMA_PRELUDE + body,
                              lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+def _calls_named(node, name: str, out: list[TpyCall]) -> list[TpyCall]:
+    if isinstance(node, TpyCall) and getattr(node.func, "name", None) == name:
+        out.append(node)
+    if isinstance(node, list):
+        for item in node:
+            _calls_named(item, name, out)
+    elif dataclasses.is_dataclass(node) and not isinstance(node, type):
+        for f in dataclasses.fields(node):
+            if f.name not in ("resolved_function_info", "loc"):
+                _calls_named(getattr(node, f.name), name, out)
+    return out
+
+
+def test_ctor_group_keyword_binds_the_winner() -> None:
+    # Each keyword construction binds against the candidate it ranks to,
+    # not the group's first stub: the shared `k` lands in the winner's
+    # slot and the winner's own default fills `b`.
+    entry = next(m for m in Compiler.from_source(
+        _SEMA_PRELUDE + _KW_GROUP
+        + "def main() -> None:\n"
+        "    print(G('x', k=1).v)\n    print(G(s='y').v)\n"
+        "    print(G(a=2).v)\n",
+        lib_dirs=[get_lib_dir() / "tpy"]).compile() if m.is_entry_point)
+    main = next(f for f in entry.ast.functions if f.name == "main")
+    shared, by_name, first = _calls_named(main.body, "G", [])
+    assert [p.name for p in shared.resolved_function_info.params] == [
+        "s", "b", "k"]
+    assert [a.expr.value for a in shared.args[1:]] == [7, 1]
+    assert [p.name for p in by_name.resolved_function_info.params] == [
+        "s", "b", "k"]
+    assert [p.name for p in first.resolved_function_info.params] == [
+        "a", "k"]

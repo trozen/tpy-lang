@@ -70,14 +70,14 @@ inline std::ostream& operator<<(std::ostream& os, const OtherError& obj) {
 //     super().__init__()
 //     self.code = code
 inline AppError::AppError(int32_t code)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       code(code) {}
 
 // def __init__(self, tag: str) -> None:
 //     super().__init__()
 //     self.tag = tag
 inline OtherError::OtherError(std::string_view tag)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       tag(tag) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -872,7 +872,7 @@ inline void Executor::on_sigint() {
         this->_cancel_root(this->root_id);
         return;
     }
-    throw ::tpy::KeyboardInterrupt{};
+    throw ::tpy::KeyboardInterrupt("");
 }
 
 // def __init__(self, executor: Executor) -> None:
@@ -1053,7 +1053,7 @@ inline bool TaskState<T>::_take_must_cancel(bool ready, ::tpystd::coro::Waker w)
     }
     this->must_cancel = false;
     if (ready) {
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
     if ((frame != nullptr)) {

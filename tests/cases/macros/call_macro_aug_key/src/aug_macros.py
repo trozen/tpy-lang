@@ -28,3 +28,19 @@ def clone_edit(ctx: CallMacroContext, arg: MacroArg | None = None) -> Expr:
     edited = ast.clone(arg.expr)
     edited.value += 1
     return ast.tuple_lit([arg.expr, edited])
+
+
+@call_macro
+def first(ctx: CallMacroContext, arg: MacroArg | None = None) -> Expr:
+    """`first(xs)` expands to `xs[0]`."""
+    if arg is None:
+        return ctx[0]
+    return ast.subscript(arg.expr, ast.int_lit(0))
+
+
+@call_macro
+def identity(ctx: CallMacroContext, arg: MacroArg | None = None) -> Expr:
+    """`identity(x)` expands to `x`."""
+    if arg is None:
+        return ctx
+    return arg.expr

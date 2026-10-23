@@ -1,7 +1,7 @@
 # A generic subclass of a generic base (Child[U](Box[U])) instantiated
 # concretely: the inherited async method's coro-struct owner has an unbound
 # type param (mro_ancestors carries Child's U, not the instantiation's int32),
-# so it is rejected with a clear diagnostic. Same guard as the multi-level case.
+# so it is rejected with a clear diagnostic.
 import asyncio
 from tpy import int32
 

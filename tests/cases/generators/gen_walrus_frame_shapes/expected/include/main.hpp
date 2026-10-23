@@ -414,7 +414,7 @@ inline Node::Node(int32_t v) : v(v) {}
 //     super().__init__()
 //     self.msg = msg
 inline Boom::Boom(std::string_view msg)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       msg(msg) {}
 
 // def __init__(self, n: int32) -> None:

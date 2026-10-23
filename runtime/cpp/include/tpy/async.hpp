@@ -23,7 +23,7 @@ namespace tpy {
  * `except Exception:` does not silently swallow it.
  */
 struct CancelledError : BaseException {
-    CancelledError() : BaseException("CancelledError") {}
+    CancelledError() = default;
     using BaseException::BaseException;
     TPY_THROWABLE_VIRTUALS(CancelledError)
 };

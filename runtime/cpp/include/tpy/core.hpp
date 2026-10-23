@@ -185,7 +185,7 @@ struct TimeoutError : OSError { using OSError::OSError; TPY_THROWABLE_VIRTUALS(T
 // abandonment-cleanup destructor of resumable frames and passed to
 // with.__exit__ as exc_val.
 struct GeneratorExit : BaseException {
-    GeneratorExit() : BaseException("GeneratorExit") {}
+    GeneratorExit() = default;
     using BaseException::BaseException;
     TPY_THROWABLE_VIRTUALS(GeneratorExit)
 };

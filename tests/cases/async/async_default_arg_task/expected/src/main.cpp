@@ -819,7 +819,7 @@ void main() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         if ((__self.n <= 0)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         __self.n = ::tpy::sub_check<int32_t>(__self.n, step);
         __state = S_DONE;

@@ -52,7 +52,7 @@ from ..parse import (
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
     TpySlice, TpySubscript, SubscriptDunder, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyAwait,
-    TpyLambda, TpyStarUnpack, TpyVarargPack,
+    TpyLambda, TpyStarUnpack,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign, TpyNonlocal,
     collect_name_refs,
@@ -78,6 +78,7 @@ from ..prescan import (
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .arg_binding import peel_coercions
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -956,38 +957,24 @@ class ExpressionAnalyzer:
 
     def _peel_step_coercions(self, expr: TpyExpr) -> None:
         """Take off the coercions an earlier step of `expr` placed on its
-        children (a select's arms, a literal's elements, a received
-        operand): the step decides them anew, replacing them. A call's
-        arguments are its receive's (`CallAnalyzer.receive_winner_args`)."""
+        children (`peel_coercions`: a select's arms, a literal's elements):
+        the step decides them anew, replacing them. A call's arguments are
+        its commit's, which lays them out again from what was written,
+        peeled the same way (`source_view`)."""
         if isinstance(expr, (TpyCall, TpyMethodCall)):
-            # The pack its receive built is written as the arguments it holds.
-            flat: list[TpyExpr] = []
-            for arg in expr.args:
-                if isinstance(arg, TpyVarargPack):
-                    flat.extend(arg.args)
-                else:
-                    flat.append(arg)
-            expr.args = flat
             if isinstance(getattr(expr, "call_type", None),
                           PENDING_CONTAINER_TYPES):
                 # An empty factory's record spelled as its type: decided anew.
                 expr.call_type = None
             return
-        records = self.ctx.analysis_records
-
-        def peel(node: object) -> object:
-            while isinstance(node, TpyCoerce) and node.expr in records:
-                node = node.expr
-            return node
-
         for f in dc_fields(expr):
             value = getattr(expr, f.name)
             if isinstance(value, TpyCoerce):
-                setattr(expr, f.name, peel(value))
+                setattr(expr, f.name, peel_coercions(value))
             elif isinstance(value, list):
                 for i, item in enumerate(value):
                     if isinstance(item, TpyCoerce):
-                        value[i] = peel(item)
+                        value[i] = peel_coercions(item)
 
     def _run_analysis(self, expr: TpyExpr, slot: SlotHint | None,
                       coercion_ctx: CoercionContext | None,
@@ -1570,7 +1557,8 @@ class ExpressionAnalyzer:
                 expr.call_type = None
                 typ = self._call_result(
                     expr, self.calls.infer_generic_construction(
-                        expr, route.record_info))
+                        expr, route.record_info,
+                        self.calls.ctor_binding(expr, route.record_info)))
             elif route.builtin:
                 typ = self._call_result(
                     expr, self.calls._analyze_builtin_function_overloads(

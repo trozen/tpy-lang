@@ -499,7 +499,7 @@ bool _read_gzip_header(T_fp& fp) {
     }
     ::tpy::Bytes head = ::tpystd::gzip::_read_exact(fp, 8);
     if ((::tpy::bytes_getitem(head, 0) != 8)) {
-        throw BadGzipFile("Unknown compression method");
+        throw BadGzipFile(std::string_view("Unknown compression method"));
     }
     int32_t flag = ::tpy::int_cast_check<int32_t>(::tpy::bytes_getitem(head, 1));
     if ((static_cast<int32_t>(flag & FEXTRA))) {

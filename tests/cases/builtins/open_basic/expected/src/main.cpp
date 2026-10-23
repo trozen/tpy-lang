@@ -49,7 +49,7 @@ void main() {
     w.write("alpha\nbeta\ngamma");
     w.close();
     ::tpy::TextFile r = ::tpy::builtin_open(path);
-    std::cout << r.read() << "\n" << ::tpy::check_signals;
+    std::cout << r.read(-1) << "\n" << ::tpy::check_signals;
     r.close();
     ::tpy::TextFile r2 = ::tpy::builtin_open(path);
     std::vector<std::string> lines = r2.readlines();
@@ -64,7 +64,7 @@ void main() {
     auto __ctx_1 = ::tpy::builtin_open(path);
     auto& f1 = __ctx_1.__enter__();
     try {
-        std::cout << f1.read() << "\n" << ::tpy::check_signals;
+        std::cout << f1.read(-1) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -81,7 +81,7 @@ void main() {
     auto __ctx_2 = ::tpy::builtin_open(path);
     auto& f2 = __ctx_2.__enter__();
     try {
-        std::cout << f2.read() << "\n" << ::tpy::check_signals;
+        std::cout << f2.read(-1) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});

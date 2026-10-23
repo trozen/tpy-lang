@@ -895,8 +895,9 @@ def _expand_arg_types_with_kwargs(
 ) -> list[TpyType] | None:
     """Expand positional arg_types by inserting kwarg types at their param slots.
 
-    Mirrors ``resolve_kwargs`` index-mapping logic but operates on types so
-    ``CallRanking.resolve`` can score kwargs-disambiguated candidates. Returns
+    Mirrors the argument binding (``tpyc/sema/arg_binding.py``) but
+    operates on types so ``CallRanking.resolve`` can score
+    kwargs-disambiguated candidates. Returns
     ``None`` when the overload cannot accept the given kwargs (unknown name,
     duplicate of a positional, or missing required param); the overload is
     then rejected at the candidate level.

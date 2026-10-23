@@ -22,7 +22,7 @@ void main() {
     auto __ctx_1 = Suppress();
     __ctx_1.__enter__();
     try {
-        throw ::tpy::FileNotFoundError("missing.txt");
+        throw ::tpy::FileNotFoundError(std::string_view("missing.txt"));
     } catch (::tpy::BaseException& __exc_1) {
         if (!__ctx_1.__exit__({}, &__exc_1, {})) throw;
     } catch (...) {
@@ -33,7 +33,7 @@ void main() {
     auto __ctx_2 = Suppress();
     __ctx_2.__enter__();
     try {
-        ::tpy::OSError("io").__raise__();
+        ::tpy::OSError(std::string_view("io")).__raise__();
     } catch (::tpy::BaseException& __exc_2) {
         if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
     } catch (...) {

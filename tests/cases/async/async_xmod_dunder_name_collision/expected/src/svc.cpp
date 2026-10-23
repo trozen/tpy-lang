@@ -67,7 +67,7 @@ namespace tpyapp::svc {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if ((__self.n <= 0)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         __self.n = ::tpy::sub_check<int32_t>(__self.n, 1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));

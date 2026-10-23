@@ -27,6 +27,13 @@ namespace tpyapp::main {
 //     async for x in IntCounter(3, 10):                                         # -> S_RESUME_4
 //         total += x
 //     print("total:", total)
+//
+//     # multilevel: Leaf(Mid[int32]) over Mid[U](Box[U]) awaits Box's coro at
+//     # T = int32; the refetch after put proves the receiver was aliased.
+//     leaf = Leaf(5)
+//     print("multilevel:", await leaf.fetch())  # tpyc: ok                      # -> S_RESUME_5
+//     leaf.put(6)
+//     print("multilevel refetch:", await leaf.fetch())                          # -> S_RESUME_6
 ::tpystd::tpy::Poll<::std::monostate> __coro_main_coro::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -97,6 +104,26 @@ namespace tpyapp::main {
             throw;
         }
     }
+    case S_RESUME_5: {  // after: print("multilevel:", await leaf.fetch())  # tpyc: ok
+        auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
+        if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_2 = std::move(__r5).value();
+        __sub_5.reset();
+        std::cout << "multilevel:" << " " << __await_lift_2 << "\n" << ::tpy::check_signals;
+        (*leaf).put(6);
+        __sub_6.emplace((*leaf));
+        __state = S_RESUME_6;
+        continue;
+    }
+    case S_RESUME_6: {  // after: print("multilevel refetch:", await leaf.fetch())
+        auto __r6 = ::tpy::poll_with_cancel(__sub_6, __cancel_pending, waker);
+        if (__r6.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_3 = std::move(__r6).value();
+        __sub_6.reset();
+        std::cout << "multilevel refetch:" << " " << __await_lift_3 << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
     case S_JOIN_0: {
         __sub_4.emplace(*__for_itr_0);
         __state = S_RESUME_4;
@@ -132,8 +159,10 @@ namespace tpyapp::main {
     }
     case S_JOIN_5: {
         std::cout << "total:" << " " << total << "\n" << ::tpy::check_signals;
-        __state = S_DONE;
-        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+        leaf.emplace(Leaf(5));
+        __sub_5.emplace((*leaf));
+        __state = S_RESUME_5;
+        continue;
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }
@@ -155,6 +184,7 @@ void main() {
 // # Inherited await / async with / async for on a generic base: a concrete
 // # subclass reuses the base's templated coro struct with the bound element type.
 // # Mutate-and-observe confirms the receiver is aliased across the boundary.
+// # The multilevel section inherits through two generic levels.
 // import asyncio
 //
 // main()

@@ -2964,7 +2964,7 @@ inline ::tpystd::tpy::Poll<std::vector<T>> _GatherFuture<T>::__poll__(::tpystd::
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     if ((was_canceling && (!this->_exc.has_value()))) {
-        this->_exc = ::tpystd::tplib::box::Box<::tpy::CancelledError>(::tpy::CancelledError());
+        this->_exc = ::tpystd::tplib::box::Box<::tpy::CancelledError>(::tpy::CancelledError(""));
     }
     if ((this->_completed < n)) {
         return ::tpystd::coro::poll_pending<std::vector<T>>();
@@ -3378,7 +3378,7 @@ template<typename T>
 inline ::tpystd::tpy::Poll<T> Future<T>::__poll__(::tpystd::coro::Waker waker) {
     if (this->_done) {
         if (this->_cancelled) {
-            throw ::tpy::CancelledError{};
+            throw ::tpy::CancelledError("");
         }
         if ((this->_exception.has_value())) {
             (*this->_exception).__deref__().__raise__();
@@ -3451,7 +3451,7 @@ inline void _PrimitiveWait<P>::cancel() {
 template<::tpystd::asyncio::_Parking P>
 inline ::tpystd::tpy::Poll<std::monostate> _PrimitiveWait<P>::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancelled) {
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     if ((this->_ticket != 0)) {
         if (::tpy::deref_check(this->_queue).parked(this->_ticket)) {
@@ -3613,7 +3613,7 @@ template<typename T>
             return task.__poll__(::tpystd::coro::Waker()).value();
         } catch (const ::tpy::CancelledError&) {
             if (interrupted) {
-                throw ::tpy::KeyboardInterrupt{};
+                throw ::tpy::KeyboardInterrupt("");
             }
             throw;
         }

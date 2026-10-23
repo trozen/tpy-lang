@@ -46,13 +46,13 @@ void main() {
     w.write("hello");
     w.close();
     ::tpy::TextFile r = ::tpy::builtin_open(tpath);
-    std::cout << r.read() << "\n" << ::tpy::check_signals;
+    std::cout << r.read(-1) << "\n" << ::tpy::check_signals;
     r.close();
     ::tpy::BinaryFile bw = ::tpy::builtin_open_binary(bpath, "wb");
     bw.write(::tpy::bytes_literal("\x01\x02\x03", 3));
     bw.close();
     ::tpy::BinaryFile br = ::tpy::builtin_open_binary(bpath);
-    ::tpy::Bytes data = br.read();
+    ::tpy::Bytes data = br.read(-1);
     br.close();
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n" << ::tpy::check_signals;
@@ -61,7 +61,7 @@ void main() {
     w2.write("world");
     w2.close();
     ::tpy::TextFile r2 = ::tpy::builtin_open(tpath);
-    std::cout << r2.read() << "\n" << ::tpy::check_signals;
+    std::cout << r2.read(-1) << "\n" << ::tpy::check_signals;
     r2.close();
 }
 

@@ -26,7 +26,7 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            ::tpy::OSError(2, "No such file or directory").__raise__();
+            ::tpy::OSError(2, std::string_view("No such file or directory")).__raise__();
         } catch (const ::tpy::OSError& e) {
             ::tpystd::tplib::box::Box<::tpy::Throwable> stored = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
             {

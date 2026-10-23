@@ -83,7 +83,7 @@ inline Cat::Cat(const ::tpy::BigInt& n) : n(n) {}
 //     super().__init__()
 //     self.code = code
 inline PetError::PetError(const ::tpy::BigInt& code)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       code(code) {}
 void __tpy_init();
 } // namespace tpyapp::main

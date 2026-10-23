@@ -17,7 +17,7 @@ void boom(const ::tpy::BigInt& which) {
     if ((which == 1)) {
         throw BErr(::tpy::BigInt(20));
     }
-    throw CErr{};
+    throw CErr("");
 }
 
 // def with_binding(which: int) -> None:

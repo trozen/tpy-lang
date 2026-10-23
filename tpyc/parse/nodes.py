@@ -18,7 +18,6 @@ from ..typesys import (
     param_takes_ownership,
 )
 
-
 # Source location for error reporting and source mapping
 
 @dataclass
@@ -164,6 +163,7 @@ class TpyExpr:
 
 if TYPE_CHECKING:
     from ..coercions import Coercion
+    from ..sema.arg_binding import ArgBinding
     from ..holders import Holder
     from ..sema.context import LoanInfo
     from ..sema.storage_walk import StorageKey
@@ -413,11 +413,27 @@ class ResultForm(Enum):
         return self in (ResultForm.REFERENCE_VALUE, ResultForm.COPY)
 
 
+def _relaid_deepcopy(self, memo):
+    """A deep copy of a call (or `raise X(...)`) is a new analysis site: it
+    is written with what the call was written with, never with a layout an
+    analysis committed (`relaid_copy`)."""
+    # Lazy: sema imports this module; the copy reads the call's binding.
+    from ..sema.arg_binding import relaid_copy
+    return relaid_copy(self, lambda e: copy.deepcopy(e, memo),
+                       lambda v: copy.deepcopy(v, memo), memo)
+
+
 @dataclass
 class TpyCallLike(TpyExpr):
     """A call whose result sema may stamp a borrow-or-value verdict: a free
-    call (`TpyCall`) or a method call (`TpyMethodCall`). Only the verdict
-    lives here; every other call fact stays on its own node kind."""
+    call (`TpyCall`) or a method call (`TpyMethodCall`). The verdict and the
+    argument binding live here; every other call fact stays on its own node
+    kind."""
+    # The binding the last analysis committed (`ArgBinding`, set by sema):
+    # once committed, `args` is laid out in parameter order and the call as
+    # written is read back through it (`source_view`).
+    binding: 'ArgBinding | None' = field(default=None, kw_only=True,
+                                         compare=False, repr=False)
     # Set by sema on a call to a bodyless binding that declares which
     # arguments its result borrows (`borrows=` / `element_of=`); NOT_DECLARED for every
     # other call. Recomputed on each analysis of the node, never re-derived
@@ -431,6 +447,8 @@ class TpyCallLike(TpyExpr):
     # every lent argument is a fresh owner, where nothing can tell the copy
     # apart.
     copy_observable: bool = field(default=False, kw_only=True)
+
+    __deepcopy__ = _relaid_deepcopy
 
     @property
     def call_display(self) -> str:
@@ -458,7 +476,6 @@ class TpyCall(TpyCallLike):
     subscript_callee: 'TpyExpr | None' = None  # Set by parser: fns[0](args) -> stores TpySubscript(fns, 0) for sema fallback
     kwargs: dict[str, TpyExpr] = field(default_factory=dict)  # Keyword arguments (limited support)
     double_star_unpack: 'TpyExpr | None' = None  # **expr unpacking at call site
-    kwarg_td_call: 'TpyExpr | None' = None  # Set by sema: synthetic TypedDict construction for **kwargs
     resolved_import: tuple[str, str] | None = None  # Set by parser: (module, name) for resolved imports
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved function overloads
     enum_from_value: NominalType | None = None  # Set by sema for enum value lookup: Color(0)
@@ -538,6 +555,11 @@ class TpyMethodCall(TpyCallLike):
     static_call_owner: Optional['RecordInfo'] = None
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.method(self, ...) calls on an ancestor
+    # Set by sema on `BaseN.method(self, ...)`: the written `self`, the call's
+    # receiver -- its first written positional, out of `args`
+    # (`ArgBinding.receiver`).
+    explicit_receiver: 'TpyExpr | None' = field(default=None, compare=False,
+                                                repr=False)
     # Set by sema on a parent-initializer call (`super().__init__(...)` /
     # `Base.__init__(self, ...)`): the direct base, as the child spells it in
     # its bases, whose C++ constructor runs the named `__init__` -- None when
@@ -1045,6 +1067,10 @@ class TpyCoerce(TpyExpr):
     context_kind: str
     context_msg: str
     runtime_bigint: bool = False
+    # Placed by the step of the node holding it (`coerce_expr`), which
+    # decides it anew whenever it runs; one that is part of what a call is
+    # written with (a value passed at a container's leaf) is not.
+    by_step: bool = field(default=False, compare=False)
     # The member of a value-union argument slot the value lands in, as the
     # compatibility check chose it; lowering renders the value at it.
     union_member: "TpyType | None" = None
@@ -1531,6 +1557,11 @@ class TpyRaise(TpyStmt):
     # Set by sema when the raised class is @virtual_raise: codegen emits
     # `X(args).__raise__();` so the class's dispatching __raise__ applies.
     raise_via_virtual: bool = False
+    # The constructor's argument binding (`TpyCallLike.binding`).
+    binding: 'ArgBinding | None' = field(default=None, compare=False,
+                                         repr=False)
+
+    __deepcopy__ = _relaid_deepcopy
 
     def exprs(self) -> list[TpyExpr]:
         result = list(self.args)
@@ -2145,6 +2176,13 @@ class TpyFunction:
     @property
     def is_overload_stub(self) -> bool:
         return self.overload_form is not None
+
+    @property
+    def is_typing_overload_stub(self) -> bool:
+        """A `typing.overload` stub (not a `@dispatch` variant): one
+        signature of the trailing implementation, which is specialized and
+        emitted per stub."""
+        return self.overload_form is OverloadForm.OVERLOAD
 
     @property
     def skip_codegen(self) -> bool:
@@ -2989,6 +3027,16 @@ def is_parse_node(obj: object) -> bool:
             and type(obj).__name__ not in _NON_NODE_RECORDS)
 
 
+def keeps_argument_layout(attr: str, old: object, new: object) -> bool:
+    """Whether a generic walk storing `new` in place of `old` at field
+    `attr` of a node keeps a call's argument layout: an argument list or
+    keyword dict replaced whole keeps its length (its operands may change;
+    a layout change is the commit's or `relayout`'s)."""
+    return (attr not in ("args", "kwargs")
+            or not isinstance(old, (list, dict))
+            or (isinstance(new, (list, dict)) and len(new) == len(old)))
+
+
 def rewrite_tree(roots: object, replace: Callable[[object], object],
                  skip: frozenset[str] = frozenset()) -> None:
     """Visit every parse node `roots` holds -- through fields, lists,
@@ -3027,6 +3075,7 @@ def rewrite_tree(roots: object, replace: Callable[[object], object],
                 continue
             u = fix(v)
             if u is not v:
+                assert keeps_argument_layout(attr, v, u), attr
                 setattr(node, attr, u)
         stack[mark:] = stack[mark:][::-1]
 

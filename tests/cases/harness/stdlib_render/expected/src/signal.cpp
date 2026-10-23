@@ -23,7 +23,7 @@ extern "C" void tpy_signal_dispatch(int32_t sig) {
 //     """SIGINT's default handler: raise KeyboardInterrupt."""
 //     raise KeyboardInterrupt()
 void default_int_handler(int32_t signum, const ::tpystd::types::FrameType* frame) {
-    throw ::tpy::KeyboardInterrupt{};
+    throw ::tpy::KeyboardInterrupt("");
 }
 
 // def signal(signalnum: int32,

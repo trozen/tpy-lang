@@ -1678,9 +1678,26 @@ callee, etc. The methods share:
 - `self.ctx` (SemanticContext) and its many fields,
 - `self.type_ops`, `self.expr`, `self.protocol_checker`,
   `self.compat`, `self.deduce`, `self.methods`,
-- the module-level helpers (`resolve_kwargs`, `arity_error_msg`,
-  `validate_generic_defaults`, `validate_type_param_bounds`,
-  `_enrich_literal_types`) which are also imported directly by `methods.py`.
+- the module-level helpers (`validate_generic_defaults`,
+  `validate_type_param_bounds`, `_enrich_literal_types`) which are also
+  imported directly by `methods.py`, and the argument binding
+  (`sema/arg_binding.py`: one `bind` per call, read through
+  `CallAnalyzer.bind_args` / `commit_args`; the arguments
+  `receive_winner_args` receives are the binding's slots, its filled
+  defaults among them). A call holds ONE argument list: the source as
+  written until its first commit, then the parameter-ordered layout
+  (defaults filled, `*args` packed, the `**kwargs` region last) its
+  committed binding describes by indices and names. What the call was
+  written with is derived from the two (`source_view`) whenever it is
+  bound again, so any rewrite of an argument node in place survives; a
+  layout change goes through `commit_args` or `relayout` only
+  (`sema/test_arg_binding.py` scans for any other writer). A step that
+  does not commit (`SemanticContext.slot_step_commits`: an overload
+  probe, a query) binds and reads: `commit_args` hands it a detached
+  layout with no default filled and the call keeps what was written --
+  a builtin's `key=` / `reverse=` included, which the ranking reads
+  placed by position. Only the committing step lays the call out, and
+  only there does `receive_winner_args` receive filled defaults.
 
 Splitting `CallAnalyzer` by call-shape would either require mix-ins
 (all assembled back into one `CallAnalyzer` -- no structural gain)

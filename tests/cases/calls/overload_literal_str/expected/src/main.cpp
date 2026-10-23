@@ -36,7 +36,7 @@ void main() {
     f1.write("hello");
     f1.close();
     ::tpy::TextFile f2 = ::tpy::builtin_open_mode("tpy_literal_test.txt", "r");
-    std::cout << f2.read() << "\n" << ::tpy::check_signals;
+    std::cout << f2.read(-1) << "\n" << ::tpy::check_signals;
     f2.close();
     ::tpy::BinaryFile f3 = ::tpy::builtin_open_binary("tpy_literal_test.bin", "wb");
     f3.close();

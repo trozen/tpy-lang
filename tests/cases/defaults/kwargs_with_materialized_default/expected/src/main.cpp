@@ -35,6 +35,10 @@ int64_t spread(int64_t a, int64_t b, ::tpy::varargs<const int64_t> rest, int64_t
 //     # here would freeze a wrong value.
 //     print(spread(1, 2))
 //     print(spread(1, 2, 5, 6))
+//     # A generic call leaving a materialized default open before a keyword
+//     # argument infers its type argument from the written ones.
+//     r = g3(5, k=4)  # tpyc: ok
+//     print("g3-gap", r)
 void main() {
     Options __tmp_1 = Options("a");
     std::cout << ::tpyapp::main::probe(Fixed(3), __tmp_1) << "\n" << ::tpy::check_signals;
@@ -43,6 +47,8 @@ void main() {
     std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(), 9) << "\n" << ::tpy::check_signals;
     std::array<const int64_t, 2> __tmp_3{5, 6};
     std::cout << ::tpyapp::main::spread(1, 2, ::tpy::varargs<const int64_t>(__tmp_3), 9) << "\n" << ::tpy::check_signals;
+    int32_t r = ::tpyapp::main::g3<int32_t>(5, nullptr, ::tpy::BigInt(4));
+    std::cout << "g3-gap" << " " << r << "\n" << ::tpy::check_signals;
 }
 
 // main()

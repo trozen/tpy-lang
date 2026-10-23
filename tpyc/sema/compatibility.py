@@ -2666,16 +2666,18 @@ class TypeCompatibility:
         validates the conversion and hands `expr` back untouched: its
         committed slot places the coercion.
         """
+        source = expr
         # The slot receives the callable a class-name factory stands for, so
-        # the node the caller stores back is that lambda.
+        # the node the caller stores back is that lambda -- where it commits.
         expr = lambda_of(expr)
         commits = self.ctx.slot_step_commits()
         pending = self._pending_num_ends(actual, expected, expr, context)
         if pending is not None:
-            return (self.pend.coerce(expr, strip_int(actual),
-                                     strip_int(expected), context, coercion_ctx,
-                                     inferred_slot=inferred_slot)
-                    if pending and commits else expr)
+            if not (pending and commits):
+                return expr if commits else source
+            return self.pend.coerce(expr, strip_int(actual),
+                                    strip_int(expected), context,
+                                    coercion_ctx, inferred_slot=inferred_slot)
         actual = self.pend.current(actual)
         expected = self.pend.current(expected)
         # A bound coroutine handle (owned-erased Own[Cancellable[T]]) is
@@ -2741,7 +2743,7 @@ class TypeCompatibility:
             landing=landing,
         )
         if not commits:
-            return expr
+            return source
         if coercion is None and coercion_ctx is CoercionContext.RETURN:
             # A result erases a @dynamic source into its owner here; the
             # call-argument and binding sinks erase at their own rows.
@@ -2789,6 +2791,7 @@ class TypeCompatibility:
             context_kind=coercion_ctx,
             context_msg=context,
             runtime_bigint=runtime_bigint,
+            by_step=True,
             union_member=union_member,
             loc=expr.loc
         )

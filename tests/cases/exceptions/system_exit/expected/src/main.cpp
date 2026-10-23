@@ -287,7 +287,7 @@ void subclass() {
     }
     {
         try {
-            throw Leave("why");
+            throw Leave(std::string_view("why"));
         } catch (const Leave& e) {
             std::cout << "subclass: caught as Leave" << " " << ::tpy::__str__(e.code) << "\n" << ::tpy::check_signals;
         }

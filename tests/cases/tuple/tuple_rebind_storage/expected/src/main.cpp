@@ -1239,7 +1239,7 @@ void except_binder(Box& v) {
     std::cout << "except-binder" << " " << std::get<0>(p)->n << " " << v.n << "\n" << ::tpy::check_signals;
     {
         try {
-            throw Oops{};
+            throw Oops("");
         } catch (const Oops& p) {
             std::cout << "except-binder caught" << "\n" << ::tpy::check_signals;
         }
@@ -1276,7 +1276,7 @@ void except_binder_branches(bool c) {
     std::cout << "except-binder" << " " << std::get<0>(t)->n << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
     {
         try {
-            throw Oops{};
+            throw Oops("");
         } catch (const Oops& t) {
             std::cout << "except-binder caught" << "\n" << ::tpy::check_signals;
         }

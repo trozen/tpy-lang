@@ -25,7 +25,7 @@ void main() {
     auto __ctx_1 = ::tpy::builtin_open(path);
     auto& r = __ctx_1.__enter__();
     try {
-        std::cout << r.read() << ::tpy::check_signals;
+        std::cout << r.read(-1) << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});

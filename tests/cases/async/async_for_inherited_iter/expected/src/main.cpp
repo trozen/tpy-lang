@@ -89,7 +89,7 @@ void main() {
         (void)std::move(__r0).value();
         __sub_0.reset();
         if ((__self.i >= 3)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         __self.i = ::tpy::add_check<int32_t>(__self.i, 1);
         __state = S_DONE;

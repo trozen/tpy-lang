@@ -30,7 +30,7 @@ void on_term(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* fram
 // def on_hup(signum: int, frame: FrameType | None) -> None:
 //     raise KeyboardInterrupt()
 void on_hup(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* frame) {
-    throw ::tpy::KeyboardInterrupt{};
+    throw ::tpy::KeyboardInterrupt("");
 }
 
 // def on_int(signum: int, frame: FrameType | None) -> None:
@@ -42,7 +42,7 @@ void on_int(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* frame
 // def raises_stop(signum: int, frame: FrameType | None) -> None:
 //     raise Stop()
 void raises_stop(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* frame) {
-    throw Stop{};
+    throw Stop("");
 }
 
 // def second(signum: int, frame: FrameType | None) -> None:

@@ -137,7 +137,7 @@ void main() {
     c = &*(__slot_7 = B(7));
     {
         try {
-            ::tpy::OSError(std::move(*c).take().v, "seven").__raise__();
+            ::tpy::OSError(std::move(*c).take().v, std::string_view("seven")).__raise__();
         } catch (const ::tpy::OSError& e) {
             std::cout << "raise-group:" << " " << e.error_number << "\n" << ::tpy::check_signals;
         }

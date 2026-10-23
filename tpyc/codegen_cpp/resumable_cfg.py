@@ -509,10 +509,10 @@ def frame_struct_qualname(
             # A call site must name the base frame struct with concrete type
             # args. An unbound TypeParamRef here means the MRO-resolved
             # owner's args were not bound to concrete types -- compute_mro_
-            # ancestors records each base with the defining class's own type
-            # params, so a generic subclass of a generic base (Child[U](Box[U]))
-            # or a multi-level chain (C(B[int32]) where B[U](A[U])) leaves them
-            # unbound. Emit a clean diagnostic rather than ill-formed C++.
+            # ancestors spells each ancestor in the record's own type params,
+            # so a generic subclass of a generic base (Child[U](Box[U]))
+            # leaves them unbound for its instantiation. Emit a clean
+            # diagnostic rather than ill-formed C++.
             if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
                 raise CodeGenError(
                     f"inherited {_SHAPE_MEMBER[shape]} on generic base "

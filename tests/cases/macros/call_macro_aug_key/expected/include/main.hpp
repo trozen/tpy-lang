@@ -4,15 +4,80 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/datetime.hpp"
+#include "tpystd/io.hpp"
 
 namespace tpyapp::main {
+
+using ::tpystd::io::StringIO;
+using ::tpystd::datetime::timedelta;
+
+struct Opts;
+struct Disp;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def f(x: str) -> str:
 std::string f(std::string_view x);
+// def neg(v: int32) -> int32:
+int32_t neg(int32_t v);
+// def td_x(o: Opts) -> int64:
+int64_t td_x(const Opts& o);
 // def main() -> None:
 void main();
 
+// class Opts(TypedDict):
+struct Opts {
+    // x: int64
+    int64_t x;
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Opts";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Opts& obj) {
+    ::tpy::print_object_default(os, "Opts", obj);
+    return os;
+}
+
+// class Disp:
+struct Disp {
+
+    // def __init__(self) -> None:
+    Disp();
+
+    // @dispatch
+    // def m(self, x: int64, k: int64) -> Own[list[int64]]:
+    std::vector<int64_t> m(int64_t x, int64_t k) const;
+
+    // @dispatch
+    // def m(self, x: str, k: int64) -> Own[list[int64]]:
+    std::vector<int64_t> m(std::string_view x, int64_t k) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Disp";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Disp& obj) {
+    ::tpy::print_object_default(os, "Disp", obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+inline Disp::Disp() {
+}
+
+// @dispatch
+// def m(self, x: int64, k: int64) -> Own[list[int64]]:
+//     return [x * 10 + k]
+inline std::vector<int64_t> Disp::m(int64_t x, int64_t k) const {
+    return std::vector<int64_t>{(::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(x, 10)), k))};
+}
+
+// @dispatch
+// def m(self, x: str, k: int64) -> Own[list[int64]]:
+//     return [k]
+inline std::vector<int64_t> Disp::m(std::string_view x, int64_t k) const {
+    return std::vector<int64_t>{k};
+}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -409,7 +409,7 @@ inline ::tpystd::tpy::Poll<T> _Recv<T>::__poll__(::tpystd::coro::Waker waker) {
         if ((this->_state.__deref__()._has_recv_waiter && ::tpystd::coro::same_task(this->_state.__deref__()._recv_waker, waker))) {
             this->_state.__deref__()._has_recv_waiter = false;
         }
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     if ((!(this->_state.__deref__()._is_empty()))) {
         return ::tpystd::coro::poll_ready<T>(this->_state.__deref__()._pop());
@@ -492,7 +492,7 @@ inline ::tpystd::tpy::Poll<std::monostate> _Send<T>::__poll__(::tpystd::coro::Wa
         if ((this->_state.__deref__()._has_send_waiter && ::tpystd::coro::same_task(this->_state.__deref__()._send_waker, waker))) {
             this->_state.__deref__()._has_send_waiter = false;
         }
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     if (this->_state.__deref__()._closed) {
         throw ChannelClosed("send on closed channel");

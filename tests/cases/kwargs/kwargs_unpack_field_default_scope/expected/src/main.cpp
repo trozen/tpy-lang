@@ -48,11 +48,21 @@ int32_t opts(const Opts& kw) {
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(static_cast<int32_t>(kw.level), 10)), kw.n));
 }
 
+// def pair(**kw: Unpack[Pair]) -> None:
+//     print("gap", kw["a"], kw["b"])
+void pair(const Pair& kw) {
+    std::cout << "gap" << " " << kw.a << " " << kw.b << "\n" << ::tpy::check_signals;
+}
+
 // def main(E: int32) -> None:
 //     print(opts(n=E))  # the omitted field default fills here
+//     # A later field passed: the earlier one takes its default.
+//     pair(b=9)  # tpyc: ok
 void main(int32_t E) {
     Opts __tmp_1 = Opts(E, E::B);
     std::cout << ::tpyapp::main::opts(__tmp_1) << "\n" << ::tpy::check_signals;
+    Pair __tmp_2 = Pair(2, 9);
+    ::tpyapp::main::pair(__tmp_2);
 }
 
 // # A TypedDict field default naming an enum member is the member it names

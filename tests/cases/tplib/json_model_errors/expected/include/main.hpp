@@ -176,7 +176,7 @@ inline Item Item::load_json(std::string_view __path) {
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -195,7 +195,7 @@ inline std::expected<Item, ::tpystd::tplib::json::parser::JsonError> Item::try_l
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});

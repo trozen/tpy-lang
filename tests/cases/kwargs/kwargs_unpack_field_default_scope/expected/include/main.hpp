@@ -31,11 +31,14 @@ inline std::ostream& operator<<(std::ostream& __os, E __e) {
 }
 
 struct Opts;
+struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def opts(**kw: Unpack[Opts]) -> int32:
 int32_t opts(const Opts& kw);
+// def pair(**kw: Unpack[Pair]) -> None:
+void pair(const Pair& kw);
 // def main(E: int32) -> None:
 void main(int32_t E);
 
@@ -51,6 +54,21 @@ struct Opts {
 
 inline std::ostream& operator<<(std::ostream& os, const Opts& obj) {
     ::tpy::print_object_default(os, "Opts", obj);
+    return os;
+}
+
+// class Pair(TypedDict):
+struct Pair {
+    // a: int32 = 2  # tpyc: warning(/ignored by CPython/)
+    int32_t a = 2;
+    // b: int32 = 3  # tpyc: warning(/ignored by CPython/)
+    int32_t b = 3;
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
+    ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
 

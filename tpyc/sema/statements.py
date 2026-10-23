@@ -79,7 +79,13 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_nested_def_nonlocal_rebinds,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
-from ..parse.nodes import SourceLocation, VarLinkage, op_spelling, name_path
+from ..parse.nodes import (
+    SourceLocation, VarLinkage, op_spelling, name_path,
+)
+from .arg_binding import (
+    BindReject, CallSource, adopt_temp_call, bind, init_param_infos, relayout,
+    source_view, temp_call_args,
+)
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
     MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_operand_keys,
@@ -102,7 +108,6 @@ from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
-from .overloads import OverloadAmbiguityError
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .receiver_calls import (
@@ -3076,59 +3081,26 @@ class StatementAnalyzer:
                     f"it must inherit from Exception",
                     stmt)
 
-        # Type-check constructor arguments against __init__ params
-        if stmt.args:
-            init_overloads = self.ctx.registry.ctor_overloads(record)
-            if len(init_overloads) > 1:
-                # Overloaded ctor (builtin-stub @overload groups, e.g. the
-                # OSError (errno, strerror[, filename]) forms): resolve the
-                # winning overload like the expression construction path;
-                # the single-init arity check below would only ever see the
-                # first stub's signature.
-                with self.expr.calls.open_call_args(
-                        stmt, list(stmt.args), stmt.exception_type,
-                        scored=True) as scope:
-                    with self.ctx.probe_slot_scope(True):
-                        arg_types = [self.expr.analyze_expr(a)
-                                     for a in stmt.args]
-                    try:
-                        winner = self.expr.calls.ranking().resolve(
-                            init_overloads, arg_types)
-                    except OverloadAmbiguityError as e:
-                        raise self.ctx.error(
-                            self.compat.ambiguous_overload_text(
-                                f"{stmt.exception_type}.__init__", e.candidates),
-                            stmt)
-                    if winner is None:
-                        types_str = ", ".join(self.compat.call_type_text(t)
-                                              for t in arg_types)
-                        raise self.ctx.error(
-                            f"No matching overload for '{stmt.exception_type}"
-                            f"({types_str})'", stmt)
-                    self.expr.calls.receive_winner_args(
-                        scope, stmt.args, None, winner.params, winner,
-                        call=stmt)
-                stmt.resolved_ctor_init = winner
-            elif record.has_init:
-                min_args = sum(1 for _, _, d in record.init_params if d is None)
-                max_args = len(record.init_params)
-                if len(stmt.args) < min_args or len(stmt.args) > max_args:
+        # `raise X(args)` constructs `X` as the expression `X(args)` does,
+        # its omitted defaults filled the same way; the checks below keep
+        # the statement's own diagnostics for a single signature.
+        init_overloads = self.ctx.registry.ctor_overloads(record)
+        written = source_view(stmt)
+        if written.positional and len(init_overloads) <= 1:
+            if record.has_init:
+                bound = bind(written, init_param_infos(
+                                 record.init_params,
+                                 ctor=(init_overloads[0] if init_overloads
+                                       else None)),
+                             f"{record.name}()")
+                if isinstance(bound, BindReject) and bound.arity is not None:
+                    min_args, max_args, got = bound.arity
                     expected = (f"{max_args}" if min_args == max_args
                                 else f"{min_args} to {max_args}")
                     raise self.ctx.error(
                         f"'raise {stmt.exception_type}()' expects "
-                        f"{expected} arguments, got {len(stmt.args)}",
+                        f"{expected} arguments, got {got}",
                         stmt)
-                self.expr.calls.receive_winner_args(
-                    None, stmt.args, None,
-                    [(pname, ptype) for pname, ptype, _ in record.init_params],
-                    None, call=stmt)
-                # Carry the resolved __init__ so codegen routes the ctor args
-                # through the same shared arg-lowering loop a normal `X(args)`
-                # construction uses -- otherwise a raise site re-derives only
-                # the plain coercion fallback and misses the protocol /
-                # covariant / optional-ptr / union / mutated-temp dispatch.
-                stmt.resolved_ctor_init = record.get_method("__init__")
             elif record.fields:
                 raise self.ctx.error(
                     f"'{stmt.exception_type}' has data fields but no __init__; "
@@ -3147,6 +3119,26 @@ class StatementAnalyzer:
                     f"'raise {stmt.exception_type}()' does not accept arguments"
                     f"{hint}",
                     stmt)
+        if init_overloads:
+            construction = TpyCall(TpyName(record.name, loc=stmt.loc),
+                                   **temp_call_args(stmt), loc=stmt.loc)
+            constructed = self.expr.calls._analyze_record_constructor(
+                construction, record)
+            if (not is_cf and isinstance(constructed, NominalType)
+                    and constructed.type_args):
+                # The class name alone does not spell an instantiation the
+                # arguments inferred (`raise EB(xs)` builds `EB[list[int32]]`):
+                # the constructed value raises as `raise EB[...](xs)` does.
+                self.ctx.set_expr_type(construction, constructed)
+                stmt.raise_expr = construction
+                stmt.exception_type = None
+                relayout(stmt, CallSource(), None)
+                self.init.mark_terminated()
+                return
+            # Carry the resolved __init__ so codegen routes the ctor args
+            # through the same shared arg-lowering loop a normal `X(args)`
+            # construction uses.
+            adopt_temp_call(stmt, construction, type_args=False)
         # @virtual_raise classes dispatch in their C++ __raise__ (e.g.
         # OSError's ctor-time errno -> subclass mapping); the fresh
         # construction must route through it, not the throw peephole.
@@ -3216,12 +3208,14 @@ class StatementAnalyzer:
             obj, member = raised, None
         path = name_path(obj) if member is not None or isinstance(obj, TpyFieldAccess) else None
         ref = self.ctx.type_ref(obj, member) if path is not None else None
-        is_kw_call = isinstance(raised, TpyMethodCall) and bool(raised.kwargs)
+        is_kw_call = (isinstance(raised, TpyMethodCall)
+                      and bool(source_view(raised).keywords))
         if ref is not None and ref.kind == SymbolKind.RECORD and not is_kw_call:
             stmt.exception_type = ".".join(path if member is None else [*path, member])
             stmt.resolved_type = self.ctx.type_of_ref(ref)
             if isinstance(raised, TpyMethodCall):
-                stmt.args = list(raised.args)
+                relayout(stmt, CallSource(source_view(raised).positional),
+                         None)
                 stmt.is_call_form = True
             stmt.raise_expr = None
             self._analyze_raise(stmt)
@@ -3281,10 +3275,11 @@ class StatementAnalyzer:
         name = stmt.exception_type
         if stmt.args or stmt.is_call_form:
             # raise func() or raise func(args) -- convert to call expression
-            call_expr = TpyCall(func=TpyName(name, loc=stmt.loc), args=stmt.args, loc=stmt.loc)
+            call_expr = TpyCall(func=TpyName(name, loc=stmt.loc),
+                                **temp_call_args(stmt), loc=stmt.loc)
             stmt.raise_expr = call_expr
             stmt.exception_type = None
-            stmt.args = []
+            relayout(stmt, CallSource(), None)
             self._analyze_raise_expr(stmt)
             return
         # raise name -- convert to variable reference

@@ -23,6 +23,12 @@ namespace tpyapp::main {
 //     w.add(4)
 //     print(w.contains(11))
 //     print(w.biggest())
+//
+//     # Two generic levels: the declaring base's params compose through both.
+//     x = WiderBag[int32]()
+//     x.add((1, 2))
+//     x.add((3, 0))
+//     print("two-level", x.contains((3, 0)), x.biggest())  # tpyc: ok
 void main() {
     IntBag b = IntBag();
     b.add(3);
@@ -40,6 +46,10 @@ void main() {
     w.add(4);
     std::cout << ::tpy::print_bool(w.contains(11)) << "\n" << ::tpy::check_signals;
     std::cout << w.biggest() << "\n" << ::tpy::check_signals;
+    WiderBag<int32_t> x = WiderBag<int32_t>();
+    x.add(std::tuple<int32_t, int32_t>{1, 2});
+    x.add(std::tuple<int32_t, int32_t>{3, 0});
+    std::cout << "two-level" << " " << ::tpy::print_bool(x.contains(std::tuple<int32_t, int32_t>{3, 0})) << " " << ::tpy::TuplePrinter(x.biggest()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

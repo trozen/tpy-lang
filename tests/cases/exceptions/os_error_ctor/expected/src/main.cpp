@@ -13,19 +13,19 @@ namespace tpyapp::main {
 // def refuse() -> None:
 //     raise ConnectionRefusedError(111, "Connection refused")
 void refuse() {
-    throw ::tpy::ConnectionRefusedError(111, "Connection refused");
+    throw ::tpy::ConnectionRefusedError(111, std::string_view("Connection refused"));
 }
 
 // def direct_mapped() -> None:
 //     raise OSError(5, "Input/output error")  # EIO maps to no subclass
 void direct_mapped() {
-    ::tpy::OSError(5, "Input/output error").__raise__();
+    ::tpy::OSError(5, std::string_view("Input/output error")).__raise__();
 }
 
 // def direct_mapped_enoent() -> None:
 //     raise OSError(2, "No such file or directory")
 void direct_mapped_enoent() {
-    ::tpy::OSError(2, "No such file or directory").__raise__();
+    ::tpy::OSError(2, std::string_view("No such file or directory")).__raise__();
 }
 
 // def bound_mapped() -> None:
@@ -148,7 +148,7 @@ void main() {
     }
     {
         try {
-            throw ::tpy::FileExistsError(17, "File exists", "out.txt");
+            throw ::tpy::FileExistsError(17, std::string_view("File exists"), std::string_view("out.txt"));
         } catch (const ::tpy::OSError& exc) {
             std::cout << exc << " " << exc.filename << "\n" << ::tpy::check_signals;
         }
@@ -187,7 +187,7 @@ void main() {
     }
     {
         try {
-            throw ::tpy::FileNotFoundError(1, "Operation not permitted");
+            throw ::tpy::FileNotFoundError(1, std::string_view("Operation not permitted"));
         } catch (const ::tpy::PermissionError&) {
             std::cout << "WRONG: explicit subclass re-mapped" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::FileNotFoundError& exc) {
@@ -196,7 +196,7 @@ void main() {
     }
     {
         try {
-            ::tpy::OSError(2, "No such file or directory", "cfg.txt").__raise__();
+            ::tpy::OSError(2, std::string_view("No such file or directory"), std::string_view("cfg.txt")).__raise__();
         } catch (const ::tpy::FileNotFoundError& exc) {
             std::cout << "filename mapped:" << " " << exc << " " << exc.filename << "\n" << ::tpy::check_signals;
         }
@@ -210,7 +210,7 @@ void main() {
     }
     {
         try {
-            ::tpy::OSError(4, "Interrupted system call").__raise__();
+            ::tpy::OSError(4, std::string_view("Interrupted system call")).__raise__();
         } catch (const ::tpy::InterruptedError& exc) {
             std::cout << "mapped InterruptedError:" << " " << exc << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
@@ -219,7 +219,7 @@ void main() {
     }
     {
         try {
-            ::tpy::OSError(10, "No child processes").__raise__();
+            ::tpy::OSError(10, std::string_view("No child processes")).__raise__();
         } catch (const ::tpy::ChildProcessError& exc) {
             std::cout << "mapped ChildProcessError:" << " " << exc << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {
@@ -228,7 +228,7 @@ void main() {
     }
     {
         try {
-            ::tpy::OSError(3, "No such process").__raise__();
+            ::tpy::OSError(3, std::string_view("No such process")).__raise__();
         } catch (const ::tpy::ProcessLookupError& exc) {
             std::cout << "mapped ProcessLookupError:" << " " << exc << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OSError&) {

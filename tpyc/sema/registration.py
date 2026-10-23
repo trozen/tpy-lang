@@ -57,7 +57,7 @@ from ..typesys import (
     contains_type_kind_param,
     unwrap_readonly,
     unwrap_ref_type,
-    CallableType, is_bodyless_binding,
+    CallableType, is_bodyless_binding, emits_cpp_defaults,
     access_free, declared_result_readonly, strip_auto_readonly,
     twin_takes_variant_args, without_readonly,
 )
@@ -2245,6 +2245,7 @@ class TypeRegistrar:
                 native_cpp_return_type=method.native_cpp_return_type,
                 cpp_template=method.cpp_template or shared_spelling,
                 _shares_set_spelling=shared_spelling is not None,
+                _emits_cpp_defaults=emits_cpp_defaults(method, is_native),
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry,
@@ -2955,7 +2956,8 @@ class TypeRegistrar:
         # path works without further plumbing. Circular-inheritance was already rejected
         # above, so compute_mro_ancestors cannot recurse infinitely here.
         try:
-            record_info.mro_ancestors = self.ctx.registry.compute_mro_ancestors(record_info)
+            record_info.mro_ancestors = self.ctx.registry.compute_mro_ancestors(
+                record_info, self._compose_parent_mro)
         except C3LinearizationError as exc:
             raise SemanticError(
                 f"Inconsistent base-class ordering in '{record.name}': {exc}",
@@ -3805,6 +3807,15 @@ class TypeRegistrar:
                         f"(bases of '{record.name}'); '{record.name}' must override to disambiguate.",
                         record.loc
                     )
+
+    def _compose_parent_mro(self, parent_type: TpyType, parent_info: RecordInfo,
+                            entries: list[TpyType]) -> list[TpyType]:
+        """`parent_info`'s MRO entries restated through the edge
+        `parent_type` names it by (see `compute_mro_ancestors`)."""
+        edge = self.protocols.get_parent_type_subst(parent_type, parent_info)
+        if not edge:
+            return entries
+        return [self.type_ops.substitute_type_params(e, edge) for e in entries]
 
     def _has_circular_inheritance(self, record_info: RecordInfo,
                                   parent: NominalType) -> bool:
@@ -4690,6 +4701,7 @@ class TypeRegistrar:
             # builtin FIs leave this None so the gate excludes them.
             originating_module=(None if func.builtin_function_key
                                 else self.ctx.module_name),
+            _emits_cpp_defaults=emits_cpp_defaults(func),
         )
         self._stamp_result_borrows(func, info)
         # @inline: store body for call-site inlining
@@ -5126,6 +5138,7 @@ class TypeRegistrar:
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
                 originating_module=self.ctx.module_name,
                 variant_decl=func,
+                _emits_cpp_defaults=emits_cpp_defaults(func),
             )
             self._stamp_result_borrows(func, info)
             self._qualify_error_return(func, info)

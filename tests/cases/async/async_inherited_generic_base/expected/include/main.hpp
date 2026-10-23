@@ -12,6 +12,8 @@ namespace tpyapp::main {
 
 template<typename T> struct Box;
 struct IntBox;
+template<typename U> struct Mid;
+struct Leaf;
 template<typename T> struct Guard;
 struct IntGuard;
 template<typename T> struct Counter;
@@ -122,6 +124,22 @@ inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     return os;
 }
 
+// class Mid[U](Box[U]):
+template<typename U>
+struct Mid : Box<U> {
+
+    // def __init__(self, v: U) -> None:
+    Mid() = default;
+    explicit Mid(::tpy::param_val_or_ref_t<U> v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Mid";
+};
+
+template<typename U>
+inline std::ostream& operator<<(std::ostream& os, const Mid<U>& obj) {
+    ::tpy::print_object_default(os, "Mid", obj);
+    return os;
+}
+
 // class IntGuard(Guard[int32]):
 struct IntGuard : Guard<int32_t> {
 
@@ -147,6 +165,20 @@ struct IntCounter : Counter<int32_t> {
 
 inline std::ostream& operator<<(std::ostream& os, const IntCounter& obj) {
     ::tpy::print_object_default(os, "IntCounter", obj);
+    return os;
+}
+
+// class Leaf(Mid[int32]):
+struct Leaf : Mid<int32_t> {
+
+    // def __init__(self, v: int32) -> None:
+    Leaf() = default;
+    explicit Leaf(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Leaf& obj) {
+    ::tpy::print_object_default(os, "Leaf", obj);
     return os;
 }
 
@@ -381,7 +413,7 @@ template <typename T>
         (void)std::move(__r0).value();
         __sub_0.reset();
         if ((__self.cur >= __self.limit)) {
-            throw ::tpy::StopAsyncIteration{};
+            throw ::tpy::StopAsyncIteration("");
         }
         __self.cur = ::tpy::add_check<int32_t>(__self.cur, 1);
         __state = S_DONE;
@@ -407,9 +439,12 @@ struct __coro_main_coro {
     ::tpy::frame_slot<IntGuard> g;
     int32_t v;
     int32_t total;
+    ::tpy::frame_slot<Leaf> leaf;
     int32_t x;
     int32_t __await_lift_0;
     int32_t __await_lift_1;
+    int32_t __await_lift_2;
+    int32_t __await_lift_3;
     ::tpy::frame_loop_slot<::tpy::aiter_type_t<IntCounter>> __for_itr_0;
     IntGuard* __with_ctx_0 = nullptr;
     std::exception_ptr __finally_exc_0;
@@ -418,6 +453,8 @@ struct __coro_main_coro {
     std::optional<__coro_Guard___aenter__<int32_t>> __sub_2;
     std::optional<__coro_Guard___aexit__<int32_t>> __sub_3;
     std::optional<__coro_Counter___anext__<int32_t>> __sub_4;
+    std::optional<__coro_Box_fetch<int32_t>> __sub_5;
+    std::optional<__coro_Box_fetch<int32_t>> __sub_6;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -426,13 +463,15 @@ struct __coro_main_coro {
         S_RESUME_2 = 3,
         S_RESUME_3 = 4,
         S_RESUME_4 = 5,
-        S_JOIN_0 = 6,
-        S_JOIN_1 = 7,
-        S_JOIN_2 = 8,
-        S_JOIN_3 = 9,
-        S_JOIN_4 = 10,
-        S_JOIN_5 = 11,
-        S_DONE = 12,
+        S_RESUME_5 = 6,
+        S_RESUME_6 = 7,
+        S_JOIN_0 = 8,
+        S_JOIN_1 = 9,
+        S_JOIN_2 = 10,
+        S_JOIN_3 = 11,
+        S_JOIN_4 = 12,
+        S_JOIN_5 = 13,
+        S_DONE = 14,
     };
 
     __coro_main_coro()
@@ -459,6 +498,10 @@ inline IntGuard::IntGuard(int32_t val) : Guard<int32_t>(val) {}
 // def __init__(self, limit: int32, seed: int32) -> None:
 //     super().__init__(limit, seed)
 inline IntCounter::IntCounter(int32_t limit, int32_t seed) : Counter<int32_t>(limit, seed) {}
+
+// def __init__(self, v: int32) -> None:
+//     super().__init__(v)
+inline Leaf::Leaf(int32_t v) : Mid<int32_t>(v) {}
 
 // def __init__(self, v: T) -> None:
 //     self.v = v
@@ -496,6 +539,11 @@ template<typename T>
 inline Counter<T>& Counter<T>::__aiter__() {
     return (*this);
 }
+
+// def __init__(self, v: U) -> None:
+//     super().__init__(v)
+template<typename U>
+inline Mid<U>::Mid(::tpy::param_val_or_ref_t<U> v) : Box<U>(v) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

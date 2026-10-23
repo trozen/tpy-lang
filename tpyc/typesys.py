@@ -7343,12 +7343,17 @@ DefaultSlot = tuple[TpyType, Any]
 
 
 def default_emittable_at(slots: Sequence[DefaultSlot], i: int,
-                         is_member: bool = False) -> bool:
+                         is_member: bool, emits_defaults: bool) -> bool:
     """Whether parameter `i`'s default can be a C++ default argument.
 
     `slots`: (param_type, default_expr) in signature order. THE rule -- codegen
     emits from it and the call-site fill is its complement, so the two cannot
     define "needs filling" differently.
+
+    `emits_defaults` is the callee's `emits_cpp_defaults`: a callee whose C++
+    declaration TPy does not write with default arguments (a bodyless
+    binding, an `extern "C"` export) has none, so the call fills every
+    omitted argument.
 
     C++ requires defaults to form a trailing suffix, which Python does not. A
     default whose type would instantiate a class template over a user record
@@ -7360,7 +7365,7 @@ def default_emittable_at(slots: Sequence[DefaultSlot], i: int,
     has no spelling either: that header sees the peer only through its
     forward declarations (`Compiler.cycle_peer_defaults`).
     """
-    if slots[i][1] is None:
+    if slots[i][1] is None or not emits_defaults:
         return False
     if not is_member and any(d is not None and default_needs_call_site_fill(t)
                              for t, d in slots):
@@ -7373,11 +7378,12 @@ def default_emittable_at(slots: Sequence[DefaultSlot], i: int,
 
 
 def any_default_suppressed(slots: Iterable[DefaultSlot],
-                           is_member: bool = False) -> bool:
+                           is_member: bool, emits_defaults: bool) -> bool:
     """True when some default is not emittable, so every call must supply the
     omitted arguments explicitly. The exact complement of `default_emittable_at`."""
     slots = list(slots)
-    return any(d is not None and not default_emittable_at(slots, i, is_member)
+    return any(d is not None
+               and not default_emittable_at(slots, i, is_member, emits_defaults)
                for i, (_t, d) in enumerate(slots))
 
 
@@ -7991,16 +7997,6 @@ class RecordInfo:
         constructor does not count."""
         return self.has_init and self.inherits_init_from is None and not self.is_typed_dict
 
-    @property
-    def materializes_defaults(self) -> bool:
-        """True if a ctor default here has no C++ default-argument spelling, so
-        every construction must fill its omitted arguments explicitly. The
-        `FunctionInfo` twin, over `init_params`' (name, type, default) shape."""
-        # A ctor is a member: its record's alternatives are defined by the
-        # time the in-class declaration is read.
-        return any_default_suppressed(((t, d) for _n, t, d in self.init_params),
-                                      is_member=True)
-
     def is_final_class_constant(self, name: str) -> bool:
         """True if `name` is declared on this record as a Final class
         constant (read-only `static constexpr`); False for mutable
@@ -8424,6 +8420,12 @@ class FunctionInfo:
     # by name. Stored on the RAW fi and read through `root` (the `overloaded`
     # property), so a substituted / rebuilt fi cannot lose it.
     _overloaded: bool = field(default=False, compare=False)
+    # TPy writes this callee's C++ declaration with its default arguments
+    # (`emits_cpp_defaults` of the declaring def, set at registration). False
+    # for a bodyless binding and an `extern "C"` export: every call fills
+    # its omitted arguments (`materializes_defaults`). Stored on the RAW fi,
+    # read through `root`.
+    _emits_cpp_defaults: bool = field(default=True, compare=False)
     # The C++ name of this variant of a free overload set with several
     # emitted variants (`name_overload_variants`); None = emitted under its
     # source name. Every definition, declaration, re-export, call and
@@ -8517,6 +8519,10 @@ class FunctionInfo:
     @property
     def overloaded(self) -> bool:
         return self.root._overloaded
+
+    @property
+    def emits_cpp_defaults(self) -> bool:
+        return self.root._emits_cpp_defaults
 
     @property
     def variant_cpp_name(self) -> str | None:
@@ -8621,7 +8627,7 @@ class FunctionInfo:
         """
         return any_default_suppressed(
             ((p.type, p.default_expr) for p in self.params),
-            is_member=self.is_method)
+            self.is_method, self.emits_cpp_defaults)
 
     @property
     def min_args(self) -> int:
@@ -8858,6 +8864,21 @@ def is_bodyless_binding(fn) -> bool:
     what its signature says are all there is.
     """
     return binds_runtime_symbol(fn) or (fn.is_stub and not fn.is_export)
+
+
+def emits_cpp_defaults(fn: 'TpyFunction', native_owner: bool = False) -> bool:
+    """Whether TPy writes the C++ declaration a call to def `fn` resolves to
+    with default arguments. A bodyless binding's declaration is its
+    target's own; an `@export(binding="C")` function's is the `extern "C"`
+    line, written without any. A `typing.overload` stub is bodyless too, yet
+    its specialization is emitted with the stub's defaults -- except on a
+    `native_owner` class, for which TPy emits no member at all."""
+    if fn.is_export or fn.skip_codegen:
+        # An `@inline` def has no C++ declaration: each call expands it.
+        return False
+    if fn.is_typing_overload_stub:
+        return not native_owner
+    return not is_bodyless_binding(fn)
 
 
 def binds_runtime_symbol(fn) -> bool:
@@ -9642,9 +9663,9 @@ class TypeRegistry:
     def iter_field_ancestors(self, record: RecordInfo,
                              reverse: bool = False) -> Iterator[RecordInfo]:
         """The ancestors whose fields `record` really has (see `is_struct_base`)."""
-        for anc_rec in self.iter_ancestor_records(record, reverse=reverse):
-            if self.is_struct_base(record, anc_rec):
-                yield anc_rec
+        for _, anc_rec in self.iter_mro_entries(record, reverse=reverse,
+                                                fields_only=True):
+            yield anc_rec
 
     def get_all_fields(self, record: RecordInfo) -> list[FieldInfo]:
         """Get all fields for a record including inherited, in base-first order.
@@ -9797,15 +9818,9 @@ class TypeRegistry:
         return names
 
     def iter_ancestor_records(self, record: RecordInfo, *, reverse: bool = False) -> Iterator[RecordInfo]:
-        """Yield each RecordInfo in record.mro_ancestors, skipping non-user-record
-        ancestors and unresolved references. reverse=True walks root-first (for
-        base-first field layout); default is MRO order (nearest-first)."""
-        seq = reversed(record.mro_ancestors) if reverse else record.mro_ancestors
-        for anc in seq:
-            if isinstance(anc, NominalType):
-                rec = self.get_record_for_type(anc)
-                if rec is not None:
-                    yield rec
+        """The RecordInfo of each entry of `record`'s MRO (`iter_mro_entries`)."""
+        for _, rec in self.iter_mro_entries(record, reverse=reverse):
+            yield rec
 
     def iter_dynamic_protocols(
         self, record: RecordInfo,
@@ -9836,13 +9851,20 @@ class TypeRegistry:
                 return ancestor
         return None
 
-    def compute_mro_ancestors(self, record: RecordInfo) -> list['TpyType']:
-        """Compute C3 linearization of a record's ancestors (self excluded).
+    def compute_mro_ancestors(
+        self, record: RecordInfo,
+        compose: Callable[['TpyType', RecordInfo, list['TpyType']], list['TpyType']],
+    ) -> list['TpyType']:
+        """Compute C3 linearization of a record's ancestors (self excluded),
+        each entry spelled in `record`'s own type parameters.
 
         Pre-resolved parents in `record.parents` are fed to c3_linearize along
-        with each parent's already-computed mro_ancestors. Parents that are
-        builtin TpyTypes (non-user records) are treated as leaves -- they
-        contribute themselves but no further ancestors.
+        with each parent's already-computed mro_ancestors, restated through
+        the parent edge by `compose(parent_type, parent_info, entries)`:
+        `H[W](G[list[W]])` stores `G[list[W]]`, so `K(H[int32])` stores
+        `G[list[int32]]`. Parents that are builtin TpyTypes (non-user
+        records) are treated as leaves -- they contribute themselves but no
+        further ancestors.
 
         Callers are responsible for storing the result on record_info.mro_ancestors
         and for surfacing C3LinearizationError as a user-facing diagnostic.
@@ -9855,7 +9877,8 @@ class TypeRegistry:
             if isinstance(p, NominalType) and p.is_user_record:
                 parent_info = self.get_record_for_type(p)
             if parent_info is not None:
-                bases_with_mros.append((p, list(parent_info.mro_ancestors)))
+                bases_with_mros.append(
+                    (p, compose(p, parent_info, list(parent_info.mro_ancestors))))
             else:
                 bases_with_mros.append((p, []))
         return c3_linearize(bases_with_mros)
@@ -9996,16 +10019,41 @@ class TypeRegistry:
         owner = self.init_owner(record)
         return owner.get_method_overloads("__init__") if owner is not None else []
 
-    def mro_method_definer(self, record: RecordInfo, method: str) -> 'TpyType | None':
-        """The first ancestor in `record`'s MRO (`record` excluded) whose own
-        method table defines `method` -- the class a multi-base
-        `super().<method>()` dispatches to; inherited methods do not count,
-        matching Python's `__dict__` walk."""
-        for anc_type in record.mro_ancestors:
-            anc = self.get_record_for_type(anc_type)
-            if anc is not None and anc.get_method_overloads(method):
-                return anc_type
+    def mro_method_definer(self, record: RecordInfo, method: str, *,
+                           own: bool = True
+                           ) -> 'tuple[TpyType | None, RecordInfo] | None':
+        """The class whose own method table defines `method` for a call
+        naming `record`: `record` itself (its type None) unless `own` is
+        off, else the first ancestor in its MRO, with its MRO entry --
+        inherited methods do not count, matching Python's `__dict__` walk.
+        None when no class does."""
+        if own and record.get_method_overloads(method):
+            return None, record
+        for anc_type, anc in self.iter_mro_entries(record):
+            if anc.get_method_overloads(method):
+                return anc_type, anc
         return None
+
+    def method_owner(self, record: RecordInfo, method: str) -> RecordInfo:
+        """The class whose own table defines `method` for a call naming
+        `record` (`mro_method_definer`), `record` itself when none does."""
+        found = self.mro_method_definer(record, method)
+        return found[1] if found is not None else record
+
+    def iter_mro_entries(self, record: RecordInfo, *, reverse: bool = False,
+                         fields_only: bool = False,
+                         ) -> Iterator[tuple['TpyType', RecordInfo]]:
+        """Each entry of `record`'s MRO (`record` excluded) that resolves to
+        a record -- builtin bases included -- spelled in `record`'s own type
+        parameters, with its RecordInfo: nearest first, or root first with
+        `reverse` (a base-first field layout). `fields_only`: only the
+        ancestors whose fields `record` has (`is_struct_base`)."""
+        seq = reversed(record.mro_ancestors) if reverse else record.mro_ancestors
+        for anc_type in seq:
+            anc = self.get_record_for_type(anc_type)
+            if anc is not None and (not fields_only
+                                    or self.is_struct_base(record, anc)):
+                yield anc_type, anc
 
     def init_direct_base(self, child: RecordInfo, target: RecordInfo) -> 'TpyType | None':
         """The direct base of `child`, as `child` spells it, whose constructor
@@ -10031,7 +10079,8 @@ class TypeRegistry:
         is no such class."""
         if len(child.parents) < 2:
             return child.parents[0] if child.parents else None
-        return self.mro_method_definer(child, method)
+        found = self.mro_method_definer(child, method, own=False)
+        return found[0] if found is not None else None
 
     def super_init_direct_base(self, child: RecordInfo) -> 'TpyType | None':
         """The direct base a `super().__init__(...)` in `child` initializes."""
@@ -10060,14 +10109,8 @@ class TypeRegistry:
         Does NOT apply type substitution for generic parents -- callers that need
         substitution should use ProtocolChecker.lookup_record_method_overloads.
         """
-        overloads = record.get_method_overloads(method_name)
-        if overloads:
-            return overloads
-        for anc_info in self.iter_ancestor_records(record):
-            overloads = anc_info.get_method_overloads(method_name)
-            if overloads:
-                return overloads
-        return []
+        return (self.method_owner(record, method_name)
+                .get_method_overloads(method_name))
 
     def get_record_for_type(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """Unified lookup for any type's RecordInfo.

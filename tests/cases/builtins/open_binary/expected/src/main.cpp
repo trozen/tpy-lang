@@ -58,7 +58,7 @@ void main() {
     w.write(::tpy::bytes_literal("\000\x01\x02\x03", 4));
     w.close();
     ::tpy::BinaryFile r = ::tpy::builtin_open_binary(path, "rb");
-    ::tpy::Bytes data = r.read();
+    ::tpy::Bytes data = r.read(-1);
     r.close();
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 1)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 2)) << " " << static_cast<int>(::tpy::bytes_getitem(data, 3)) << "\n" << ::tpy::check_signals;
@@ -80,7 +80,7 @@ void main() {
     auto __ctx_2 = ::tpy::builtin_open_binary(path, "rb");
     auto& f2 = __ctx_2.__enter__();
     try {
-        data2 = f2.read();
+        data2 = f2.read(-1);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -110,7 +110,7 @@ void main() {
     auto __ctx_4 = ::tpy::builtin_open_binary(path, "rb");
     auto& f4 = __ctx_4.__enter__();
     try {
-        data3 = f4.read();
+        data3 = f4.read(-1);
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});

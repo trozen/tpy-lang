@@ -32,7 +32,7 @@ void show(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* frame) 
 //     raise Stop()
 void stops(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* frame) {
     std::cout << "  ran SIGTERM, raising" << "\n" << ::tpy::check_signals;
-    throw Stop{};
+    throw Stop("");
 }
 
 // # ascending order, coalesced: one check point runs each pending handler once

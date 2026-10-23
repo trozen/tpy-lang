@@ -1,0 +1,94 @@
+eval y
+free-def y 5
+eval y
+free-kw y 7
+eval y
+dispatch-def str y 5
+eval y
+dispatch-kw str y 7
+eval y
+generic-def y
+eval y
+generic-kw y
+eval y
+varargs-def y z 5
+eval y
+varargs-kw y z 7
+eval y
+method-def y 5
+eval y
+method-kw y 7
+eval y
+dispatch-method-def str y 5
+eval y
+dispatch-method-kw str y 7
+eval y
+call-def y 5
+eval y
+call-kw y 7
+eval y
+ctor-def y 5
+eval y
+ctor-kw y 7
+eval y
+module-fn-def y 5
+eval y
+module-fn-kw y 7
+eval y
+dotted-ctor-def y 5
+eval y
+dotted-ctor-kw y 7
+eval y
+raise-def y 0
+eval y
+raise-kw y 7
+eval n
+free-def n 5
+eval n
+free-kw n 7
+eval n
+dispatch-def str n 5
+eval n
+dispatch-kw str n 7
+eval n
+generic-def n
+eval n
+generic-kw n
+eval n
+varargs-def n z 5
+eval n
+varargs-kw n z 7
+eval n
+method-def n 5
+eval n
+method-kw n 7
+eval n
+dispatch-method-def str n 5
+eval n
+dispatch-method-kw str n 7
+eval n
+call-def n 5
+eval n
+call-kw n 7
+eval n
+ctor-def n 5
+eval n
+ctor-kw n 7
+eval n
+module-fn-def n 5
+eval n
+module-fn-kw n 7
+eval n
+dotted-ctor-def n 5
+eval n
+dotted-ctor-kw n 7
+eval n
+raise-def n 0
+eval n
+raise-kw n 7
+pr2 1 5
+pr2 1 4
+pr2 6 1
+macro-def 1 2 5
+macro-kw 1 2 7
+macro-kw-first 1 2 8

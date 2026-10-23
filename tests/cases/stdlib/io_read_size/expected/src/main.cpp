@@ -98,7 +98,7 @@ void file_read_size() {
         std::cout << "file-zero:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(0))), "]")) << "\n" << ::tpy::check_signals;
         std::cout << "file-n4:" << " " << r.read(4) << "\n" << ::tpy::check_signals;
         std::cout << "file-eq-remaining:" << " " << r.read(6) << "\n" << ::tpy::check_signals;
-        std::cout << "file-rest:" << " " << r.read() << "\n" << ::tpy::check_signals;
+        std::cout << "file-rest:" << " " << r.read(-1) << "\n" << ::tpy::check_signals;
         std::cout << "file-eof:" << " " << (::tpy::str_concat((::tpy::str_concat("[", r.read(5))), "]")) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
@@ -129,7 +129,7 @@ void file_read_size() {
     auto& br = __ctx_4.__enter__();
     try {
         std::cout << "bfile-n4:" << " " << ::tpy::BytesPrinter(br.read(4)) << "\n" << ::tpy::check_signals;
-        std::cout << "bfile-rest:" << " " << ::tpy::BytesPrinter(br.read()) << "\n" << ::tpy::check_signals;
+        std::cout << "bfile-rest:" << " " << ::tpy::BytesPrinter(br.read(-1)) << "\n" << ::tpy::check_signals;
         std::cout << "bfile-eof:" << " " << ::tpy::BytesPrinter(br.read(3)) << "\n" << ::tpy::check_signals;
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {

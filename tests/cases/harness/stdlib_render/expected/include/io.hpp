@@ -949,7 +949,7 @@ inline FileIO::~FileIO() {
 inline int32_t FileIO::write(::tpy::BytesView data) const {
     this->_check_open();
     if ((!(this->_writable))) {
-        ::tpy::OSError("File not open for writing").__raise__();
+        ::tpy::OSError(std::string_view("File not open for writing")).__raise__();
     }
     if (((::tpy::__len__(data) > 0) && this->_waits_for_interrupt())) {
         ::tpystd::_interrupt::before_write(::tpy::int_cast_check<int32_t>(this->_fd));
@@ -1018,7 +1018,7 @@ inline ::tpy::Bytes FileIO::_os_read(int64_t n) const {
         try {
             return ::tpystd::os::read(this->_fd, n);
         } catch (const ::tpy::BlockingIOError&) {
-            throw ::tpy::TimeoutError("timed out");
+            throw ::tpy::TimeoutError(std::string_view("timed out"));
         }
     }
 }

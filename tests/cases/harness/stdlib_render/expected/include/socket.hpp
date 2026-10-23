@@ -334,7 +334,7 @@ inline void socket::shutdown(int32_t how) const {
 //         self._raise_io()
 inline void socket::_check_wait(int32_t rc) const {
     if ((rc == ::tpystd::_interrupt::TIMED_OUT)) {
-        throw ::tpy::TimeoutError("timed out");
+        throw ::tpy::TimeoutError(std::string_view("timed out"));
     }
     if ((rc != ::tpystd::_interrupt::READY)) {
         this->_raise_io();
@@ -367,7 +367,7 @@ inline void socket::_raise_err(int32_t err) const {
     std::string msg = ::tpystd::socket::_strerror(err);
     if (((err == ::tpy_const_eagain) || (err == ::tpy_const_einprogress))) {
         if ((this->_timeout > 0.0)) {
-            throw ::tpy::TimeoutError("timed out");
+            throw ::tpy::TimeoutError(std::string_view("timed out"));
         }
         throw ::tpy::BlockingIOError(err, msg);
     }

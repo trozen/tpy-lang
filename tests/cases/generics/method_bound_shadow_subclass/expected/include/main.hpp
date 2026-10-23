@@ -11,6 +11,7 @@ template<typename T, std::size_t N> struct Bag;
 struct IntBag;
 struct DeepBag;
 template<typename U> struct WideBag;
+template<typename V> struct WiderBag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -80,6 +81,20 @@ struct DeepBag : IntBag {
 
 inline std::ostream& operator<<(std::ostream& os, const DeepBag& obj) {
     ::tpy::print_object_default(os, "DeepBag", obj);
+    return os;
+}
+
+// class WiderBag[V](WideBag[tuple[V, V]]):
+template<typename V>
+struct WiderBag : WideBag<std::tuple<V, V>> {
+
+    using WideBag<std::tuple<V, V>>::WideBag;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.WiderBag";
+};
+
+template<typename V>
+inline std::ostream& operator<<(std::ostream& os, const WiderBag<V>& obj) {
+    ::tpy::print_object_default(os, "WiderBag", obj);
     return os;
 }
 

@@ -40,7 +40,7 @@ namespace tpyapp::main {
 void main() {
     {
         try {
-            throw ::tpy::PermissionError("denied");
+            throw ::tpy::PermissionError(std::string_view("denied"));
         } catch (const ::tpy::OSError& e) {
             std::cout << "via OSError:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
@@ -75,7 +75,7 @@ void main() {
     }
     {
         try {
-            throw ::tpy::PermissionError("perm again");
+            throw ::tpy::PermissionError(std::string_view("perm again"));
         } catch (const ::tpy::Exception& e) {
             std::cout << "perm via Exception:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }

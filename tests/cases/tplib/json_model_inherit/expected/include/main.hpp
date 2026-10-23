@@ -397,7 +397,7 @@ inline Base Base::load_json(std::string_view __path) {
     auto __ctx_2 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_2.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});
@@ -416,7 +416,7 @@ inline std::expected<Base, ::tpystd::tplib::json::parser::JsonError> Base::try_l
     auto __ctx_3 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_3.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -508,7 +508,7 @@ inline WithDefaults WithDefaults::load_json(std::string_view __path) {
     auto __ctx_5 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_5.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_5;
     } catch (::tpy::BaseException& __exc_5) {
         __ctx_5.__exit__({}, &__exc_5, {});
@@ -527,7 +527,7 @@ inline std::expected<WithDefaults, ::tpystd::tplib::json::parser::JsonError> Wit
     auto __ctx_6 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_6.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_6;
     } catch (::tpy::BaseException& __exc_6) {
         __ctx_6.__exit__({}, &__exc_6, {});
@@ -610,7 +610,7 @@ inline Tagged Tagged::load_json(std::string_view __path) {
     auto __ctx_8 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_8.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_8;
     } catch (::tpy::BaseException& __exc_8) {
         __ctx_8.__exit__({}, &__exc_8, {});
@@ -629,7 +629,7 @@ inline std::expected<Tagged, ::tpystd::tplib::json::parser::JsonError> Tagged::t
     auto __ctx_9 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_9.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_9;
     } catch (::tpy::BaseException& __exc_9) {
         __ctx_9.__exit__({}, &__exc_9, {});
@@ -712,7 +712,7 @@ inline User User::load_json(std::string_view __path) {
     auto __ctx_11 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_11.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_11;
     } catch (::tpy::BaseException& __exc_11) {
         __ctx_11.__exit__({}, &__exc_11, {});
@@ -731,7 +731,7 @@ inline std::expected<User, ::tpystd::tplib::json::parser::JsonError> User::try_l
     auto __ctx_12 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_12.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_12;
     } catch (::tpy::BaseException& __exc_12) {
         __ctx_12.__exit__({}, &__exc_12, {});
@@ -814,7 +814,7 @@ inline Extended Extended::load_json(std::string_view __path) {
     auto __ctx_14 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_14.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_14;
     } catch (::tpy::BaseException& __exc_14) {
         __ctx_14.__exit__({}, &__exc_14, {});
@@ -833,7 +833,7 @@ inline std::expected<Extended, ::tpystd::tplib::json::parser::JsonError> Extende
     auto __ctx_15 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_15.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_15;
     } catch (::tpy::BaseException& __exc_15) {
         __ctx_15.__exit__({}, &__exc_15, {});
@@ -916,7 +916,7 @@ inline Scored Scored::load_json(std::string_view __path) {
     auto __ctx_17 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_17.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_17;
     } catch (::tpy::BaseException& __exc_17) {
         __ctx_17.__exit__({}, &__exc_17, {});
@@ -935,7 +935,7 @@ inline std::expected<Scored, ::tpystd::tplib::json::parser::JsonError> Scored::t
     auto __ctx_18 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_18.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_18;
     } catch (::tpy::BaseException& __exc_18) {
         __ctx_18.__exit__({}, &__exc_18, {});
@@ -1018,7 +1018,7 @@ inline Admin Admin::load_json(std::string_view __path) {
     auto __ctx_20 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_20.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_20;
     } catch (::tpy::BaseException& __exc_20) {
         __ctx_20.__exit__({}, &__exc_20, {});
@@ -1037,7 +1037,7 @@ inline std::expected<Admin, ::tpystd::tplib::json::parser::JsonError> Admin::try
     auto __ctx_21 = ::tpy::builtin_open_mode(__path, "r");
     auto& __f = __ctx_21.__enter__();
     try {
-        __data = __f.read();
+        __data = __f.read(-1);
         goto __with_exit_21;
     } catch (::tpy::BaseException& __exc_21) {
         __ctx_21.__exit__({}, &__exc_21, {});

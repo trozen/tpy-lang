@@ -2,3 +2,5 @@ tag:3
 12
 sum:7
 21
+generic-order str
+generic-order str

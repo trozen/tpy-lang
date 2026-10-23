@@ -16,6 +16,342 @@ int64_t partial(int64_t a, int64_t b, int64_t c, int64_t d) {
     return (::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 1000000)), (::tpy::mul_check<int64_t>(b, 10000)))), (::tpy::mul_check<int64_t>(c, 100)))), d));
 }
 
+// # re-analysis: a keyword-only call that is an overloaded call's argument.
+// def g(a: int64, *, k: int64 = 5) -> int64:
+//     return a * 10 + k
+int64_t g(int64_t a, int64_t k) {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(a, 10)), k));
+}
+
+// @dispatch
+// def outer(x: int64) -> int64:
+//     return x
+int64_t outer__int64(int64_t x) {
+    return x;
+}
+
+// @dispatch
+// def outer(x: str) -> int64:
+//     return 0
+int64_t outer__str(std::string_view x) {
+    return 0;
+}
+
+// def add(a: int64, b: int64) -> int64:
+//     print("inline", a, b)
+//     return a
+int64_t add(int64_t a, int64_t b) {
+    std::cout << "inline" << " " << a << " " << b << "\n" << ::tpy::check_signals;
+    return a;
+}
+
+// def kw_sum(**kw: Unpack[Opts]) -> int64:
+//     return kw["x"]
+int64_t kw_sum(const Opts& kw) {
+    return kw.x;
+}
+
+// def none_arm_and_trials() -> None:
+//     print("none-arm-kw", opt(1, k=None))  # tpyc: ok
+//     print("none-arm-omitted", opt("a"))  # tpyc: ok
+//     print("none-arm-pos", optp(1, None))  # tpyc: ok
+//     print("none-arm-method", OptPick().pick(1, k=None))  # tpyc: ok
+//     print("none-arm-ctor", OptBox(1, k=None).x)  # tpyc: ok
+//     print("trial-kwonly", fk(k=3, fn=lambda x: x + 1))  # tpyc: ok
+//     print("none-arm-lambda", apply_opt(None, 3, lambda x: x + 1))  # tpyc: ok
+void none_arm_and_trials() {
+    std::cout << "none-arm-kw" << " " << ::tpyapp::main::opt<int32_t>(1, std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "none-arm-omitted" << " " << ::tpyapp::main::opt<std::string>("a", std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "none-arm-pos" << " " << ::tpyapp::main::optp<int32_t>(1, std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "none-arm-method" << " " << OptPick().pick<int32_t>(1, std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "none-arm-ctor" << " " << OptBox<int32_t>(1, std::nullopt).x << "\n" << ::tpy::check_signals;
+    std::cout << "trial-kwonly" << " " << ::tpyapp::main::fk__T__Fn_int64_int64<int32_t>(3, [](int64_t x) -> int64_t { return (::tpy::add_check<int64_t>(x, 1)); }) << "\n" << ::tpy::check_signals;
+    std::cout << "none-arm-lambda" << " " << ::tpyapp::main::apply_opt<int32_t>(std::nullopt, 3, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }) << "\n" << ::tpy::check_signals;
+}
+
+// @dispatch
+// def describe(x: Outer.Inner) -> int64:
+//     return x.v
+int64_t describe__Outer_Inner(const Outer::Inner& x) {
+    return x.v;
+}
+
+// @dispatch
+// def describe(x: str) -> int64:
+//     return 0
+int64_t describe__str(std::string_view x) {
+    return 0;
+}
+
+// def raise_coded(n: int64) -> None:
+//     # A keyword raise constructs the exception as the call `Coded(...)` does.
+//     raise Coded("coded", code=n)
+void raise_coded(int64_t n) {
+    Coded("coded", n).__raise__();
+}
+
+// @dispatch
+// def outer_f(x: float) -> float:
+//     return x + 0.5
+double outer_f__float(double x) {
+    return ((x) + (0.5));
+}
+
+// @dispatch
+// def outer_f(x: str) -> float:
+//     return 0.0
+double outer_f__str(std::string_view x) {
+    return 0.0;
+}
+
+// def h(x: int64, k: int64 = 5) -> int64:
+//     return x * 10 + k
+int64_t h(int64_t x, int64_t k) {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(x, 10)), k));
+}
+
+// def ht(t: tuple[int64, int64]) -> int64:
+//     return t[0] * 10 + t[1]
+int64_t ht(const std::tuple<int64_t, int64_t>& t) {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(std::get<0>(t), 10)), std::get<1>(t)));
+}
+
+// @dispatch
+// def outer_seq(x: list[int64]) -> int64:
+//     return x[0] * 10 + len(x)
+int64_t outer_seq__list_int64(const std::vector<int64_t>& x) {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(::tpy::__getitem__(x, 0), 10)), static_cast<int64_t>(::tpy::__len__(x))));
+}
+
+// @dispatch
+// def outer_seq(x: str) -> int64:
+//     return 0
+int64_t outer_seq__str(std::string_view x) {
+    return 0;
+}
+
+// def neg(v: int64) -> int64:
+//     return -v
+int64_t neg(int64_t v) {
+    return ::tpy::neg_check<int64_t>(v);
+}
+
+// def builtin_keywords() -> None:
+//     xs: list[int64] = [3, 1, 2]
+//     # A builtin's `key=` / `reverse=` binds by name also when the call is
+//     # analyzed again as `outer`'s argument.
+//     r = outer_seq(sorted(xs, reverse=True))  # tpyc: ok
+//     print("builtin-reverse", r)
+//     k = outer_seq(sorted(xs, key=neg))  # tpyc: ok
+//     print("builtin-key", k)
+//     m = outer(min(4, 7, key=neg))  # tpyc: ok
+//     print("builtin-min-key", m)
+void builtin_keywords() {
+    std::vector<int64_t> xs = {3, 1, 2};
+    std::vector<int64_t> __tmp_1 = ::tpy::builtin_sorted<int64_t>(xs, true);
+    int64_t r = ::tpyapp::main::outer_seq__list_int64(__tmp_1);
+    std::cout << "builtin-reverse" << " " << r << "\n" << ::tpy::check_signals;
+    std::vector<int64_t> __tmp_2 = ::tpy::builtin_sorted_key<int64_t>(xs, neg);
+    int64_t k = ::tpyapp::main::outer_seq__list_int64(__tmp_2);
+    std::cout << "builtin-key" << " " << k << "\n" << ::tpy::check_signals;
+    int64_t m = ::tpyapp::main::outer__int64(::tpy::min_key(4, 7, neg));
+    std::cout << "builtin-min-key" << " " << m << "\n" << ::tpy::check_signals;
+}
+
+// def td_x(o: Opts) -> int64:
+//     return o["x"]
+int64_t td_x(const Opts& o) {
+    return o.x;
+}
+
+// def callee_reentry() -> None:
+//     d = Disp()
+//     # An overloaded method ranked on its keyword `k`, analyzed again.
+//     print("dispatch-method-outer", outer(d.m(2, k=3)))  # tpyc: ok
+//     dl: int64 = apply(lambda a: d.m(a, k=3), 2)  # tpyc: ok
+//     print("dispatch-method-lambda", dl)
+//     # A TypedDict construction stays keyword-only when analyzed again.
+//     print("td-outer", outer(td_x(Opts(x=2))))  # tpyc: ok
+//     tl: int64 = apply(lambda a: td_x(Opts(x=a)), 4)  # tpyc: ok
+//     print("td-lambda", tl)
+//     # A constructor overload group (OSError's) resolved again.
+//     print("ctor-group-outer", outer(OSError(2, "nope").errno))  # tpyc: ok
+//     gl: int64 = apply(lambda s: len(OSError(2, s).strerror), "abc")  # tpyc: ok
+//     print("ctor-group-lambda", gl)
+//     # A native-template constructor resolved again.
+//     print("ctor-template-outer", outer(int64(2.5)))  # tpyc: ok
+//     il: int64 = apply(lambda a: int64(a * 2), 4)  # tpyc: ok
+//     print("ctor-template-lambda", il)
+void callee_reentry() {
+    Disp d = Disp();
+    std::cout << "dispatch-method-outer" << " " << ::tpyapp::main::outer__int64(d.m(static_cast<int64_t>(2), static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
+    int64_t dl = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([&d](int64_t a) -> int64_t { return d.m(a, static_cast<int64_t>(3)); }, 2);
+    std::cout << "dispatch-method-lambda" << " " << dl << "\n" << ::tpy::check_signals;
+    Opts __tmp_1 = Opts(2);
+    std::cout << "td-outer" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::td_x(__tmp_1)) << "\n" << ::tpy::check_signals;
+    int64_t tl = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([](int64_t a) -> int64_t { return ::tpyapp::main::td_x(Opts(a)); }, 4);
+    std::cout << "td-lambda" << " " << tl << "\n" << ::tpy::check_signals;
+    std::cout << "ctor-group-outer" << " " << ::tpyapp::main::outer__int64(static_cast<int64_t>(::tpy::OSError(2, std::string_view("nope")).error_number)) << "\n" << ::tpy::check_signals;
+    int64_t gl = ::tpyapp::main::apply__Fn_str_U__str<int64_t>([](std::string_view s) -> int64_t { return static_cast<int64_t>(::tpy::__len__(::tpy::OSError(2, s).strerror_text)); }, "abc");
+    std::cout << "ctor-group-lambda" << " " << gl << "\n" << ::tpy::check_signals;
+    std::cout << "ctor-template-outer" << " " << ::tpyapp::main::outer__int64(::tpy::from_float_check<int64_t>(2.5)) << "\n" << ::tpy::check_signals;
+    int64_t il = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([](int64_t a) -> int64_t { return (::tpy::mul_check<int64_t>(a, 2)); }, 4);
+    std::cout << "ctor-template-lambda" << " " << il << "\n" << ::tpy::check_signals;
+}
+
+// def walrus_reentry(c: bool) -> None:
+//     q: int64 = 0
+//     p = 1
+//     # A walrus holding a pending number is analyzed again as `outer`'s
+//     # argument, alone and as a select arm.
+//     w = outer((q := p))  # tpyc: ok
+//     print("walrus", w, q)
+//     ws = outer((q := p) if c else 2)  # tpyc: ok
+//     print("walrus-select", ws, q)
+void walrus_reentry(bool c) {
+    int64_t q = 0;
+    int32_t p = 1;
+    int64_t w = ::tpyapp::main::outer__int64((q = static_cast<int64_t>(p)));
+    std::cout << "walrus" << " " << w << " " << q << "\n" << ::tpy::check_signals;
+    int64_t ws = ::tpyapp::main::outer__int64(((c) ? ((q = static_cast<int64_t>(p))) : (2)));
+    std::cout << "walrus-select" << " " << ws << " " << q << "\n" << ::tpy::check_signals;
+}
+
+// def pending_reentry(c: bool) -> None:
+//     p = 1
+//     # A select arm / tuple element holding a pending number is analyzed
+//     # again as `outer`'s argument, and in a lambda tried per candidate.
+//     print("pending-select", outer(h(p if c else 2)))  # tpyc: ok
+//     print("pending-tuple", outer(ht((p, 2))))  # tpyc: ok
+//     ls: int64 = apply(lambda a: h(p if a > 0 else 2), 3)  # tpyc: ok
+//     print("pending-lambda-select", ls)
+//     lt: int64 = apply(lambda a: ht((p, a)), 3)  # tpyc: ok
+//     print("pending-lambda-tuple", lt)
+//     walrus_reentry(c)
+//     builtin_keywords()
+//     callee_reentry()
+void pending_reentry(bool c) {
+    int32_t p = 1;
+    std::cout << "pending-select" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::h(static_cast<int64_t>(((c) ? (p) : (2))))) << "\n" << ::tpy::check_signals;
+    std::cout << "pending-tuple" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::ht(std::tuple<int64_t, int64_t>{p, 2})) << "\n" << ::tpy::check_signals;
+    int64_t ls = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([&p](int64_t a) -> int64_t { return ::tpyapp::main::h(static_cast<int64_t>((((a > 0)) ? (p) : (2)))); }, 3);
+    std::cout << "pending-lambda-select" << " " << ls << "\n" << ::tpy::check_signals;
+    int64_t lt = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([&p](int64_t a) -> int64_t { return ::tpyapp::main::ht(std::tuple<int64_t, int64_t>{p, a}); }, 3);
+    std::cout << "pending-lambda-tuple" << " " << lt << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::walrus_reentry(c);
+    ::tpyapp::main::builtin_keywords();
+    ::tpyapp::main::callee_reentry();
+}
+
+// def sections() -> None:
+//     # The `*xs` region ends at the keyword-only `k`, left to its default.
+//     print("varargs", total(1, 2))  # tpyc: ok
+//     print("varargs-kw", total2(1, 2, k="seven"))  # tpyc: ok
+//     b = Bag()
+//     # Dispatched again on `Bag[int]`, the keyword-only `n` still defaulted.
+//     b.put(3)  # tpyc: ok
+//     print("method-kw", Gen().pick(x=3))  # tpyc: ok
+//     # The keyword-only call binds again when `outer` analyzes its argument.
+//     print("reanalysis", outer(g(1, k=2)))  # tpyc: ok
+//     print("reanalysis-varargs", outer(total(1, 2, k=3)))  # tpyc: ok
+//     # The lambda's body is analyzed once per candidate of `apply`.
+//     lt: int64 = apply(lambda a: g(a, k=2), 3)  # tpyc: ok
+//     print("lambda-trial", lt)
+//     # `a` binds the regular parameter, `x` the TypedDict field.
+//     print("method-td", M().m(a=1, x=2))  # tpyc: ok
+//     print("proxy", Child().run())
+//     show(1, b=5)  # tpyc: ok
+//     show(a=3)  # tpyc: ok
+//     va_unused(7, 8)  # tpyc: ok
+//     d = Opts(x=3)
+//     print("kwargs-spread", kw_sum(**d))  # tpyc: ok
+//     sections_reentry()
+void sections() {
+    std::array<const int32_t, 2> __tmp_1{1, 2};
+    std::cout << "varargs" << " " << ::tpyapp::main::total<int32_t>(::tpy::varargs<const int32_t>(__tmp_1), 5) << "\n" << ::tpy::check_signals;
+    std::array<const int32_t, 2> __tmp_2{1, 2};
+    std::cout << "varargs-kw" << " " << ::tpyapp::main::total2<int32_t>(::tpy::varargs<const int32_t>(__tmp_2), "seven") << "\n" << ::tpy::check_signals;
+    Bag<int32_t> b = Bag<int32_t>();
+    b.put(3, 2);
+    std::cout << "method-kw" << " " << Gen().pick<int32_t>(3) << "\n" << ::tpy::check_signals;
+    std::cout << "reanalysis" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::g(1, 2)) << "\n" << ::tpy::check_signals;
+    std::array<const int32_t, 2> __tmp_3{1, 2};
+    std::cout << "reanalysis-varargs" << " " << ::tpyapp::main::outer__int64(::tpyapp::main::total<int32_t>(::tpy::varargs<const int32_t>(__tmp_3), 3)) << "\n" << ::tpy::check_signals;
+    int64_t lt = ::tpyapp::main::apply__Fn_int64_U__int64<int64_t>([](int64_t a) -> int64_t { return ::tpyapp::main::g(a, 2); }, 3);
+    std::cout << "lambda-trial" << " " << lt << "\n" << ::tpy::check_signals;
+    std::cout << "method-td" << " " << M().m(1, Opts(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "proxy" << " " << Child().run() << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::add(1, 5);
+    ::tpyapp::main::add(3, 2);
+    ::tpyapp::main::add(7, 9);
+    Opts d = Opts(3);
+    std::cout << "kwargs-spread" << " " << ::tpyapp::main::kw_sum(d) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::sections_reentry();
+}
+
+// def sections_reentry() -> None:
+//     # The omitted `x` is filled with `0` and checked as an argument.
+//     Opt[int64]().f()  # tpyc: ok
+//     # The keyword-only `k` is evidence for `T` beside `x`, or alone.
+//     print("kwonly-infer-free", kw_infer(2.0, k=3.5))  # tpyc: ok
+//     print("kwonly-infer-alone", kw_only(k=3))  # tpyc: ok
+//     print("kwonly-infer-method", KwPick().pick(2.0, k=3.5))  # tpyc: ok
+//     print("kwonly-infer-after-args", kw_after_args(2.0, 1.5, k=3.5))  # tpyc: ok
+//     s = Scaler()
+//     # Each proxy call is an overloaded call's argument, so analyzed twice.
+//     print("call-kw", outer(s(1, k=2)))  # tpyc: ok
+//     print("module-kw", outer(kwmod.scaled(1, k=3)))  # tpyc: ok
+//     print("dotted-ctor-kw", describe(Outer.Inner(a=1, k=4)))  # tpyc: ok
+//     for n in range(2):
+//         try:
+//             raise_coded(n + 6)
+//         except Coded as e:
+//             print("raise-kw", e.code)
+//     # An @inline method by keyword, its `b` left to the declared default.
+//     Shower().show(a=4)  # tpyc: ok
+//     b = Bag()
+//     # The pending method's `T` comes from the keyword argument.
+//     b.put(v=3)  # tpyc: ok
+//     # An int literal coerced into an Optional float, analyzed again.
+//     print("reanalysis-coerce", outer_f(Calc().scale(2)))  # tpyc: ok
+//     ys = []
+//     ys.append(1.5)
+//     # A pending list's method argument coerced (2 -> 2.0), analyzed again.
+//     print("reanalysis-pending", outer(ys.count(2)))  # tpyc: ok
+//     pending_reentry(True)
+//     none_arm_and_trials()
+void sections_reentry() {
+    Opt<int64_t>().f(0, 2);
+    std::cout << "kwonly-infer-free" << " " << ::tpy::print_float(::tpyapp::main::kw_infer<double>(2.0, 3.5)) << "\n" << ::tpy::check_signals;
+    std::cout << "kwonly-infer-alone" << " " << ::tpyapp::main::kw_only<int32_t>(3) << "\n" << ::tpy::check_signals;
+    std::cout << "kwonly-infer-method" << " " << ::tpy::print_float(KwPick().pick<double>(2.0, 3.5)) << "\n" << ::tpy::check_signals;
+    std::array<const double, 2> __tmp_1{2.0, 1.5};
+    std::cout << "kwonly-infer-after-args" << " " << ::tpy::print_float(::tpyapp::main::kw_after_args<double>(::tpy::varargs<const double>(__tmp_1), 3.5)) << "\n" << ::tpy::check_signals;
+    Scaler s = Scaler();
+    std::cout << "call-kw" << " " << ::tpyapp::main::outer__int64(s.__call__(1, 2)) << "\n" << ::tpy::check_signals;
+    std::cout << "module-kw" << " " << ::tpyapp::main::outer__int64(::tpyapp::kwmod::scaled(1, 3)) << "\n" << ::tpy::check_signals;
+    Outer::Inner __tmp_2 = Outer::Inner(1, 4);
+    std::cout << "dotted-ctor-kw" << " " << ::tpyapp::main::describe__Outer_Inner(__tmp_2) << "\n" << ::tpy::check_signals;
+    for (int32_t n = 0; n < 2; ++n) {
+        {
+            try {
+                ::tpyapp::main::raise_coded(static_cast<int64_t>((::tpy::add_check<int32_t>(n, 6))));
+            } catch (const Coded& e) {
+                std::cout << "raise-kw" << " " << e.code << "\n" << ::tpy::check_signals;
+            }
+        }
+    }
+    ::tpyapp::main::add(4, 2);
+    Bag<int32_t> b = Bag<int32_t>();
+    b.put(3);
+    std::cout << "reanalysis-coerce" << " " << ::tpy::print_float(::tpyapp::main::outer_f__float(Calc().scale(static_cast<double>(2)))) << "\n" << ::tpy::check_signals;
+    std::vector<double> ys = std::vector<double>{};
+    ys.push_back(1.5);
+    std::cout << "reanalysis-pending" << " " << ::tpyapp::main::outer__int64(static_cast<int64_t>(::tpy::list_count(ys, static_cast<double>(2)))) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::pending_reentry(true);
+    ::tpyapp::main::none_arm_and_trials();
+}
+
 // def main() -> None:
 //     print(combine(1))
 //     print(combine(1, 2))
@@ -25,6 +361,7 @@ int64_t partial(int64_t a, int64_t b, int64_t c, int64_t d) {
 //     print(partial(5))
 //     print(partial(5, d=9))
 //     print(partial(5, 6, d=9))
+//     sections()
 void main() {
     std::cout << ::tpyapp::main::combine(1, 10, 20) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::combine(1, 2, 20) << "\n" << ::tpy::check_signals;
@@ -33,8 +370,11 @@ void main() {
     std::cout << ::tpyapp::main::partial(5, 10, 30, 40) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::partial(5, 10, 30, 9) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::partial(5, 6, 30, 9) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::sections();
 }
 
+// import kwmod
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;

@@ -19,7 +19,7 @@ int64_t lookup(int64_t key) {
 }
 
 int64_t open_missing() {
-    throw ::tpy::FileNotFoundError("missing file");
+    throw ::tpy::FileNotFoundError(std::string_view("missing file"));
 }
 
 int64_t divide(int64_t a, int64_t b) {
@@ -35,7 +35,7 @@ int64_t exit_int() {
 }
 
 int64_t exit_str() {
-    throw ::tpy::SystemExit("m");
+    throw ::tpy::SystemExit(std::string_view("m"));
 }
 
 int64_t exit_bare() {

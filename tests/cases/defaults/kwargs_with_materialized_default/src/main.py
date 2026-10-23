@@ -17,6 +17,16 @@ class Options(TypedDict):
     host: str
 
 
+class R:
+    def __init__(self, v: int) -> None:
+        self.v = v
+
+
+def g3[T](x: T, u: R | None = None, k: int = 3) -> T:
+    print("g3-gap-body", k, u is None)
+    return x
+
+
 def probe(x: "Fixed | None" = None, **kwargs: Unpack[Options]) -> int64:
     return -1 if x is None else x.off
 
@@ -36,6 +46,10 @@ def main() -> None:
     # here would freeze a wrong value.
     print(spread(1, 2))
     print(spread(1, 2, 5, 6))
+    # A generic call leaving a materialized default open before a keyword
+    # argument infers its type argument from the written ones.
+    r = g3(5, k=4)  # tpyc: ok
+    print("g3-gap", r)
 
 
 main()

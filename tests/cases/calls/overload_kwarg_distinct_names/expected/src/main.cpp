@@ -31,6 +31,9 @@ int32_t report__int32__int32__int32(int32_t a, int32_t b, int32_t count) {
 //     print(s2)
 //     n2: int32 = report(int32(2), int32(5), count=int32(3))  # 21
 //     print(n2)
+//     # generic keyword order: `x` is a str, so only the second variant binds.
+//     print("generic-order", pick(y=3, x="s"))  # tpyc: ok
+//     print("generic-order", pick(x="s", y=3))  # tpyc: ok
 void main() {
     std::string s = ::tpyapp::main::report__int32__int32__str(3, 0, "tag");
     std::cout << s << "\n" << ::tpy::check_signals;
@@ -40,6 +43,8 @@ void main() {
     std::cout << s2 << "\n" << ::tpy::check_signals;
     int32_t n2 = ::tpyapp::main::report__int32__int32__int32(2, 5, 3);
     std::cout << n2 << "\n" << ::tpy::check_signals;
+    std::cout << "generic-order" << " " << ::tpyapp::main::pick__T__str<int32_t>(3, "s") << "\n" << ::tpy::check_signals;
+    std::cout << "generic-order" << " " << ::tpyapp::main::pick__T__str<int32_t>(3, "s") << "\n" << ::tpy::check_signals;
 }
 
 // main()

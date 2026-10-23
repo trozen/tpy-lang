@@ -36,7 +36,7 @@ inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
 //     super().__init__()
 //     self.msg = msg
 inline Err::Err(std::string_view msg)
-    : ::tpy::Exception(),
+    : ::tpy::Exception(""),
       msg(msg) {}
 void __tpy_init();
 } // namespace tpyapp::eb

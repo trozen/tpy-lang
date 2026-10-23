@@ -111,7 +111,7 @@ void _register_timer_at(double deadline_seconds, ::tpystd::coro::Waker waker) {
 void _on_sigint(int32_t signum, const ::tpystd::types::FrameType* frame) {
     ::tpystd::asyncio::_executor::Executor* executor = ::tpystd::asyncio::_executor::_get_current_executor();
     if ((executor == nullptr)) {
-        throw ::tpy::KeyboardInterrupt{};
+        throw ::tpy::KeyboardInterrupt("");
     }
     executor->on_sigint();
 }
@@ -969,7 +969,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
         ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     {
         try {
@@ -999,7 +999,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
         ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(this->_data));
     while ((this->_sent < total)) {
@@ -1032,7 +1032,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
         ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     {
         try {
@@ -1075,7 +1075,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
         ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     if ((!(this->_started))) {
         this->_started = true;
@@ -1124,7 +1124,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 ::tpystd::tpy::Poll<std::monostate> SleepFuture::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     if ((!(this->registered))) {
         this->registered = true;
@@ -1163,7 +1163,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
         if ((this->_has_waiter && ::tpystd::coro::same_task(this->_waiter, waker))) {
             this->_has_waiter = false;
         }
-        throw ::tpy::CancelledError{};
+        throw ::tpy::CancelledError("");
     }
     if (this->_is_set) {
         return ::tpystd::coro::poll_ready_none();

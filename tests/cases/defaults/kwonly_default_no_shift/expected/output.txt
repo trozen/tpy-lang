@@ -5,3 +5,54 @@
 5103040
 5103009
 5063009
+varargs 205
+varargs-kw 2seven
+pending 3 2
+method-kw 3
+reanalysis 12
+reanalysis-varargs 203
+lambda-trial 32
+method-td 12
+proxy 31
+inline 1 5
+inline 3 2
+inline 7 9
+kwargs-spread 3
+method-optional-default 0 2
+kwonly-infer-free 3.5
+kwonly-infer-alone 3
+kwonly-infer-method 3.5
+kwonly-infer-after-args 3.5
+call-kw 12
+module-kw 13
+dotted-ctor-kw 14
+raise-kw 6
+raise-kw 7
+inline 4 2
+pending 3 2
+reanalysis-coerce 2.5
+reanalysis-pending 0
+pending-select 15
+pending-tuple 12
+pending-lambda-select 15
+pending-lambda-tuple 13
+walrus 1 1
+walrus-select 1 1
+builtin-reverse 33
+builtin-key 33
+builtin-min-key 7
+dispatch-method-outer 23
+dispatch-method-lambda 23
+td-outer 2
+td-lambda 4
+ctor-group-outer 2
+ctor-group-lambda 3
+ctor-template-outer 2
+ctor-template-lambda 8
+none-arm-kw 1
+none-arm-omitted a
+none-arm-pos 1
+none-arm-method 1
+none-arm-ctor 1
+trial-kwonly 3
+none-arm-lambda 4

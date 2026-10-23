@@ -15,8 +15,34 @@ std::string report__int32__int32__str(int32_t a, int32_t b = 0, std::string_view
 // @dispatch
 // def report(a: int32, b: int32 = 0, *, count: int32 = 1) -> int32:
 int32_t report__int32__int32__int32(int32_t a, int32_t b = 0, int32_t count = 1);
+// @dispatch
+// def pick[T](x: T, y: list[T]) -> str:
+template<typename T>
+std::string pick__T__list_T(::tpy::param_val_or_ref_t<T> x, const std::vector<T>& y);
+// @dispatch
+// def pick[T](y: T, x: str) -> str:
+template<typename T>
+std::string pick__T__str(::tpy::param_val_or_ref_t<T> y, std::string_view x);
 // def main() -> None:
 void main();
+
+// # Generic variants called by keyword pick the same winner whichever is
+// # declared first: the variant tried first and rejected must leave the call
+// # as written for the next one.
+// @dispatch
+// def pick[T](x: T, y: list[T]) -> str:
+//     return "list"
+template<typename T>
+std::string pick__T__list_T(::tpy::param_val_or_ref_t<T> x, const std::vector<T>& y) {
+    return "list";
+}
+// @dispatch
+// def pick[T](y: T, x: str) -> str:
+//     return "str"
+template<typename T>
+std::string pick__T__str(::tpy::param_val_or_ref_t<T> y, std::string_view x) {
+    return "str";
+}
 
 void __tpy_init();
 } // namespace tpyapp::main
