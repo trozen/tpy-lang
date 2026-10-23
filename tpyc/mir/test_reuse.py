@@ -19,8 +19,9 @@ from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .testutil import (
     compiled_definitions, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot,
+    prepared,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 
 CELL_SOURCE = """\
@@ -69,7 +70,7 @@ def source_function(source: str, name: str = "reuse") -> MIRFunction:
 @pytest.mark.parametrize("safe", [False, True])
 def test_source_reuse_has_one_physical_object_per_site(optional: bool, safe: bool) -> None:
     fn = source_function(loop_source(optional, safe))
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     assert isinstance(events, MIRStorageEvents)
     assert [stmt.storage_write.mode for stmt in events.writes.values()] == [
         *([MIRStorageWriteMode.INITIALIZE] * (1 if optional else 2)), MIRStorageWriteMode.OWN_SITE]
@@ -79,7 +80,7 @@ def test_source_reuse_has_one_physical_object_per_site(optional: bool, safe: boo
     assert execute(fn, 1, heap=heap) == (0 if optional else 1 if safe else 2)
     assert len(heap) == (2 if optional else 3)
     assert sorted(next(iter(obj.values())) for obj in heap.values()) == ([0, 2] if optional else [0, 0, 2])
-    assert dump_storage(events) == dump_storage(analyze_storage(fn))
+    assert dump_storage(events) == dump_storage(analyze_storage(prepared(fn)))
     assert "own_site" in dump_storage(events)
     with pytest.raises(TypeError):
         events.writes[next(iter(events.writes))] = next(iter(events.writes.values()))
@@ -98,7 +99,7 @@ def test_distinct_replacement_sites_do_not_share_backing() -> None:
     heap = {}
     assert execute(fn, 1, heap=heap) == 1
     assert len(heap) == 4
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     assert isinstance(events, MIRStorageEvents)
     sites = [s.target for s in events.writes.values() if s.storage_write.mode is MIRStorageWriteMode.OWN_SITE]
     assert len(sites) == 2 and sites[0] != sites[1]
@@ -126,7 +127,7 @@ def test_reuse_in_methods_and_constructor_tails(optional: bool, position: str) -
             ctor = next(c for c in constructors if c.record_name == "Host")
             fn = lower_constructor(ctor, MIRBodyId("reuse", "Host.__init__"), definitions=definitions)
         assert isinstance(fn, MIRFunction), fn
-        events = analyze_storage(fn)
+        events = analyze_storage(prepared(fn))
         assert isinstance(events, MIRStorageEvents)
         assert [s.storage_write.mode for s in events.writes.values()].count(MIRStorageWriteMode.OWN_SITE) == 1
 
@@ -205,9 +206,9 @@ def test_missing_fact_is_uncovered_even_when_acyclic() -> None:
     fn = replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], terminator=MIRGoto(fn.blocks[2].id)), fn.blocks[2]))
     fn = rewrite_site(fn, storage_write=None)
     validate_function(fn)
-    result = analyze_storage(fn)
+    result = analyze_storage(prepared(fn))
     assert isinstance(result, MIRNotCovered)
-    assert result.reason == "missing record write fact"
+    assert result.reason == "missing storage write fact"
     assert "storage not covered" in dump_storage(result)
 
 

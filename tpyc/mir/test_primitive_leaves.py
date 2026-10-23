@@ -22,10 +22,10 @@ from .value import MIRHolding, MIRValidationError
 from .payload_lifetime import inspect_payload_lifetimes
 from .test_payload_inspection import EXTRACT, READ, alias_function
 from .test_payload_lifetime import write
-from .testutil import bind_parameters, execute, leaf_shape, reslot
-from .validate import validate_function
+from .testutil import bind_parameters, execute, leaf_shape, reslot, prepared
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..thir.scalar_leaves import MIRClass
+from .prepare import validate_function
 
 SOURCE = """\
 from enum import Enum
@@ -456,7 +456,7 @@ def test_float_payload_aliases_survive_reads_and_conflict_on_retag(statements, c
     fn = _as_float(alias_function(*statements))
     assert isinstance(fn.slots[0].type, UnionType) and FLOAT in fn.slots[0].type.members
     assert NoneType() in fn.slots[0].type.members
-    assert len(inspect_payload_lifetimes(fn).conflicts) == conflicts
+    assert len(inspect_payload_lifetimes(prepared(fn)).conflicts) == conflicts
 
 
 def _hoists(fn: th.THIRFunction) -> tuple[th.THIRHoistedBinding, ...]:

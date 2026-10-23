@@ -7,8 +7,6 @@ from collections.abc import Callable
 import pytest
 
 from ..typesys import INT32
-from .dependencies import _dependencies, analyze_dependencies
-from .liveness import _liveness, analyze_liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative,
     MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRSlot, MIRSlotId,
@@ -18,15 +16,18 @@ from .payload_lifetime import (
     MIRPayloadConflict, MIRPayloadEnds, _payload_conflicts, _payload_ends,
     analyze_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )
-from .presence import MIRPresenceIssueKind
+from .presence import MIRPresenceIssueKind, _analyze_presence
 from .storage import analyze_storage
+from .retention import analyze_retention
+from .call_effects import analyze_call_effects
 from .test_payload_lifetime import (
     ASSIGN, BODY, CURRENT, ENTRY, FLAG, GUARD, INIT, JOIN, NO, PARAM, VALUE, YES,
     payload, wrapper_function, write,
 )
-from .validate import MIRPresenceError, _prepare_function, validate_function
+from .validate import MIRPresenceError
 from .value import MIRValidationError
-from .testutil import alias_shape, leaf_shape
+from .testutil import alias_shape, leaf_shape, prepared
+from .prepare import validate_function, validated
 
 
 ALIAS, RESULT = (MIRSlotId(BODY, i) for i in (6, 7))
@@ -46,7 +47,7 @@ def test_inspection_separates_lifetime_ends_from_strict_freshness(tag: int | MIR
     fn = alias_function(EXTRACT, write(False, tag), READ)
     with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
         validate_function(fn)
-    result = inspect_payload_lifetimes(fn)
+    result = inspect_payload_lifetimes(prepared(fn))
     expected = () if tag in (2, CURRENT) else (MIRPayloadConflict(MIRPoint(ENTRY, 2), payload(False), MIRPlace(ALIAS)),)
     assert result.conflicts == expected
     assert len(result.freshness) == 1
@@ -65,13 +66,13 @@ def test_inspection_separates_lifetime_ends_from_strict_freshness(tag: int | MIR
 def test_snapshot_or_reextraction_does_not_retain_an_old_payload(stmts: tuple[MIRAssign, ...]) -> None:
     fn = alias_function(*stmts)
     validate_function(fn)
-    result = inspect_payload_lifetimes(fn)
+    result = inspect_payload_lifetimes(prepared(fn))
     assert result.conflicts == () and result.freshness == ()
 
 
 def test_a_to_b_to_a_does_not_revive_alias_freshness() -> None:
     fn = alias_function(EXTRACT, write(False, 1), write(False, 2), READ)
-    result = inspect_payload_lifetimes(fn)
+    result = inspect_payload_lifetimes(prepared(fn))
     assert result.conflicts == (MIRPayloadConflict(MIRPoint(ENTRY, 2), payload(False), MIRPlace(ALIAS)),)
     assert result.freshness
     with pytest.raises(MIRPresenceError):
@@ -81,35 +82,33 @@ def test_a_to_b_to_a_does_not_revive_alias_freshness() -> None:
 def test_selection_error_after_freshness_failure_still_blocks_inspection() -> None:
     direct = MIRAssign(MIRPlace(RESULT), MIRRead(payload(False)))
     fn = alias_function(EXTRACT, write(False, 0), READ, direct)
-    prepared = _prepare_function(fn)
-    assert [i.kind for i in prepared.presence.issues] == [MIRPresenceIssueKind.FRESHNESS,
-                                                       MIRPresenceIssueKind.SELECTION]
+    assert [i.kind for i in _analyze_presence(fn, None).issues] == [MIRPresenceIssueKind.FRESHNESS,
+                                                                 MIRPresenceIssueKind.SELECTION]
     with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
         validate_function(fn)
     with pytest.raises(MIRPresenceError, match="current presence proof"):
-        inspect_payload_lifetimes(fn)
+        inspect_payload_lifetimes(prepared(fn))
 
 
-@pytest.mark.parametrize("analysis", [validate_function, analyze_liveness, analyze_storage, analyze_payload_ends])
+@pytest.mark.parametrize("analysis", [
+    validate_function,
+    lambda fn: analyze_storage(prepared(fn)),
+    lambda fn: analyze_payload_ends(prepared(fn)),
+    lambda fn: analyze_retention(prepared(fn)),
+    lambda fn: analyze_call_effects(prepared(fn)),
+])
 def test_existing_public_apis_still_reject_stale_aliases(analysis: Callable[[MIRFunction], object]) -> None:
     fn = alias_function(EXTRACT, write(False, 0), READ)
     with pytest.raises(MIRPresenceError):
         analysis(fn)
 
 
-def test_dependency_api_stays_strict_with_inspection_liveness() -> None:
-    fn = alias_function(EXTRACT, write(False, 0), READ)
-    live = _liveness(_prepare_function(fn))
-    with pytest.raises(MIRPresenceError):
-        analyze_dependencies(fn, live)
-
-
 def test_inspection_does_not_skip_structure_or_definite_assignment() -> None:
     fn = alias_function(READ)
     with pytest.raises(MIRValidationError, match="read before definite assignment"):
-        inspect_payload_lifetimes(fn)
+        inspect_payload_lifetimes(prepared(fn))
     with pytest.raises(MIRValidationError, match="missing entry block"):
-        inspect_payload_lifetimes(replace(fn, blocks=()))
+        inspect_payload_lifetimes(prepared(replace(fn, blocks=())))
 
 
 @pytest.mark.parametrize("missing", ["write", "duration"])
@@ -117,7 +116,13 @@ def test_uncovered_inputs_do_not_erase_freshness_issues(missing: str) -> None:
     fn = alias_function(EXTRACT, write(False, 0, fact=None if missing == "write" else ASSIGN), READ)
     if missing == "duration":
         fn = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == CURRENT else s for s in fn.slots))
-    result = inspect_payload_lifetimes(fn)
+        # The first dependency run refuses the body: its preparation is that
+        # refusal, and the freshness issue still refuses validation.
+        assert isinstance(prepared(fn), MIRNotCovered)
+        with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
+            validated(fn)
+        return
+    result = inspect_payload_lifetimes(prepared(fn))
     assert isinstance(result.conflicts, MIRNotCovered)
     assert result.freshness
     assert "not covered:" in dump_payload_inspection(result)
@@ -127,21 +132,19 @@ def test_uncovered_inputs_do_not_erase_freshness_issues(missing: str) -> None:
 @pytest.mark.parametrize("wrong", ["presence", "liveness", "dependencies", "ends"])
 def test_composition_rejects_equal_but_distinct_function_instances(wrong: str) -> None:
     fn = alias_function(EXTRACT, write(False, 0), READ)
-    prepared = _prepare_function(fn)
-    live = _liveness(prepared)
-    deps = _dependencies(prepared, live)
-    ends = _payload_ends(prepared)
+    ready = prepared(fn)
+    ends = _payload_ends(ready)
     other = replace(fn)
     if wrong == "presence":
-        prepared = replace(prepared, presence=replace(prepared.presence, function=other))
+        ready = replace(ready, presence=replace(ready.presence, function=other))
     elif wrong == "liveness":
-        live = replace(live, function=other)
+        ready = replace(ready, liveness=replace(ready.liveness, function=other))
     elif wrong == "dependencies":
-        deps = replace(deps, function=other)
+        ready = replace(ready, dependencies=replace(ready.dependencies, function=other))
     else:
         ends = replace(ends, function=other)
     with pytest.raises(MIRValidationError, match="different MIR function"):
-        _payload_conflicts(prepared, live, deps, ends)
+        _payload_conflicts(ready, ends)
 
 
 def test_branch_and_loop_conflicts_are_possible_static_place_reports() -> None:
@@ -152,7 +155,7 @@ def test_branch_and_loop_conflicts_are_possible_static_place_reports() -> None:
         MIRBlock(YES, (EXTRACT,), MIRGoto(JOIN)),
         MIRBlock(JOIN, (write(False, 1), write(False, 2), READ), MIRBranch(FLAG, JOIN, NO)),
         MIRBlock(NO, (), MIRReturn(VALUE))))
-    result = inspect_payload_lifetimes(fn)
+    result = inspect_payload_lifetimes(prepared(fn))
     assert result.conflicts == (MIRPayloadConflict(MIRPoint(JOIN, 0), payload(False), MIRPlace(ALIAS)),)
     assert result.freshness
 
@@ -160,7 +163,7 @@ def test_branch_and_loop_conflicts_are_possible_static_place_reports() -> None:
 @pytest.mark.parametrize("tags", list(product(range(3), repeat=3)))
 def test_concrete_payload_generations_are_covered_by_static_events(tags: tuple[int, ...]) -> None:
     fn = alias_function(EXTRACT, *(write(False, tag) for tag in tags), READ)
-    result = inspect_payload_lifetimes(fn)
+    result = inspect_payload_lifetimes(prepared(fn))
     assert isinstance(result.ends, MIRPayloadEnds)
     # The trace owns a new generation on each tag switch. An old alias never
     # revives, even when later generations occupy the same static place.

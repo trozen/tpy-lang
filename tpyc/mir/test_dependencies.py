@@ -8,8 +8,8 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, OptionalType, ReadonlyType, TupleType, UnionType, VoidType
-from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, dump_dependencies
-from .liveness import MIRPoint, analyze_liveness
+from .dependencies import MIRDependencies, MIRReferent, _dependencies, dump_dependencies
+from .liveness import MIRPoint, _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
@@ -18,14 +18,13 @@ from .nodes import (
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
-from .validate import successors, validate_function
+from .validate import successors
 from .testutil import (
-    compiled_definitions,
-    hand_record,
-    bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape,
-    union_shape,
+    compiled_definitions, hand_record, bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape,
+    owned_shape, reslot, tuple_shape, union_shape, prepared,
 )
 from ..thir.scalar_leaves import MIRClass
+from .prepare import first_phase, validate_function
 
 B = MIRBodyId("dependencies", "test")
 P, Q, FLAG, X, Y, Z, OUT, STORE, STORE2 = (MIRSlotId(B, i) for i in range(9))
@@ -40,7 +39,7 @@ def reference(sid: MIRSlotId, *, param: bool = False, readonly: bool = False) ->
 
 
 def analyze(fn: MIRFunction) -> MIRDependencies:
-    result = analyze_dependencies(fn, analyze_liveness(fn))
+    result = prepared(fn).dependencies
     assert isinstance(result, MIRDependencies), result
     return result
 
@@ -201,7 +200,7 @@ def test_recursive_field_graph_is_rejected_before_unbounded_path_growth(readonly
         MIRBlock(A, (MIRAssign(MIRPlace(X), MIRAlias(P)),), MIRGoto(C)),
         MIRBlock(C, (MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(X, projections))),), MIRGoto(C)),
     ), A), fields=projections[1:])
-    result = analyze_dependencies(fn, analyze_liveness(fn))
+    result = prepared(fn)
     assert isinstance(result, MIRNotCovered) and result.reason == "recursive inline field paths"
 
 
@@ -210,7 +209,7 @@ def test_missing_and_malformed_backing_facts_fail_explicitly() -> None:
     fn = bind_parameters(MIRFunction(B, VoidType(), (storage, MIRSlot(P, leaf_shape(INT32), MIRSlotKind.PARAMETER)), (
         MIRBlock(A, (MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),), MIRReturn()),), A, records=(LAYOUT,)))
     with pytest.raises(MIRValidationError, match="owned storage needs a placement"):
-        analyze_dependencies(fn, analyze_liveness(fn))
+        prepared(fn).dependencies
     for duration in ("body", MIRStorageDuration.CALLER):
         with pytest.raises(MIRValidationError, match="storage duration"):
             validate_function(bind_parameters(replace(fn, slots=(replace(storage, storage_duration=duration), fn.slots[1]))))
@@ -240,7 +239,7 @@ def test_scalar_union_alias_depends_on_wrapper_but_scalar_copy_does_not(local: b
     assert result.active[MIRPoint(C, 1)] == {MIRPlace(X): {MIRReferent(payload)}}
     assert result.active[MIRPoint(C, 2)] == {}
     without_duration = bind_parameters(replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == source else s for s in slots)))
-    rejected = analyze_dependencies(without_duration, analyze_liveness(without_duration))
+    rejected = prepared(without_duration)
     assert isinstance(rejected, MIRNotCovered) and "missing storage duration" in rejected.reason
 
 
@@ -260,7 +259,7 @@ def loop_function() -> MIRFunction:
 def test_fixed_point_contains_concrete_paths_with_aliased_parameters(same_object: bool) -> None:
     fn = loop_function()
     result = analyze(fn)
-    liveness = analyze_liveness(fn)
+    liveness = prepared(fn).liveness
     assert result.active[MIRPoint(E, 0)] == {MIRPlace(X): external(P) | external(Q)}
     assert dict(result.referents) == dict(analyze(replace(fn, blocks=tuple(reversed(fn.blocks)))).referents)
     # Enumerate paths with concrete object identities, independent of the worklist.
@@ -292,12 +291,12 @@ def test_known_empty_unreachable_invalid_and_uncovered_are_distinct() -> None:
     assert result.active[MIRPoint(A, 0)] == {}
     assert MIRPoint(C, 0) not in result.active
     with pytest.raises(MIRValidationError, match="different MIR function"):
-        analyze_dependencies(replace(fn), analyze_liveness(fn))
+        _dependencies(first_phase(replace(fn)).presence, _liveness(fn))
     recursive = MIRField(MIRFieldId(CELL, "child"), CELL)
     recursive_fn = bind_parameters(MIRFunction(B, VoidType(), (reference(P, param=True), reference(X)), (MIRBlock(A, (
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(P, (MIRDeref(), recursive)))),
     ), MIRReturn()),), A), fields=(recursive,))
-    uncovered = analyze_dependencies(recursive_fn, analyze_liveness(recursive_fn))
+    uncovered = prepared(recursive_fn)
     assert isinstance(uncovered, MIRNotCovered) and "recursive inline" in uncovered.reason
     assert "not covered" in dump_dependencies(uncovered)
     with pytest.raises(MIRValidationError, match="storage duration"):

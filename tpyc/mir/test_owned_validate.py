@@ -12,7 +12,7 @@ from .nodes import (
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .testutil import hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
-from .validate import validate_function
+from .prepare import validate_function
 
 B = MIRBodyId("owned", "verify")
 CELL = hand_record("Cell", "owned.Cell", value=INT32)

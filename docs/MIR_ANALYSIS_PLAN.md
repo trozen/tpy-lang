@@ -2258,8 +2258,8 @@ as the corpus grows).
   write (`call_effects.call_write_places`, from the callee's summary, a free
   function's or a user method's), so
   `v = r.name; rename(r, s); len(v)` is a conflict when sema has not already
-  owned `v`. Retention asks `retention.affects` over an unchanged
-  `may_overlap`: replacing an owned-leaf field reaches holders at or under
+  owned `v`. Retention asks `reach.reaches` (with its oracle,
+  `reach.storage_exclusions`): replacing an owned-leaf field reaches holders at or under
   that field under ONE root (sibling fields are disjoint), while distinct
   external roots may alias, so a write through one parameter reaches every
   non-record holder of another (`write_then_reuse` in the case: `s` may
@@ -2456,7 +2456,7 @@ as the corpus grows).
   `__eq__` / `__ne__` / `__lt__` / `__le__` / `__gt__` / `__ge__` /
   `__hash__` -- so no container operation dispatches user code on it.
   Every stub may raise.
-- **Affects rule** (`retention.affects`). A written `[structure]` reaches
+- **Reach rule** (`reach.reaches`, with retention's `reach.storage_exclusions`). A written `[structure]` reaches
   every holder STRICTLY inside the container (iterators, element borrows,
   Spans, element views) and not the whole-container holder itself: the
   object survives an `append` in C++ as in Python, so `xs.append(1);
@@ -3538,7 +3538,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   reads too), whose write rebinds that loan -- so `storage_destination`
   makes the write an event of the member place, and the line facts call
   the write owned.
-  `retention.affects` reaches holders at or under the member, not a
+  `reach.reaches` (retention's `storage_exclusions`) reaches holders at or under the member, not a
   sibling member and not the record around it: replacing `f.line` reaches
   a holder of `f.line.a`, replacing `f.line.a` spares `f.line` and
   `f.line.b`; across external origins that may alias, any holder
@@ -3761,9 +3761,8 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   parameter's entries are seeded at entry with one opaque referent,
   `MIRReferent(held=True)` (`held:` in the dump): the loan views
   owned-leaf storage outside the body that may be ANY external storage, a
-  sibling field of the same object included, so `retention.may_overlap`
-  and `retention.affects` answer True for a held referent against every
-  external one. A view member write and a callee's transfer update an
+  sibling field of the same object included, so `reach.reaches` answers
+  True for a held referent against every external one. A view member write and a callee's transfer update an
   entry in place (below).
 - **Reads.** `t.s` is a `MIRBorrow` of the member place into a view
   holder; `resolve_referents` replaces each object the holder reaches by
@@ -4205,24 +4204,52 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
 - **Writes.** `h.p = None`, `h.p = P(..)`, `h.p = other.p` and `h.p = o`
   are in-place replacement events through storage retention, so a live
   holder of the old payload conflicts -- through the same name, through a
-  second parameter that may name the same holder (`retention.may_overlap`
-  treats distinct external origins as possibly one object), through a
+  second parameter that may name the same holder (`reach.reaches` leaves
+  distinct external origins to retention's oracle, which treats them as
+  possibly one object), through a
   callee's published write, and through `self`. Replacement is never
   routed through payload_lifetime, which compares exact places and drops
   external referents. A whole-field write that copies a payload marks the
   copy `MIRCopy.may_raise`. A callee's write under the payload is
   published as a write of the whole field (summaries carry no payload
   selectors).
-- **Presence kill rule** (`presence._reaches`, `_kill_field_facts`). A
-  presence fact on a field place dies at any statement or published call
-  write that may reach it, in the current state and on the outcomes stored
-  on boolean temporaries (`if a.p is not None and empties(b)`). May-reach
-  is decided by allow-lists: only a root write of a holder of storage
-  elsewhere (a pointer, a region, a cursor, a payload alias) is a rebind
-  that writes no storage, and only scalar leaves, owned leaves and
-  views cannot hold the member (`_may_hold`); any other type may. A read
-  after a killed fact refuses ("payload access without current
-  presence proof").
+- **Presence kill rule** (`presence._kill_field_facts`). A presence fact on
+  a field place dies, in the current state and on the outcomes stored on
+  boolean temporaries (`if a.p is not None and empties(b)`), where the
+  statement retargets the place (a write of it or of a prefix under its
+  root: `presence._under`) or where storage the statement replaces reaches
+  the wrapper's storage: `reach.reaches` over the referents of each written
+  place of `reach.replacement_events` (the call's writes as this state sees
+  the call, an Optional assignment by its engagement) and of the fact's
+  place, which the first dependency run gives (see "Pass order" below).
+  Across distinct external origins presence's oracle decides
+  (`reach.declared_containment`): a written referent naming a whole object
+  may be any object (a `Base` parameter may name a `Sub`), else the written
+  place's declared type may hold the member or not (`reach._may_hold`:
+  scalar leaves, owned leaves and views hold none). The body's own storage
+  is never a parameter's object, and a write strictly inside a payload
+  never reaches the wrapper. Fail closed: a missing write fact, a place
+  with no known or no resolved referent, a point with no dependency state
+  kill. A read after a killed fact refuses ("payload access without
+  current presence proof").
+- **Pass order** (`prepare.prepare`, built once by `lower._lower` and
+  carried by the lowered body; every pass takes the `MIRPrepared` it
+  returns). Presence without field selections (no projected fact recorded
+  or demanded), liveness (structural, it reads no presence fact), the
+  first dependency run over that presence, presence with field selections
+  killed over its referents, and dependencies again over the final
+  presence, which every later pass reads (an absent argument the field
+  facts prove, `h.p = None; o = h.p; pick(o)`, changes the call's effects
+  and the caller's coverage). The kill's input is sound: it reads holder
+  leaves only, the field facts only remove points and edges, so a
+  non-empty holder set can only shrink, and an empty one kills. A first
+  dependency run's refusal is the body's verdict (INCOMPLETE with that
+  reason) and leaves the field selections unproven: `validate_function`
+  refuses it, the dump (`prepare.validated`) does not. A MIR exception in
+  either run propagates. Skipping initializations in the kill and in
+  retention relies on the validator: owned parameters with body storage
+  arrive initialized (`initialized_storage` starts with them), so a second
+  initialization of one is rejected.
 - **Constructors.** An Optional parameter is admitted by the predicate calls
   share (`definitions.optional_parameter`, reading the value of the one
   binding `call_contract.parameter_binding` derives): a `P | None` pointer
@@ -4254,10 +4281,10 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
     find(11)`): "record initializer type mismatch" (`store_found`).
   - Union, tuple, scalar-Optional and `str | None` fields; payloads that
     hold a loan or have a record field: "unsupported record fields".
-- **Precision.** Presence runs before dependencies, so its kill rule is a
-  layout-based may-alias model beside retention's referent-based one: a
-  write to a field of any parameter kills a local holder's fact (sound,
-  imprecise; TODO.md). A caller construct's Optional member re-derives
+- **Precision.** Retention's oracle stays coarse (a replacement of
+  external storage may free a loan held anywhere external; making it
+  precise would remove conflicts and `argument_alias` warnings, filed in
+  TODO.md), while presence's is declared-type containment. A caller construct's Optional member re-derives
   `may_raise` from the payload type. The storage certificate does not model
   a payload holder (`o = a.p`): "borrow evidence: demanded operation is not
   a supported record borrow" (the verdict stays covered or conflict).
@@ -4300,7 +4327,7 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   published; `parameter_contract_problem` checks the value's form, so the
   payload is never more mutable than declared.
 - **Origin.** The payload record an Optional parameter lends names the
-  parameter itself outside the body (`dependencies.origin`, keyed
+  parameter itself outside the body (`reach.origin`, keyed
   like a borrowed record parameter's in `object_keys`), so writes under the
   payload, stored loans (`_transfers`) and alias obligations read it like a
   borrowed record parameter; the object it names is the payload record
@@ -4441,9 +4468,24 @@ the target slot's storage, the body or each entry of its region, read off
 `MIRSlot.storage_duration`), `OWN_SITE` (a holder's backing site written,
 possibly revisited, and the holder repointed), `IN_PLACE` (the value
 replaced in its storage; every alias sees it) and `OPTIONAL_ASSIGN` (an
-Optional record backing filled). Retention takes the writes
-`storage.storage_destination` inventories, payload ends the writes to a
-scalar sum. An in-place write's rebinding holder repoints, so retention
+Optional record backing filled). One classifier yields every storage
+event of a statement with its kind (`reach.storage_events`: an
+assignment's initialization, a scalar wrapper constructed with its
+default (`CONSTRUCT`), an Optional backing constructed empty
+(`BACKING`), an owned tuple's inline members, a replacement, a scalar
+wrapper's payload write, an Optional assignment, a call write, a move).
+An assignment without its write fact keeps the kind its destination
+gives it, marked not `known`: an unknown replacement (storage a borrow
+can point into) fails the replacement readers closed (presence's kill,
+retention, the storage inventory), an unknown payload write refuses the
+payload ends, scope_lifetime refuses one on a root it tracks, and the
+storage evidence counts no materialization from it. The storage
+inventory keeps every kind, scope_lifetime reads which roots a block
+begins, the storage evidence which roots are materialized
+(`reach.MATERIALIZES`), payload_lifetime which writes replace a scalar
+wrapper's payload, and retention and presence read the replacements
+`reach.replacement_events` selects.
+Payload ends take the writes to a scalar sum. An in-place write's rebinding holder repoints, so retention
 skips its own dependency leaves only: a view member of the object it lends
 still retains what the write replaces
 (`BUGS.md#record-view-member-source-replaced`, `element_view_replaced`).
@@ -4465,7 +4507,8 @@ answered once:
 | may a published return end there | `return_endpoint_problem`, read by the summary and by each caller (`dependencies.call_return_problem`): no region, never at or under an Optional record field's payload, a view of a leaf or a place of exactly the result's type |
 | does a write at this end replace storage | `shapes.replacement_reach` (storage, retention, line facts, the write endpoint) |
 | what a call writes | `MIRPresentCall` per call point (`presence.present_call`): effects less what an argument proven absent reaches, and their places resolved once |
-| what a parameter lends | `dependencies.origin`: the place (a Span's elements region; an Optional record parameter's payload named by the parameter) and the shape its paths step from |
+| what a parameter lends | `reach.origin`: the place (a Span's elements region; an Optional record parameter's payload named by the parameter) and the shape its paths step from |
+| does replacing this storage reach that storage | `reach.reaches` on referents (retention, scope_lifetime, the presence field kill), across distinct external origins each pass's oracle beside the other in reach.py (`storage_exclusions`, `declared_containment`) |
 
 So `bump_all(ps: list[P])` writing `p.x` in `for p in ps` publishes
 `writes={param0[elements].x}` and its callers lower. Kept apart, with
@@ -4473,13 +4516,12 @@ their reasons: the parameter itself as a return spelling for an element
 or view of a container (the caller projects it to the elements region);
 the caller's "container result rooted in an elements region" (it depends
 on the argument); the summary's value arms (they check the source, not
-where it lands); retention's `_origin` (which referents count as one
+where it lands); `reach._origin` (which referents count as one
 origin) and `seeded_loan` (a member storing a loan). For the
 `argument_alias` warning an `[elements]` step is one step like any
 other: element identity is not tracked, so `put(ps, ps[0].s)` with `put`
 replacing `ps[0]` warns, as `put(ps, ps[1].s)` does (a constant-index
-false positive of the kind field writes already have). Next: one overlap
-function (TODO.md "[MIR] FIRST").
+false positive of the kind field writes already have).
 
 ## Scope matrix and remaining increments
 

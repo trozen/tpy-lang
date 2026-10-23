@@ -1,4 +1,8 @@
-"""Selection proofs and extraction bindings cannot survive the wrong writes."""
+"""Selection proofs and extraction bindings cannot survive the wrong writes.
+
+Hand-built bodies carry no storage placement, so their dependency facts
+refuse: they are checked for presence (`validated`), not for every field
+selection proven (`validate_function`)."""
 
 from dataclasses import replace
 
@@ -18,7 +22,8 @@ from .testutil import (
     bind_parameters, Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
     reslot, union_shape,
 )
-from .validate import MIRPresenceError, validate_function
+from .validate import MIRPresenceError
+from .prepare import validated
 
 
 BODY = MIRBodyId("union_validation", "example")
@@ -61,7 +66,7 @@ def test_stale_union_test_is_not_a_selection_proof(mutation: MIRAssign) -> None:
     fn = function(MIRBlock(ENTRY, (CAPTURE, TEST, mutation), MIRBranch(GUARD, YES, NO)),
                   MIRBlock(YES, (READ,), MIRReturn(RESULT)), FALLBACK)
     with pytest.raises(MIRPresenceError, match="current presence proof"):
-        validate_function(fn)
+        validated(fn)
 
 
 @pytest.mark.parametrize("negated", [False, True])
@@ -71,7 +76,7 @@ def test_complement_and_boolean_copy_select_one_alternative(negated: bool) -> No
     branch = MIRBranch(COPY, YES, NO) if negated else MIRBranch(COPY, NO, YES)
     fn = function(MIRBlock(ENTRY, (CAPTURE, test, copy), branch),
                   MIRBlock(YES, (READ,), MIRReturn(RESULT)), FALLBACK)
-    validate_function(fn)
+    validated(fn)
     for value in (UnionValue(0), UnionValue(1, False), UnionValue(2, 7)):
         assert execute(fn, value, 13, False) == (7 if value.alternative == 2 else 13)
 
@@ -81,7 +86,7 @@ def test_none_exclusion_does_not_select_a_concrete_member() -> None:
     fn = function(MIRBlock(ENTRY, (CAPTURE, test), MIRBranch(GUARD, NO, YES)),
                   MIRBlock(YES, (READ,), MIRReturn(RESULT)), FALLBACK)
     with pytest.raises(MIRPresenceError):
-        validate_function(fn)
+        validated(fn)
 
 
 @pytest.mark.parametrize("fresh", [False, True])
@@ -90,11 +95,11 @@ def test_loop_requires_current_tags(fresh: bool) -> None:
                   MIRBlock(LOOP, (TEST,) if fresh else (), MIRBranch(GUARD, YES, NO)),
                   MIRBlock(YES, (READ, CLEAR), MIRGoto(LOOP)), FALLBACK)
     if fresh:
-        validate_function(fn)
+        validated(fn)
         assert execute(fn, UnionValue(2, 7), 13, False) == 13
     else:
         with pytest.raises(MIRPresenceError):
-            validate_function(fn)
+            validated(fn)
 
 
 @pytest.mark.parametrize("reextract", [False, True])
@@ -105,11 +110,11 @@ def test_same_alternative_replacement_does_not_revive_old_scalar_alias(reextract
     fn = function(MIRBlock(ENTRY, statements, MIRBranch(GUARD, YES, NO)),
                   MIRBlock(YES, replacement, MIRReturn(RESULT)), FALLBACK)
     if reextract:
-        validate_function(fn)
+        validated(fn)
         assert execute(fn, UnionValue(2, 7), 13, False) == 13
     else:
         with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
-            validate_function(fn)
+            validated(fn)
 
 
 def test_alias_validity_requires_every_join_predecessor() -> None:
@@ -118,7 +123,7 @@ def test_alias_validity_requires_every_join_predecessor() -> None:
                   MIRBlock(LOOP, (BUILD,), MIRGoto(JOIN)),
                   MIRBlock(JOIN, (ALIAS_READ,), MIRReturn(RESULT)), FALLBACK)
     with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
-        validate_function(fn)
+        validated(fn)
 
 
 def test_join_recovers_a_selection_from_boolean_predecessors() -> None:
@@ -129,7 +134,7 @@ def test_join_recovers_a_selection_from_boolean_predecessors() -> None:
         MIRBlock(JOIN, (), MIRBranch(COPY, LOOP, EXIT)),
         MIRBlock(LOOP, (READ,), MIRReturn(RESULT)),
         MIRBlock(EXIT, (), MIRReturn(VALUE)))
-    validate_function(fn)
+    validated(fn)
     for arg in (UnionValue(0), UnionValue(1, False), UnionValue(2, 7)):
         for flag in (False, True):
             assert execute(fn, arg, 13, flag) == (7 if arg.alternative == 2 and flag else 13)
@@ -139,7 +144,7 @@ def test_same_successor_and_distinct_alternatives_lose_proof() -> None:
     fn = function(MIRBlock(ENTRY, (CAPTURE, TEST), MIRBranch(GUARD, YES, YES)),
                   MIRBlock(YES, (READ,), MIRReturn(RESULT)))
     with pytest.raises(MIRPresenceError):
-        validate_function(fn)
+        validated(fn)
 
 
 def test_scalar_alias_recreated_each_loop_entry() -> None:
@@ -148,14 +153,14 @@ def test_scalar_alias_recreated_each_loop_entry() -> None:
                   MIRBlock(YES, (EXTRACT, ALIAS_READ), MIRBranch(FLAG, JOIN, EXIT)),
                   MIRBlock(JOIN, (BUILD, MIRAssign(MIRPlace(FLAG), MIRConstant(False))), MIRGoto(LOOP)),
                   MIRBlock(EXIT, (), MIRReturn(RESULT)), FALLBACK)
-    validate_function(fn)
+    validated(fn)
     assert execute(fn, UnionValue(2, 7), 13, True) == 13
     assert execute(fn, UnionValue(2, 7), 13, False) == 7
 
 
 def test_scalar_alias_is_a_place_not_a_snapshot() -> None:
     fn = function(MIRBlock(ENTRY, (BUILD, EXTRACT, ALIAS_READ), MIRReturn(RESULT)))
-    validate_function(fn)
+    validated(fn)
     assert execute(fn, UnionValue(0), 7, False) == 7
     # The interpreter deliberately follows the alias's place. Validation is
     # what excludes this replacement; a captured scalar would return stale 7.
@@ -163,7 +168,7 @@ def test_scalar_alias_is_a_place_not_a_snapshot() -> None:
         BUILD, EXTRACT, MIRAssign(MIRPlace(VALUE), MIRConstant(11)), BUILD, ALIAS_READ)),))
     assert execute(changed, UnionValue(0), 7, False) == 11
     with pytest.raises(MIRPresenceError):
-        validate_function(changed)
+        validated(changed)
 
 
 @pytest.mark.parametrize("checked_read", [False, True])
@@ -179,13 +184,13 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
     fn = bind_parameters(replace(function(MIRBlock(ENTRY, statements, MIRReturn(VALUE))),
                  slots=(*SLOTS, slot), records=(MIRRecordLayout(record, (field,), True, True),)))
     if checked_read:
-        validate_function(fn)
+        validated(fn)
         heap = {}
         assert execute(fn, UnionValue(0), 7, False, heap=heap) == 7
         assert heap[1][field.id] == 7
     else:
         with pytest.raises(MIRValidationError, match="record construction"):
-            validate_function(fn)
+            validated(fn)
 
 
 @pytest.mark.parametrize(("bad", "message"), [
@@ -204,25 +209,25 @@ def test_bad_union_layouts_and_alias_slots(bad: MIRSlot, message: str) -> None:
     if bad.kind is not SLOTS[bad.id.index].kind:
         fn = bind_parameters(replace(fn, parameter_bindings=()))
     with pytest.raises(MIRValidationError, match=message):
-        validate_function(fn)
+        validated(fn)
 
 
 def test_each_parameter_slot_holds_its_binding() -> None:
     fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
-    validate_function(fn)
+    validated(fn)
     bindings = fn.parameter_bindings
     with pytest.raises(MIRValidationError, match="parameter slots differ from their bindings"):
-        validate_function(replace(fn, parameter_bindings=bindings[:-1]))
+        validated(replace(fn, parameter_bindings=bindings[:-1]))
     with pytest.raises(MIRValidationError, match="invalid parameter binding"):
-        validate_function(replace(fn, parameter_bindings=(*bindings[:-1], "binding")))
+        validated(replace(fn, parameter_bindings=(*bindings[:-1], "binding")))
     # A binding naming another value than its slot holds.
     union = bindings[0]
     forged = replace(union, value=replace(union.value, members=tuple(reversed(union.value.members))))
     with pytest.raises(MIRValidationError, match="parameter slot differs from its binding"):
-        validate_function(replace(fn, parameter_bindings=(forged, *bindings[1:])))
+        validated(replace(fn, parameter_bindings=(forged, *bindings[1:])))
     # Every binding has a passing, a constructor's built receiver's included.
     with pytest.raises(MIRValidationError, match="parameter malformed call parameter binding"):
-        validate_function(replace(fn, parameter_bindings=(replace(union, passing=None), *bindings[1:])))
+        validated(replace(fn, parameter_bindings=(replace(union, passing=None), *bindings[1:])))
     # A slot no binding derives (a scalar Optional by pointer) is left without
     # one, so the count refuses it.
     maybe = MIRSlot(MIRSlotId(BODY, len(SLOTS)), optional_shape(OptionalType(INT32), leaf_shape(INT32)),
@@ -231,7 +236,7 @@ def test_each_parameter_slot_holds_its_binding() -> None:
                               {maybe.id: ParamPassing.POINTER})
     assert len(unbound.parameter_bindings) == len(bindings)
     with pytest.raises(MIRValidationError, match="parameter slots differ from their bindings"):
-        validate_function(unbound)
+        validated(unbound)
 
 
 @pytest.mark.parametrize("stmt", [
@@ -249,7 +254,7 @@ def test_each_parameter_slot_holds_its_binding() -> None:
 ])
 def test_malformed_union_operations(stmt: MIRAssign) -> None:
     with pytest.raises(MIRValidationError):
-        validate_function(function(MIRBlock(ENTRY, (BUILD, stmt), MIRReturn(VALUE))))
+        validated(function(MIRBlock(ENTRY, (BUILD, stmt), MIRReturn(VALUE))))
 
 
 def reference_function(source_const: bool = False, dest_const: bool = False) -> MIRFunction:
@@ -284,9 +289,9 @@ def test_reference_capture_survives_reseat_and_preserves_capability(source_const
     fn = reference_function(source_const, dest_const)
     if source_const and not dest_const:
         with pytest.raises(MIRValidationError, match="wrapper copy member type or access mismatch"):
-            validate_function(fn)
+            validated(fn)
         return
-    validate_function(fn)
+    validated(fn)
     field = MIRFieldId(fn.slots[-1].type, "value")
     heap = {1: {field: 2}}
     assert execute(fn, UnionValue(0, Reference(1)), UnionValue(1, Reference(2)), 9, Reference(1), heap=heap) == 9
@@ -296,7 +301,7 @@ def test_readonly_extraction_cannot_create_mutable_alias() -> None:
     fn = reference_function(True, True)
     fn = bind_parameters(replace(fn, slots=(*fn.slots[:-1], reslot(fn.slots[-1], readonly=False))))
     with pytest.raises(MIRValidationError, match="increases access"):
-        validate_function(fn)
+        validated(fn)
 
 
 @pytest.mark.parametrize("source_const,dest_const", [(False, False), (False, True), (True, True), (True, False)])
@@ -318,9 +323,9 @@ def test_record_member_construction_preserves_capability(source_const: bool, des
                  blocks=(entry, branch, fn.blocks[2])))
     if source_const and not dest_const:
         with pytest.raises(MIRValidationError, match="type or access mismatch"):
-            validate_function(fn)
+            validated(fn)
         return
-    validate_function(fn)
+    validated(fn)
     field = MIRFieldId(source.type, "value")
     heap = {1: {field: 2}}
     assert execute(fn, UnionValue(1, Reference(2)), UnionValue(1, Reference(2)),

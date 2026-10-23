@@ -24,7 +24,7 @@ from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRSlotKind
 from .summaries import summarize_function
-from .testutil import no_layouts, reaccess
+from .testutil import no_layouts, reaccess, prepared
 from .value import Declared, Local, MIRHolding, MIRRole, Passing, loan_access, shape_problem, thir_member, value_shape
 
 SOURCE = '''\
@@ -477,7 +477,7 @@ def test_the_access_twin_rebinds_only_its_receiver_access(active: _Program) -> N
     body_id, twin = active.workspace.twins[identity]
     lowered = lower_function(twin, body_id, definitions=active.definitions, summaries=active.workspace.summaries)
     assert isinstance(lowered, MIRFunction)
-    result = summarize_function(twin, lowered, active.definitions)
+    result = summarize_function(twin, lowered, prepared(lowered), active.definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     receiver = lowered.parameter_bindings[0]
     assert result.summary.parameters[0] == reaccess(replace(receiver, passing=ParamPassing.CONST_REF), True)
@@ -776,7 +776,7 @@ def test_a_summary_refuses_a_body_binding_its_facts_do_not_derive(active: _Progr
     assert _contract(forged) is None
     slots = tuple(replace(s, shape=forged.value) if s.kind is MIRSlotKind.PARAMETER else s for s in body.slots)
     damaged = replace(body, slots=slots, parameter_bindings=(forged,))
-    result = summarize_function(active.functions["maybe_read"], damaged, active.definitions)
+    result = summarize_function(active.functions["maybe_read"], damaged, prepared(damaged), active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter binding mismatch"
 
 
@@ -843,7 +843,7 @@ def test_a_body_its_signature_does_not_declare_binds_at_its_own_types(active: _P
     body = lower_function(damaged, MIRBodyId("binding", "unsigned"), definitions=active.definitions)
     assert isinstance(body, MIRFunction), body
     assert tuple(b.declared for b in body.parameter_bindings) == tuple(map(param_type, params))
-    result = summarize_function(damaged, body, active.definitions)
+    result = summarize_function(damaged, body, prepared(body), active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary definition signature mismatch"
 
 
@@ -854,7 +854,8 @@ def test_a_summary_refuses_a_declaration_passing_its_body_did_not_bind(active: _
     binding, = _body(active, "record").parameter_bindings
     other = ParamPassing.MUT_REF if binding.passing is ParamPassing.CONST_REF else ParamPassing.CONST_REF
     damaged = replace(fn, params=(replace(fn.params[0], passing=other),))
-    result = summarize_function(damaged, _body(active, "record"), active.definitions)
+    body = _body(active, "record")
+    result = summarize_function(damaged, body, prepared(body), active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter binding mismatch"
 
 

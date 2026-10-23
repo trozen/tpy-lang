@@ -7,17 +7,14 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from .dependencies import analyze_dependencies
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn
 from .shapes import MIRContainerElements
 from .value import MIRHolding
 from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
-from .storage import analyze_storage
-from .testutil import compiled_definitions, ContainerValue, Reference, execute
+from .testutil import compiled_definitions, ContainerValue, Reference, execute, prepared
 
 PREFIX = '''from tpy import int32, Array, readonly
 class Cell:
@@ -83,8 +80,7 @@ class Runner:
 
 
 def _retention(fn: MIRFunction) -> MIRRetention:
-    live = analyze_liveness(fn)
-    result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    result = analyze_retention(prepared(fn))
     assert isinstance(result, MIRRetention), result
     return result
 
@@ -153,14 +149,14 @@ def test_saved_element_survives_target_reset_and_cursor_advance(artifacts) -> No
     assert execute(fn, ContainerValue((Reference(1), Reference(2))), Reference(3), heap=heap) == 7
     assert heap[1][field] == heap[2][field] == 7
     assert heap[3][field] == 3
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     saved = next(s.id for s in fn.slots if s.name == "saved")
     cell = next(s.id for s in fn.slots if s.name == "cell")
     final = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     holders = deps.active[MIRPoint(final.id, 0)]
     assert MIRPlace(cell) not in holders
     assert any(isinstance(p, MIRContainerElements) for ref in holders[MIRPlace(saved)] for p in ref.place.projections)
-    assert not analyze_scope_ends(fn).ends
+    assert not analyze_scope_ends(prepared(fn)).ends
     iterator = next(s for s in fn.slots if s.shape.holding is MIRHolding.CURSOR)
     assert iterator.residence == fn.regions[0].id
     assert fn.slots[cell.index].residence != iterator.residence

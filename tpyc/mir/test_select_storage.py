@@ -26,7 +26,7 @@ from .storage_evidence import (
 from .test_borrowed_argument_storage import Artifacts, _compile_workspace, _thir, active_artifacts
 from .test_storage_adapter import _request, _with_body
 from .testutil import (
-    hand_record, Reference, borrowed_shape, execute, leaf_shape, optional_shape, tuple_shape, union_shape,
+    hand_record, Reference, borrowed_shape, execute, leaf_shape, optional_shape, tuple_shape, union_shape, prepared,
 )
 
 
@@ -426,7 +426,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
                     statements.extend(capture)
             blocks.append(replace(block, statements=tuple(statements)))
         function = replace(function, slots=(*function.slots, wrapper, *extra_slots), blocks=tuple(blocks))
-    evidence = certify_storage_origins(function, frozenset((backing.root,)), artifacts[2])
+    evidence = certify_storage_origins(prepared(function), frozenset((backing.root,)), artifacts[2])
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
     assert any(c.kind is MIRStorageConflictKind.SCOPE_END and c.origin == backing and c.holder == path
                for c in evidence.conflicts)

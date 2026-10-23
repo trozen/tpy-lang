@@ -1,22 +1,22 @@
-"""Positive record-write inventory, without physical lifetime-end claims."""
+"""Positive inventory of every storage event, without physical lifetime-end claims."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .dump import _location, _place
+from .place_text import _location, _place
 from .liveness import MIRPoint
-from .nodes import (
-    MIRAssign, MIRConstruct, MIRFunction, MIRMove, MIRNotCovered, MIRSlot, MIRSlotId, MIRStorageWrite,
-    MIRTupleConstruct, MIRPlace,
-)
-from .shapes import MIRDeref, MIRTupleIndex, replacement_reach
-from .validate import _validated_function, successors
+from .nodes import MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWrite
+from .prepare import MIRPrepared, validated_presence
+from .reach import MIRStorageEvent, MIRStorageEventKind, storage_events
+from .validate import reachable_blocks
 
 
 @dataclass(frozen=True)
 class MIRStorageEvents:
     function: MIRFunction
+    # An assignment's own storage write: an initialization, a replacement,
+    # an Optional assignment.
     writes: Mapping[MIRPoint, MIRAssign]
     member_initializations: Mapping[MIRPoint, tuple[MIRPlace, ...]]
     # A call whose summary may write owned storage it is lent (an owned-leaf
@@ -26,64 +26,63 @@ class MIRStorageEvents:
     # A move out of owned storage empties the source place: a replacement
     # event on it, at the move.
     moves: Mapping[MIRPoint, MIRPlace] = MappingProxyType({})
+    # A wrapper constructed without an assignment: a scalar wrapper with its
+    # default (`CONSTRUCT`) or an Optional record backing left empty (`BACKING`).
+    constructions: Mapping[MIRPoint, MIRStorageEvent] = MappingProxyType({})
+    # A scalar wrapper's value replaced in place: its inline payload ends.
+    payload_writes: Mapping[MIRPoint, MIRAssign] = MappingProxyType({})
 
 
-def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
-    present = _validated_function(fn).presence.calls
-    blocks = {block.id: block for block in fn.blocks}
-    reached = set()
-    pending = [fn.entry]
-    while pending:
-        bid = pending.pop()
-        if bid not in reached:
-            reached.add(bid)
-            pending.extend(successors(blocks[bid].terminator))
+def analyze_storage(prepared: MIRPrepared) -> MIRStorageEvents | MIRNotCovered:
+    """The inventory of every storage event of the body's reachable
+    statements (`storage_events`), each kind kept: the dump's and the
+    storage evidence's."""
+    fn = prepared.function
+    present = validated_presence(prepared).calls
+    reached = reachable_blocks(fn)
     slots = {slot.id: slot for slot in fn.slots}
     writes: dict[MIRPoint, MIRAssign] = {}
     members: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     calls: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     moves: dict[MIRPoint, MIRPlace] = {}
+    constructions: dict[MIRPoint, MIRStorageEvent] = {}
+    payloads: dict[MIRPoint, MIRAssign] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            if (call := present.get(MIRPoint(block.id, index))) is not None and block.id in reached:
-                replaced = tuple(place for place in call.writes if storage_destination(place, slots))
-                if replaced:
-                    calls[MIRPoint(block.id, index)] = replaced
-            if not isinstance(stmt, MIRAssign):
+            point = MIRPoint(block.id, index)
+            called = present.get(point)
+            events = storage_events(stmt, called.writes if called is not None else (), slots)
+            if any(event.unknown_replacement for event in events):
+                return MIRNotCovered(fn.id, "storage", "missing storage write fact", stmt.loc)
+            if block.id not in reached:
                 continue
-            if isinstance(stmt.value, MIRMove) and slots[stmt.value.source].shape.is_storage and block.id in reached:
-                moves[MIRPoint(block.id, index)] = MIRPlace(stmt.value.source)
-            if isinstance(stmt.value, MIRTupleConstruct):
-                initialized = tuple(MIRPlace(stmt.target.root, (MIRTupleIndex(i),))
-                                    for i, element in enumerate(stmt.value.elements) if isinstance(element, MIRConstruct))
-                if initialized and block.id in reached:
-                    members[MIRPoint(block.id, index)] = initialized
-            elif storage_destination(stmt.target, slots):
-                if not isinstance(stmt.storage_write, MIRStorageWrite):
-                    return MIRNotCovered(fn.id, "storage", "missing record write fact", stmt.loc)
-                if block.id in reached:
-                    writes[MIRPoint(block.id, index)] = stmt
+            for event in events:
+                match event.kind:
+                    case MIRStorageEventKind.MEMBERS:
+                        members[point] = (*members.get(point, ()), event.place)
+                    case MIRStorageEventKind.CALL_WRITE:
+                        calls[point] = (*calls.get(point, ()), event.place)
+                    case MIRStorageEventKind.MOVE:
+                        moves[point] = event.place
+                    case MIRStorageEventKind.CONSTRUCT | MIRStorageEventKind.BACKING:
+                        constructions[point] = event
+                    case MIRStorageEventKind.PAYLOAD if event.known:
+                        assert isinstance(stmt, MIRAssign)
+                        payloads[point] = stmt
+                    case MIRStorageEventKind.PAYLOAD:
+                        # Its fact missing: payload_lifetime refuses it.
+                        pass
+                    case _:
+                        assert isinstance(stmt, MIRAssign)
+                        writes[point] = stmt
     return MIRStorageEvents(fn, MappingProxyType(writes), MappingProxyType(members), MappingProxyType(calls),
-                            MappingProxyType(moves))
-
-
-def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
-    """Whether a write to `place` replaces storage a borrow can point into:
-    an owned-storage root, the storage a borrowed holder points at (a trailing
-    dereference), or a replacement that keeps the object around it
-    (`replacement_reach`: an owned-leaf, container or record member field,
-    a container's shape or elements region). The write's event follows its
-    destination, whatever produces the value; a scalar field is
-    overwritten, never a storage a borrow can point into."""
-    if not place.projections:
-        return slots[place.root].shape.is_storage
-    return isinstance(place.projections[-1], MIRDeref) or replacement_reach(place.projections) is not None
+                            MappingProxyType(moves), MappingProxyType(constructions), MappingProxyType(payloads))
 
 
 def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
     if isinstance(result, MIRNotCovered):
         return f"storage not covered: {result.reason}\n"
-    lines = ["record writes (logical replacement; no physical lifetime-end verdict)"]
+    lines = ["storage events (logical replacement; no physical lifetime-end verdict)"]
     for point, stmt in result.writes.items():
         fact = stmt.storage_write
         assert isinstance(fact, MIRStorageWrite)
@@ -101,4 +100,11 @@ def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
     for point, place in result.moves.items():
         loc = blocks[point.block].statements[point.index].loc
         lines.append(f"  bb{point.block.index} before {point.index}: move-out {_place(place)}{_location(loc)}")
+    for point, event in result.constructions.items():
+        loc = blocks[point.block].statements[point.index].loc
+        kind = "construct-backing" if event.kind is MIRStorageEventKind.BACKING else "construct-wrapper"
+        lines.append(f"  bb{point.block.index} before {point.index}: {kind} {_place(event.place)}{_location(loc)}")
+    for point, stmt in result.payload_writes.items():
+        lines.append(f"  bb{point.block.index} before {point.index}: payload-write {_place(stmt.target)}"
+                     f"{_location(stmt.loc)}")
     return "\n".join(lines) + "\n"

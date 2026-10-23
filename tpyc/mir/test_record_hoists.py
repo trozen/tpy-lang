@@ -17,7 +17,7 @@ from .nodes import (
     MIRRegionId, MIRStorageDuration,
 )
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
-from .testutil import compiled_definitions, Reference, execute
+from .testutil import compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32
@@ -179,10 +179,10 @@ def test_nested_empty_and_engaged_exits(artifacts: Artifacts, choose: bool, skip
     assert execute(fn, False, choose, skip, stop) == 0
     backing, = [s for s in fn.slots if s.record_storage is MIRRecordStorageKind.OPTIONAL]
     assert isinstance(backing.storage_duration, MIRRegionId)
-    exits = list(analyze_scope_ends(fn).ends.values())
+    exits = list(analyze_scope_ends(prepared(fn)).ends.values())
     assert any([e.kind for e in events] == [MIRScopeEndKind.RECORD_WRAPPER] for events in exits)
     assert any([e.kind for e in events] == [MIRScopeEndKind.RECORD_WRAPPER, MIRScopeEndKind.OBJECT] for events in exits)
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 def test_producer_and_mir_agree_with_the_existing_optional_assignment(artifacts: Artifacts) -> None:

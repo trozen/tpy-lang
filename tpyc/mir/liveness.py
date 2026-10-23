@@ -9,7 +9,7 @@ from .nodes import (
     MIRStatement, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
     MIRPoint, MIRSlotId, MIRTerminator, member_init_operands,
 )
-from .validate import MIRPrepared, _validated_function, source_definition, statement_reads, successors
+from .validate import reachable_blocks, source_definition, statement_reads, successors
 from .value import MIRValidationError
 
 
@@ -35,20 +35,12 @@ def _terminator_uses(term: MIRTerminator) -> frozenset[MIRSlotId]:
             raise MIRValidationError("unknown liveness terminator")
 
 
-def analyze_liveness(fn: MIRFunction) -> MIRLiveness:
-    return _liveness(_validated_function(fn))
-
-
-def _liveness(prepared: MIRPrepared) -> MIRLiveness:
-    fn = prepared.function
+def _liveness(fn: MIRFunction) -> MIRLiveness:
+    """Holder liveness of a body, structural and backward: it reads no
+    presence fact, so the one its preparation computes beside the phase-1
+    presence (`prepare.prepare`) is the one every later pass reads."""
     blocks = {b.id: b for b in fn.blocks}
-    reachable: set[MIRBlockId] = set()
-    pending = [fn.entry]
-    while pending:
-        bid = pending.pop()
-        if bid not in reachable:
-            reachable.add(bid)
-            pending.extend(successors(blocks[bid].terminator))
+    reachable = reachable_blocks(fn)
     order = [b.id for b in fn.blocks if b.id in reachable]
     pred: dict[MIRBlockId, list[MIRBlockId]] = {bid: [] for bid in order}
     for bid in order:

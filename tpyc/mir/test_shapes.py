@@ -24,14 +24,15 @@ from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError,
     lent_record, member_compatible, member_shape, shape_problem, value_shape,
 )
-from .dependencies import MIROrigin, object_keys, origin
+from .dependencies import object_keys
+from .reach import MIROrigin, origin
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, MIRWalk, field_member, step,
     store_problem, walk, object_prefix,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 
 def origin_shape(slot: MIRSlot) -> MIRShape:

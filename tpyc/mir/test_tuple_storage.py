@@ -5,9 +5,8 @@ from dataclasses import replace
 import pytest
 
 from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
-from .dependencies import analyze_dependencies, MIRReferent
+from .dependencies import MIRReferent
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
     MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
@@ -15,15 +14,15 @@ from .nodes import (
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .retention import analyze_retention, may_overlap
+from .retention import analyze_retention
+from .reach import reaches
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
 from .testutil import (
-    hand_record,
-    bind_parameters, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot,
-    tuple_shape, union_shape,
+    hand_record, bind_parameters, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
+    reslot, tuple_shape, union_shape, prepared,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 
 BODY = MIRBodyId("tuple_storage", "example")
@@ -80,17 +79,17 @@ def test_inline_identity_mutation_and_initialization_inventory() -> None:
     assert heap[1][FIELD.id] == 3
     assert len(heap) == 2
     assert heap[2][MIRTupleIndex(1)][FIELD.id] == 7
-    live = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, live)
+    dependencies = prepared(fn).dependencies
     assert dependencies.referents[MIRPoint(ENTRY, 2)][MIRPlace(SAVED)] == frozenset({MIRReferent(member(0))})
-    assert not may_overlap(MIRReferent(member(0)), MIRReferent(member(1)))
-    events = analyze_storage(fn)
-    assert not events.writes
+    assert not reaches(MIRReferent(member(0)), MIRReferent(member(1)), lambda written, target: True)
+    events = analyze_storage(prepared(fn))
+    # The tuple's own initialization, with the inline members it builds.
+    assert [(point, stmt.target) for point, stmt in events.writes.items()] == [(MIRPoint(ENTRY, 0), INIT.target)]
     assert events.member_initializations == {MIRPoint(ENTRY, 0): (member(0), member(1))}
-    assert not analyze_retention(fn, live, dependencies, events).conflicts
+    assert not analyze_retention(prepared(fn)).conflicts
     assert "initialize-tuple-members %0[0], %0[1]" in dump_storage(events)
     assert "construct (%2), construct (%2), %1, %2" in dump_function(fn)
-    assert analyze_scope_ends(fn).ends[MIREdge(ENTRY)][0].storage == MIRPlace(PAIR)
+    assert analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)][0].storage == MIRPlace(PAIR)
 
 
 @pytest.mark.parametrize("index", [0, 1, 2])
@@ -99,7 +98,7 @@ def test_scope_end_distinguishes_owned_and_borrowed_member(index: int) -> None:
     borrow = MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(PAIR, projections)))
     read = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
     fn = scoped(function(), (INIT, borrow), (read,))
-    inspection = inspect_scope_lifetimes(fn)
+    inspection = inspect_scope_lifetimes(prepared(fn))
     assert len(inspection.conflicts) == (0 if index == 2 else 1)
     if index != 2:
         assert inspection.conflicts[0].retained == MIRReferent(member(index))
@@ -125,7 +124,7 @@ def test_aggregate_holders_retain_inline_member_after_tuple_ends(kind: str) -> N
                                        for s in (holder, copied))))
     fn = scoped(fn, (INIT, MIRAssign(MIRPlace(SAVED), MIRBorrow(member(0))),
                      MIRAssign(MIRPlace(holder), capture)), (MIRAssign(MIRPlace(copied), copy),))
-    conflicts = inspect_scope_lifetimes(fn).conflicts
+    conflicts = inspect_scope_lifetimes(prepared(fn)).conflicts
     assert len(conflicts) == 1 and conflicts[0].holder.root == holder
     assert conflicts[0].retained == MIRReferent(member(0))
 
@@ -139,8 +138,8 @@ def test_skipped_initialization_and_repeated_scope_activation() -> None:
         MIRBlock(EXIT, (), MIRReturn(VALUE), ROOT),
     ))
     validate_function(fn)
-    assert MIREdge(ENTRY, 1) not in analyze_scope_ends(fn).ends
-    assert MIREdge(INNER) in analyze_scope_ends(fn).ends
+    assert MIREdge(ENTRY, 1) not in analyze_scope_ends(prepared(fn)).ends
+    assert MIREdge(INNER) in analyze_scope_ends(prepared(fn)).ends
     for flag, count in ((False, 1), (True, 2)):
         heap = {1: {FIELD.id: 3}}
         assert execute(fn, Reference(1), 7, flag, heap=heap) == 7
@@ -204,7 +203,7 @@ def test_join_keeps_possible_owned_member_loan() -> None:
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(SAVED), MIRAlias(EXTERNAL)),), MIRBranch(FLAG, INNER, EXIT), ROOT),
         *fn.blocks[1:],
     ))
-    conflicts = inspect_scope_lifetimes(fn).conflicts
+    conflicts = inspect_scope_lifetimes(prepared(fn)).conflicts
     assert len(conflicts) == 1 and conflicts[0].retained == MIRReferent(member(0))
 
 
@@ -215,6 +214,6 @@ def test_reconstruction_cannot_erase_a_retained_loan_from_previous_activation() 
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(SAVED), MIRAlias(EXTERNAL)),), MIRGoto(INNER), ROOT),
         fn.blocks[1], MIRBlock(EXIT, (), MIRGoto(INNER), ROOT),
     ))
-    conflicts = inspect_scope_lifetimes(fn).conflicts
+    conflicts = inspect_scope_lifetimes(prepared(fn)).conflicts
     assert len(conflicts) == 1 and conflicts[0].edge == MIREdge(INNER)
     assert conflicts[0].retained == MIRReferent(member(0))

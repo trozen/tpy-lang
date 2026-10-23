@@ -5,9 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..typesys import BOOL, INT32, NoneType, OptionalType, TupleType, UnionType
-from .dependencies import analyze_dependencies
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
     MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite,
@@ -17,15 +15,16 @@ from .nodes import (
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .payload_lifetime import analyze_payload_ends
-from .presence import MIREngagement, _analyze_presence
+from .presence import MIREngagement
 from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
-from .storage import analyze_storage
+from .storage import analyze_storage, dump_storage
 from .testutil import (
-    hand_record,
-    bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape,
+    hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape,
+    union_shape, prepared,
 )
-from .validate import MIRDefiniteAssignmentError, validate_function
+from .validate import MIRDefiniteAssignmentError
+from .prepare import validate_function
 
 
 BODY = MIRBodyId("record_initialization", "example")
@@ -65,12 +64,15 @@ def straight(*statements: MIRStatement) -> MIRFunction:
 def test_empty_wrapper_is_not_a_record_or_a_source_definition() -> None:
     fn = straight(INIT)
     validate_function(fn)
-    live = analyze_liveness(fn)
+    live = prepared(fn).liveness
     assert live.entry_live == frozenset({VALUE})
-    assert not any(analyze_dependencies(fn, live).referents.values())
-    assert not analyze_storage(fn).writes
-    assert not analyze_payload_ends(fn).ends
-    event, = analyze_scope_ends(fn).ends[MIREdge(ENTRY)]
+    assert not any(prepared(fn).dependencies.referents.values())
+    inventory = analyze_storage(prepared(fn))
+    # The backing is constructed empty: an inventory line, no record write.
+    assert not inventory.writes and list(inventory.constructions) == [MIRPoint(ENTRY, 0)]
+    assert f"before 0: construct-backing %{BACKING.index}" in dump_storage(inventory)
+    assert not analyze_payload_ends(prepared(fn)).ends
+    event, = analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)]
     assert event.kind is MIRScopeEndKind.RECORD_WRAPPER
     assert "initialize-record-wrapper %0 empty" in dump_function(fn)
     assert execute(fn, 7, False) == 7
@@ -81,11 +83,10 @@ def test_replacement_preserves_physical_identity_and_reports_logical_conflict() 
                            MIRReturn(RESULT), ROOT))
     validate_function(fn)
     assert execute(fn, 7, False) == 9
-    assert not analyze_payload_ends(fn).ends
-    ends = analyze_scope_ends(fn).ends[MIREdge(ENTRY)]
+    assert not analyze_payload_ends(prepared(fn)).ends
+    ends = analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)]
     assert [e.kind for e in ends] == [MIRScopeEndKind.RECORD_WRAPPER, MIRScopeEndKind.OBJECT]
-    live = analyze_liveness(fn)
-    conflicts = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn)).conflicts
+    conflicts = analyze_retention(prepared(fn)).conflicts
     assert {(c.point, c.holder) for c in conflicts} == {(MIRPoint(ENTRY, 4), MIRPlace(SAVED))}
 
 
@@ -109,8 +110,8 @@ def test_engagement_join_is_possible_but_does_not_allow_a_read() -> None:
         MIRBlock(NO, (), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (), MIRReturn(VALUE), ROOT))
     validate_function(fn)
-    assert dict(_analyze_presence(fn).engagement[MIRPoint(JOIN, 0)])[BACKING] == frozenset(MIREngagement)
-    assert len(analyze_scope_ends(fn).ends[MIREdge(JOIN)]) == 2
+    assert dict(prepared(fn).presence.engagement[MIRPoint(JOIN, 0)])[BACKING] == frozenset(MIREngagement)
+    assert len(analyze_scope_ends(prepared(fn)).ends[MIREdge(JOIN)]) == 2
     changed = replace(fn, blocks=(*fn.blocks[:3], replace(fn.blocks[3], statements=(BIND,))))
     with pytest.raises(MIRDefiniteAssignmentError):
         validate_function(changed)
@@ -134,8 +135,8 @@ def test_backedge_reuses_engaged_backing_without_reinitializing_wrapper() -> Non
         MIRBlock(JOIN, (SAVE, MUTATE, READ), MIRReturn(RESULT), ROOT))
     validate_function(fn)
     assert execute(fn, 3, True) == 9
-    assert dict(_analyze_presence(fn).engagement[MIRPoint(YES, 0)])[BACKING] == frozenset(MIREngagement)
-    assert set(analyze_scope_ends(fn).ends) == {MIREdge(JOIN)}
+    assert dict(prepared(fn).presence.engagement[MIRPoint(YES, 0)])[BACKING] == frozenset(MIREngagement)
+    assert set(analyze_scope_ends(prepared(fn)).ends) == {MIREdge(JOIN)}
 
 
 def test_nested_activation_ends_record_and_does_not_revive_old_alias() -> None:
@@ -148,9 +149,9 @@ def test_nested_activation_ends_record_and_does_not_revive_old_alias() -> None:
                             replace(fn.slots[1], residence=CHILD), *fn.slots[2:]),
                  regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES))))
     validate_function(fn)
-    presence = _analyze_presence(fn)
+    presence = prepared(fn).presence
     assert BACKING not in dict(presence.engagement[MIRPoint(YES, 0)])
-    inspected = inspect_scope_lifetimes(fn)
+    inspected = inspect_scope_lifetimes(prepared(fn))
     assert {(c.edge, c.holder) for c in inspected.conflicts} == {(MIREdge(YES), MIRPlace(SAVED))}
 
 
@@ -163,9 +164,9 @@ def test_empty_inner_activation_has_only_wrapper_end() -> None:
     fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], residence=CHILD, storage_duration=CHILD), *fn.slots[1:]),
                  regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES))))
     validate_function(fn)
-    event, = analyze_scope_ends(fn).ends[MIREdge(YES)]
+    event, = analyze_scope_ends(prepared(fn)).ends[MIREdge(YES)]
     assert event.kind is MIRScopeEndKind.RECORD_WRAPPER
-    assert not inspect_scope_lifetimes(fn).conflicts
+    assert not inspect_scope_lifetimes(prepared(fn)).conflicts
 
 
 @pytest.mark.parametrize("shape", ["tuple_one", "tuple_two", "optional", "union"])
@@ -196,8 +197,7 @@ def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -
     fn = bind_parameters(replace(fn, slots=(*fn.slots, slot)))
     validate_function(fn)
     assert execute(fn, 2, False) == 9
-    live = analyze_liveness(fn)
-    conflicts = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn)).conflicts
+    conflicts = analyze_retention(prepared(fn)).conflicts
     assert len(conflicts) == 1
     assert conflicts[0].point == MIRPoint(ENTRY, 4)
     assert conflicts[0].holder.root == holder
@@ -240,11 +240,10 @@ def test_retention_skips_writes_on_contradictory_paths() -> None:
         MIRBlock(YES, (), MIRBranch(FLAG, JOIN, NO), ROOT),
         MIRBlock(NO, (WRITE,), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (), MIRReturn(VALUE), ROOT))
-    live = analyze_liveness(fn)
-    writes = analyze_storage(fn)
+    writes = analyze_storage(prepared(fn))
     assert MIRPoint(NO, 0) in writes.writes
-    assert MIRPoint(NO, 0) not in _analyze_presence(fn).engagement
-    assert not analyze_retention(fn, live, analyze_dependencies(fn, live), writes).conflicts
+    assert MIRPoint(NO, 0) not in prepared(fn).presence.engagement
+    assert not analyze_retention(prepared(fn)).conflicts
 
 
 def test_possible_engagement_with_retained_alias_reports_overwrite() -> None:
@@ -255,7 +254,6 @@ def test_possible_engagement_with_retained_alias_reports_overwrite() -> None:
         MIRBlock(NO, (), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (MIRAssign(MIRPlace(VALUE), MIRConstant(9)), WRITE, BIND, READ), MIRReturn(RESULT), ROOT))
     fn = bind_parameters(replace(fn, slots=(*fn.slots, MIRSlot(external, borrowed_shape(CELL), MIRSlotKind.PARAMETER))))
-    assert dict(_analyze_presence(fn).engagement[MIRPoint(JOIN, 1)])[BACKING] == frozenset(MIREngagement)
-    live = analyze_liveness(fn)
-    conflicts = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn)).conflicts
+    assert dict(prepared(fn).presence.engagement[MIRPoint(JOIN, 1)])[BACKING] == frozenset(MIREngagement)
+    conflicts = analyze_retention(prepared(fn)).conflicts
     assert {(c.point, c.holder) for c in conflicts} == {(MIRPoint(JOIN, 1), MIRPlace(SAVED))}

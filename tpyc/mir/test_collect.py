@@ -27,7 +27,7 @@ from .nodes import (
 )
 from .shapes import MIRContainerElements, MIRDeref
 from .value import MIRRecordLayout
-from .testutil import compiled_definitions, bind_parameters, borrowed_shape, leaf_shape
+from .testutil import compiled_definitions, bind_parameters, borrowed_shape, leaf_shape, prepared, workspace_functions
 
 
 def dump(source: str) -> str:
@@ -78,7 +78,7 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     out = dump(SOURCE)
     assert "entry bb0" in out
     assert "owned-storage" in out
-    assert "record writes (logical replacement; no physical lifetime-end verdict)" in out
+    assert "storage events (logical replacement; no physical lifetime-end verdict)" in out
     assert "own_site" in out
     assert "retention (possible logical-object conflicts; no lifetime-safety verdict)" in out
     assert "payload ends (possible inline scalar lifetime ends; no safety verdict)" in out
@@ -394,7 +394,7 @@ def test_both_entry_paths_take_the_kind_from_the_receiver_fact() -> None:
     assert re.search(r"fn .*::Cell\.__bool__@[^\n]+ -> bool", out), out
     assert re.search(r"fn .*::Cell\.prop@[^\n]+ -> int32", out), out
     for body, _fn in scheduled:
-        lowered = workspace.bodies[body]
+        lowered = workspace_functions(workspace)[body]
         assert isinstance(lowered, MIRFunction), lowered
         assert lowered.kind is KINDS[body.declaration]
 
@@ -690,7 +690,7 @@ def test_a_literal_origin_is_spelled_static() -> None:
     ), MIRReturn(result), region),), entry, (MIRRecordLayout(STR, (), True, True, opaque=True),),
         regions=(MIRRegion(region, None, entry),)))
     verdict = MIRBodyVerdict(body, "f", 1, MIRBodyKind.FREE_FUNCTION, MIRVerdictStatus.COVERED, None, (), False,
-                             None, None, fn, analyze_body(fn), None)
+                             None, None, fn, analyze_body(fn, prepared(fn)), None)
     found = line_facts(verdict)
     assert _borrows(found, 3, "v") == [(0, {"static"})]
 
@@ -838,6 +838,6 @@ def test_a_twin_pair_keeps_the_walks_ids_and_never_shares_a_lowering(name: str, 
             assert workspace.lowering(twin_body, twin) is cached
             assert workspace.lowering(body, twin) is None and workspace.lowering(twin_body, definition) is None
             lowered = verdict_of(sources[0], program.definitions, workspace).function
-            assert lowered is cached and lowered.id == twin_body
+            assert lowered is cached.function and lowered.id == twin_body
         else:
             assert identity not in workspace.twins

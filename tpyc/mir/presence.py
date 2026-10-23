@@ -1,15 +1,13 @@
 """Finite payload-selection facts and boolean implications over mutable holders."""
 
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from types import MappingProxyType
 
-from ..thir.scalar_leaves import (
-    MIRClass, inline_member_type, value_class,
-)
-from ..typesys import BOOL, OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
+from ..thir.scalar_leaves import MIRClass
+from ..typesys import BOOL
 from .coverage import call_write_places
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
@@ -18,9 +16,10 @@ from .nodes import (
     MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape, MIRWrap,
     MIRCall, MIRPresentCall, present_effects,
 )
-from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, RecordFields, SUM_CLASSES
-from .shapes import MIRContainerStructure, MIRDeref, MIRUnionPayload
+from .value import MIRHolding, MIRRecords, SUM_CLASSES
+from .shapes import MIRUnionPayload
 from .region_flow import MIRRegionFlow
+from .reach import MIRReferent, declared_containment, reaches, replacement_events
 
 # Keyed by the wrapper's place (an iterator's by its slot's place).
 Facts = frozenset[tuple[MIRPlace, frozenset[int]]]
@@ -139,101 +138,25 @@ def _join(states: list[_State]) -> _State:
     return _State(present, conditions, frozenset.intersection(*(s.valid_aliases for s in states)), joined)
 
 
-def _place_type(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
-                layouts: Mapping[TpyType, MIRRecordLayout]) -> TpyType | None:
-    """The type of the value at a place, None at a container's structure
-    region, which holds no one type MIR models."""
-    if place.projections[-1:] == (MIRContainerStructure(),):
-        return None
-    return place_shape(place, slots, layouts).type
+# The referents a place resolves to before the statement at a point; None
+# when no referent state is known there.
+Resolve = Callable[[MIRPoint, MIRPlace], frozenset[MIRReferent] | None]
+Kill = Callable[[_State, MIRStatement], _State]
 
 
-# Values that store no record: a scalar leaf, an owned leaf, a view of either kind.
-_HOLDS_NO_RECORD = frozenset({MIRClass.LEAF, MIRClass.OWNED_LEAF, MIRClass.VIEW, MIRClass.CONTAINER_VIEW})
-
-
-def _may_hold(typ: TpyType | None, member: MIRFieldId, fields: RecordFields) -> bool:
-    """Whether storage of `typ` may hold record member `member`. Only what
-    is proven not to answers no: a scalar leaf, an owned leaf or a view
-    holds no record; a tuple, an Optional or a union holds the member only
-    if an element, the payload or an alternative may; a record holds it
-    only if its declared fields (`fields`), or those of a record stored
-    inline in it (`inline_member_type`), include it. Any other type --
-    unknown, a container, a record whose fields MIR does not model -- may."""
-    pending = [typ]
-    seen: set[TpyType] = set()
-    while pending:
-        current = pending.pop()
-        if current is None:
-            return True
-        current = unwrap_readonly(current)
-        if value_class(current) in _HOLDS_NO_RECORD:
-            continue
-        if current in seen:
-            continue
-        seen.add(current)
-        match current:
-            case TupleType():
-                pending.extend(current.element_types)
-                continue
-            case OptionalType():
-                pending.append(current.inner)
-                continue
-            case UnionType():
-                pending.extend(m for m in current.members if not is_void_like_type(m))
-                continue
-        declared = fields.get(current) if value_class(current) is MIRClass.RECORD else None
-        if declared is None:
-            return True
-        for f in declared:
-            if f.id == member:
-                return True
-            pending.append(inline_member_type(f.type))
-    return False
-
-
-
-
-def _private(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
-    """A place in the body's own record storage, reached through no holder:
-    two such places under different roots are distinct storage."""
-    return slots[place.root].shape.is_storage and MIRDeref() not in place.projections
-
-
-def _reaches(written: MIRPlace, wrapper: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
-             layouts: MIRRecords) -> bool:
-    """Whether a write of `written` may change which payload the wrapper
-    field at `wrapper` selects -- the overlap retention decides by
-    (`retention.may_overlap`), on places: under one root, when one path is
-    a prefix of the other; under different roots, unless both are the
-    body's own storage, when the written storage may be or hold the
-    wrapper's member (a holder or parameter may name any object of its
-    type). Rebinding a root that borrows (a holder, a container, a payload
-    alias, an iterator's cursor) writes no storage; any other root write
-    may, as far as its type may hold the member."""
-    if written.root == wrapper.root:
-        common = min(len(written.projections), len(wrapper.projections))
-        return written.projections[:common] == wrapper.projections[:common]
-    if _private(written, slots) and _private(wrapper, slots):
-        return False
-    # A root write of any holder but one stored in place points the slot
-    # elsewhere without writing storage another place can reach.
-    if not written.projections and slots[written.root].shape.holding is not MIRHolding.VALUE:
-        return False
-    member = wrapper.projections[-1]
-    if not isinstance(member, MIRField):
-        return True
-    last = written.projections[-1] if written.projections else None
-    if isinstance(last, MIRField) and last.id == member.id:
-        return True
-    return _may_hold(_place_type(written, slots, layouts), member.id, layouts.fields)
-
-
-def _kill_field_facts(state: _State, stmt: MIRStatement, slots: Mapping[MIRSlotId, MIRSlot],
-                      layouts: MIRRecords) -> _State:
-    """A selection on a wrapper field (a projected place) dies at any write
-    that may reach it (`_reaches`), a call's published writes included. A
-    root wrapper's selection follows its own writes below."""
+def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots: Mapping[MIRSlotId, MIRSlot],
+                      layouts: MIRRecords, resolve: Resolve) -> _State:
+    """A selection on a wrapper field (a projected place) dies where the
+    statement retargets its place -- a write of the place or of a prefix
+    of it under its root (`_under`): which object the place names changes,
+    not a reach question -- or where storage the statement replaces
+    (`replacement_events`, a call's writes as this state sees the call,
+    an Optional assignment by this state's engagement) reaches the
+    wrapper's storage: `reaches` over the referents of both, across
+    distinct external origins by `declared_containment`. Fail closed: a
+    statement whose write fact is missing, a written place or the wrapper
+    with no known or no resolved referents kills. A root wrapper's
+    selection follows its own writes in `_transfer`."""
     facts = [f for f in state.present if f[0].projections] + [
         f for outcomes in state.conditions.values() for found in outcomes if found is not None
         for f in found if f[0].projections]
@@ -241,11 +164,33 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, slots: Mapping[MIRSlotI
         return state
     target = statement_target(stmt)
     call = statement_call(stmt)
-    written = ((target,) if target is not None else ()) + (
-        present_call(call, state.present, slots).writes if call is not None else ())
+    engagement = dict(state.engagement)
+    events = replacement_events(
+        stmt, present_call(call, state.present, slots).writes if call is not None else (),
+        lambda root: MIREngagement.ENGAGED in engagement.get(root, frozenset()), slots)
+    written = None if events is None else [(place, resolve(point, place)) for place, _owner in events]
 
     def dead(fact_place: MIRPlace) -> bool:
-        return bool(fact_place.projections) and any(_reaches(w, fact_place, slots, layouts) for w in written)
+        # A root fact (an Optional slot, an iterator) is the slot's own and
+        # follows its own assignments, never a field write's reach.
+        if not fact_place.projections:
+            return False
+        if target is not None and _under(fact_place, target):
+            return True
+        if written is None:
+            return True
+        if not written:
+            return False
+        wrapper = resolve(point, fact_place)
+        if not wrapper:
+            return True
+        for place, refs in written:
+            if not refs:
+                return True
+            distinct = declared_containment(place, fact_place, slots, layouts)
+            if any(reaches(w, t, distinct) for w in refs for t in wrapper):
+                return True
+        return False
 
     if not any(dead(f[0]) for f in facts):
         return state
@@ -261,13 +206,18 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
               domains: dict[MIRPlace, frozenset[int]] | None = None,
               aliases: dict[MIRPlace, frozenset[MIRSlotId]] | None = None,
               slots: Mapping[MIRSlotId, MIRSlot] | None = None,
-              layouts: MIRRecords | None = None) -> _State:
-    if slots is not None:
-        state = _kill_field_facts(state, stmt, slots, layouts)
+              layouts: MIRRecords | None = None, kill: Kill | None = None, fields: bool = True) -> _State:
+    """One statement's effect on the selections. Without `fields`, no
+    selection on a projected place is recorded (a whole field write, a
+    tested field); `kill` ends the field selections a write may reach."""
+    if kill is not None:
+        state = kill(state, stmt)
     place = statement_target(stmt)
     if place is None:
         return state
     if place.projections:
+        if not fields:
+            return state
         # A wrapper field written whole selects what its value selects.
         if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRWrap, MIRCopy))
                 and slots is not None
@@ -316,6 +266,8 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
             present |= {(written, known)}
     elif target in booleans:
         match value:
+            case MIRIsAlternative() if not fields and value.source.projections:
+                outcomes = (present, present)
             case MIRIsAlternative() | MIRIteratorHasNext():
                 tested = MIRPlace(value.source) if isinstance(value, MIRIteratorHasNext) else value.source
                 domain = (domains or {}).get(tested)
@@ -342,7 +294,8 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     return _State(present, conditions, valid, state.engagement)
 
 
-def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId], point: MIRPoint) -> list[MIRPresenceIssue]:
+def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId], point: MIRPoint,
+             fields: bool = True) -> list[MIRPresenceIssue]:
     issues = []
     if place.root in alias_slots and place.root not in state.valid_aliases:
         issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.FRESHNESS,
@@ -350,14 +303,21 @@ def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId], point:
     facts = dict(state.present)
     for depth, projection in enumerate(place.projections):
         wrapper = MIRPlace(place.root, place.projections[:depth])
+        if not fields and wrapper.projections:
+            continue
         if isinstance(projection, MIRUnionPayload) and facts.get(wrapper) != frozenset({projection.alternative}):
             issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
                                            "payload access without current presence proof"))
     return issues
 
 
-def _analyze_presence(fn: MIRFunction) -> MIRPresence:
-    """Solve selection/freshness after structural and definite-assignment checks."""
+def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
+    """Solve selection/freshness after structural and definite-assignment
+    checks. Without `resolve` no selection on a projected place is recorded
+    or demanded: the facts the first dependency run reads, before referents
+    exist (`prepare.prepare`). With it, field selections are recorded and
+    demanded, each ending where `_kill_field_facts` says over the referents
+    `resolve` gives."""
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
     edge_facts: dict[MIREdge, Facts] = {}
@@ -371,6 +331,12 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
             domains[MIRPlace(s.id)] = (frozenset(range(len(s.shape.alternatives)))
                                        if s.shape.holding is not MIRHolding.CURSOR else frozenset({0, 1}))
     layouts = fn.record_layouts
+    fields = resolve is not None
+
+    def kill_at(point: MIRPoint) -> Kill | None:
+        if resolve is None:
+            return None
+        return lambda state, stmt: _kill_field_facts(state, stmt, point, slots, layouts, resolve)
     alias_slots = {s.id for s in fn.slots if s.shape.holding is MIRHolding.ALIAS}
     aliases_by_wrapper: dict[MIRPlace, set[MIRSlotId]] = {}
     for slot in fn.slots:
@@ -394,8 +360,9 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
             continue
         state = _join(sources)
         incoming[bid] = state
-        for stmt in blocks[bid].statements:
-            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts)
+        for index, stmt in enumerate(blocks[bid].statements):
+            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts,
+                              kill_at(MIRPoint(bid, index)), fields)
         term = blocks[bid].terminator
         outgoing: list[tuple[MIRBlockId, bool | None, _State | None]] = []
         match term:
@@ -466,12 +433,12 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRRead, MIRUnionExtract, MIRBorrow, MIRCopy)):
                 places.append(stmt.value.source)
             for place in places:
-                issues.extend(_missing(place, state, alias_slots, point))
+                issues.extend(_missing(place, state, alias_slots, point, fields))
                 if (place.root in optional_records
                         and dict(state.engagement).get(place.root) != frozenset({MIREngagement.ENGAGED})):
                     issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
                                                    "record access without engagement proof"))
-            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts)
+            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts, kill_at(point), fields)
         points[MIRPoint(bid, len(blocks[bid].statements))] = state.present
         engagement[MIRPoint(bid, len(blocks[bid].statements))] = state.engagement
     for block in fn.blocks:
@@ -483,7 +450,8 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
         for index, stmt in enumerate(block.statements):
             if (call := statement_call(stmt)) is not None:
                 calls[MIRPoint(block.id, index)] = present_call(call, state.present, slots)
-            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts)
+            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts,
+                              kill_at(MIRPoint(block.id, index)), fields)
     return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues),
                        MappingProxyType(edge_facts), MappingProxyType(engagement), MappingProxyType(edge_engagement),
                        MappingProxyType(calls))

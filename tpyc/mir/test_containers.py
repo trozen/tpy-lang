@@ -22,9 +22,8 @@ from .call_contract import MIRCallSummary
 from ..thir.scalar_leaves import MIRClass, declared_members, native_container_type
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies
 from .dump import dump_function
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .lower import lower_constructor, lower_function
 from .retention import analyze_retention
 from .storage import analyze_storage
@@ -36,10 +35,10 @@ from .nodes import (
 from .shapes import MIRContainerElements, MIRDeref, object_prefix
 from .value import MIRHolding, MIRValidationError, container_members, with_access
 from .testutil import (
-    compiled_definitions,
-    ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape, Redeclared, repass, reslot,
+    compiled_definitions, ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape,
+    Redeclared, repass, reslot, prepared, workspace_functions,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 SOURCE = """\
 from tpy import int32, Span, Array, readonly, StrView, Own
@@ -528,10 +527,9 @@ def test_a_scalar_element_write_under_a_live_iterator_is_a_replacement(active) -
     point, write = next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
                         if _elements(s.target))
     assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, _slot(fn, "xs").id)
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     assert point in events.writes
-    live = analyze_liveness(fn)
-    retention = analyze_retention(fn, live, analyze_dependencies(fn, live), events)
+    retention = analyze_retention(prepared(fn))
     assert [c.point for c in retention.conflicts] == [point]
     assert retention.conflicts[0].affected.place == MIRPlace(_slot(fn, "xs").id, (MIRContainerElements(),))
 
@@ -957,7 +955,7 @@ def calls():
             bodies[name] = [line]
         elif bodies:
             bodies[name].append(re.sub(r" @ \d+:\d+$", "", re.sub(r" residence=r\d+| duration=\w+", "", line.strip())))
-    functions = {bid.declaration.split("@")[0]: fn for bid, fn in workspace.bodies.items()}
+    functions = {bid.declaration.split("@")[0]: fn for bid, fn in workspace_functions(workspace).items()}
     return bodies, functions
 
 

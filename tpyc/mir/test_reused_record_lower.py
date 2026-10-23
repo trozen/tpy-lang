@@ -17,7 +17,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_cyclic_record_lower import nodes
 from .test_retention import analyze
-from .testutil import compiled_definitions, ContainerValue, Reference, execute
+from .testutil import compiled_definitions, ContainerValue, Reference, execute, prepared
 
 
 CELL_SOURCE = '''from tpy import int32, copy
@@ -55,7 +55,7 @@ def replace_copy(source: Cell, n: int32) -> int32:
     fn = lower_function(body, MIRBodyId("reused", "copy"),
                         definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
-    write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRCopy))
+    write, = (s for s in analyze_storage(prepared(fn)).writes.values() if isinstance(s.value, MIRCopy))
     assert write.storage_write.mode is (MIRStorageWriteMode.OWN_SITE if retained else MIRStorageWriteMode.IN_PLACE)
     assert ("current = &*(__slot_2 = Cell(source));" if retained else "(*current) = Cell(source);") in cpp
     field = fn.records[0].fields[0].id
@@ -65,7 +65,7 @@ def replace_copy(source: Cell, n: int32) -> int32:
         assert heap[0][field] == 3
         assert len(heap) == (3 if retained and n else 2)
     assert analyze(fn).conflicts == ()
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 HOIST_SOURCE = CELL_SOURCE + '''
@@ -231,10 +231,10 @@ def test_produced_copy_facts_target_optional_backing(hoists: Hoists, name: str) 
                    and isinstance(n.value, th.THIRCopy))
     assert assignment.optional_record_assignment == th.THIRBorrowedRecord(assignment.value.result_type, False)
     fn = hoists[1][name]
-    write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRCopy))
+    write, = (s for s in analyze_storage(prepared(fn)).writes.values() if isinstance(s.value, MIRCopy))
     assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     assert analyze(fn).conflicts == ()
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("name", ["branch", "readonly_copy", "qualified", "repeated", "ranged", "native",
@@ -334,10 +334,10 @@ LOOP:
     assert isinstance(fn, MIRFunction), fn
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
     assert assignment.optional_record_assignment is not None
-    write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
+    write, = (s for s in analyze_storage(prepared(fn)).writes.values() if isinstance(s.value, MIRMove))
     assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     assert analyze(fn).conflicts == ()
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
     assert " = move " in dumped and "optional_assign" in dumped
     for run, flag, stop, trips in ((False, True, False, 0), (True, True, False, 2),
@@ -376,7 +376,7 @@ def escaped(source: Cell, n: int32) -> int32:
     fn = lower_function(body, MIRBodyId("reused", "escaped"),
                         definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
-    write, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove if move else MIRCopy))
+    write, = (s for s in analyze_storage(prepared(fn)).writes.values() if isinstance(s.value, MIRMove if move else MIRCopy))
     assert write.storage_write.mode is MIRStorageWriteMode.OWN_SITE
     assert ("Cell* duplicate = &*(__slot_2 = std::move(original));" if move else
             "Cell* duplicate = &*(__slot_2 = Cell(source));") in cpp
@@ -385,7 +385,7 @@ def escaped(source: Cell, n: int32) -> int32:
         heap = {0: {field: 3}}
         assert execute(fn, Reference(0), n, heap=heap) == 3
         assert len(heap) == (3 + (n if move else 0) if n else 2)
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("move", [False, True])

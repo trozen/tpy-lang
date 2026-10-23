@@ -1,6 +1,7 @@
 """Local effect/exit evidence from validated MIR, without callee scheduling."""
 
 from dataclasses import replace
+from types import MappingProxyType
 
 from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, value_class
@@ -19,10 +20,10 @@ from .shapes import (
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
 from .dependencies import (
-    MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents, seeded_loan, whole_wrapper_field,
+    MIRDependencies, MIRReferent, resolve_referents, seeded_loan, whole_wrapper_field,
 )
-from .liveness import MIRLiveness, analyze_liveness
-from .retention import alias_obligation, analyze_body_retention, parameter_indices
+from .prepare import MIRPrepared, validated_presence
+from .retention import alias_obligation, analyze_retention, parameter_indices
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
     MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
@@ -30,8 +31,11 @@ from .nodes import (
     MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk, under_object, view_member, MIRWrap, MIRIsAlternative,
     place_shape,
 )
-from .value import AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, lent_record, WRAPPER_CLASSES
-from .validate import _validated_function, owned_leaf_place_type, statement_reads
+from .value import (
+    AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, MIRValidationError, lent_record,
+    WRAPPER_CLASSES,
+)
+from .validate import owned_leaf_place_type, statement_reads
 
 # The passings that lend storage to the callee without a copy; a template
 # trait form may copy or bind, so it is no loan.
@@ -232,7 +236,7 @@ def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, 
             or target.shape.borrowed_aggregate)
 
 
-def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
+def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared: MIRPrepared | MIRNotCovered,
                        definitions: MIRDefinitions) -> MIRSummaryResult:
     """Unsupported evidence is opaque; malformed MIR remains a validation error.
 
@@ -245,8 +249,20 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     An `@auto_readonly` access twin (`THIRFunction.access_twin`) summarizes
     as if its receiver were bound at its definition's passing (`CONST_REF`,
     so readonly: `parameter_binding`), so the two summaries compare equal exactly when the twin's
-    effects and origins are its definition's."""
-    present = _validated_function(body).presence.calls
+    effects and origins are its definition's.
+
+    `prepared` is the body's preparation; its first dependency run's
+    refusal leaves the body opaque by that reason where the summary first
+    needs dependency facts."""
+    if isinstance(prepared, MIRPrepared):
+        if prepared.function is not body:
+            raise MIRValidationError("preparation belongs to a different MIR function")
+        present = validated_presence(prepared).calls
+        found = prepared.dependencies
+    else:
+        # Read only past the dependency facts, which this refusal stops at.
+        present = MappingProxyType({})
+        found = prepared
     callee = declaration.resolved_callee
     # A method body binds its receiver as parameter 0, and only a method's callee names an owner.
     method = declaration.receiver is not None
@@ -280,22 +296,13 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
         bindings[0] = twin_receiver
     record_layouts = body.record_layouts
-    # The dependency pass runs once, first asked for by a record storage slot.
-    liveness = analyze_liveness(body)
-    facts: list[MIRDependencies | MIRNotCovered] = []
     private: list[frozenset[MIRSlotId]] = []
-
-    def dependency_facts() -> MIRDependencies | MIRNotCovered:
-        if not facts:
-            facts.append(analyze_dependencies(body, liveness))
-        return facts[0]
 
     def private_records() -> frozenset[MIRSlotId]:
         if not private:
-            dependencies = dependency_facts()
             # Without dependency facts the body is opaque below, by their reason.
-            private.append(frozenset(s.id for s in body.slots) if isinstance(dependencies, MIRNotCovered)
-                           else _private_records(body, dependencies))
+            private.append(frozenset(s.id for s in body.slots) if isinstance(found, MIRNotCovered)
+                           else _private_records(body, found))
         return private[0]
 
     global_reads: set[MIRGlobalId] = set()
@@ -342,7 +349,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         verified.update(dict.fromkeys(records))
     for consumed in body.call_summaries:
         global_reads.update(consumed.global_reads)
-    dependencies = dependency_facts()
+    dependencies = found
     if isinstance(dependencies, MIRNotCovered):
         return MIRSummaryResult.opaque(f"summary dependencies: {dependencies.reason}")
     parameters = parameter_indices(body)
@@ -542,7 +549,8 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                              frozenset(range(len(bindings))), frozenset(writes), frozenset(),
                              frozenset(returns), transfers, not body.exceptional_exits,
                              frozenset(global_reads))
-    obligations = _obligations(body, definitions, summary, liveness, dependencies)
+    assert isinstance(prepared, MIRPrepared)
+    obligations = _obligations(prepared, definitions, summary)
     if isinstance(obligations, str):
         return MIRSummaryResult.opaque(obligations)
     summary = replace(summary, obligations=obligations)
@@ -562,16 +570,16 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     return MIRSummaryResult(MIRSummaryState.KNOWN, summary=summary)
 
 
-def _obligations(body: MIRFunction, definitions: MIRDefinitions,
-                 summary: MIRCallSummary, liveness: MIRLiveness, dependencies: MIRDependencies
-                 ) -> frozenset[MIRAliasObligation] | str:
+def _obligations(prepared: MIRPrepared, definitions: MIRDefinitions,
+                 summary: MIRCallSummary) -> frozenset[MIRAliasObligation] | str:
     """The no-alias obligations the body's retention conflicts between two
     parameters are (`alias_obligation`), each published when the summary
     can state it (`obligation_problem`, its fields members of the layouts
     on the way); one it cannot state stays a conflict of the body. A body
     whose conflicts are unknown has no summary: a caller could not tell
     which arguments it must keep apart."""
-    retention = analyze_body_retention(body, liveness, dependencies).retention
+    body = prepared.function
+    retention = analyze_retention(prepared)
     if isinstance(retention, MIRNotCovered):
         return f"summary retention: {retention.reason}"
     parameters = parameter_indices(body)

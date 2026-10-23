@@ -17,7 +17,7 @@ from .nodes import (
 )
 from .value import MIRFieldId, MIRValidationError
 from .testutil import bind_parameters, Reference, execute, reslot
-from .validate import validate_function
+from .prepare import validate_function
 
 
 SOURCE = """\

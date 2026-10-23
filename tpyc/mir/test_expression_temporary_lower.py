@@ -18,7 +18,7 @@ from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageVerdict
-from .testutil import compiled_definitions, Reference, execute
+from .testutil import compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -99,8 +99,8 @@ def artifacts(compiled) -> Artifacts:
                 bodies["Runner"] = lower_constructor(ctor, MIRBodyId("temporary", "Runner"), definitions=definitions)
         for name, body in bodies.items():
             assert isinstance(body, MIRFunction), (name, body)
-            assert analyze_scope_ends(body).ends
-            assert inspect_scope_lifetimes(body).conflicts == ()
+            assert analyze_scope_ends(prepared(body)).ends
+            assert inspect_scope_lifetimes(prepared(body)).conflicts == ()
         return functions, bodies, definitions, cpp
 
 
@@ -123,7 +123,7 @@ def test_receiver_positions_and_inline_emission(artifacts: Artifacts) -> None:
     assert next(iter(heap[0].values())) == 13
     assert "Cell(value).value" in cpp and "Cell(n).value" in cpp
     assert "__tmp_" not in cpp
-    assert len(analyze_scope_ends(bodies["local"]).ends) == 4
+    assert len(analyze_scope_ends(prepared(bodies["local"])).ends) == 4
 
 
 def test_lazy_source_only_constructs_when_reached(artifacts: Artifacts) -> None:

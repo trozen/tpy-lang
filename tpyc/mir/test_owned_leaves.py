@@ -19,11 +19,11 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..type_def_registry import ParamPassing
 from ..typesys import BIGINT, BOOL, BYTES, INT32, STR, STRING, NominalType, VoidType
 from .call_contract import MIRGlobalId, MIRSummaryState
-from .dependencies import MIRReferent, analyze_dependencies
+from .dependencies import MIRReferent
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import dump_function
 from .emit import MIRValue, owned_leaf_shape
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .lower import _Lowering, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRConstruct,
@@ -32,13 +32,15 @@ from .nodes import (
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRValidationError
-from .retention import analyze_retention, may_overlap
+from .retention import analyze_retention
+from .reach import reaches
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .validate import statement_may_raise, validate_function
-from .testutil import bind_parameters, borrowed_shape, leaf_shape, owned_shape, repass, reslot
+from .validate import statement_may_raise
+from .testutil import bind_parameters, borrowed_shape, leaf_shape, owned_shape, repass, reslot, prepared
 from ..thir.scalar_leaves import MIRClass
+from .prepare import validate_function
 
 RECORD_SOURCE = """\
 from tpy import int32
@@ -193,13 +195,13 @@ def replacement_body(variant: _Variant, *, retained: bool) -> MIRFunction:
 def _answers(fn: MIRFunction, definitions: MIRDefinitions) -> dict:
     """Every storage analysis's answer, in slot roles rather than dumps."""
     validate_function(fn)
-    liveness = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, liveness)
-    events = analyze_storage(fn)
-    retention = analyze_retention(fn, liveness, dependencies, events)
-    ends = analyze_scope_ends(fn)
-    inspection = inspect_scope_lifetimes(fn)
-    evidence = certify_storage_origins(fn, frozenset({STORAGE}), definitions)
+    liveness = prepared(fn).liveness
+    dependencies = prepared(fn).dependencies
+    events = analyze_storage(prepared(fn))
+    retention = analyze_retention(prepared(fn))
+    ends = analyze_scope_ends(prepared(fn))
+    inspection = inspect_scope_lifetimes(prepared(fn))
+    evidence = certify_storage_origins(prepared(fn), frozenset({STORAGE}), definitions)
     holders = {point: dict(refs) for point, refs in dependencies.active.items()
                if MIRPlace(HOLDER) in refs}
     return {
@@ -310,7 +312,7 @@ def test_direct_reassignment_reading_itself_is_safe(active) -> None:
     answers = _answers(fn, active.definitions)
     assert answers["retention"] == [] and answers["verdict"] is MIRStorageVerdict.CERTIFIED
     # The literal holder borrows static storage: an external origin, never ended.
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(_bid(0), 3)][MIRPlace(FIELD_VALUE)] == frozenset(
         {MIRReferent(MIRPlace(FIELD_VALUE), external=True)})
 
@@ -569,13 +571,12 @@ def _storage_roots(fn: MIRFunction) -> frozenset[MIRSlotId]:
 def test_owned_leaf_analyses_complete_without_conflicts(lowered_active) -> None:
     # A loop joins owned storage replaced in place with per-iteration temporaries.
     fn = lowered_active.bodies["loop"]
-    liveness = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, liveness)
-    events = analyze_storage(fn)
+    dependencies = prepared(fn).dependencies
+    events = analyze_storage(prepared(fn))
     assert not isinstance(dependencies, MIRNotCovered) and not isinstance(events, MIRNotCovered)
-    assert analyze_retention(fn, liveness, dependencies, events).conflicts == ()
-    assert not isinstance(analyze_scope_ends(fn), MIRNotCovered)
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert analyze_retention(prepared(fn)).conflicts == ()
+    assert not isinstance(analyze_scope_ends(prepared(fn)), MIRNotCovered)
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 def test_owned_leaf_storage_roots_are_certified(lowered_active) -> None:
@@ -586,7 +587,7 @@ def test_owned_leaf_storage_roots_are_certified(lowered_active) -> None:
               if isinstance(fn, MIRFunction) and _storage_roots(fn)}
     assert "loop" in rooted and len(rooted) > 1
     for name, fn in rooted.items():
-        evidence = certify_storage_origins(fn, _storage_roots(fn), lowered_active.definitions)
+        evidence = certify_storage_origins(prepared(fn), _storage_roots(fn), lowered_active.definitions)
         assert evidence.verdict is MIRStorageVerdict.CERTIFIED, (name, evidence.gaps)
 
 
@@ -613,7 +614,7 @@ def test_parameters_borrow_or_own_by_their_passing(lowered_active) -> None:
         slot = _slot(fn, name)
         assert (slot.shape.holding, slot.readonly, slot.form, fn.slot_bindings[slot.id].passing) == (
             MIRHolding.POINTER, True, Form.BORROW, passing)
-    entry = analyze_dependencies(fn, analyze_liveness(fn)).entry_active
+    entry = prepared(fn).dependencies.entry_active
     assert all(refs == frozenset({MIRReferent(leaf, external=True)}) for leaf, refs in entry.items())
     owned = _slot(lowered_active.bodies["by_value"], "s")
     assert (owned.shape.is_storage, owned.storage_duration,
@@ -670,7 +671,7 @@ def test_operand_temporaries_live_in_their_full_expression(lowered_active) -> No
     assert temporary.kind is MIRSlotKind.TEMPORARY and isinstance(temporary.storage_duration, MIRRegionId)
     region = next(r for r in fn.regions if r.id == temporary.storage_duration)
     assert region.parent is not None
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     assert {event.storage for events in ends.ends.values() for event in events} == {MIRPlace(temporary.id)}
 
 
@@ -684,7 +685,7 @@ def test_owned_leaf_globals_are_readonly_external_handles(lowered_active) -> Non
     handles = [s for s in fn.slots if s.kind is MIRSlotKind.GLOBAL]
     assert sorted(s.global_id.name for s in handles) == ["B", "G", "N"]
     assert all(s.shape.holding is MIRHolding.POINTER and s.readonly for s in handles)
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert {leaf.root for leaf in deps.entry_active} <= {s.id for s in handles}
     point = MIRPoint(fn.blocks[0].id, 3)
     for holder, refs in deps.active[point].items():
@@ -788,7 +789,7 @@ def test_owned_leaf_arguments_are_lent_at_a_borrowing_passing(lowered_active) ->
         (BIGINT, MIRHolding.POINTER, True, MIRSlotKind.TEMPORARY)]
     # No copy: each holder borrows the parameter's own external storage.
     assert not any(isinstance(stmt.value, MIRCopy) for stmt in _statements(fn) if isinstance(stmt, MIRAssign))
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     params = {s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
@@ -826,7 +827,7 @@ def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
     assert result.shape.is_storage and result.kind is MIRSlotKind.TEMPORARY
     assert call.storage_write == MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
     # The result's holder names the temporary, never the argument's parameter.
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     origins = {ref for refs in deps.referents.values() for leaf, values in refs.items() for ref in values
                if fn.slots[leaf.root.index].kind is MIRSlotKind.TEMPORARY and ref.place.root == result.id}
     assert origins == {MIRReferent(MIRPlace(result.id))}
@@ -853,10 +854,9 @@ def test_global_arguments_are_lent_or_copied(lowered_active) -> None:
 
 def test_parameter_overlapping_a_read_global_is_no_conflict(lowered_active) -> None:
     fn = lowered_active.bodies["overlap"]
-    liveness = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, liveness)
-    retention = analyze_retention(fn, liveness, dependencies, analyze_storage(fn))
-    assert retention.conflicts == () and inspect_scope_lifetimes(fn).conflicts == ()
+    dependencies = prepared(fn).dependencies
+    retention = analyze_retention(prepared(fn))
+    assert retention.conflicts == () and inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     # Both are external origins: the analyses must treat them as possibly one storage.
     param, = (s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER)
     handle, = (s for s in fn.slots if s.kind is MIRSlotKind.GLOBAL)
@@ -871,7 +871,7 @@ def test_parameter_overlapping_a_read_global_is_no_conflict(lowered_active) -> N
     (s_ref,), (g_ref,) = left, right
     assert s_ref.external and s_ref.place.root == param
     assert g_ref.external and g_ref.place.root == handle.id
-    assert may_overlap(s_ref, g_ref)
+    assert reaches(s_ref, g_ref, lambda written, target: True)
     summaries = lowered_active.summaries
     assert summaries["overlap"].state is MIRSummaryState.KNOWN, summaries["overlap"].reason
     assert summaries["overlap"].summary.global_reads == frozenset({MIRGlobalId("main", "G")})
@@ -929,7 +929,7 @@ def test_print_arguments_share_one_full_expression_region(lowered_active) -> Non
 
 def test_loop_temporaries_initialize_per_activation(lowered_active) -> None:
     fn = lowered_active.bodies["loop"]
-    writes = analyze_storage(fn).writes
+    writes = analyze_storage(prepared(fn)).writes
     slots = {s.id: s for s in fn.slots}
     # Per activation: the initialized slot's storage lives in a loop region.
     modes = sorted((stmt.storage_write.mode.name, isinstance(slots[stmt.target.root].storage_duration, MIRRegionId))

@@ -14,9 +14,9 @@ from ..type_def_registry import latch_declared_native_flags
 from ..typesys import INT32, STR, NominalType
 from .call_contract import MIRParameterWrite, MIRSummaryState
 from .definitions import MIRDefinitions
-from .dependencies import MIRReferent, analyze_dependencies
+from .dependencies import MIRReferent
 from .dump import dump_function
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode,
@@ -24,10 +24,12 @@ from .nodes import (
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError
-from .retention import MIRRetention, affects, analyze_retention, may_overlap
+from .retention import MIRRetention, analyze_retention
 from .storage import analyze_storage, dump_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .validate import validate_function
+from .testutil import prepared
+from .prepare import validate_function
+from .reach import reaches, storage_exclusions
 
 SOURCE = """\
 from tpy import String, StrView, Own, int32
@@ -287,8 +289,7 @@ def _ctor(active: _Lowered, name: str) -> MIRFunction:
 
 
 def _retention(fn: MIRFunction) -> MIRRetention:
-    live = analyze_liveness(fn)
-    result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    result = analyze_retention(prepared(fn))
     assert isinstance(result, MIRRetention), result
     return result
 
@@ -364,7 +365,7 @@ def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None
     assert "%2 = call main::make(%1) [reader, may-raise] [initialize]" in lines
     assert "%3 = borrow %2" in lines and "%5 = construct (%3, %4) may-raise [initialize]" in lines
     storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
-    assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
+    assert certify_storage_origins(prepared(fn), storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
 def test_a_caller_construct_copies_a_lent_argument(active) -> None:
@@ -388,7 +389,7 @@ def test_a_caller_construct_copies_through_a_view_argument(active) -> None:
         assert lent in lines and construct in lines, name
         assert _retention(fn).conflicts == ()
         storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
-        assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
+        assert certify_storage_origins(prepared(fn), storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
     assert "%1: StrView readonly-ref temporary residence=r0" in _lines(_body(active, "ctor_from_string"))
 
 
@@ -400,7 +401,7 @@ def test_a_field_read_borrows_or_copies_the_field_place(active) -> None:
     assert "%1 = borrow (*%0).__main__.Rec::name" in lines
     assert "%2 = call stub tpy._builtins._funcs.len[Sized](%1) [pure, reader, may-raise]" in lines
     assert "%1 = copy (*%0).__main__.Rec::name may-raise [initialize]" in _lines(_body(active, "read_copy"))
-    deps = analyze_dependencies(_body(active, "read_len"), analyze_liveness(_body(active, "read_len")))
+    deps = prepared(_body(active, "read_len")).dependencies
     holder = MIRPlace(_body(active, "read_len").slots[1].id)
     assert deps.referents[MIRPoint(_body(active, "read_len").blocks[0].id, 1)][holder] == frozenset({
         MIRReferent(MIRPlace(_body(active, "read_len").slots[0].id, (_name_field(active),)), external=True)})
@@ -410,7 +411,7 @@ def test_a_field_write_is_an_in_place_replacement_event(active) -> None:
     fn = _body(active, "write_field")
     assert "(*%0).__main__.Rec::name = copy (*%1) may-raise [in_place]" in _lines(fn)
     assert "bb0 before 0: in_place (*%0).__main__.Rec::name" in [
-        re.sub(r" @ \d+:\d+$", "", line.strip()) for line in dump_storage(analyze_storage(fn)).splitlines()]
+        re.sub(r" @ \d+:\d+$", "", line.strip()) for line in dump_storage(analyze_storage(prepared(fn))).splitlines()]
     # The record holder around the field keeps its identity: no conflict.
     assert _retention(fn).conflicts == ()
     lines = _lines(_body(active, "append_field"))
@@ -430,7 +431,7 @@ def test_a_local_record_field_write_keeps_its_storage_certified(active) -> None:
     assert "%5 = borrow (*%4).__main__.Rec::name" in lines
     assert _retention(fn).conflicts == ()
     storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
-    assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
+    assert certify_storage_origins(prepared(fn), storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
 def test_a_field_write_never_reaches_a_static_literal(active) -> None:
@@ -441,7 +442,7 @@ def test_a_field_write_never_reaches_a_static_literal(active) -> None:
     assert "%1 = 'lit'" in lines and "(*%0).__main__.Rec::name = 'x' [in_place]" in lines
     assert _retention(fn).conflicts == ()
     storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
-    assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
+    assert certify_storage_origins(prepared(fn), storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
 def test_sibling_fields_and_copies_do_not_conflict(active) -> None:
@@ -457,7 +458,7 @@ def test_a_method_call_lowers_through_its_summary(active) -> None:
     # The receiver is parameter 0: the method's field write lands on the caller's record.
     fn = _body(active, "method_write")
     assert "call __main__.Rec.rename_m(%0, %2) [writes={param0.name}, may-raise]" in _lines(fn)
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     written = MIRPlace(fn.slots[0].id, (MIRDeref(), _name_field(active)))
     assert events.call_writes == {MIRPoint(fn.blocks[0].id, 1): (written,)}
 
@@ -479,13 +480,13 @@ def test_a_field_write_is_a_published_may_write(active) -> None:
 def test_a_call_write_is_a_replacement_event_at_the_call(active) -> None:
     fn = _body(active, "forwarded_write")
     assert "call main::rename(%0, %2) [writes={param0.name}, may-raise]" in _lines(fn)
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     point = MIRPoint(fn.blocks[0].id, 1)
     assert events.call_writes == {point: (MIRPlace(fn.slots[0].id, (MIRDeref(), _name_field(active))),)}
     assert "call-write (*%0).__main__.Rec::name" in dump_storage(events)
     # A scalar field write is shared mutation, never a replacement event.
     fn = _body(active, "name_after_renumber")
-    assert analyze_storage(fn).call_writes == {}
+    assert analyze_storage(prepared(fn)).call_writes == {}
 
 
 def _borrow_before_call(fn: MIRFunction) -> MIRFunction:
@@ -534,7 +535,7 @@ def test_distinct_external_roots_may_alias(active) -> None:
 def test_a_call_write_into_private_storage_is_a_replacement_conflict(active) -> None:
     fn = _borrow_before_call(_body(active, "local_after_rename"))
     storage = frozenset(s.id for s in fn.slots if s.shape.is_storage and s.type == active.record)
-    evidence = certify_storage_origins(fn, storage, active.definitions)
+    evidence = certify_storage_origins(prepared(fn), storage, active.definitions)
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
     conflict, = evidence.conflicts
     assert (conflict.kind, conflict.site) == (MIRStorageConflictKind.REPLACEMENT, _call_point(fn))
@@ -549,16 +550,15 @@ def test_a_field_replacement_reaches_only_holders_at_or_under_it(active) -> None
     p, q, s = (MIRPlace(slot.id) for slot in fn.slots[:3])
     field = MIRReferent(MIRPlace(p.root, (name,)), True)
     # Under one origin: the field itself, never the record around it or a sibling.
-    assert affects(field, field, slots, records)
-    assert not affects(field, MIRReferent(p, True), slots, records)
-    assert may_overlap(field, MIRReferent(p, True))
-    assert not affects(field, MIRReferent(MIRPlace(p.root, (n,)), True), slots, records)
+    assert reaches(field, field, storage_exclusions(slots, records))
+    assert not reaches(field, MIRReferent(p, True), storage_exclusions(slots, records))
+    assert not reaches(field, MIRReferent(MIRPlace(p.root, (n,)), True), storage_exclusions(slots, records))
     # Across external roots that may alias: any owned-leaf holder, never a record.
-    assert affects(field, MIRReferent(MIRPlace(q.root, (name,)), True), slots, records)
-    assert affects(field, MIRReferent(s, True), slots, records)
-    assert not affects(field, MIRReferent(q, True), slots, records)
-    # A whole-storage replacement keeps the symmetric prefix rule.
-    assert affects(MIRReferent(p, True), field, slots, records)
+    assert reaches(field, MIRReferent(MIRPlace(q.root, (name,)), True), storage_exclusions(slots, records))
+    assert reaches(field, MIRReferent(s, True), storage_exclusions(slots, records))
+    assert not reaches(field, MIRReferent(q, True), storage_exclusions(slots, records))
+    # A whole-storage replacement reaches everything under its place.
+    assert reaches(MIRReferent(p, True), field, storage_exclusions(slots, records))
 
 
 # --- validator ------------------------------------------------------------------------

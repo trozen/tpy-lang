@@ -19,21 +19,19 @@ from .call_contract import (
 from .call_effects import analyze_call_effects
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
-from .dependencies import MIRUnseededLoan, analyze_dependencies, apply_transfers
+from .dependencies import MIRUnseededLoan, apply_transfers
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
     MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRPresentCall, MIRRead, MIRSlotKind, present_effects,
     statement_call,
 )
 from .lower import lower_function
-from .presence import _analyze_presence
-from .validate import _validated_function, validate_function
 from .value import MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .region_flow import outgoing_edges
-from .testutil import no_layouts, compiled_definitions, reslot
+from .testutil import no_layouts, compiled_definitions, reslot, prepared, workspace_functions
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -212,7 +210,7 @@ def artifacts(compiled) -> Artifacts:
 
 
 def body_named(workspace: MIRCallWorkspace, name: str) -> MIRFunction:
-    result = next(body for bid, body in workspace.bodies.items() if bid.declaration.split("@")[0] == name)
+    result = next(body for bid, body in workspace_functions(workspace).items() if bid.declaration.split("@")[0] == name)
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -241,8 +239,8 @@ def test_call_arguments_are_live_and_result_has_no_borrow(artifacts: Artifacts) 
     assert points[0][1].value.arguments == points[1][1].value.arguments
     assert not any(isinstance(stmt.value, MIRCopy) for block in body.blocks
                    for stmt in block.statements if isinstance(stmt, MIRAssign))
-    live = analyze_liveness(body)
-    dependencies = analyze_dependencies(body, live)
+    live = prepared(body).liveness
+    dependencies = prepared(body).dependencies
     assert not isinstance(dependencies, MIRNotCovered)
     for point, stmt in points:
         assert set(stmt.value.arguments) <= live.points[point]
@@ -259,7 +257,7 @@ def test_call_arguments_are_live_and_result_has_no_borrow(artifacts: Artifacts) 
 def test_constant_returning_call_still_has_unknown_result(artifacts: Artifacts, name: str) -> None:
     body = body_named(artifacts[1], name)
     assert len(calls(body)) == 1
-    presence = _analyze_presence(body)
+    presence = prepared(body).presence
     assert not presence.issues
     branch = next(block for block in body.blocks if isinstance(block.terminator, MIRBranch))
     edges = tuple(edge for edge, _ in outgoing_edges(branch.id, branch.terminator))
@@ -269,7 +267,7 @@ def test_constant_returning_call_still_has_unknown_result(artifacts: Artifacts, 
         replace(stmt, value=MIRConstant(True)) if isinstance(stmt, MIRAssign)
         and isinstance(stmt.value, MIRCall) else stmt for stmt in block.statements))
         for block in body.blocks))
-    assert sum(edge in _analyze_presence(folded).edges for edge in edges) == 1
+    assert sum(edge in prepared(folded).presence.edges for edge in edges) == 1
 
 
 def test_conditional_call_is_only_on_selected_arm(artifacts: Artifacts) -> None:
@@ -334,7 +332,6 @@ def test_writer_summary_requires_layout_and_mutable_actual(artifacts: Artifacts,
 ])
 def test_standalone_validation_requires_the_published_contract(artifacts: Artifacts, damage: str, reason: str) -> None:
     body = body_named(artifacts[1], "observe" if damage == "storage" else "forward")
-    live = analyze_liveness(body)
     point, stmt = calls(body)[0]
     call = stmt.value
     if damage == "missing":
@@ -360,11 +357,9 @@ def test_standalone_validation_requires_the_published_contract(artifacts: Artifa
             replace(block, statements=tuple(replace(s, value=call) if i == point.index else s
                                              for i, s in enumerate(block.statements)))
             if block.id == point.block else block for block in body.blocks))
-    for analyze in (validate_function, analyze_liveness, dump_function):
+    for analyze in (validate_function, prepared, dump_function):
         with pytest.raises(MIRValidationError, match=reason):
             analyze(body)
-    with pytest.raises(MIRValidationError, match=reason):
-        analyze_dependencies(body, live)
 
 
 @pytest.mark.parametrize(("damage", "reason"), [
@@ -433,7 +428,7 @@ def test_scalar_global_argument_is_read_before_the_call(artifacts: Artifacts) ->
     ("optional_record_argument", "unsupported optional argument"),
 ])
 def test_argument_adaptations_remain_explicitly_uncovered(artifacts: Artifacts, name: str, reason: str) -> None:
-    result = next(body for bid, body in artifacts[1].bodies.items() if bid.declaration.split("@")[0] == name)
+    result = next(body for bid, body in workspace_functions(artifacts[1]).items() if bid.declaration.split("@")[0] == name)
     assert isinstance(result, MIRNotCovered) and result.reason == reason
 
 
@@ -445,7 +440,7 @@ def _call_statement(body: MIRFunction) -> tuple[int, int, MIRCall]:
 def _present_call(body: MIRFunction) -> MIRPresentCall:
     """The first call of `body` as presence sees it."""
     b, i, call = _call_statement(body)
-    called = _validated_function(body).presence.calls[MIRPoint(body.blocks[b].id, i)]
+    called = prepared(body).presence.calls[MIRPoint(body.blocks[b].id, i)]
     assert called.call is call
     return called
 
@@ -455,7 +450,7 @@ def test_a_none_argument_is_absent_and_its_writes_reach_nothing(artifacts: Artif
     absent = body_named(workspace, "absent_write")
     called = _present_call(absent)
     assert called.call.summary.writes and not called.effects.writes and called.writes == ()
-    assert not isinstance(analyze_call_effects(absent, analyze_dependencies(absent, analyze_liveness(absent))),
+    assert not isinstance(analyze_call_effects(prepared(absent)),
                           MIRNotCovered)
     # A present argument is never absent: the call keeps its whole summary.
     called = _present_call(body_named(workspace, "present_write"))
@@ -469,7 +464,7 @@ def test_absence_follows_what_presence_proves_before_the_call(artifacts: Artifac
     assert called.call.summary.writes and not called.effects.writes and called.writes == ()
     # None on one branch only: absent there, and after the join it may be present.
     body = body_named(workspace, "one_branch_absent")
-    inside, after = (called for _, called in sorted(_validated_function(body).presence.calls.items(),
+    inside, after = (called for _, called in sorted(prepared(body).presence.calls.items(),
                                                      key=lambda item: item[1].call.site.line))
     assert not inside.effects.writes and inside.writes == ()
     assert after.effects == after.call.summary and len(after.writes) == 1
@@ -481,7 +476,7 @@ def test_a_call_presence_never_reaches_keeps_its_own_block_facts(artifacts: Arti
         body = body_named(workspace, name)
         b, i, _ = _call_statement(body)
         # `flag` is None, so the branch holding the call is infeasible.
-        assert MIRPoint(body.blocks[b].id, i) not in _validated_function(body).presence.points
+        assert MIRPoint(body.blocks[b].id, i) not in prepared(body).presence.points
     # A None argument is absent by the block's own statements: its writes are filtered.
     called = _present_call(body_named(workspace, "infeasible_absent"))
     assert called.call.summary.writes and not called.effects.writes and called.writes == ()
@@ -522,7 +517,7 @@ def test_global_reads_union_through_consumed_summaries(artifacts: Artifacts) -> 
     writer = workspace.summaries[th.THIRFunctionIdentity("main", "global_writer")]
     assert writer.state is MIRSummaryState.OPAQUE and writer.reason == "summary global access"
     assert isinstance(body_named(workspace, "global_writer"), MIRFunction)
-    caller = next(body for bid, body in workspace.bodies.items() if bid.declaration.startswith("calls_global_writer"))
+    caller = next(body for bid, body in workspace_functions(workspace).items() if bid.declaration.startswith("calls_global_writer"))
     assert isinstance(caller, MIRNotCovered) and caller.reason == "call needs finalized known summary"
 
 
@@ -563,7 +558,7 @@ def test_duplicate_or_missing_definition_does_not_resolve(artifacts: Artifacts) 
 
 def test_call_keeps_expired_backing_visible_to_scope_inspection(artifacts: Artifacts) -> None:
     body = body_named(artifacts[1], "retained")
-    inspection = inspect_scope_lifetimes(body)
+    inspection = inspect_scope_lifetimes(prepared(body))
     assert not isinstance(inspection.conflicts, MIRNotCovered) and len(inspection.conflicts) == 1
     conflict = inspection.conflicts[0]
     assert next(s for s in body.slots if s.id == conflict.holder.root).name == "saved"

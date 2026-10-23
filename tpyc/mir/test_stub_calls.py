@@ -25,17 +25,17 @@ from .call_contract import (
 )
 from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref
 from .definitions import MIRDefinitions
-from .dependencies import MIRReferent, analyze_dependencies
+from .dependencies import MIRReferent
 from .dump import dump_function
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .lower import lower_function
 from .nodes import MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRSlotKind
 from .value import Declared, MIRHolding, MIRValidationError, with_access
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import no_layouts, bound, reaccess
-from .validate import validate_function
+from .testutil import no_layouts, bound, reaccess, prepared
+from .prepare import validate_function
 
 SOURCE = """\
 import math
@@ -204,12 +204,11 @@ def test_admitted_stub_calls_carry_their_declared_summary(active) -> None:
     # Two stubs in one body: `min` lends owned leaves, `len` lends through its protocol parameter.
     fn = active.bodies["both"]
     assert isinstance(fn, MIRFunction), fn
-    liveness = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, liveness)
-    events = analyze_storage(fn)
+    dependencies = prepared(fn).dependencies
+    events = analyze_storage(prepared(fn))
     assert not isinstance(dependencies, MIRNotCovered) and not isinstance(events, MIRNotCovered)
-    assert analyze_retention(fn, liveness, dependencies, events).conflicts == ()
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert analyze_retention(prepared(fn)).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     # A stub may raise, so every call to one carries the exit fact.
     calls = [stmt.value for stmt in _call_statements(fn)]
     assert len(calls) == 2 and all(call.may_raise for call in calls) and fn.exceptional_exits
@@ -232,7 +231,7 @@ def test_pure_stub_lends_an_owned_leaf_to_its_protocol_parameter(active) -> None
     assert (argument.type, argument.shape.holding, argument.readonly) == (STR, MIRHolding.POINTER, True)
     # The holder borrows the parameter's storage in place: no copy.
     param, = (s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER)
-    refs = analyze_dependencies(fn, analyze_liveness(fn)).referents[_point_after(fn, stmt)]
+    refs = prepared(fn).dependencies.referents[_point_after(fn, stmt)]
     assert refs[MIRPlace(argument.id)] == frozenset({MIRReferent(MIRPlace(param), external=True)})
     assert not any(isinstance(s.value, MIRCopy) for s in _statements(fn) if isinstance(s, MIRAssign))
     assert "%2 = call stub tpy._builtins._funcs.len[Sized](%1) [pure, reader, may-raise]" in _lines(fn)
@@ -244,7 +243,7 @@ def test_a_global_argument_is_lent_through_its_handle(active) -> None:
     fn = active.bodies["global_len"]
     stmt, = _call_statements(fn)
     handle, = (s.id for s in fn.slots if s.kind is MIRSlotKind.GLOBAL)
-    refs = analyze_dependencies(fn, analyze_liveness(fn)).referents[_point_after(fn, stmt)]
+    refs = prepared(fn).dependencies.referents[_point_after(fn, stmt)]
     assert refs[MIRPlace(stmt.value.arguments[0])] == frozenset({MIRReferent(MIRPlace(handle), external=True)})
     # The stub reads no global; the caller's own read of G is what its summary names.
     assert stmt.value.summary.global_reads == frozenset()
@@ -283,7 +282,7 @@ def test_stub_result_may_borrow_every_lent_argument(active) -> None:
     holder = fn.slots[stmt.target.root.index]
     assert holder.shape.holding is MIRHolding.POINTER and holder.readonly
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
-    refs = analyze_dependencies(fn, analyze_liveness(fn)).referents[_point_after(fn, stmt)]
+    refs = prepared(fn).dependencies.referents[_point_after(fn, stmt)]
     assert refs[MIRPlace(holder.id)] == frozenset(MIRReferent(MIRPlace(p), external=True) for p in params)
     # `x = min(a, b)` copies what the result references, as the C++ does.
     local = next(s for s in fn.slots if s.name == "x")
@@ -292,7 +291,7 @@ def test_stub_result_may_borrow_every_lent_argument(active) -> None:
     # A temporary argument's storage joins the origins.
     fn = active.bodies["smaller_sum"]
     stmt, = _call_statements(fn)
-    refs = analyze_dependencies(fn, analyze_liveness(fn)).referents[_point_after(fn, stmt)]
+    refs = prepared(fn).dependencies.referents[_point_after(fn, stmt)]
     origins = refs[MIRPlace(stmt.target.root)]
     assert {r.external for r in origins} == {True, False}
     temporary, = (r.place.root for r in origins if not r.external)

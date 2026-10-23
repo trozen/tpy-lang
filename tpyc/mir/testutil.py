@@ -7,6 +7,7 @@ import operator
 from types import MappingProxyType
 
 from ..compilation_context import activate_compiler
+from ..mir_workspace import MIRCallWorkspace
 from ..type_def_registry import TypeCategory, TypeDef, _type_defs, int_traits_of, register
 from ..typesys import INT32_MIN, INT32_MAX, FieldInfo, NominalType, RecordInfo
 
@@ -15,7 +16,7 @@ from .nodes import (
     MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
     MIRStorageWrite, MIRStorageWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct, MIRStorageInit,
     MIREdge, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
-    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap,
+    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap, MIRNotCovered, MIRBodyId,
 )
 from .value import (
     NO_FIELDS, Declared, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, RecordFields,
@@ -30,6 +31,8 @@ from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
 from .definitions import MIRDefinitions, declared_fields
 from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .validate import statement_reads
+from .prepare import MIRPrepared, prepare
+from .lower import MIRLoweredStorage
 
 # The TypeDef of every hand-built record (`hand_record`): its declared
 # fields are what `declared_fields` resolves from it.
@@ -603,3 +606,15 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         for sid in regions.edges[edge].ended:
             physical.pop(sid, None)
     raise AssertionError("unexpected nontermination")
+
+
+def prepared(fn: MIRFunction) -> MIRPrepared | MIRNotCovered:
+    """The body's one preparation (`prepare.prepare`): the input every pass
+    takes, or the first dependency run's refusal."""
+    return prepare(fn)
+
+
+def workspace_functions(workspace: MIRCallWorkspace) -> dict[MIRBodyId, MIRFunction | MIRNotCovered]:
+    """Each body the call workspace lowered, as its MIR function or its refusal."""
+    return {body: lowered.function if isinstance(lowered, MIRLoweredStorage) else lowered
+            for body, lowered in workspace.bodies.items()}

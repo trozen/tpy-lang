@@ -26,7 +26,7 @@ from .dependencies import (
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
-from .lower import lower_constructor, lower_function
+from .lower import MIRLoweredStorage, lower_constructor_storage, lower_function_storage
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRMemberInitMode, MIRNotCovered,
     MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
@@ -36,16 +36,17 @@ from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRShape
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )
+from .prepare import MIRPrepared
 from .retention import (
-    MIRRetention, MIRRetentionClasses, analyze_body_retention, classify_retention,
-    dump_retention, static_referent,
+    MIRRetention, MIRRetentionClasses, analyze_retention, classify_retention, dump_retention, static_referent,
 )
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRTupleIndex, MIRUnionPayload, object_prefix,
     optional_payload,
 )
-from .storage import MIRStorageEvents, dump_storage, storage_destination
+from .reach import storage_destination
+from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
     MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
@@ -154,7 +155,9 @@ class MIRBodySource:
 class MIRAnalyses:
     """The analyses the verdict runs over one lowered body, each of which
     `--dump-mir` prints."""
-    liveness: MIRLiveness
+    # The first dependency run's refusal for a body it refuses, as every
+    # analysis below then is.
+    liveness: MIRLiveness | MIRNotCovered
     dependencies: MIRDependencies | MIRNotCovered
     events: MIRStorageEvents | MIRNotCovered
     scope: MIRScopeInspection
@@ -206,13 +209,18 @@ class MIRAnalyses:
         return tuple(found)
 
 
-def analyze_body(fn: MIRFunction, obligations: frozenset[MIRAliasObligation] = frozenset()) -> MIRAnalyses:
-    ran = analyze_body_retention(fn)
-    dependencies = ran.dependencies
-    return MIRAnalyses(ran.liveness, dependencies, ran.events, inspect_scope_lifetimes(fn),
-                       analyze_call_effects(fn, dependencies), ran.retention, inspect_payload_lifetimes(fn),
-                       analyze_return_escapes(fn, dependencies), analyze_store_escapes(fn, dependencies),
-                       obligations)
+def analyze_body(fn: MIRFunction, prepared: MIRPrepared | MIRNotCovered,
+                 obligations: frozenset[MIRAliasObligation] = frozenset()) -> MIRAnalyses:
+    """The analyses over the body's preparation; a first dependency run's
+    refusal is every analysis's gap."""
+    if isinstance(prepared, MIRNotCovered):
+        return MIRAnalyses(prepared, prepared, prepared, MIRScopeInspection(fn, prepared, prepared, ()), prepared,
+                           prepared, MIRPayloadInspection(fn, prepared, prepared, ()), prepared, prepared,
+                           obligations)
+    return MIRAnalyses(prepared.liveness, prepared.dependencies, analyze_storage(prepared),
+                       inspect_scope_lifetimes(prepared), analyze_call_effects(prepared), analyze_retention(prepared),
+                       inspect_payload_lifetimes(prepared), analyze_return_escapes(prepared),
+                       analyze_store_escapes(prepared), obligations)
 
 
 def published_obligations(summary: MIRSummaryResult | None) -> frozenset[MIRAliasObligation]:
@@ -382,7 +390,7 @@ def enumerate_body_sources(module: TpyModule, analyzer: SemanticAnalyzer, ctx: C
 
 
 def lower_body(source: MIRBodySource, definitions: MIRDefinitions, workspace: MIRCallWorkspace | None,
-               *, fresh: bool = False) -> MIRFunction | MIRNotCovered:
+               *, fresh: bool = False) -> MIRLoweredStorage | MIRNotCovered:
     """Lower one body; a function takes the call workspace's lowering, which
     is the one its callers' summaries were computed from. `fresh` lowers
     outside the workspace cache so a caller's hooks observe the lowering;
@@ -391,11 +399,11 @@ def lower_body(source: MIRBodySource, definitions: MIRDefinitions, workspace: MI
     assert source.source is not None and source.refusal is None
     summaries = workspace.summaries if workspace is not None else None
     if isinstance(source.source, THIRConstructor):
-        return lower_constructor(source.source, source.body, definitions=definitions, summaries=summaries)
+        return lower_constructor_storage(source.source, source.body, definitions=definitions, summaries=summaries)
     cached = workspace.lowering(source.body, source.source) if workspace is not None and not fresh else None
     if cached is not None:
         return cached
-    return lower_function(source.source, source.body, definitions=definitions, summaries=summaries)
+    return lower_function_storage(source.source, source.body, definitions=definitions, summaries=summaries)
 
 
 def body_summary(source: MIRBodySource, workspace: MIRCallWorkspace | None) -> MIRSummaryResult | None:
@@ -412,7 +420,8 @@ def lower_and_analyze(source: MIRBodySource, definitions: MIRDefinitions, worksp
     lowered = lower_body(source, definitions, workspace, fresh=fresh)
     if isinstance(lowered, MIRNotCovered):
         return lowered, None
-    return lowered, analyze_body(lowered, published_obligations(body_summary(source, workspace)))
+    return lowered.function, analyze_body(lowered.function, lowered.prepared,
+                                          published_obligations(body_summary(source, workspace)))
 
 
 def verdict_of(source: MIRBodySource, definitions: MIRDefinitions,
@@ -798,7 +807,8 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
         fn, analyses = verdict.function, verdict.analyses
         assert fn is not None and analyses is not None
         lines.append(dump_function(fn).rstrip("\n") + "\n")
-        lines.append(dump_liveness(analyses.liveness))
+        lines.append(dump_liveness(analyses.liveness) if isinstance(analyses.liveness, MIRLiveness)
+                     else f"liveness not covered: {analyses.liveness.reason}\n")
         lines.append(dump_scope_ends(analyses.scope.ends))
         lines.append(dump_scope_inspection(analyses.scope))
         lines.append(dump_dependencies(analyses.dependencies))

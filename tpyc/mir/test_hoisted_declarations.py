@@ -18,8 +18,9 @@ from .value import MIRHolding
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_retention import analyze
 from .test_reuse import CELL_SOURCE, source_function
-from .testutil import compiled_definitions, optional_value, Reference, execute
-from .validate import MIRDefiniteAssignmentError, validate_function
+from .testutil import compiled_definitions, optional_value, Reference, execute, prepared
+from .validate import MIRDefiniteAssignmentError
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -268,7 +269,7 @@ def hoists(compiled) -> Hoists:
 def test_hoist_producers_preserve_results_and_shared_mutation(hoists: Hoists) -> None:
     _, bodies, _, _ = hoists
     for fn in bodies.values():
-        assert inspect_scope_lifetimes(fn).conflicts == ()
+        assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     for flag in (False, True):
         for name in ("scalar", "value_tuple", "loop_tuple", "loop_scalar"):
             assert execute(bodies[name], flag) == (1 if flag else 2)
@@ -318,7 +319,7 @@ def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoi
         for backing, _ in writes:
             assert backing.storage_duration is MIRStorageDuration.BODY
             assert backing.residence.index == 0
-        inspection = inspect_scope_lifetimes(fn)
+        inspection = inspect_scope_lifetimes(prepared(fn))
         blocks = {b.id: b for b in fn.blocks}
         assert all(isinstance(blocks[edge.source].terminator, MIRReturn) for edge in inspection.ends.ends)
     local = next(s for s in bodies["escaped_loop"].slots if s.name == "local")

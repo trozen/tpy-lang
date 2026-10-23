@@ -4,16 +4,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .dependencies import MIRDependencies, _dependencies
-from .dump import _location, _place
-from .liveness import MIRLiveness, _liveness
+from .place_text import _location, _place
 from .nodes import (
-    MIRAssign, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, place_shape,
+    MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, place_shape,
     MIRWrap, MIRCopy,
 )
 from .shapes import MIRUnionPayload
-from .presence import MIRPresenceIssue, MIRPresenceIssueKind
-from .validate import MIRPrepared, MIRPresenceError, _prepare_function, _validated_function
+from .presence import MIRPresenceIssue
+from .prepare import MIRPrepared, validated_presence
+from .reach import MIRStorageEventKind, storage_events
 from .value import MIRValidationError
 
 
@@ -23,8 +22,9 @@ class MIRPayloadEnds:
     ends: Mapping[MIRPoint, frozenset[MIRPlace]]
 
 
-def analyze_payload_ends(fn: MIRFunction) -> MIRPayloadEnds | MIRNotCovered:
-    return _payload_ends(_validated_function(fn))
+def analyze_payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
+    validated_presence(prepared)
+    return _payload_ends(prepared)
 
 
 def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
@@ -36,20 +36,19 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
     ends: dict[MIRPoint, frozenset[MIRPlace]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            if not isinstance(stmt, MIRAssign):
+            # A scalar wrapper's payload write (`storage_events`), compared by its tag operation.
+            payload = [event for event in storage_events(stmt, (), slots)
+                       if event.kind is MIRStorageEventKind.PAYLOAD]
+            if not payload:
                 continue
+            if not all(event.known for event in payload):
+                return MIRNotCovered(fn.id, "payload ends", "missing payload write fact", stmt.loc)
+            assert isinstance(stmt, MIRAssign)
             value = stmt.value
-            if not isinstance(value, (MIRWrap, MIRCopy)):
+            point = MIRPoint(block.id, index)
+            if not isinstance(value, (MIRWrap, MIRCopy)) or point not in presence.points:
                 continue
             wrapper = stmt.target
-            if not slots[wrapper.root].shape.scalar_wrapper:
-                continue
-            fact = stmt.storage_write
-            if not isinstance(fact, MIRStorageWrite):
-                return MIRNotCovered(fn.id, "payload ends", "missing payload write fact", stmt.loc)
-            point = MIRPoint(block.id, index)
-            if point not in presence.points or fact.mode is MIRStorageWriteMode.INITIALIZE:
-                continue
             incoming = dict(presence.points[point])
             old = incoming.get(wrapper, presence.domains[wrapper])
             match value:
@@ -86,23 +85,17 @@ class MIRPayloadInspection:
     freshness: tuple[MIRPresenceIssue, ...]
 
 
-def inspect_payload_lifetimes(fn: MIRFunction) -> MIRPayloadInspection:
-    """Inspect stale aliases without admitting them as valid MIR."""
-    prepared = _prepare_function(fn)
-    for issue in prepared.presence.issues:
-        if issue.kind is MIRPresenceIssueKind.SELECTION:
-            raise MIRPresenceError(issue.message)
-    liveness = _liveness(prepared)
-    dependencies = _dependencies(prepared, liveness)
+def inspect_payload_lifetimes(prepared: MIRPrepared) -> MIRPayloadInspection:
+    """Inspect stale aliases without admitting them as valid MIR; a stale
+    payload access never prepares (`prepare.prepare`)."""
     ends = _payload_ends(prepared)
-    conflicts = _payload_conflicts(prepared, liveness, dependencies, ends)
-    return MIRPayloadInspection(fn, ends, conflicts, prepared.presence.issues)
+    conflicts = _payload_conflicts(prepared, ends)
+    return MIRPayloadInspection(prepared.function, ends, conflicts, prepared.presence.issues)
 
 
-def _payload_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
-                       dependencies: MIRDependencies | MIRNotCovered,
+def _payload_conflicts(prepared: MIRPrepared,
                        ends: MIRPayloadEnds | MIRNotCovered) -> tuple[MIRPayloadConflict, ...] | MIRNotCovered:
-    fn = prepared.function
+    fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
     for result in (prepared.presence, liveness, dependencies, ends):
         if isinstance(result, MIRNotCovered):
             if result.body != fn.id:

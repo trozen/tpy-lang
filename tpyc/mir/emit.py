@@ -25,7 +25,8 @@ from .value import (
     value_shape,
 )
 from .shapes import Projection, object_prefix
-from .validate import body_may_raise, reaches_element, statement_reads, successors, validate_function
+from .validate import body_may_raise, reaches_element, statement_reads, successors
+from .prepare import _FirstPhase, first_phase
 
 
 class MIRFallthroughError(Exception):
@@ -659,9 +660,11 @@ def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, 
              result: object, layouts: MIRRecords,
              receiver_init: MIRReceiverInit | None = None,
              parameter_bindings: tuple[MIRParameterBinding, ...] = (),
-             return_representation: Representation | None = None) -> MIRFunction:
+             return_representation: Representation | None = None) -> tuple[MIRFunction, _FirstPhase]:
     """The body built, closed and numbered: a reachable end returns (a
-    non-void body's refuses), then assembly."""
+    non-void body's refuses), then assembly; with its structure check and
+    presence without field selections (`first_phase`), which its
+    preparation reuses."""
     blocks = {b.id: b for b in body.blocks}
     reachable: set[MIRBlockId] = set()
     pending = [body.head.id]
@@ -677,8 +680,9 @@ def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, 
         if not void:
             raise MIRFallthroughError("non-void fallthrough")
         body.end(MIRReturn())
-    return _Assembly(body, receiver_init, reachable).function(return_type, kind, callees, result, layouts,
-                                                              parameter_bindings, return_representation)
+    fn = _Assembly(body, receiver_init, reachable).function(return_type, kind, callees, result, layouts,
+                                                            parameter_bindings, return_representation)
+    return fn, first_phase(fn)
 
 
 def _structure(value: object) -> bool:
@@ -898,7 +902,6 @@ class _Assembly:
                          body_may_raise(blocks, frozen, layouts, receiver_init),
                          parameter_bindings, layouts.fields, return_representation,
                          tuple(sorted(layouts.containers, key=str)))
-        validate_function(fn)
         return fn
 
 

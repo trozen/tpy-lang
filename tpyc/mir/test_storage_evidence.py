@@ -13,7 +13,6 @@ from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .dependencies import _dependencies
-from .liveness import _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
@@ -31,9 +30,10 @@ from .storage_evidence import (
 from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_function
 from .test_payload_lifetime import CURRENT, payload, write
 from .test_scope_inspection import stale_scalar_alias
-from .validate import MIRPresenceError, _prepare_function
+from .validate import MIRPresenceError
 from .testutil import (
-    compiled_definitions, bind_parameters, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot,
+    compiled_definitions, bind_parameters, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot, prepared,
+    workspace_functions,
 )
 
 
@@ -202,7 +202,7 @@ def artifacts(compiled) -> Artifacts:
         _, ctx = compiler.generate_code_and_thir(entry)
         definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
         workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-        bodies = {body.declaration.split("@")[0]: fn for body, fn in workspace.bodies.items()}
+        bodies = {body.declaration.split("@")[0]: fn for body, fn in workspace_functions(workspace).items()}
         method = next(fn for fn in ctx.thir_functions.values() if fn.name == "escape")
         bodies["escape"] = lower_function(method, MIRBodyId("main", "escape"),
                                           definitions=definitions, summaries=workspace.summaries)
@@ -224,7 +224,7 @@ def _source(artifacts: Artifacts, name: str) -> tuple[MIRFunction, MIRStorageEvi
     bodies, definitions = artifacts
     fn = bodies[name]
     assert isinstance(fn, MIRFunction), fn
-    return fn, certify_storage_origins(fn, _storage(fn), definitions)
+    return fn, certify_storage_origins(prepared(fn), _storage(fn), definitions)
 
 
 @pytest.mark.parametrize("name, kind, holder", [
@@ -273,7 +273,7 @@ def test_conflict_on_other_storage_withholds_but_is_not_attributed(artifacts: Ar
     bodies, definitions = artifacts
     fn = bodies["direct_escape"]
     body = frozenset(s.id for s in fn.slots if s.storage_duration is MIRStorageDuration.BODY)
-    evidence = certify_storage_origins(fn, body, definitions)
+    evidence = certify_storage_origins(prepared(fn), body, definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert not evidence.conflicts
     assert any("outside the required origins" in g.reason for g in evidence.gaps)
@@ -327,13 +327,13 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
 @pytest.mark.parametrize("optional", [False, True])
 def test_loop_activation_checks_each_end_before_the_backedge(artifacts: Artifacts, optional: bool) -> None:
     definitions = artifacts[1]
-    unsafe = certify_storage_origins(activation(definitions, retain=True, optional=optional),
+    unsafe = certify_storage_origins(prepared(activation(definitions, retain=True, optional=optional)),
                                      frozenset({BACKING}), definitions)
     assert unsafe.verdict is MIRStorageVerdict.CONFLICT
     # The backedge ends this activation while `saved` stays live into the next one.
     assert {c.site for c in unsafe.conflicts} == {MIREdge(ITERATION)}
     assert {(c.origin, c.holder) for c in unsafe.conflicts} == {(MIRPlace(BACKING), MIRPlace(SAVED))}
-    safe = certify_storage_origins(activation(definitions, retain=False, optional=optional),
+    safe = certify_storage_origins(prepared(activation(definitions, retain=False, optional=optional)),
                                    frozenset({BACKING}), definitions)
     assert safe.verdict is MIRStorageVerdict.CERTIFIED, (safe.conflicts, safe.gaps)
 
@@ -357,9 +357,8 @@ def _without_engagement(prepared, *, edge: MIREdge | None = None, point: MIRPoin
 def test_missing_end_engagement_is_not_a_clean_skip(artifacts: Artifacts, retain: bool) -> None:
     definitions = artifacts[1]
     fn = activation(definitions, retain=retain, optional=True)
-    prepared = _without_engagement(_prepare_function(fn), edge=MIREdge(ITERATION))
-    live = _liveness(prepared)
-    evidence = _storage_evidence(prepared, live, _dependencies(prepared, live), frozenset({BACKING}), definitions)
+    ready = _without_engagement(prepared(fn), edge=MIREdge(ITERATION))
+    evidence = _storage_evidence(ready, frozenset({BACKING}), definitions)
     # The object end (and its conflict) disappears with the fact; the wrapper end remains.
     assert not evidence.conflicts
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
@@ -386,15 +385,14 @@ def reused(definitions: MIRDefinitions, *, retain: bool) -> MIRFunction:
 
 def test_reassigned_backing_keeps_prior_alias_and_needs_engagement(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
-    unsafe = certify_storage_origins(reused(definitions, retain=True), frozenset({BACKING}), definitions)
+    unsafe = certify_storage_origins(prepared(reused(definitions, retain=True)), frozenset({BACKING}), definitions)
     assert unsafe.verdict is MIRStorageVerdict.CONFLICT
     conflict, = unsafe.conflicts
     assert conflict.kind is MIRStorageConflictKind.REPLACEMENT and conflict.holder == MIRPlace(EARLIER)
     fn = reused(definitions, retain=False)
-    assert certify_storage_origins(fn, frozenset({BACKING}), definitions).verdict is MIRStorageVerdict.CERTIFIED
-    prepared = _without_engagement(_prepare_function(fn), point=MIRPoint(ITERATION, 0))
-    live = _liveness(prepared)
-    evidence = _storage_evidence(prepared, live, _dependencies(prepared, live), frozenset({BACKING}), definitions)
+    assert certify_storage_origins(prepared(fn), frozenset({BACKING}), definitions).verdict is MIRStorageVerdict.CERTIFIED
+    ready = _without_engagement(prepared(fn), point=MIRPoint(ITERATION, 0))
+    evidence = _storage_evidence(ready, frozenset({BACKING}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any("replaced without an engagement fact" in g.reason for g in evidence.gaps)
 
@@ -402,14 +400,12 @@ def test_reassigned_backing_keeps_prior_alias_and_needs_engagement(artifacts: Ar
 def test_missing_entire_engagement_point_is_not_a_clean_skip(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
     fn = reused(definitions, retain=False)
-    prepared = _prepare_function(fn)
+    ready = prepared(fn)
     point = MIRPoint(ITERATION, 0)
-    assert point in prepared.presence.points
-    presence = replace(prepared.presence, engagement=MappingProxyType({
-        p: facts for p, facts in prepared.presence.engagement.items() if p != point}))
-    prepared = replace(prepared, presence=presence)
-    live = _liveness(prepared)
-    evidence = _storage_evidence(prepared, live, _dependencies(prepared, live), frozenset({BACKING}), definitions)
+    assert point in ready.presence.points
+    presence = replace(ready.presence, engagement=MappingProxyType({
+        p: facts for p, facts in ready.presence.engagement.items() if p != point}))
+    evidence = _storage_evidence(replace(ready, presence=presence), frozenset({BACKING}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any("replaced without an engagement fact" in g.reason for g in evidence.gaps)
 
@@ -420,10 +416,10 @@ def test_infeasible_replacement_needs_no_engagement_fact(artifacts: Artifacts) -
     entry = fn.blocks[0]
     fn = replace(fn, blocks=(replace(entry, statements=(
         *entry.statements, MIRAssign(MIRPlace(FLAG), MIRConstant(False)))), *fn.blocks[1:]))
-    prepared = _prepare_function(fn)
+    ready = prepared(fn)
     point = MIRPoint(ITERATION, 0)
-    assert point not in prepared.presence.points and point not in prepared.presence.engagement
-    evidence = certify_storage_origins(fn, frozenset({BACKING}), definitions)
+    assert point not in ready.presence.points and point not in ready.presence.engagement
+    evidence = certify_storage_origins(prepared(fn), frozenset({BACKING}), definitions)
     assert not any("replaced without an engagement fact" in g.reason for g in evidence.gaps)
 
 
@@ -436,10 +432,9 @@ def _drop_origins(deps, holder: MIRPlace):
 @pytest.mark.parametrize("retain", [False, True])
 def test_live_holder_without_origins_is_unknown(artifacts: Artifacts, retain: bool) -> None:
     definitions = artifacts[1]
-    prepared = _prepare_function(activation(definitions, retain=retain))
-    live = _liveness(prepared)
-    deps = _drop_origins(_dependencies(prepared, live), MIRPlace(SAVED))
-    evidence = _storage_evidence(prepared, live, deps, frozenset({BACKING}), definitions)
+    ready = prepared(activation(definitions, retain=retain))
+    deps = _drop_origins(ready.dependencies, MIRPlace(SAVED))
+    evidence = _storage_evidence(replace(ready, dependencies=deps), frozenset({BACKING}), definitions)
     assert not evidence.conflicts
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any("has unknown origins" in g.reason for g in evidence.gaps)
@@ -476,25 +471,24 @@ def test_borrowed_return_needs_explicit_origin_proof(artifacts: Artifacts) -> No
     definitions = artifacts[1]
     fn = returning(definitions, escape=True)
     # No successor is live after a return, so scope-end inspection sees nothing.
-    assert inspect_scope_lifetimes(fn).conflicts == ()
-    evidence = certify_storage_origins(fn, frozenset({R_LOCAL}), definitions)
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
+    evidence = certify_storage_origins(prepared(fn), frozenset({R_LOCAL}), definitions)
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
     conflict, = evidence.conflicts
     assert conflict.kind is MIRStorageConflictKind.RETURN_ESCAPE
     assert (conflict.origin, conflict.holder, conflict.site) == (MIRPlace(R_LOCAL), MIRPlace(R_SAVED),
                                                                MIREdge(R_LOCAL_ARM))
-    other = certify_storage_origins(fn, frozenset({R_SPARE}), definitions)
+    other = certify_storage_origins(prepared(fn), frozenset({R_SPARE}), definitions)
     assert other.verdict is MIRStorageVerdict.NOT_COVERED and not other.conflicts
     external = returning(definitions, escape=False)
-    assert certify_storage_origins(external, frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
+    assert certify_storage_origins(prepared(external), frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
 def test_missing_return_origin_is_not_covered(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
-    prepared = _prepare_function(returning(definitions, escape=True))
-    live = _liveness(prepared)
-    deps = _drop_origins(_dependencies(prepared, live), MIRPlace(R_SAVED))
-    evidence = _storage_evidence(prepared, live, deps, frozenset({R_LOCAL}), definitions)
+    ready = prepared(returning(definitions, escape=True))
+    deps = _drop_origins(ready.dependencies, MIRPlace(R_SAVED))
+    evidence = _storage_evidence(replace(ready, dependencies=deps), frozenset({R_LOCAL}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(g.reason == "borrowed return has unknown origins" for g in evidence.gaps)
 
@@ -511,13 +505,13 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
         MIRSlot(guard, leaf_shape(BOOL), MIRSlotKind.LOCAL, residence=region)), blocks=(replace(entry, statements=(
             *entry.statements, MIRAssign(MIRPlace(maybe), MIRWrap(0)),
             MIRAssign(MIRPlace(guard), MIRIsAlternative(MIRPlace(maybe), (1,))))), *fn.blocks[1:]))
-    assert certify_storage_origins(fn, frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
-    prepared = _prepare_function(fn)
-    presence = prepared.presence
-    unknown = replace(prepared, presence=replace(presence, points=MappingProxyType(
+    assert certify_storage_origins(prepared(fn), frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
+    ready = prepared(fn)
+    presence = ready.presence
+    unknown = replace(ready, presence=replace(presence, points=MappingProxyType(
         {p: frozenset(f for f in facts if f[0] != MIRPlace(maybe)) for p, facts in presence.points.items()})))
-    live = _liveness(unknown)
-    evidence = _storage_evidence(unknown, live, _dependencies(unknown, live), frozenset({R_LOCAL}), definitions)
+    unknown = replace(unknown, dependencies=_dependencies(unknown.presence, unknown.liveness))
+    evidence = _storage_evidence(unknown, frozenset({R_LOCAL}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(f"%{maybe.index} has unknown origins" in g.reason for g in evidence.gaps)
 
@@ -529,11 +523,11 @@ def test_missing_placement_or_write_facts_are_not_covered(artifacts: Artifacts) 
     unplaced = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == R_LOCAL else s
                                        for s in fn.slots))
     with pytest.raises(MIRValidationError, match="owned storage needs a placement"):
-        certify_storage_origins(unplaced, frozenset({R_SPARE}), definitions)
+        certify_storage_origins(prepared(unplaced), frozenset({R_SPARE}), definitions)
     fn = replace(fn, blocks=tuple(replace(b, statements=tuple(
         replace(stmt, storage_write=None) if stmt.target == MIRPlace(R_LOCAL) else stmt
         for stmt in b.statements)) for b in fn.blocks))
-    evidence = certify_storage_origins(fn, frozenset({R_SPARE}), definitions)
+    evidence = certify_storage_origins(prepared(fn), frozenset({R_SPARE}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any("missing storage initialization/write fact" in g.reason for g in evidence.gaps)
 
@@ -545,7 +539,7 @@ def test_unmaterialized_required_origin_is_not_covered(artifacts: Artifacts) -> 
     # The loop never runs: its backing is never constructed on a feasible path.
     fn = replace(fn, blocks=(replace(entry, statements=(
         *entry.statements, MIRAssign(MIRPlace(FLAG), MIRConstant(False)))), *fn.blocks[1:]))
-    evidence = certify_storage_origins(fn, frozenset({BACKING}), definitions)
+    evidence = certify_storage_origins(prepared(fn), frozenset({BACKING}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any("never materialized" in g.reason for g in evidence.gaps)
 
@@ -568,7 +562,7 @@ def test_storage_records_need_verified_hook_free_definitions(artifacts: Artifact
     else:
         fn = replace(fn, records=(replace(fn.records[0], copyable=not fn.records[0].copyable),))
         reason = "layout differs"
-    evidence = certify_storage_origins(fn, frozenset({BACKING}), definitions)
+    evidence = certify_storage_origins(prepared(fn), frozenset({BACKING}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(reason in g.reason for g in evidence.gaps)
 
@@ -584,7 +578,7 @@ def _region(fn: MIRFunction) -> MIRFunction:
 def test_stale_alias_never_certifies(tag: int, verdict: MIRStorageVerdict) -> None:
     # Retagging ends the payload; a same-tag write does not, but the alias is still stale.
     fn = _region(alias_function(EXTRACT, write(False, tag), READ))
-    evidence = certify_storage_origins(fn, frozenset({CURRENT}), MIRDefinitions())
+    evidence = certify_storage_origins(prepared(fn), frozenset({CURRENT}), MIRDefinitions())
     assert evidence.verdict is verdict
     assert any(g.reason.startswith("stale alias") for g in evidence.gaps)
     if tag == 1:
@@ -594,7 +588,7 @@ def test_stale_alias_never_certifies(tag: int, verdict: MIRStorageVerdict) -> No
 
 
 def test_stale_alias_across_scope_end_conflicts() -> None:
-    evidence = certify_storage_origins(stale_scalar_alias(), frozenset({CURRENT}), MIRDefinitions())
+    evidence = certify_storage_origins(prepared(stale_scalar_alias()), frozenset({CURRENT}), MIRDefinitions())
     conflict, = evidence.conflicts
     assert conflict.kind is MIRStorageConflictKind.SCOPE_END and conflict.holder == MIRPlace(ALIAS)
 
@@ -604,21 +598,21 @@ def test_malformed_mir_and_requests_raise(artifacts: Artifacts) -> None:
     fn = activation(definitions, retain=False)
     with pytest.raises(MIRPresenceError, match="presence proof"):
         unchecked = MIRAssign(MIRPlace(RESULT), MIRRead(payload(False)))
-        certify_storage_origins(_region(alias_function(write(False, 0), unchecked)),
+        certify_storage_origins(prepared(_region(alias_function(write(False, 0), unchecked))),
                                 frozenset({CURRENT}), MIRDefinitions())
     # Repeated initialization is a producer defect, never an uncovered result.
     iteration = fn.blocks[2]
     twice = replace(fn, blocks=(*fn.blocks[:2], replace(iteration, statements=(
         iteration.statements[0], *iteration.statements)), fn.blocks[3]))
     with pytest.raises(MIRValidationError, match="repeated storage initialization"):
-        certify_storage_origins(twice, frozenset({BACKING}), definitions)
+        certify_storage_origins(prepared(twice), frozenset({BACKING}), definitions)
     for roots in (frozenset(), frozenset({OWNER}), frozenset({MIRSlotId(RETURN, BACKING.index)})):
         with pytest.raises(MIRValidationError):
-            certify_storage_origins(fn, roots, definitions)
-    prepared = _prepare_function(fn)
-    live = _liveness(prepared)
-    deps = _dependencies(prepared, live)
+            certify_storage_origins(prepared(fn), roots, definitions)
+    ready = prepared(fn)
     with pytest.raises(MIRValidationError, match="different MIR function"):
-        _storage_evidence(prepared, replace(live, function=replace(fn)), deps, frozenset({BACKING}), definitions)
+        _storage_evidence(replace(ready, liveness=replace(ready.liveness, function=replace(fn))),
+                          frozenset({BACKING}), definitions)
     with pytest.raises(MIRValidationError, match="different MIR function"):
-        _storage_evidence(prepared, live, replace(deps, function=replace(fn)), frozenset({BACKING}), definitions)
+        _storage_evidence(replace(ready, dependencies=replace(ready.dependencies, function=replace(fn))),
+                          frozenset({BACKING}), definitions)

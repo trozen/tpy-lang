@@ -19,9 +19,9 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import CURRENT, INITIAL, LOOP, analyze, loop_function
 from .test_scope_inspection import scoped_loop
-from .testutil import compiled_definitions, execute
-from .validate import validate_function
+from .testutil import compiled_definitions, execute, prepared
 from .value import MIRValidationError
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32
@@ -93,7 +93,7 @@ def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction:
 def test_each_activation_owns_an_independent_copy(
         source: tuple[th.THIRFunction, MIRDefinitions], move: bool, inner: bool, readonly: bool) -> None:
     fn = lower(transferred(source, move, inner_source=inner, readonly=readonly), source[1])
-    writes = analyze_storage(fn).writes.values()
+    writes = analyze_storage(prepared(fn)).writes.values()
     transfer, = (s for s in writes if isinstance(s.value, MIRMove if move else MIRCopy))
     assert transfer.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     for run, stop, skip, early, copies in ((False, False, False, False, 0), (True, False, False, False, 2),
@@ -104,7 +104,7 @@ def test_each_activation_owns_an_independent_copy(
         values = [next(iter(fields.values())) for fields in heap.values()]
         assert values.count(9) == copies
         assert values.count(3) == (copies if inner else 1)
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 def test_a_loop_copy_is_scoped_whatever_thir_publishes(source: tuple[th.THIRFunction, MIRDefinitions]) -> None:
@@ -135,7 +135,7 @@ def test_previous_activation_alias_survives_copy_reconstruction(move: bool, shap
     transfer = MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL))
     init = replace(block.statements[0], value=transfer)
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(init, *block.statements[1:])), *fn.blocks[2:]))
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     assert not isinstance(result.conflicts, MIRNotCovered)
     assert {c.holder for c in result.conflicts} == (set() if reseat_first else {observed})
 

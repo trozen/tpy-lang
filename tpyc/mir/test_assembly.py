@@ -21,9 +21,10 @@ def _emitter() -> Fragment:
 
 def _build(body: Fragment, void: bool = True, parameter_bindings: tuple = ()):
     return_type = VoidType() if void else INT32
-    return assemble(body, void=void, return_type=return_type, kind=MIRBodyKind.FREE_FUNCTION,
-                    callees=(), result=None, layouts=records_of(), parameter_bindings=parameter_bindings,
-                    return_representation=return_representation(return_type))
+    fn, _first = assemble(body, void=void, return_type=return_type, kind=MIRBodyKind.FREE_FUNCTION,
+                          callees=(), result=None, layouts=records_of(), parameter_bindings=parameter_bindings,
+                          return_representation=return_representation(return_type))
+    return fn
 
 
 def test_a_dissolved_region_takes_its_parent_region() -> None:

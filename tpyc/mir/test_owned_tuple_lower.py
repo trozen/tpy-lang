@@ -17,7 +17,7 @@ from .nodes import (
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import compiled_definitions, Reference, execute
+from .testutil import compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -133,13 +133,13 @@ def test_positive_producer_facts_and_inline_placement(artifacts: Artifacts) -> N
     assert [isinstance(m, th.THIROwnedRecord) for m in decl.tuple_layout.elements] == [True, False, True, False]
     assert "std::tuple<Cell, int32_t, Cell, bool>{Cell(2), 7, Cell(3), true}" in cpp
     for name, body in bodies.items():
-        events = analyze_storage(body)
+        events = analyze_storage(prepared(body))
         assert len(events.member_initializations) == 1, name
         if name in ("repeat", "branch", "late", "method", "Runner"):
             backing, = [s for s in body.slots if s.shape.owned_tuple]
             assert isinstance(backing.storage_duration, MIRRegionId)
-        assert analyze_scope_ends(body).ends
-        assert not inspect_scope_lifetimes(body).conflicts
+        assert analyze_scope_ends(prepared(body)).ends
+        assert not inspect_scope_lifetimes(prepared(body)).conflicts
         assert any(isinstance(s.storage_write, MIRStorageWrite)
                    for b in body.blocks for s in b.statements)
 

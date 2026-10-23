@@ -30,23 +30,22 @@ from ..thir.scalar_leaves import MIRClass
 from .call_effects import analyze_call_effects
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
-from .dump import _location, _place
+from .place_text import _location, _place
 from .dependencies import (
-    MIRDependencies, MIRReferent, _dependencies, _leaves, feasible_returns, live_holders, resolve_referents,
+    MIRDependencies, MIRReferent, _leaves, feasible_returns, live_holders, resolve_referents,
 )
-from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRStorageWrite,
-    MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, source_order,
+    MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, source_order,
 )
 from .shapes import MIRUnionPayload
 from .value import MIRField, MIRValidationError
 from .payload_lifetime import _payload_conflicts, _payload_ends
-from .presence import MIRPresenceIssueKind
 from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, _scope_conflicts, _scope_ends
 from .storage import analyze_storage
-from .validate import MIRPrepared, MIRPresenceError, _prepare_function
+from .prepare import MIRPrepared
+from .reach import MATERIALIZES, storage_events
 
 
 class MIRStorageVerdict(Enum):
@@ -127,34 +126,21 @@ def _storage_root(slot: MIRSlot) -> bool:
             or slot.kind is MIRSlotKind.LOCAL and slot.shape.scalar_wrapper)
 
 
-def certify_storage_origins(fn: MIRFunction, required: frozenset[MIRSlotId],
+def certify_storage_origins(prepared: MIRPrepared, required: frozenset[MIRSlotId],
                             definitions: MIRDefinitions) -> MIRStorageEvidence:
     """Malformed MIR or a malformed request raises; it is never Not covered."""
-    prepared, liveness, dependencies = _prepare_evidence(fn)
-    return _storage_evidence(prepared, liveness, dependencies, required, definitions)
+    return _storage_evidence(prepared, required, definitions)
 
 
-def _prepare_evidence(fn: MIRFunction) -> tuple[MIRPrepared, MIRLiveness, MIRDependencies | MIRNotCovered]:
-    prepared = _prepare_function(fn)
-    for issue in prepared.presence.issues:
-        if issue.kind is MIRPresenceIssueKind.SELECTION:
-            raise MIRPresenceError(issue.message)
-    liveness = _liveness(prepared)
-    return prepared, liveness, _dependencies(prepared, liveness)
-
-
-def certify_borrow_operations(fn: MIRFunction, operations: frozenset[MIRPoint],
+def certify_borrow_operations(prepared: MIRPrepared, operations: frozenset[MIRPoint],
                              explicit_roots: frozenset[MIRSlotId],
                              definitions: MIRDefinitions) -> MIRBorrowEvidence:
-    prepared, liveness, dependencies = _prepare_evidence(fn)
-    return _borrow_evidence(prepared, liveness, dependencies, operations, explicit_roots, definitions)
+    return _borrow_evidence(prepared, operations, explicit_roots, definitions)
 
 
-def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
-                     dependencies: MIRDependencies | MIRNotCovered,
-                     operations: frozenset[MIRPoint], explicit_roots: frozenset[MIRSlotId],
+def _borrow_evidence(prepared: MIRPrepared, operations: frozenset[MIRPoint], explicit_roots: frozenset[MIRSlotId],
                      definitions: MIRDefinitions) -> MIRBorrowEvidence:
-    fn = prepared.function
+    fn, dependencies = prepared.function, prepared.dependencies
     operations, explicit_roots = frozenset(operations), frozenset(explicit_roots)
     if not operations:
         raise MIRValidationError("borrow evidence needs demanded operations")
@@ -209,26 +195,24 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
                 else:
                     required.add(ref.place.root)
     roots = frozenset(required)
-    conflicts, lifetime_gaps = _check_storage(prepared, liveness, dependencies, roots, definitions)
+    conflicts, lifetime_gaps = _check_storage(prepared, roots, definitions)
     return MIRBorrowEvidence(fn, operations, explicit_roots, roots, definitions, MappingProxyType(origins),
                              conflicts, (*gaps, *lifetime_gaps))
 
 
-def _storage_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
-                      dependencies: MIRDependencies | MIRNotCovered,
-                      required: frozenset[MIRSlotId], definitions: MIRDefinitions) -> MIRStorageEvidence:
+def _storage_evidence(prepared: MIRPrepared, required: frozenset[MIRSlotId],
+                      definitions: MIRDefinitions) -> MIRStorageEvidence:
     required = frozenset(required)
     if not required:
         raise MIRValidationError("storage evidence needs required origins")
-    conflicts, gaps = _check_storage(prepared, liveness, dependencies, required, definitions)
+    conflicts, gaps = _check_storage(prepared, required, definitions)
     return MIRStorageEvidence(prepared.function, required, definitions, conflicts, gaps)
 
 
-def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
-                   dependencies: MIRDependencies | MIRNotCovered,
-                   required: frozenset[MIRSlotId], definitions: MIRDefinitions
+def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], definitions: MIRDefinitions
                    ) -> tuple[tuple[MIRStorageConflict, ...], tuple[MIRNotCovered, ...]]:
     fn, presence = prepared.function, prepared.presence
+    liveness, dependencies = prepared.liveness, prepared.dependencies
     for result in (presence, liveness, dependencies):
         if isinstance(result, MIRNotCovered):
             if result.body != fn.id:
@@ -274,9 +258,11 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                     else definition.layout not in fn.records):
                 gap("storage record layout differs from its definition")
 
-    materialized = {stmt.target.root for block in fn.blocks for index, stmt in enumerate(block.statements)
-                    if isinstance(stmt, (MIRAssign, MIRStorageInit)) and not stmt.target.projections
-                    and MIRPoint(block.id, index) in presence.points}
+    # A root's storage materialized on a feasible path (`MATERIALIZES`).
+    materialized = {event.place.root for block in fn.blocks for index, stmt in enumerate(block.statements)
+                    if MIRPoint(block.id, index) in presence.points
+                    for event in storage_events(stmt, (), slots)
+                    if event.kind in MATERIALIZES and event.known and not event.place.projections}
     # A by-value parameter's storage is materialized by the caller, before entry.
     materialized.update(s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and _storage_root(s))
     for root in sorted(required - materialized, key=lambda s: s.index):
@@ -336,7 +322,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 if event.kind is MIRScopeEndKind.RECORD_WRAPPER and not engagement.get(event.storage.root):
                     gap(f"optional backing %{event.storage.root.index} ends without an engagement fact",
                         blocks[edge.source].terminator.loc, event.storage.root)
-        scoped = _scope_conflicts(prepared, liveness, dependencies, ends)
+        scoped = _scope_conflicts(prepared, ends)
         if isinstance(scoped, MIRNotCovered):
             gaps.append(scoped)
         else:
@@ -348,7 +334,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
     if isinstance(payload_ends, MIRNotCovered):
         gaps.append(payload_ends)
     else:
-        payloads = _payload_conflicts(prepared, liveness, dependencies, payload_ends)
+        payloads = _payload_conflicts(prepared, payload_ends)
         if isinstance(payloads, MIRNotCovered):
             gaps.append(payloads)
         else:
@@ -359,7 +345,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
     # The strict replacement and call-effect passes reject stale aliases; the
     # freshness gaps above already withhold certification for such a body.
     if not presence.issues:
-        events = analyze_storage(fn)
+        events = analyze_storage(prepared)
         if isinstance(events, MIRNotCovered):
             gaps.append(events)
         else:
@@ -370,7 +356,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                         and not dict(presence.engagement.get(point, frozenset())).get(stmt.target.root)):
                     gap(f"optional backing %{stmt.target.root.index} replaced without an engagement fact",
                         stmt.loc, stmt.target.root)
-        retention = analyze_retention(fn, liveness, dependencies, events)
+        retention = analyze_retention(prepared)
         if isinstance(retention, MIRNotCovered):
             gaps.append(retention)
         else:
@@ -380,7 +366,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 else:
                     attribute(MIRStorageConflictKind.REPLACEMENT, conflict.affected.place, conflict.holder,
                               conflict.point, point_loc(conflict.point))
-        effects = analyze_call_effects(fn, dependencies)
+        effects = analyze_call_effects(prepared)
         if isinstance(effects, MIRNotCovered):
             gaps.append(effects)
 
@@ -406,7 +392,7 @@ def _return_escapes(prepared: MIRPrepared, dependencies: MIRDependencies
     # Function exit has no successor, so liveness says nothing about a result.
     if fn.borrowed_result is None:
         return (), ()
-    for point, term, state in feasible_returns(prepared, dependencies):
+    for point, term, state in feasible_returns(prepared.presence, dependencies):
         origins = resolve_referents(MIRPlace(term.value), state, slots, records)
         if not origins:
             unknown.append(term.loc)
@@ -436,27 +422,22 @@ def _store_escapes(prepared: MIRPrepared, dependencies: MIRDependencies) -> tupl
     return tuple(escapes)
 
 
-def analyze_store_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
-                          ) -> tuple[MIRStorageConflict, ...] | MIRNotCovered:
+def analyze_store_escapes(prepared: MIRPrepared) -> tuple[MIRStorageConflict, ...] | MIRNotCovered:
     """Unconditional discovery of STORE_ESCAPE conflicts over a lowered
     body, independent of any certificate's required origins."""
+    dependencies = prepared.dependencies
     if isinstance(dependencies, MIRNotCovered):
         return dependencies
-    if dependencies.function is not fn:
-        raise MIRValidationError("store escape input belongs to a different MIR function")
-    return _store_escapes(_prepare_function(fn), dependencies)
+    return _store_escapes(prepared, dependencies)
 
 
-def analyze_return_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
-                           ) -> tuple[MIRStorageConflict, ...] | MIRNotCovered:
+def analyze_return_escapes(prepared: MIRPrepared) -> tuple[MIRStorageConflict, ...] | MIRNotCovered:
     """Unconditional discovery of RETURN_ESCAPE conflicts over every borrowed
     return of a lowered body (a record or view result reaching a local or a
     temporary), independent of any certificate's required origins."""
+    fn, dependencies = prepared.function, prepared.dependencies
     if isinstance(dependencies, MIRNotCovered):
         return dependencies
-    prepared = _prepare_function(fn)
-    if dependencies.function is not fn:
-        raise MIRValidationError("return escape input belongs to a different MIR function")
     escapes, unknown = _return_escapes(prepared, dependencies)
     if unknown:
         return MIRNotCovered(fn.id, "return escapes", "borrowed return has unknown origins",

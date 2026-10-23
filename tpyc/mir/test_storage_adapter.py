@@ -24,9 +24,10 @@ from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir, active_artifacts
 from .test_expression_temporary_lower import SOURCE as EXPRESSION_SOURCE
-from .testutil import Reference, execute
-from .validate import MIRRepeatedInitializationError, validate_function
+from .testutil import Reference, execute, prepared
+from .validate import MIRRepeatedInitializationError
 from .value import MIRValidationError
+from .prepare import validate_function
 
 
 EXTRA = '''
@@ -212,7 +213,7 @@ def test_full_expression_backings_keep_their_actual_region(
     slots = {s.id: s for s in result.function.slots}
     writes = {s.target: (b, s) for b in result.function.blocks for s in b.statements
               if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)}
-    ends = analyze_scope_ends(result.function)
+    ends = analyze_scope_ends(prepared(result.function))
     for backing in source.storage_facts.backings:
         assert backing.kind is THIRBackingKind.FULL_EXPRESSION and backing.placement is None
         place = result.backings[backing.node]
@@ -456,14 +457,14 @@ def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: 
     malformed = replace(fn, blocks=tuple(
         replace(b, terminator=MIRGoto(b.id)) if b is construction else b for b in fn.blocks))
     with pytest.raises(MIRRepeatedInitializationError) as failure:
-        certify_storage_origins(malformed, result.evidence.required, request.definitions)
+        certify_storage_origins(prepared(malformed), result.evidence.required, request.definitions)
     assert failure.value.loc is not None
 
     # Exercise assembly's validation boundary with the exact strict-validator failure.
     def repeated(_):
         validate_function(malformed)
 
-    monkeypatch.setattr(emit, "validate_function", repeated)
+    monkeypatch.setattr(emit, "first_phase", repeated)
     uncovered = certify_thir_storage(request)
     assert uncovered.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(g.reason == str(failure.value) and g.loc == failure.value.loc for g in uncovered.gaps)
@@ -471,7 +472,7 @@ def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: 
     def other_failure(_):
         raise MIRValidationError("unknown slot")
 
-    monkeypatch.setattr(emit, "validate_function", other_failure)
+    monkeypatch.setattr(emit, "first_phase", other_failure)
     with pytest.raises(MIRValidationError, match="unknown slot"):
         certify_thir_storage(request)
 

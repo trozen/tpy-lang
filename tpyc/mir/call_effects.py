@@ -4,12 +4,12 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
-from .dump import _place
+from .dependencies import MIRReferent, MIRReferents, resolve_referents
+from .place_text import _place
 from ..typesys import TpyType
 from .nodes import MIRFunction, MIRNotCovered, MIRPoint, MIRPresentCall, MIRSlot, MIRSlotId
-from .value import MIRRecordLayout, MIRValidationError
-from .validate import _validated_function
+from .value import MIRRecordLayout
+from .prepare import MIRPrepared, validated_presence
 
 
 def resolve_call_writes(call: MIRPresentCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
@@ -32,13 +32,11 @@ class MIRCallEffects:
     writes: Mapping[MIRPoint, frozenset[MIRReferent]]
 
 
-def analyze_call_effects(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
-                         ) -> MIRCallEffects | MIRNotCovered:
-    present = _validated_function(fn).presence.calls
+def analyze_call_effects(prepared: MIRPrepared) -> MIRCallEffects | MIRNotCovered:
+    fn, dependencies = prepared.function, prepared.dependencies
+    present = validated_presence(prepared).calls
     if isinstance(dependencies, MIRNotCovered):
         return MIRNotCovered(fn.id, "call effects", dependencies.reason)
-    if dependencies.function is not fn:
-        raise MIRValidationError("dependencies belong to a different MIR function")
     slots = {s.id: s for s in fn.slots}
     records = fn.record_layouts
     writes: dict[MIRPoint, frozenset[MIRReferent]] = {}

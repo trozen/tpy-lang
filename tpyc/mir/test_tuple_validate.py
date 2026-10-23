@@ -14,7 +14,7 @@ from .value import MIRField, MIRFieldId, MIRValidationError
 from .testutil import (
     hand_record, bind_parameters, Reference, borrowed_shape, execute, leaf_shape, owned_shape, reslot, tuple_shape,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 B = MIRBodyId("test", "tuples")
 CELL = hand_record("Cell", "test.Cell", value=INT32)

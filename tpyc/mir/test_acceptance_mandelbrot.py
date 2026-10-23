@@ -10,12 +10,11 @@ from ..thir.testutil import _compile, _entry
 from .call_contract import MIRGlobalId, MIRSummaryState
 from .collect import call_definitions
 from .dump import dump_function
-from .dependencies import analyze_dependencies
-from .liveness import analyze_liveness
 from .nodes import MIRAssign, MIRCall, MIRFunction, MIRNotCovered
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
+from .testutil import prepared, workspace_functions
 
 # A copy of tpy-examples basics/mandelbrot.py.
 SOURCE = '''\
@@ -75,7 +74,7 @@ def program():
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
     with compiler.mir_analysis(((entry, ctx),)) as mir:
-        bodies = {body.declaration.split("@")[0]: mir.workspace.bodies[body]
+        bodies = {body.declaration.split("@")[0]: workspace_functions(mir.workspace)[body]
                   for body, _ in call_definitions(ctx, entry.name)}
         result = bodies, mir.workspace.summaries
     return result
@@ -86,12 +85,11 @@ def test_every_function_lowers_and_every_analysis_completes(program, name: str) 
     bodies, _ = program
     fn = bodies[name]
     assert isinstance(fn, MIRFunction), fn
-    liveness = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, liveness)
-    events = analyze_storage(fn)
+    dependencies = prepared(fn).dependencies
+    events = analyze_storage(prepared(fn))
     assert not isinstance(dependencies, MIRNotCovered) and not isinstance(events, MIRNotCovered)
-    assert analyze_retention(fn, liveness, dependencies, events).conflicts == ()
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert analyze_retention(prepared(fn)).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 def test_main_consumes_known_summaries(program) -> None:

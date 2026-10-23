@@ -16,7 +16,7 @@ from .nodes import (
     MIRStorageWriteMode, MIRRegionId, MIRStorageDuration, MIRStorageInit,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
-from .testutil import compiled_definitions, Reference, execute
+from .testutil import compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32
@@ -182,7 +182,7 @@ def test_nested_scopes_keep_guard_writes_and_end_the_wrapper_on_every_exit(
         4 if flag and choose and exit_kind == "normal" else 0)
     current = next(s for s in fn.slots if s.name == "current")
     assert isinstance(current.storage_duration, MIRRegionId)
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     assert sum(any(e.storage.root == current.id for e in events) for events in ends.ends.values()) == 3
 
 
@@ -193,7 +193,7 @@ def test_return_before_source_assignment_still_ends_the_wrapper(artifacts: Artif
     assert execute(fn, choose, stop) == (8 if choose and stop else 4 if choose else 0)
     current = next(s for s in fn.slots if s.name == "current")
     assert current.storage_duration is MIRStorageDuration.BODY
-    assert all(any(e.storage.root == current.id for e in events) for events in analyze_scope_ends(fn).ends.values())
+    assert all(any(e.storage.root == current.id for e in events) for events in analyze_scope_ends(prepared(fn)).ends.values())
 
 
 def test_producer_defaults_match_render_order_and_source_writes_are_assignments(artifacts: Artifacts) -> None:
@@ -215,7 +215,7 @@ def test_producer_defaults_match_render_order_and_source_writes_are_assignments(
             functions[name].body[0].hoist_decls[0][1] + " current;")
         assert body.index(declaration) < body.index("if (") < body.index("current =")
     for fn in bodies.values():
-        assert inspect_scope_lifetimes(fn).conflicts == ()
+        assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("name", ["optional_snapshot", "union_snapshot"])

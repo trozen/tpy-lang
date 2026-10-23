@@ -15,12 +15,10 @@ from ..thir.storage_facts import collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL
-from .testutil import compiled_definitions
+from .testutil import compiled_definitions, prepared, workspace_functions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies
-from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRConstruct,
@@ -29,7 +27,7 @@ from .nodes import (
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import inspect_scope_lifetimes
-from .validate import validate_function
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, readonly, nocopy
@@ -172,7 +170,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
         result = lower_constructor(ctor, MIRBodyId("main", name), definitions=definitions,
                                    summaries=workspace.summaries)
     else:
-        result = next(body for identity, body in workspace.bodies.items()
+        result = next(body for identity, body in workspace_functions(workspace).items()
                       if identity.declaration.split("@")[0] == name)
     assert isinstance(result, MIRFunction), result
     return result
@@ -190,7 +188,7 @@ def test_returned_temporaries_are_valid_aliases(artifacts: Artifacts, name: str)
     values = [stmt.value for block in body.blocks for stmt in block.statements if isinstance(stmt, MIRAssign)]
     assert any(isinstance(value, MIRCall) and value.summary.returns for value in values)
     assert not any(isinstance(value, MIRCopy) for value in values)
-    result = inspect_scope_lifetimes(body)
+    result = inspect_scope_lifetimes(prepared(body))
     assert not isinstance(result, MIRNotCovered) and not result.conflicts
     if name not in ("lazy", "method", "Caller"):
         # The temporary is the caller's private storage: the borrow returned
@@ -207,7 +205,7 @@ def test_returned_temporaries_are_valid_aliases(artifacts: Artifacts, name: str)
 @pytest.mark.parametrize("name", ["eager", "lazy", "mixed", "unreturned"])
 def test_return_origins_substitute_only_selected_arguments(artifacts: Artifacts, name: str) -> None:
     body = _body(artifacts, name)
-    deps = analyze_dependencies(body, analyze_liveness(body))
+    deps = prepared(body).dependencies
     assert not isinstance(deps, MIRNotCovered)
     backing = {slot.id for slot in _storage(body)}
     for block in body.blocks:
@@ -283,7 +281,7 @@ def test_retained_call_result_observes_iteration_end(artifacts: Artifacts, name:
         blocks.append(replace(block, statements=tuple(statements)))
     retained = replace(body, slots=slots, blocks=tuple(blocks))
     validate_function(retained)
-    result = inspect_scope_lifetimes(retained)
+    result = inspect_scope_lifetimes(prepared(retained))
     assert not isinstance(result, MIRNotCovered)
     assert result.conflicts and all(c.ended == MIRPlace(_storage(body)[0].id) for c in result.conflicts)
     assert all(c.holder.root == holder for c in result.conflicts)
@@ -319,7 +317,7 @@ def rejected(owner: Cell) -> int32:
 ])
 def test_unverified_actuals_and_order_stay_uncovered(extra: str, reason: str) -> None:
     workspace = _compile_workspace(SOURCE + extra).workspace
-    result = next(body for identity, body in workspace.bodies.items()
+    result = next(body for identity, body in workspace_functions(workspace).items()
                   if identity.declaration.split("@")[0] == "rejected")
     assert isinstance(result, MIRNotCovered), result
     assert result.reason == reason

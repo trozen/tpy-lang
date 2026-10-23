@@ -27,8 +27,8 @@ from .nodes import (
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRValidationError
 from .storage_evidence import MIRStorageConflictKind, analyze_return_escapes
-from .validate import validate_function
-from .testutil import bind_parameters, reslot
+from .testutil import bind_parameters, reslot, prepared
+from .prepare import validate_function
 
 SOURCE = """\
 from tpy import StrView, String, BytesView, int32, pure
@@ -344,13 +344,12 @@ def test_return_escape_is_discovered_for_every_lowered_body(active) -> None:
         if isinstance(stmt, th.THIRReturn) else stmt for stmt in source.body))
     fn = lower_function(damaged, MIRBodyId("views", "escape"), definitions=active.definitions)
     assert isinstance(fn, MIRFunction)
-    analyses = analyze_body(fn)
+    analyses = analyze_body(fn, prepared(fn))
     assert "return_escape" in analyses.conflicts
     escape, = analyses.escapes
     assert escape.kind is MIRStorageConflictKind.RETURN_ESCAPE and escape.origin == MIRPlace(_slot(fn, "t").id)
     # The undamaged body returns a view of its parameter: no escape.
-    assert analyze_return_escapes(_fn(active, "escape_source"),
-                                  active.verdicts["escape_source"].analyses.dependencies) == ()
+    assert analyze_return_escapes(prepared(_fn(active, "escape_source"))) == ()
 
 
 # --- summaries --------------------------------------------------------------------------

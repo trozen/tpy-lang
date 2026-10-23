@@ -11,8 +11,8 @@ from .nodes import (
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError
-from .validate import validate_function
 from .testutil import hand_record, bind_parameters, borrowed_shape, leaf_shape, reslot
+from .prepare import validate_function
 
 B = MIRBodyId("test", "storage")
 CELL = hand_record("Cell", "test.Cell", value=INT32)

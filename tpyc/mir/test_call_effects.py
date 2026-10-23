@@ -13,27 +13,27 @@ from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import VoidType
-from .testutil import compiled_definitions
+from .testutil import compiled_definitions, prepared, workspace_functions
 from .call_contract import MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, resolve_call_writes
 from .presence import present_call
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
-from .dependencies import MIRDependencies, analyze_dependencies
+from .dependencies import MIRDependencies
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBranch, MIRCall, MIRCallStmt, MIRFunction,
     MIRNotCovered, MIRPlace, MIRPoint, MIRRead,
 )
 from .payload_lifetime import inspect_payload_lifetimes
-from .presence import _analyze_presence
-from .retention import analyze_retention, may_overlap
+from .retention import analyze_retention
+from .reach import reaches, storage_exclusions
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .validate import source_definition, statement_reads, validate_function
+from .validate import source_definition, statement_reads
 from .value import MIRValidationError
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -197,7 +197,7 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
         result = lower_function(declaration, MIRBodyId("main", name),
                                 definitions=definitions, summaries=workspace.summaries)
     else:
-        result = next(b for bid, b in workspace.bodies.items() if bid.declaration.split("@")[0] == name)
+        result = next(b for bid, b in workspace_functions(workspace).items() if bid.declaration.split("@")[0] == name)
     assert isinstance(result, MIRFunction), result
     return result
 
@@ -229,17 +229,17 @@ def test_transitive_effects_preserve_all_origins(artifacts: Artifacts, name: str
                                   "standalone", "owned", "loops", "holders", "method", "Runner", "named_reader"])
 def test_call_statements_are_real_uses_without_storage_ends(artifacts: Artifacts, name: str) -> None:
     fn = body(artifacts, name)
-    live = analyze_liveness(fn)
-    deps = analyze_dependencies(fn, live)
+    live = prepared(fn).liveness
+    deps = prepared(fn).dependencies
     assert isinstance(deps, MIRDependencies)
-    effects = analyze_call_effects(fn, deps)
+    effects = analyze_call_effects(prepared(fn))
     assert isinstance(effects, MIRCallEffects)
-    storage = analyze_storage(fn)
-    retention = analyze_retention(fn, live, deps, storage)
+    storage = analyze_storage(prepared(fn))
+    retention = analyze_retention(prepared(fn))
     assert not isinstance(retention, MIRNotCovered) and not retention.conflicts
-    assert not inspect_scope_lifetimes(fn).conflicts
-    assert not inspect_payload_lifetimes(fn).conflicts
-    presence = _analyze_presence(fn)
+    assert not inspect_scope_lifetimes(prepared(fn)).conflicts
+    assert not inspect_payload_lifetimes(prepared(fn)).conflicts
+    presence = prepared(fn).presence
     for point, call in calls(fn):
         block = next(b for b in fn.blocks if b.id == point.block)
         stmt = block.statements[point.index]
@@ -261,8 +261,7 @@ def test_call_site_mapping_uses_pre_call_alias_state(artifacts: Artifacts) -> No
         ("repeated", [{("cell", "value")}]),
     ):
         fn = body(artifacts, name)
-        deps = analyze_dependencies(fn, analyze_liveness(fn))
-        effects = analyze_call_effects(fn, deps)
+        effects = analyze_call_effects(prepared(fn))
         names = {s.id: s.name for s in fn.slots}
         assert [{(names[r.place.root], r.place.projections[0].id.name) for r in refs}
                 for refs in effects.writes.values()] == expected
@@ -271,12 +270,14 @@ def test_call_site_mapping_uses_pre_call_alias_state(artifacts: Artifacts) -> No
 
 def test_distinct_parameter_roots_can_alias(artifacts: Artifacts) -> None:
     fn = body(artifacts, "observe")
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
-    effects = analyze_call_effects(fn, deps)
+    deps = prepared(fn).dependencies
+    effects = analyze_call_effects(prepared(fn))
     point, call = calls(fn)[1]
     reader, = deps.referents[point][MIRPlace(call.arguments[0])]
     write, = next(refs for refs in effects.writes.values() if refs)
-    assert reader.place.root != write.place.root and may_overlap(reader, write)
+    # Distinct parameter origins: whether the write reaches the reader is retention's oracle's answer.
+    exclusions = storage_exclusions({s.id: s for s in fn.slots}, fn.record_layouts)
+    assert reader.place.root != write.place.root and reaches(write, reader, exclusions)
     assert next(s for s in fn.slots if s.id == reader.place.root).readonly
 
 
@@ -285,7 +286,7 @@ def test_scalar_snapshot_is_not_overwritten_or_folded(artifacts: Artifacts) -> N
     before = next(s.id for s in fn.slots if s.name == "before")
     definitions = [s for b in fn.blocks for s in b.statements if source_definition(s) == before]
     assert len(definitions) == 1
-    presence = _analyze_presence(fn)
+    presence = prepared(fn).presence
     branch = next(b for b in fn.blocks if isinstance(b.terminator, MIRBranch) and any(
         isinstance(s, MIRAssign) and s.target.root == b.terminator.condition
         and isinstance(s.value, MIRRead) and s.value.source == MIRPlace(before) for s in b.statements))
@@ -349,10 +350,10 @@ def test_missing_origins_are_not_empty_effects(artifacts: Artifacts) -> None:
     _, call = calls(fn)[0]
     slots = {s.id: s for s in fn.slots}
     assert resolve_call_writes(present_call(call, frozenset(), slots), {}, slots, fn.record_layouts) is None
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     point, _ = calls(fn)[0]
     broken = replace(deps, referents={point: {}})
-    result = analyze_call_effects(fn, broken)
+    result = analyze_call_effects(replace(prepared(fn), dependencies=broken))
     assert isinstance(result, MIRNotCovered) and result.reason == "missing call write origin"
 
 

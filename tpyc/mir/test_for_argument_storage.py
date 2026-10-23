@@ -11,7 +11,7 @@ from ..thir import nodes as th
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.test_for_temp_plan import SOURCE
 from ..thir.testutil import _compile, _entry
-from .testutil import compiled_definitions
+from .testutil import compiled_definitions, prepared, workspace_functions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .dump import _write_step
@@ -25,7 +25,7 @@ from .nodes import (
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import inspect_scope_lifetimes
-from .validate import validate_function
+from .prepare import validate_function
 
 
 Artifacts = tuple[CodeGenContext, MIRCallWorkspace, MIRDefinitions]
@@ -64,7 +64,7 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
         result = lower_function(fn, MIRBodyId("main", name),
                                 definitions=definitions, summaries=workspace.summaries)
     else:
-        result = next(b for identity, b in workspace.bodies.items()
+        result = next(b for identity, b in workspace_functions(workspace).items()
                       if identity.declaration.split("@")[0] == name)
     assert isinstance(result, MIRFunction), result
     return result
@@ -88,7 +88,7 @@ def test_for_callers_reach_valid_mir_without_copies(artifacts: Artifacts, name: 
     values = [s.value for b in fn.blocks for s in b.statements if isinstance(s, MIRAssign)]
     assert any(isinstance(v, MIRCall) for v in values)
     assert not any(isinstance(v, MIRCopy) for v in values)
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     assert not isinstance(result, MIRNotCovered) and not result.conflicts
     if name in ("Runner", "method"):
         return
@@ -207,7 +207,7 @@ def test_retaining_a_real_for_argument_reports_its_body_end(artifacts: Artifacts
         blocks.append(replace(block, statements=tuple(statements)))
     retained = replace(fn, slots=slots, blocks=tuple(blocks))
     validate_function(retained)
-    result = inspect_scope_lifetimes(retained)
+    result = inspect_scope_lifetimes(prepared(retained))
     assert result.conflicts and all(c.ended == MIRPlace(backing.id) for c in result.conflicts)
     assert all(c.holder.root == holder for c in result.conflicts)
 
@@ -248,6 +248,6 @@ def rejected(n: int32) -> int32:
     assert fn.temp_plan is None
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-    result = next(b for identity, b in workspace.bodies.items()
+    result = next(b for identity, b in workspace_functions(workspace).items()
                   if identity.declaration.split("@")[0] == "rejected")
     assert isinstance(result, MIRNotCovered) and result.reason == "named argument needs complete temporary plan"

@@ -26,7 +26,7 @@ from .value import (
 )
 from .shapes import step, MIRContainerElements, MIRDeref
 from .testutil import no_layouts, compiled_definitions, bound, hand_record
-from .validate import validate_function
+from .prepare import validate_function
 
 SOURCE = '''\
 from tpy import int32, readonly, String
@@ -150,7 +150,7 @@ def dumps(unit) -> dict[str, list[str]]:
 
 def _lowered(unit, name: str):
     with activate_compiler(unit.compiler):
-        return lower_body(unit.sources[name], unit.definitions, unit.workspace, fresh=True)
+        return lower_body(unit.sources[name], unit.definitions, unit.workspace, fresh=True).function
 
 
 def test_a_container_field_is_lent_with_the_members_registered_by_then(dumps) -> None:

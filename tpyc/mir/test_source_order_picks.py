@@ -75,11 +75,10 @@ def test_a_storage_gap_tie_breaks_on_where_its_slot_first_occurs(monkeypatch, fl
 def test_the_return_escape_refusal_is_at_the_first_return_in_the_source(monkeypatch, flip: bool) -> None:
     late, early = SourceLocation(9, 4), SourceLocation(5, 8)
     unknown = [late, early]
-    monkeypatch.setattr(storage_evidence, "_prepare_function", lambda fn: None)
     monkeypatch.setattr(storage_evidence, "_return_escapes",
                         lambda prepared, dependencies: ((), unknown[::-1] if flip else unknown))
     fn = SimpleNamespace(id=BODY)
-    found = analyze_return_escapes(fn, SimpleNamespace(function=fn))
+    found = analyze_return_escapes(SimpleNamespace(function=fn, dependencies=SimpleNamespace(function=fn)))
     assert isinstance(found, MIRNotCovered) and found.loc == early
 
 
@@ -218,8 +217,9 @@ def test_one_call_reports_one_storage_whatever_the_conflict_order(aliased, rever
 
 
 def _build(body: Fragment):
-    return assemble(body, void=True, return_type=VoidType(), kind=MIRBodyKind.FREE_FUNCTION,
-                    callees=(), result=None, layouts=records_of())
+    fn, _first = assemble(body, void=True, return_type=VoidType(), kind=MIRBodyKind.FREE_FUNCTION,
+                          callees=(), result=None, layouts=records_of())
+    return fn
 
 
 def _unused(slots: tuple[tuple[str, SourceLocation | None], ...]):

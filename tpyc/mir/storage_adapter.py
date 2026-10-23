@@ -155,10 +155,14 @@ def certify_thir_storage(request: MIRStorageRequest) -> MIRBoundStorageEvidence:
                     gap("borrowed operation is absent from the reachable MIR body", sink)
                 else:
                     operations.add(point)
-    if facts is not None and facts.obligations:
-        evidence = (certify_borrow_operations(lowered.function, frozenset(operations),
+    prepared = lowered.prepared
+    if isinstance(prepared, MIRNotCovered):
+        gaps.append(prepared)
+        evidence = None
+    elif facts is not None and facts.obligations:
+        evidence = (certify_borrow_operations(prepared, frozenset(operations),
                                               frozenset(roots), request.definitions) if operations else None)
     else:
-        evidence = (certify_storage_origins(lowered.function, frozenset(roots), request.definitions)
+        evidence = (certify_storage_origins(prepared, frozenset(roots), request.definitions)
                     if roots else None)
     return MIRBoundStorageEvidence(request, lowered.function, backings, lowered.operations, evidence, tuple(gaps))

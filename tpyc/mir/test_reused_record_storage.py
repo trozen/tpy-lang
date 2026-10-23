@@ -10,7 +10,7 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from . import test_record_initialization as optional
 from .definitions import MIRDefinitions
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRMove,
@@ -18,13 +18,13 @@ from .nodes import (
     MIRStorageDuration,
 )
 from .shapes import MIRDeref
-from .presence import MIREngagement, _analyze_presence
+from .presence import MIREngagement
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import INITIAL, analyze, loop_function
-from .testutil import compiled_definitions, execute, owned_shape, reslot
-from .validate import validate_function
+from .testutil import compiled_definitions, execute, owned_shape, reslot, prepared
 from .value import MIRValidationError
+from .prepare import validate_function
 
 
 @pytest.mark.parametrize("move", [False, True])
@@ -68,10 +68,10 @@ def test_optional_transfer_joins_empty_and_engaged_backing(move: bool) -> None:
                  MIRReturn(optional.RESULT), optional.ROOT))
     fn = optional_transfers(fn, move)
     assert execute(fn, 3, False) == execute(fn, 3, True) == 9
-    engagement = dict(_analyze_presence(fn).engagement[MIRPoint(optional.JOIN, 0)])
+    engagement = dict(prepared(fn).presence.engagement[MIRPoint(optional.JOIN, 0)])
     assert engagement[optional.BACKING] == frozenset(MIREngagement)
     assert analyze(fn).conflicts == ()
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("move", [False, True])
@@ -128,7 +128,7 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool,
                 else {MIRPlace(optional.CURRENT)} if move else set())
     assert {c.holder for c in analyze(fn).conflicts} == expected
     if not move:
-        assert optional.SAVED in analyze_liveness(fn).points[MIRPoint(optional.ENTRY, 4)]
+        assert optional.SAVED in prepared(fn).liveness.points[MIRPoint(optional.ENTRY, 4)]
 
 
 @pytest.mark.parametrize("move", [False, True])
@@ -210,7 +210,7 @@ def test_internal_hoisted_transfer_preserves_source_read_form(hoist: tuple[th.TH
     result = lower_function(fn, MIRBodyId("reused", "hoisted"), definitions=definitions)
     assert isinstance(result, MIRFunction), result
     assert execute(result, False) == 0 and execute(result, True) == 3
-    transfer, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, (MIRCopy, MIRMove)))
+    transfer, = (s for s in analyze_storage(prepared(result)).writes.values() if isinstance(s.value, (MIRCopy, MIRMove)))
     assert transfer.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     bad = replace(changed, value=replace(value, form=th.Form.VALUE))
     with pytest.raises(THIRValidationError, match="invalid optional record assignment fact"):

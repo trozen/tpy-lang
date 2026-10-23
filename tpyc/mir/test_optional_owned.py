@@ -19,10 +19,11 @@ from .nodes import (
 )
 from .shapes import MIRDeref, MIRUnionPayload
 from .storage import MIRStorageEvents, analyze_storage
-from .testutil import Heap, Reference, execute, reslot
-from .validate import MIRPresenceError, validate_function
+from .testutil import Heap, Reference, execute, reslot, prepared
+from .validate import MIRPresenceError
 from .value import MIRValidationError
 from ..thir.scalar_leaves import MIRClass
+from .prepare import validate_function
 
 
 SOURCE = """\
@@ -170,7 +171,7 @@ def test_optional_storage_identity(artifacts: Artifacts, name: str, expected: in
     # Object count and both payloads catch copies and lost aliases even if the return agrees.
     assert sorted(obj[member] for obj in heap.values()) == contents
     assert dump_function(fn) == dump_function(lower(artifacts[0][name], artifacts[1]))
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     assert isinstance(events, MIRStorageEvents)
     expected_modes = {
         "retained": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE],
@@ -256,7 +257,7 @@ def test_cyclic_optional_in_place_replacement(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["loop"], artifacts[1])
     assert isinstance(fn, MIRFunction), fn
     assert execute(fn, False) == execute(fn, True) == 0
-    writes = analyze_storage(fn)
+    writes = analyze_storage(prepared(fn))
     assert any(s.storage_write.mode is MIRStorageWriteMode.IN_PLACE for s in writes.writes.values())
 
 

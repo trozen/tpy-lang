@@ -18,9 +18,9 @@ from .nodes import (
 )
 from .shapes import MIRUnionPayload
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
-from .validate import validate_function
 from .value import MIRValidationError
-from .testutil import compiled_definitions, bind_parameters, leaf_shape, optional_shape
+from .testutil import compiled_definitions, bind_parameters, leaf_shape, optional_shape, prepared
+from .prepare import validate_function
 
 
 SOURCE = """\
@@ -196,14 +196,14 @@ def test_real_producers_own_scoped_storage(artifacts: Artifacts, name: str) -> N
     _thir, bodies, _cpp, _definitions = artifacts
     fn = bodies[name]
     assert isinstance(fn, MIRFunction), fn
-    result = analyze_scope_ends(fn)
+    result = analyze_scope_ends(prepared(fn))
     assert isinstance(result, MIRScopeEnds), result
     scoped = {s.id for s in fn.slots if isinstance(s.storage_duration, MIRRegionId)}
     assert scoped
     ended = {e.storage.root for events in result.ends.values() for e in events}
     assert scoped <= ended
     assert not ended.intersection(s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER)
-    assert dump_scope_ends(result) == dump_scope_ends(analyze_scope_ends(fn))
+    assert dump_scope_ends(result) == dump_scope_ends(analyze_scope_ends(prepared(fn)))
     with pytest.raises(TypeError):
         result.ends[MIREdge(fn.entry)] = ()
 
@@ -218,7 +218,7 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
     assert isinstance(fn, MIRFunction)
     roots = {s.id for s in fn.slots if s.shape.is_storage}
     assert all(s.storage_duration is MIRStorageDuration.BODY for s in fn.slots if s.id in roots)
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     blocks = {b.id: b for b in fn.blocks}
     assert all(isinstance(blocks[e.source].terminator, MIRReturn) for e in ends.ends)
     body = cpp[cpp.index(" own("):].split("\n}\n", 1)[0]
@@ -227,7 +227,7 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
 
 def test_loop_transfers_end_iteration_and_else_separately(artifacts: Artifacts) -> None:
     fn = artifacts[1]["loop"]
-    result = analyze_scope_ends(fn)
+    result = analyze_scope_ends(prepared(fn))
     roots = [s.id for s in fn.slots if s.shape.is_storage]
     counts = {sid: sum(any(e.storage.root == sid for e in events) for events in result.ends.values()) for sid in roots}
     # Body fallthrough, break and continue each destroy the per-iteration local.
@@ -237,7 +237,7 @@ def test_loop_transfers_end_iteration_and_else_separately(artifacts: Artifacts) 
 def test_inner_else_break_and_continue_end_scopes_inside_out(artifacts: Artifacts) -> None:
     fn = artifacts[1]["nested_loops"]
     assert isinstance(fn, MIRFunction), fn
-    result = analyze_scope_ends(fn)
+    result = analyze_scope_ends(prepared(fn))
     parents = {r.id: r.parent for r in fn.regions}
     exits = [(edge, events) for edge, events in result.ends.items() if len(events) == 2]
     assert len(exits) == 2
@@ -385,7 +385,7 @@ def region_fixture() -> MIRFunction:
 
 def test_fresh_loop_activation_has_one_static_end() -> None:
     fn = region_fixture()
-    result = analyze_scope_ends(fn)
+    result = analyze_scope_ends(prepared(fn))
     assert isinstance(result, MIRScopeEnds)
     assert tuple(result.ends) == (MIREdge(fn.blocks[1].id),)
     event, = result.ends[MIREdge(fn.blocks[1].id)]
@@ -432,12 +432,12 @@ def test_skipped_region_and_absent_payload_are_distinct() -> None:
     entry, iteration, after = fn.blocks
     empty = replace(iteration.statements[0], value=MIRWrap(0))
     absent = replace(fn, blocks=(entry, replace(iteration, statements=(empty,)), after))
-    result = analyze_scope_ends(absent)
+    result = analyze_scope_ends(prepared(absent))
     assert len(result.ends) == 1
     assert not next(iter(result.ends.values()))[0].payloads
     skipped = replace(fn, blocks=(replace(entry, statements=(MIRAssign(
         MIRPlace(fn.slots[1].id), MIRConstant(False)),)), iteration, after))
-    assert not analyze_scope_ends(skipped).ends
+    assert not analyze_scope_ends(prepared(skipped)).ends
 
 
 def test_edge_selection_survives_equal_branch_destinations() -> None:
@@ -450,7 +450,7 @@ def test_edge_selection_survives_equal_branch_destinations() -> None:
         entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsAlternative(MIRPlace(fn.slots[2].id), (1,)))),
                        terminator=MIRBranch(guard.id, after.id, after.id)),
         replace(after, terminator=MIRReturn(fn.slots[1].id)))))
-    result = analyze_scope_ends(fn)
+    result = analyze_scope_ends(prepared(fn))
     assert len(result.ends) == 2
     assert result.ends[MIREdge(iteration.id, 0)][0].payloads
     assert not result.ends[MIREdge(iteration.id, 1)][0].payloads
@@ -458,7 +458,7 @@ def test_edge_selection_survives_equal_branch_destinations() -> None:
 
 def test_bounded_trace_counts_distinct_dynamic_activations() -> None:
     fn = region_fixture()
-    inventory = analyze_scope_ends(fn)
+    inventory = analyze_scope_ends(prepared(fn))
     root, child = fn.regions
     entry, iteration, after = fn.blocks
     # This execution oracle assigns fresh object tokens, independently of the

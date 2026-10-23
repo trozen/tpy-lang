@@ -17,7 +17,7 @@ from .nodes import (
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import compiled_definitions, ContainerValue, Reference, execute
+from .testutil import compiled_definitions, ContainerValue, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, copy, readonly
@@ -179,7 +179,7 @@ def artifacts(compiled) -> Artifacts:
 def test_production_bodies_are_covered(artifacts: Artifacts, name: str) -> None:
     fn = artifacts[1][name]
     assert isinstance(fn, MIRFunction), fn
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("name", ["copied", "copied_readonly", "qualified", "copied_self"])
@@ -197,7 +197,7 @@ def test_explicit_copy_preserves_source_and_owns_each_iteration(artifacts: Artif
     decl, = declarations
     assert isinstance(decl.init, th.THIRCopy)
     assert decl.owned_storage is not None and decl.storage_placement is th.THIRStoragePlacement.SCOPE
-    assert any(isinstance(s.value, MIRCopy) for s in analyze_storage(fn).writes.values())
+    assert any(isinstance(s.value, MIRCopy) for s in analyze_storage(prepared(fn)).writes.values())
 
 
 @pytest.mark.parametrize("name", ["replaced", "optional"])
@@ -208,7 +208,7 @@ def test_replacement_reuses_backing_and_reads_rhs_first(artifacts: Artifacts, na
         heap = {}
         assert execute(fn, trips, heap=heap) == (2 if trips % 2 else 1)
         assert len(heap) == 1
-    assert any(s.storage_write.mode is MIRStorageWriteMode.IN_PLACE for s in analyze_storage(fn).writes.values())
+    assert any(s.storage_write.mode is MIRStorageWriteMode.IN_PLACE for s in analyze_storage(prepared(fn)).writes.values())
 
 
 def test_source_mutation_does_not_reach_the_copy(artifacts: Artifacts) -> None:
@@ -226,7 +226,7 @@ def test_two_replacement_sites_share_one_live_backing(artifacts: Artifacts) -> N
         heap = {}
         assert execute(fn, trips, heap=heap) == 1
         assert len(heap) == 1
-    writes = [s for s in analyze_storage(fn).writes.values() if s.storage_write.mode is MIRStorageWriteMode.IN_PLACE]
+    writes = [s for s in analyze_storage(prepared(fn)).writes.values() if s.storage_write.mode is MIRStorageWriteMode.IN_PLACE]
     assert len(writes) == 2 and writes[0].target == writes[1].target
 
 
@@ -310,9 +310,9 @@ def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n:
     fn = lower_function(function, MIRBodyId("cyclic", "moved"),
                         definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(fn, MIRFunction), fn
-    move, = (s for s in analyze_storage(fn).writes.values() if isinstance(s.value, MIRMove))
+    move, = (s for s in analyze_storage(prepared(fn)).writes.values() if isinstance(s.value, MIRMove))
     assert move.storage_write.mode is MIRStorageWriteMode.INITIALIZE
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     entry = _entry(modules)
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
                               compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
@@ -347,7 +347,7 @@ def moved(flag: bool) -> int32:
     result = lower_function(function, MIRBodyId("cyclic", "hoisted"),
                             definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction), result
-    write, = (s for s in analyze_storage(result).writes.values() if isinstance(s.value, MIRMove))
+    write, = (s for s in analyze_storage(prepared(result)).writes.values() if isinstance(s.value, MIRMove))
     assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
     assert assignment.optional_record_assignment is not None
@@ -356,7 +356,7 @@ def moved(flag: bool) -> int32:
         heap = {}
         assert execute(result, flag, heap=heap) == (3 if flag else 0)
         assert len(heap) == (2 if flag else 1)
-    assert inspect_scope_lifetimes(result).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(result)).conflicts == ()
 
 
 @pytest.mark.parametrize("member", ["custom_copy", "custom_move", "custom_destructor"])

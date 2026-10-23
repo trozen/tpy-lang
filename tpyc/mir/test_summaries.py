@@ -17,7 +17,7 @@ from .nodes import (
     MIRStorageDuration,
 )
 from .summaries import summarize_function
-from .testutil import no_layouts, compiled_definitions, reaccess
+from .testutil import no_layouts, compiled_definitions, reaccess, prepared
 from .value import MIRValidationError
 
 
@@ -142,7 +142,7 @@ def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
     functions, bodies, definitions = artifacts
     body = bodies[name]
     assert isinstance(body, MIRFunction)
-    result = summarize_function(functions[name], body, definitions)
+    result = summarize_function(functions[name], body, prepared(body), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     summary = result.summary
     assert summary.callee == functions[name].resolved_callee
@@ -157,7 +157,7 @@ def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
 def test_covered_mir_is_not_a_harmlessness_proof(artifacts: Artifacts, name: str, reason: str) -> None:
     functions, bodies, definitions = artifacts
     assert isinstance(bodies[name], MIRFunction)
-    result = summarize_function(functions[name], bodies[name], definitions)
+    result = summarize_function(functions[name], bodies[name], prepared(bodies[name]), definitions)
     assert result.state is MIRSummaryState.OPAQUE and reason in result.reason
     assert result.summary is None
 
@@ -170,7 +170,7 @@ def test_cyclic_bodies_summarize_through_the_fixpoints(artifacts: Artifacts, nam
     functions, bodies, definitions = artifacts
     body = bodies[name]
     assert isinstance(body, MIRFunction) and body.exceptional_exits is exits
-    result = summarize_function(functions[name], body, definitions)
+    result = summarize_function(functions[name], body, prepared(body), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.normal_return_only is normal
     assert result.summary.writes == result.summary.global_reads == frozenset()
@@ -187,7 +187,7 @@ def test_repeated_owned_activation_is_private_storage(artifacts: Artifacts) -> N
 
 def test_raising_summary_covers_writes_before_the_throw(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
-    result = summarize_function(functions["write_then_raise"], bodies["write_then_raise"], definitions)
+    result = summarize_function(functions["write_then_raise"], bodies["write_then_raise"], prepared(bodies["write_then_raise"]), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     summary = result.summary
     assert summary.normal_return_only is False
@@ -199,7 +199,7 @@ def test_raising_summary_covers_writes_before_the_throw(artifacts: Artifacts) ->
 
 def test_global_reads_are_summarized(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
-    result = summarize_function(functions["global_read"], bodies["global_read"], definitions)
+    result = summarize_function(functions["global_read"], bodies["global_read"], prepared(bodies["global_read"]), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.global_reads == frozenset({MIRGlobalId("main", "value")})
     for damaged in (frozenset({("main", "value")}), frozenset({MIRGlobalId("", "value")}), ("main", "value")):
@@ -208,7 +208,7 @@ def test_global_reads_are_summarized(artifacts: Artifacts) -> None:
 
 def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
-    summary = summarize_function(functions["setter"], bodies["setter"], definitions).summary
+    summary = summarize_function(functions["setter"], bodies["setter"], prepared(bodies["setter"]), definitions).summary
     cell, value = summary.parameters
     assert (cell.passing, cell.readonly, cell.lent_record.readonly) == (ParamPassing.MUT_REF, False, False)
     assert (value.type, value.passing, value.readonly, value.lent_record) == (
@@ -220,13 +220,13 @@ def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> No
     # An unpublished passing fails closed.
     fn = functions["setter"]
     unpublished = replace(fn, params=(fn.params[0], replace(fn.params[1], passing=None)))
-    result = summarize_function(unpublished, bodies["setter"], definitions)
+    result = summarize_function(unpublished, bodies["setter"], prepared(bodies["setter"]), definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter passing unpublished"
 
 
 def test_a_readonly_function_binds_its_record_parameters_readonly(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
-    result = summarize_function(functions["pick"], bodies["pick"], definitions)
+    result = summarize_function(functions["pick"], bodies["pick"], prepared(bodies["pick"]), definitions)
     assert result.state is MIRSummaryState.KNOWN, result
     left, right, flag = result.summary.parameters
     for record in (left, right):
@@ -241,7 +241,7 @@ def test_a_slot_weaker_than_its_thir_access_is_opaque(artifacts: Artifacts) -> N
     fn = functions["setter"]
     cell = fn.params[0]
     damaged = replace(fn, params=(replace(cell, passing=ParamPassing.CONST_REF), fn.params[1]))
-    result = summarize_function(damaged, bodies["setter"], definitions)
+    result = summarize_function(damaged, bodies["setter"], prepared(bodies["setter"]), definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter binding mismatch"
 
 
@@ -253,7 +253,7 @@ def test_a_slot_weaker_than_its_thir_access_is_opaque(artifacts: Artifacts) -> N
 def test_writes_follow_aliases_at_each_write(artifacts: Artifacts, name: str,
                                           expected: set[tuple[int, str]]) -> None:
     functions, bodies, definitions = artifacts
-    result = summarize_function(functions[name], bodies[name], definitions)
+    result = summarize_function(functions[name], bodies[name], prepared(bodies[name]), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     summary = result.summary
     assert {(w.parameter, w.path[0].name) for w in summary.writes} == expected
@@ -266,7 +266,7 @@ def test_writes_follow_aliases_at_each_write(artifacts: Artifacts, name: str,
 @pytest.mark.parametrize("damage", ["index", "bool_index", "empty", "nested", "owner", "readonly", "untyped"])
 def test_malformed_write_contract(artifacts: Artifacts, damage: str) -> None:
     functions, bodies, definitions = artifacts
-    summary = summarize_function(functions["write"], bodies["write"], definitions).summary
+    summary = summarize_function(functions["write"], bodies["write"], prepared(bodies["write"]), definitions).summary
     write, = summary.writes
     match damage:
         case "index":
@@ -301,14 +301,14 @@ def test_write_evidence_needs_definition_and_reachable_origin(artifacts: Artifac
                                          for b in body.blocks))
         # The field is no member the record declares: the body itself is malformed.
         with pytest.raises(MIRValidationError, match="field missing from declared fields"):
-            summarize_function(functions["write"], body, definitions)
+            summarize_function(functions["write"], body, prepared(body), definitions)
         return
     else:
         # A disconnected but well-typed block has no dependency state to justify a write.
         extra = replace(body.blocks[0], id=MIRBlockId(body.id, max(b.id.index for b in body.blocks) + 1))
         body = replace(body, blocks=(*body.blocks, extra))
         reason = "summary missing write origin"
-    result = summarize_function(functions["write"], body, definitions)
+    result = summarize_function(functions["write"], body, prepared(body), definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == reason
 
 
@@ -316,8 +316,8 @@ def test_missing_or_mismatched_definition_cannot_supply_empty_effects(artifacts:
     functions, bodies, definitions = artifacts
     fn, body = functions["read"], bodies["read"]
     for declaration in (replace(fn, resolved_callee=None), functions["scalar"]):
-        assert summarize_function(declaration, body, definitions).state is MIRSummaryState.OPAQUE
-    assert summarize_function(fn, body, MIRDefinitions()).state is MIRSummaryState.OPAQUE
+        assert summarize_function(declaration, body, prepared(body), definitions).state is MIRSummaryState.OPAQUE
+    assert summarize_function(fn, body, prepared(body), MIRDefinitions()).state is MIRSummaryState.OPAQUE
 
 
 @pytest.mark.parametrize("damage", ["signature", "binding"])
@@ -331,7 +331,7 @@ def test_definition_parameter_mismatch_is_opaque(artifacts: Artifacts, damage: s
     else:
         fn = replace(fn, params=(replace(fn.params[0], name="other"),))
         reason = "summary parameter binding mismatch"
-    result = summarize_function(fn, bodies["read"], definitions)
+    result = summarize_function(fn, bodies["read"], prepared(bodies["read"]), definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == reason
 
 
@@ -339,14 +339,14 @@ def test_malformed_mir_is_not_swallowed_as_opaque(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
     body = replace(bodies["read"], entry=MIRBodyId("bad", "entry"))
     with pytest.raises(MIRValidationError, match="missing entry block"):
-        summarize_function(functions["read"], body, definitions)
+        summarize_function(functions["read"], body, prepared(body), definitions)
 
 
 def test_pending_opaque_and_known_empty_are_distinct(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
     pending = MIRSummaryResult(MIRSummaryState.PENDING)
     opaque = MIRSummaryResult.opaque("missing body")
-    known = summarize_function(functions["literal"], bodies["literal"], definitions)
+    known = summarize_function(functions["literal"], bodies["literal"], prepared(bodies["literal"]), definitions)
     assert len({pending.state, opaque.state, known.state}) == 3
     with pytest.raises(ValueError, match="inconsistent"):
         MIRSummaryResult(MIRSummaryState.KNOWN)

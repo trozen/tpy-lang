@@ -14,7 +14,7 @@ from .lower import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .value import MIRFieldId, MIRValidationError
 from .testutil import Reference, TupleValue, execute, reslot
-from .validate import validate_function
+from .prepare import validate_function
 
 
 SOURCE = """\

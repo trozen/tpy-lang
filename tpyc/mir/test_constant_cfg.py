@@ -13,8 +13,9 @@ from .lower import lower_function
 from .nodes import MIRBodyId, MIRBranch, MIRFunction, MIRNotCovered, MIRReturn, MIRSlotKind
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_lower import lower
-from .testutil import compiled_definitions, optional_value, Reference, UnionValue, execute
-from .validate import MIRDefiniteAssignmentError, validate_function
+from .testutil import compiled_definitions, optional_value, Reference, UnionValue, execute, prepared
+from .validate import MIRDefiniteAssignmentError
+from .prepare import validate_function
 
 
 def function(body: tuple[th.THIRStmt, ...], *params: th.THIRParam) -> th.THIRFunction:
@@ -66,7 +67,7 @@ def test_nonterminating_loop_discards_synthetic_exit_and_following_declarations(
     assert {s.name for s in fn.slots if s.kind is MIRSlotKind.LOCAL} == set()
     assert [s.name for s in fn.slots if s.kind is MIRSlotKind.PARAMETER] == ["unused"]
     assert len(fn.regions) == 2
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("op", ["&&", "||", "select"])
@@ -170,7 +171,7 @@ def test_emitted_storage_pruning_preserves_live_aliases() -> None:
         assert any(b.id.index > index for index, b in enumerate(fn.blocks))
         assert any(s.id.index > index for index, s in enumerate(fn.slots))
         assert len([s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]) == 4
-        assert inspect_scope_lifetimes(fn).conflicts == ()
+        assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
         assert execute(fn, True, Reference(0), optional_value(None), UnionValue(0, 1), heap={0: {}}) == 9
         mutable = lower(functions["mutable_loop"])
         assert any(isinstance(b.terminator, MIRBranch) for b in mutable.blocks)

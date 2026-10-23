@@ -10,8 +10,8 @@ from .nodes import (
     MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRPlace,
 )
 from .value import MIRHolding, MIRValidationError
-from .validate import validate_function
 from .testutil import bind_parameters, leaf_shape, reslot
+from .prepare import validate_function
 
 B = MIRBodyId("test", "f")
 P, X, Y = (MIRSlotId(B, i) for i in range(3))

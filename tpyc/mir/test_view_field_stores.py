@@ -22,11 +22,10 @@ from .call_contract import (
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import (
-    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, apply_transfers,
-    record_fill, resolve_referents, seeded_loan, written_record,
+    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, apply_transfers, record_fill, resolve_referents, seeded_loan, written_record,
 )
 from .shapes import MIRContainerStructure, MIRDeref, MIRTupleIndex, owned_field
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIREdge, MIRFunction, MIRPlace,
     MIRPresentCall, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
@@ -36,11 +35,11 @@ from .retention import analyze_retention
 from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
 from .summaries import summarize_function
-from .validate import validate_function
 from .testutil import (
     as_declared, Redeclared, records_of, no_layouts, bind_parameters, borrowed_shape, bound, leaf_shape, reaccess,
-    reslot, tuple_shape,
+    reslot, tuple_shape, prepared,
 )
+from .prepare import validate_function
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -314,7 +313,7 @@ def _view_write(fn: MIRFunction) -> tuple[MIRPoint, MIRAssign]:
 
 
 def _after(fn: MIRFunction, point: MIRPoint):
-    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    dependencies = prepared(fn).dependencies
     return dependencies, dependencies.referents[MIRPoint(point.block, point.index + 1)]
 
 
@@ -332,7 +331,7 @@ def test_a_view_member_write_is_no_storage_event(program: _Program) -> None:
     fn = _lowered(program, "direct")
     point, write = _view_write(fn)
     assert write.storage_write is None and not owned_field(write.target.projections[-1])
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     assert point not in events.writes and point not in events.call_writes
 
 
@@ -396,8 +395,7 @@ def test_a_view_member_write_needs_a_view_holder(program: _Program) -> None:
 
 def test_a_body_loan_stored_in_the_caller_s_object_escapes(program: _Program) -> None:
     fn = _lowered(program, "fill")
-    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
-    (escape,) = analyze_store_escapes(fn, dependencies)
+    (escape,) = analyze_store_escapes(prepared(fn))
     _, write = _view_write(fn)
     assert escape.kind is MIRStorageConflictKind.STORE_ESCAPE
     assert escape.origin == _named(fn, "buf")
@@ -411,7 +409,7 @@ def test_a_body_loan_stored_in_an_own_parameter_s_object_escapes(program: _Progr
     # The handed-over object is the callee's, but the caller's temporary
     # outlives the call; a parameter's loan stored there is no transfer.
     fn = _lowered(program, "own_local")
-    (escape,) = analyze_store_escapes(fn, analyze_dependencies(fn, analyze_liveness(fn)))
+    (escape,) = analyze_store_escapes(prepared(fn))
     assert escape.origin == _named(fn, "buf") and escape.holder.root == fn.slots[0].id
     assert program.verdicts["own_local"].summary.reason == "summary stores a loan of the body's storage"
     assert _summary(program, "own_store").transfers == frozenset()
@@ -434,8 +432,7 @@ def test_the_dump_prints_the_escapes(program: _Program) -> None:
 def test_a_stored_loan_lives_to_every_exit(program: _Program) -> None:
     # `t` is dead after its write, but what was stored there outlives the call.
     fn = _lowered(program, "store")
-    retention = analyze_retention(fn, analyze_liveness(fn), analyze_dependencies(fn, analyze_liveness(fn)),
-                                  analyze_storage(fn))
+    retention = analyze_retention(prepared(fn))
     (conflict,) = retention.conflicts
     assert conflict.retained == MIRReferent(_named(fn, "s"), external=True)
     assert conflict.holder.root == fn.slots[0].id
@@ -471,7 +468,7 @@ def test_an_owned_result_keeps_the_argument_s_own_loan(program: _Program) -> Non
     assert _summary(program, "maybe_own").transfers == frozenset({MIRLoanTransfer(MIR_RESULT, path, 0, path),
                                                                   MIRLoanTransfer(MIR_RESULT, path, 1)})
     fn = _lowered(program, "ident")
-    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    dependencies = prepared(fn).dependencies
     key = MIRPlace(fn.slots[0].id, (path_step(path[0]),))
     stores = [s for s in dependencies.caller_stores if s.result]
     assert [(s.key, s.loans) for s in stores] == [(key, frozenset({seeded_loan(key)}))]
@@ -507,8 +504,8 @@ class _Without:
 
 @pytest.mark.parametrize("name", ["literal", "ident"])
 def test_a_transfer_field_missing_from_its_layout_is_refused(program: _Program, name: str) -> None:
-    result = summarize_function(program.functions[name], _lowered(program, name),
-                                _Without(program.definitions, "Tok", "s"))
+    body = _lowered(program, name)
+    result = summarize_function(program.functions[name], body, prepared(body), _Without(program.definitions, "Tok", "s"))
     assert result.state is MIRSummaryState.OPAQUE
     assert result.reason == "field missing from declared fields"
 
@@ -601,7 +598,8 @@ def test_a_transfer_through_a_refused_definition_never_publishes(program: _Progr
     refused = object.__new__(MIRDefinitions)
     object.__setattr__(refused, "records", {**program.definitions.records, r: "refused for the test"})
     object.__setattr__(refused, "layouts", program.definitions.layouts)
-    result = summarize_function(program.functions["nested_fill"], _lowered(program, "nested_fill"), refused)
+    body = _lowered(program, "nested_fill")
+    result = summarize_function(program.functions["nested_fill"], body, prepared(body), refused)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary record: refused for the test"
 
 
@@ -689,7 +687,7 @@ def test_a_replacement_is_checked_against_the_state_it_leaves(program: _Program)
     key = MIRPlace(_owned(fn)[0], (member,))
     assert MIRReferent(_named(fn, "buf")) not in dependencies.referents[point][key]
     assert MIRReferent(_named(fn, "buf")) in state[key]
-    retention = analyze_retention(fn, analyze_liveness(fn), dependencies, analyze_storage(fn))
+    retention = analyze_retention(prepared(fn))
     assert [c.point for c in retention.conflicts] == [point]
     assert retention.conflicts[0].affected == MIRReferent(_named(fn, "buf"))
 
@@ -847,8 +845,7 @@ def test_an_element_store_is_checked_against_its_owner_s_view_members(program: _
     r = _named(fn, "r")
     assert write.storage_write.rebind_owner == r.root
     items, s = _field(program, "E", "items"), _field(program, "E", "s")
-    retention = analyze_retention(fn, analyze_liveness(fn), analyze_dependencies(fn, analyze_liveness(fn)),
-                                  analyze_storage(fn))
+    retention = analyze_retention(prepared(fn))
     element = MIRReferent(MIRPlace(r.root, (items, write.target.projections[-1])), True)
     assert {(c.point, c.holder, c.affected) for c in retention.conflicts} == {
         (point, MIRPlace(r.root, (s,)), element)}

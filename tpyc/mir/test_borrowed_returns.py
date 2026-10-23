@@ -18,10 +18,9 @@ from .call_contract import (
     MIRCallSummary, MIRReturnOrigin, MIRSummaryState, result_problem, summary_problem,
 )
 from .definitions import MIRDefinitions
-from .dependencies import MIRReferent, analyze_dependencies, resolve_call_returns
+from .dependencies import MIRReferent, resolve_call_returns
 from .presence import present_call
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRFunction, MIRNotCovered, MIRReturn, MIRPoint,
@@ -31,12 +30,14 @@ from .shapes import MIRDeref
 from .value import MIRField, MIRValidationError
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
-from .storage import analyze_storage
 from .summaries import summarize_function
-from .validate import validate_function
-from .testutil import no_layouts, compiled_definitions, bind_parameters, Reference, bound, execute, reslot
+from .testutil import (
+    no_layouts, compiled_definitions, bind_parameters, Reference, bound, execute, reslot, prepared,
+    workspace_functions,
+)
 from .test_scope_inspection import scoped_loop
 from .test_retention import CELL, SAVED
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, readonly, pure, Own
@@ -215,14 +216,14 @@ def test_leaf_return_origins(artifacts: Artifacts, name: str, origins: set[int],
     body = bodies[name]
     assert isinstance(body, MIRFunction), body
     validate_function(body)
-    result = summarize_function(functions[name], body, definitions)
+    result = summarize_function(functions[name], body, prepared(body), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.returns == {MIRReturnOrigin(i) for i in origins}
     assert body.borrowed_result.readonly is readonly
     assert result.summary.callee.signature.borrowed_result == body.borrowed_result
     assert bool(result.summary.writes) is (name == "writing")
     assert "result borrowed " + ("readonly" if readonly else "mutable") in dump_function(body)
-    deps = analyze_dependencies(body, analyze_liveness(body))
+    deps = prepared(body).dependencies
     assert not isinstance(deps, MIRNotCovered)
     for block in body.blocks:
         if isinstance(block.terminator, MIRReturn):
@@ -237,7 +238,7 @@ def test_owned_result_is_not_a_borrow(artifacts: Artifacts) -> None:
     assert functions["owned"].resolved_callee.signature.borrowed_result is None
     body = bodies["owned"]
     assert isinstance(body, MIRFunction) and body.borrowed_result is None, body
-    result = summarize_function(functions["owned"], body, definitions)
+    result = summarize_function(functions["owned"], body, prepared(body), definitions)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.returns == frozenset() and result.summary.borrowed_result is None
 
@@ -245,7 +246,7 @@ def test_owned_result_is_not_a_borrow(artifacts: Artifacts) -> None:
 def test_decorated_result_preserves_emitted_access(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
     assert bodies["decorated"].borrowed_result.readonly
-    result = summarize_function(functions["decorated"], bodies["decorated"], definitions)
+    result = summarize_function(functions["decorated"], bodies["decorated"], prepared(bodies["decorated"]), definitions)
     # The declared readonly return agrees with the const parameter it returns.
     assert result.state is MIRSummaryState.KNOWN, result.reason
 
@@ -258,7 +259,7 @@ def test_borrowed_call_requires_known_callee(artifacts: Artifacts) -> None:
 
 def test_result_contract_rejects_missing_or_wrong_origins(artifacts: Artifacts) -> None:
     functions, bodies, definitions = artifacts
-    summary = summarize_function(functions["identity"], bodies["identity"], definitions).summary
+    summary = summarize_function(functions["identity"], bodies["identity"], prepared(bodies["identity"]), definitions).summary
     for origins, message in (
         (frozenset(), "missing or unexpected return origins"),
         (frozenset({MIRReturnOrigin(-1)}), "invalid return parameter"),
@@ -267,7 +268,7 @@ def test_result_contract_rejects_missing_or_wrong_origins(artifacts: Artifacts) 
         (frozenset({0}), "invalid call summary identity or facts"),
     ):
         assert summary_problem(replace(summary, returns=origins), no_layouts()) == message
-    readonly = summarize_function(functions["observe"], bodies["observe"], definitions).summary
+    readonly = summarize_function(functions["observe"], bodies["observe"], prepared(bodies["observe"]), definitions).summary
     # The readonly loan bound at the callee's own declared type.
     lent = tuple(replace(b, declared=t)
                  for b, t in zip(readonly.parameters, signature_params(summary.callee.signature)))
@@ -338,9 +339,9 @@ def test_workspace_return_substitution(workspace: MIRCallWorkspace, name: str, r
 
 @pytest.mark.parametrize("name", ["binding", "readonly_binding", "local_storage", "loop", "range_loop"])
 def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: str) -> None:
-    body = workspace.bodies[MIRBodyId("main", name)]
+    body = workspace_functions(workspace)[MIRBodyId("main", name)]
     assert isinstance(body, MIRFunction), body
-    dependencies = analyze_dependencies(body, analyze_liveness(body))
+    dependencies = prepared(body).dependencies
     assert not isinstance(dependencies, MIRNotCovered)
     calls = [(block, index, stmt) for block in body.blocks for index, stmt in enumerate(block.statements)
              if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)]
@@ -369,7 +370,7 @@ def test_incomplete_result_evidence_stays_opaque(workspace: MIRCallWorkspace, na
 
 def test_a_member_result_borrows_the_member_place(workspace: MIRCallWorkspace) -> None:
     # `return outer.cell`: the result holder borrows the inline member.
-    body = workspace.bodies[MIRBodyId("main", "projected")]
+    body = workspace_functions(workspace)[MIRBodyId("main", "projected")]
     assert isinstance(body, MIRFunction), body
     borrow, = (s for b in body.blocks for s in b.statements
                if isinstance(s, MIRAssign) and isinstance(s.value, MIRBorrow))
@@ -396,10 +397,10 @@ def test_borrowed_origin_joins_across_a_back_edge(workspace: MIRCallWorkspace, n
     result = next(r for key, r in workspace.summaries.items() if key.name == name)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.writes == frozenset() and result.summary.returns == frozenset()
-    body = workspace.bodies[MIRBodyId("main", name)]
+    body = workspace_functions(workspace)[MIRBodyId("main", name)]
     saved = next(s.id for s in body.slots if s.name == "saved")
     a, b = (MIRReferent(MIRPlace(next(s.id for s in body.slots if s.name == n)), external=True) for n in "ab")
-    deps = analyze_dependencies(body, analyze_liveness(body))
+    deps = prepared(body).dependencies
     exit_block = next(block for block in body.blocks if isinstance(block.terminator, MIRReturn))
     joined = deps.referents[MIRPoint(exit_block.id, len(exit_block.statements))][MIRPlace(saved)]
     assert joined == {a, b}
@@ -430,7 +431,7 @@ def caller(flag: bool, a: Cell, b: Cell) -> Cell:
 
 
 def test_returned_holder_participates_in_storage_analysis(workspace: MIRCallWorkspace) -> None:
-    body = workspace.bodies[MIRBodyId("main", "local_storage")]
+    body = workspace_functions(workspace)[MIRBodyId("main", "local_storage")]
     local = next(s for s in body.slots if s.name == "local")
     value = next(s for s in body.slots if s.name == "value")
     saved = next(s for s in body.slots if s.name == "saved")
@@ -441,15 +442,12 @@ def test_returned_holder_participates_in_storage_analysis(workspace: MIRCallWork
         if isinstance(stmt, MIRAssign) and stmt.target.projections else stmt
         for stmt in block.statements)) for block in body.blocks)
     changed = replace(body, blocks=blocks)
-    live = analyze_liveness(changed)
-    deps = analyze_dependencies(changed, live)
-    retention = analyze_retention(changed, live, deps, analyze_storage(changed))
+    retention = analyze_retention(prepared(changed))
     assert not isinstance(retention, MIRNotCovered)
     assert any(conflict.holder == MIRPlace(saved.id) for conflict in retention.conflicts)
-    original_live = analyze_liveness(body)
-    original = analyze_retention(body, original_live, analyze_dependencies(body, original_live), analyze_storage(body))
+    original = analyze_retention(prepared(body))
     assert not isinstance(original, MIRNotCovered) and not original.conflicts
-    scope = inspect_scope_lifetimes(body)
+    scope = inspect_scope_lifetimes(prepared(body))
     assert not isinstance(scope.ends, MIRNotCovered)
     assert scope.conflicts == () and not scope.freshness
 
@@ -469,15 +467,15 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
     changed = replace(body, blocks=blocks, call_summaries=(summary,))
     assert any(isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
                for block in changed.blocks for stmt in block.statements)
-    actual = inspect_scope_lifetimes(changed)
+    actual = inspect_scope_lifetimes(prepared(changed))
     assert not isinstance(actual.conflicts, MIRNotCovered)
     assert len(actual.conflicts) == 1 and actual.conflicts[0].holder == observed
-    assert actual.conflicts == inspect_scope_lifetimes(body).conflicts
+    assert actual.conflicts == inspect_scope_lifetimes(prepared(body)).conflicts
 
 
 @pytest.mark.parametrize("damage", ["projected", "scalar", "readonly"])
 def test_call_result_target_is_validated(workspace: MIRCallWorkspace, damage: str) -> None:
-    body = workspace.bodies[MIRBodyId("main", "readonly_binding" if damage == "readonly" else "binding")]
+    body = workspace_functions(workspace)[MIRBodyId("main", "readonly_binding" if damage == "readonly" else "binding")]
     block, index, stmt = next((block, index, stmt) for block in body.blocks
                               for index, stmt in enumerate(block.statements)
                               if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
@@ -501,7 +499,7 @@ def test_call_result_target_is_validated(workspace: MIRCallWorkspace, damage: st
 
 
 def test_missing_actual_origin_is_not_an_empty_result(workspace: MIRCallWorkspace) -> None:
-    body = workspace.bodies[MIRBodyId("main", "binding")]
+    body = workspace_functions(workspace)[MIRBodyId("main", "binding")]
     call = next(stmt.value for block in body.blocks for stmt in block.statements
                 if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
     slots = {s.id: s for s in body.slots}
@@ -529,7 +527,7 @@ def test_method_and_constructor_callers(workspace: MIRCallWorkspace) -> None:
     )
     for body in bodies:
         assert isinstance(body, MIRFunction), body
-        deps = analyze_dependencies(body, analyze_liveness(body))
+        deps = prepared(body).dependencies
         assert not isinstance(deps, MIRNotCovered)
         saved = next(s for s in body.slots if s.name == "saved")
         assert any(MIRPlace(saved.id) in holders for holders in deps.active.values())

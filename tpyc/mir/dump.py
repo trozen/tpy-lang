@@ -1,26 +1,20 @@
 """Deterministic internal MIR dump; names supplement identities, never replace them."""
 
 
-from ..parse import SourceLocation
 from ..thir.nodes import THIRStubCallee
 from ..thir.scalar_leaves import MIRClass
-from .call_contract import MIRAliasObligation, MIRResultHolder, MIRStaticLoan
+from .call_contract import MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint,
-    MIRPlace, MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode,
+    MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode,
     MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct,
     MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIRSlotId, MIRWrap,
 )
-from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
-)
-from .value import MIRField, MIRHolding, MIRShape
-from .validate import validate_function
-
-
-def _location(loc: SourceLocation | None) -> str:
-    return f" @ {loc.line}:{loc.column}" if loc is not None else ""
+from .value import MIRHolding, MIRShape
+from .place_text import _location, _place, _write_step, obligation_text
+from .prepare import first_phase
+from .validate import MIRPresenceError
 
 
 def _call(call: MIRCall) -> str:
@@ -57,25 +51,8 @@ def _call(call: MIRCall) -> str:
     return f"call {callee}({args}) [{effects}, {'may-raise' if call.may_raise else 'normal-return'}]"
 
 
-def obligation_text(obligation: MIRAliasObligation) -> str:
-    """`param2 vs param0[structure]`: the place the callee still uses, then
-    the one it writes."""
-    write = obligation.written
-    return (f"param{obligation.parameter}" + "".join(map(_write_step, obligation.path))
-            + f" vs param{write.parameter}" + "".join(map(_write_step, write.path)))
 
 
-def _write_step(step: object) -> str:
-    match step:
-        case MIRContainerStructure():
-            return "[structure]"
-        case MIRContainerElements():
-            return "[elements]"
-        case MIRTupleIndex(index=index):
-            return f"[{index}]"
-        case MIRUnionPayload(alternative=alternative):
-            return f".alternative[{alternative}]"
-    return f".{step.name}"
 
 
 def _layout(layout: MIRShape) -> str:
@@ -126,23 +103,15 @@ def _wrap(wrap: MIRWrap) -> str:
     return f"wrap[{wrap.alternative}]" + ("" if wrap.source is None else f" {_place(wrap.source)}")
 
 
-def _place(place: MIRPlace) -> str:
-    text = f"%{place.root.index}"
-    for projection in place.projections:
-        match projection:
-            case MIRDeref():
-                text = f"(*{text})"
-            case MIRField(id=field):
-                text += f".{field.owner.qualified_name()}::{field.name}"
-            case MIRTupleIndex() | MIRUnionPayload() | MIRContainerStructure() | MIRContainerElements():
-                text += _write_step(projection)
-            case _:
-                raise ValueError("unknown place projection")
-    return text
 
 
 def dump_function(fn: MIRFunction) -> str:
-    validate_function(fn)
+    # A printer prints a body whose dependency facts are refused too: it
+    # checks structure and presence, never that every field read is proven,
+    # so it runs no dependency analysis.
+    first = first_phase(fn)
+    if first.presence.issues:
+        raise MIRPresenceError(first.presence.issues[0].message)
     lines = [f"fn {fn.id.module}::{fn.id.declaration} -> {fn.return_type}",
              f"entry bb{fn.entry.index}"]
     if fn.borrowed_result is not None:

@@ -2,7 +2,7 @@
 
 from collections import deque
 from collections.abc import Mapping
-from dataclasses import dataclass, replace
+from dataclasses import replace
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse import SourceLocation
@@ -32,7 +32,6 @@ from .value import (
     MIRValidationError, admitted_members, member_compatible, require_valid as _require, shape_problem, thir_member,
     with_access, SUM_CLASSES, holder_form, WRAPPER_CLASSES,
 )
-from .presence import MIRPresence, _analyze_presence
 from .coverage import primitive_operand, read_leaf, slot_representation, view_compatible
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .call_contract import (
@@ -78,28 +77,6 @@ class MIRRepeatedInitializationError(MIRValidationError):
     def __init__(self, loc: SourceLocation | None) -> None:
         super().__init__("repeated initialization within region activation")
         self.loc = loc
-
-
-@dataclass(frozen=True)
-class MIRPrepared:
-    function: MIRFunction
-    presence: MIRPresence
-
-
-def _prepare_function(fn: MIRFunction) -> MIRPrepared:
-    _validate_structure(fn)
-    return MIRPrepared(fn, _analyze_presence(fn))
-
-
-def _validated_function(fn: MIRFunction) -> MIRPrepared:
-    prepared = _prepare_function(fn)
-    if prepared.presence.issues:
-        raise MIRPresenceError(prepared.presence.issues[0].message)
-    return prepared
-
-
-def validate_function(fn: MIRFunction) -> None:
-    _validated_function(fn)
 
 
 def _region_structure(fn: MIRFunction) -> MIRRegionFlow:
@@ -185,6 +162,19 @@ def successors(term: MIRGoto | MIRBranch | MIRReturn) -> tuple[MIRBlockId, ...]:
             return ()
         case _:
             raise MIRValidationError("missing or unknown terminator")
+
+
+def reachable_blocks(fn: MIRFunction) -> frozenset[MIRBlockId]:
+    """The blocks a path from the entry reaches, by terminator alone."""
+    blocks = {block.id: block for block in fn.blocks}
+    reached: set[MIRBlockId] = set()
+    pending = [fn.entry]
+    while pending:
+        bid = pending.pop()
+        if bid not in reached:
+            reached.add(bid)
+            pending.extend(successors(blocks[bid].terminator))
+    return frozenset(reached)
 
 
 def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
@@ -882,7 +872,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                          "call scalar argument mismatch")
 
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
-    initialized_storage: set[MIRSlotId] = set()
+    # Owned parameters with body storage arrive initialized: the caller
+    # materialized them, so an INITIALIZE of one is a second initialization.
+    initialized_storage: set[MIRSlotId] = {
+        s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.shape.is_storage
+        and s.storage_duration is MIRStorageDuration.BODY}
     owning_blocks: set[MIRBlockId] = set()
 
     def validate_owned_write(stmt: MIRAssign, block: MIRBlock, target: MIRSlot) -> None:
@@ -1537,13 +1531,7 @@ def _validate_structure(fn: MIRFunction) -> None:
             seen.add(bid)
             pending.extend(successors(blocks[bid].terminator))
 
-    reachable: set[MIRBlockId] = set()
-    pending = [fn.entry]
-    while pending:
-        bid = pending.pop()
-        if bid not in reachable:
-            reachable.add(bid)
-            pending.extend(successors(blocks[bid].terminator))
+    reachable = reachable_blocks(fn)
     parameters = {s.id for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
     writes = {bid: {sid for s in blocks[bid].statements if (sid := source_definition(s)) is not None}
               for bid in reachable}

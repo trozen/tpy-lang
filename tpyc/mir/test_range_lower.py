@@ -12,7 +12,7 @@ from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRangeAdvance
 from .scope_lifetime import inspect_scope_lifetimes
-from .testutil import compiled_definitions, Reference, execute
+from .testutil import compiled_definitions, Reference, execute, prepared
 
 SOURCE = '''from tpy import int32
 def capture(start: int32, stop: int32) -> int32:
@@ -137,7 +137,7 @@ def test_methods_constructor_tails_and_iteration_storage(artifacts) -> None:
     assert tuple(heap[0].values()) == (2,)
     assert execute(bodies["walk"], Reference(0), 4, heap=heap) == 3
     assert execute(bodies["bound"], Reference(0), heap=heap) == 2
-    assert not inspect_scope_lifetimes(bodies["walk"]).conflicts
+    assert not inspect_scope_lifetimes(prepared(bodies["walk"])).conflicts
     assert "range-advance" in dump_function(bodies["capture"])
     for body in bodies.values():
         for block in body.blocks:

@@ -15,9 +15,9 @@ from .nodes import (
 from .shapes import MIRUnionPayload
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
-from .testutil import compiled_definitions, bind_parameters, Reference, execute, leaf_shape
-from .validate import validate_function
+from .testutil import compiled_definitions, bind_parameters, Reference, execute, leaf_shape, prepared
 from .value import MIRValidationError
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -165,7 +165,7 @@ def late_bodies(compiled) -> tuple[dict[str, MIRFunction], str]:
 def test_late_producers_keep_scope_and_shared_mutation(late_bodies: tuple[dict[str, MIRFunction], str]) -> None:
     bodies, cpp = late_bodies
     for fn in bodies.values():
-        assert inspect_scope_lifetimes(fn).conflicts == ()
+        assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     for name in ("late", "tuples", "optional_record"):
         assert execute(bodies[name], False) == 9
         assert execute(bodies[name], True) == 0
@@ -189,7 +189,7 @@ def test_loop_exits_before_and_after_construction(late_bodies: tuple[dict[str, M
                                                 skip: bool, stop: bool, after: bool) -> None:
     fn = late_bodies[0]["loop"]
     assert execute(fn, skip, stop, after) == (0 if stop or skip else 9)
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     assert len(ends.ends) == 2
 
 
@@ -211,7 +211,7 @@ def test_skipped_construction_has_no_end_but_empty_wrapper_does(absent: bool) ->
         stmt = replace(initialize.statements[0], value=MIRWrap(0))
         fn = replace(fn, blocks=(entry, iteration, after, replace(initialize, statements=(stmt,))))
     validate_function(fn)
-    result = analyze_scope_ends(fn)
+    result = analyze_scope_ends(prepared(fn))
     assert tuple(result.ends) == (MIREdge(initialize.id),)
     end, = result.ends[MIREdge(initialize.id)]
     assert bool(end.payloads) is not absent
@@ -236,7 +236,7 @@ def test_optional_scalar_copy_survives_its_wrapper_end() -> None:
         replace(iteration, terminator=MIRBranch(fn.slots[3].id, entry.id, initialize.id)), after,
         replace(initialize, statements=(*initialize.statements, read), terminator=MIRGoto(done)),
         MIRBlock(done, (), MIRReturn(copied.id), entry.region))))
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     assert MIREdge(iteration.id, 0) not in result.ends.ends
     assert result.conflicts == () and result.freshness == ()
     assert execute(fn, 9, True, False) == 9
@@ -247,7 +247,7 @@ def test_bounded_trace_keeps_skipped_activation_empty() -> None:
     entry, iteration, after, initialize = fn.blocks
     fn = replace(fn, blocks=(entry, replace(iteration, terminator=MIRBranch(
         fn.slots[3].id, entry.id, initialize.id)), after, initialize))
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     blocks = {b.id: b for b in fn.blocks}
     # The execution oracle uses fresh tokens, not the analysis's static root.
     ended_tokens = []

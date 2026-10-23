@@ -21,9 +21,9 @@ from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .testutil import (
-    compiled_definitions, hand_record, borrowed_shape, execute, optional_shape, tuple_shape, union_shape,
+    compiled_definitions, hand_record, borrowed_shape, execute, optional_shape, tuple_shape, union_shape, prepared,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 
 @pytest.fixture(scope="module")
@@ -75,12 +75,12 @@ def test_return_value_survives_the_full_expression(definitions: MIRDefinitions) 
     result_block, = (b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     result = next(s for s in fn.slots if s.id == result_block.terminator.value)
     assert result.residence == result_block.region != owned.storage_duration
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     edge, = ends.ends
     assert ends.ends[edge][0].storage == MIRPlace(owned.id)
     assert isinstance(next(b for b in fn.blocks if b.id == edge.source).terminator, MIRGoto)
     assert execute(fn, True) == 7
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("op", ["ternary", "and", "or"])
@@ -97,7 +97,7 @@ def test_lazy_arms_share_one_end_boundary(definitions: MIRDefinitions, op: str) 
     fn = lower(function(expr), definitions)
     assert len({s.storage_duration for s in storage(fn)}) == 1
     # Lazy-arm jumps remain inside the expression; only its final join exits.
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     assert len(ends.ends) == 1
     for flag_value, answer in zip((False, True), expected):
         heap = {}
@@ -109,7 +109,7 @@ def test_two_temporaries_end_together_after_comparison(definitions: MIRDefinitio
     expr = th.THIRBinOp(BOOL, read(definitions, 1), "<", read(definitions, 2), None)
     fn = lower(function(expr), definitions)
     assert execute(fn, True) is True
-    events, = analyze_scope_ends(fn).ends.values()
+    events, = analyze_scope_ends(prepared(fn)).ends.values()
     assert {e.storage for e in events} == {MIRPlace(s.id) for s in storage(fn)}
 
 
@@ -124,7 +124,7 @@ def test_condition_activation_ends_before_both_successors(definitions: MIRDefini
     fn = lower(source, definitions)
     assert execute(fn, True) == execute(fn, False) == 5
     owned, = storage(fn)
-    ends = analyze_scope_ends(fn)
+    ends = analyze_scope_ends(prepared(fn))
     edge, = ends.ends
     transitions = MIRRegionFlow(fn)
     after = next(b for b in fn.blocks if b.id == transitions.edges[edge].target)
@@ -137,7 +137,7 @@ def test_discarded_constructor_has_storage_but_no_result(definitions: MIRDefinit
     source = function(th.THIRLiteral(INT32, 3))
     source = replace(source, body=(th.THIRExprStmt(constructor(definitions)), *source.body))
     fn = lower(source, definitions)
-    assert len(storage(fn)) == 1 and len(analyze_scope_ends(fn).ends) == 1
+    assert len(storage(fn)) == 1 and len(analyze_scope_ends(prepared(fn)).ends) == 1
     assert execute(fn, True) == 3
 
 
@@ -154,8 +154,8 @@ def test_final_false_condition_also_constructs_and_ends(definitions: MIRDefiniti
     heap = {}
     assert execute(fn, 1, heap=heap) == 2
     assert len(heap) == 2
-    assert len(analyze_scope_ends(fn).ends) == 1
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert len(analyze_scope_ends(prepared(fn)).ends) == 1
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 @pytest.mark.parametrize("shape", ["record", "tuple", "optional", "union"])
@@ -200,10 +200,10 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
         blocks.append(replace(block, statements=tuple(stmts)))
     fn = replace(fn, slots=(*fn.slots, reference, *((wrapper,) if wrapper is not None else ())),
                  blocks=tuple(blocks))
-    conflicts = inspect_scope_lifetimes(fn).conflicts
+    conflicts = inspect_scope_lifetimes(prepared(fn)).conflicts
     assert len(conflicts) == 1 and conflicts[0].ended == MIRPlace(owned.id)
     assert conflicts[0].holder == path
-    evidence = certify_storage_origins(fn, frozenset((owned.id,)), definitions)
+    evidence = certify_storage_origins(prepared(fn), frozenset((owned.id,)), definitions)
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
     conflict, = evidence.conflicts
     assert conflict.kind is MIRStorageConflictKind.SCOPE_END
@@ -258,4 +258,4 @@ def test_value_select_hoist_does_not_inherit_inline_lifetime(
     else:
         result = lower(fn, definitions)
         assert execute(result, False) is True
-        assert len(analyze_scope_ends(result).ends) == 1
+        assert len(analyze_scope_ends(prepared(result)).ends) == 1

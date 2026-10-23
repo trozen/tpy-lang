@@ -19,18 +19,21 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRConstant, MIRFunction, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind, place_shape,
-    MIRWrap, MIRIsAlternative, MIRCopy,
+    MIRWrap, MIRIsAlternative, MIRCopy, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .value import MIRField, MIRFieldId
 from .coverage import MIRUnsupported
 from .definitions import constructor_initialization
-from .dependencies import MIRReferent, analyze_dependencies
-from .liveness import MIRPoint, analyze_liveness
-from .presence import _State, _analyze_presence, _may_hold, _reaches, _transfer
+from .dependencies import MIRReferent, resolve_referents
+from .liveness import MIRPoint
+from .presence import Resolve, _State, _kill_field_facts, _transfer
 from .shapes import MIRDeref, MIRUnionPayload
-from .testutil import bind_parameters, borrowed_shape, cursor_shape, leaf_shape, owned_shape, reslot, tuple_shape
-from .validate import validate_function
+from .testutil import (
+    bind_parameters, borrowed_shape, cursor_shape, leaf_shape, owned_shape, reslot, tuple_shape, prepared,
+)
 from .value import MIRValidationError
+from .prepare import validate_function
+from .reach import _may_hold
 
 SOURCE = """\
 from tpy import int32, StrView, copy, readonly
@@ -391,7 +394,24 @@ def test_a_field_selection_dies_at_a_write_that_may_reach_it(program: _Program, 
         assert verdict.reason == "payload access without current presence proof"
 
 
-def test_reaches_decides_overlap_on_places(program: _Program) -> None:
+def _parameter_resolve(slots: dict[MIRSlotId, MIRSlot], layouts: MIRRecords) -> Resolve:
+    """Each borrowed parameter naming its own external origin, at every point."""
+    state = {MIRPlace(s.id): frozenset({MIRReferent(MIRPlace(s.id), external=True)})
+             for s in slots.values() if s.kind is MIRSlotKind.PARAMETER}
+    return lambda point, place: resolve_referents(place, state, slots, layouts)
+
+
+def _kills(written: MIRPlace, fact: MIRPlace, slots: dict[MIRSlotId, MIRSlot], layouts: MIRRecords,
+           mode: MIRStorageWriteMode = MIRStorageWriteMode.IN_PLACE) -> bool:
+    """Whether a write of `written` (with the storage write fact `mode`)
+    ends a selection on the wrapper field `fact`, by the presence kill rule."""
+    state = _State(frozenset({(fact, frozenset({1}))}))
+    stmt = MIRAssign(written, MIRConstant(0), storage_write=MIRStorageWrite(mode))
+    after = _kill_field_facts(state, stmt, MIRPoint(None, 0), slots, layouts, _parameter_resolve(slots, layouts))
+    return not after.present
+
+
+def test_the_kill_decides_reach_on_events_and_referents(program: _Program) -> None:
     a, b = _holder(program, 0), _holder(program, 1)
     own_a = _holder(program, 2, MIRSlotKind.LOCAL, owned=True)
     own_b = _holder(program, 3, MIRSlotKind.LOCAL, owned=True)
@@ -399,21 +419,24 @@ def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     layouts = _declared()
     p, n = _member(program, "H.p"), _member(program, "H.n")
     fact = MIRPlace(a.id, (MIRDeref(), p))
-    # Under one root: a prefix either way.
-    assert _reaches(MIRPlace(a.id, (MIRDeref(),)), fact, slots, layouts)
-    assert _reaches(MIRPlace(a.id, (MIRDeref(), p, MIRUnionPayload(1))), fact, slots, layouts)
-    assert not _reaches(MIRPlace(a.id, (MIRDeref(), n)), fact, slots, layouts)
+    # Under one root: a write of the fact's place or of the storage around it.
+    assert _kills(MIRPlace(a.id, (MIRDeref(),)), fact, slots, layouts)
+    # A write strictly inside the payload replaces no storage of the wrapper
+    # (it is no storage destination) and keeps the selection.
+    assert not _kills(MIRPlace(a.id, (MIRDeref(), p, MIRUnionPayload(1))), fact, slots, layouts)
+    assert not _kills(MIRPlace(a.id, (MIRDeref(), n)), fact, slots, layouts)
     # Rebinding the holder retargets the fact's place.
-    assert _reaches(MIRPlace(a.id), fact, slots, layouts)
+    assert _kills(MIRPlace(a.id), fact, slots, layouts)
     # Under another holder: the same member, or storage that may hold it.
-    assert _reaches(MIRPlace(b.id, (MIRDeref(), p)), fact, slots, layouts)
-    assert not _reaches(MIRPlace(b.id, (MIRDeref(), n)), fact, slots, layouts)
-    assert _reaches(MIRPlace(own_a.id), fact, slots, layouts)
+    assert _kills(MIRPlace(b.id, (MIRDeref(), p)), fact, slots, layouts)
+    assert not _kills(MIRPlace(b.id, (MIRDeref(), n)), fact, slots, layouts)
+    # The body's own storage is never a parameter's object.
+    assert not _kills(MIRPlace(own_a.id), fact, slots, layouts)
     # Rebinding another holder writes no storage.
-    assert not _reaches(MIRPlace(b.id), fact, slots, layouts)
-    # A root write of anything but a borrowed holder may write storage: an
-    # owned tuple of a record declaring the member or a generic record may
-    # hold it, a scalar or a tuple of a record declaring none may not.
+    assert not _kills(MIRPlace(b.id), fact, slots, layouts)
+    # A root write of the body's own value -- a tuple (only ever initialized),
+    # a generic record, a scalar -- writes storage no parameter reaches,
+    # whatever its type may hold.
     tup = MIRSlot(MIRSlotId(BODY, 4), tuple_shape(TupleType((INT32, program.types["H"])),
                                                   (leaf_shape(INT32), owned_shape(program.types["H"]))),
                   MIRSlotKind.LOCAL)
@@ -423,33 +446,51 @@ def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     gen = MIRSlot(MIRSlotId(BODY, 5), owned_shape(program.fields["Shapes.g"]), MIRSlotKind.LOCAL)
     num = MIRSlot(MIRSlotId(BODY, 6), leaf_shape(INT32), MIRSlotKind.LOCAL)
     slots.update({s.id: s for s in (tup, gen, num, other)})
-    assert _reaches(MIRPlace(tup.id), fact, slots, layouts)
-    assert not _reaches(MIRPlace(other.id), fact, slots, layouts)
-    assert _reaches(MIRPlace(gen.id), fact, slots, layouts)
-    assert not _reaches(MIRPlace(num.id), fact, slots, layouts)
-    # A generic record member may hold it too (a place MIR never builds:
-    # the field is unmodeled, so the question is the type's alone).
+    initialize = MIRStorageWriteMode.INITIALIZE
+    assert not _kills(MIRPlace(tup.id), fact, slots, layouts, initialize)
+    assert not _kills(MIRPlace(other.id), fact, slots, layouts, initialize)
+    assert not _kills(MIRPlace(gen.id), fact, slots, layouts)
+    assert not _kills(MIRPlace(num.id), fact, slots, layouts)
+    # A generic record member may hold it (a place MIR never builds: the
+    # field is unmodeled, so the question is the type's alone).
     assert _may_hold(program.fields["Shapes.g"], p.id, layouts.fields)
     # Rebinding an iterator's cursor writes no storage.
     cursor = MIRSlot(MIRSlotId(BODY, 7), cursor_shape(program.fields["Shapes.g"]), MIRSlotKind.LOCAL)
     slots[cursor.id] = cursor
-    assert not _reaches(MIRPlace(cursor.id), fact, slots, layouts)
-    # Two of the body's own objects are distinct storage.
-    assert not _reaches(MIRPlace(own_b.id, (p,)), MIRPlace(own_a.id, (p,)), slots, layouts)
-    assert _reaches(MIRPlace(b.id, (MIRDeref(), p)), MIRPlace(own_a.id, (p,)), slots, layouts)
+    assert not _kills(MIRPlace(cursor.id), fact, slots, layouts)
+    # Two of the body's own objects are distinct storage, and a parameter's
+    # field is never the body's own.
+    assert not _kills(MIRPlace(own_b.id, (p,)), MIRPlace(own_a.id, (p,)), slots, layouts)
+    assert not _kills(MIRPlace(b.id, (MIRDeref(), p)), MIRPlace(own_a.id, (p,)), slots, layouts)
+
+    # Fail closed, for a write of the body's own storage that keeps the
+    # selection with its fact and its referents: a storage write without
+    # its fact (what it replaces is unknown), or with no referents known.
+    state = _State(frozenset({(fact, frozenset({1}))}))
+    own_write = MIRAssign(MIRPlace(own_b.id), MIRConstant(0))
+    assert not _kill_field_facts(state, own_write, MIRPoint(None, 0), slots, layouts,
+                                 _parameter_resolve(slots, layouts)).present
+    own_write = replace(own_write, storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE))
+    for unknown in (frozenset(), None):
+        assert not _kill_field_facts(state, own_write, MIRPoint(None, 0), slots, layouts,
+                                     lambda point, place, unknown=unknown: unknown).present
 
 
 def test_a_whole_field_write_selects_what_it_writes(program: _Program) -> None:
     holder = _holder(program, 0)
     slots = {holder.id: holder}
+    layouts = _declared()
     field = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p")))
     state = _State(frozenset({(field, frozenset({1}))}))
-    emptied = _transfer(state, MIRAssign(field, MIRWrap(0)), set(), slots=slots, layouts=_declared())
+    resolve = _parameter_resolve(slots, layouts)
+
+    def kill(at: _State, stmt: MIRAssign) -> _State:
+        return _kill_field_facts(at, stmt, MIRPoint(None, 0), slots, layouts, resolve)
+    emptied = _transfer(state, MIRAssign(field, MIRWrap(0)), set(), slots=slots, layouts=layouts, kill=kill)
     assert emptied.present == frozenset({(field, frozenset({0}))})
     scalar = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.n")))
-    kept = _transfer(state, MIRAssign(scalar, MIRConstant(1)), set(), slots=slots, layouts=_declared())
+    kept = _transfer(state, MIRAssign(scalar, MIRConstant(1)), set(), slots=slots, layouts=layouts, kill=kill)
     assert kept.present == state.present
-
 
 
 def test_may_hold_looks_through_aggregates(program: _Program) -> None:
@@ -522,7 +563,7 @@ def test_an_inline_field_copied_into_a_pointer_optional_lends_its_payload(progra
     assert copy.value == MIRCopy(field) and copy.target == MIRPlace(o.id)
     slots = {s.id: s for s in fn.slots}
     assert o.shape.payload.is_pointer and place_shape(field, slots, fn.record_layouts).payload.is_storage
-    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    dependencies = prepared(fn).dependencies
     after = dependencies.referents[MIRPoint(point.block, point.index + 1)]
     payload = MIRPlace(h.id, (_member(program, "H.p"), MIRUnionPayload(1)))
     assert after[MIRPlace(o.id, (MIRUnionPayload(1),))] == frozenset({MIRReferent(payload, True)})
@@ -534,7 +575,7 @@ def test_an_absent_field_selection_stays_absent_through_the_copy(program: _Progr
     fn = program.verdicts["lend_absent"].function
     point, _ = _copy(fn)
     o = next(s for s in fn.slots if s.name == "o")
-    presence = _analyze_presence(fn)
+    presence = prepared(fn).presence
     assert dict(presence.points[MIRPoint(point.block, point.index + 1)]).get(MIRPlace(o.id)) == frozenset({0})
 
 

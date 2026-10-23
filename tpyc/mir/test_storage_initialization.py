@@ -5,9 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
-from .dependencies import analyze_dependencies
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRIsAlternative,
     MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
@@ -15,12 +13,12 @@ from .nodes import (
 )
 from .shapes import MIRUnionPayload
 from .payload_lifetime import analyze_payload_ends
-from .presence import _analyze_presence
 from .scope_lifetime import analyze_scope_ends
-from .storage import analyze_storage
-from .testutil import bind_parameters, execute, leaf_shape, optional_shape, union_shape
-from .validate import MIRDefiniteAssignmentError, validate_function
+from .storage import analyze_storage, dump_storage
+from .testutil import bind_parameters, execute, leaf_shape, optional_shape, union_shape, prepared
+from .validate import MIRDefiniteAssignmentError
 from .value import MIRValidationError
+from .prepare import validate_function
 
 
 BODY = MIRBodyId("storage_initialization", "example")
@@ -64,15 +62,18 @@ def write(shape: str) -> MIRAssign:
 def test_unassigned_wrapper_has_a_physical_scope_end(shape: str) -> None:
     fn = function(shape, MIRBlock(ENTRY, (initialize(shape),), MIRReturn(VALUE), ROOT))
     validate_function(fn)
-    live = analyze_liveness(fn)
+    live = prepared(fn).liveness
     assert live.entry_live == frozenset({VALUE})
     assert all(CURRENT not in slots for slots in live.points.values())
-    deps = analyze_dependencies(fn, live)
+    deps = prepared(fn).dependencies
     assert not any(deps.referents.values())
-    assert not analyze_storage(fn).writes
-    assert not analyze_payload_ends(fn).ends
-    assert dict(_analyze_presence(fn).points[MIRPoint(ENTRY, 1)])[MIRPlace(CURRENT)] == frozenset({0})
-    event, = analyze_scope_ends(fn).ends[MIREdge(ENTRY)]
+    inventory = analyze_storage(prepared(fn))
+    # The wrapper is constructed with its default: an inventory line, no write.
+    assert not inventory.writes and list(inventory.constructions) == [MIRPoint(ENTRY, 0)]
+    assert f"bb{ENTRY.index} before 0: construct-wrapper %{CURRENT.index}" in dump_storage(inventory)
+    assert not analyze_payload_ends(prepared(fn)).ends
+    assert dict(prepared(fn).presence.points[MIRPoint(ENTRY, 1)])[MIRPlace(CURRENT)] == frozenset({0})
+    event, = analyze_scope_ends(prepared(fn)).ends[MIREdge(ENTRY)]
     assert event.storage == MIRPlace(CURRENT)
     assert event.payloads == (frozenset({MIRPlace(CURRENT, (MIRUnionPayload(0),))})
                               if shape in ("union_bool", "union_int") else frozenset())
@@ -84,9 +85,14 @@ def test_unassigned_wrapper_has_a_physical_scope_end(shape: str) -> None:
 def test_first_source_write_assigns_existing_storage(shape: str) -> None:
     fn = function(shape, MIRBlock(ENTRY, (initialize(shape), write(shape), write(shape)), MIRReturn(VALUE), ROOT))
     validate_function(fn)
-    ends = analyze_payload_ends(fn).ends
+    ends = analyze_payload_ends(prepared(fn)).ends
     assert ends == ({MIRPoint(ENTRY, 1): frozenset({MIRPlace(CURRENT, (MIRUnionPayload(0),))})}
                     if shape in ("union_bool", "union_int") else {})
+    # Each write replaces the wrapper's payload: inventoried apart from the
+    # storage writes retention and `mir_write` read.
+    inventory = analyze_storage(prepared(fn))
+    assert not inventory.writes and list(inventory.payload_writes) == [MIRPoint(ENTRY, 1), MIRPoint(ENTRY, 2)]
+    assert f"bb{ENTRY.index} before 1: payload-write %{CURRENT.index}" in dump_storage(inventory)
     assert execute(fn, 7, True) == 7
 
 
@@ -125,7 +131,7 @@ def test_conditional_construction_is_a_may_end_but_not_a_must_write() -> None:
         MIRBlock(YES, (initialize("union_bool"),), MIRGoto(JOIN), ROOT),
         MIRBlock(NO, (), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (), MIRReturn(VALUE), ROOT))
-    assert analyze_scope_ends(fn).ends[MIREdge(JOIN)][0].storage == MIRPlace(CURRENT)
+    assert analyze_scope_ends(prepared(fn)).ends[MIREdge(JOIN)][0].storage == MIRPlace(CURRENT)
     changed = replace(fn, blocks=(*fn.blocks[:3], replace(fn.blocks[3], statements=(write("union_bool"),))))
     with pytest.raises(MIRValidationError, match="assignment before storage initialization"):
         validate_function(changed)
@@ -184,7 +190,7 @@ def test_loop_activation_ends_default_even_when_continue_skips_source_write(shap
         MIRBlock(NO, (), MIRReturn(VALUE), ROOT))
     fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], storage_duration=CHILD, residence=CHILD), *fn.slots[1:]),
                  regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES))))
-    ends = analyze_scope_ends(fn).ends
+    ends = analyze_scope_ends(prepared(fn)).ends
     assert tuple(ends) == (MIREdge(YES),)
     assert bool(ends[MIREdge(YES)][0].payloads) == (shape == "union_bool")
     assert execute(fn, 7, True) == 7
@@ -200,7 +206,7 @@ def test_body_default_before_loop_is_not_reconstructed_on_backedge() -> None:
         MIRBlock(NO, (), MIRReturn(VALUE), ROOT))
     fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], storage_duration=MIRStorageDuration.BODY), *fn.slots[1:])))
     validate_function(fn)
-    assert tuple(analyze_scope_ends(fn).ends) == (MIREdge(NO),)
+    assert tuple(analyze_scope_ends(prepared(fn)).ends) == (MIREdge(NO),)
     assert execute(fn, 7, False) == 7
     cyclic = replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], terminator=MIRGoto(ENTRY)), fn.blocks[2]))
     with pytest.raises(MIRValidationError, match="payload initialization in cycle"):

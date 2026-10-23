@@ -23,7 +23,7 @@ from .definitions import (
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRConstant, MIRFunction, MIRMemberInitMode, MIRNotCovered
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .validate import validate_function
+from .prepare import validate_function
 
 SOURCE = """\
 from tpy import int32, Own, String

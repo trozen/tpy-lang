@@ -5,8 +5,8 @@ from dataclasses import dataclass, replace
 import pytest
 
 from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
-from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies
-from .liveness import MIRPoint, analyze_liveness
+from .dependencies import MIRDependencies, MIRReferent
+from .liveness import MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRFunction,
     MIRGoto, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId,
@@ -16,16 +16,16 @@ from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPaylo
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .call_contract import MIRAliasObligation, MIRParameterWrite
 from .retention import (
-    MIRRetention, MIRRetentionConflict, _one_object, analyze_retention, dump_retention, may_overlap,
+    MIRRetention, MIRRetentionConflict, _one_object, analyze_retention, dump_retention,
 )
 from .storage import MIRStorageEvents, analyze_storage
 from .test_reuse import loop_source, source_function
 from .testutil import (
-    hand_record,
-    bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape,
-    union_shape,
+    hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot,
+    tuple_shape, union_shape, prepared,
 )
 from ..thir.scalar_leaves import MIRClass
+from .reach import reaches
 
 
 B = MIRBodyId("retention", "loop")
@@ -37,8 +37,7 @@ LAYOUT = MIRRecordLayout(CELL, (FIELD,), True, True)
 
 
 def analyze(fn: MIRFunction) -> MIRRetention:
-    live = analyze_liveness(fn)
-    result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    result = analyze_retention(prepared(fn))
     assert isinstance(result, MIRRetention), result
     return result
 
@@ -290,50 +289,55 @@ def test_branch_join_reports_possible_retention_without_merging_private_roots() 
 
 def test_mixed_analysis_instances_are_rejected_and_uncovered_stays_uncovered() -> None:
     fn, _, _ = loop_function("record")
-    live = analyze_liveness(fn)
-    deps = analyze_dependencies(fn, live)
-    events = analyze_storage(fn)
-    assert isinstance(deps, MIRDependencies) and isinstance(events, MIRStorageEvents)
+    ready = prepared(fn)
+    assert isinstance(ready.dependencies, MIRDependencies) and isinstance(analyze_storage(ready), MIRStorageEvents)
     other = replace(fn)
-    for inputs in ((analyze_liveness(other), deps, events),
-                   (live, replace(deps, function=other), events),
-                   (live, deps, replace(events, function=other))):
-        with pytest.raises(MIRValidationError, match="different MIR function"):
-            analyze_retention(fn, *inputs)
-    for inputs in ((MIRNotCovered(B, "dependencies", "missing duration"), events),
-                   (deps, MIRNotCovered(B, "storage", "missing record write fact"))):
-        result = analyze_retention(fn, live, *inputs)
-        assert isinstance(result, MIRNotCovered)
-        assert dump_retention(result).startswith("retention not covered:")
+    with pytest.raises(MIRValidationError, match="different MIR function"):
+        analyze_retention(replace(ready, dependencies=replace(ready.dependencies, function=other)))
+    missing = MIRNotCovered(B, "dependencies", "missing duration")
+    result = analyze_retention(replace(ready, dependencies=missing))
+    assert isinstance(result, MIRNotCovered)
+    assert dump_retention(result).startswith("retention not covered:")
 
 
 def test_actual_missing_write_metadata_cannot_be_an_empty_conflict_result() -> None:
     fn = in_place_function(live_alias=True)
     fn = replace(fn, blocks=(replace(fn.blocks[0], statements=tuple(
         replace(s, storage_write=None) for s in fn.blocks[0].statements)),))
-    live = analyze_liveness(fn)
-    result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    result = analyze_retention(prepared(fn))
     assert isinstance(result, MIRNotCovered)
-    assert "missing record write fact" in result.reason
+    assert "missing storage write fact" in result.reason
 
 
-def test_overlap_distinguishes_payload_origins_from_inline_fields() -> None:
+def _any(written: MIRReferent, target: MIRReferent) -> bool:
+    return True
+
+
+def _none(written: MIRReferent, target: MIRReferent) -> bool:
+    return False
+
+
+def test_reach_distinguishes_payload_origins_from_inline_fields() -> None:
     other_field = MIRField(MIRFieldId(CELL, "other"), INT32)
     root = MIRPlace(CURRENT)
     child = MIRPlace(CURRENT, (FIELD,))
     sibling = MIRPlace(CURRENT, (other_field,))
     for external in (False, True):
-        assert may_overlap(MIRReferent(root, external), MIRReferent(child, external))
-        assert may_overlap(MIRReferent(child, external), MIRReferent(root, external))
-        assert not may_overlap(MIRReferent(child, external), MIRReferent(sibling, external))
-    assert not may_overlap(MIRReferent(root), MIRReferent(root, True))
-    assert not may_overlap(MIRReferent(root), MIRReferent(MIRPlace(SAVED)))
-    assert may_overlap(MIRReferent(root, True), MIRReferent(MIRPlace(SAVED), True))
-    # Two payloads of one parameter can point at the same object or parent/child.
+        # A whole write reaches what lies under its place, never the storage around it.
+        assert reaches(MIRReferent(root, external), MIRReferent(child, external), _any)
+        assert not reaches(MIRReferent(child, external), MIRReferent(root, external), _any)
+        assert not reaches(MIRReferent(child, external), MIRReferent(sibling, external), _any)
+    assert not reaches(MIRReferent(root), MIRReferent(root, True), _any)
+    assert not reaches(MIRReferent(root), MIRReferent(MIRPlace(SAVED)), _any)
+    # Two external origins may be one object: the caller's oracle decides.
+    assert reaches(MIRReferent(root, True), MIRReferent(MIRPlace(SAVED), True), _any)
+    assert not reaches(MIRReferent(root, True), MIRReferent(MIRPlace(SAVED), True), _none)
+    # Two payloads of one parameter are two origins: they can point at the same object or parent/child.
     for left, right in ((MIRTupleIndex(0), MIRTupleIndex(1)),
                         (MIRUnionPayload(0), MIRUnionPayload(1))):
-        assert may_overlap(MIRReferent(MIRPlace(CURRENT, (left, FIELD)), True),
-                           MIRReferent(MIRPlace(CURRENT, (right, other_field)), True))
+        written = MIRReferent(MIRPlace(CURRENT, (left, FIELD)), True)
+        target = MIRReferent(MIRPlace(CURRENT, (right, other_field)), True)
+        assert reaches(written, target, _any) and not reaches(written, target, _none)
 
 
 @dataclass(frozen=True)

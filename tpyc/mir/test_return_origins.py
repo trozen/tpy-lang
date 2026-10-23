@@ -24,9 +24,8 @@ from .shapes import (
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
-from .dependencies import MIRReferent, analyze_dependencies, call_return_problem, resolve_call_returns
+from .dependencies import MIRReferent, call_return_problem, resolve_call_returns
 from .dump import _call as _dump_call, _write_step, dump_function
-from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
@@ -34,7 +33,9 @@ from .nodes import (
 )
 from . import summaries
 from .summaries import summarize_function
-from .testutil import as_declared, Redeclared, no_layouts, borrowed_shape, bound, leaf_shape, reaccess
+from .testutil import (
+    as_declared, Redeclared, no_layouts, borrowed_shape, bound, leaf_shape, reaccess, prepared, workspace_functions,
+)
 from .value import MIRRecords, MIRField, MIRFieldId, MIRHolding, MIRShape
 
 
@@ -303,7 +304,7 @@ def _slot(fn: MIRFunction, name: str) -> MIRSlot:
 
 
 def _end_referents(fn: MIRFunction, name: str) -> frozenset[MIRReferent]:
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     block = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     return deps.referents[MIRPoint(block.id, len(block.statements))][MIRPlace(_slot(fn, name).id)]
 
@@ -678,7 +679,7 @@ def test_call_return_problem_checks_the_endpoint_type(program: _Program) -> None
     fn = _lowered(program, "via_getter")
     stmt = next(s for b in fn.blocks for s in b.statements if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall))
     slots = {s.id: s for s in fn.slots}
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     point = next(MIRPoint(b.id, i) for b in fn.blocks for i, s in enumerate(b.statements) if s is stmt)
     state = deps.referents[point]
     holder = slots[stmt.target.root]
@@ -702,7 +703,7 @@ def _call_site(program: _Program, name: str) -> tuple[MIRAssign, MIRSlot, dict, 
     slots = {s.id: s for s in fn.slots}
     point, stmt = next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
                        if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) and s.value.summary.returns)
-    state = analyze_dependencies(fn, analyze_liveness(fn)).referents[point]
+    state = prepared(fn).dependencies.referents[point]
     return stmt, slots[stmt.target.root], state, slots, fn.record_layouts
 
 
@@ -730,15 +731,15 @@ def test_a_return_field_outside_the_certified_layout_is_opaque(program: _Program
     """Hand-built definitions: the body lowers against the layout it is summarized with."""
     identity = _definition(program, "Bag.elems").resolved_callee.identity
     body, fn = program.workspace.definitions[identity]
-    lowered = program.workspace.bodies[body]
-    assert summarize_function(fn, lowered, program.definitions).state is MIRSummaryState.KNOWN
+    lowered = workspace_functions(program.workspace)[body]
+    assert summarize_function(fn, lowered, prepared(lowered), program.definitions).state is MIRSummaryState.KNOWN
     bag = program.definitions.get(None, _bag(program))
     fewer = replace(bag, layout=replace(bag.layout, fields=tuple(
         f for f in bag.layout.fields if f.id.name != "items")))
     definitions = object.__new__(MIRDefinitions)
     object.__setattr__(definitions, "records", {**program.definitions.records, _bag(program): fewer})
     object.__setattr__(definitions, "layouts", as_declared(program.definitions.layouts, fewer.layout))
-    assert summarize_function(fn, lowered, definitions).reason == (
+    assert summarize_function(fn, lowered, prepared(lowered), definitions).reason == (
         "summary unsupported return origin: field missing from declared fields")
 
 
@@ -750,17 +751,17 @@ def test_a_return_origin_inside_a_record_is_read_from_the_parameters_slot(
     # itself, published as it is.
     identity = _definition(program, "Bag.elems").resolved_callee.identity
     body, fn = program.workspace.definitions[identity]
-    lowered = program.workspace.bodies[body]
+    lowered = workspace_functions(program.workspace)[body]
     receiver = next(s for s in lowered.slots if s.name == "self").shape
     asked: list[MIRShape] = []
 
     def lends_nothing(shape: MIRShape) -> MIRShape | None:
         asked.append(shape)
         return None
-    known = summarize_function(fn, lowered, program.definitions)
+    known = summarize_function(fn, lowered, prepared(lowered), program.definitions)
     assert known.state is MIRSummaryState.KNOWN and all(origin.path for origin in known.summary.returns)
     monkeypatch.setattr(summaries, "lent_record", lends_nothing)
-    assert summarize_function(fn, lowered, program.definitions) == known
+    assert summarize_function(fn, lowered, prepared(lowered), program.definitions) == known
     assert asked == [receiver]
 
 
@@ -783,14 +784,14 @@ def test_an_optional_record_parameter_returns_inside_its_payload(program: _Progr
     assert return_origin_problem(MIRReturnOrigin(0), th.THIRBorrowedRecord(box, True), parameters, layouts) is None
     # A field outside the payload's layout keeps the summary opaque.
     body, declaration = program.workspace.definitions[fn.resolved_callee.identity]
-    lowered = program.workspace.bodies[body]
+    lowered = workspace_functions(program.workspace)[body]
     definition = program.definitions.get(None, box)
     fewer = replace(definition, layout=replace(definition.layout, fields=tuple(
         f for f in definition.layout.fields if f.id.name != "inner")))
     definitions = object.__new__(MIRDefinitions)
     object.__setattr__(definitions, "records", {**program.definitions.records, box: fewer})
     object.__setattr__(definitions, "layouts", as_declared(program.definitions.layouts, fewer.layout))
-    assert summarize_function(declaration, lowered, definitions).reason == (
+    assert summarize_function(declaration, lowered, prepared(lowered), definitions).reason == (
         "summary unsupported return origin: field missing from declared fields")
 
 

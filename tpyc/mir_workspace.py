@@ -9,21 +9,22 @@ from .thir import nodes as th
 from .thir.validate import _iter_children
 from .mir.call_contract import MIRSummaryResult, MIRSummaryState
 from .mir.definitions import MIRDefinitions
-from .mir.lower import lower_function
-from .mir.nodes import MIRBodyId, MIRFunction, MIRNotCovered
+from .mir.lower import MIRLoweredStorage, lower_function_storage
+from .mir.nodes import MIRBodyId, MIRNotCovered
 from .mir.summaries import summarize_function
 
 
 @dataclass(frozen=True)
 class MIRCallWorkspace:
     summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult]
-    bodies: Mapping[MIRBodyId, MIRFunction | MIRNotCovered]
+    # Each body as lowered, with its preparation.
+    bodies: Mapping[MIRBodyId, MIRLoweredStorage | MIRNotCovered]
     # Per identity, the body that defines it and the `@auto_readonly` access
     # twin publishing it beside the definition (lowered by the verdict walk).
     definitions: Mapping[th.THIRFunctionIdentity, tuple[MIRBodyId, th.THIRFunction]] = MappingProxyType({})
     twins: Mapping[th.THIRFunctionIdentity, tuple[MIRBodyId, th.THIRFunction]] = MappingProxyType({})
 
-    def lowering(self, body: MIRBodyId, source: th.THIRFunction) -> MIRFunction | MIRNotCovered | None:
+    def lowering(self, body: MIRBodyId, source: th.THIRFunction) -> MIRLoweredStorage | MIRNotCovered | None:
         """The cached lowering of exactly `source` under `body` -- a
         definition's, or its access twin's from the twin check; None for any
         other function, so a twin never reads its definition's MIR."""
@@ -54,14 +55,15 @@ def _dependencies(fn: th.THIRFunction) -> set[th.THIRFunctionIdentity]:
 
 def _twin_checked(known: MIRSummaryResult, twin: tuple[MIRBodyId, th.THIRFunction], definitions: MIRDefinitions,
                   summaries: Mapping[th.THIRFunctionIdentity, MIRSummaryResult],
-                  bodies: dict[MIRBodyId, MIRFunction | MIRNotCovered]) -> MIRSummaryResult:
+                  bodies: dict[MIRBodyId, MIRLoweredStorage | MIRNotCovered]) -> MIRSummaryResult:
     """The definition's summary, kept only when its access twin summarizes
     to the same contract: inside a clone a call may resolve by the
     receiver's access, so equal bodies are checked, never assumed. The
     twin's lowering is cached under its own body id."""
     body, fn = twin
-    lowered = bodies[body] = lower_function(fn, body, definitions=definitions, summaries=summaries)
-    other = None if isinstance(lowered, MIRNotCovered) else summarize_function(fn, lowered, definitions)
+    lowered = bodies[body] = lower_function_storage(fn, body, definitions=definitions, summaries=summaries)
+    other = (None if isinstance(lowered, MIRNotCovered)
+             else summarize_function(fn, lowered.function, lowered.prepared, definitions))
     if other is None or other.state is not MIRSummaryState.KNOWN or other.summary != known.summary:
         return MIRSummaryResult.opaque("twin bodies differ")
     return known
@@ -72,7 +74,7 @@ def analyze_call_workspace(functions: tuple[tuple[MIRBodyId, th.THIRFunction], .
     """Publish leaves before callers; unresolved cycles never start empty."""
     declarations: dict[th.THIRFunctionIdentity, tuple[MIRBodyId, th.THIRFunction]] = {}
     summaries: dict[th.THIRFunctionIdentity, MIRSummaryResult] = {}
-    bodies: dict[MIRBodyId, MIRFunction | MIRNotCovered] = {}
+    bodies: dict[MIRBodyId, MIRLoweredStorage | MIRNotCovered] = {}
     twins: dict[th.THIRFunctionIdentity, tuple[MIRBodyId, th.THIRFunction]] = {}
     for body, fn in functions:
         if fn.resolved_callee is None:
@@ -103,11 +105,11 @@ def analyze_call_workspace(functions: tuple[tuple[MIRBodyId, th.THIRFunction], .
     while ready:
         key = ready.popleft()
         body, fn = declarations[key]
-        result = lower_function(fn, body,
-                                definitions=definitions, summaries=MappingProxyType(summaries))
+        result = lower_function_storage(fn, body,
+                                        definitions=definitions, summaries=MappingProxyType(summaries))
         bodies[body] = result
         summaries[key] = (MIRSummaryResult.opaque(result.reason) if isinstance(result, MIRNotCovered)
-                          else summarize_function(fn, result, definitions))
+                          else summarize_function(fn, result.function, result.prepared, definitions))
         if key in twins and summaries[key].state is MIRSummaryState.KNOWN:
             summaries[key] = _twin_checked(summaries[key], twins[key], definitions, MappingProxyType(summaries),
                                            bodies)

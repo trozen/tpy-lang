@@ -2,7 +2,7 @@
 
 from collections import deque
 from collections.abc import Callable, Iterator, Mapping
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from types import MappingProxyType
 
 from ..parse import SourceLocation
@@ -13,7 +13,7 @@ from ..thir.scalar_leaves import (
     MIRClass, holds_loan, value_class,
 )
 from ..typesys import NominalType, TpyType, unwrap_readonly
-from .dump import _place
+from .place_text import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRCallStmt, MIRStatement, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
@@ -23,30 +23,17 @@ from .nodes import (
     MIRWrap, place_shape, MIRPresentCall,
 )
 from .value import (
-    MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError, lent_record,
+    MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
     loan_field, member_types, WRAPPER_CLASSES,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
-    OPTIONAL_PAYLOAD, walk, walk_to, object_prefix, optional_payload,
+    walk, object_prefix, optional_payload,
 )
-from .validate import MIRPrepared, _validated_function, successors
+from .validate import successors
+from .presence import MIRPresence
+from .reach import MIRReferent, _parameter_lent_record, origin
 from .region_flow import MIRRegionFlow, outgoing_edges
-
-
-@dataclass(frozen=True)
-class MIRReferent:
-    place: MIRPlace
-    # External origins may alias one another, including ancestor/child paths.
-    external: bool = False
-    # A literal's immortal storage, which nothing writes: decided where the
-    # referent is created, never by elimination. Derived from the place, so
-    # it does not take part in identity.
-    static: bool = field(default=False, compare=False)
-    # The loan an external record's view member stores (`place` names the
-    # member): whatever owned-leaf storage outside the body it views, which
-    # any external replacement may be.
-    held: bool = False
 
 
 class _DependencyRefusal(Exception):
@@ -304,31 +291,6 @@ def _project(refs: frozenset[MIRReferent],
                      for r in refs for projection in projections)
 
 
-@dataclass(frozen=True)
-class MIROrigin:
-    """What a dependency leaf names outside the body (`place`), and the
-    value the projections of a referent rooted there step from (`shape`)."""
-    place: MIRPlace
-    shape: MIRShape
-
-
-def origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIROrigin:
-    """The one origin of a leaf: its own identity (each tuple member its
-    own), from the object its slot holds (a holder's pointee) -- except that a container view (a Span)
-    names the elements region it views, so an element read or a write
-    through it lands there, and an Optional record parameter's payload
-    names the parameter itself, from the payload record it lends, as a
-    borrowed record parameter's does."""
-    slot = slots[leaf.root]
-    lent = _parameter_lent_record(slot) is not None
-    shape = walk_to(slot.shape, object_prefix(slot.shape, payload=lent), {})
-    if not leaf.projections and slot.shape.container_view_holder:
-        return MIROrigin(MIRPlace(leaf.root, (MIRContainerElements(),)), shape)
-    if leaf.projections == (OPTIONAL_PAYLOAD,) and lent:
-        return MIROrigin(MIRPlace(leaf.root), shape)
-    return MIROrigin(leaf, shape)
-
-
 def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRPlace:
     """An external referent's place under an Optional record field's
     payload, published as the whole field: summary paths have no payload
@@ -342,19 +304,15 @@ def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], rec
     return place
 
 
-def _parameter_lent_record(slot: MIRSlot) -> MIRShape | None:
-    """The caller's record a parameter lends (`lent_record`), an origin
-    outside the body; a local holder's record is found through its loans."""
-    return lent_record(slot.shape) if slot.kind is MIRSlotKind.PARAMETER else None
-
-
 def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
                       records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent]:
     """Resolve a validated place against the referents at its program point."""
     empty: frozenset[MIRReferent] = frozenset()
     # Payload selectors address a holder leaf; dereference follows its value.
     leaf = MIRPlace(place.root)
-    refs = (frozenset({MIRReferent(leaf)})
+    # A global's storage lies outside the body, where a parameter may reach it.
+    external = slots[place.root].kind is MIRSlotKind.GLOBAL
+    refs = (frozenset({MIRReferent(leaf, external)})
             if slots[place.root].shape.is_storage else state.get(leaf, empty))
     # A container view's referents already are an elements region: a container
     # projection on the view itself names that region, never a region of it.
@@ -363,7 +321,7 @@ def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSl
         match projection := hop.projection:
             case MIRTupleIndex():
                 leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
-                refs = (frozenset({MIRReferent(leaf)}) if hop.reached.is_storage
+                refs = (frozenset({MIRReferent(leaf, external)}) if hop.reached.is_storage
                         else state.get(leaf, empty))
             case MIRUnionPayload() if hop.reached.is_storage:
                 # An inline payload is storage under the record that holds it.
@@ -591,10 +549,6 @@ def apply_transfers(present: MIRPresentCall, state: dict[MIRPlace, frozenset[MIR
                     changed = True
 
 
-def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
-    return _dependencies(_validated_function(fn), liveness)
-
-
 def resolve_call_returns(present: MIRPresentCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
                          records: Mapping[TpyType, MIRRecordLayout],
                          result: MIRSlot | None = None) -> frozenset[MIRReferent] | None:
@@ -643,8 +597,10 @@ def call_return_problem(present: MIRPresentCall, result: MIRSlot, state: MIRRefe
     return None
 
 
-def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
-    fn = prepared.function
+def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependencies | MIRNotCovered:
+    """The dependency facts of a body over the presence its preparation
+    gives (`prepare.prepare`): every caller reads them from `MIRPrepared`."""
+    fn = presence.function
     if liveness.function is not fn:
         raise MIRValidationError("liveness belongs to a different MIR function")
     found = _coverage(fn)
@@ -664,7 +620,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     leaves = {s.id: _leaves(s, slots) + (objects[s.id] if s.shape.is_storage else ())
               for s in fn.slots}
     empty: frozenset[MIRReferent] = frozenset()
-    present = prepared.presence.calls
+    present = presence.calls
 
     def transfer(point: MIRPoint, stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]],
                  final: bool) -> None:
@@ -768,21 +724,21 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                      caller_keys(fn, objects))
     except _DependencyRefusal as refused:
         return MIRNotCovered(fn.id, "dependencies", refused.reason, refused.loc)
-    return replace(flow, caller_stores=caller_stores(prepared, flow))
+    return replace(flow, caller_stores=caller_stores(presence, flow))
 
 
-def feasible_returns(prepared: MIRPrepared, dependencies: MIRDependencies
+def feasible_returns(presence: MIRPresence, dependencies: MIRDependencies
                      ) -> Iterator[tuple[MIRPoint, MIRReturn, MIRReferents]]:
     """Each return on a feasible path with its dependency state; a feasible
     point without facts is the dependency coverage's gap."""
-    for block in prepared.function.blocks:
+    for block in presence.function.blocks:
         point = MIRPoint(block.id, len(block.statements))
         state = dependencies.referents.get(point)
-        if isinstance(block.terminator, MIRReturn) and point in prepared.presence.points and state is not None:
+        if isinstance(block.terminator, MIRReturn) and point in presence.points and state is not None:
             yield point, block.terminator, state
 
 
-def caller_stores(prepared: MIRPrepared, dependencies: MIRDependencies) -> tuple[MIRCallerStore, ...]:
+def caller_stores(presence: MIRPresence, dependencies: MIRDependencies) -> tuple[MIRCallerStore, ...]:
     """The loans the body may store in objects the caller reaches, at each
     feasible point: each `pinned` entry, and at each return of an owned
     record the returned slot's entries (`MIRCallerStore`). The summary
@@ -791,10 +747,10 @@ def caller_stores(prepared: MIRPrepared, dependencies: MIRDependencies) -> tuple
     keys = sorted(dependencies.pinned, key=_place)
     stores: list[MIRCallerStore] = []
     for point, state in dependencies.referents.items():
-        if point in prepared.presence.points:
+        if point in presence.points:
             stores.extend(MIRCallerStore(key, point, state[key]) for key in keys if state.get(key))
-    if owned_aggregate_result(prepared.function.return_type) is not None:
-        for point, term, state in feasible_returns(prepared, dependencies):
+    if owned_aggregate_result(presence.function.return_type) is not None:
+        for point, term, state in feasible_returns(presence, dependencies):
             if term.value is not None:
                 stores.extend(MIRCallerStore(key, point, state[key], result=True)
                               for key in dependencies.objects[term.value] if state.get(key))

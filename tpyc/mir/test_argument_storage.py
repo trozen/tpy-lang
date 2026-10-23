@@ -27,8 +27,11 @@ from .nodes import (
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
-from .validate import validate_function
-from .testutil import compiled_definitions, borrowed_shape, leaf_shape, optional_shape, tuple_shape, union_shape
+from .testutil import (
+    compiled_definitions, borrowed_shape, leaf_shape, optional_shape, tuple_shape, union_shape, prepared,
+    workspace_functions,
+)
+from .prepare import validate_function
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -155,7 +158,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
         body = lower_constructor(ctor, MIRBodyId("main", name), definitions=definitions,
                                  summaries=workspace.summaries)
     else:
-        body = next(value for key, value in workspace.bodies.items() if key.declaration.split("@")[0] == name)
+        body = next(value for key, value in workspace_functions(workspace).items() if key.declaration.split("@")[0] == name)
     assert isinstance(body, MIRFunction), body
     return body
 
@@ -174,7 +177,7 @@ def test_named_callers_are_valid_without_copying(artifacts: Artifacts, name: str
     assert any(isinstance(stmt.value, MIRCall) for stmt in statements)
     assert not any(isinstance(stmt.value, MIRCopy) for stmt in statements)
     assert "const Cell&" in artifacts[3]
-    result = inspect_scope_lifetimes(body)
+    result = inspect_scope_lifetimes(prepared(body))
     assert not isinstance(result, MIRNotCovered), result
     assert not result.conflicts
 
@@ -184,7 +187,7 @@ def test_storage_survives_eager_statement_and_first_if_join(artifacts: Artifacts
         body = _body(artifacts, name)
         first = _storage(body)[0]
         assert first.storage_duration is MIRStorageDuration.BODY
-        ends = analyze_scope_ends(body)
+        ends = analyze_scope_ends(prepared(body))
         blocks = {block.id: block for block in body.blocks}
         relevant = [edge for edge, records in ends.ends.items() if any(end.storage.root == first.id for end in records)]
         assert relevant
@@ -262,7 +265,7 @@ def test_owning_callers_summarize_known_and_excluded_calls_stay_uncovered(artifa
         assert not result.summary.writes and not result.summary.returns, name
     for name, reason in (("nested_operand", "named temporary needs stable scalar operands"),
                          ("effect", "named argument needs readonly record constructor")):
-        body = next(value for key, value in workspace.bodies.items() if key.declaration.split("@")[0] == name)
+        body = next(value for key, value in workspace_functions(workspace).items() if key.declaration.split("@")[0] == name)
         assert isinstance(body, MIRNotCovered) and body.reason == reason, body
 
 
@@ -338,7 +341,7 @@ def test_source_boundaries_reject_at_the_expected_gate(
         _, ctx = compiler.generate_code_and_thir(entry)
         definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
         workspace = analyze_call_workspace(call_definitions(ctx, entry.name), definitions)
-        result = next(body for identity, body in workspace.bodies.items()
+        result = next(body for identity, body in workspace_functions(workspace).items()
                       if identity.declaration.split("@")[0] == "rejected")
         assert isinstance(result, MIRNotCovered), result
         if blocked_callee is not None:
@@ -459,7 +462,7 @@ def test_retained_holders_observe_named_backing_scope_end(
                  blocks=(MIRBlock(entry, (), MIRGoto(inside), root),
                          MIRBlock(inside, (*statements, MIRAssign(MIRPlace(holder), capture)), MIRGoto(after), child),
                          MIRBlock(after, (MIRAssign(MIRPlace(copied), copy),), original.terminator, root)))
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     assert not result.freshness
     assert len(result.conflicts) == 1
     assert result.conflicts[0].ended == MIRPlace(storage.id)

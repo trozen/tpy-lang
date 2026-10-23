@@ -5,8 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..typesys import BOOL
-from .dependencies import MIRReferent, _dependencies
-from .liveness import _liveness
+from .dependencies import MIRReferent
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRConstant, MIREdge, MIRFunction,
     MIRGoto, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn,
@@ -20,9 +19,10 @@ from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_functio
 from .test_payload_lifetime import CURRENT, FLAG
 from .test_retention import AGAIN, END, LOOP, SITE, loop_function
 from .test_scope_lifetime import Artifacts, artifacts, compiled  # noqa: F401 -- fixtures
-from .validate import MIRPresenceError, _prepare_function, validate_function
+from .validate import MIRPresenceError
 from .value import MIRValidationError
-from .testutil import bind_parameters, leaf_shape
+from .testutil import bind_parameters, leaf_shape, prepared
+from .prepare import validate_function
 
 
 def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction, MIRPlace]:
@@ -45,7 +45,7 @@ def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction,
 @pytest.mark.parametrize("reseat_first", [False, True])
 def test_loop_carried_retention_uses_successor_liveness(shape: str, reseat_first: bool) -> None:
     fn, observed = scoped_loop(shape, reseat_first=reseat_first)
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     assert not isinstance(result.conflicts, MIRNotCovered)
     if reseat_first:
         assert not result.conflicts
@@ -56,19 +56,19 @@ def test_loop_carried_retention_uses_successor_liveness(shape: str, reseat_first
         assert conflict.retained.place == MIRPlace(SITE)
     # The other successor returns a scalar already read before the end.
     assert not any(c.edge == MIREdge(LOOP, 1) for c in result.conflicts)
-    assert dump_scope_inspection(result) == dump_scope_inspection(inspect_scope_lifetimes(fn))
+    assert dump_scope_inspection(result) == dump_scope_inspection(inspect_scope_lifetimes(prepared(fn)))
 
 
 def test_source_branch_escape_and_safe_mutation_controls(artifacts: Artifacts) -> None:
     bodies = artifacts[1]
     fn = bodies["retained"]
     assert isinstance(fn, MIRFunction)
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     conflict, = result.conflicts
     assert next(s for s in fn.slots if s.id == conflict.holder.root).name == "saved"
     assert isinstance(next(s for s in fn.slots if s.id == conflict.ended.root).storage_duration, MIRRegionId)
     for name in ("branch", "loop", "wrapper", "union", "optional_record", "nested", "Observer", "own"):
-        safe = inspect_scope_lifetimes(bodies[name])
+        safe = inspect_scope_lifetimes(prepared(bodies[name]))
         assert safe.conflicts == (), (name, safe)
 
 
@@ -79,7 +79,7 @@ def test_reseat_before_end_removes_the_expiring_dependency() -> None:
     restore_borrow = entry.statements[1]
     restore_capture = entry.statements[3]
     fn = replace(fn, blocks=(entry, replace(loop, statements=(*loop.statements, restore_borrow, restore_capture)), again, end))
-    assert inspect_scope_lifetimes(fn).conflicts == ()
+    assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
 def stale_scalar_alias() -> MIRFunction:
@@ -102,8 +102,8 @@ def test_scope_end_invalidates_scalar_alias_without_erasing_its_referent() -> No
     with pytest.raises(MIRPresenceError, match="storage end"):
         validate_function(fn)
     with pytest.raises(MIRPresenceError):
-        analyze_scope_ends(fn)
-    result = inspect_scope_lifetimes(fn)
+        analyze_scope_ends(prepared(fn))
+    result = inspect_scope_lifetimes(prepared(fn))
     conflict, = result.conflicts
     assert conflict.holder == MIRPlace(ALIAS)
     assert conflict.ended == EXTRACT.value.source
@@ -128,7 +128,7 @@ def test_reentering_and_reconstructing_does_not_erase_scalar_alias_failure(physi
     # read after their region exit remains stale, despite later reconstruction.
     with pytest.raises(MIRPresenceError, match="storage end"):
         validate_function(fn)
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     conflict, = result.conflicts
     assert conflict.edge == MIREdge(fn.blocks[1].id)
     assert conflict.ended == EXTRACT.value.source
@@ -150,12 +150,11 @@ def test_skipped_union_construction_keeps_old_payload_alias(read_inside: bool) -
         MIRBlock(skipped, (), MIRGoto(entry.id), entry.region),
         MIRBlock(end, (), MIRReturn(fn.slots[3].id), entry.region)),
         regions=(fn.regions[0], replace(fn.regions[1], entry=guard))))
-    prepared = _prepare_function(fn)
-    dependencies = _dependencies(prepared, _liveness(prepared))
-    assert dependencies.referents[MIRPoint(skipped, 0)][MIRPlace(ALIAS)] == frozenset({
+    ready = prepared(fn)
+    assert ready.dependencies.referents[MIRPoint(skipped, 0)][MIRPlace(ALIAS)] == frozenset({
         MIRReferent(EXTRACT.value.source)})
-    assert MIRPlace(CURRENT) not in dict(prepared.presence.points[MIRPoint(skipped, 0)])
-    result = inspect_scope_lifetimes(fn)
+    assert MIRPlace(CURRENT) not in dict(ready.presence.points[MIRPoint(skipped, 0)])
+    result = inspect_scope_lifetimes(prepared(fn))
     assert MIREdge(guard, 0) not in result.ends.ends
     assert bool(result.freshness) is not read_inside
     assert bool(result.conflicts) is not read_inside
@@ -172,23 +171,23 @@ def test_inspection_still_rejects_missing_selection() -> None:
     invalid = replace(child.statements[0], value=replace(child.statements[0].value, alternative=0, source=None))
     fn = replace(fn, blocks=(fn.blocks[0], replace(child, statements=(invalid, EXTRACT)), fn.blocks[2]))
     with pytest.raises(MIRPresenceError, match="presence proof"):
-        inspect_scope_lifetimes(fn)
+        inspect_scope_lifetimes(prepared(fn))
 
 
 def test_inputs_must_belong_to_the_same_exact_function() -> None:
     fn, _ = scoped_loop("record")
-    prepared = _prepare_function(fn)
-    live = _liveness(prepared)
-    deps = _dependencies(prepared, live)
-    ends = _scope_ends(prepared)
+    ready = prepared(fn)
+    ends = _scope_ends(ready)
     for which in ("live", "dependencies", "ends"):
         foreign = replace(fn)
         with pytest.raises(MIRValidationError, match="different MIR function"):
-            _scope_conflicts(prepared, replace(live, function=foreign) if which == "live" else live,
-                             replace(deps, function=foreign) if which == "dependencies" else deps,
+            _scope_conflicts(replace(ready, liveness=replace(ready.liveness, function=foreign) if which == "live"
+                                     else ready.liveness,
+                                     dependencies=replace(ready.dependencies, function=foreign)
+                                     if which == "dependencies" else ready.dependencies),
                              replace(ends, function=foreign) if which == "ends" else ends)
     missing = MIRNotCovered(fn.id, "dependencies", "unknown storage")
-    result = _scope_conflicts(prepared, live, missing, ends)
+    result = _scope_conflicts(replace(ready, dependencies=missing), ends)
     assert isinstance(result, MIRNotCovered) and "unknown storage" in result.reason
 
 
@@ -209,7 +208,7 @@ def test_dynamic_trace_finds_previous_activation_even_at_the_same_static_site() 
             saved = current
             ended.add(current)
         assert expired_reads == ([] if reseat_first else [2])
-        conflicts = inspect_scope_lifetimes(fn).conflicts
+        conflicts = inspect_scope_lifetimes(prepared(fn)).conflicts
         assert bool(conflicts) == bool(expired_reads)
         assert all(c.holder == observed and c.edge == MIREdge(LOOP, 0) for c in conflicts)
 
@@ -229,7 +228,7 @@ def test_skipped_construction_preserves_old_holder_dependencies(shape: str, rese
         replace(again, terminator=MIRGoto(guard)), end,
         MIRBlock(guard, reads, MIRBranch(skip.id, AGAIN, LOOP), loop.region)),
         regions=(fn.regions[0], replace(fn.regions[1], entry=guard))))
-    result = inspect_scope_lifetimes(fn)
+    result = inspect_scope_lifetimes(prepared(fn))
     assert MIREdge(guard, 0) not in result.ends.ends
     assert bool(result.conflicts) is not reseat_first
     assert all(c.holder == observed and c.edge == MIREdge(LOOP, 0) for c in result.conflicts)

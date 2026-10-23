@@ -7,7 +7,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType, VoidType
-from .liveness import MIRPoint, analyze_liveness, dump_liveness
+from .liveness import MIRPoint, _liveness, dump_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
@@ -22,9 +22,8 @@ from .test_iteration import fixture as iteration_fixture
 from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
 from .testutil import (
-    compiled_definitions,
-    hand_record,
-    bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape,
+    compiled_definitions, hand_record, bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape,
+    owned_shape, tuple_shape, union_shape, prepared,
 )
 
 B = MIRBodyId("liveness", "test")
@@ -51,7 +50,7 @@ def test_overwrite_self_assignment_and_point_boundaries() -> None:
         MIRAssign(MIRPlace(Z), MIRRead(MIRPlace(Z))),
         MIRAssign(MIRPlace(Z), MIRRead(MIRPlace(Y))),
     ), MIRReturn(Z)))
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == {X, Y}
     assert result.points[MIRPoint(A, 1)] == {Z, Y}
     assert result.points[MIRPoint(A, 2)] == {Y}
@@ -59,7 +58,7 @@ def test_overwrite_self_assignment_and_point_boundaries() -> None:
     assert result.live_out[A] == set()
     with pytest.raises(TypeError):
         result.live_in[A] = frozenset()
-    assert dump_liveness(result) == dump_liveness(analyze_liveness(fn))
+    assert dump_liveness(result) == dump_liveness(prepared(fn).liveness)
 
 
 def test_diamond_joins_preserve_both_possible_uses() -> None:
@@ -69,7 +68,7 @@ def test_diamond_joins_preserve_both_possible_uses() -> None:
         MIRBlock(D, (MIRAssign(MIRPlace(Z), MIRRead(MIRPlace(Y))),), MIRGoto(E)),
         MIRBlock(E, (), MIRReturn(Z)),
     )
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == {P, X, Y}
     assert result.live_out[A] == {X, Y}
     assert result.live_in[C] == {X}
@@ -85,13 +84,13 @@ def test_loop_zero_trip_backedge_and_break_need_fixed_point() -> None:
         MIRBlock(D, (MIRAssign(MIRPlace(X), MIRRead(MIRPlace(Y))),), MIRGoto(A)),
         MIRBlock(C, (), MIRBranch(P, D, E)),
     )
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == {P, X, Y}
     assert result.live_in[D] == {P, Y}
     assert result.live_out[D] == {P, X, Y}
     assert result.live_in[E] == {X}
     reversed_blocks = replace(fn, blocks=tuple(reversed(fn.blocks)))
-    assert dict(result.points) == dict(analyze_liveness(reversed_blocks).points)
+    assert dict(result.points) == dict(prepared(reversed_blocks).liveness.points)
 
 
 def test_nonterminating_loop_and_unreachable_reads() -> None:
@@ -100,7 +99,7 @@ def test_nonterminating_loop_and_unreachable_reads() -> None:
         MIRBlock(C, (MIRAssign(MIRPlace(Z), MIRRead(MIRPlace(X))),), MIRGoto(A)),
         MIRBlock(D, (), MIRReturn(Y)),
     )
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == result.live_in[C] == {X}
     assert D not in result.live_in
     assert MIRPoint(D, 0) not in result.points
@@ -112,7 +111,7 @@ def test_projected_write_uses_receiver_even_without_a_later_read() -> None:
     fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(P, (MIRDeref(), FIELD)), MIRRead(MIRPlace(X))),
     ), MIRReturn()),), A))
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == {P, X}
     assert result.points[MIRPoint(A, 1)] == set()
 
@@ -122,7 +121,7 @@ def test_global_write_uses_rhs_without_claiming_to_eliminate_the_store() -> None
              MIRSlot(X, leaf_shape(INT32), MIRSlotKind.PARAMETER))
     store = MIRAssign(MIRPlace(P), MIRRead(MIRPlace(X)))
     fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (store,), MIRReturn()),), A))
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == {X}
     assert result.points[MIRPoint(A, 1)] == set()
     assert result.function.blocks[0].statements == (store,)
@@ -143,7 +142,7 @@ def test_scalar_payload_alias_keeps_union_live_until_value_read() -> None:
                      MIRAssign(MIRPlace(Z), MIRRead(MIRPlace(Y)))), MIRReturn(Z)),
         MIRBlock(D, (MIRAssign(MIRPlace(Z), MIRConstant(0)),), MIRReturn(Z)),
     ), A))
-    result = analyze_liveness(fn)
+    result = _liveness(fn)
     assert result.points[MIRPoint(C, 1)] == {P, Y}
     assert result.points[MIRPoint(C, 2)] == {Z}
     assert result.live_in[D] == set()
@@ -155,7 +154,7 @@ def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
     fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (), MIRReturn()),), A,
                      records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
                      receiver_init=MIRReceiverInit(P, (MIRMemberInit(X),)), kind=MIRBodyKind.CONSTRUCTOR))
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.live_in[A] == set()
     assert result.entry_live == {P, X}
 
@@ -163,7 +162,7 @@ def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
 def test_invalid_mir_is_not_an_empty_success() -> None:
     fn = function(MIRBlock(A, (), MIRReturn(Z)))
     with pytest.raises(MIRValidationError, match="return before definite assignment"):
-        analyze_liveness(fn)
+        prepared(fn).liveness
 
 
 @pytest.mark.parametrize("operation", [
@@ -217,7 +216,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
                            else (MIRCopy(MIRPlace(Y)), {Y}))
     fn = bind_parameters(MIRFunction(B, VoidType(), (ref, scalar, other, target),
                      (MIRBlock(A, prefix + (MIRAssign(MIRPlace(Z), value),), MIRReturn()),), A, records=records))
-    result = analyze_liveness(fn)
+    result = prepared(fn).liveness
     assert result.points[MIRPoint(A, len(prefix))] == expected
     assert result.points[MIRPoint(A, len(prefix) + 1)] == set()
 
@@ -294,7 +293,7 @@ def test_emitted_operations_and_reference_copy_last_use() -> None:
             fn = lower_function(thir, MIRBodyId("liveness", node.name), definitions=definitions,
                                 summaries=workspace.summaries)
             assert isinstance(fn, MIRFunction), fn
-            result = analyze_liveness(fn)
+            result = prepared(fn).liveness
             for block in fn.blocks:
                 operations.update(type(s.value) for s in block.statements)
             if node.name == "aliases":
@@ -305,7 +304,7 @@ def test_emitted_operations_and_reference_copy_last_use() -> None:
                 assert stmt.value.source not in result.points[MIRPoint(block.id, index + 1)]
                 assert stmt.target.root in result.points[MIRPoint(block.id, index + 1)]
         iteration = iteration_fixture()
-        live = analyze_liveness(iteration)
+        live = prepared(iteration).liveness
         for block in iteration.blocks:
             for index, stmt in enumerate(block.statements):
                 operations.add(type(stmt.value))

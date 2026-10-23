@@ -5,9 +5,8 @@ from dataclasses import replace
 import pytest
 
 from ..typesys import BOOL, INT32, NominalType, OptionalType, UnionType, TupleType
-from .dependencies import MIRReferent, analyze_dependencies
+from .dependencies import MIRReferent
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRReturn,
@@ -17,15 +16,14 @@ from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
 )
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
-from .retention import may_overlap
+from .reach import reaches
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
 from .testutil import (
-    hand_record,
-    bind_parameters, ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
-    reslot, tuple_shape, union_shape,
+    hand_record, bind_parameters, ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape,
+    owned_shape, reslot, tuple_shape, union_shape, prepared,
 )
-from .validate import validate_function
+from .prepare import validate_function
 
 B = MIRBodyId("iteration", "retained")
 P, Q, SOURCE, ITER, HAS, FIRST, CURRENT, OUT, SEVEN = (MIRSlotId(B, i) for i in range(9))
@@ -75,17 +73,19 @@ def test_cursor_advance_and_source_reseat_do_not_retarget_saved_element() -> Non
     assert heap[2][FIELD.id] == 7 and heap[3][FIELD.id] == 99
     assert execute(fn, ContainerValue(()), other, heap=heap) == 0
     assert execute(fn, ContainerValue((Reference(1),)), other, heap=heap) == 3
-    live = analyze_liveness(fn)
-    deps = analyze_dependencies(fn, live)
+    live = prepared(fn).liveness
+    deps = prepared(fn).dependencies
     elements = MIRReferent(MIRPlace(P, (MIRContainerElements(),)), external=True)
     structure = MIRReferent(MIRPlace(P, (MIRContainerStructure(),)), external=True)
     assert deps.referents[MIRPoint(FIRST_BODY, 0)][MIRPlace(ITER)] == {elements, structure}
     assert deps.active[MIRPoint(DONE, 0)] == {MIRPlace(FIRST): {elements}}
     assert SOURCE not in live.points[MIRPoint(FIRST_BODY, 0)]
-    assert not analyze_storage(fn).writes
+    assert not analyze_storage(prepared(fn)).writes
     assert "iterator-advance" in dump_function(fn)
-    assert analyze_scope_ends(fn).reason == "missing emitted storage regions"
-    assert may_overlap(elements, MIRReferent(MIRPlace(Q, (MIRContainerElements(),)), external=True))
+    assert analyze_scope_ends(prepared(fn)).reason == "missing emitted storage regions"
+    # Another parameter's elements: two origins, the caller's oracle decides.
+    assert reaches(elements, MIRReferent(MIRPlace(Q, (MIRContainerElements(),)), external=True),
+                   lambda written, target: True)
 
 
 def test_ending_iteration_target_does_not_end_caller_elements() -> None:
@@ -98,10 +98,10 @@ def test_ending_iteration_target_does_not_end_caller_elements() -> None:
                                      second if s.id == CURRENT else root) for s in fn.slots),
                  blocks=tuple(replace(b, region=first if b.id == FIRST_BODY else
                                       second if b.id == SECOND_BODY else root) for b in fn.blocks))
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert MIRPlace(CURRENT) not in deps.referents[MIRPoint(DONE, 0)]
     assert MIRPlace(FIRST) in deps.active[MIRPoint(DONE, 0)]
-    assert not analyze_scope_ends(fn).ends
+    assert not analyze_scope_ends(prepared(fn)).ends
 
 
 @pytest.mark.parametrize("shape", ["optional", "union", "tuple"])
@@ -133,7 +133,7 @@ def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> No
     heap = {1: {FIELD.id: 3}, 2: {FIELD.id: 4}}
     assert execute(fn, ContainerValue((Reference(1), Reference(2))), ContainerValue(()), heap=heap) == 3
     assert heap[2][FIELD.id] == 7
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.active[MIRPoint(DONE, 0)] == {
         place: {MIRReferent(MIRPlace(P, (MIRContainerElements(),)), external=True)}}
 

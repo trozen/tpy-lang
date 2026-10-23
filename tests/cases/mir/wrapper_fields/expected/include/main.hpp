@@ -14,6 +14,7 @@ struct Built;
 struct Pair;
 struct Ro;
 struct Num;
+struct HL;
 struct S;
 struct SH;
 
@@ -45,6 +46,24 @@ bool empties(H& h);
 int32_t fresh_condition(const H& a, H& b);
 // def keep_other_field(a: H, b: H) -> int32:  # tpyc: mir(covered)
 int32_t keep_other_field(const H& a, H& b);
+// def own_field_write(a: H) -> int32:  # tpyc: mir(covered)
+int32_t own_field_write(const H& a);
+// def holders() -> int32:  # tpyc: mir(covered)
+int32_t holders();
+// def keep_record_field(a: HL, b: HL) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+int32_t keep_record_field(const HL& a, HL& b);
+// def keep_leaf_field(a: HL, b: HL) -> int32:  # tpyc: mir(covered)
+int32_t keep_leaf_field(const HL& a, HL& b);
+// def keep_root(h: H, x: int32) -> int32:  # tpyc: mir(covered)
+int32_t keep_root(H& h, int32_t x);
+// def keep_root_condition(h: H, x: int32) -> int32:  # tpyc: mir(covered)
+int32_t keep_root_condition(H& h, int32_t x);
+// def keep_initialization(a: H) -> int32:  # tpyc: mir(covered)
+int32_t keep_initialization(const H& a);
+// def keep_backing(a: H, flag: bool) -> int32:  # tpyc: mir(covered)
+int32_t keep_backing(const H& a, bool flag);
+// def loop_write(h: H) -> int32:  # tpyc: mir(covered)
+int32_t loop_write(H& h);
 // def refill(h: H) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t refill(H& h);
 // def copy_field(a: H, b: H) -> None:  # tpyc: mir(covered) mir_summary(known)
@@ -71,6 +90,10 @@ P& payload_return(H& h, P& fallback);
 P& id_p(P& p);
 // def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
 P& payload_return_call(H& h, P& fallback);
+// def set_s(o: S | None, v: str) -> None:  # tpyc: mir(covered) mir_summary(known)
+void set_s(S* o, std::string_view v);
+// def keep_payload(h: SH, flag: bool) -> int32:  # tpyc: mir(covered)
+int32_t keep_payload(SH& h, bool flag);
 // def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
 std::string_view payload_sub_return(const SH& h, const S& fallback);
 // def set_field(t: S, value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
@@ -214,6 +237,26 @@ inline std::ostream& operator<<(std::ostream& os, const Num& obj) {
     return os;
 }
 
+// class HL:
+struct HL {
+    // p: P | None
+    std::optional<P> p;
+    // q: P
+    P q;
+    // s: str
+    std::string s;
+
+    // def __init__(self, p: P | None, q: P, s: str) -> None:
+    HL() = default;
+    explicit HL(const P* p, const P& q, std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HL";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const HL& obj) {
+    ::tpy::print_object_default(os, "HL", obj);
+    return os;
+}
+
 // class S:
 struct S {
     // s: str
@@ -315,6 +358,15 @@ inline Ro::Ro(const P* p) : p(::tpy::ptr_to_optional(p)) {}
 // def __init__(self, k: int32 | None) -> None:  # tpyc: mir(uncovered /unsupported record fields/)
 //     self.k = k
 inline Num::Num(std::optional<int32_t> k) : k(k) {}
+
+// def __init__(self, p: P | None, q: P, s: str) -> None:
+//     self.p = p  # tpyc: warning(/copies P \| None into field/)
+//     self.q = q  # tpyc: warning(/copies P into field/)
+//     self.s = s
+inline HL::HL(const P* p, const P& q, std::string_view s)
+    : p(::tpy::ptr_to_optional(p)),
+      q(q),
+      s(s) {}
 
 // def __init__(self, s: str) -> None:  # tpyc: mir(covered)
 //     self.s = s

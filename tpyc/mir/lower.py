@@ -63,6 +63,7 @@ from .call_contract import (
     stub_protocol_argument, stub_summary, summary_problem, view_result,
 )
 from .validate import MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError, reaches_element
+from .prepare import MIRPrepared, validated
 
 
 def _declared_const(stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> bool:
@@ -4552,6 +4553,9 @@ class MIRLoweredStorage:
     # Captured where the lowering places storage, never reconstructed from IDs.
     backings: Mapping[th.THIRExpr, MIRPlace]
     operations: Mapping[th.THIRStmt, tuple[MIRPoint, ...]]
+    # The body's one preparation (`prepare.prepare`), which every later
+    # pass reads: or the first dependency run's refusal.
+    prepared: MIRPrepared | MIRNotCovered
 
 
 def lower_function(fn: th.THIRFunction, body: MIRBodyId, *,
@@ -4575,14 +4579,15 @@ def _lower(lowering: _Lowering) -> MIRLoweredStorage | MIRNotCovered:
             # A refusal of what the body reaches, after every refusal of the check.
             raise MIRUnsupported(*mir.refusal)
         try:
-            function = assemble(mir, **lowering.assembly)
+            function, first = assemble(mir, **lowering.assembly)
+            prepared = validated(function, first)
         except MIRRepeatedInitializationError as failure:
             raise MIRUnsupported(failure, str(failure)) from failure
         except (MIRPresenceError, MIRDefiniteAssignmentError, MIRFallthroughError,
                 MIRRegionStorageError) as failure:
             raise MIRUnsupported(lowering.fn, str(failure)) from failure
         return MIRLoweredStorage(function, MappingProxyType(mir.backing_places),
-                                 MappingProxyType(mir.borrow_operations))
+                                 MappingProxyType(mir.borrow_operations), prepared)
     except MIRUnsupported as failure:
         return MIRNotCovered(mir.body, type(failure.node).__name__, failure.reason,
                              getattr(failure.node, "loc", None))

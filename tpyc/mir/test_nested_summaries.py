@@ -16,18 +16,16 @@ from ..typesys import INT32, NominalType
 from .call_contract import MIRSummaryState, summary_problem
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies
 from .dump import _write_step
-from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstruct, MIRFunction, MIRMove, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .shapes import MIRContainerElements, MIRDeref, MIRUnionPayload
 from .value import MIRRecords, MIRField, MIRFieldId, MIRValidationError
 from .summaries import _member_chain, _private_records, summarize_function
-from .validate import validate_function
-from .testutil import no_layouts, borrowed_shape, leaf_shape, Redeclared
+from .testutil import no_layouts, borrowed_shape, leaf_shape, Redeclared, prepared
 from ..thir.scalar_leaves import MIRClass
+from .prepare import validate_function
 
 SOURCE = """\
 from tpy import int32, Own, copy, readonly
@@ -300,7 +298,7 @@ def _private(fn: MIRFunction, facts_of: MIRFunction | None = None) -> frozenset[
     # A hand-built body that would not validate takes the dependency facts of
     # the body it was built from.
     base = facts_of or fn
-    return _private_records(fn, analyze_dependencies(base, analyze_liveness(base)))
+    return _private_records(fn, prepared(base).dependencies)
 
 
 def _construct_operands(fn: MIRFunction) -> list[MIRSlot]:
@@ -356,7 +354,8 @@ def test_a_path_through_a_refused_definition_never_publishes(active, name: str) 
     object.__setattr__(refused, "records", {**active.definitions.records, point: "refused for the test"})
     object.__setattr__(refused, "layouts", active.definitions.layouts)
     assert point in refused.layouts
-    result = summarize_function(active.functions[name], _lowered(active, name), refused)
+    body = _lowered(active, name)
+    result = summarize_function(active.functions[name], body, prepared(body), refused)
     assert result.state is MIRSummaryState.OPAQUE
     assert result.reason == "summary record: refused for the test"
 
@@ -371,7 +370,8 @@ def test_a_return_origin_through_a_refused_definition_never_publishes(active) ->
     refused = object.__new__(MIRDefinitions)
     object.__setattr__(refused, "records", {**active.definitions.records, line: "refused for the test"})
     object.__setattr__(refused, "layouts", active.definitions.layouts)
-    result = summarize_function(active.functions["leak"], _lowered(active, "leak"), refused)
+    body = _lowered(active, "leak")
+    result = summarize_function(active.functions["leak"], body, prepared(body), refused)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary record: refused for the test"
 
 
@@ -411,7 +411,7 @@ class _Without:
 ])
 def test_a_write_field_missing_from_its_hop_layout_is_refused(active, name: str, record: str, field: str) -> None:
     fn = _lowered(active, name)
-    result = summarize_function(active.functions[name], fn, _Without(active.definitions, record, field))
+    result = summarize_function(active.functions[name], fn, prepared(fn), _Without(active.definitions, record, field))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == (
         "summary unsupported write origin: field missing from declared fields")
 
@@ -463,7 +463,7 @@ def test_member_storage_operations_summarize_known(active, name: str, writes: se
 def test_a_return_field_missing_from_its_hop_layout_is_refused(active, name: str, record: str,
                                                                 field: str) -> None:
     fn = _lowered(active, name)
-    result = summarize_function(active.functions[name], fn, _Without(active.definitions, record, field))
+    result = summarize_function(active.functions[name], fn, prepared(fn), _Without(active.definitions, record, field))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == (
         "summary unsupported return origin: field missing from declared fields")
 
@@ -522,7 +522,7 @@ def test_a_record_moved_into_a_member_is_a_transfer(active, read_after: bool) ->
     validate_function(fn)
     storage = next(s.id for s in fn.slots if s.name == "ln")
     assert (storage in _private(fn)) is not read_after
-    result = summarize_function(active.functions["adopt"], fn, active.definitions)
+    result = summarize_function(active.functions["adopt"], fn, prepared(fn), active.definitions)
     if read_after:
         assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
     else:
@@ -651,7 +651,7 @@ def test_a_holder_live_at_the_construct_keeps_the_temporary_out(active) -> None:
     held = replace(_with_after_construct(fn, temporary, read, before=(borrow,)), slots=(*fn.slots, holder, value))
     validate_function(held)
     assert temporary.id not in _private(held)
-    result = summarize_function(active.functions["build"], held, active.definitions)
+    result = summarize_function(active.functions["build"], held, prepared(held), active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
 
 

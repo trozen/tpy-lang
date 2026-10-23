@@ -19,8 +19,8 @@ from .coverage import MIRUnsupported
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRValidationError, admitted_members, container_members, value_shape,
 )
-from .validate import validate_function
 from .testutil import leaf_shape, owned_shape, reslot
+from .prepare import validate_function
 
 SOURCE = """\
 from typing import Iterator

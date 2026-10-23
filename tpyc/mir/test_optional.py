@@ -18,7 +18,7 @@ from .nodes import (
 )
 from .value import MIRFieldId, MIRValidationError
 from .testutil import bind_parameters, Heap, optional_value, Reference, execute, reslot
-from .validate import validate_function as validate_mir
+from .prepare import validate_function as validate_mir
 from ..thir.scalar_leaves import MIRClass
 
 SOURCE = """\

@@ -24,7 +24,7 @@ from .nodes import (
 )
 from .value import MIRFieldId
 from .storage import MIRStorageEvents, analyze_storage
-from .testutil import compiled_definitions, Heap, Reference, execute
+from .testutil import compiled_definitions, Heap, Reference, execute, prepared
 
 Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 
@@ -167,7 +167,7 @@ def test_storage_identity_and_mutation(artifacts: Artifacts, name: str, expected
     member = next(f.id for f in fn.records[0].fields if f.id.name == "value")
     # Inspect both objects: matching the return alone would miss a silent copy.
     assert sorted(obj[member] for obj in heap.values()) == contents
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     assert isinstance(events, MIRStorageEvents)
     expected_modes = {
         "shared": [MIRStorageWriteMode.INITIALIZE],

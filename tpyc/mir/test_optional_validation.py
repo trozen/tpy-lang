@@ -14,8 +14,9 @@ from .value import MIRHolding, MIRValidationError
 from .testutil import (
     hand_record, bind_parameters, optional_value, execute, leaf_shape, optional_shape, owned_shape, reslot,
 )
-from .validate import MIRPresenceError, validate_function
+from .validate import MIRPresenceError
 from .presence import _State, _transfer
+from .prepare import validate_function
 
 BODY = MIRBodyId("optional_validation", "example")
 PARAM, CURRENT, SAVED, GUARD, COPY, VALUE, RESULT, FLAG = (MIRSlotId(BODY, i) for i in range(8))

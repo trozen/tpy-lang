@@ -14,9 +14,7 @@ from ..typesys import INT32, OwnType
 from .call_contract import MIRReturnOrigin, MIRSummaryState, owned_aggregate_result, result_problem
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRCopy, MIRFunction, MIRMove,
@@ -30,9 +28,9 @@ from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from . import summaries
 from .summaries import _private_records, summarize_function
-from .validate import validate_function
-from .testutil import borrowed_shape, leaf_shape, owned_shape, reslot
+from .testutil import borrowed_shape, leaf_shape, owned_shape, reslot, prepared
 from ..thir.scalar_leaves import MIRClass
+from .prepare import validate_function
 
 
 SOURCE = '''\
@@ -533,7 +531,7 @@ def test_storage_the_body_keeps_is_private(active, name: str) -> None:
     fn = _lowered(active, name)
     kept = {s.id for s in fn.slots if s.shape.is_storage and s.shape.cls is not MIRClass.CONTAINER
             and s.type.name in ("Point", "Named")}
-    assert kept and kept <= _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn)))
+    assert kept and kept <= _private_records(fn, prepared(fn).dependencies)
     result = _summary(active, name)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.returns == frozenset() and result.summary.writes == frozenset()
@@ -555,8 +553,8 @@ def test_a_kept_record_reached_by_the_result_stays_opaque(active) -> None:
     fn = _relowered(active, damaged)
     assert isinstance(fn, MIRFunction), fn
     kept, = (s.id for s in fn.slots if s.shape.is_storage)
-    assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {kept}
-    escaped = summarize_function(damaged, fn, active.definitions)
+    assert _private_records(fn, prepared(fn).dependencies) == {kept}
+    escaped = summarize_function(damaged, fn, prepared(fn), active.definitions)
     assert escaped.state is MIRSummaryState.OPAQUE and escaped.reason == "summary unsupported return origin"
 
 
@@ -568,7 +566,7 @@ def _private(fn: MIRFunction, facts_of: MIRFunction | None = None) -> frozenset[
     # A hand-built body that would not validate takes the dependency facts of
     # the body it was built from; a kept slot has no transfer that reads them.
     base = facts_of or fn
-    return _private_records(fn, analyze_dependencies(base, analyze_liveness(base)))
+    return _private_records(fn, prepared(base).dependencies)
 
 
 def _appended(fn: MIRFunction, *statements) -> MIRFunction:
@@ -664,7 +662,7 @@ def test_a_reseat_through_a_holder_needs_private_referents(active, through: str)
                        storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, rebind_owner=alias.id))
     fn = _appended(fn, reseat)
     validate_function(fn)
-    result = summarize_function(source, fn, active.definitions)
+    result = summarize_function(source, fn, prepared(fn), active.definitions)
     if through == "kept":
         assert result.state is MIRSummaryState.KNOWN, result.reason
         assert result.summary.writes == frozenset()
@@ -681,7 +679,7 @@ def test_a_lazy_backing_init_needs_private_storage(active, monkeypatch) -> None:
     # The same body with its backing not private: the slot itself refuses
     # before the init is reached (an OWNED record slot is private or opaque).
     monkeypatch.setattr(summaries, "_private_records", lambda body, dependencies: frozenset())
-    result = summarize_function(active.functions["lazy_lend"], fn, active.definitions)
+    result = summarize_function(active.functions["lazy_lend"], fn, prepared(fn), active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
 
 
@@ -702,7 +700,7 @@ def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:
     ps = next(s.id for s in fn.slots if s.name == "ps")
     storage, = {s.value.source.root for b in fn.blocks for s in b.statements
                 if isinstance(s, MIRAssign) and s.target == MIRPlace(ps) and isinstance(s.value, MIRBorrow)}
-    assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {temporary.id, storage}
+    assert _private_records(fn, prepared(fn).dependencies) == {temporary.id, storage}
     # A holder borrowing the temporary, read after the append moved from it.
     holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(temporary.type), MIRSlotKind.TEMPORARY,
                      residence=temporary.residence)
@@ -724,8 +722,8 @@ def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:
         blocks.append(replace(block, statements=tuple(statements)))
     held = replace(fn, slots=(*fn.slots, holder, value), blocks=tuple(blocks))
     validate_function(held)
-    assert _private_records(held, analyze_dependencies(held, analyze_liveness(held))) == {storage}
-    result = summarize_function(active.functions["collect"], held, active.definitions)
+    assert _private_records(held, prepared(held).dependencies) == {storage}
+    result = summarize_function(active.functions["collect"], held, prepared(held), active.definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
 
 
@@ -746,7 +744,7 @@ def test_a_call_temporary_is_storage_of_its_full_expression(active, name: str) -
     temporary = _temporary(fn)
     assert temporary.kind is MIRSlotKind.TEMPORARY and temporary.shape.is_storage
     assert temporary.storage_duration != fn.regions[0].id
-    ends = analyze_scope_ends(fn).ends
+    ends = analyze_scope_ends(prepared(fn)).ends
     assert any(end.storage == MIRPlace(temporary.id) for group in ends.values() for end in group)
 
 
@@ -785,7 +783,7 @@ def test_a_borrow_of_the_call_temporary_kept_past_its_statement_conflicts(active
                                         MIRRead(MIRPlace(holder.id, (MIRDeref(), member)))))
         blocks.append(replace(block, statements=tuple(statements)))
     held = replace(fn, slots=(*fn.slots, holder), blocks=tuple(blocks))
-    evidence = certify_storage_origins(held, frozenset((temporary.id,)), active.definitions)
+    evidence = certify_storage_origins(prepared(held), frozenset((temporary.id,)), active.definitions)
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
     (conflict,) = evidence.conflicts
     assert conflict.kind is MIRStorageConflictKind.SCOPE_END and conflict.origin == MIRPlace(temporary.id)

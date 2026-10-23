@@ -24,8 +24,7 @@ from .coverage import call_write_places
 from .collect import MIRBodyVerdict, MIRVerdictStatus, MIRWriteKind, analyze_body, enumerate_bodies, line_facts
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import _call as _dump_call
-from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
-from .liveness import analyze_liveness
+from .dependencies import MIRReferent, resolve_referents
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCallStmt, MIRConstant,
     MIRConstruct, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead,
@@ -35,17 +34,17 @@ from .nodes import (
 from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref
 from ..thir.scalar_leaves import MIRClass
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRValidationError
-from .presence import _analyze_presence
-from .retention import MIRRetention, affects, analyze_retention, may_overlap
-from .storage import analyze_storage, storage_destination
+from .retention import MIRRetention, analyze_retention
+from .storage import analyze_storage
 from .storage_evidence import certify_borrow_operations, certify_storage_origins
 from .summaries import summarize_function
-from .validate import MIRPresenceError, body_may_raise, validate_function
+from .validate import MIRPresenceError, body_may_raise
 from .testutil import (
-    no_layouts, records_of,
-    hand_record,
-    bind_parameters, bindings_of, borrowed_shape, bound, cursor_shape, leaf_shape, owned_shape,
+    no_layouts, records_of, hand_record, bind_parameters, bindings_of, borrowed_shape, bound, cursor_shape,
+    leaf_shape, owned_shape, prepared,
 )
+from .prepare import validate_function
+from .reach import reaches, storage_destination, storage_exclusions
 
 B = MIRBodyId("containers", "effects")
 CELL = hand_record("Cell", "containers.Cell", value=INT32)
@@ -182,8 +181,7 @@ def body(slots, *blocks, records=(RECORD,), borrowed_result=None) -> MIRFunction
 
 
 def analyze(fn: MIRFunction) -> MIRRetention:
-    live = analyze_liveness(fn)
-    result = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    result = analyze_retention(prepared(fn))
     assert isinstance(result, MIRRetention), result
     return result
 
@@ -193,7 +191,7 @@ def conflicts(fn: MIRFunction) -> set[tuple[MIRPlace, MIRPlace]]:
     return {(c.holder, c.retained.place) for c in analyze(fn).conflicts}
 
 
-# --- the affects rule over referents --------------------------------------------
+# --- the reach rule over referents ----------------------------------------------
 
 @pytest.mark.parametrize(("written", "retained", "expected"), [
     # A shape write reaches everything inside the container ...
@@ -230,26 +228,29 @@ def conflicts(fn: MIRFunction) -> set[tuple[MIRPlace, MIRPlace]]:
     (ref(0, STRUCTURE), ref(1), False),
     (ref(0, ELEMENTS), ref(1), False),
 ])
-def test_affects_container_regions(written: MIRReferent, retained: MIRReferent, expected: bool) -> None:
+def test_reaches_container_regions(written: MIRReferent, retained: MIRReferent, expected: bool) -> None:
     slots = {s.id: s for s in (param(0), param(1), holder(2, kind=MIRSlotKind.PARAMETER))}
-    assert affects(written, retained, slots, {}) is expected
+    assert reaches(written, retained, storage_exclusions(slots, {})) is expected
 
 
-def test_affects_spares_a_static_literal_and_owned_leaf_buffers_spare_containers() -> None:
+def test_reach_spares_a_static_literal_and_owned_leaf_buffers_spare_containers() -> None:
     slots = {s.id: s for s in (param(0), param(1), holder(2, BAG, MIRSlotKind.PARAMETER))}
     static = MIRReferent(place(0, ELEMENTS), True, static=True)
-    assert not affects(ref(0, STRUCTURE), static, slots, {})
+    assert not reaches(ref(0, STRUCTURE), static, storage_exclusions(slots, {}))
     # A str field's buffer holds no container: a whole container across
     # origins is not reached, an elements region of one may be (it may view it).
     name = MIRField(MIRFieldId(BAG, "name"), STR)
-    assert not affects(ref(2, name), ref(1), slots, {})
-    assert affects(ref(2, name), ref(1, ELEMENTS), slots, {})
+    assert not reaches(ref(2, name), ref(1), storage_exclusions(slots, {}))
+    assert reaches(ref(2, name), ref(1, ELEMENTS), storage_exclusions(slots, {}))
 
 
 def test_container_regions_of_one_origin_are_disjoint_siblings() -> None:
-    assert not may_overlap(ref(0, STRUCTURE), ref(0, ELEMENTS))
-    assert may_overlap(ref(0, ELEMENTS), ref(0, ELEMENTS, VALUE))
-    assert may_overlap(ref(0, ELEMENTS), ref(1, ELEMENTS))
+    def any_origin(written: MIRReferent, target: MIRReferent) -> bool:
+        return True
+    assert not reaches(ref(0, ELEMENTS), ref(0, STRUCTURE), any_origin)
+    assert reaches(ref(0, ELEMENTS), ref(0, ELEMENTS, VALUE), any_origin)
+    # Across two origins, the caller's oracle decides.
+    assert reaches(ref(0, ELEMENTS), ref(1, ELEMENTS), any_origin)
 
 
 # An inline record member (`OTHER`) is replaced whole in place; a scalar
@@ -302,7 +303,7 @@ SETITEM = assign(0, MIRMove(sid(2)), DEREF, ELEMENTS, write=MIRStorageWrite(MIRS
 
 def test_element_borrow_resolves_to_the_elements_region() -> None:
     fn = element_borrow()
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 1)][place(1)] == {ref(0, ELEMENTS)}
 
 
@@ -310,7 +311,7 @@ def test_elements_write_is_a_weak_update() -> None:
     # `ps[0] = Cell(1)` writes under the root: the root and every other
     # holder keep their referents, and a later element borrow still resolves.
     fn = element_borrow(*CONSTRUCT, SETITEM, assign(5, MIRBorrow(place(0, DEREF, ELEMENTS))), live_after=False)
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     after = deps.referents[MIRPoint(bid(0), 6)]
     assert after[place(0)] == {ref(0)}
     assert after[place(1)] == {ref(0, ELEMENTS)}
@@ -346,7 +347,7 @@ def span_body(*, source_param: bool) -> MIRFunction:
 
 def test_a_view_of_a_view_is_the_same_region() -> None:
     fn = span_body(source_param=False)
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     state = deps.referents[MIRPoint(bid(0), 3)]
     # `u = t[...]` holds exactly what `t` holds, never `xs[elements][elements]`.
     assert state[place(1)] == state[place(2)] == {ref(0, ELEMENTS)}
@@ -356,17 +357,17 @@ def test_a_view_of_a_view_is_the_same_region() -> None:
 
 def test_a_span_parameter_names_the_elements_region_it_views() -> None:
     fn = span_body(source_param=True)
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 0)][place(0)] == {ref(0, ELEMENTS)}
     assert deps.referents[MIRPoint(bid(0), 2)][place(3)] == {ref(0, ELEMENTS)}
 
 
 def test_a_cursor_over_a_view_needs_the_same_has_next_proof() -> None:
     fn = span_body(source_param=False)
-    assert not _analyze_presence(fn).issues
+    assert not prepared(fn).presence.issues
     unguarded = replace(fn, blocks=(replace(fn.blocks[0], terminator=MIRGoto(bid(1))), *fn.blocks[1:]))
     with pytest.raises(MIRPresenceError):
-        analyze_liveness(unguarded)
+        prepared(unguarded).liveness
 
 
 def test_a_cursor_over_owned_container_storage_depends_on_its_regions() -> None:
@@ -376,7 +377,7 @@ def test_a_cursor_over_owned_container_storage_depends_on_its_regions() -> None:
     built = assign(0, MIRConstruct((), True), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     fn = body(slots, MIRBlock(bid(0), (built, assign(1, MIRIteratorInit(sid(0))), assign(2, MIRIteratorHasNext(sid(1))),
                                        assign(3, MIRConstant(0))), MIRReturn(sid(3))), records=())
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 2)][place(1)] == {ref(0, STRUCTURE, external=False),
                                                               ref(0, ELEMENTS, external=False)}
 
@@ -399,11 +400,11 @@ def test_a_call_result_borrowed_from_a_container_lies_in_its_elements() -> None:
     # `p = first(ps)`: the summary names the whole parameter; what a
     # container lends besides itself lies in its elements region.
     fn = element_call(holder(1, name="p"), param(0, name="ps"))
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 1)][place(1)] == {ref(0, ELEMENTS)}
     # A record result of a record argument stays the argument itself.
     fn = element_call(holder(1, name="q"), holder(0, kind=MIRSlotKind.PARAMETER, name="r"))
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 1)][place(1)] == {ref(0)}
 
 
@@ -414,10 +415,10 @@ def test_a_container_result_of_a_record_argument_stays_uncovered() -> None:
     result = MIRSlot(sid(1), borrowed_shape(CELLS, members=CELL_LAYOUT), MIRSlotKind.LOCAL, "xs")
     fn = element_call(result, holder(0, BAG, MIRSlotKind.PARAMETER, name="bag"))
     with pytest.raises(MIRValidationError, match="unsupported return origin type or access"):
-        analyze_dependencies(fn, analyze_liveness(fn))
+        prepared(fn).dependencies
     # From a container argument it is that container.
     fn = element_call(result, param(0, name="ps"))
-    deps = analyze_dependencies(fn, analyze_liveness(fn))
+    deps = prepared(fn).dependencies
     assert deps.referents[MIRPoint(bid(0), 1)][place(1)] == {ref(0)}
 
 
@@ -425,20 +426,20 @@ def test_a_container_result_of_a_record_argument_stays_uncovered() -> None:
 
 def test_shape_write_under_a_live_element_borrow_conflicts() -> None:
     fn = element_borrow(*CONSTRUCT, APPEND)
-    assert analyze_storage(fn).call_writes == {MIRPoint(bid(0), 3): (place(0, DEREF, STRUCTURE),)}
+    assert analyze_storage(prepared(fn)).call_writes == {MIRPoint(bid(0), 3): (place(0, DEREF, STRUCTURE),)}
     assert conflicts(fn) == {(place(1), place(0, ELEMENTS))}
 
 
 def test_container_holder_is_never_reached_by_its_own_writes() -> None:
     # `ps` is live across the append: the list object survives its growth.
     fn = element_borrow(*CONSTRUCT, APPEND, SETITEM, container_live=True, live_after=False)
-    assert analyze_liveness(fn).points[MIRPoint(bid(0), 6)] >= {sid(0)}
+    assert prepared(fn).liveness.points[MIRPoint(bid(0), 6)] >= {sid(0)}
     assert not conflicts(fn)
 
 
 def test_elements_write_under_a_live_element_borrow_conflicts() -> None:
     fn = element_borrow(*CONSTRUCT, SETITEM)
-    writes = analyze_storage(fn).writes
+    writes = analyze_storage(prepared(fn)).writes
     assert {p for p, s in writes.items() if s.storage_write.mode is MIRStorageWriteMode.IN_PLACE} == {
         MIRPoint(bid(0), 3)}
     assert conflicts(fn) == {(place(1), place(0, ELEMENTS))}
@@ -509,7 +510,7 @@ def bag_body(*, sibling: bool) -> MIRFunction:
 
 
 def test_a_field_shape_write_spares_the_sibling_field() -> None:
-    assert analyze_storage(bag_body(sibling=True)).call_writes == {
+    assert analyze_storage(prepared(bag_body(sibling=True))).call_writes == {
         MIRPoint(bid(0), 4): (place(6, DEREF, STRUCTURE),)}
     assert not conflicts(bag_body(sibling=True))
     assert conflicts(bag_body(sibling=False)) == {(place(1), place(0, ITEMS, ELEMENTS))}
@@ -549,7 +550,7 @@ def moved(*, live: bool) -> MIRFunction:
 
 def test_moving_owned_container_storage_replaces_it() -> None:
     fn = moved(live=True)
-    assert analyze_storage(fn).moves == {MIRPoint(bid(0), 4): place(0)}
+    assert analyze_storage(prepared(fn)).moves == {MIRPoint(bid(0), 4): place(0)}
     assert conflicts(fn) == {(place(1), place(0, ELEMENTS))}
     assert not conflicts(moved(live=False))
 
@@ -588,7 +589,8 @@ def grow_body(compiled) -> MIRFunction:
 def test_a_callee_shape_write_is_published_and_reaches_the_caller(compiled) -> None:
     decl = declared(compiled, "grow")
     assert decl.params[0].passing is ParamPassing.MUT_REF
-    result = summarize_function(decl, grow_body(compiled), definitions(compiled))
+    fn = grow_body(compiled)
+    result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.writes == {MIRParameterWrite(0, (STRUCTURE,))}
     assert result.summary.returns == frozenset()
@@ -611,9 +613,9 @@ def test_a_private_container_write_keeps_the_summary_known(compiled) -> None:
     block = replace(fn.blocks[0], statements=(
         assign(3, MIRConstruct((), True), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         assign(4, MIRBorrow(place(3))), *fn.blocks[0].statements[:2], MIRCallStmt(call)))
-    result = summarize_function(decl, replace(fn, slots=(*fn.slots, storage, xs), blocks=(block,),
-                                              call_summaries=(call.summary,), containers=(cells,)),
-                                definitions(compiled))
+    fn = replace(fn, slots=(*fn.slots, storage, xs), blocks=(block,), call_summaries=(call.summary,),
+                 containers=(cells,))
+    result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.writes == frozenset()
 
@@ -626,7 +628,8 @@ def test_an_argument_temporary_the_body_reads_keeps_the_summary_opaque(compiled)
     cell = cell_type(compiled)
     read = assign(2, MIRRead(place(1, MIRField(MIRFieldId(cell, "value"), INT32))))
     block = replace(fn.blocks[0], statements=(*fn.blocks[0].statements, read))
-    result = summarize_function(decl, replace(fn, blocks=(block,)), definitions(compiled))
+    fn = replace(fn, blocks=(block,))
+    result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
 
 
@@ -644,7 +647,7 @@ def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
                      borrowed_result=decl.resolved_callee.signature.borrowed_result,
                      return_representation=decl.resolved_callee.signature.return_representation,
                      parameter_bindings=bindings_of(decl))
-    result = summarize_function(decl, fn, definitions(compiled))
+    result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.returns == {MIRReturnOrigin(0)} and result.summary.writes == frozenset()
 
@@ -666,7 +669,7 @@ def test_an_element_field_write_is_published_under_the_elements_region(compiled)
         borrowed_result=decl.resolved_callee.signature.borrowed_result, parameter_bindings=bindings_of(decl),
         return_representation=decl.resolved_callee.signature.return_representation,
         record_fields=declared_fields())
-    result = summarize_function(decl, fn, definitions(compiled))
+    result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
     value = th.THIRFieldIdentity(cell, "value", INT32)
     assert result.summary.writes == {MIRParameterWrite(0, (ELEMENTS, value))}
@@ -712,14 +715,16 @@ def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> 
             records=(record, MIRRecordLayout(bag, (field,), True, True)), call_summaries=(call.summary,),
             exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields())
     defs = _WithBag(definitions(compiled), MIRRecordLayout(bag, (items,), True, True))
-    result = summarize_function(decl, body(items), defs)
+    fn = body(items)
+    result = summarize_function(decl, fn, prepared(fn), defs)
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.writes == {MIRParameterWrite(0, (th.THIRFieldIdentity(bag, "items", cells), STRUCTURE))}
     # A field the record does not declare is refused, whatever a layout lists.
     missing = MIRField(MIRFieldId(bag, "missing"), cells)
     other = _WithBag(definitions(compiled), MIRRecordLayout(bag, (missing,), True, True))
     with pytest.raises(MIRValidationError, match="field missing from declared fields"):
-        summarize_function(decl, body(missing), other)
+        fn = body(missing)
+        summarize_function(decl, fn, prepared(fn), other)
 
 
 # --- line facts ---------------------------------------------------------------------
@@ -730,7 +735,7 @@ def test_call_writes_are_write_events_of_their_line() -> None:
     stmts[4] = replace(stmts[4], loc=SourceLocation(7, 4))
     fn = replace(fn, blocks=(replace(fn.blocks[0], statements=tuple(stmts)),))
     verdict = MIRBodyVerdict(B, "f", 1, None, MIRVerdictStatus.COVERED, None, (), True, None, None, fn,
-                             analyze_body(fn), None)
+                             analyze_body(fn, prepared(fn)), None)
     facts = line_facts(verdict)
     # Written through an unnamed borrow of `bag.items`: spelled by what it borrows.
     assert facts.events[(7, "bag.items[structure]")] == ("call",)
@@ -744,7 +749,7 @@ def _located(fn: MIRFunction) -> MIRFunction:
 
 def _facts(fn: MIRFunction):
     return line_facts(MIRBodyVerdict(B, "f", 1, None, MIRVerdictStatus.COVERED, None, (), True, None, None, fn,
-                                     analyze_body(fn), None))
+                                     analyze_body(fn, prepared(fn)), None))
 
 
 def test_element_writes_and_moves_are_line_facts() -> None:
@@ -766,7 +771,7 @@ def test_owned_container_storage_needs_its_container_definition() -> None:
 
         def get(self, node, typ):
             return SimpleNamespace(members=self.members)
-    reasons = lambda layout: [g.reason for g in certify_storage_origins(fn, frozenset({sid(0)}), Defs(layout)).gaps]
+    reasons = lambda layout: [g.reason for g in certify_storage_origins(prepared(fn), frozenset({sid(0)}), Defs(layout)).gaps]
     assert "storage record layout differs from its definition" not in reasons(INT_LAYOUT)
     assert "storage record layout differs from its definition" in reasons(CELL_LAYOUT)
 
@@ -821,7 +826,7 @@ def test_a_borrowed_container_holder_is_a_demanded_borrow() -> None:
     fn = body([param(0, INTS, INT_LAYOUT, name="ys"), holder, scalar(2)],
               MIRBlock(bid(0), (assign(1, MIRAlias(sid(0))), assign(2, MIRConstant(0))), MIRReturn(sid(2))),
               records=())
-    evidence = certify_borrow_operations(fn, frozenset({MIRPoint(bid(0), 0)}), frozenset(), MIRDefinitions(()))
+    evidence = certify_borrow_operations(prepared(fn), frozenset({MIRPoint(bid(0), 0)}), frozenset(), MIRDefinitions(()))
     assert "demanded operation is not a supported record borrow" not in [g.reason for g in evidence.gaps]
     assert evidence.origins[MIRPoint(bid(0), 0)] == frozenset({ref(0)})
 

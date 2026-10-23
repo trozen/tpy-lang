@@ -6,18 +6,16 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from types import MappingProxyType
 
-from .dependencies import MIRDependencies, MIRReferent, _dependencies
-from .dump import _place
-from .liveness import MIRLiveness, _liveness
+from .place_text import _place
 from .nodes import (
-    MIRBlockId, MIREdge, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRPlace, MIRRegionId, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind, statement_target,
+    MIRBlockId, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRRegionId, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration, MIRPoint, MIRRecordStorageKind,
 )
 from .shapes import MIRUnionPayload
-from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
+from .presence import MIRPresenceIssue, MIREngagement
+from .prepare import MIRPrepared, validated_presence
+from .reach import BEGINS, MIRReferent, reaches, storage_events, storage_exclusions
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .retention import may_overlap
-from .validate import MIRPrepared, MIRPresenceError, _prepare_function, _validated_function
 from .value import MIRValidationError
 
 
@@ -40,8 +38,9 @@ class MIRScopeEnds:
     ends: Mapping[MIREdge, tuple[MIRScopeEnd, ...]]
 
 
-def analyze_scope_ends(fn: MIRFunction) -> MIRScopeEnds | MIRNotCovered:
-    return _scope_ends(_validated_function(fn))
+def analyze_scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
+    validated_presence(prepared)
+    return _scope_ends(prepared)
 
 
 def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
@@ -58,20 +57,19 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
                                  slot=slot.id)
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
+    slots = {s.id: s for s in fn.slots}
+    # Storage a block begins: a root its statements construct, initialize
+    # or write by their storage events (`storage_events`; the fact follows
+    # the destination's storage, not the operation filling it).
     initialized: dict[MIRBlockId, set[MIRSlotId]] = {}
     for block in fn.blocks:
         initialized[block.id] = set()
         for stmt in block.statements:
-            target = statement_target(stmt)
-            if target is None or target.projections or target.root not in roots:
-                continue
-            if isinstance(stmt, (MIRStorageInit, MIRRecordStorageInit)):
-                initialized[block.id].add(stmt.target.root)
-                continue
-            # The fact follows the destination's storage, not the operation filling it.
-            if not isinstance(stmt.storage_write, MIRStorageWrite):
+            tracked = [event for event in storage_events(stmt, (), slots)
+                       if not event.place.projections and event.place.root in roots]
+            if any(not event.known for event in tracked):
                 return MIRNotCovered(fn.id, "scope ends", "missing storage initialization/write fact", stmt.loc)
-            initialized[block.id].add(stmt.target.root)
+            initialized[block.id].update(event.place.root for event in tracked if event.kind in BEGINS)
     # A body-hoisted OWN site's optional backing can remain unengaged forever.
     # A by-value parameter's storage is initialized before entry.
     incoming: dict[MIRBlockId, frozenset[MIRSlotId]] = {
@@ -154,23 +152,17 @@ class MIRScopeInspection:
     freshness: tuple[MIRPresenceIssue, ...]
 
 
-def inspect_scope_lifetimes(fn: MIRFunction) -> MIRScopeInspection:
-    """Inspect retained aliases without admitting stale payload accesses."""
-    prepared = _prepare_function(fn)
-    for issue in prepared.presence.issues:
-        if issue.kind is MIRPresenceIssueKind.SELECTION:
-            raise MIRPresenceError(issue.message)
-    live = _liveness(prepared)
-    dependencies = _dependencies(prepared, live)
+def inspect_scope_lifetimes(prepared: MIRPrepared) -> MIRScopeInspection:
+    """Inspect retained aliases; a stale payload access never prepares
+    (`prepare.prepare` refuses an unproven selection)."""
     ends = _scope_ends(prepared)
-    conflicts = _scope_conflicts(prepared, live, dependencies, ends)
-    return MIRScopeInspection(fn, ends, conflicts, prepared.presence.issues)
+    conflicts = _scope_conflicts(prepared, ends)
+    return MIRScopeInspection(prepared.function, ends, conflicts, prepared.presence.issues)
 
 
-def _scope_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
-                     dependencies: MIRDependencies | MIRNotCovered,
+def _scope_conflicts(prepared: MIRPrepared,
                      ends: MIRScopeEnds | MIRNotCovered) -> tuple[MIRScopeConflict, ...] | MIRNotCovered:
-    fn = prepared.function
+    fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
     for result in (prepared.presence, liveness, dependencies, ends):
         if isinstance(result, MIRNotCovered):
             if result.body != fn.id:
@@ -182,6 +174,7 @@ def _scope_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
             return MIRNotCovered(fn.id, "scope conflicts", f"{result.node_kind}: {result.reason}", result.loc)
     blocks = {b.id: b for b in fn.blocks}
     slots = {s.id: s for s in fn.slots}
+    exclusions = storage_exclusions(slots, fn.record_layouts)
     regions = MIRRegionFlow(fn)
     conflicts = []
     for edge, events in ends.ends.items():
@@ -200,7 +193,7 @@ def _scope_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
             for ended in sorted(places, key=_place):
                 for holder, refs in retained_holders:
                     for retained in sorted(refs, key=lambda r: (r.external, _place(r.place))):
-                        if may_overlap(MIRReferent(ended), retained):
+                        if reaches(MIRReferent(ended), retained, exclusions):
                             conflicts.append(MIRScopeConflict(edge, ended, holder, retained))
     return tuple(conflicts)
 

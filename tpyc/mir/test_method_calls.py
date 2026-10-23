@@ -25,9 +25,9 @@ from .nodes import (
     MIRSlotKind,
 )
 from .summaries import summarize_function
-from .validate import validate_function
 from .value import MIRValidationError
-from .testutil import no_layouts, borrowed_shape, bound, leaf_shape
+from .testutil import no_layouts, borrowed_shape, bound, leaf_shape, prepared
+from .prepare import validate_function
 
 
 SOURCE = '''\
@@ -365,5 +365,6 @@ def test_a_body_and_its_callee_disagreeing_on_the_owner_is_opaque(active: _Progr
     fn = active.functions[name]
     callee = fn.resolved_callee
     damaged = replace(fn, resolved_callee=replace(callee, identity=replace(callee.identity, owner=owner)))
-    result = summarize_function(damaged, _lowered(active, name), active.definitions)
+    body = _lowered(active, name)
+    result = summarize_function(damaged, body, prepared(body), active.definitions)
     assert (result.state, result.reason) == (MIRSummaryState.OPAQUE, "summary definition or result contract mismatch")

@@ -18,19 +18,19 @@ from .collect import MIRBodyVerdict, enumerate_bodies
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions, MIRHeldLayout, _BaseLeg, _compose, constructor_initialization
 from .dependencies import (
-    MIRReferent, MIRUnseededLoan, analyze_dependencies, dump_dependencies, live_holders, object_keys,
-    resolve_referents, stored_on_fill,
+    MIRReferent, MIRUnseededLoan, dump_dependencies, live_holders, object_keys, resolve_referents, stored_on_fill,
 )
-from .liveness import MIRPoint, analyze_liveness
+from .liveness import MIRPoint
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode, MIRMove, MIRNotCovered,
     MIRPlace, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRValidationError
-from .retention import affects, may_overlap
-from .validate import validate_function
-from .testutil import no_layouts, borrowed_shape, optional_shape, tuple_shape, union_shape
+from .testutil import no_layouts, borrowed_shape, optional_shape, tuple_shape, union_shape, prepared
+from .prepare import validate_function, validated
+from .validate import MIRPresenceError
+from .reach import reaches, storage_exclusions
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -348,7 +348,7 @@ def test_a_lent_member_keys_its_loans_under_the_record(program: _Program) -> Non
     fn = _lowered(program, "lent_member")
     tok, member = _member(program, "Holder", "tok"), _member(program, "Tok", "s")
     key = MIRPlace(fn.slots[0].id, (tok, member))
-    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    dependencies = prepared(fn).dependencies
     assert dependencies.objects[fn.slots[0].id] == (key,)
     assert dependencies.referents[MIRPoint(fn.entry, 0)][key] == frozenset({MIRReferent(key, True, held=True)})
     assert program.verdicts["lent_member"].conflicts == ()
@@ -357,7 +357,7 @@ def test_a_lent_member_keys_its_loans_under_the_record(program: _Program) -> Non
 # --- the dependency state ------------------------------------------------------------------
 
 def _state_at_return(fn: MIRFunction):
-    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    dependencies = prepared(fn).dependencies
     assert not isinstance(dependencies, MIRNotCovered), dependencies
     block = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     return dependencies, dependencies.referents[MIRPoint(block.id, len(block.statements))]
@@ -423,8 +423,11 @@ def test_an_object_with_no_stored_loan_entry_refuses(program: _Program) -> None:
     # With no layout of the record, no entry is seeded: the read refuses,
     # never an empty origin set.
     bare = replace(fn, records=tuple(r for r in fn.records if r.type != tok))
-    validate_function(bare)
-    result = analyze_dependencies(bare, analyze_liveness(bare))
+    # The first dependency run refuses: no field selection is proven either.
+    validated(bare)
+    with pytest.raises(MIRPresenceError, match="field selections not proven"):
+        validate_function(bare)
+    result = prepared(bare)
     assert isinstance(result, MIRNotCovered) and result.reason == "view member read of an object with no stored loan"
     param = fn.slots[0].id
     with pytest.raises(MIRUnseededLoan):
@@ -460,14 +463,15 @@ def test_a_held_loan_may_be_any_external_storage(program: _Program) -> None:
     held = MIRReferent(MIRPlace(p, (member,)), external=True, held=True)
     sibling = MIRReferent(MIRPlace(p, (_member(program, "Tok", "n"),)), external=True)
     other = MIRReferent(MIRPlace(q), external=True)
+    exclusions = storage_exclusions(slots, records)
     # A sibling field of the very object, or another external object: the
-    # held rule runs before origins and paths are compared.
-    assert affects(sibling, held, slots, records) and affects(other, held, slots, records)
-    assert may_overlap(held, sibling) and may_overlap(other, held)
+    # held rule runs before origins and paths are compared, either way.
+    assert reaches(sibling, held, exclusions) and reaches(other, held, exclusions)
+    assert reaches(held, sibling, exclusions) and reaches(held, other, exclusions)
     # Private and static storage are never what an external loan views.
-    assert not affects(MIRReferent(MIRPlace(q)), held, slots, records)
-    assert not affects(MIRReferent(MIRPlace(q), external=True, static=True), held, slots, records)
-    assert not may_overlap(MIRReferent(MIRPlace(q)), held)
+    assert not reaches(MIRReferent(MIRPlace(q)), held, exclusions)
+    assert not reaches(MIRReferent(MIRPlace(q), external=True, static=True), held, exclusions)
+    assert not reaches(held, MIRReferent(MIRPlace(q)), exclusions)
 
 
 # --- summaries ---------------------------------------------------------------------------------

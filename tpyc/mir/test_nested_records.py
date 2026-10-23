@@ -24,9 +24,8 @@ from .definitions import (
     MIRComposedConstruct, MIRConstructorDefinition, MIRDefinitions, constructor_initialization,
     layout_copy_may_raise,
 )
-from .dependencies import MIRReferent, analyze_dependencies
+from .dependencies import MIRReferent
 from .dump import dump_function
-from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
@@ -35,10 +34,13 @@ from .nodes import (
 )
 from .shapes import MIRContainerStructure, MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRValidationError
-from .retention import affects, analyze_retention
-from .storage import analyze_storage, storage_destination
-from .testutil import Reference, bind_parameters, Redeclared, borrowed_shape, bound, execute, leaf_shape, repass, reslot
-from .validate import validate_function
+from .retention import analyze_retention
+from .storage import analyze_storage
+from .testutil import (
+    Reference, bind_parameters, Redeclared, borrowed_shape, bound, execute, leaf_shape, repass, reslot, prepared,
+)
+from .prepare import validate_function
+from .reach import reaches, storage_destination, storage_exclusions
 
 SOURCE = """\
 from tpy import int32, Own, ValueType, copy, readonly
@@ -1014,7 +1016,7 @@ def test_nested_entry_operands(program: _Program) -> None:
     fn = _lowered(program, "Deep.__init__")
     s, = (slot.id for slot in fn.slots if slot.name == "s")
     # The parameter a nested field copies from is live at entry.
-    assert s in analyze_liveness(fn).entry_live
+    assert s in prepared(fn).liveness.entry_live
     corner = _lowered(program, "Corner.__init__")
     flat = _record(program, "Flat")
     heap = {1: {}}
@@ -1444,7 +1446,7 @@ def test_a_member_write_is_an_in_place_replacement(program: _Program, name: str,
     fn = _lowered(program, name)
     write, = _member_writes(fn)
     assert write.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE) and isinstance(write.value, kind)
-    assert write in analyze_storage(fn).writes.values()
+    assert write in analyze_storage(prepared(fn)).writes.values()
     if name == "member_copy":
         assert write.value.source.projections[-1].id.name == "b" and write.value.may_raise
     if name == "implicit_copy":
@@ -1479,7 +1481,7 @@ def test_member_copies_as_elements(program: _Program) -> None:
 
 def test_a_scalar_member_write_is_no_replacement(program: _Program) -> None:
     # `self.a.x += 1` overwrites a scalar: no storage event at all.
-    assert not analyze_storage(_lowered(program, "Line.bump")).writes
+    assert not analyze_storage(prepared(_lowered(program, "Line.bump"))).writes
     line, point = _record(program, "Line"), _record(program, "Point")
     a, = (f for f in _definition(program, "Line").layout.fields if f.id.name == "a")
     x, = (f for f in _definition(program, "Point").layout.fields if f.id.name == "x")
@@ -1527,7 +1529,7 @@ def test_member_write_reach(program: _Program, written: tuple[str, ...], retaine
             fields.append(record[step])
             record = line if step == "line" else point
         return MIRReferent(MIRPlace(MIRSlotId(body, roots[root.rstrip("!")]), tuple(fields)), external)
-    assert affects(referent(written), referent(retained), {}, {}) is expected
+    assert reaches(referent(written), referent(retained), storage_exclusions({}, {})) is expected
 
 
 # --- a record move empties its source ---------------------------------------------------
@@ -1559,11 +1561,10 @@ def _moved_with_member_holder(program: _Program, *, read_after: bool) -> MIRFunc
 def test_a_record_move_replaces_its_source(program: _Program, read_after: bool) -> None:
     fn = _moved_with_member_holder(program, read_after=read_after)
     validate_function(fn)
-    events = analyze_storage(fn)
+    events = analyze_storage(prepared(fn))
     move, = events.moves.values()
     assert fn.slots[move.root.index].kind is MIRSlotKind.PARAMETER and not move.projections
-    live = analyze_liveness(fn)
-    retention = analyze_retention(fn, live, analyze_dependencies(fn, live), events)
+    retention = analyze_retention(prepared(fn))
     held = next(s.id for s in fn.slots if s.name == "held")
     # Read after the move, `held` reads the moved-from member: a replacement
     # of the source storage; read before it, nothing retains the source.
@@ -1744,8 +1745,7 @@ def _with_summaries(program: _Program, name: str, **paths) -> MIRFunction | MIRN
 
 
 def _conflicts(fn: MIRFunction) -> list[tuple[str, str]]:
-    live = analyze_liveness(fn)
-    retention = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn))
+    retention = analyze_retention(prepared(fn))
     return [(fn.slots[c.holder.root.index].name, _dump_place(c.retained.place)) for c in retention.conflicts]
 
 
@@ -1771,7 +1771,7 @@ def test_call_summaries_reach_through_members(program: _Program, name: str,
     assert isinstance(fn, MIRFunction), fn
     assert _conflicts(fn) == conflicts
     if name == "scalar_call":
-        events = analyze_storage(fn)
+        events = analyze_storage(prepared(fn))
         assert not events.call_writes and not events.writes
 
 
