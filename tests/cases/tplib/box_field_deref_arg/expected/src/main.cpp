@@ -46,7 +46,7 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        auto&& body = *__beg_1;
+        const auto& body = *__beg_1;
         std::cout << ::tpy::print_float(body.material.__deref__().bounce(1.0)) << "\n" << ::tpy::check_signals;
     }
 }

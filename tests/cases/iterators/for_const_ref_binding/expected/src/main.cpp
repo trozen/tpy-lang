@@ -423,7 +423,7 @@ int32_t alias_read(const std::vector<Depot>& ds) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& d = *__beg_0;
+        const auto& d = *__beg_0;
         const Depot& e = d;
         const Shelf& sh = d.shelf;
         total = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(total, ::tpy::__getitem__(e.shelf.flat, 0).x)), ::tpy::__getitem__(::tpy::__getitem__(sh.rows, 0), 0).x));
@@ -661,7 +661,7 @@ void test_assign_to_local_loop() {
     std::vector<Point> items = {Point(1, 2)};
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
-    auto __obj_0 = ::tpy::own_iter(std::move(items));
+    auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

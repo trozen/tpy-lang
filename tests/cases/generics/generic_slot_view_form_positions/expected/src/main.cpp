@@ -87,7 +87,7 @@ void ctor_arg(std::string_view k) {
 //     out = [has_item(NAMES, k) for k in ks]  # tpyc: ok
 //     twin = [has_item_str(NAMES, k) for k in ks]
 //     print("comprehension", out, twin)
-void comprehension(const std::vector<std::string>& ks) {
+void comprehension(std::vector<std::string>& ks) {
     std::vector<bool> out = ({
         std::vector<bool> __result;
         auto& __obj_0 = ks;

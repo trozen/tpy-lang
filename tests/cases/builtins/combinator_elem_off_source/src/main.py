@@ -7,9 +7,9 @@
 # comprehension over a local or a field. A loop variable bound off a
 # combinator in a `for` also demotes the parameter the combinator retains
 # (through the nesting), so the mutating faces compile against a plain
-# `list[T]` parameter; a comprehension over a parameter does not demote it
-# (BUGS.md#comprehension-loop-var-mutation-not-propagated), so the
-# comprehension sections here iterate locals and fields.
+# `list[T]` parameter, and a comprehension over a parameter demotes it as
+# well; the comprehension sections here iterate locals and
+# fields.
 from tpy import int32, Own, Span, readonly, error_return, ReturnException
 from typing import Iterator
 import asyncio

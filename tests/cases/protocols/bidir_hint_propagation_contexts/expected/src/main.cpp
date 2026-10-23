@@ -50,7 +50,7 @@ void main() {
     Holder h = Holder(Rc<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>::new_<::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>>(::tpystd::tplib::box::Box<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Field"))))));
     std::cout << h.r.get().get().get().name() << "\n" << ::tpy::check_signals;
     std::vector<::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>>> xs = ::tpyapp::main::collect();
-    auto __obj_0 = ::tpy::own_iter(std::move(xs));
+    auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

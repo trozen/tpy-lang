@@ -16,7 +16,7 @@
 | Ownership propagation through fields (`Own[S].field` -> `Own[T]`) | Partial (sema types propagate; codegen does not yet emit `std::move` for owned fields) |
 | Per-element move in consuming for-loops | Done (consuming loop vars added to `movable_locals`; `std::move(x)` emitted at last use) |
 | `own_iter()` for set/dict | Done (OwnIterSet, OwnIterDict in ordered_set/map.hpp) |
-| Auto-consuming at last use (for-loops, extend, constructors) | Done (list, set, dict keys; auto-selects consuming `__iter__` when iterable is at last use) |
+| Auto-consuming at last use (for-loops, extend, constructors) | Done (list, set, dict keys; auto-selects consuming `__iter__` when iterable is at last use and, for a for-loop, the loop variable is moved out -- a move a local's claim would make: at its last use, with no hidden borrower; a loop variable only written borrows its container) |
 | Consuming `dict.items()` | Blocked (Own[Self] overload changes return type, breaking non-iteration callers; needs for-loop-scoped dispatch) |
 | `auto_own` on `__iter__` for user collections | Done (return type + consuming loop codegen fixed) |
 | User-defined drain iterators (`ArrayListDrainIter`) | Planned |

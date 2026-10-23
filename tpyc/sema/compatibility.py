@@ -83,12 +83,12 @@ from .context import (
     OwnIterMove, OwningRead, PendingCopy, SinkCopy,
     UnneededCopy, UnpackClaim, OwnSlot, ParkedFunctionState, ParkedRebind,
     BorrowKind,
-    BorrowTracker, holds_generator_object,
+    BorrowTracker, SitedKey, holds_generator_object,
 )
 from ..storage_trace import StepKind
-from .storage_walk import (Leaf, LeafKind, MarkRequest, Use, leaves,
-                           mark_roots, slot_lent_roots, storage_roots,
-                           ternary_operands)
+from .storage_walk import (Leaf, LeafKind, MarkRequest, StorageKey, Use,
+                           leaves, mark_roots, slot_lent_roots,
+                           storage_roots, ternary_operands)
 from .numeric_lattice import (fixed_int_range_contains, numeric_info,
                              smallest_common_int)
 from ..diagnostics import (
@@ -1986,9 +1986,10 @@ class TypeCompatibility:
                     is_auto_moved = self.claim_name_move(
                         source_expr, expected, context)
                 self.check_own_consumption(source_expr)
-                # Mark loop variables as consumed for auto-consuming heuristic;
-                # a comprehension variable is not the enclosing `for` variable.
-                if isinstance(source_expr, TpyName) and binding is None:
+                # A loop variable moved out makes its loop consuming; a
+                # comprehension variable is not the enclosing `for` variable.
+                if (isinstance(source_expr, TpyName) and binding is None
+                        and self.claim_loop_var_move(source_expr)):
                     self.ctx.mark_loop_var_consumed(source_expr.name)
                 # A value-tuple with pointer-repr (reference) members copies each
                 # member its source lends into owned storage where CPython
@@ -3466,6 +3467,18 @@ class TypeCompatibility:
             self.register_own_source_copy(slot, expr, context, action,
                                           whole_slot=whole_slot, sink=sink)
         return True
+
+    def claim_loop_var_move(self, expr: TpyName) -> bool:
+        """Whether an owning sink's read of loop variable `expr` moves it
+        out -- where a local's move claim would succeed (`claim_name_move`'s
+        legs): the read is its last use and no hidden borrower bars it, the
+        demotion retracting the mark as for a local. A loop variable owns
+        its element only through a consuming iteration (`_is_owned_var`
+        leaves it out), which this verdict is what selects; a refused read
+        copies with the sink's warning, as the local's does."""
+        return (expr.name in self.ctx.func.loop_vars
+                and expr in self.ctx.all_last_uses
+                and not self.demoted_by_hidden_borrow(expr))
 
     def _settled_name_moves(self, expr: 'TpyExpr | None',
                             slot: 'TpyType | None') -> bool:
@@ -5417,7 +5430,7 @@ class TypeCompatibility:
         fresh: frozenset[int] = frozenset()
         owning = False
         copy_into_own: list[int] = []
-        borrow_roots: frozenset[str] = frozenset()
+        borrow_roots: frozenset[SitedKey] = frozenset()
         if init_expr is not None and var_type is not None:
             tt = unwrap_readonly(var_type)
             if isinstance(tt, TupleType):
@@ -5444,7 +5457,8 @@ class TypeCompatibility:
         )
 
     def _derive_tuple_borrow_sources(self, name: str, tt: 'TupleType',
-                                     init_expr: TpyExpr) -> frozenset[str]:
+                                     init_expr: TpyExpr
+                                     ) -> frozenset[SitedKey]:
         """The storage roots a borrow-form tuple local's element pointers
         alias, so the mark functions can trace a later yield/return of the
         bare name back to the aliased params. Roots are expanded through
@@ -5453,13 +5467,15 @@ class TypeCompatibility:
         self-assignment keeps the old sources via the derive-before-clear
         order above. Stored on BindingProvenance (UNION-merged at branch
         joins), so branch-divergent binds accumulate both arms' sources.
+        Each root keeps the binding its name names HERE.
         """
-        sources: set[str] = set()
+        sources: set[SitedKey] = set()
         for root in slot_lent_roots(init_expr, tt, Use.HOLDER, None,
                                     MayLend(self.ctx)).proven().names:
             expanded = self.ctx.func.bp_borrow_source_roots(root)
-            for s in (expanded if expanded else (root,)):
-                if s != name:
+            for s in (expanded if expanded else (SitedKey(
+                    StorageKey.of_name(root), self.ctx.binding_site(root)),)):
+                if s.key.root != name:
                     sources.add(s)
         return frozenset(sources)
 
@@ -6990,7 +7006,7 @@ class TypeCompatibility:
                 dangles = not all(
                     self._name_is_param_or_global(src.root) for src in srcs)
             else:
-                its = self.ctx.func.loop_var_iterable.get(inner.name)
+                its = self.ctx.loop_var_sources(inner.name)
                 if its:
                     # Any source outside param/global storage dies at return.
                     dangles = any(not self._name_is_param_or_global(it.root)

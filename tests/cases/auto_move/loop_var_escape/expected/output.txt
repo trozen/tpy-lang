@@ -1,0 +1,17 @@
+alias_in_if: 13
+call_alias: 13
+try: 13
+while_hoist: 13
+nested_loop: 13
+member: 210
+ptr_field: 13
+declared_view: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+ident: 13
+relend_after: 13
+reused_name: other 50
+reused_name: other 50
+reused_name: 13
+moved_while_borrowed: 210 2
+moved_while_call_borrowed: 110 1
+moved_while_call_borrowed: 210 2
+moved_out: 6 2

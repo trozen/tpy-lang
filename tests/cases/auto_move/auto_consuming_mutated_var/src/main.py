@@ -1,5 +1,6 @@
-# For-loop consuming triggers only when the loop var is mutated
-# AND the element type is non-value (move != copy).
+# For-loop consuming triggers only when the loop var is MOVED OUT (an owning
+# sink at its last use) -- never because it is mutated: a written loop var
+# borrows its container, which outlives every borrow of an element.
 from tpy import int32
 
 class Point:
@@ -17,7 +18,7 @@ def test_readonly() -> None:
 
 def test_mutated() -> None:
     items: list[Point] = [Point(10, 20), Point(30, 40)]
-    # Loop var is mutated + non-value element -- consumes
+    # Loop var is mutated but never moved out -- borrows
     for p in items:
         p.x = 0
         print(p.x, p.y)

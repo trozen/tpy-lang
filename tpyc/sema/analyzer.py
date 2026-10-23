@@ -122,7 +122,8 @@ from .frame_close import decide_frame_close, stamp_close_materials
 from .may_interrupt import stamp_may_interrupt
 from .loop_frames import resolve_leftover_source_writes, resolve_loop_frame_calls
 from ..value_category import is_rvalue_source, wants_move
-from .mutation_propagation import propagate_mutation_facts, infer_method_const
+from .mutation_propagation import (propagate_mutation_facts, infer_method_const,
+                                   resolve_loop_bindings)
 from tpyc import modules as builtin_modules
 from ..cycle_detection import detect_type_cycles
 from ..parse import SourceLocation, is_parser_keyword, walk_body_stmts
@@ -4277,3 +4278,9 @@ def analyze_component_bodies(
     for i, (analyzer, module) in enumerate(members):
         with scope(i):
             analyzer.publish_phase2_facts(module)
+    # After the vararg readonly flip and the @auto_readonly facts: a loop
+    # binding's constness reads the final facts of every callee it reaches.
+    for analyzer in analyzers:
+        ctx = analyzer.ctx
+        resolve_loop_bindings(ctx.loop_binders, ctx.binding_writes,
+                              ctx.binding_edges)

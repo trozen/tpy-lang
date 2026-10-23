@@ -33,9 +33,12 @@ from ..typesys import (INT32, FunctionInfo, MutationCallEdge, TypeRegistry,
 from .alias_rebind import BindKind
 from .pending_num import DeferredIntOp
 from .source_records import LeafPermission, SinkRead
-from .context import (BorrowTracker, CompTarget, FunctionTrackingState,
-                      NonOwningNotes, OwnIterMove, PendingCopy, PendingLocal,
-                      SemanticContext, LIVE_HANDLE_FIELDS)
+from .context import (BindingProvenance, BorrowKind, BorrowTracker,
+                      CompTarget, FunctionTrackingState, LoanInfo,
+                      NestedMutationMark, NonOwningNotes, OwnIterMove,
+                      PendingCopy, PendingLocal, SemanticContext, SitedKey,
+                      LIVE_HANDLE_FIELDS)
+from .storage_walk import StorageKey
 
 
 class _Recorder:
@@ -68,6 +71,9 @@ def _populated() -> FunctionTrackingState:
     tracker = BorrowTracker()
     # A node behind a plain attribute of a state object, not in a container.
     tracker.current_stmt = N.TpyPassStmt()
+    # A loan names the binding site its source resolved to.
+    tracker.loans[StorageKey.of_name("xs")] = {
+        "v": LoanInfo(BorrowKind.ALIAS, source_sites=(N.TpyPassStmt(),))}
     pre_analyzed: IdentityMap = IdentityMap()
     pre_analyzed[call] = [INT32]
     binds: IdentityMap = IdentityMap()
@@ -101,6 +107,15 @@ def _populated() -> FunctionTrackingState:
         bind_kinds=binds,
         gate_sites=gates,
         frame_rebind_sites=frame_rebinds,
+        genexpr_source_loans=((StorageKey.of_name("g"), LoanInfo(
+            BorrowKind.ITER, source_sites=(N.TpyPassStmt(),))),),
+        binding_provenance={'t': BindingProvenance(borrow_source_roots=(
+            frozenset({SitedKey(StorageKey.of_name("r"), stmt2)})))},
+        nested_mutation_marks=[NestedMutationMark(
+            StorageKey.of_name("xs"), through_field=False, structural=False,
+            via_element=True, receiver=False,
+            callee=FunctionInfo(name="callee", params=[], return_type=INT32),
+            slot=0)],
         frame_binding_nodes={'g': [N.TpyVarDecl("g", None, None)]},
         pass_scoped_frames={'g': N.TpyPassStmt()},
         pending_elem_type_fields=[(N.TpyName("comp"), 'result_elem_type')],
@@ -155,7 +170,10 @@ _FIXTURE_FIELDS = {
     'unread_coro_locals', 'var_decl_by_name', 'first_bindings',
     'pending_return_borrows',
     'pre_analyzed_method_args', 'bind_kinds', 'gate_sites',
-    'frame_rebind_sites', 'frame_binding_nodes', 'pass_scoped_frames',
+    'frame_rebind_sites', 'binding_provenance', 'genexpr_source_loans',
+    'nested_mutation_marks',
+    'frame_binding_nodes',
+    'pass_scoped_frames',
     'pending_elem_type_fields', 'pending_composite_exprs',
     'pending_container_exprs', 'arm_decl_sites',
     'pending_num_deferred', 'pending_num_splices', 'awaiting_container',
@@ -175,11 +193,9 @@ _LEAF_VALUE_NAMES = {
     'str', 'int', 'float', 'bool', 'bytes', 'None',
     'SourceLocation',   # a position, the one non-node record nodes carry
     'TpyType',          # deliberately not carried by identity; see the seeder
-    'TryTier', 'ValueRange', 'BindingProvenance', '_ClassConstantSentinel',
+    'TryTier', 'ValueRange', '_ClassConstantSentinel',
     'EphemeralKind',
     'LoopClauseEdges',  # sets of names only
-    'LoanInfo',         # a borrow kind, a flag and an index key
-    'NestedMutationMark',  # a storage key and four flags
     'StorageKey',       # a name and member names
     'OwnSlot',          # a param name and an element index
     'ViewTypeFamily',   # a static descriptor of the str / bytes family
@@ -306,6 +322,8 @@ def test_snapshot_still_copies_the_containers() -> None:
     # The dict-of-lists is the shape a shallow copy would get wrong: the
     # snapshot must not share the inner list with the live state.
     assert copied.write_history['x'] is not state.write_history['x']
+    # The copy's tracker stamps its loans from the copy's own scope.
+    assert copied.borrow_tracker.binder_of.__self__ is copied
     copied.compound_stack.append(N.TpyPassStmt())
     copied.write_history['x'].append((INT32, N.TpyName("y")))
     assert len(state.compound_stack) == 1

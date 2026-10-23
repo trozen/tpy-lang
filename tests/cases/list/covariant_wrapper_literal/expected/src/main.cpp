@@ -17,7 +17,7 @@ namespace tpyapp::main {
 //     print(len(comp))
 void main() {
     std::vector<::tpystd::tplib::box::Box<Pet>> boxes = ::tpy::make_vector<::tpystd::tplib::box::Box<Pet>>(::tpystd::tplib::box::Box<Dog>(Dog()), ::tpystd::tplib::box::Box<Cat>(Cat()));
-    auto __obj_0 = ::tpy::own_iter(std::move(boxes));
+    auto& __obj_0 = boxes;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -25,7 +25,7 @@ void main() {
         std::cout << b.get().name() << "\n" << ::tpy::check_signals;
     }
     std::vector<::tpystd::tplib::rc::Rc<Pet>> shared = ::tpy::make_vector<::tpystd::tplib::rc::Rc<Pet>>(Rc<Pet>::new_<Dog>(Dog()), Rc<Pet>::new_<Cat>(Cat()));
-    auto __obj_1 = ::tpy::own_iter(std::move(shared));
+    auto& __obj_1 = shared;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {

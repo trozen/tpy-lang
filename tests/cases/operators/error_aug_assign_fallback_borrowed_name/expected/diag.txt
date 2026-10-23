@@ -1,0 +1,1 @@
+main.py:20: error: '+=' on 'v' would rebind 'v' (V has no '__iadd__', so it falls back to '__add__'), but 'v' refers to an object it does not own; this is not supported yet -- write 'v = v + k'

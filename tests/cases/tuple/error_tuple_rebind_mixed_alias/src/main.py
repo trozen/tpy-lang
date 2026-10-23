@@ -190,15 +190,16 @@ def binder_param(v: Box, hb: HB) -> None:
     print(p[0].n, p[1].n)
 
 
-def nonlocal_param(v: Box, hb: HB) -> None:
+def nonlocal_param(v: Box, t: tuple[Box, Box]) -> None:
     p = make_mixed(1, v)
     p = make_mixed(2, v)
-    # nonlocal-param: 'reset' rebinds the parameter 'hb' through `nonlocal`.
-    p = hb.bp  # tpyc: error(/'p' keeps objects of its own in storage of 'nonlocal_param', so a binding of it that owns nothing may point only into a parameter's or self's storage for now; here it points into 'hb', a parameter a nested function rebinds; bind this value to a name of its own/)
+    # nonlocal-param: 'reset' rebinds the parameter 't' through `nonlocal`
+    # (a tuple: a reference-type parameter's rebind is refused).
+    p = t  # tpyc: error(/'p' keeps objects of its own in storage of 'nonlocal_param', so a binding of it that owns nothing may point only into a parameter's or self's storage for now; here it points into 't', a parameter a nested function rebinds; bind this value to a name of its own/)
 
     def reset() -> None:
-        nonlocal hb
-        hb = HB(60)
+        nonlocal t
+        t = (Box(60), Box(61))
 
     reset()
     print(p[0].n, p[1].n)
@@ -242,7 +243,7 @@ own_rebound(HB(10), Box(3))
 local_tuple(Box(3))
 local_call_operand([Box(11)])
 binder_param(Box(3), HB(12))
-nonlocal_param(Box(3), HB(13))
+nonlocal_param(Box(3), (Box(13), Box(14)))
 nonlocal_root(Box(3))
 temporary_root(Box(3))
 print(h.bp[0].n)

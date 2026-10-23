@@ -8167,6 +8167,16 @@ class MutationCallEdge:
     # combinator, a borrow-returning call): only the callee's element
     # mutation of such a param reaches the caller's storage.
     lent: frozenset[int] = frozenset()
+    # Callee slots (-1: the receiver) whose caller param is reached through
+    # an ELEMENT step -- the argument is a loop binding over the param, or
+    # borrows one -- so what the callee writes through the slot is a write
+    # of the param's elements.
+    elem_step: frozenset[int] = frozenset()
+    # Callee slot (-1: the receiver) -> the loop / comprehension binding
+    # sites the argument climbs through (`SemanticContext.write_reach`):
+    # each is written when the callee writes through the slot. Parallel to
+    # `param_map`, whose readers know nothing of bindings.
+    bindings: dict[int, tuple[object, ...]] = field(default_factory=dict)
 
 
 def _root_fact(name: str) -> property:

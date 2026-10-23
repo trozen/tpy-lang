@@ -610,11 +610,9 @@ def _loop_var_climbs(ctx: 'SemanticContext', iterable_expr: TpyExpr,
     """Whether the handle an `__iter__` lends is reached only through a loop
     variable whose writes climb to the iterable: the loop variable's
     `loop_var_iterable` sources, the iteration's loans
-    (`register_iteration_loans`). A comprehension's variable does not climb
-    (BUGS.md#comprehension-loop-var-mutation-not-propagated), and the climb
-    misses a write made through a callee the variable is passed to
-    (BUGS.md#loop-element-callee-mutation-not-propagated) or inside a nested
-    def (BUGS.md#loop-var-write-routes-miss-write-set)."""
+    (`register_iteration_loans`), which a write through it -- direct, by a
+    callee it is passed to, or inside a nested def -- climbs. Only a `for`
+    statement takes the exemption; a comprehension does not."""
     return loop_var and bool(iterated_storage(ctx, iterable_expr).loans)
 
 

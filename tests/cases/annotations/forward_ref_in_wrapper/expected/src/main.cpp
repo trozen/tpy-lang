@@ -15,7 +15,7 @@ int32_t total(const Tree& t) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& c = *__beg_0;
+        const auto& c = *__beg_0;
         s = (::tpy::add_check<int32_t>(s, ::tpyapp::main::total(c)));
     }
     return s;

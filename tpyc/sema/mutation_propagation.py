@@ -9,6 +9,7 @@ mutation facts transitively through it.
 from __future__ import annotations
 from typing import Optional
 
+from ..identity_map import IdentitySet
 from ..typesys import (
     FunctionInfo, MutationCallEdge, CONST_PARAMS_METHODS,
     view_is_inherently_const,
@@ -111,44 +112,18 @@ class _Facts:
         callee = edge.callee_fi
         callee_mp = callee.mutated_params
         callee_smp = callee.structural_mutated_params
-        callee_emp = callee.elem_mutated_params
-        if callee_mp is None:
-            # Unknown callee -- conservative: every flowing param is mutated
-            # in every way. Except a lent slot at a BODY-LESS callee: with no
-            # body there is nothing that writes through what the slot lends
-            # (`next(it)` advances the handle, it does not touch `xs`); a
-            # `@native` that wrote through an element it was lent would be
-            # a runtime lying about itself, like one that ignored `@readonly`.
-            stub = is_bodyless_binding(callee)
-            for callee_idx, caller_idx in edge.param_map.items():
-                if stub and callee_idx in edge.lent:
-                    continue
+        for callee_idx, caller_idx in edge.param_map.items():
+            writes, elem = slot_writes(edge, callee_idx)
+            if writes:
                 self.mutated.add(caller_idx)
+            if elem:
                 self.elem.add(caller_idx)
-            if edge.receiver_idx is not None:
+        if edge.receiver_idx is not None:
+            writes, elem = slot_writes(edge, -1)
+            if writes:
                 self.mutated.add(edge.receiver_idx)
-        else:
-            for callee_idx, caller_idx in edge.param_map.items():
-                # A param bound through a lending call reaches the caller's
-                # storage only through what the callee writes THROUGH it;
-                # what the callee does to the param itself (advances the
-                # combinator) touches nothing the caller passed.
-                if callee_idx in edge.lent:
-                    if callee_emp is not None and callee_idx in callee_emp:
-                        self.mutated.add(caller_idx)
-                        self.elem.add(caller_idx)
-                    continue
-                if callee_idx in callee_mp:
-                    self.mutated.add(caller_idx)
-                if callee_emp is not None and callee_idx in callee_emp:
-                    self.elem.add(caller_idx)
-            # A receiver edge (`self.m()`, `p.m()`, `p.f.m()`): the caller's
-            # receiver root is mutated when the call needs a mutable receiver.
-            if (edge.receiver_idx is not None
-                    and _receiver_must_be_mutable(callee)):
-                self.mutated.add(edge.receiver_idx)
-                if callee_emp is not None and -1 in callee_emp:
-                    self.elem.add(edge.receiver_idx)
+            if elem:
+                self.elem.add(edge.receiver_idx)
         # Structural mutation propagation: more specific than mutated_params.
         # -1 in a callee's structural set is its own receiver.
         if callee_smp is not None:
@@ -289,6 +264,61 @@ def const_inferable(fi: FunctionInfo) -> bool:
         # Inherently-const views carry no mutable alias, so auto-const is safe.
         return view_is_inherently_const(fi.return_type)
     return True
+
+
+def resolve_loop_bindings(binders: 'list[tuple[object, bool]]',
+                          writes: 'list[object]',
+                          edges: 'list[MutationCallEdge]') -> None:
+    """Decide every loop and comprehension binding's constness once the
+    mutation facts it reads are final: a binding that may bind const at all
+    (`binders`) binds const unless the body writes through it (`writes`) or
+    a call edge's callee writes through a slot the binding reaches
+    (`MutationCallEdge.bindings`) -- one decider, whatever order the
+    callees were analyzed in."""
+    written = IdentitySet(writes)
+    for edge in edges:
+        for slot, sites in edge.bindings.items():
+            if any(slot_writes(edge, slot)):
+                written.update(sites)
+    for node, eligible in binders:
+        node.const_loop_var = eligible and node not in written
+
+
+def slot_writes(edge: MutationCallEdge, slot: int) -> tuple[bool, bool]:
+    """What the callee of a resolved edge writes through callee slot `slot`
+    (-1: the receiver): (the storage the slot refers to, its elements).
+    The one per-slot rule: `fold_edge` reads it for the caller's params,
+    `resolve_loop_bindings` for the loop bindings the argument climbs
+    through.
+
+    An unknown callee writes every slot, a parameter's elements too --
+    except a lent slot
+    at a BODY-LESS callee: with no body there is nothing that writes
+    through what the slot lends (`next(it)` advances the handle, it does
+    not touch `xs`); a `@native` that wrote through an element it was lent
+    would be a runtime lying about itself, like one that ignored
+    `@readonly`. A slot bound through a lending call reaches the caller's
+    storage only through what the callee writes THROUGH it; what the
+    callee does to the slot itself (advances the combinator) touches
+    nothing the caller passed. A receiver is written when the call needs a
+    mutable receiver. An element-stepped slot (a loop binding over the
+    caller's storage) turns any write into a write of the elements -- the
+    converse of the lent leg."""
+    callee = edge.callee_fi
+    mp = callee.mutated_params
+    emp = callee.elem_mutated_params
+    if slot == -1:
+        writes = mp is None or _receiver_must_be_mutable(callee)
+        elem = writes and emp is not None and -1 in emp
+    elif mp is None:
+        writes = elem = not (slot in edge.lent and is_bodyless_binding(callee))
+    elif slot in edge.lent:
+        writes = elem = emp is not None and slot in emp
+    else:
+        writes, elem = slot in mp, emp is not None and slot in emp
+    if slot in edge.elem_step and (writes or elem):
+        writes = elem = True
+    return writes, elem
 
 
 def _receiver_must_be_mutable(callee: FunctionInfo) -> bool:

@@ -1,0 +1,1 @@
+main.py:22: error: '+=' on 'w' would rebind 'w' (V has no '__iadd__', so it falls back to '__add__'), but 'w' refers to an object it does not own; this is not supported yet -- bind the result to a new name, e.g. 'w2 = w + 10'

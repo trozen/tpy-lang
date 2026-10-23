@@ -1,1 +1,0 @@
-main.py:11: error: in function 'last_or': this construct is not yet supported by C++ code generation (stmt.match:match.capture_const_loop_var)

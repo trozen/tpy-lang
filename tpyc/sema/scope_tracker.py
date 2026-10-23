@@ -15,7 +15,7 @@ from ..parse import TpyCoerce, TpyName, TpyExpr, TpyStmt, TpyFunction
 from ..namespace import Namespace
 from ..diagnostics import Scope
 from .call_lends import MayLend
-from .storage_walk import Place, Use, storage_roots
+from .storage_walk import Place, StorageKey, Use, storage_roots
 
 if TYPE_CHECKING:
     from ..parse import TpyComprehensionGenerator
@@ -405,6 +405,9 @@ class ScopeTracker:
                warned: bool) -> None:
         self.ctx.func.hoisted_vars.add(source_name)
         self.ctx.func.escape_hoisted_vars.add(source_name)
+        # A hoisted local is a pointer slot (`T* x = &(var)`), which the
+        # loop binding it was bound off cannot fill const.
+        self.ctx.mark_binding_written(StorageKey.of_name(source_name))
         if warned:
             # Only a pair this check DID diagnose: the alias-rebind pass
             # reads the set as "already warned" and stays quiet for it.

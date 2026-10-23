@@ -73,7 +73,7 @@ inline int32_t Holder::first_nonnull() const {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& it = *__beg_0;
+        const auto& it = *__beg_0;
         const P* first = ::tpy::optional_to_ptr(it);
         if ((first != nullptr)) {
             return first->x;

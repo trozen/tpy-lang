@@ -23,7 +23,7 @@ namespace tpyapp::shapes {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& x = ::tpy::unwrap_ref(*__r_1);
+        const auto& x = ::tpy::unwrap_ref(*__r_1);
         s = (s) + (::tpyapp::shapes::total(x));
     }
     return s;

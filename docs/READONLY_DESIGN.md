@@ -540,14 +540,13 @@ existing loan machinery (a reference), never by the binding site:
   loop owns: its handle is reached only through the loop variable, whose writes climb to the
   iterable (`call_mutates_receiver(handle_climbs=...)`, keyed on the loop variable's iteration
   loans, `iter_loans._loop_var_climbs`; a comprehension or an `in` test takes no exemption).
-  Known limit: the climb misses a write made through a callee the loop variable is passed to
-  (BUGS.md#loop-element-callee-mutation-not-propagated) or inside a nested def
-  (BUGS.md#loop-var-write-routes-miss-write-set), and a comprehension variable does not climb at
-  all (BUGS.md#comprehension-loop-var-mutation-not-propagated).
+  A write made through a callee the loop variable is passed to reaches the iterable through
+  the call edge's element step, and one inside a nested def through the same climb; a
+  comprehension takes no exemption.
   Both the call-site demotion and the loop exemption are interim approximations of one rule:
   the receiver is mutated exactly when a write reaches it through the handle. The intended
   end state stays in sema (MIR runs after inference and cannot feed it back): (1) close the
-  three climb gaps above so the loop exemption is exact; (2) generalise the loop variable's
+  remaining climb gaps so the loop exemption is exact; (2) generalise the loop variable's
   trace to any local holding a handle from a declared `@auto_readonly` call, recorded by the
   order-free whole-function pre-pass, with an ALLOW-LIST of harmless uses (a value-field read,
   `is None` / comparison, a `readonly[...]` parameter, a declared or implicit `@readonly` call)

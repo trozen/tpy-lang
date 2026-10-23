@@ -275,6 +275,47 @@ def check_receiver_call_loans(ctx: SemanticContext, recv: TpyExpr,
                 f"{elem_of}[...]", label, hit), site)
 
 
+def record_receiver_edges(ctx: SemanticContext, callee: FunctionInfo,
+                          idxs: list[int], bindings: 'tuple[object, ...]',
+                          elem: 'frozenset[int]',
+                          captured: 'tuple[str, ...]' = (), *,
+                          param_edge: MutationCallEdge | None = None,
+                          slot: int = -1) -> None:
+    """File the Phase-2 edges of a deferred write through `callee`'s slot
+    `slot` (-1: its receiver): one per caller param in `idxs`
+    (element-stepped when in `elem`), the loop bindings the argument climbs
+    through on the first -- or on `param_edge`, the call's argument edge,
+    which then also carries the first param. In a nested def, the
+    enclosing function's `captured` names get theirs at the replay
+    (`defer_nested_writes`)."""
+    fn = ctx.func
+    ctx.defer_nested_writes(callee, slot, captured)
+    edges: list[MutationCallEdge] = []
+    for i, idx in enumerate(idxs):
+        edge = (param_edge if i == 0 and param_edge is not None
+                else MutationCallEdge(callee_fi=callee.root, param_map={}))
+        if slot == -1:
+            edge.receiver_idx = idx
+        else:
+            edge.param_map = {**edge.param_map, slot: idx}
+        if idx in elem:
+            edge.elem_step = edge.elem_step | {slot}
+        edges.append(edge)
+    if bindings:
+        if not edges:
+            edges.append(param_edge if param_edge is not None
+                         else MutationCallEdge(callee_fi=callee.root,
+                                               param_map={}))
+        edges[0].bindings = {**edges[0].bindings, slot: tuple(bindings)}
+    for edge in edges:
+        if edge is param_edge:
+            continue
+        if edge.receiver_idx is not None or edge.param_map:
+            fn.current_call_edges.append(edge)
+        if edge.bindings:
+            ctx.binding_edges.append(edge)
+
+
 def credit_receiver_mutation(ctx: SemanticContext, recv: TpyExpr,
                              obj_type: TpyType | None, method: str, *,
                              callee: FunctionInfo | None = None,
@@ -311,21 +352,26 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
     is_direct_self = isinstance(recv, TpyName) and recv.name == "self"
     structural = (not is_direct_self and obj_type is not None
                   and _invalidates(ctx, obj_type, method, callee))
-    for name, receiver_idx in ctx.receiver_credits(recv):
-        if not defers:
-            receiver_idx = None
-        if receiver_idx is not None:
-            if name != "self" and name in fn.current_param_name_to_idx:
-                fn.current_receiver_deferred_param_names.add(name)
+    names_by_idx = {i: n for n, i in fn.current_param_name_to_idx.items()}
+    for credit in ctx.receiver_credits(recv):
+        name = credit.name
+        deferred = defers and credit.deferred
+        if deferred:
+            for idx in credit.idxs:
+                pname = names_by_idx.get(idx)
+                if pname is not None and pname != "self":
+                    fn.current_receiver_deferred_param_names.add(pname)
             if not edges_recorded:
                 assert callee is not None
-                fn.current_call_edges.append(MutationCallEdge(
-                    callee_fi=callee.root, param_map={},
-                    receiver_idx=receiver_idx))
+                record_receiver_edges(ctx, callee, list(credit.idxs),
+                                      credit.bindings, credit.elem,
+                                      credit.captured)
+        # A loop binding's receiver edge decides the binding too.
         mark_roots(ctx, [StorageKey.of_name(name)], MarkRequest(
-            params=receiver_idx is None, loop_vars=True,
+            params=not deferred,
+            loop_vars=not (deferred and credit.bindings),
             structural=structural))
-        if (receiver_idx is None and name != "self"
+        if (not deferred and name != "self"
                 and _local_traces_to_self(fn.borrow_tracker, name)):
             # A local alias of self-owned storage: its own mark stops at the
             # member key it borrows, which names no parameter.

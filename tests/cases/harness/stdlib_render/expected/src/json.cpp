@@ -268,7 +268,7 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& item = *__beg_0;
+            const auto& item = *__beg_0;
             ::tpystd::json::_write_value(item, w, sort_keys);
         }
         w.array_end();

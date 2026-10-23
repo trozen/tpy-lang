@@ -1,0 +1,1 @@
+The writers are @native C++ functions in native_types.hpp, which CPython cannot call.

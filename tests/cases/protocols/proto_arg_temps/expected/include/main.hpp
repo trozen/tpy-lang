@@ -562,7 +562,7 @@ void via_proto(std::string_view tag, T_sk& sk, const std::vector<int32_t>& pv, c
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& r1 = *__beg_0;
+        const auto& r1 = *__beg_0;
         R __tmp_2 = r1;
         std::cout << tag << " " << "rec_own loop" << " " << sk.take_rec(std::move(__tmp_2)) << " " << r1.x << "\n" << ::tpy::check_signals;
     }
@@ -615,7 +615,7 @@ void via_bound(std::string_view tag, ::tpy::param_val_or_ref_t<T> sk, const std:
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& r1 = *__beg_0;
+        const auto& r1 = *__beg_0;
         R __tmp_2 = r1;
         std::cout << tag << " " << "rec_own loop" << " " << sk.take_rec(std::move(__tmp_2)) << " " << r1.x << "\n" << ::tpy::check_signals;
     }

@@ -29,7 +29,7 @@ int32_t depth(const Tree& t) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& child = ::tpy::unwrap_ref(*__r_1);
+            const auto& child = ::tpy::unwrap_ref(*__r_1);
             int32_t d = ::tpyapp::main::depth(child);
             if ((d > result)) {
                 result = d;
@@ -61,7 +61,7 @@ int32_t depth(const Tree& t) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& child = ::tpy::unwrap_ref(*__r_1);
+            const auto& child = ::tpy::unwrap_ref(*__r_1);
             ::tpy::BigInt d = ::tpyapp::main::int_depth(child);
             if ((d > result)) {
                 result = d;

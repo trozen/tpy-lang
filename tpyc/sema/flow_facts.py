@@ -168,17 +168,18 @@ def merge_borrow_triples(
     When the same (storage, borrower) differs on the two branches,
     `combine_loan_info` takes each field at its more dangerous value.
     """
-    if then_term and else_term:
-        combined = then_borrows | else_borrows
-    elif then_term:
-        combined = else_borrows
-    elif else_term:
-        combined = then_borrows
+    combined: tuple[frozenset[tuple[StorageKey, Holder, LoanInfo]], ...]
+    if then_term and not else_term:
+        combined = (else_borrows,)
+    elif else_term and not then_term:
+        combined = (then_borrows,)
     else:
-        combined = then_borrows | else_borrows
+        combined = (then_borrows, else_borrows)
     # Deduplicate (storage, borrower) pairs, keeping the more dangerous facts
+    # (and both legs' `source_sites`, which a set union of equal loans would
+    # drop).
     best: dict[tuple[StorageKey, Holder], LoanInfo] = {}
-    for storage, borrower, loan in combined:
+    for storage, borrower, loan in (t for leg in combined for t in leg):
         key = (storage, borrower)
         prev = best.get(key)
         best[key] = loan if prev is None else combine_loan_info(prev, loan)

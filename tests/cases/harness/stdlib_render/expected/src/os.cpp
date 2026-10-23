@@ -212,7 +212,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& be = *__beg_0;
+            const auto& be = *__beg_0;
             bis_dir = false;
             {
                 try {
@@ -262,7 +262,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            auto&& e = *__beg_1;
+            const auto& e = *__beg_1;
             is_dir = false;
             {
                 try {

@@ -1252,8 +1252,9 @@ class MarkRequest:
     so no flag is a fixed property of a site kind.
 
     `params`: the mutation mark (`mark_param_mutated`, with
-    `through_field` / `via_element`); `loop_vars`: the loop-variable
-    binding mark; `handle_bindings`: a name reached only as a handle
+    `through_field` / `via_element`); `loop_vars`: the loop-binding mark
+    (`mark_binding_written`, every loop binding the write reaches);
+    `handle_bindings`: a name reached only as a handle
     (`Place.via_handle`) gets the binding mark too -- False where only the
     referent is written (an argument dereferenced into a reference
     parameter), True where the use may run on the handle value itself (a
@@ -1288,7 +1289,7 @@ def mark_roots(ctx: 'SemanticContext',
             name = key.as_name()
         if (req.loop_vars and name is not None
                 and (req.handle_bindings or not via_handle)):
-            ctx.mark_loop_var_mutated(name)
+            ctx.mark_binding_written(key)
         if req.params:
             ctx.mark_param_mutated(key, through_field=req.through_field,
                                    via_element=req.via_element)

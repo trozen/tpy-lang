@@ -187,10 +187,11 @@ are sema's.
    analyzes clause k's filters, then either analyzes clause k+1's iterable
    (inside the scope, with every earlier target visible) and recurses, or -- in
    the innermost clause -- analyzes the element(s) with the slot hint.
-4. On the way out each clause credits a mutation of its loop variable to the
-   comprehension target its source is rooted at
-   (`credit_iter_source_mutation`, `reach=comp_targets`), so
-   `[[c.bump() for c in row] for row in grid]` binds `row` mutably.
+4. On the way out each clause records whether its targets may bind const
+   (`loop_binders`); the verdict is taken once the component's mutation facts
+   are final (`resolve_loop_bindings`), so a write through `c` -- direct or
+   by a callee -- in `[[c.bump() for c in row] for row in grid]` binds `row`
+   (and `grid`'s parameter) mutably.
 
 ### Scoping
 
@@ -301,10 +302,12 @@ A clause-0 source rooted at a name spelled like one of the targets (`[grow(c)
 for c in c]`) is the ENCLOSING binding of that name, which the comprehension's
 own code cannot reach by name, so no loan is filed on it.
 
-A write through a loop variable reaches another comprehension's target (step
-4 above) but not a parameter or an enclosing `for` variable, so `[c.bump(1) for
-c in cs]` over a parameter keeps `cs` const and fails the build
-(`BUGS.md#comprehension-loop-var-mutation-not-propagated`).
+A write through a clause variable -- direct, or by a callee or a receiver
+method it is passed to -- reaches what the clause iterates, as a `for`
+variable's does: the source binding (`SemanticContext.record_loop_sources`,
+keyed by the clause, each root resolved before the target can shadow it)
+climbs to an enclosing comprehension target, `for` variable or parameter,
+so `[c.bump(1) for c in cs]` over a parameter makes `cs` mutable.
 
 A write to the SOURCE while the clause variable is live -- in its filters,
 the later clauses or the element, `[poke(a) + y for y in a]` -- sets the
@@ -616,8 +619,8 @@ over its arguments, and is checked as one, with the three checks every call
 site runs, and one more for the inner clauses:
 
 - **Mutation facts.** A body that mutates through its loop var or through a
-  capture keeps the enclosing param a mutable borrow, except when its source is an
-  ENCLOSING loop var (`BUGS.md#genexpr-over-loop-var-param-stays-const`).
+  capture keeps the enclosing param a mutable borrow, an ENCLOSING loop var's
+  source included (the call edge's element step).
 - **Conflicts with live loans.** A body that may grow or rewrite a capture on
   which a loan is live where the expression is written (`for v in xs: n +=
   sum(1 for _ in range(1) if grow(xs))`) warns *Borrowed container 'xs' is

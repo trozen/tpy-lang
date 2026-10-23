@@ -98,7 +98,7 @@ int32_t count_leaves(const Tree& t) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& c = ::tpy::unwrap_ref(*__r_1);
+            const auto& c = ::tpy::unwrap_ref(*__r_1);
             n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::count_leaves(c));
         }
         return n;

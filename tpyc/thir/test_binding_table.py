@@ -503,9 +503,10 @@ def frame_slot() -> Iterator[int]:
 def consume() -> None:
     # Spelled: the inferred literal's loop does not lower as consuming.
     items: list[P] = [P(1), P(2)]
+    out: list[P] = []
     for x in items:
-        x.v = 0
-        print(x.v)
+        out.append(x)
+    print(len(out))
 '''
 
 

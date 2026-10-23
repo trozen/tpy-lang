@@ -658,7 +658,7 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        auto&& __item = *__beg_2;
+        const auto& __item = *__beg_2;
         __item.__json_encode__(__writer);
     }
     __writer.array_end();

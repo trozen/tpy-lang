@@ -41,7 +41,7 @@ void free_function(std::string_view k);
 // def ctor_arg(k: str) -> None:
 void ctor_arg(std::string_view k);
 // def comprehension(ks: list[str]) -> None:
-void comprehension(const std::vector<std::string>& ks);
+void comprehension(std::vector<std::string>& ks);
 // def gen_body(k: str) -> Iterator[bool]:
 __gen_gen_body gen_body(std::string_view k);
 // async def async_body(k: str) -> bool:

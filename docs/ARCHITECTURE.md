@@ -498,6 +498,24 @@ handle into it) propagates only the callee's element mutation
 through an element with, so `next(it)` over `it = zip(xs, ys)` leaves
 `xs` and `ys` const.
 
+A loop or comprehension element passed to a callee (or called a method
+on) is an argument like any other: the edge recorder climbs it
+(`SemanticContext.write_reach`) through the loop bindings it passes to
+what they iterate. A parameter reached that way is mapped with an ELEMENT
+step (`MutationCallEdge.elem_step`): whatever the callee writes through
+the slot is a write of the parameter's elements. The bindings themselves
+ride the edge in a parallel map (`MutationCallEdge.bindings`), outside
+`param_map`, and are no fixpoint input: nothing propagates out of a
+binding. Every binding's constness is decided once per component, after
+propagation, the vararg readonly flip and the `@auto_readonly` facts
+(`mutation_propagation.resolve_loop_bindings`): a binding binds const
+unless the body writes through it (`mark_binding_written`) or an edge's
+callee writes through a slot it reaches -- the same per-slot rule
+`fold_edge` reads for parameters (`slot_writes`). So the verdict does not
+depend on whether the writer was analyzed before the loop. A nested def's
+write deferred to a callee replays onto the enclosing function as an edge
+(`NestedMutationMark.callee`).
+
 Const inference reads recorded return-borrow roots through
 `typesys.recorded_return_borrow_sources`. Receiver inference retains its
 inherently-const-view exception. Const-method parameter emission reads the

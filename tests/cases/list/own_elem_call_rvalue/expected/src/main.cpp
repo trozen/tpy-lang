@@ -24,7 +24,7 @@ std::vector<std::vector<double>> build() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& m = *__beg_0;
+        const auto& m = *__beg_0;
         table.push_back(m.create_vector());
     }
     return table;

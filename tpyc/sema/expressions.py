@@ -5885,7 +5885,6 @@ class ExpressionAnalyzer:
                 n_source + k for k, name in enumerate(captures)
                 if name not in lent and name not in iterated)
             self.calls._check_borrow_arg_conflicts(creation)
-            self.calls._check_loop_var_arg_mutation(creation)
             self.calls._record_mutation_call_edges(creation)
             expr.frame_creation = creation
         expr.frame_func = func
@@ -6349,10 +6348,8 @@ class ExpressionAnalyzer:
         names = gen.targets
         if not step:
             # Clear any prior marks in case an outer scope already used these
-            # names; the post-body check at the bottom must see only marks
-            # from this comp's body.
+            # names.
             for n in names:
-                self.ctx.func.mutated_loop_vars.discard(n)
                 self.ctx.func.consumed_loop_vars.discard(n)
 
             # Clause 0's source is evaluated in the enclosing scope, where a
@@ -6396,20 +6393,13 @@ class ExpressionAnalyzer:
                 del comp_targets[len(comp_targets) - len(names):]
         if step:
             return result
-        # The edge reaches only another comprehension's target: an enclosing
-        # `for` variable marked mutable may turn its loop consuming while a
-        # borrow of an element outlives the loop
-        # (BUGS.md#consuming-loop-outlived-by-loop-var-borrow).
-        self.ctx.credit_iter_source_mutation(
-            names, gen.iterable,
-            reach={t.name for t in self.ctx.func.comp_targets})
-
-        # An owned-yielding source binds the element non-const (`auto&&`) so a
-        # last-use sink can move it -- mirrors the consuming for-loop, which
-        # excludes consumed vars from the const-ref binding.
-        if (worth_const_ref and not gen.owns_elements
-                and not any(n in self.ctx.func.mutated_loop_vars for n in names)):
-            gen.const_loop_var = True
+        # Whether the targets bind const-ref is decided once every write
+        # through them is known (`resolve_loop_bindings`). An owned-yielding
+        # source binds the element non-const (`auto&&`) so a last-use sink
+        # can move it -- mirrors the consuming for-loop, which excludes
+        # consumed vars from the const-ref binding.
+        self.ctx.loop_binders.append(
+            (gen, worth_const_ref and not gen.owns_elements))
         self._decide_comp_copies_var(expr, k, elem_type)
         return result
 
@@ -6446,8 +6436,15 @@ class ExpressionAnalyzer:
         assert iterable_type is not None
         # `loan.unplaceable` needs no stamp here: a chain too deep for a loan
         # key never lowers as a comprehension source.
-        register_iteration_loans(self.ctx, IterHolder(gen), gen.iterable,
-                                 iterable_type, excluded_roots=excluded)
+        loan = register_iteration_loans(self.ctx, IterHolder(gen),
+                                        gen.iterable, iterable_type,
+                                        excluded_roots=excluded)
+        # Read before the targets are bound: a target may shadow the
+        # source's root (`[n.bump() for n in n.kids]`).
+        self.ctx.record_loop_sources(
+            gen, gen.iterable,
+            loan.sources,
+            loan.elem_sources if gen.unpack_vars is not None else None)
         # The targets' element origin is not recorded here, so a view hoist
         # must not read the roots an earlier `for` over the same name left.
         for name in names:

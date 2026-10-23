@@ -137,8 +137,8 @@ void block(std::vector<P>& ps) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& q = *__beg_0;
-        P& snap = q;
+        const auto& q = *__beg_0;
+        const P& snap = q;
         k = ::tpy::add_check<int32_t>(k, 1);
         fs.push_back([k, snap]() -> int32_t { return (::tpy::add_check<int32_t>(snap.n, (::tpy::mul_check<int32_t>(k, 100)))); });
         fs.push_back([q]() -> int32_t { return q.n; });
@@ -164,8 +164,8 @@ void block_def(std::vector<P>& ps) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& q = *__beg_0;
-        P& snap = q;
+        const auto& q = *__beg_0;
+        const P& snap = q;
         auto get = [snap]() -> int32_t {
             return snap.n;
         };

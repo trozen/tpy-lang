@@ -799,7 +799,7 @@ void captured() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            ::tpy::BigInt v = ::tpy::unwrap_ref(*__r_1);
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
             if ((v > 1000)) {
                 b_list.push_back(v);
             }
@@ -1088,7 +1088,7 @@ void captured_places(const ::tpy::BigInt& limit) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            ::tpy::BigInt v = ::tpy::unwrap_ref(*__r_1);
+            const ::tpy::BigInt& v = ::tpy::unwrap_ref(*__r_1);
             if ((v > limit)) {
                 h.items.push_back(v);
             }

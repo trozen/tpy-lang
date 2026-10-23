@@ -29,7 +29,7 @@ int32_t count(const Expr& e) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& sub = ::tpy::unwrap_ref(*__r_1);
+        const auto& sub = ::tpy::unwrap_ref(*__r_1);
         n = ::tpy::add_check<int32_t>(n, ::tpyapp::main::count(sub));
     }
     return n;

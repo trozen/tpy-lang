@@ -56,7 +56,7 @@ int32_t local_count(const Tree<T>& t) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& child = *__beg_0;
+            const auto& child = *__beg_0;
             total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::local_count<T>(child));
         }
         return total;

@@ -14,9 +14,23 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from ..diagnostics import Scope
+from ..parse import TpyFunction
 from ..typesys import (PendingViewType, TpyType, unwrap_readonly,
                        unwrap_ref_type)
 from .context import SemanticContext
+
+
+def nonvalue_params(func: object) -> dict[str, TpyType]:
+    """The parameters of `func` a rebinding is refused for -- each of a
+    non-value type, at that type -- or none when `func` is no function."""
+    if not isinstance(func, TpyFunction):
+        return {}
+    out: dict[str, TpyType] = {}
+    for pname, ptype in func.params:
+        bare = unwrap_readonly(unwrap_ref_type(ptype))
+        if not bare.is_value_type():
+            out[pname] = bare
+    return out
 
 
 @dataclass(frozen=True)
@@ -29,6 +43,13 @@ class EnclosingScopeFacts:
     binding_lines: dict[str, int]
     outer_locals: frozenset[str]
     self_is_receiver: bool
+    # The enclosing scope's loop variables and the names that do not own
+    # their object: a rebind through `nonlocal` is refused for both.
+    loop_vars: frozenset[str]
+    borrowing: frozenset[str]
+    # The enclosing function's non-value parameters: a rebind through
+    # `nonlocal` is refused as the function's own rebind is.
+    nonvalue_params: dict[str, TpyType]
     # Each name's type in the enclosing scope, for the names the inner body
     # writes through.
     types: dict[str, TpyType]
@@ -55,6 +76,10 @@ def enclosing_scope_facts(ctx: SemanticContext,
                        if d.loc is not None},
         outer_locals=frozenset(fs.definitely_assigned),
         self_is_receiver=ctx.receiver_self_in_scope(),
+        loop_vars=frozenset(fs.loop_vars),
+        borrowing=frozenset(n for n in fs.nonowning_sites
+                            if not fs.owns_whole(n)),
+        nonvalue_params=nonvalue_params(fs.current_function),
         types=types)
 
 
@@ -68,6 +93,9 @@ def enter_enclosing_scope(ctx: SemanticContext,
     fs.enclosing_binding_lines = dict(facts.binding_lines)
     fs.outer_scope_locals = set(facts.outer_locals)
     fs.outer_self_is_receiver = facts.self_is_receiver
+    fs.enclosing_loop_vars = set(facts.loop_vars)
+    fs.enclosing_borrowing_names = set(facts.borrowing)
+    fs.enclosing_nonvalue_params = dict(facts.nonvalue_params)
 
 
 def bind_nonlocals(ctx: SemanticContext, facts: EnclosingScopeFacts,

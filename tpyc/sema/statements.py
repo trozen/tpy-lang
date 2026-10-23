@@ -33,7 +33,7 @@ from ..typesys import (
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, is_constexpr_eligible,
     qualify_exception_name, is_return_exception, is_exception_record, error_return_matches,
     record_owner,
-    FunctionInfo, ParamInfo, RecordInfo, MutationCallEdge,
+    FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
     is_bufferless_scalar, unwrap_send_sync, unwrap_optional_own,
@@ -97,6 +97,7 @@ from .context import (
     holds_generator_object, holds_frame_object, note_owned_local,
     note_nonowning_bind, ConsumingLoop, FinallyCapture, SinkCopy, UnpackClaim,
     frame_binding_calls, frame_binding_fact, record_frame_binding_roots,
+    NestedMutationMark,
 )
 from .storage_walk import (EscapePosition, LoanSource, MarkRequest, Use,
                            borrow_key, call_loans, holder_root, mark_roots,
@@ -113,7 +114,7 @@ from .init_tracker import InitTracker
 from .receiver_calls import (
     check_implicit_readonly_receiver, credit_implicit_receiver_call,
     implicit_readonly_result_hint,
-    record_implicit_call,
+    record_implicit_call, record_receiver_edges,
 )
 from .aug_hold import aug_hold_parts
 from .loop_frames import for_live_region, note_source_writes
@@ -148,7 +149,8 @@ from .alias_rebind import (binding_roots, decide_rebind_storage,
                            stamp_unpack_rebinds, tuple_source_elem_owned)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
-from .type_join import (operand_spelling, python_type_name, user_type_name,
+from .type_join import (expression_spelling, operand_spelling,
+                        python_type_name, user_type_name,
                         wider_store_message)
 from .compatibility import TupleSink, inferred_field_slot, owned_tuple_slots
 from .context import (
@@ -173,7 +175,7 @@ from .pending_num import (ContainerCells, Entry, PendingNums, PendingNumCell,
                           with_container, with_list_elem)
 from .list_elem import container_call
 from .nonlocal_binding import (bind_nonlocals, enclosing_scope_facts,
-                               enter_enclosing_scope)
+                               enter_enclosing_scope, nonvalue_params)
 from .slot_hint import SlotHint
 from .local_deduction import (
     collect_pending_source_types, mark_pending_list_mutated,
@@ -1614,15 +1616,24 @@ class StatementAnalyzer:
 
     def _mark_bound_loop_var_sources(self, name: str, var_type: TpyType,
                                      value: TpyExpr) -> None:
-        """A non-value local bound off a loop var takes a MUTABLE borrow out
-        of it (`&(var)` / `T&` in codegen), so the loop var cannot bind
-        const; a reassigned borrow tuple takes its element pointers out of
-        it the same way. The source may be the loop var itself, any field /
-        element chain rooted at it (`x = h.b`), or each operand a select may
-        pick. One rule for a declaration and a plain assignment."""
+        """A REASSIGNED local bound off a loop var points into it with one
+        pointer type for every referent (`T* x = &(var)`), and a reassigned
+        borrow tuple takes its element pointers out of it the same way, so
+        the loop var cannot bind const. A local bound once is a read-only
+        bind: it takes the loop var's constness, and a write through it
+        climbs to the loop var (`mark_binding_written`) -- unless it becomes
+        a pointer slot (`ScopeTracker._hoist`; a resumable body's frame
+        local). The source may be the loop var itself, any field / element
+        chain rooted at it (`x = h.b`), or each operand a select may pick.
+        One rule for a declaration and a plain assignment."""
+        cur = self.ctx.func.current_function
+        frame_slot = isinstance(cur, TpyFunction) and (cur.is_generator
+                                                       or cur.is_async)
+        if (name not in self.ctx.func.current_reassigned_vars
+                and not frame_slot):
+            return
         if not (not var_type.is_value_type()
-                or (name in self.ctx.func.current_reassigned_vars
-                    and _local_points_into_source(var_type))):
+                or _local_points_into_source(var_type)):
             return
         mark_roots(self.ctx, storage_roots(value, Use.HOLDER, None,
                                            MayLend(self.ctx)),
@@ -2800,7 +2811,6 @@ class StatementAnalyzer:
                         self.init.add_loop_var_provenance(stmt.var)
                     eph_added = self._mark_ephemeral_loop_targets(
                         stmt, ephemeral_src, open_eph_src)
-                    self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
                     self._check_loop_var_rebind(stmt, elem_type)
                     cid_floor = self.ctx.pending_num_counter
@@ -2824,12 +2834,9 @@ class StatementAnalyzer:
                         self.init.remove_loop_var_provenance(stmt.var)
                     for name in eph_added:
                         self.ctx.func.ephemeral_borrow_vars.pop(name, None)
-                # Same edge the tuple unpack records when it takes an element
-                # borrow out of a loop var.
-                self.ctx.credit_iter_source_mutation([stmt.var], stmt.iterable)
-                # Set const-ref binding when the loop var was never mutated.
-                # mutated_loop_vars was cleared for stmt.var before entering the
-                # loop body, so it only reflects mutations from this loop.
+                # Whether the loop var binds const-ref is decided once every
+                # write through it is known, the callees' included
+                # (`resolve_loop_bindings`); here only whether it may at all.
                 # Only for non-value types or expensive-to-copy value types
                 # (BigInt, String, tuples with expensive elements). Cheap
                 # primitives (int32_t, bool, double, etc.) are better copied
@@ -2845,21 +2852,20 @@ class StatementAnalyzer:
                     first = stmt.body[0]
                     if isinstance(first, TpyTupleUnpack) and any(first.is_ref):
                         needs_mut_unpack = True
-                if (worth_const_ref
-                        and stmt.var not in self.ctx.func.mutated_loop_vars
-                        and stmt.var not in self.ctx.func.consumed_loop_vars
-                        and not needs_mut_unpack):
-                    stmt.const_loop_var = True
+                self.ctx.loop_binders.append((stmt, (
+                    worth_const_ref
+                    and stmt.var not in self.ctx.func.consumed_loop_vars
+                    and not needs_mut_unpack)))
                 # Auto-consuming iteration: use consuming __iter__ when the
-                # container is at last use and elements are either mutated
-                # or consumed (copied into owned storage via Own[T] params,
-                # append, etc.). The container is dead after the loop, so
-                # moving it into OwnIter is free (pointer swap). Consumed
-                # elements become movable at last use, avoiding copies.
+                # container is at last use and the loop var is MOVED OUT
+                # (`claim_loop_var_move`: an owning sink at its last use, no
+                # hidden borrower). The container is dead after the loop, so
+                # moving it into OwnIter is free (pointer swap), and the
+                # moved elements are not copied. A loop var that is only
+                # written avoids no copy by consuming: it borrows the
+                # container, which outlives every borrow of an element.
                 loop_var_needs_ownership = (
-                    stmt.var in self.ctx.func.mutated_loop_vars
-                    or stmt.var in self.ctx.func.consumed_loop_vars
-                )
+                    stmt.var in self.ctx.func.consumed_loop_vars)
                 consuming_fi = None
                 if (loop_var_needs_ownership
                         and not stmt.hoist_loop_var
@@ -3834,7 +3840,7 @@ class StatementAnalyzer:
                                      iterable_type: TpyType) -> bool:
         """The for-each's iteration loan, and where its loop variable's
         element comes from -- one registration for BOTH for-each routes.
-        True when the loop variable's sources were recorded
+        True when the iteration filed a loan its sources name
         (`loop_var_iterable`)."""
         cur = self.ctx.func.current_function
         frame_loop = isinstance(cur, TpyFunction) and stmt is cur.genexpr_loop
@@ -3847,12 +3853,10 @@ class StatementAnalyzer:
                 (key, info) for key, info in loan.loans
                 if key.root in cur.capture_params
                 and (key, info) not in cur.genexpr_inner_loans)
-        if not loan.sources:
-            return False
-        self.ctx.func.loop_var_iterable[stmt.var] = loan.sources
-        if stmt.is_tuple_unpack and loan.elem_sources is not None:
-            self.ctx.func.loop_var_elem_iterable[stmt.var] = loan.elem_sources
-        return True
+        self.ctx.record_loop_sources(
+            stmt, stmt.iterable, loan.sources,
+            loan.elem_sources if stmt.is_tuple_unpack else None)
+        return bool(loan.sources)
 
     def _analyze_async_for(self, stmt: TpyForEach) -> None:
         """Analyze `async for x in ait: <body>` (v1.5 M6).
@@ -3959,7 +3963,6 @@ class StatementAnalyzer:
             self.init.apply_loop_entry_facts(
                 before, kills=self.ctx.fact_kills(
                     stmt.body))
-            self.ctx.func.mutated_loop_vars.discard(stmt.var)
             self.ctx.func.consumed_loop_vars.discard(stmt.var)
             # An `async for` borrows what it iterates exactly as the sync
             # for-each does, through the same two registrations: `__aiter__`
@@ -4526,6 +4529,26 @@ class StatementAnalyzer:
             f"returning a value; declared return type is '{rt}' "
             f"(return or raise on every path)", func)
 
+    def _replay_deferred_write(self, mark: NestedMutationMark) -> None:
+        """A nested def's write that happens only if `mark.callee` writes
+        through its slot, as a call edge on this function: on its receiver,
+        or on whatever the captured name reaches here -- the loop bindings
+        it climbs through and the params past them (`write_reach`, the climb
+        this body's own calls take), element-stepped where the nested def
+        reached the capture through a loop binding."""
+        assert mark.callee is not None
+        callee = mark.callee.root
+        if mark.receiver:
+            idx = self.ctx.self_receiver_index()
+            sites: list[object] = []
+            idxs = [idx] if idx is not None else []
+        else:
+            sites, idxs, _ = self.ctx.write_reach(
+                mark.key.as_name(), stepped=mark.via_element)
+        elem = frozenset(idxs) if mark.via_element else frozenset()
+        record_receiver_edges(self.ctx, callee, idxs, tuple(sites), elem,
+                              slot=mark.slot)
+
     def _analyze_nested_def(self, stmt: TpyNestedDef) -> None:
         """Analyze a nested function definition."""
         func = stmt.func
@@ -4624,14 +4647,17 @@ class StatementAnalyzer:
             # (covers nonlocal declarations at any nesting depth)
             nonlocal_names = self.ctx.func.current_nonlocal_names.copy()
             # Harvest closure mutation facts before the state restore discards
-            # them: attempted mutation marks (filtered to outer names below)
-            # and self-receiver call edges (their param_map indexes the nested
-            # def's own params, so only the index-free self fact is portable).
-            nested_marks = list(self.ctx.func.nested_mutation_marks)
-            nested_self_edges = [
-                e.callee_fi for e in self.ctx.func.current_call_edges
-                if e.receiver_idx == -1
-            ]
+            # them: attempted mutation marks (filtered to outer names below),
+            # the writes deferred to a callee among them, and self-receiver
+            # call edges as such (their param_map indexes the nested def's
+            # own params, so only the index-free self fact is portable).
+            nested_marks = list(self.ctx.func.nested_mutation_marks) + [
+                NestedMutationMark(StorageKey.of_name("self"),
+                                   through_field=False, structural=False,
+                                   via_element=False, receiver=True,
+                                   callee=e.callee_fi)
+                for e in self.ctx.func.current_call_edges
+                if e.receiver_idx == -1]
         stmt.nonlocal_names = nonlocal_names
         # After the scope restore: any later call in the enclosing function
         # may invoke this closure, killing facts for its nonlocal targets and
@@ -4660,20 +4686,21 @@ class StatementAnalyzer:
         # takes). Only names reaching outer storage are replayed -- a capture,
         # a nonlocal, or the receiver, as the mark recorded it; the nested
         # def's own params/locals are filtered out.
+        # A deferred write names only outer storage already (`write_reach`
+        # reaches a capture through a loop binding, not as a free name).
         replayable = set(captured) | nonlocal_names
         for mark in nested_marks:
-            if not mark.receiver and mark.key.as_name() not in replayable:
+            if (mark.callee is None and not mark.receiver
+                    and mark.key.as_name() not in replayable):
                 continue
-            if mark.structural:
+            if mark.callee is not None:
+                self._replay_deferred_write(mark)
+            elif mark.structural:
                 self.ctx.mark_param_structurally_mutated(mark.key)
             else:
                 self.ctx.mark_param_mutated(mark.key,
                                             through_field=mark.through_field,
                                             via_element=mark.via_element)
-        for callee_fi in nested_self_edges:
-            self.ctx.func.current_call_edges.append(
-                MutationCallEdge(callee_fi=callee_fi, param_map={},
-                                 receiver_idx=-1))
 
         # Create FunctionInfo and register as local function
         param_infos = [ParamInfo(name=pname, type=ptype) for pname, ptype in params]
@@ -5266,34 +5293,73 @@ class StatementAnalyzer:
         return expr
 
     def _check_nonvalue_rebinding(self, name: str, node: TpyStmt) -> None:
-        """Error if reassigning a non-value-type param, loop variable, or global."""
-        existing_type = self.ctx.func.current_scope.lookup(name)
+        """Error if reassigning a non-value-type param, loop variable, or
+        global -- the enclosing function's param or loop variable, for a
+        `nonlocal` name."""
+        fs = self.ctx.func
+        existing_type = fs.current_scope.lookup(name)
         if existing_type is None:
             return
-        if (name in self.ctx.func.global_declarations
+        if (name in fs.global_declarations
                 and global_binds_by_reference(existing_type)):
             raise self.ctx.error(
                 global_rebind_message(name, existing_type), node)
         if unwrap_readonly(existing_type).is_value_type():
             return
-        # Check function parameters
-        func = self.ctx.func.current_function
-        if isinstance(func, TpyFunction):
-            for pname, ptype in func.params:
-                ptype_bare = unwrap_ref_type(ptype)
-                if pname == name and not unwrap_readonly(ptype_bare).is_value_type():
-                    raise self.ctx.error(
-                        f"Cannot reassign parameter '{name}' of type '{unwrap_readonly(ptype_bare)}'; "
-                        f"assign to a new local variable instead",
-                        node
-                    )
-        # Check for-each loop variables
-        if name in self.ctx.func.loop_vars:
+        is_nonlocal = name in fs.current_nonlocal_names
+        loop_vars = fs.enclosing_loop_vars if is_nonlocal else fs.loop_vars
+        params = (fs.enclosing_nonvalue_params if is_nonlocal
+                  else nonvalue_params(fs.current_function))
+        if name in params:
+            raise self.ctx.error(
+                f"Cannot reassign parameter '{name}' of type "
+                f"'{params[name]}'; assign to a new local variable instead",
+                node)
+        if name in loop_vars:
             raise self.ctx.error(
                 f"Cannot reassign loop variable '{name}' of type '{existing_type}'; "
                 f"assign to a new local variable instead",
                 node
             )
+
+    def _check_fallback_rebinds_owner(self, stmt: TpyAugAssign,
+                                      method: str,
+                                      target_type: TpyType) -> None:
+        """Error on `x += v` resolved to `__add__` when local `x` refers to
+        storage it does not own: the update is emitted in place, so it would
+        write through to that storage where CPython rebinds `x`. Interim:
+        BUGS.md#borrow-unpack-target-rebind-writes-through tracks lowering
+        the fallback as the assignment `x = x + v`, which lifts this."""
+        name = stmt.target.name
+        fs = self.ctx.func
+        # Module-level statements have no ownership fact here; their
+        # fallback aug-assigns do not lower at all.
+        if not self.ctx.in_function_body():
+            return
+        is_nonlocal = name in fs.current_nonlocal_names
+        if (name not in fs.enclosing_borrowing_names
+                if is_nonlocal else fs.owns_whole(name)):
+            return
+        op = op_spelling(stmt.op)
+        # `**` has no in-place dunder in the table; name the one Python
+        # would look up all the same.
+        imethod = (builtin_modules.AUGOP_TO_IMETHOD.get(stmt.op)
+                   or "__i" + builtin_modules.BINOP_TO_METHOD[stmt.op][2:])
+        value = expression_spelling(stmt.value) or "..."
+        # Through `nonlocal`, the plain rebind `w = w + v` writes into the
+        # borrowed object too (BUGS.md#nonlocal-rebind-overwrites-in-place),
+        # so steer to a fresh local instead.
+        hint = (f"bind the result to a new name, e.g. "
+                f"'{name}2 = {name} {op} {value}'" if is_nonlocal
+                else f"write '{name} = {name} {op} {value}'")
+        raise self.ctx.error(
+            f"'{op}=' on '{name}' would rebind '{name}' "
+            f"({user_type_name(unwrap_readonly(target_type))} has no "
+            f"'{imethod}', so it falls back to '{method}'), but '{name}' "
+            f"refers to an object it does not own; this is not supported "
+            f"yet -- {hint}",
+            stmt,
+        )
 
     def _infer_new_local_view_type(
         self, name: str, var_type: TpyType,
@@ -5422,7 +5488,7 @@ class StatementAnalyzer:
         loop registered (`iterates`; a reused name keeps the last loop's
         entry otherwise) -- and, for a str/bytes loop variable, its one
         binding."""
-        keys = (self.ctx.func.loop_var_iterable.get(var)
+        keys = (self.ctx.loop_var_sources(var)
                 if placeable and iterates else None)
         roots = {k.root for k in keys} if keys else None
         self.ctx.func.loop_var_iter_roots[var] = roots
@@ -7285,10 +7351,11 @@ class StatementAnalyzer:
                 # A loop var over an iterator whose yield names each element's
                 # own source (`zip(xs, ys)`) lends the target that source
                 # directly, so a write through it climbs to `xs` alone.
-                elem_srcs = self.ctx.func.loop_var_elem_iterable.get(src_root)
-                lenders = (elem_srcs[i] if elem_srcs is not None
-                           and i < len(elem_srcs)
-                           else (StorageKey.of_name(src_root),))
+                src_loop = self.ctx.loop_sources_of(src_root)
+                elem_srcs = src_loop.elems if src_loop is not None else None
+                lenders = ([s.key for s in elem_srcs[i]]
+                           if elem_srcs is not None and i < len(elem_srcs)
+                           else [StorageKey.of_name(src_root)])
                 through_pointer = (literal_src is None and elem_srcs is None
                                    and isinstance(stmt.value, TpyName)
                                    and self._owned_element_is_pointer(
@@ -7306,15 +7373,8 @@ class StatementAnalyzer:
                 # stay mutable -- the reassigned scalar alias's rule. The
                 # reassign drops the loan, so a write after it cannot climb.
                 if stmt.is_rebound[i]:
-                    mark_roots(self.ctx, lenders, MarkRequest())
-                # A MUTABLE element borrow out of a loop var is the same
-                # reason `x = h` (a non-value local off a loop var) marks it:
-                # the element pointers come off the loop var's binding, so a
-                # `const T&` binding would make the lift ill-formed. Sema is
-                # where the binding is chosen, so the fact is recorded here
-                # rather than re-derived at the unpack's render.
-                mark_roots(self.ctx, [StorageKey.of_name(src_root)],
-                           MarkRequest(params=False, loop_vars=True))
+                    mark_roots(self.ctx, lenders,
+                               MarkRequest(loop_vars=True))
 
         # Mirror the scalar Own[T] consume model -- at the last use mark the
         # source consumed (drives the unconsumed-param warning); a move-only
@@ -8898,6 +8958,12 @@ class StatementAnalyzer:
                 stmt.resolved_binop = result
                 self._receive_aug_operand(stmt, result, value_type)
                 if isinstance(stmt.target, TpyName):
+                    # `x += v` through `__add__` is `x = x + v`: the
+                    # reassignment rules of a parameter, a loop variable
+                    # and a global hold for it.
+                    self._check_nonvalue_rebinding(stmt.target.name, stmt)
+                    self._check_fallback_rebinds_owner(stmt, result.method.name,
+                                                       target_type)
                     # `__add__` REBINDS the name: a pending deferred return
                     # of it must keep the object it named, so its capture
                     # goes back to eager, as for a plain rebind.

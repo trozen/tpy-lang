@@ -25,7 +25,7 @@ int32_t depth(const Tree& t) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& child = ::tpy::unwrap_ref(*__r_1);
+        const auto& child = ::tpy::unwrap_ref(*__r_1);
         int32_t d = ::tpyapp::main::depth(child);
         if ((d > m)) {
             m = d;
@@ -53,7 +53,7 @@ int32_t count(const Tree& t) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& child = ::tpy::unwrap_ref(*__r_1);
+        const auto& child = ::tpy::unwrap_ref(*__r_1);
         total = (::tpy::add_check<int32_t>(total, ::tpyapp::main::count(child)));
     }
     return total;
@@ -78,7 +78,7 @@ int32_t leaf_sum(const Tree& t) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& child = ::tpy::unwrap_ref(*__r_1);
+        const auto& child = ::tpy::unwrap_ref(*__r_1);
         s = (::tpy::add_check<int32_t>(s, ::tpyapp::main::leaf_sum(child)));
     }
     return s;
@@ -125,7 +125,7 @@ int32_t depth_nested(const Tree& t, int32_t offset) {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& child = ::tpy::unwrap_ref(*__r_1);
+            const auto& child = ::tpy::unwrap_ref(*__r_1);
             int32_t d = ::tpyapp::main::depth_nested(child, offset);
             if ((d > m)) {
                 m = d;
@@ -159,7 +159,7 @@ std::string eval_expr(const Expr& e) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        auto&& child = ::tpy::unwrap_ref(*__r_1);
+        const auto& child = ::tpy::unwrap_ref(*__r_1);
         parts.push_back(::tpyapp::main::eval_expr(child));
     }
     return ::tpy::str_join(", ", parts);

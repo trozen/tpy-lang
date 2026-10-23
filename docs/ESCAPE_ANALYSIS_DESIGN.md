@@ -839,8 +839,10 @@ After all functions in the module are analyzed:
 
 - `_check_borrow_arg_conflicts`: If `fi.mutated_params` is resolved and the specific
   parameter is not in the set, the call is safe -- no borrow warning.
-- `_check_loop_var_arg_mutation`: Same check -- if the callee is known not to mutate
-  the parameter, passing a loop-iterated container there doesn't force mutable binding.
+- `resolve_loop_bindings`: a call edge's loop bindings (`MutationCallEdge.bindings`) are
+  written only when the callee writes through that slot (`slot_writes`, the rule
+  `fold_edge` reads too), so passing a loop element to a callee that does not mutate
+  the parameter keeps the loop binding const.
 - `gen_params_with_protocols` (8a.4 -- Done): Protocol-typed (static and `@dynamic`) and
   TypeParamRef params not in `mutated_params` emit `const T_x&` / `const Base&`.
 

@@ -5600,9 +5600,9 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0]"
  ],
  "deref_list__ctor__loop_var__recv_mut": [
   "ok",
@@ -6160,9 +6160,9 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0]"
  ],
  "deref_list__fn__loop_var__recv_mut": [
   "ok",
@@ -7030,9 +7030,9 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s0]"
  ],
  "deref_list__meth__loop_var__recv_mut": [
   "ok",
@@ -8450,9 +8450,9 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
  ],
  "deref_rec__ctor__loop_var__recv_mut": [
   "ok",
@@ -9010,9 +9010,9 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
  ],
  "deref_rec__fn__loop_var__recv_mut": [
   "ok",
@@ -9880,9 +9880,9 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%s0.x [raw])"
  ],
  "deref_rec__meth__loop_var__recv_mut": [
   "ok",
@@ -13850,9 +13850,9 @@
   ""
  ],
  "gen_rec__ctor__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__loop_var__recv_mut": [
   "ok",
@@ -14375,9 +14375,9 @@
   ""
  ],
  "gen_rec__fn__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__loop_var__recv_mut": [
   "ok",
@@ -15210,9 +15210,9 @@
   ""
  ],
  "gen_rec__meth__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__loop_var__recv_mut": [
   "ok",
@@ -21700,9 +21700,9 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__ctor__loop_var__recv_mut": [
   "ok",
@@ -22290,9 +22290,9 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "rec__fn__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__fn__loop_var__recv_mut": [
   "ok",
@@ -23190,9 +23190,9 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "rec__meth__loop_var__match_capture": [
-  "reject:stmt.match:match.capture_const_loop_var",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %s0: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%s0.x [raw])"
  ],
  "rec__meth__loop_var__recv_mut": [
   "ok",

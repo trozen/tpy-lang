@@ -459,7 +459,7 @@ inline int32_t Outer::sum_items() const {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& item = *__beg_0;
+        const auto& item = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, item.get());
     }
     return total;

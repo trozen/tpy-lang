@@ -1,0 +1,1 @@
+main.py:18: error: '**=' on 'w' would rebind 'w' (V has no '__ipow__', so it falls back to '__pow__'), but 'w' refers to an object it does not own; this is not supported yet -- write 'w = w ** 2'

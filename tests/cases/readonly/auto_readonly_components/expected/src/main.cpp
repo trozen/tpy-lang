@@ -229,9 +229,8 @@ int32_t getitem_ro_read(const Rows& r) {
 
 // # loop_exemption: a `for` over an ArrayList takes the Span its `__iter__`
 // # lends only through the loop variable, so a read keeps the list const; a
-// # comprehension variable does not climb to its source
-// # (BUGS.md#comprehension-loop-var-mutation-not-propagated), so the same read
-// # there takes no exemption and the lending call demotes the list
+// # comprehension takes no such exemption (only a `for` statement's iteration
+// # does), so the same read there lets the lending call demote the list
 // def loop_exempt_read(al: ArrayList[int32, 4]) -> int32:
 //     t = 0
 //     for v in al:  # tpyc: ok
