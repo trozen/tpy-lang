@@ -22,6 +22,12 @@ from ..typesys import (BIGINT, ELEM, FLOAT, FLOAT32, INT8, INT16, INT32, INT64, 
                        ListLiteralInfo, PendingListType, PendingNumType,
                        TupleType, TypeRegistry, UINT8, UINT32, UINT64,
                        make_list)
+from dataclasses import replace as dc_replace
+
+from . import methods as methods_module
+from .calls import CallAnalyzer
+from .list_elem import container_overloads
+from .overloads import CallShape
 from .compatibility import TypeCompatibility
 from .context import SemanticContext
 from .statements import global_rebind_message
@@ -1034,6 +1040,12 @@ def take32(d: dict[str, int32]) -> None: pass
         # panics on a value the element cannot hold
         # (BUGS.md#list-lookup-method-arg-converts).
         pytest.param(
+            "def main() -> None:\n    k = {1: 'x'}\n    n: int = 5\n"
+            "    b = n in k\n    k[a64()] = 'y'\n",
+            r"^'k' holds int32 keys since line 8 \(an operand of 'in'\), and "
+            r"this value is int64",
+            id="dict-bigint-in-decides"),
+        pytest.param(
             "def main() -> None:\n    s = {1}\n    n: int = 5\n"
             "    b = n in s\n    s.add(a64())\n",
             r"^'s' holds int32 elements since line 8 \(an operand of 'in'\)",
@@ -1109,14 +1121,6 @@ def take32(d: dict[str, int32]) -> None: pass
             "def main() -> None:\n    d = {}\n    d.update({'a': 'b'})\n",
             r"^Type mismatch in argument 'other': expected \?\?\?, got str$",
             id="empty-dict-update-from-literal"),
-        # A list's `__delitem__` takes an index, no element to look up: the
-        # delete decides the list first.
-        pytest.param(
-            "def main() -> None:\n    xs = [1, 2]\n    del xs[0]\n"
-            "    xs.append(a64())\n",
-            r"^'xs' holds int32 elements since line 7 \(a 'del' key\), and "
-            r"this value is int64",
-            id="list-del-decides"),
         pytest.param(
             "def takeset32(s: set[int32]) -> None: pass\n"
             "def main() -> None:\n    s = {1}\n"
@@ -1272,6 +1276,215 @@ def test_wider_lookup_key_converts(body: str, warns: bool) -> None:
                 if d.level is DiagnosticLevel.WARNING]
     assert any(w.startswith("lookup key narrows from int64 to int32")
                for w in warnings) == warns, warnings
+
+
+_WIDTH_PRELUDE = """from tpy import dispatch, int32, int64, Fn
+def wide() -> int64: return 7
+class Table:
+    def __init__(self) -> None:
+        pass
+    @dispatch
+    def __getitem__(self, i: int32) -> int32: return i
+    @dispatch
+    def __getitem__(self, name: str) -> int32: return -1
+    @dispatch
+    def __setitem__(self, key: str, value: int32) -> None: print("i")
+    @dispatch
+    def __setitem__(self, key: str, value: str) -> None: print("s")
+class Wide:
+    def __init__(self) -> None:
+        pass
+    @dispatch
+    def __getitem__(self, i: int32) -> int32: return i
+    @dispatch
+    def __getitem__(self, i: int64) -> int32: return -1
+@dispatch
+def take_str(k: int32) -> str: return "i32"
+@dispatch
+def take_str(k: str) -> str: return "str"
+@dispatch
+def take_wide(k: int32) -> str: return "i32"
+@dispatch
+def take_wide(k: int64) -> str: return "i64"
+@dispatch
+def take_t(k: int32) -> str: return "i32"
+@dispatch
+def take_t[T](k: T) -> str: return "T"
+@dispatch
+def tagged(tag: str, k: int32) -> str: return "str"
+@dispatch
+def tagged(tag: int32, k: int64) -> str: return "int"
+@dispatch
+def take_fn(k: int32, fn: Fn[[int32], int32]) -> int32: return fn(k)
+@dispatch
+def take_fn(k: str, fn: Fn[[str], str]) -> str: return fn(k)
+@dispatch
+def wide_fn(k: int32, fn: Fn[[int32], int32]) -> int32: return fn(k)
+@dispatch
+def wide_fn(k: int64, fn: Fn[[int64], int64]) -> int64: return fn(k)
+@dispatch
+def fn_subset(k: int32, fn: Fn[[int32], int32]) -> int32: return fn(k)
+@dispatch
+def fn_subset(k: str, fn: Fn[[str], str]) -> str: return fn(k)
+@dispatch
+def fn_subset(k: int64, fn: str) -> str: return fn
+@dispatch
+def fn_position(k: int32, tag: int32) -> int32: return k
+@dispatch
+def fn_position(k: Fn[[int32], int32], tag: str) -> int32: return k(1)
+class Store:
+    def __init__(self) -> None:
+        pass
+    @dispatch
+    def __setitem__(self, key: str, value: int32) -> None: print("i32")
+    @dispatch
+    def __setitem__(self, key: str, value: int64) -> None: print("i64")
+class Grid:
+    def __init__(self) -> None:
+        pass
+    def __getitem__(self, i: int32) -> int32: return i
+    @dispatch
+    def __setitem__(self, i: int32, v: int32) -> None: print("i32")
+    @dispatch
+    def __setitem__(self, i: int64, v: int32) -> None: print("i64")
+"""
+
+
+# The verdict on a pending number argument of an overload set is the set's:
+# open where every variant taking a number declares one numeric type there,
+# whatever the other arguments and however the argument is spelled.
+@pytest.mark.parametrize("name, at, use, stays_open", [
+    pytest.param("__getitem__", 0, "print(d[x])", True, id="dict-subscript"),
+    pytest.param("get", 0, "print(d.get(x, '?'))", True, id="dict-get"),
+    pytest.param("__getitem__", 0, "print(ys[x])", True, id="list-subscript"),
+    pytest.param("take_str", 0, "print(take_str(x))", True, id="int32-or-str"),
+    pytest.param("__getitem__", 0, "print(t[x])", True,
+                 id="record-int32-or-str"),
+    pytest.param("take_wide", 0, "print(take_wide(x))", False,
+                 id="int32-or-int64"),
+    pytest.param("take_t", 0, "print(take_t(x))", False,
+                 id="int32-or-type-param"),
+    pytest.param("take_str", "k", "print(take_str(k=x))", True,
+                 id="keyword-int32-or-str"),
+    pytest.param("take_wide", "k", "print(take_wide(k=x))", False,
+                 id="keyword-int32-or-int64"),
+    # A known other argument filters nothing: the positional call and its
+    # keyword mirror get the one verdict of the set.
+    pytest.param("tagged", 1, "print(tagged('a', x))", False,
+                 id="mirror-positional"),
+    pytest.param("tagged", "k", "print(tagged(tag='a', k=x))", False,
+                 id="mirror-keyword"),
+    pytest.param("__getitem__", 0, "print(w[x])", False,
+                 id="record-key-int32-or-int64"),
+    pytest.param("__setitem__", 1, "t['a'] = x", True,
+                 id="store-value-int32-or-str"),
+    pytest.param("take_fn", 0, "print(take_fn(x, lambda z: z))", True,
+                 id="callable-int32-or-str"),
+    pytest.param("wide_fn", 0, "print(wide_fn(x, lambda z: z))", False,
+                 id="callable-int32-or-int64"),
+    # Regime C ranks over the Fn-bearing variants; the gate takes the whole
+    # set, where `(int64, str)` competes at `k` too.
+    pytest.param("fn_subset", 0, "print(fn_subset(x, lambda z: z))", False,
+                 id="callable-whole-set"),
+    # A callable parameter at `k` takes no number: only `(int32, int32)`
+    # competes for it, though the call is Callable-bearing.
+    pytest.param("fn_position", 0, "print(fn_position(x, 0))", True,
+                 id="callable-param-at-the-number"),
+    pytest.param("__setitem__", 1, "s['a'] = x", False,
+                 id="store-value-int32-or-int64"),
+    # `t[k] op= v` passes the key to the setters too, which differ there.
+    pytest.param("__setitem__", 0, "g[x] += 1", False,
+                 id="aug-key-setter-widths"),
+    # A container literal's method preparation (`MethodAnalyzer.
+    # _admitted_by`); no builtin container method's variants differ in
+    # width at a position that takes no part, so only the open verdict.
+    pytest.param("__getitem__", 0, "print([10, 20][x])", True,
+                 id="container-literal-index"),
+])
+@pytest.mark.parametrize("use_first", [True, False],
+                         ids=["use-then-store", "store-then-use"])
+def test_number_arg_gate_is_the_sets(monkeypatch: pytest.MonkeyPatch,
+                                     name: str, at: int | str, use: str,
+                                     stays_open: bool,
+                                     use_first: bool) -> None:
+    """Whether the use leaves the local open depends on the overload set,
+    never on how far the local's cells have been analyzed: the use before
+    the widening store and after it get one verdict."""
+    verdicts: set[bool] = set()
+    gate = CallAnalyzer.number_arg_stays_open
+
+    def recording(self: CallAnalyzer, overloads: list, *args: object,
+                  **kwargs: object) -> bool:
+        verdict = gate(self, overloads, *args, **kwargs)
+        if overloads and overloads[0].name == name and args[1] == at:
+            verdicts.add(verdict)
+        return verdict
+    monkeypatch.setattr(CallAnalyzer, "number_arg_stays_open", recording)
+    loop = f"    for x in xs:\n        {use}\n"
+    store = "    xs.append(wide())\n"
+    body = ("def main() -> None:\n"
+            "    d: dict[int32, str] = {1: 'a'}\n"
+            "    ys: list[int32] = [5, 6, 7]\n"
+            "    t = Table()\n    w = Wide()\n    s = Store()\n    g = Grid()\n"
+            "    xs = [1, 2]\n" + (loop + store if use_first else store + loop))
+    comp = Compiler.from_source(_WIDTH_PRELUDE + body,
+                                lib_dirs=[get_lib_dir() / "tpy"])
+    refused = use_first and not stays_open
+    try:
+        comp.compile()
+    except SemanticError as e:
+        assert refused, e
+    else:
+        assert not refused
+    assert verdicts == {stays_open}
+
+
+def _defaulted_getitem(fns: list) -> list:
+    """`fns` with one more `__getitem__` variant, taking an int64 index and
+    a defaulted int32 `extra`."""
+    fi = next(f for f in fns if str(f.params[0].type) == "int32")
+    extra = dc_replace(fi.params[0], name="extra", type=INT32,
+                       default_expr=TpyIntLiteral(0))
+    return [*fns, dc_replace(fi, params=[
+        dc_replace(fi.params[0], type=INT64), extra])]
+
+
+# A container literal's method preparation (`MethodAnalyzer._admitted_by`)
+# asks the gate over the method's whole overload set and the call's shape,
+# not over the variants its classification keeps (those of exactly the
+# positional arity): a defaulted variant competes, and a keyword argument
+# leaves only the variants naming it.
+@pytest.mark.parametrize("use, shape, stays_open", [
+    pytest.param("print([10, 20].__getitem__(x))", CallShape(1), False,
+                 id="defaulted-variant-competes"),
+    pytest.param("print([].__getitem__(x, extra=1))",
+                 CallShape(2, ("extra",)), True, id="keyword-names-the-set"),
+])
+def test_container_prep_gate_takes_the_whole_set(
+        monkeypatch: pytest.MonkeyPatch, use: str, shape: CallShape,
+        stays_open: bool) -> None:
+    seen: list[tuple[CallShape, bool]] = []
+    gate = CallAnalyzer.number_arg_stays_open
+
+    def recording(self: CallAnalyzer, overloads: list, at_shape: CallShape,
+                  at: int | str) -> bool:
+        verdict = gate(self, overloads, at_shape, at)
+        if at == 0 and any(len(f.params) == 2 for f in overloads):
+            seen.append((at_shape, verdict))
+        return verdict
+
+    def whole(ctx: object, container: object, name: str) -> list:
+        fns = container_overloads(ctx, container, name)
+        return _defaulted_getitem(fns) if name == "__getitem__" else fns
+    monkeypatch.setattr(CallAnalyzer, "number_arg_stays_open", recording)
+    monkeypatch.setattr(methods_module, "container_overloads", whole)
+    body = ("def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
+            f"        {use}\n    xs.append(wide())\n")
+    comp = Compiler.from_source(_WIDTH_PRELUDE + body,
+                                lib_dirs=[get_lib_dir() / "tpy"])
+    with pytest.raises(SemanticError):
+        comp.compile()
+    assert seen == [(shape, stays_open)]
 
 
 def test_global_rebind_message_names_the_python_container() -> None:

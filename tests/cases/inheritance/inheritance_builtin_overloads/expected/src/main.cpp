@@ -8,6 +8,32 @@ int32_t last{};
 int32_t first{};
 std::vector<int32_t>* items{};
 
+// def out_of_range(m: MyList) -> None:
+//     # An inherited `__getitem__` is the list's own checked read.
+//     try:
+//         print(m[5])  # tpyc: ok
+//     except IndexError:
+//         print("out_of_range: IndexError")
+void out_of_range(const MyList& m) {
+    {
+        try {
+            std::cout << ::tpy::__getitem__(m, 5) << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::IndexError&) {
+            std::cout << "out_of_range: IndexError" << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// def store(m: MyList, k: int32) -> None:
+//     # The inherited contract `__setitem__` is the list's element store, for
+//     # the plain and the augmented store alike; the caller sees both writes.
+//     m[k] = 7  # tpyc: ok
+//     m[k] += 5  # tpyc: ok
+void store(MyList& m, int32_t k) {
+    ::tpy::__setitem__(m, k, 7);
+    ::tpy::__setitem__(m, k, ::tpy::add_check<int32_t>(::tpy::__getitem__(m, k), 5));
+}
+
 // """Test inherited builtin methods with multiple overloads.
 //
 // When a user class inherits from a builtin type like list,
@@ -33,6 +59,11 @@ std::vector<int32_t>* items{};
 // print(ml[1])  # 30
 // print(len(ml))  # 2
 //
+// out_of_range(ml)
+//
+// store(ml, 1)
+// print("store:", ml[0], ml[1])
+//
 // # Also test that regular list pop overloads work (sanity check)
 // items: list[int32] = [1, 2, 3, 4, 5]
 // print(items.pop())  # 5 - pop last
@@ -53,9 +84,12 @@ void __tpy_init() {
     std::cout << last << "\n" << ::tpy::check_signals;
     first = ::tpy::list_pop_at((*ml), 0);
     std::cout << first << "\n" << ::tpy::check_signals;
-    std::cout << (*ml)[0] << "\n" << ::tpy::check_signals;
-    std::cout << (*ml)[1] << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*ml), 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__getitem__((*ml), 1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__((*ml)) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::out_of_range((*ml));
+    ::tpyapp::main::store((*ml), 1);
+    std::cout << "store:" << " " << ::tpy::__getitem__((*ml), 0) << " " << ::tpy::__getitem__((*ml), 1) << "\n" << ::tpy::check_signals;
     static std::vector<int32_t> __global_slot_2 = {1, 2, 3, 4, 5};
     items = &__global_slot_2;
     std::cout << ::tpy::pop_back((*items)) << "\n" << ::tpy::check_signals;

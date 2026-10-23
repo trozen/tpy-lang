@@ -1,1 +1,1 @@
-main.py:18: error: No matching overload for f(list[int32])
+main.py:18: error: No matching overload for 'f' with argument types (list[int32])

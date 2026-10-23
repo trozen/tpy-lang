@@ -52,7 +52,7 @@ from ..typesys import (
     ContainerLiteralInfo, ListLiteralInfo,
     TypeParamRef, BIGINT, FLOAT, INT64, ELEM, KEY, VALUE,
     is_float_type, contains_pending_leaf,
-    contains_pending_num,
+    contains_pending_num, contains_type_param,
     is_integer_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..type_def_registry import (
@@ -472,6 +472,13 @@ def is_numeric_slot(t: TpyType | None) -> bool:
     if isinstance(t, OptionalType):
         t = unwrap_readonly(t.inner)
     return is_integer_type(t) or is_float_type(t)
+
+
+def receives_pending(declared: TpyType | None) -> bool:
+    """Whether a parameter declared `declared` takes a pending number
+    open, converting it there once its function settles: a numeric slot
+    naming no type parameter, whose width the argument cannot pick."""
+    return is_numeric_slot(declared) and not contains_type_param(declared)
 
 
 def value_family(t: TpyType | None) -> bool | None:
@@ -3017,9 +3024,11 @@ class PendingNums:
                 return ""
         decl = self.ctx.func.var_decl_by_name.get(name)
         first = self._spelled_value(decl.init if decl is not None else None)
+        spelled = python_type_name(e)
         return (f"; '{name}' takes its type from the values stored in it, "
                 f"not from its uses: annotate its first binding: {name}: "
-                f"{python_type_name(e)} = {first}")
+                f"{spelled} = {first}, or convert it at this use: "
+                f"{spelled}({name})")
 
     def _first_value(self, cell: PendingNumCell) -> str:
         return self._spelled_value(

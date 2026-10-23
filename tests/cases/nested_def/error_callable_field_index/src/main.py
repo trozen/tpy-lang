@@ -2,9 +2,9 @@
 # Calling app.callback(1) is valid. app.callback[0](1) first tries to retrieve
 # element 0 from that function, which is invalid and must fail during indexing.
 #
-# Require a "Cannot index type Callable" error. The compiler must not mistake
-# the brackets for generic call syntax and silently discard [0], turning the
-# invalid expression into the valid call app.callback(1).
+# Require a "Type 'Callable[...]' is not subscriptable" error. The compiler
+# must not mistake the brackets for generic call syntax and silently discard
+# [0], turning the invalid expression into the valid call app.callback(1).
 from typing import Callable
 from tpy import int32
 
@@ -23,7 +23,7 @@ class App:
 def main():
     app = App()
     # The brackets must be checked even though calling the field itself is valid.
-    print(app.callback[0](1))  # tpyc: error(/Cannot index type Callable/)
+    print(app.callback[0](1))  # tpyc: error(/Type 'Callable\[\[int32\], int32\]' is not subscriptable/)
 
 
 main()

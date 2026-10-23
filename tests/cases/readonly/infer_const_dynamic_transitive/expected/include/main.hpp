@@ -13,10 +13,12 @@ struct HasValue;
 template<typename T>
 concept __HasValue_Concept__ = requires(T& t) {
     { t.value() } -> std::convertible_to<int32_t>;
+    { t.bump() } -> std::convertible_to<void>;
 };
 
 struct HasValue {
     virtual int32_t value() = 0;
+    virtual void bump() = 0;
     virtual ~HasValue() = default;
 };
 
@@ -33,6 +35,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def show(v: HasValue) -> None:
 void show(HasValue& v);
+// def grow(v: HasValue) -> None:
+void grow(HasValue& v);
 // def main() -> None:
 void main();
 
@@ -47,6 +51,9 @@ struct Parent : HasValue {
 
     // def value(self) -> int32:           # direct override -- must NOT be const
     int32_t value() override;
+
+    // def bump(self) -> None:
+    void bump() override;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Parent";
 };
 
@@ -80,6 +87,7 @@ struct tpy::Adapter<tpyapp::main::HasValue, T> : tpyapp::main::HasValue {
     template<typename... Args>
     Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
     int32_t value() override { return inner.value(); }
+    void bump() override { inner.bump(); }
 };
 
 template<tpyapp::main::__HasValue_Concept__ T>
@@ -87,6 +95,7 @@ struct tpy::RefAdapter<tpyapp::main::HasValue, T> : tpyapp::main::HasValue {
     T& inner;
     RefAdapter(T& ref) : inner(ref) {}
     int32_t value() override { return inner.value(); }
+    void bump() override { inner.bump(); }
 };
 
 namespace tpyapp::main {
@@ -100,6 +109,12 @@ inline Parent::Parent(int32_t n) : _n(n) {}
 //     return self._n
 inline int32_t Parent::value() {
     return this->_n;
+}
+
+// def bump(self) -> None:
+//     self._n += 1
+inline void Parent::bump() {
+    this->_n = ::tpy::add_check<int32_t>(this->_n, 1);
 }
 
 // def __init__(self, n: int32) -> None:

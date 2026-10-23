@@ -53,7 +53,8 @@ from ...parse.nodes import (
     TpyVarDecl,
     TupleElemCapture,
 )
-from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
+from ...modules.defs import (BINOP_TO_METHOD, UNCHECKED_GETITEM_CPP_TEMPLATE,
+                             get_dunder_cpp_template)
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
@@ -61,7 +62,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
 from ...sema.call_lends import expr_lends_storage
 from ...typesys import (make_readonly, peel_binding, pointer_repr_optional,
                        readonly_access)
-from ...typesys import subscript_answers_as_call
+from ...typesys import element_access, element_access_getitem
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
@@ -78,7 +79,6 @@ from ...typesys import (
     CallableType,
     FLOAT,
     FloatLiteralType,
-    INT32,
     IntLiteralType,
     LiteralTag,
     LiteralType,
@@ -179,12 +179,12 @@ from ...codegen_cpp.forms import (
     reads_storage_form_optional,
 )
 from ...codegen_cpp import emit_prims
+from ...codegen_cpp.int_literals import target_less_int_literal_type
 from ...codegen_cpp.param_const import decide_param_const
 from ...codegen_cpp.types import (resolve_pending_container,
                                    resolve_tuple_pending,
                                    resolve_view_storage)
 from ...codegen_cpp.context import (
-    bigint_index_narrow_type,
     enum_cpp_name,
     escape_cpp_name,
     is_constructor_call,
@@ -211,7 +211,6 @@ from ..nodes import (
     Form,
     TruthinessMode,
     THIRArgTemp,
-    THIRCoerce,
     THIRExpr,
     THIRFormConvert,
     THIRIsNone,
@@ -1982,6 +1981,17 @@ def _numeric_literal_type(a: TpyExpr,
     else None."""
     return numeric_literal_type(analyzer.get_expr_type(_peel_coerce(a)))
 
+def _literal_cpp_type(t: TpyType, default_int: TpyType) -> TpyType:
+    """The type a value of type `t` renders as in C++: `t`, or for a still
+    literal-typed value the target-less literal's
+    (`target_less_int_literal_type`, `float`)."""
+    if isinstance(t, IntLiteralType):
+        return (target_less_int_literal_type(t.value)
+                if t.value is not None else default_int)
+    if isinstance(t, FloatLiteralType):
+        return FLOAT
+    return t
+
 def _numeric_literal_value(a: TpyExpr, analyzer) -> 'int | float | None':
     """The value of a numeric literal argument, read from its literal type
     (`_numeric_literal_type`, any magnitude), when the argument is a
@@ -2470,66 +2480,6 @@ def _unwrap_lit_coerce(e: TpyExpr) -> TpyExpr:
            and e.coercion.name in (_INT_LIT_COERCION, _BIGINT_LIT_COERCION)):
         e = e.expr
     return e
-
-def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
-                              analyzer,
-                              declared: dict[str, TpyType]) -> 'str | TpyType':
-    """How a subscript index renders when its type half is a runtime BigInt --
-    the subscript render's decision, written once so the gates and the wrap
-    sites cannot drift. obj_type is the receiver (its declared key/index type picks
-    the narrow width via bigint_index_narrow_type):
-
-      * 'bare' -- no narrow: not runtime-BigInt, an int32-range int
-        constant (`3`, `-1`, `2 * 3`: it lowers to a literal, which the
-        emitter renders as the bare token), or a BigInt-keyed receiver (the index passes through
-        unnarrowed; a big literal renders through the shared
-        render_int_literal_value);
-      * a fixed-int TpyType -- the `{0}.to_fixed_check<T>()` wrap at the
-        receiver's declared key width (no outer parens: any composite render
-        already carries its own);
-      * 'reject' -- an out-of-int32-range constant headed for a narrow: that
-        needs the BigInt ctor wrap inside the narrow, which the literal emit
-        does not render.
-
-    The type half keys on the DECLARED type (`_declared_type`), as
-    `is_runtime_bigint` does."""
-    key = _narrow_key_type(index, declared, analyzer)
-    if not _runtime_bigint(key, analyzer):
-        return "bare"
-    narrow = (INT32 if obj_type is None
-              else bigint_index_narrow_type(obj_type, analyzer))
-    c = _int_constant_value(index, analyzer)
-    if c is None:
-        return "bare" if narrow is None else narrow
-    if isinstance(index, TpyCoerce):
-        # A coerce-wrapped literal is not a plain int constant, so the
-        # narrow would wrap the literal's target-typed render -- a shape no
-        # index position produces (the one coercion sema puts on an index,
-        # the dict-key narrow, already carries the width, so such an index
-        # tests non-BigInt above); a defensive reject rather than a guess.
-        return "reject"
-    if -(2**31) <= c <= 2**31 - 1:
-        return "bare"
-    return "bare" if narrow is None else "reject"
-
-def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, obj_type: 'TpyType | None',
-                         analyzer, loc,
-                         declared: dict[str, TpyType]) -> 'THIRExpr':
-    """Wrap a lowered runtime-BigInt index in the `.to_fixed_check<T>()`
-    narrow when its disposition says so (reads, del-item); 'reject' never
-    reaches lowering (the gates exclude it). A DICT key arrives already
-    narrowed -- sema checks it against the key type and puts the coercion on
-    the node -- so this serves the positions sema does not check: list /
-    Array / Span indices and an element-typed native's. A record subscript
-    answering as its dunder call takes none: sema converts its key at the
-    variant each operation resolved."""
-    disp = _bigint_index_disposition(e, obj_type, analyzer, declared)
-    if isinstance(disp, str):
-        return idx
-    _witness("narrow.subscript_index")
-    return THIRCoerce(result_type=disp, expr=idx,
-                      coercion_name=_BIGINT_NARROW,
-                      wrap=f"{{0}}.to_fixed_check<{disp.to_cpp()}>()", loc=loc)
 
 def _eligible_enum(t: TpyType | None, analyzer) -> 'TpyType | None':
     """A registered enum value type of any flavor: same-module (bare name),
@@ -6326,12 +6276,7 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
         # (`moved[0].name`); it renders at the default int.
         idx_type = resolve_int_literals(idx_type,
                                         analyzer.ctx.default_int_for_literal)
-    # The disposition runs UNCONDITIONALLY: it keys the BigInt half on the
-    # DECLARED type, which a per-occurrence pre-test here would not read.
-    idx_ok = ((_resolved_scalar(idx_type, analyzer)
-               and _bigint_index_disposition(
-                       sub.index, analyzer.get_expr_type(sub.obj),
-                       analyzer, locals_) != "reject")
+    idx_ok = (_resolved_scalar(idx_type, analyzer)
               or _resolved_viewfam_value(idx_type, analyzer) is not None)
     recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
                 and (sub.obj.name not in pointers or ptr_recv_ok
@@ -6471,10 +6416,9 @@ def _container_scalar_read(t: TpyType | None, analyzer) -> bool:
     VIEW-typed keys, which `_owned_str_slot` excludes); a BigInt-KEYED dict is
     admitted like a fixed-int-keyed one -- every render this predicate feeds is
     key-type-neutral (bare receiver name, `__len__`, dict-literal elements via
-    the slot retype) except the index positions, which apply
-    `_narrow_bigint_index` against the receiver's declared key type (a
-    BigInt-keyed map passes the key through unnarrowed, a fixed-int key
-    narrows to its declared width). An `Own[container]` (move-in
+    the slot retype); the index positions get the key sema converted at the
+    dunder's key parameter (a BigInt-keyed map takes the key unnarrowed, a
+    fixed-int key narrows to its declared width). An `Own[container]` (move-in
     `T&&` param) is excluded explicitly -- its ABI differs from the borrow shape
     this slice's emit assumes, and it is not lowered yet (unlike the Own
     unwrap in `_f1_record`, which admits Own where this deliberately does
@@ -6533,31 +6477,15 @@ def _dict_key_shape_ok(key: 'TpyType', analyzer) -> bool:
             # never runtime-BigInt, so no narrow wrap can fire on it.
             or _is_type_param_slot(key))
 
-_NATIVE_GETITEM = "tpy::__getitem__"
-
-
 def _native_getitem_index_param(t: 'TpyType', analyzer) -> 'TpyType | None':
-    """The INDEX/KEY parameter of `t`'s `__getitem__` when that subscript
-    resolves to the shared builtin `::tpy::__getitem__(recv, i)`, else None
-    -- the membership fact of the element family, read off the resolved stub
-    rather than named per category.
-
-    What it excludes, and why each is a different render, not a different
-    category: `set` has no `__getitem__` at all; `bytes` / `bytearray` /
-    `BytesView` resolve to `tpy::bytes_getitem`; the str family resolves to a
-    `cpp_template`; a user record with `__getitem__` (`tplib.ArrayList`)
-    resolves to an ordinary TPy method, emitted as the member/free call its
-    own `FunctionInfo` chooses -- forcing `::tpy::__getitem__(al, i)` on it
-    would be wrong code. The slice overloads (`basic_slice` / `slice`) carry
-    their own templates and are skipped by the same test."""
-    ri = analyzer.registry.get_record_for_type(t)
-    if ri is None:
-        return None
-    for fi in ri.get_method_overloads("__getitem__"):
-        if (fi.native_function and fi.native_name == _NATIVE_GETITEM
-                and len(fi.params) == 1):
-            return fi.params[0].type
-    return None
+    """The INDEX/KEY parameter of `t`'s element-access `__getitem__` (the
+    variant its stub declares `element_access` on, `element_access_getitem`)
+    -- the membership fact of the element family, read off the declared
+    contract rather than named per category. None for a type with no such
+    variant: `set` has no `__getitem__`, a user record's `__getitem__` is an
+    ordinary method, and the slice overloads declare no element access."""
+    fi = element_access_getitem(analyzer.registry.get_record_for_type(t))
+    return fi.params[0].type if fi is not None else None
 
 
 def _native_getitem_key(t: 'TpyType', idx_param: 'TpyType', analyzer
@@ -7456,6 +7384,42 @@ def _bound_call_of(fi, name: str,
         native_function_name=fi.native_name if fi.native_function else None,
         cpp_template=fi.cpp_template)
 
+
+@dataclass(frozen=True)
+class _DunderRender:
+    """How form `kind` of a subscript renders: the binding of the variant
+    sema stamped, whether that variant declares the element-access
+    contract, and the unchecked twin the contract names (rendered for an
+    index proven in range)."""
+    binding: THIRBoundCall
+    element_access: bool
+    unchecked: THIRBoundCall | None
+
+
+def _dunder_render(sub: 'TpySubscript',
+                   kind: SubscriptDunder) -> '_DunderRender | None':
+    """The render of form `kind` of `sub` (`_DunderRender`), read off the
+    stamped winner; None when sema stamped none."""
+    fi = sub.dunder(kind)
+    if fi is None:
+        return None
+    twin = fi.unchecked_twin
+    return _DunderRender(
+        _bound_call_of(fi, fi.name), element_access(sub, kind) is not None,
+        _bound_call_of(twin, twin.name) if twin is not None else None)
+
+
+def _protocol_getitem_render() -> _DunderRender:
+    """A protocol receiver's read, which stamps no variant: the protocol
+    dunder fallback (`_protocol_subscript_recv` admits only a protocol
+    whose `__getitem__` renders through it) and its unchecked twin."""
+    template = get_dunder_cpp_template("__getitem__")
+    assert template is not None
+    return _DunderRender(
+        THIRBoundCall(method_cpp="__getitem__", cpp_template=template), False,
+        THIRBoundCall(method_cpp="__getitem__",
+                      cpp_template=UNCHECKED_GETITEM_CPP_TEMPLATE))
+
 def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
                                    analyzer,
                                    narrowed_ok: bool = False
@@ -7619,29 +7583,62 @@ def _ptr_opt_binding_name(recv: TpyExpr, declared: dict[str, TpyType],
     return pointer_repr_optional(declared[recv.name]) is not None
 
 
+def _subscript_call(sub: 'TpySubscript',
+                    kind: SubscriptDunder) -> 'FunctionInfo | None':
+    """The variant form `kind` of `sub` calls when that call runs class
+    code -- the winner sema stamped (`TpySubscript.dunder`) declaring no
+    element-access contract (`element_access`), which renders as the
+    explicit `t.__getitem__(k)` / `__setitem__` / `__delitem__` call by its
+    own binding. None for an element access and for a form `sub` does not
+    call."""
+    fi = sub.dunder(kind)
+    return fi if fi is not None and element_access(sub, kind) is None else None
+
+
+def _call_arm_variant(sub: 'TpySubscript', kind: SubscriptDunder, analyzer,
+                      *, recv_t: 'TpyType | None' = None
+                      ) -> 'FunctionInfo | None':
+    """The variant form `kind` of `sub` whose receiver and arguments the
+    call arm prepares (the explicit `t.__setitem__(k, v)`'s), asked of the
+    contract first: the stamped winner when the form is a call
+    (`_subscript_call`), whatever the receiver; else a TPy-generated
+    record's variant (`_record_dunder`), an element access whose receiver
+    only the record arm admits."""
+    if not _keyed_subscript(sub):
+        return None
+    return (_subscript_call(sub, kind)
+            or _record_dunder(sub, kind, analyzer, recv_t=recv_t))
+
+
+def _keyed_subscript(sub: TpyExpr) -> bool:
+    """`sub` is a subscript by one key that runs a dunder variant: not a
+    slice, a TypedDict field or an enum name lookup."""
+    return (isinstance(sub, TpySubscript) and not isinstance(sub.index, TpySlice)
+            and sub.slice_function_info is None
+            and sub.typed_dict_field is None and sub.enum_from_name is None)
+
+
 def _record_dunder(sub: TpyExpr, kind: SubscriptDunder, analyzer, *,
                    recv_t: 'TpyType | None' = None) -> 'FunctionInfo | None':
-    """The record dunder a subscript calls in form `kind` -- the variant
-    sema resolved as the explicit `t.__getitem__(k)` / `__setitem__` /
-    `__delitem__` call (`TpySubscript.dunder`), substituted at the
-    receiver -- when the receiver (`recv_t`, by default the receiver
-    expression's type) is a NON-@native record, whose generated bare
-    `operator[]` and the `::tpy::__setitem__` / `::tpy::__delitem__`
-    fallbacks render it (a @native record wrapping an STL type takes
-    size_t there and keeps its own emit path). None for any other
-    receiver, a slice, a TypedDict field or an enum name lookup, and for a
-    form the subscript is not (a store target has no getter call). The
-    one reader of the stamp: a record subscript sema stamped nothing on is
-    a located reject, never a guess."""
-    if (not isinstance(sub, TpySubscript) or isinstance(sub.index, TpySlice)
-            or sub.slice_function_info is not None
-            or sub.typed_dict_field is not None
-            or sub.enum_from_name is not None):
+    """The variant form `kind` of a subscript calls (`TpySubscript.dunder`)
+    when the receiver (`recv_t`, by default the receiver expression's type)
+    is a record TPy generates -- a NON-@native user record. This answers
+    only which ADMISSION arms take the subscript: a record's receiver and
+    key are admitted and lowered as the explicit call's arguments
+    (`_record_key`, `_record_receiver`), and a variant with a TPy body
+    reads through the record's generated `operator[]`. Whether the
+    subscript is a call or an element access is the winner's contract
+    (`_subscript_call`), for a record as for any receiver. None for any
+    other receiver, a slice, a TypedDict field or an enum name lookup, and
+    for a form the subscript is not (a store target has no getter call). A
+    record subscript sema stamped nothing on is a located reject, never a
+    guess."""
+    if not _keyed_subscript(sub):
         return None
     if recv_t is None:
         recv_t = analyzer.get_expr_type(sub.obj)
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
-    if not (isinstance(t, NominalType) and subscript_answers_as_call(t)):
+    if not (isinstance(t, NominalType) and t.is_user_record):
         return None
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
@@ -7650,6 +7647,7 @@ def _record_dunder(sub: TpyExpr, kind: SubscriptDunder, analyzer, *,
         note_detail("subscript.unresolved_dunder")
         raise ThirUnsupported("subscript.record_getitem", detail=True)
     return sub.dunder(kind)
+
 
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """A pointer-local reseat value: an lvalue field read off an F1-record receiver

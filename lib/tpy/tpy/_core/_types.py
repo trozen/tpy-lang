@@ -1622,13 +1622,18 @@ class String(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @pure
     def __iter__(self) -> Iterator[char]: ...
 
-    @cpp_template("static_cast<int32_t>({self}.size())")
+    @native("tpy::__len__", function=True)
     @readonly
     @pure
     def __len__(self) -> int32: ...
 
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
+    @readonly
+    @pure
+    def unchecked_get(self, index: int32) -> char: ...
+
     @dispatch
-    @cpp_template("::tpy::__getitem__({self}, {0})")
+    @cpp_template("::tpy::__getitem__({self}, {0})", element_access=unchecked_get)
     @readonly
     @pure
     def __getitem__(self, index: int32) -> char: ...
@@ -1868,13 +1873,18 @@ class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable):
     @pure
     def __iter__(self) -> Iterator[char]: ...
 
-    @cpp_template("static_cast<int32_t>({self}.size())")
+    @native("tpy::__len__", function=True)
     @readonly
     @pure
     def __len__(self) -> int32: ...
 
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
+    @readonly
+    @pure
+    def unchecked_get(self, index: int32) -> char: ...
+
     @dispatch
-    @cpp_template("::tpy::__getitem__({self}, {0})")
+    @cpp_template("::tpy::__getitem__({self}, {0})", element_access=unchecked_get)
     @readonly
     @pure
     def __getitem__(self, index: int32) -> char: ...

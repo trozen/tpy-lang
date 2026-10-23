@@ -1,0 +1,1 @@
+main.py:34: error: Type mismatch in argument 'x': expected Box[Pet], got Box[Dog]

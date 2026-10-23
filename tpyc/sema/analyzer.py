@@ -352,7 +352,8 @@ class SemanticAnalyzer:
         # Layer 2: Depends on type_ops
         self.protocols = ProtocolChecker(self.ctx, self.type_ops)
         self.registrar = TypeRegistrar(self.ctx, self.type_ops, self.protocols, self.compat)
-        self.operators = OperatorResolver(self.ctx, self.type_ops, self.protocols)
+        self.operators = OperatorResolver(self.ctx, self.type_ops, self.protocols,
+                                          self.compat)
 
         self.pend = PendingNums(self.ctx, self.compat)
         self.compat.pend = self.pend
@@ -366,6 +367,7 @@ class SemanticAnalyzer:
         self.compat.deduction = self.deduction
         # validate_hashable_container_elem needs Hashable conformance
         self.type_ops.protocols = self.protocols
+        self.type_ops.compat = self.compat
 
         # Narrowing tracker (depends on type_ops, protocols)
         self.narrowing = NarrowingTracker(self.ctx, self.type_ops, self.protocols)

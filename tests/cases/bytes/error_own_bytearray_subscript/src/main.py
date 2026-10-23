@@ -1,15 +1,15 @@
-# A subscript read off an `Own[bytearray]` PARAM: the bytearray row declines the
-# Own param slot's bare-name read rather than widening a second axis, so
-# `b[0]` still rejects.
+# A subscript read off an `Own[bytearray]` PARAM lowers (its `__getitem__` is
+# the element access the bytearray family renders); the call handing the param
+# a new bytearray is not lowered yet (BUGS.md#own-bytearray-param-call-rejects).
 from tpy import Own
 
 
 def first(b: Own[bytearray]) -> None:
-    print(b[0])  # tpyc: error(/subscript.recv_type/)
+    print(b[0])
 
 
 def main() -> None:
-    first(bytearray(b"ab"))
+    first(bytearray(b"ab"))  # tpyc: error(/call\.callee_kind/)
 
 
 main()

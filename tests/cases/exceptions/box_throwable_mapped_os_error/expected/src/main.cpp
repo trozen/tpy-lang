@@ -40,7 +40,7 @@ void main() {
             }
         }
     }
-    ::tpy::OSError unraised = ::tpy::OSError(17, "File exists");
+    ::tpy::OSError unraised = ::tpy::OSError(17, std::string_view("File exists"));
     ::tpystd::tplib::box::Box<::tpy::Throwable> boxed = ::tpystd::tplib::box::Box<::tpy::Throwable>(unraised.clone());
     {
         try {

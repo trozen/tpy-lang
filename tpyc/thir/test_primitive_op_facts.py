@@ -107,6 +107,9 @@ def widen(i: int32) -> int:
     return x
 
 def narrow(xs: list[int32], big: int) -> int32:
+    return len(xs[big:])
+
+def index_narrow(xs: list[int32], big: int) -> int32:
     return xs[big]
 
 def char_str(c: char) -> str:
@@ -292,7 +295,8 @@ def test_user_record_operand_is_not_certified():
 
 
 @pytest.mark.parametrize("name,coercion", [
-    ("widen", "fixed_int_to_bigint"), ("narrow", "bigint_narrow"), ("char_str", "char_to_str"),
+    ("widen", "fixed_int_to_bigint"), ("narrow", "bigint_narrow"),
+    ("index_narrow", "bigint_to_fixed_int"), ("char_str", "char_to_str"),
     ("to_float", "fixed_int_to_float"),
 ])
 def test_value_conversions_are_certified(name, coercion):

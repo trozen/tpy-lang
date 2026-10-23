@@ -1,1 +1,1 @@
-main.py:8: error: Cannot index type Any
+main.py:8: error: Type 'Any' is not subscriptable

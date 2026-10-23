@@ -18,10 +18,10 @@ from ..typesys import (
     PendingStrType, PendingViewType, LiteralType, LiteralTag,
     PendingBytesType, TupleType, UnknownElementType, PendingContainerType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
-    OptionalType,
+    OptionalType, UnionType,
     unwrap_ref_type, strip_own_type_args,
     is_callable_type, is_float_type, is_integer_type, is_any_float_type,
-    contains_type_param,
+    contains_type_param, contains_pending_leaf,
 )
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type,
@@ -37,12 +37,16 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .protocols import ProtocolChecker as ProtocolCheckerObj
     from .type_ops import TypeOperations
+    from .compatibility import TypeCompatibility
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
     ProtocolClassifier = Callable[[TpyType, TpyType], 'ProtocolConformanceKind | None']
     DerefChecker = Callable[[TpyType], TpyType | None]
     # The MRO distance from a subclass to its base, None when the first
     # is no strict subclass of the second.
     SubclassChecker = Callable[[TpyType, TpyType], int | None]
+    # Whether the argument receive takes an argument of the first type at a
+    # parameter of the second (`TypeCompatibility`, an argument).
+    ReceiveChecker = Callable[[TpyType, TpyType], bool]
 
 
 class MatchTier(Enum):
@@ -75,7 +79,7 @@ _TIER_COUNTS_SIZE = _NUM_MATCH_TIERS + 1
 
 
 class OverloadAmbiguityError(Exception):
-    """Raised by ``rank_overload_candidates`` (and so ``resolve_overload``)
+    """Raised by ``rank_overload_candidates`` (and so ``CallRanking.resolve``)
     when several candidates with distinct signatures tie at the top of the
     ranking, in either stage.
 
@@ -95,6 +99,21 @@ class OverloadAmbiguityError(Exception):
             for c in candidates
         )
         super().__init__(f"Ambiguous overload: {sigs}")
+
+
+class CallShape(NamedTuple):
+    """How a call passes its arguments: how many in all, and the names of
+    those passed by keyword. Every filter of an overload set by the call
+    (`CallAnalyzer.admitted_overloads`, the pending-number gate) reads it,
+    so they agree on which variants the call can reach."""
+    arity: int
+    keywords: tuple[str, ...] = ()
+
+    def names_keywords(self, fn: FunctionInfo) -> bool:
+        """Whether `fn` takes each keyword argument of the call."""
+        return all(any(p.is_kwargs or (p.name == k and not p.is_variadic)
+                       for p in fn.params)
+                   for k in self.keywords)
 
 
 def call_resolves_param(overload: FunctionInfo, index: int) -> bool:
@@ -565,7 +584,7 @@ def _bool_checker_to_classifier(
 ) -> ProtocolClassifier | None:
     """Wrap a bool ``protocol_checker`` as a classifier.
 
-    Callers outside ``resolve_overload`` only have the bool API; conservatively
+    Callers with only the bool API (`type_matches_strict`); conservatively
     report STRUCTURAL on a hit so tier info is never fabricated as EXPLICIT.
     """
     if protocol_checker is None:
@@ -779,18 +798,21 @@ def _numeric_scalar(t: TpyType) -> bool:
             or isinstance(t, IntLiteralType) or is_any_float_type(t))
 
 
+def _bare_type(t: TpyType) -> TpyType:
+    """`t` without its readonly / reference / `Own` qualifiers."""
+    t = unwrap_ref_type(unwrap_readonly(t))
+    return t.wrapped if isinstance(t, OwnType) else t
+
+
 def _conversion_target(arg_inner: TpyType, param_type: TpyType) -> TpyType:
     """The type an argument converts to at `param_type`: the parameter
     without its qualifiers, and an optional one's payload unless the
     argument is optional or None itself."""
-    def _bare(t: TpyType) -> TpyType:
-        t = unwrap_ref_type(unwrap_readonly(t))
-        return t.wrapped if isinstance(t, OwnType) else t
-    target = _bare(param_type)
+    target = _bare_type(param_type)
     if (isinstance(target, OptionalType)
             and not isinstance(arg_inner, (OptionalType, NoneType))):
         # The payload carries its own qualifiers (`Own[float32] | None`).
-        target = _bare(target.inner)
+        target = _bare_type(target.inner)
     return target
 
 
@@ -811,6 +833,17 @@ class _Conversion(NamedTuple):
     narrowing: int
     widening: int
     cost: int
+
+
+_NO_CONVERSION = _Conversion(0, 0, 0)
+
+
+class _Cell(NamedTuple):
+    """One argument's cell at its parameter (`CallRanking.cell`): its tier
+    and cost, and how it converts (nothing for a strict match)."""
+    tier: MatchTier
+    cost: int
+    conversion: _Conversion
 
 
 def _converted_cell(
@@ -863,7 +896,7 @@ def _expand_arg_types_with_kwargs(
     """Expand positional arg_types by inserting kwarg types at their param slots.
 
     Mirrors ``resolve_kwargs`` index-mapping logic but operates on types so
-    ``resolve_overload`` can score kwargs-disambiguated candidates. Returns
+    ``CallRanking.resolve`` can score kwargs-disambiguated candidates. Returns
     ``None`` when the overload cannot accept the given kwargs (unknown name,
     duplicate of a positional, or missing required param); the overload is
     then rejected at the candidate level.
@@ -962,15 +995,10 @@ def _has_type_param_params(overload: FunctionInfo) -> bool:
 def _classify_overload(
     overload: FunctionInfo,
     arg_types: list[TpyType],
-    protocol_checker: ProtocolChecker | None,
-    classifier: ProtocolClassifier | None,
-    default_int_type: TpyType | None,
-    type_ops: 'TypeOperations | None',
+    ranking: 'CallRanking',
     kwarg_types: dict[str, TpyType] | None = None,
     joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
-    subclass_checker: 'SubclassChecker | None' = None,
     convert: bool = False,
-    deref_checker: 'DerefChecker | None' = None,
     binding: dict[str, TpyType] | None = None,
 ) -> OverloadFit | None:
     """Classify every arg against ``overload``'s params, returning its fit
@@ -984,10 +1012,14 @@ def _classify_overload(
     leaves its bindings in ``joined_out`` for the conversion stage.
 
     ``convert`` on: an argument the strict match refuses takes a
-    ``CONVERTED`` cell where a conversion accepts it (`_converted_cell`).
+    ``CONVERTED`` cell where a conversion accepts it (`CallRanking.cell`).
     Parameters are taken as given -- at ``binding``, a joined fixed-int
     binding, when there is one -- with no inference.
     """
+    protocol_checker = ranking.protocol_checker
+    classifier = ranking.classifier
+    default_int_type = ranking.default_int_type
+    type_ops = ranking.type_ops
     if kwarg_types:
         expanded = _expand_arg_types_with_kwargs(arg_types, kwarg_types, overload)
         if expanded is None:
@@ -1047,20 +1079,15 @@ def _classify_overload(
                 ptype, arg_t, inferred, type_ops, classifier, default_int_type,
             )
         else:
-            cell = _classify_strict_match(arg_t, ptype, classifier, default_int_type,
-                                          type_ops, subclass_checker)
-            if cell is not None and declared is not None:
+            found = ranking.cell(arg_t, ptype, convert=convert)
+            if found is None:
+                return None
+            cell = (found.tier, found.cost)
+            if found.tier is MatchTier.CONVERTED:
+                narrowing += found.conversion.narrowing
+                conversion_widening += found.conversion.widening
+            elif declared is not None:
                 cell = _declared_tier(declared, cell)
-        if cell is None and convert:
-            conversion = _converted_cell(arg_t, ptype, protocol_checker,
-                                         deref_checker, subclass_checker,
-                                         default_int_type)
-            if conversion is not None:
-                narrowing += conversion.narrowing
-                conversion_widening += conversion.widening
-                cell = (MatchTier.CONVERTED, conversion.cost)
-        if cell is None:
-            return None
         # A protocol match that widens the argument's elements converts
         # it: ranked with the container widening, before any tier. An
         # argument with a container meet has its widening counted there.
@@ -1119,12 +1146,7 @@ def _pick_best(candidates: list[OverloadCandidate],
 
 def rank_overload_candidates(
     candidates: list[OverloadCandidate],
-    protocol_checker: ProtocolChecker | None = None,
-    classifier: ProtocolClassifier | None = None,
-    deref_checker: DerefChecker | None = None,
-    default_int_type: TpyType | None = None,
-    subclass_checker: SubclassChecker | None = None,
-    type_ops: 'TypeOperations | None' = None,
+    ranking: 'CallRanking',
     readonly_receiver: bool | None = None,
 ) -> OverloadPick:
     """Two-stage overload resolution over one ranking (`OverloadFit.rank`),
@@ -1138,15 +1160,11 @@ def rank_overload_candidates(
     declared = [declared_readonly(c.overload) for c in candidates]
     split = readonly_receiver is not None and len(set(declared)) > 1
     if not split:
-        return _rank_stages(candidates, protocol_checker, classifier,
-                            deref_checker, default_int_type,
-                            subclass_checker, type_ops)
+        return _rank_stages(candidates, ranking)
     preferred = [i for i, ro in enumerate(declared) if ro == readonly_receiver]
     others = [i for i, ro in enumerate(declared) if ro != readonly_receiver]
     for part in (preferred, others):
-        pick = _rank_stages([candidates[i] for i in part], protocol_checker,
-                            classifier, deref_checker, default_int_type,
-                            subclass_checker, type_ops)
+        pick = _rank_stages([candidates[i] for i in part], ranking)
         if pick.winner is not None:
             return OverloadPick(part[pick.winner],
                                 tuple(part[i] for i in pick.strict))
@@ -1162,12 +1180,7 @@ def declared_readonly(fi: FunctionInfo) -> bool:
 
 def _rank_stages(
     candidates: list[OverloadCandidate],
-    protocol_checker: ProtocolChecker | None,
-    classifier: ProtocolClassifier | None,
-    deref_checker: DerefChecker | None,
-    default_int_type: TpyType | None,
-    subclass_checker: SubclassChecker | None,
-    type_ops: 'TypeOperations | None',
+    ranking: 'CallRanking',
 ) -> OverloadPick:
     """The two stages of `rank_overload_candidates` over one partition.
 
@@ -1184,7 +1197,7 @@ def _rank_stages(
     for index, cand in enumerate(candidates):
         overload = cand.overload
         generic = _has_type_param_params(overload)
-        if generic and type_ops is None:
+        if generic and ranking.type_ops is None:
             # Legacy structural-match fallback for generic overloads when the
             # caller hasn't plumbed type_ops (e.g. the error-message-preservation
             # path in calls.py). Kwargs aren't supported on this fallback path
@@ -1197,10 +1210,8 @@ def _rank_stages(
             fits.append(None)
             continue
         fits.append(_classify_overload(
-            overload, cand.arg_types, protocol_checker, classifier,
-            default_int_type, type_ops, kwarg_types=cand.kwarg_types,
-            joined_out=joined, subclass_checker=subclass_checker,
-            convert=not generic, deref_checker=deref_checker,
+            overload, cand.arg_types, ranking, kwarg_types=cand.kwarg_types,
+            joined_out=joined, convert=not generic,
         ))
     strict = [i for i, fit in enumerate(fits)
               if fit is not None and fit.converted == 0]
@@ -1216,10 +1227,8 @@ def _rank_stages(
         fit = fits[index]
         if _has_type_param_params(cand.overload):
             fit = _classify_overload(
-                cand.overload, cand.arg_types, protocol_checker, classifier,
-                default_int_type, type_ops, kwarg_types=cand.kwarg_types,
-                subclass_checker=subclass_checker, convert=True,
-                deref_checker=deref_checker,
+                cand.overload, cand.arg_types, ranking,
+                kwarg_types=cand.kwarg_types, convert=True,
                 binding=joined.get(cand.overload),
             )
         if fit is not None:
@@ -1261,104 +1270,162 @@ def pins_const_receiver(winner: FunctionInfo, overloads: list[FunctionInfo],
             and any(not m.is_readonly for m in overloads))
 
 
-def resolve_overload(
-    overloads: list[FunctionInfo],
-    arg_types: list[TpyType],
-    protocol_checker: ProtocolChecker | None = None,
-    deref_checker: DerefChecker | None = None,
-    default_int_type: TpyType | None = None,
-    subclass_checker: SubclassChecker | None = None,
-    is_readonly_receiver: bool | None = None,
-    is_consuming_receiver: bool | None = None,
-    protocol_classifier: ProtocolClassifier | None = None,
-    type_ops: 'TypeOperations | None' = None,
-    kwarg_types: dict[str, TpyType] | None = None,
-) -> FunctionInfo | None:
-    """`rank_overload_candidates` over ``overloads`` at one argument list.
 
-    ``protocol_classifier`` enables explicit-vs-structural tier discrimination;
-    when omitted, protocol hits are conservatively scored as STRUCTURAL.
-    ``type_ops`` enables the generic strict path (inference + tier
-    ranking); when omitted, generic overloads fall back to the legacy
-    structural match (first-match-wins in declaration order).
-
-    ``kwarg_types`` maps kwarg names to their analyzed types; per-overload
-    expansion inserts them at the matching param slots so kwargs can
-    disambiguate overloads that positional args tie on.
-
-    Returns the winning ``FunctionInfo`` or ``None`` when none matches;
-    a genuine tie at the top raises ``OverloadAmbiguityError`` rather than
-    being broken by declaration order.
-    """
-    overloads = filter_receiver_overloads(overloads, is_consuming_receiver)
-    pick = rank_overload_candidates(
-        [OverloadCandidate(ov, arg_types, kwarg_types) for ov in overloads],
-        protocol_checker=protocol_checker,
-        classifier=protocol_classifier or _bool_checker_to_classifier(protocol_checker),
-        deref_checker=deref_checker,
-        default_int_type=default_int_type,
-        subclass_checker=subclass_checker,
-        type_ops=type_ops,
-        readonly_receiver=is_readonly_receiver,
-    )
-    return overloads[pick.winner] if pick.winner is not None else None
-
-
-class MethodCallRanking(NamedTuple):
-    """The checkers a method call ranks its receiver's overload set with,
-    bound once (`method_call_ranking`), so an operator's dunder set is
-    ranked exactly as the named call to it is."""
+class CallRanking(NamedTuple):
+    """The checkers every overloaded call -- a method, free function,
+    constructor, operator, subscript, `raise`, `__deref__` or `in` -- ranks
+    its overload set with, bound once (`call_ranking`), so every call kind
+    ranks by one rule and an operator's dunder set is ranked exactly as the
+    named call to it is."""
     protocol_checker: ProtocolChecker
     classifier: ProtocolClassifier
-    deref_checker: DerefChecker
-    default_int_type: TpyType
+    deref_checker: DerefChecker | None
+    default_int_type: TpyType | None
     subclass_checker: SubclassChecker
-    type_ops: 'TypeOperations'
+    type_ops: 'TypeOperations | None'
+    receives: 'ReceiveChecker'
 
     def resolve(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
                 is_readonly_receiver: bool | None = None,
                 is_consuming_receiver: bool | None = None,
                 kwarg_types: dict[str, TpyType] | None = None,
                 ) -> FunctionInfo | None:
-        """`resolve_overload` with this ranking's checkers."""
-        return resolve_overload(
-            overloads, arg_types,
-            protocol_checker=self.protocol_checker,
-            protocol_classifier=self.classifier,
-            deref_checker=self.deref_checker,
-            default_int_type=self.default_int_type,
-            subclass_checker=self.subclass_checker,
-            is_readonly_receiver=is_readonly_receiver,
-            is_consuming_receiver=is_consuming_receiver,
-            type_ops=self.type_ops,
-            kwarg_types=kwarg_types,
-        )
+        """The winner of ``overloads`` at one argument list (the
+        receiver's consuming kind filtered first,
+        `filter_receiver_overloads`), None when none matches; a genuine
+        tie at the top raises ``OverloadAmbiguityError`` rather than
+        being broken by declaration order. ``kwarg_types`` are inserted
+        at each candidate's matching parameter slots, so keywords can
+        disambiguate overloads the positional arguments tie on."""
+        overloads = filter_receiver_overloads(overloads, is_consuming_receiver)
+        pick = rank_overload_candidates(
+            [OverloadCandidate(ov, arg_types, kwarg_types) for ov in overloads],
+            self, readonly_receiver=is_readonly_receiver)
+        return overloads[pick.winner] if pick.winner is not None else None
 
     def rank(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
              is_readonly_receiver: bool | None = None,
              ) -> OverloadPick:
         """`rank_overload_candidates` over ``overloads`` at one argument
-        list, with this ranking's checkers: the pick with its stage."""
+        list: the pick with its stage."""
         return rank_overload_candidates(
             [OverloadCandidate(ov, arg_types) for ov in overloads],
-            protocol_checker=self.protocol_checker,
-            classifier=self.classifier,
-            deref_checker=self.deref_checker,
-            default_int_type=self.default_int_type,
-            subclass_checker=self.subclass_checker,
-            type_ops=self.type_ops,
-            readonly_receiver=is_readonly_receiver,
-        )
+            self, readonly_receiver=is_readonly_receiver)
+
+    def admits(self, arg_type: TpyType, param_type: TpyType) -> bool:
+        """Whether an argument of `arg_type` may be passed at `param_type`
+        (`cell`) -- the per-argument applicability the ranking applies. A
+        filter on it never drops a variant the full ranking could pick: a
+        parameter naming a type parameter or a container literal's open
+        leaf, or an undecided container argument, is taken as admitting."""
+        if (contains_type_param(param_type) or contains_pending_leaf(param_type)
+                or _undecided_container(arg_type)):
+            return True
+        return self.cell(arg_type, param_type) is not None
+
+    def cell(self, arg_type: TpyType, param_type: TpyType, *,
+             convert: bool = True, open_leaf: bool | None = None,
+             ) -> _Cell | None:
+        """The one cell computation of the ranking: an argument's strict
+        match at its parameter (`_classify_strict_match`), else -- with
+        `convert` -- a conversion, the ranked ones (`_converted_cell`)
+        first, then the argument receive's (`received`); None when nothing
+        takes it. `open_leaf` is whether the parameter holds a container
+        literal's open leaf, when the caller has decided it."""
+        strict = _classify_strict_match(
+            arg_type, param_type, self.classifier, self.default_int_type,
+            self.type_ops, self.subclass_checker)
+        if strict is not None:
+            return _Cell(strict[0], strict[1], _NO_CONVERSION)
+        if not convert:
+            return None
+        conversion = _converted_cell(
+            arg_type, param_type, self.protocol_checker, self.deref_checker,
+            self.subclass_checker, self.default_int_type)
+        if conversion is None:
+            conversion = self.received(arg_type, param_type, open_leaf)
+        if conversion is None:
+            return None
+        return _Cell(MatchTier.CONVERTED, conversion.cost, conversion)
+
+    def received(self, arg_type: TpyType, param_type: TpyType,
+                 open_leaf: bool | None = None) -> _Conversion | None:
+        """How an argument no ranked conversion takes converts where the
+        argument receive takes it, None where the receive refuses it. A
+        member injected into a union parameter costs its best accepting
+        member's own conversion plus one widening -- so an `int` at
+        `None | int32 | str` narrows as at `int32` and loses to a variant
+        taking `int32` alone; a tuple the sum of its elements'; any other
+        conversion a cost of one. A container literal's open leaf is
+        decided by the receive, which widens it, so it is taken free.
+        Whether the parameter holds one is decided once for the whole
+        parameter: none of its parts holds one when it does not."""
+        if open_leaf is None:
+            open_leaf = contains_pending_leaf(param_type)
+        if open_leaf:
+            return _NO_CONVERSION
+        if not self.receives(arg_type, param_type):
+            return None
+        return self._receive_price(arg_type, param_type)
+
+    def _receive_price(self, arg_type: TpyType,
+                       param_type: TpyType) -> _Conversion:
+        """`received`'s price of a conversion the receive takes, at a
+        parameter holding no open leaf."""
+        arg = _bare_type(arg_type)
+        target = _conversion_target(arg, param_type)
+        if isinstance(target, UnionType):
+            sources = arg.members if isinstance(arg, UnionType) else (arg,)
+            prices = [self._member_price(src, target.members)
+                      for src in sources]
+            return _Conversion(max(c.narrowing for c in prices),
+                               max(c.widening for c in prices) + 1,
+                               max(c.cost for c in prices))
+        if isinstance(target, OptionalType):
+            if isinstance(arg, OptionalType):
+                inner = self._element_price(arg.inner, target.inner)
+                return inner._replace(widening=inner.widening + 1)
+            return _Conversion(0, 1, 0)
+        if (isinstance(arg, TupleType) and isinstance(target, TupleType)
+                and len(arg.element_types) == len(target.element_types)):
+            elems = [self._element_price(a, p) for a, p in
+                     zip(arg.element_types, target.element_types)]
+            return _Conversion(sum(c.narrowing for c in elems),
+                               sum(c.widening for c in elems),
+                               sum(c.cost for c in elems))
+        return _Conversion(0, 0, 1)
+
+    def _member_price(self, source: TpyType,
+                      members: 'tuple[TpyType, ...] | list[TpyType]',
+                      ) -> _Conversion:
+        """The cheapest conversion of `source` into one of a union's
+        `members`."""
+        prices = [found.conversion for found in
+                  (self.cell(source, member, open_leaf=False)
+                   for member in members)
+                  if found is not None]
+        return min(prices) if prices else _Conversion(0, 0, 1)
+
+    def _element_price(self, arg: TpyType, param: TpyType) -> _Conversion:
+        """One element's conversion inside a received tuple or optional."""
+        found = self.cell(arg, param, open_leaf=False)
+        return (found.conversion if found is not None
+                else self._receive_price(arg, param))
 
 
-def method_call_ranking(ctx: 'SemanticContext', protocols: 'ProtocolCheckerObj',
-                        type_ops: 'TypeOperations') -> MethodCallRanking:
-    """The checkers of a method call's overload ranking, bound."""
-    return MethodCallRanking(
+def call_ranking(ctx: 'SemanticContext', protocols: 'ProtocolCheckerObj',
+                 type_ops: 'TypeOperations',
+                 compat: 'TypeCompatibility') -> CallRanking:
+    """The checkers of an overloaded call's ranking, bound."""
+    def receives(arg_type: TpyType, param_type: TpyType) -> bool:
+        return compat.is_type_compatible(arg_type, param_type,
+                                         CoercionContext.ARG)
+    return CallRanking(
         protocol_checker=protocols.type_conforms_to_protocol,
         classifier=protocols.classify_protocol_conformance,
         deref_checker=type_ops.get_deref_coercion_target,
         default_int_type=ctx.default_int_type,
         subclass_checker=ctx.registry.subclass_distance,
         type_ops=type_ops,
+        receives=receives,
     )

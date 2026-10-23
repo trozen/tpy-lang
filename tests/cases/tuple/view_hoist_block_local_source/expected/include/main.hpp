@@ -457,7 +457,7 @@ inline std::expected<std::string, ::tpy::StopIteration> Counter::__next__() {
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     this->i = (this->i) + (::tpy::BigInt(1));
-    return (::tpy::str_concat(::tpy::__getitem__(this->xs, ((this->i) - (::tpy::BigInt(1))).to_fixed_check<int32_t>()), "-fresh-suffix-long-enough-to-defeat-sso"));
+    return (::tpy::str_concat(::tpy::__getitem__(this->xs, (((this->i) - (::tpy::BigInt(1)))).to_fixed_check<int32_t>()), "-fresh-suffix-long-enough-to-defeat-sso"));
 }
 void __tpy_init();
 } // namespace tpyapp::main

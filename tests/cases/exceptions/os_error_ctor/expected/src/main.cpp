@@ -32,7 +32,7 @@ void direct_mapped_enoent() {
 //     e = OSError(17, "File exists")
 //     raise e
 void bound_mapped() {
-    ::tpy::OSError e = ::tpy::OSError(17, "File exists");
+    ::tpy::OSError e = ::tpy::OSError(17, std::string_view("File exists"));
     e.__raise__();
 }
 
@@ -41,7 +41,7 @@ void bound_mapped() {
 //     e.errno = 2
 //     raise e
 void posthoc_plain() {
-    ::tpy::OSError e = ::tpy::OSError("plain");
+    ::tpy::OSError e = ::tpy::OSError(std::string_view("plain"));
     e.error_number = 2;
     e.__raise__();
 }
@@ -128,15 +128,15 @@ void posthoc_plain() {
 //     except OSError:
 //         print("WRONG: ESRCH stayed plain")
 void main() {
-    ::tpy::OSError e = ::tpy::OSError(2, "No such file or directory");
+    ::tpy::OSError e = ::tpy::OSError(2, std::string_view("No such file or directory"));
     std::cout << e << "\n" << ::tpy::check_signals;
     std::cout << e.error_number << " " << e.strerror_text << "\n" << ::tpy::check_signals;
-    ::tpy::OSError f = ::tpy::OSError(13, "Permission denied", "/etc/shadow");
+    ::tpy::OSError f = ::tpy::OSError(13, std::string_view("Permission denied"), std::string_view("/etc/shadow"));
     std::cout << f << "\n" << ::tpy::check_signals;
     std::cout << f.error_number << " " << f.strerror_text << " " << f.filename << "\n" << ::tpy::check_signals;
-    ::tpy::OSError g = ::tpy::OSError("plain msg");
+    ::tpy::OSError g = ::tpy::OSError(std::string_view("plain msg"));
     std::cout << g << " " << ::tpy::print_bool((!(g.error_number))) << "\n" << ::tpy::check_signals;
-    ::tpy::FileNotFoundError h = ::tpy::FileNotFoundError(2, "No such file or directory", "x.txt");
+    ::tpy::FileNotFoundError h = ::tpy::FileNotFoundError(2, std::string_view("No such file or directory"), std::string_view("x.txt"));
     std::cout << h << "\n" << ::tpy::check_signals;
     {
         try {

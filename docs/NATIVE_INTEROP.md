@@ -549,6 +549,84 @@ it back (`lookup`: `get`, `pop`'s key and default, `discard`,
 to fit; a method without the keyword decides its numbers first. The keyword
 is read only on those three stubs and ignored on any other class.
 
+**`element_access=True` / `element_access=<twin>` (`@native` and
+`@cpp_template`).** Declared per variant on a `__getitem__`, `__setitem__` or
+`__delitem__` binding, it says the variant performs the container's own
+operation on the slot the key names -- a read, an assignment or insertion, a
+removal -- including the key's hash / equality and the documented
+`IndexError` / `KeyError`, and nothing else (no callback, no signal
+checkpoint, no value check). Three states:
+
+- absent (or `False`): the variant is an ordinary call;
+- `True`: plain element access, never replaced (`dict`'s three dunders,
+  `list.__delitem__`);
+- a method name: plain element access whose named twin -- a `@cpp_template`
+  method of the same class taking the variant's arguments and, for a read,
+  returning its result (readonly aside) -- performs the same operation
+  without the bounds check. The twin may replace the variant only where the
+  index is proven in `0 <= i < len(self)` (`list` / `Array` / `Span` /
+  `varargs` / `str` / `bytes` / ... name `unchecked_get`, and their integer
+  `__setitem__` `unchecked_set`). A generic class's twin may spell its type
+  parameters and `{cpp}`, resolved at the receiver as the variant's own
+  binding is (`::ne::raw<{T}>({self}, {0})`).
+
+  The twin is named by reference, not by a string, so editors resolve it
+  (go-to-definition, rename; a typo is an undefined name):
+
+  ```python
+  @native("my::Ring")
+  class Ring:
+      @cpp_template("{self}.raw({0})")
+      @readonly
+      def unchecked_get(self, index: int32) -> Cell: ...
+
+      @native("at", element_access=unchecked_get)
+      def __getitem__(self, index: int32) -> Cell: ...
+  ```
+
+  The name is bound in the class body when the decorator runs only if the
+  twin is defined ABOVE the variant; below it, CPython raises `NameError`
+  (or binds a module-level name of that spelling), so the compiler rejects
+  it: *element_access names 'unchecked_get', which is not defined above
+  '__getitem__' in class 'Ring'*. A string (`element_access="unchecked_get"`)
+  is rejected too (*expects method name or bool*).
+
+Registration pairs each variant with its twin once and stores it on the
+variant. A variant takes a twin of its own access -- a readonly variant a
+`@readonly` (or `@pure`) twin, a mutable one a mutable twin -- whose result
+is not more readonly than the variant's; an `@auto_readonly` twin gives each
+half of an `@auto_readonly` getter its own. It also takes one only when
+`len(x)` measures the class's `__len__` -- its own or the one it inherits --
+the length the proof is about:
+`len(x)` renders the runtime's `__len__` dispatch, which reaches a `__len__`
+bound to that dispatch itself (`@native("tpy::__len__", function=True)`) or a
+member spelled `__len__` (`@native("__len__")`, called by the runtime's
+generic overload with its checks), and not a renamed binding
+(`@native("size")`). A variant with no such twin -- a mutable `@auto_readonly`
+half beside a `@readonly`-only twin, or a class whose `__len__` is renamed --
+has none and keeps its checked binding at a proven index.
+
+The keyword is open to any user binding, not only the stdlib; a method with a
+TPy body cannot declare it (a binding has none). Like the rest of a binding,
+the contract is trusted, not checked: a twin that reads outside the slot or
+does more than the declared operation is undefined behavior the binding
+introduced, so declaring a twin is an unsafe opt-in of the binding's author. Registration rejects it on
+any other method, and a twin that is missing, not a `@cpp_template`, whose
+parameters or result differ, or that a readonly variant names without
+accepting a readonly receiver. Slice variants declare nothing. Every
+subscript resolves as its dunder call and stamps the winner; the analyses
+ask the winner's contract (`typesys.element_access(sub, kind)`, or
+`element_access_getitem` for a question about the type): a contract read is
+a storage place to the value-category, may-interrupt and augmented-hold
+analyses and a container literal's own part, and the builtin family's
+admission in code generation keys on it. Every subscript renders from its
+winner: the variant's own binding (`::tpy::__getitem__(xs, i)`,
+`::tpy::bytearray_setitem(b, i, v)`, `r.at(i)`), or, where the index is
+proven in range, the twin's template (`xs[static_cast<std::size_t>(i)]`,
+`::ne::raw<::ne::Cell>(r, j)` for the user binding above). A variant without
+the contract renders its binding as the call it is, proven index or not --
+a read, a store and an augmented store alike (`p[k] = 5` -> `p.put(k, 5)`).
+
 **Members.** Which type arguments are elements is read off the stub, never
 off the type's name:
 

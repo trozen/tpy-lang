@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def pick(items: list[Box], i: int) -> tuple[int, Box]:
 //     return (i * 100, items[i])
 std::tuple<::tpy::BigInt, Box*> pick(std::vector<Box>& items, const ::tpy::BigInt& i) {
-    return std::tuple<::tpy::BigInt, Box*>{((i) * (::tpy::BigInt(100))), &(::tpy::__getitem__(items, i.to_fixed_check<int32_t>()))};
+    return std::tuple<::tpy::BigInt, Box*>{((i) * (::tpy::BigInt(100))), &(::tpy::__getitem__(items, (i).to_fixed_check<int32_t>()))};
 }
 
 // async def step(items: list[Box]) -> int:

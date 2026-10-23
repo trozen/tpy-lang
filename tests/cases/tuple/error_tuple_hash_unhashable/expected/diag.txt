@@ -1,1 +1,1 @@
-main.py:5: error: No matching overload for hash(tuple[list[int32]])
+main.py:5: error: No matching overload for 'hash' with argument types (tuple[list[int32]])

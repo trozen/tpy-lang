@@ -245,7 +245,7 @@ void main() {
 // def above(i: int) -> bool:
 //     return 0.2 < X[i]  # tpyc: ok
 bool above(const ::tpy::BigInt& i) {
-    return (0.2 < ::tpy::__getitem__((*X), i.to_fixed_check<int32_t>()));
+    return (0.2 < ::tpy::__getitem__((*X), (i).to_fixed_check<int32_t>()));
 }
 
 // # A generic call whose T is learned from a float literal (bare, in a list or

@@ -29,13 +29,13 @@ main()
     ('app.commands["inc"]()', r"Callable type expects 1 argument\(s\), got 0"),
     ('app.commands["inc"]("bad")', r"expected int32, got str"),
     ('app.commands["inc"](x=1)', r"Keyword arguments are not supported for Callable"),
-    ('app.commands[1](1)', r"expected str, got"),
+    ('app.commands[1](1)', r"Type mismatch in dict key: expected str, got int"),
     ('app.values[0](1)', r"Cannot call method '__call__' on type int32"),
-    ('app.callback[:](1)', r"Slicing is not supported for Callable"),
-    ('app.callback[::2](1)', r"Slicing is not supported for Callable"),
-    ('app.callback[0, 1](1)', r"Subscript index must be an integer type"),
-    ('callback = app.callback\n    callback[0](1)', r"Cannot index type Callable"),
-    ('callback = app.callback\n    callback[:](1)', r"Slicing is not supported for Callable"),
+    ('app.callback[:](1)', r"Type 'Callable\[\[int32\], int32\]' is not subscriptable"),
+    ('app.callback[::2](1)', r"Type 'Callable\[\[int32\], int32\]' is not subscriptable"),
+    ('app.callback[0, 1](1)', r"Type 'Callable\[\[int32\], int32\]' is not subscriptable"),
+    ('callback = app.callback\n    callback[0](1)', r"Type 'Callable\[\[int32\], int32\]' is not subscriptable"),
+    ('callback = app.callback\n    callback[:](1)', r"Type 'Callable\[\[int32\], int32\]' is not subscriptable"),
 ])
 def test_indexed_callable_field_errors(subject: str, message: str) -> None:
     with pytest.raises(SemanticError, match=message):

@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 
 def main() -> None:
     q = urlparse("http://h/path")
-    print(q[0])  # tpyc: error(/Cannot index type ParseResult: no __getitem__/)
+    print(q[0])  # tpyc: error(/Type 'ParseResult' is not subscriptable/)
 
 
 main()

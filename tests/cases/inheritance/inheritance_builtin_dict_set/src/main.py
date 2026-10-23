@@ -25,12 +25,34 @@ def add_tag(t: Tags, tag: int32) -> None:
     t.add(tag)
 
 
+def missing(c: Counter) -> None:
+    # An inherited `__getitem__` is the dict's own lookup: a missing key
+    # raises and inserts nothing.
+    try:
+        print(c["zz"])  # tpyc: ok
+    except KeyError:
+        print("missing:", len(c))
+
+
+def missing_elem(cs: list[Counter]) -> None:
+    # A container-element receiver: the inherited lookup on `cs[0]` raises
+    # for a missing key and inserts nothing.
+    try:
+        print(cs[0]["zz"])  # tpyc: ok
+    except KeyError:
+        print("missing_elem: KeyError")
+
+
 def main() -> None:
     c = Counter("hits")
     c["a"] = 1  # inherited __setitem__ on a record receiver
     bump(c, "a")
     bump(c, "b")
     print(c.label, len(c), c["a"], c["b"])
+    missing(c)
+    cs: list[Counter] = []
+    cs.append(Counter("elems"))
+    missing_elem(cs)
 
     t = Tags()
     t.add(7)  # inherited set.add on a record receiver

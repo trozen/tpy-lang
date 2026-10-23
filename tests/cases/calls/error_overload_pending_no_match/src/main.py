@@ -15,7 +15,7 @@ def f(xs: list[int16]) -> str:
 
 def main() -> None:
     ms = [1, 2]
-    print(f(ms))  # tpyc: error(/No matching overload for f\(list\[int32\]\)/)
+    print(f(ms))  # tpyc: error(/No matching overload for 'f' with argument types \(list\[int32\]\)/)
 
 
 main()

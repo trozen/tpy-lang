@@ -1,0 +1,1 @@
+main.py:8: error: Type mismatch in list index: expected int32 or slice, got str

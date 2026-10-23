@@ -1,0 +1,1 @@
+Binds hand-written C++ containers (ne::Ring) through @native; CPython has no such class to run.

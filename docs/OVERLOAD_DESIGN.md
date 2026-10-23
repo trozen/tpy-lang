@@ -18,7 +18,7 @@
 
 | Feature | Notes |
 |---------|-------|
-| Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Needs `resolve_overload` to match concrete arg against union stub params via member containment. |
+| Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Call resolution takes a member at a union stub parameter (a union injection, "Call resolution"); the stub's specialization does not lower yet (`sig.overload_set.narrow_param`, and an `isinstance` over the stub's union `if.cond_facts_unmirrored`). |
 | Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
 | Overload on arity | Different parameter counts per stub. A free function's variants get distinct C++ names (`f__int32`, `f__int32__int32`, see "C++ names of variants"); a method's map to C++ overloads with different parameter counts. |
 | Dead branch elimination generalization | Extend dead-branch elimination beyond overload dispatch -- e.g. when isinstance/match has only a single possible type, eliminate the check entirely even without `@overload`. |
@@ -133,13 +133,28 @@ and two constrained templates over unrelated protocols are unordered).
   parameter stays bare; a narrower fixed width and `float` -> `float32`,
   which have no row, take a plain cast. An Optional parameter wraps the result in the
   optional type itself (`std::optional<double>(0.1)`, since a payload value
-  would lose to a plain variant's standard conversion). The pin fires only
+  would lose to a plain variant's standard conversion). A value-union
+  parameter does the same at the member sema landed the argument in
+  (`TpyCoerce.union_member`): `v.b(1)` at `b(x: int64 | str)` beside
+  `b(x: float)` renders
+  `v.b(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(1)))`, so
+  C++ binds the union variant, not the `double` one. The pin fires
   where the variants share one C++ name -- methods, constructors, and a
   user operator dunder set, whose variants share the operator's spelling
   (`({self}) * ({0})`, recorded at registration) -- since a free call names
   its variant (`variant_cpp_name`) and C++ has nothing left to choose
   (`FunctionInfo.reresolved_by_cpp`, read by `tpyc/thir/lower/checks.py`
-  `_literal_pin_slot`). `@native` / `@cpp_template` stubs (builtin `float`,
+  `_literal_pin_slot`); and at any call where the union member differs
+  from the type the argument renders as, since the bare literal may convert
+  to no alternative (`pick(3)` at `pick(x: uint8 | str)` renders
+  `pick(::tpy::Union<std::string, uint8_t>(static_cast<uint8_t>(3)))`). A
+  walrus or conditional renders at its storage's type (a BigInt under
+  `--default-int=BigInt`), so at a union member it always takes the pin,
+  converted from that type (`((z = 3)).to_fixed_check<int32_t>()`). The
+  pin is one step of the argument sink (`_lower_call_arg`), so every
+  argument position takes it: a free or method call, a constructor, each
+  `*args` element, an awaited coroutine call's frame. A parameter
+  DEFAULT does not (BUGS.md#union-int-literal-narrow-member-ill-formed). `@native` / `@cpp_template` stubs (builtin `float`,
   `float32`, ...) take no pin. At an operator the literal operand at the
   dunder's parameter is pinned wherever sema resolves the dunder: `v * 3` at
   `__mul__(float)` / `__mul__(int)` renders `((v) * (::tpy::BigInt(3)))`,
@@ -297,9 +312,9 @@ checks that stub types collectively cover all union members:
 
 Rules:
 - Only parameters where the implementation type is a union are checked
-- Each stub parameter must be a concrete (non-union) type or match the implementation
-  type exactly. Partial union stubs (e.g., `Dog | Cat` when impl has `Dog | Cat | Bird`)
-  are a future extension (see table above).
+- Each stub parameter is a concrete type, a union of implementation members, or
+  the implementation type itself. A partial union stub (e.g., `Dog | Cat` when impl
+  has `Dog | Cat | Bird`) resolves but does not compile yet (see table above).
 - Stub types must be subsets of the implementation's union members
 - Stub parameter names must match implementation parameter names
 - Parameters identical across all stubs and implementation are not checked
@@ -370,8 +385,8 @@ An operator is a call to a dunder, and its dunder set -- an in-place
 `__iadd__` set as one set, `@cpp_template` variants beside bodied ones --
 is ranked exactly as the named call to that dunder ranks it
 (`OperatorResolver._rank_set`,
-`tpyc/sema/operators.py`, with the method call's checkers,
-`method_call_ranking`): the receiver's type parameters substituted
+`tpyc/sema/operators.py`, with the checkers every call ranks with,
+`call_ranking`): the receiver's type parameters substituted
 (int-kind ones such as `ArrayList[T, N]`'s `N` included), the receiver kind
 ranked first ("The receiver kind ranks first" below) and the consuming
 filter (`filter_receiver_overloads`), the method's own
@@ -511,11 +526,11 @@ case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls).
 
 #### Subscripts
 
-**A record subscript answers like its explicit dunder call** (any user,
-library, `@native`, inherited or generic record whose subscripts do not read
-elements the builtin way -- `subscript_answers_as_call`; a builtin
-container, `str`, `bytes`, a tuple and an element-typed `@native` wrapper
-keep their own rule). `t[k]` is `t.__getitem__(k)`, `t[k] = v` is
+**A subscript answers like its explicit dunder call** -- on a record (user,
+library, `@native`, inherited, generic, element-typed) and on a builtin
+container, `str`, `bytes`, `bytearray`, `Array`, `Span`, the views and `*args`
+alike; a tuple (literal index), a TypedDict (field), an enum class (name
+lookup) and a protocol receiver keep their own rule. `t[k]` is `t.__getitem__(k)`, `t[k] = v` is
 `t.__setitem__(k, v)`, `del t[k]` is `t.__delitem__(k)` and `t[k] op= v` is
 `t.__setitem__(k, t.__getitem__(k) op v)`: each form resolves its dunder set
 once, through the same ranking with the receiver
@@ -564,11 +579,116 @@ on, and receives, the operation's result at its value parameter
 mismatch*. Each form's call passes the receiver const on its own when its
 variant needs it (`TpySubscript.const_dunders`). A BigInt key at a fixed-width
 variant is the call's checked narrowing, one `to_fixed_check<T>()` per key.
-Not covered: a slice key (`_find_slice_getitem` picks by slice kind,
-BUGS.md#slice-dunder-overload-first-match), a protocol receiver with a
-non-`int32` key (BUGS.md#protocol-getitem-nonint-key-rejects), and a tuple,
-record or union key, which sema resolves but code generation rejects
-(BUGS.md#record-subscript-key-shapes-reject).
+A slice key -- written (`xs[1:3]`, `xs[::2]`) or a slice-typed value -- is
+the argument of type `basic_slice` / `slice` it builds, ranked like any key
+(a written slice is never converted to another slice type, so a receiver
+without a variant for it answers the no-match rule below, the written
+slice named `slice`).
+
+**When no variant takes the subscript**, it answers in the subscript's
+terms, not the call's (the explicit `t.__getitem__(k)` keeps *No matching
+overload for '__getitem__'*, since the user wrote the dunder there):
+
+- The receiver's type declares no such dunder: *Type 'T' is not
+  subscriptable* (read), *Type 'T' does not support item assignment*
+  (store, augmented store), *Type 'T' does not support item deletion*
+  (`del`) -- a static fact about the TPy type, so it holds where CPython
+  would still index the object (a stdlib namedtuple whose TPy type has no
+  `__getitem__`, `Any`). A protocol receiver and a receiver with no
+  record (a `Callable`) answer the same.
+- The dunder exists but no variant takes the arguments: *Type mismatch in
+  `<context>`: expected E1 or E2, got A* at the FIRST argument position
+  no variant admitting the earlier ones accepts, naming every type the
+  variants declare there (a type another listed one takes, `basic_slice`
+  at `slice`, is named by it; a stub's `Own` is not shown), through the
+  one mismatch formatter (`TypeCompatibility.mismatch_text`). The context
+  is the subscript's own noun on a builtin, whose stub parameter names
+  the user never wrote (`ExpressionAnalyzer.subscript_arg_context`): the
+  key as the receiver plus the stub parameter's name (`list index`,
+  `dict key`), the value as `assignment` / `slice assignment`. On a user
+  type it is the parameter's name the variants share there (`argument
+  'k'`), else `subscript key` / `subscript value`. When every position
+  is admitted by some variant (a pending literal the ranking takes
+  loosely), the last one is checked as a call to one variant checks it,
+  against the one type the variants declare there (`g = [[1]]; g[0] =
+  ["a"]`: *Type mismatch in assignment: expected list[int32], got
+  list[str]*); where they declare several, a container literal none of
+  them takes is the mismatch at that position (`xs[[]]`: *Type mismatch
+  in list index: expected int32 or slice, got list[???]*).
+
+```python
+xs: list[int32] = [1]
+xs["a"]          # Type mismatch in list index: expected int32 or slice, got str
+d: dict[str, int32] = {}
+d[0:1]           # Type mismatch in dict key: expected str, got slice
+c: Callable[[int32], int32] = f
+c[:]             # Type 'Callable[[int32], int32]' is not subscriptable
+```
+
+`Slicing is not supported for T` remains only where a protocol's
+`__getitem__` declares a slice key, which a protocol receiver cannot be
+sliced through yet (BUGS.md#protocol-slice-key-rejected), and `del t[a:b]` on a receiver with a
+`__delitem__` keeps *deleting a slice is not yet supported*
+(BUGS.md#del-slice-rejected).
+
+**The variants the key can be passed to choose the preparation.** Before a
+pending argument is prepared or a context-typed one (a lambda, a container
+literal) analyzed, the variants are FILTERED by the arguments that need no
+context (`CallRanking.admits` over a known key; `CallAnalyzer.
+admitted_overloads`, an `@auto_readonly` twin pair as one): a filter, never
+a ranking -- a variant only a conversion reaches stays. The survivors then
+drive the existing preparation: a container literal's (`MethodAnalyzer.
+prepare_container_call`: `xs[0]` on `xs = [1, 2]` leaves the element open
+where several `__getitem__` variants would have decided it), and the hint of
+the context-typed argument, which is the parameter type every survivor
+declares there (none when they differ). One survivor's signature answers as
+a call to it alone would; several are ranked on the complete call. So the
+store value of `fs[0] = lambda x: x + 1` and of `fs.__setitem__(0, lambda x:
+x + 1)` is typed by the int variant's `T`. The same filter serves the
+explicit method call.
+
+**A pending number argument stays open only where its width cannot pick
+the variant.** An argument (a subscript key or a store's value, a
+positional or keyword one) that is an unannotated local whose number type
+is still pending is analyzed open exactly when every variant of the call's
+shape -- its arity and the keyword names it passes -- that an integer can
+be passed to there declares ONE parameter type, a number type naming no
+type parameter (`CallAnalyzer.number_arg_stays_open`, asked before the
+argument is analyzed; the predicate is the one-callee rule of
+`ExpressionAnalyzer.analyze_arg_at_param`, `receives_pending`). The
+other arguments' types filter nothing, so `take("a", x)`,
+`take(tag="a", k=x)` and the mirror `take(x, "a")` get the verdict of
+the set, not of the spelling; an augmented `t[x] += 1` asks it over both
+`__getitem__` and `__setitem__`. The set is the call's WHOLE overload
+set, whatever subset a site ranks or classifies: a call with a lambda
+ranked over its Callable-bearing variants (Regime C) and a container
+literal's method preparation ask it over every variant, through the one
+entry point every overload probe analyzes an argument with
+(`CallAnalyzer.probe_arg`, given the set and the `CallShape`). Then it
+ranks at the type its cells have so far -- every number-taking variant declares the same type, so the
+width cannot change the winner -- and the winner's parameter receives it
+still open: `d[x]`, `d.get(x, "")` on a `dict[int32, str]`, a
+`take(int32)` / `take(str)` set, `t["a"] = x` over `__setitem__`
+variants taking an `int32` or a `str` value. Elsewhere (two widths, a
+type parameter, `Any`, a numeric protocol or union competing for the
+number) the use fixes the local as any consumer does, so `for x in xs:
+take(x)` over `take(int32)` / `take(int64)` then `xs.append(big64)` is
+refused. Whether the use fixes the local does not depend on source order;
+a wider store BEFORE the use has already widened the local, and then the
+call compiles at the wider variant.
+
+**What a builtin subscript keeps from its own rule** reads the declared
+element-access contract of the winner (`element_access(sub, kind)`,
+docs/NATIVE_INTEROP.md): a read through a contract variant is a storage
+place (value category, may-interrupt, the augmented-target hold), a
+container literal's part as its cells have it, and the bounds proof
+(`bounds_safe`, taken off the receiver and key as written for a positional
+receiver) and the `bounds_safe` raw render stay. A slice of a builtin
+(`Iterable[Own[T]]` value) stores the value's elements, so the store
+warns no copy of the value itself; a list literal value is hinted as a list
+of the receiver's elements, which a protocol slot cannot type.
+Not covered: a TypedDict call receiver of an augmented subscript
+(BUGS.md#aug-container-call-receiver-rejects).
 
 #### First pass: strict tier-ranked matching
 
@@ -915,6 +1035,26 @@ its instantiation, like any conversion. `max(a64, b32)` picks
 `f(int32(1), int64(2))` picks a concrete `f(x: int64, y: int64)` over the
 joined generic in either order: both convert the `int32`, and the exact
 `int64` outranks the bare `T` the generic declares.
+
+**One rule at every call kind.** A method, free function, constructor,
+operator, subscript, `raise`, `__deref__` and `in` call rank with one bundle
+of checkers (`CallRanking`, bound by `call_ranking`) and one admissibility
+predicate: an argument is admissible at a parameter iff the argument receive
+takes it (`TypeCompatibility.is_type_compatible` at an argument). A strict
+match and a ranked conversion (`_converted_cell`) keep their cells; every
+other conversion the receive takes is a `CONVERTED` cell priced like one
+(`CallRanking.received`): a member injected into a union parameter costs the
+conversion of its best accepting member plus one widening, so `sys.exit(k)`
+with `k: int` narrows to `exit(code: int32)` rather than reaching the
+`int32 | str | None` variant at a flat price; a tuple costs the sum of its
+elements' conversions; any other receive-only conversion costs 1; a
+container literal's open leaf, which the receive decides, costs nothing.
+So `h.m(p, 1)` and `g(p, 1)` with `p: A`, at a variant taking `A | B` beside
+one taking `str`, both run the union variant (`us.__setitem__(1, P(6))` at
+`Own[P | Q]` likewise), and a call answers whenever a call to one variant
+alone would. The ranking, the applicability filter (`CallRanking.admits`)
+and the union and tuple pricers take a cell from one computation,
+`CallRanking.cell`.
 
 #### Worked example: `sum([])`
 

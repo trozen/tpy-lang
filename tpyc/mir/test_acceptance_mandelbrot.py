@@ -186,7 +186,7 @@ bb3:
   %26 = call stub builtins.int.__init__[float](%25) [pure, reader, may-raise] [initialize] @ 30:4
   %27 = borrow (*%6) @ 31:11
   %28 = borrow %26 @ 31:17
-  %29 = op coerce:bigint_narrow (%28) may-raise @ 31:11
+  %29 = op coerce:bigint_to_fixed_int (%28) may-raise @ 31:17
   %30 = op getitem (%27, %29) may-raise @ 31:11
   %31 = op coerce:char_to_str (%30) may-raise [initialize] @ 31:4
   return %31 @ 31:4

@@ -16,6 +16,10 @@ inline constexpr std::string_view __name__ = "__main__";
 void bump(Counter& c, std::string_view key);
 // def add_tag(t: Tags, tag: int32) -> None:
 void add_tag(Tags& t, int32_t tag);
+// def missing(c: Counter) -> None:
+void missing(const Counter& c);
+// def missing_elem(cs: list[Counter]) -> None:
+void missing_elem(const std::vector<Counter>& cs);
 // def main() -> None:
 void main();
 

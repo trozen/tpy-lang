@@ -13,6 +13,8 @@ from typing import Protocol
 class HasValue(Protocol):
     def value(self) -> int32: ...
 
+    def bump(self) -> None: ...
+
 
 class Parent(HasValue):
     _n: int32
@@ -22,6 +24,9 @@ class Parent(HasValue):
 
     def value(self) -> int32:           # direct override -- must NOT be const
         return self._n
+
+    def bump(self) -> None:
+        self._n += 1
 
 
 class Child(Parent):
@@ -36,9 +41,17 @@ def show(v: HasValue) -> None:
     print(v.value())
 
 
+def grow(v: HasValue) -> None:
+    v.bump()
+
+
 def main() -> None:
     show(Parent(7))
     show(Child(7))
+    c = Child(7)
+    # A named Child binds the protocol parameter as itself: the bump is seen.
+    grow(c)
+    print(c.value())
 
 
 main()

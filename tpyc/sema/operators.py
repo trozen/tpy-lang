@@ -16,7 +16,7 @@ from ..typesys import (
     substitute_type_params_simple, is_any_float_type, answers_as_call,
 )
 from ..parse import TpyAugAssign, TpyBinOp, TpyExpr
-from .overloads import (method_call_ranking, filter_receiver_overloads,
+from .overloads import (call_ranking, filter_receiver_overloads,
                         OverloadAmbiguityError, converts_literal_to_base,
                         pins_const_receiver)
 from .literal_utils import numeric_literal_type
@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .context import SemanticContext
     from .protocols import ProtocolChecker as ProtocolCheckerObj
     from .type_ops import TypeOperations
+    from .compatibility import TypeCompatibility
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
 
 from .bound_check import raise_if_class_param_bound_violated
@@ -184,11 +185,13 @@ class OperatorResolver:
     def __init__(
         self, ctx: SemanticContext,
         type_ops: 'TypeOperations', protocols: 'ProtocolCheckerObj',
+        compat: 'TypeCompatibility',
     ):
         self.ctx = ctx
         self.type_ops = type_ops
         # Used to enforce class-shadowed method type-param bounds at dispatch.
         self.protocols = protocols
+        self.compat = compat
 
     def _check_class_bounds(
         self, method: FunctionInfo, receiver_type: TpyType,
@@ -306,7 +309,7 @@ class OperatorResolver:
         admits: Callable[[FunctionInfo, bool], bool] | None = None,
     ) -> RankedDunder | OperatorAmbiguity | None:
         """Rank one dunder set for the arguments `args` as the named call
-        to it ranks the set (`method_call_ranking`): the receiver's type
+        to it ranks the set (`call_ranking`): the receiver's type
         params substituted (int-kind ones included), its kind the ranking's
         first component (`rank_overload_candidates`), the method's own type
         params inferred from the arguments. `admits(variant, strict)` says
@@ -320,7 +323,8 @@ class OperatorResolver:
             is_consuming_receiver=False)
         if not cands:
             return None
-        ranking = method_call_ranking(self.ctx, self.protocols, self.type_ops)
+        ranking = call_ranking(self.ctx, self.protocols, self.type_ops,
+                               self.compat)
         views = [self.type_ops.substitute_method_type_params(m, type_subst)
                  if type_subst else m for m in cands]
         readonly = receiver_is_readonly(self.ctx, receiver_expr, receiver)

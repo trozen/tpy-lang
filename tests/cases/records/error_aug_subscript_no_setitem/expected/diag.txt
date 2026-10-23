@@ -1,0 +1,1 @@
+main.py:16: error: Type 'ReadOnlyTable' does not support item assignment

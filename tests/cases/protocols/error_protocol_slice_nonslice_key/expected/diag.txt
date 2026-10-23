@@ -1,0 +1,1 @@
+main.py:20: error: Type mismatch in argument 'pos': expected int32, got slice

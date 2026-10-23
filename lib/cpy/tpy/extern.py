@@ -3,6 +3,7 @@ TurboPython external linkage declarations (tpy.extern module).
 
 CPython stubs -- these are no-ops since native globals don't exist in CPython.
 """
+from typing import Callable
 
 
 class _ExternLinkage:
@@ -21,7 +22,8 @@ export = _ExternLinkage()
 
 
 def cpp_template(template: str, transient: bool = False,
-                 checks_signals: bool = False, *,
+                 checks_signals: bool = False,
+                 element_access: bool | Callable[..., object] = False, *,
                  borrows: tuple[str, ...] = (),
                  element_of: tuple[str, ...] = ()):
     """C++ code template. No-op in CPython."""

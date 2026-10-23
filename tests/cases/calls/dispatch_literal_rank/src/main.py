@@ -1,8 +1,9 @@
 # A numeric literal ranks on one price scale from its home (default int width,
 # `float`) and renders as the picked parameter's type, so C++ binds sema's pick.
+import asyncio
 import math
 from typing import Callable, Iterator, overload
-from tpy import dispatch, float32, int16, int32, int64, Hashable
+from tpy import dispatch, float32, int16, int32, int64, uint8, Hashable
 
 
 class Animal:
@@ -167,6 +168,54 @@ class V:
         return "str"
 
     @dispatch
+    def um(self, x: int64 | str, k: int32) -> str:
+        return "union"
+
+    @dispatch
+    def um(self, x: bytes, k: int32) -> str:
+        return "bytes"
+
+    @dispatch
+    def u(self, x: int | str) -> str:
+        return "union"
+
+    @dispatch
+    def u(self, x: float) -> str:
+        return "float"
+
+    @dispatch
+    def b(self, x: int64 | str) -> str:
+        return "union"
+
+    @dispatch
+    def b(self, x: float) -> str:
+        return "float"
+
+    @dispatch
+    def pk(self, x: uint8 | str) -> str:
+        return "union"
+
+    @dispatch
+    def pk(self, x: float) -> str:
+        return "float"
+
+    @dispatch
+    def huge(self, x: float) -> str:
+        return "float"
+
+    @dispatch
+    def huge(self, x: float32 | str) -> str:
+        return "union"
+
+    @dispatch
+    def hw(self, x: float32 | str) -> str:
+        return "union"
+
+    @dispatch
+    def hw(self, x: int64) -> str:
+        return "int64"
+
+    @dispatch
     def wide(self, x: int32) -> str:
         return "int32"
 
@@ -229,6 +278,84 @@ def big(x: int64) -> str:
 @dispatch
 def big(x: int) -> str:
     return "int"
+
+
+@dispatch
+def um(x: int64 | str, k: int32) -> str:
+    return "union"
+
+
+@dispatch
+def um(x: bytes, k: int32) -> str:
+    return "bytes"
+
+
+@dispatch
+def u(x: int | str) -> str:
+    return "union"
+
+
+@dispatch
+def u(x: float) -> str:
+    return "float"
+
+
+@dispatch
+def code_of() -> str:
+    return "none"
+
+
+@dispatch
+def code_of(c: int32 | str | None) -> str:
+    return "code"
+
+
+@dispatch
+def pk(x: uint8 | str) -> str:
+    return "union"
+
+
+@dispatch
+def pk(x: float) -> str:
+    return "float"
+
+
+def huge(x: float32 | str) -> str:
+    return "union"
+
+
+def yield_union(x: int64 | str) -> Iterator[int64]:
+    if not isinstance(x, str):
+        yield x
+
+
+class Cu:
+    def __init__(self, x: uint8 | str) -> None:
+        self.x = x
+
+
+def va(*xs: uint8 | str) -> None:
+    for x in xs:
+        print("varargs:", x)
+
+
+async def af(x: uint8 | str) -> str:
+    return "af"
+
+
+async def await_af() -> str:
+    # An awaited coroutine call builds its frame from the pinned argument.
+    return await af(7)  # tpyc: ok
+
+
+@dispatch
+def tp(p: tuple[int, int]) -> str:
+    return "int"
+
+
+@dispatch
+def tp(p: tuple[float, float]) -> str:
+    return "float"
 
 
 def ticked(calls: list[int32]) -> bool:
@@ -312,6 +439,57 @@ def inverse() -> None:
     print("inverse:", total)
 
 
+def union_member(p: int32) -> None:
+    v = V()
+    # A value at a member of a union parameter, the other variant no match:
+    # the method and the free function both run the union variant.
+    print("union_member:", v.um(p, 1), um(p, 1))  # tpyc: ok
+
+
+def union_literal(k: int32, code: int32 | str | None) -> None:
+    v = V()
+    # An int literal and an int32 at `int | str` beside `float` take the
+    # union variant (its member widens less than to `float`).
+    print("union_literal:", u(3), u(k), v.u(3), v.u(k))  # tpyc: ok
+    # An int literal at an optional union beside a no-argument variant.
+    print("union_literal:", code_of(3), code_of())  # tpyc: ok
+    if code is None:
+        return
+    # The narrowed sub-union `int32 | str` at the full union.
+    print("union_literal:", code_of(code))  # tpyc: ok
+
+
+def union_render() -> None:
+    v = V()
+    calls: list[int32] = []
+    # A literal at a member of a union parameter renders at that member,
+    # wrapped in the union, so C++ binds the union variant sema picked.
+    print("union_render:", v.b(1), v.pk(3), pk(3))  # tpyc: ok
+    # A walrus and a conditional are evaluated once, then converted.
+    print("union_render:", v.b((x := 3)), v.b(3 if ticked(calls) else 3))  # tpyc: ok
+    # At a member narrower than the literal's own C++ type.
+    print("union_render:", v.pk((y := 3)), v.pk(3 if ticked(calls) else 3))  # tpyc: ok
+    print("union_render:", x, y, len(calls))
+    # An int literal beyond int64 at a float32 member goes through double.
+    print("union_render:", v.huge(100000000000000000000), huge(100000000000000000000))  # tpyc: ok
+    # A generator's argument.
+    print("union_render:", [n for n in yield_union(-5)])  # tpyc: ok
+    # Beyond int64, so the `float32 | str` variant beats the `int64` one.
+    print("union_render:", v.hw(100000000000000000000))  # tpyc: ok
+
+
+def arg_positions() -> None:
+    # A constructor argument, positional and by keyword.
+    print("ctor:", Cu(3).x, Cu(x=4).x)  # tpyc: ok
+    # Each `*args` element.
+    va(3, 4)  # tpyc: ok
+    print("await:", asyncio.run(await_af()))
+    # A tuple of literals at a set of tuple parameters, and as a default.
+    print("tuple:", tp((1, 2)))  # tpyc: ok
+    d: dict[str, tuple[int32, int32]] = {"b": (1, 2)}
+    print("tuple:", d.get("a", (0, 0)), d.get("b", (0, 0)))  # tpyc: ok
+
+
 def gen() -> Iterator[int]:
     v = V()
     # A generator body renders the pin as a function body does.
@@ -329,7 +507,9 @@ def comprehension() -> None:
     print("comprehension:", [v.narrow(3) for _ in range(2)], [num(1) for _ in range(2)])  # tpyc: ok
 
 
-def run(f: Callable[[], str]) -> str:
+# Not named `run`, which would shadow `asyncio.run`
+# (BUGS.md#asyncio-run-shadowed-by-module-run).
+def call0(f: Callable[[], str]) -> str:
     return f()
 
 
@@ -337,7 +517,7 @@ def lambda_body() -> None:
     v = V()
     # Inside a lambda body.
     # the lambda copies `v`; nothing mutates it, so the output matches
-    print("lambda:", run(lambda: v.opt(3) + " " + num(2)))  # tpyc: warning(/copies the object 'v'/)
+    print("lambda:", call0(lambda: v.opt(3) + " " + num(2)))  # tpyc: warning(/copies the object 'v'/)
 
 
 def main() -> None:
@@ -345,6 +525,10 @@ def main() -> None:
     overload_stubs()
     method()
     inverse()
+    union_member(7)
+    union_literal(3, 5)
+    union_render()
+    arg_positions()
     generator()
     comprehension()
     lambda_body()

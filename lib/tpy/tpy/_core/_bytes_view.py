@@ -24,8 +24,13 @@ class BytesView(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __len__(self) -> int32: ...
 
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
+    @readonly
+    @pure
+    def unchecked_get(self, index: int32) -> uint8: ...
+
     @dispatch
-    @native("tpy::bytes_getitem", function=True)
+    @native("tpy::bytes_getitem", function=True, element_access=unchecked_get)
     @readonly
     @pure
     def __getitem__(self, index: int32) -> uint8: ...

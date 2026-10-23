@@ -3,6 +3,8 @@
 20
 30
 2
+out_of_range: IndexError
+store: 20 12
 5
 1
 3

@@ -23,7 +23,7 @@ class Box[T]:
 
 def main() -> None:
     a = Box(NotHashable(1))
-    h = hash(a)  # tpyc: error(/No matching overload for hash/)
+    h = hash(a)  # tpyc: error(/No matching overload for 'hash'/)
     print(int(h))
 
 

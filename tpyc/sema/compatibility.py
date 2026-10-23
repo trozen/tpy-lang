@@ -10,9 +10,9 @@ import re
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
 from typing import (TYPE_CHECKING, Callable, Iterable, Iterator, Mapping, NamedTuple,
-                    Optional, TypeGuard)
+                    Optional, Sequence, TypeGuard)
 
-from ..typesys import pointer_repr_optional, readonly_access
+from ..typesys import pointer_repr_optional, readonly_access, resolve_int_literals, BIGINT
 from ..typesys import (
     same_class,
     make_readonly,
@@ -494,6 +494,16 @@ class CompatError:
 
 # Result type for _check_compat: Coercion | None (compatible) or CompatError (incompatible)
 CompatResult = Coercion | CompatError | None
+
+
+class UnionLanding:
+    """The union member a committing check landed its value in, written by
+    the check's union arm so the fact a caller stamps is the check's own
+    decision."""
+    __slots__ = ('member',)
+
+    def __init__(self) -> None:
+        self.member: 'TpyType | None' = None
 
 
 if TYPE_CHECKING:
@@ -1019,12 +1029,14 @@ class TypeCompatibility:
         is_return: bool = False,
         coercion_ctx: CoercionContext | None = None,
         target_is_storage_form: bool = False,
+        landing: 'UnionLanding | None' = None,
     ) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
 
         Raises SemanticError on incompatible types.
         Returns a Coercion if a conversion should be applied at codegen time,
-        or None if compatible with no coercion needed.
+        or None if compatible with no coercion needed. `landing` receives
+        the union member the check landed the value in.
 
         A slot step that does not commit (`SemanticContext.slot_step_commits`)
         asks it as a query, as does a caller that opens a `ProbeSlot.QUERY`
@@ -1037,17 +1049,18 @@ class TypeCompatibility:
         if self.ctx.slot_step_commits():
             return self._check_type_compatible(
                 actual, expected, context, loc, source_expr, is_return,
-                coercion_ctx, target_is_storage_form)
+                coercion_ctx, target_is_storage_form, landing)
         with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
             return self._check_type_compatible(
                 actual, expected, context, loc, source_expr, is_return,
-                coercion_ctx, target_is_storage_form)
+                coercion_ctx, target_is_storage_form, landing)
 
     def _check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
         loc: SourceLocation | None, source_expr: TpyExpr | None,
         is_return: bool, coercion_ctx: CoercionContext | None,
         target_is_storage_form: bool,
+        landing: 'UnionLanding | None' = None,
     ) -> Optional[Coercion]:
         """`check_type_compatible`, its writes made only where the slot
         step commits (`SemanticContext.slot_step_commits`)."""
@@ -1073,7 +1086,7 @@ class TypeCompatibility:
                 loc)
         # A check that produces the coercion is where a list literal's
         # element is decided by the typed container it meets.
-        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form)
+        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, landing=landing)
         if isinstance(result, CompatError):
             # A literal-seeded local takes its type from what is stored in
             # it, never from a use: say what declares the type the use wants.
@@ -1210,6 +1223,7 @@ class TypeCompatibility:
         sink_owns: bool | None = None,
         *,
         slot_readonly: bool = False,
+        landing: 'UnionLanding | None' = None,
     ) -> CompatResult:
         """Core type compatibility check.
 
@@ -1225,6 +1239,10 @@ class TypeCompatibility:
         container element (value-storage form). Used to suppress address-
         take mutation marking that only applies to borrow-form destinations
         (params/locals/returns); storage-form assignments copy the value.
+
+        landing: where a committing check records the union member it
+        landed the value in, handed down where the recursion
+        peels a wrapper off the same value and slot.
 
         sink_owns: whether this destination owns what it is handed. Decided
         once at the outermost level, where an `Own[...]` is still visible,
@@ -1316,13 +1334,15 @@ class TypeCompatibility:
                     f"'{expected}' is expected in {context}{detail}", loc)
             return self._check_compat(
                 unwrap_send_sync(actual), expected.wrapped, context, loc,
-                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
+                landing=landing)
         if isinstance(actual, (SendType, SyncType)):
             # Marker-typed value into an unmarked slot: the marker only adds
             # a guarantee, so it converts freely to the bare type.
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr,
-                is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                is_return, coercion_ctx, target_is_storage_form, sink_owns,
+                landing=landing)
         # CallableType (Fn and Callable): inner param/return types may carry
         # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
         if (is_callable_type(actual)
@@ -1365,13 +1385,13 @@ class TypeCompatibility:
             return self._check_compat(
                 unwrap_ref_type(actual), expected.wrapped, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                slot_readonly=slot_readonly)
+                slot_readonly=slot_readonly, landing=landing)
         # Strip Ref from actual too (Ref[T] is compatible with T)
         if isinstance(actual, RefType):
             return self._check_compat(
                 actual.wrapped, expected, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                slot_readonly=slot_readonly)
+                slot_readonly=slot_readonly, landing=landing)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
@@ -1386,7 +1406,7 @@ class TypeCompatibility:
                 actual_inner = PtrType(actual_inner.inner_pointee)
             return self._check_compat(
                 actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns, slot_readonly=True
+                sink_owns, slot_readonly=True, landing=landing
             )
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
@@ -1408,7 +1428,7 @@ class TypeCompatibility:
                     TupleType(tuple(make_readonly(e)
                                     for e in actual.wrapped.element_types)),
                     expected, context, loc, source_expr, is_return, coercion_ctx,
-                    target_is_storage_form, sink_owns)
+                    target_is_storage_form, sink_owns, landing=landing)
                 if isinstance(result, CompatError) and result.copy_admits:
                     result.tuple_copy_remedy = True
                 return result
@@ -1429,7 +1449,7 @@ class TypeCompatibility:
                     )
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns
+                sink_owns, landing=landing
             )
 
         # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
@@ -1536,7 +1556,8 @@ class TypeCompatibility:
                     and isinstance(actual_unwrapped, (UnionType, RecursiveAliasInstanceType))):
                 return self._check_compat(
                     actual_unwrapped, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns,
+                    landing=landing)
             for member in _union_member_order(actual_unwrapped, union_members):
                 with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
                     result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
@@ -1552,7 +1573,9 @@ class TypeCompatibility:
                         # goes to: what the check writes about the value is
                         # written against that member, not against one
                         # tried and refused.
-                        return self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+                        result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+                        if landing is not None:
+                            landing.member = member
                     return result
             # A concrete container variable whose elements would each fit a union
             # member is NOT implicitly converted: an element-wise rebuild into the
@@ -1568,8 +1591,7 @@ class TypeCompatibility:
                     f"{expected} (it would be a hidden element-wise deep copy). "
                     f"Build it as the alias directly (`x: {expected} = {{...}}`) or "
                     f"pass a container literal.", loc)
-            e, a = self._pair(expected, actual)
-            return CompatError(f"Type mismatch in {context}: expected {e}, got {a}", loc)
+            return CompatError(self.mismatch_text(context, [expected], actual), loc)
 
         # T -> Optional[T]: implicit wrapping
         if isinstance(expected, OptionalType):
@@ -1634,9 +1656,7 @@ class TypeCompatibility:
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
             if isinstance(result, CompatError) and isinstance(actual, OptionalType):
-                e, a = self._pair(expected, actual)
-                return CompatError(
-                    f"Type mismatch in {context}: expected {e}, got {a}", loc)
+                return CompatError(self.mismatch_text(context, [expected], actual), loc)
             return result
 
         # Optional[T] -> Optional[T] already handled by == check above
@@ -1785,7 +1805,7 @@ class TypeCompatibility:
                 return None
             if is_protocol_type(expected):
                 return CompatError(
-                    f"Type {actual_inner} does not conform to protocol {stripped_expected} in {context}",
+                    self.protocol_mismatch_text(actual_inner, stripped_expected, context),
                     source_expr.loc if source_expr is not None else loc
                 )
             # Concrete type mismatch: fall through to generic error handling
@@ -1797,13 +1817,13 @@ class TypeCompatibility:
             if self.protocols and self.protocols.type_conforms_to_protocol(check_actual, expected):
                 return None  # No coercion needed, structural match
             return CompatError(
-                f"Type {check_actual} does not conform to protocol {expected} in {context}",
+                self.protocol_mismatch_text(check_actual, expected, context),
                 loc
             )
 
         # Callable object -> Fn/Callable: record with a __call__ overload
         # satisfying the expected signature (first declared match wins).
-        # Plain signature-to-signature matching, not resolve_overload --
+        # Plain signature-to-signature matching, not `CallRanking.resolve` --
         # that machinery scores call-site ARG types; here two signatures
         # are compared, with the same variance rule as Callable -> Fn.
         if isinstance(actual, NominalType) and is_callable_type(expected):
@@ -2034,7 +2054,8 @@ class TypeCompatibility:
             if warned_ptr_repr_tuple:
                 return self._check_compat(actual, ew, context, loc,
                                           source_expr, is_return,
-                                          coercion_ctx, target_is_storage_form, sink_owns)
+                                          coercion_ctx, target_is_storage_form, sink_owns,
+                                          landing=landing)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
             # Only applies when record names differ (different types, not parametric covariance).
@@ -2043,11 +2064,11 @@ class TypeCompatibility:
                     and actual.name != expected.wrapped.name):
                 return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
-            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
+            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, landing=landing)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
+            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, landing=landing)
 
         # Tuple-to-tuple: same length, element-wise compatible
         if isinstance(actual, TupleType) and isinstance(expected, TupleType):
@@ -2196,9 +2217,7 @@ class TypeCompatibility:
                 )
                 if both_records:
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
-                    e, a = self._pair(e_elem, actual_elem)
-                    return CompatError(
-                        f"Type mismatch in {context}: expected {e}, got {a}", loc)
+                    return CompatError(self.mismatch_text(context, [e_elem], actual_elem), loc)
                 else:
                     # Element type widening (e.g. int32 -> int32|None, int32 -> int64).
                     # Container element slot is storage form -- no address-take
@@ -2211,9 +2230,7 @@ class TypeCompatibility:
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
                     # Definite mismatch: report it cleanly (see both_records above).
-                    e, a = self._pair(e_elem, actual_elem)
-                    return CompatError(
-                        f"Type mismatch in {context}: expected {e}, got {a}", loc)
+                    return CompatError(self.mismatch_text(context, [e_elem], actual_elem), loc)
             # Compatible with Array[T, N] if element types and sizes match
             if is_array(expected):
                 if self.type_ops and self.type_ops.pending_list_matches_array(
@@ -2483,10 +2500,9 @@ class TypeCompatibility:
                         return ro_err
                     coercion = DEREF_COERCION
         if coercion is None:
-            e, a = self._pair(expected, actual)
             return CompatError(
-                f"Type mismatch in {context}: expected {e}, got {a}"
-                f"{self._conversion_hint(actual, expected, ctx, sink_owns)}",
+                self.mismatch_text(context, [expected], actual)
+                + self._conversion_hint(actual, expected, ctx, sink_owns),
                 loc)
 
         if self.ctx.slot_step_commits() and isinstance(actual, PendingListType) and is_span(expected):
@@ -2700,6 +2716,7 @@ class TypeCompatibility:
                     f"return an owned value (tpy.copy(...) a borrowed "
                     f"source such as 'self')",
                     expr if getattr(expr, "loc", None) else None)
+        landing = UnionLanding()
         coercion = self.check_type_compatible(
             actual, expected, context,
             getattr(expr, "loc", None),
@@ -2707,6 +2724,7 @@ class TypeCompatibility:
             is_return=is_return,
             coercion_ctx=coercion_ctx,
             target_is_storage_form=target_is_storage_form,
+            landing=landing,
         )
         if not commits:
             return expr
@@ -2738,6 +2756,13 @@ class TypeCompatibility:
         # constraint. Default-resolve here so the cell's typeid is stable.
         if coercion.name == "into_any":
             actual = self._resolve_pending_for_any_storage(actual)
+        bare_expected = unwrap_own(unwrap_readonly(unwrap_ref_type(
+            unwrap_send_sync(expected))))
+        union_member = (landing.member
+                        if (coercion_ctx == CoercionContext.ARG
+                            and isinstance(bare_expected, UnionType)
+                            and bare_expected.is_value_type())
+                        else None)
         actual = literal_conversion_source(actual, expected)
         self.ctx.assert_slot_effect("a coercion node")
         coercion = self.site_coercion(coercion, actual, expected, expr,
@@ -2750,6 +2775,7 @@ class TypeCompatibility:
             context_kind=coercion_ctx,
             context_msg=context,
             runtime_bigint=runtime_bigint,
+            union_member=union_member,
             loc=expr.loc
         )
         self.ctx.set_expr_type(coerced, expected)
@@ -3234,9 +3260,34 @@ class TypeCompatibility:
 
     def _pair(self, expected: TpyType, actual: TpyType) -> tuple[str, str]:
         """`disambiguated_pair` over the user-facing spellings
-        (`diag_type`)."""
-        return self.ctx.type_pair(self.diag_type(expected),
-                                  self.diag_type(actual))
+        (`_shown`)."""
+        return self.ctx.type_pair(self._shown(expected), self._shown(actual))
+
+    def _shown(self, t: TpyType) -> TpyType:
+        """`t` as a mismatch message spells it: the user-facing type
+        (`diag_type`), an unresolved int literal the Python `int`."""
+        return resolve_int_literals(self.diag_type(t), BIGINT)
+
+    def mismatch_text(self, context: str, expected: Sequence[TpyType],
+                      actual: TpyType) -> str:
+        """The `Type mismatch in <context>: expected E, got A` message of a
+        slot that takes none of the value; a slot several declared types
+        could fill (an overloaded subscript's key) names each, `expected
+        E1 or E2`."""
+        pairs = [self._pair(e, actual) for e in expected]
+        plain = str(self._shown(actual))
+        # A name another listed type shares is told apart in every pair.
+        got = next((a for _, a in pairs if a != plain), plain)
+        return (f"Type mismatch in {context}: expected "
+                f"{' or '.join(e for e, _ in pairs)}, got {got}")
+
+    def protocol_mismatch_text(self, actual: TpyType, protocol: TpyType,
+                               context: str) -> str:
+        """The message of a value of type `actual` that `protocol`
+        does not take, both spelled as the user wrote them -- a literal
+        still pending in either (a module-level list's element) included."""
+        return (f"Type {self.call_type_text(actual)} does not conform to "
+                f"protocol {self.call_type_text(protocol)} in {context}")
 
     def call_type_text(self, t: TpyType) -> str:
         """How an overload diagnostic ("No matching overload", "Ambiguous
@@ -4367,6 +4418,13 @@ class TypeCompatibility:
                 return False
             # Target must be a @dynamic protocol or class parent for C++ pointer upcast
             if not self._is_covariant_target(actual_arg, expected_arg):
+                return False
+            # A record that matches a @dynamic protocol only structurally
+            # has no C++ base for the wrapper to convert to.
+            if (is_protocol_type(expected_arg)
+                    and self.ctx.registry.get_record_for_type(actual_arg) is not None
+                    and not self.protocols.converts_to_dynamic_base(
+                        actual_arg, expected_arg)):
                 return False
         return True
 

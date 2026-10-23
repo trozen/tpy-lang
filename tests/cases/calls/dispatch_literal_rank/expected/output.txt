@@ -25,6 +25,23 @@ method: int32 int32
 inverse: int64 dog 10 fixed
 inverse: wide int64 float
 inverse: 10
+union_member: union union
+union_literal: union union union union
+union_literal: code none
+union_literal: code
+union_render: union union union
+union_render: union union
+union_render: union union
+union_render: 3 3 2
+union_render: float union
+union_render: [-5]
+union_render: union
+ctor: 3 4
+varargs: 3
+varargs: 4
+await: af
+tuple: int
+tuple: (0, 0) (1, 2)
 generator: [6, -4]
 comprehension: ['int16', 'int16'] ['int', 'int']
 lambda: intopt int

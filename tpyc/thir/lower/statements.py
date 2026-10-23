@@ -80,7 +80,7 @@ from ...parse.nodes import (
     is_super_del_call,
 )
 from ...typesys import (peel_binding, pointer_repr_optional, repr_shape,
-                       returns_cpp_reference_shape)
+                       returns_cpp_reference_shape, store_takes_elements, without_readonly)
 from ...typesys import (
     CallableType,
     is_readonly_result_type,
@@ -238,7 +238,7 @@ from .predicates import (
     _call_storage_optional_return,
     receiver_is_const,
     _expr_is_const_source,
-    _record_dunder,
+    _call_arm_variant,
     copy_call_arg,
     _storage_family_ok,
     _narrow_alias_name,
@@ -250,7 +250,6 @@ from .predicates import (
     _container_del_recv,
     _slot_free_ptr_reseat_ok,
     _module_var_recv,
-    _bigint_index_disposition,
     _post_if_narrow_plan,
     _opt_view_arg_shim,
     _container_enum_spell,
@@ -304,6 +303,8 @@ from .predicates import (
     _field_decl_type,
     _narrowed_opt_container_field,
     _bound_call_of,
+    _dunder_render,
+    _subscript_call,
     _field_markers_clean,
     _field_receiver_ok,
     _chained_field_receiver_ok,
@@ -316,7 +317,6 @@ from .predicates import (
     _is_string_owned,
     _is_type_param_slot,
     _own_type_param_slot,
-    _narrow_bigint_index,
     _narrow_fact_member,
     _any_narrow_fact,
     _const_borrow_name,
@@ -431,7 +431,8 @@ from .context import (
     nested_def_prescan,
 )
 from .checks import (
-    _storage_form_tuple_return, owned_literal_layout,
+    _dunder_call_receiver_ok, _storage_form_tuple_return,
+    owned_literal_layout,
     _declared_call_at_owning_elem, declared_call_elem_copy_ok,
     own_element_copy_type, _chained_subscript_recv_type, _container_comp_arg,
     _value_opt_scalar_elem_arg, copy_construct_source,
@@ -491,7 +492,7 @@ from .expressions import (
     _rb_operand_view_slots, _rb_operand_slots, _operator_literal_pins,
     _lower_slice_bound, _slot_literal_retype, _value_opt_scalar_binding,
     _value_opt_binding_kind, _value_opt_view_binding,
-    _record_key,
+    _record_key, _lower_call_receiver,
     _record_receiver, _pinned_literal_arg, _operator_receiver_pinned,
 )
 from . import bindings as _bindings
@@ -590,12 +591,8 @@ def _any_dict_subscript_shape_ok(
     if isinstance(recv, TpyName) and (recv.name in pointers
                                       or recv.name in narrowed):
         return False
-    if not _any_value_dict(
-            _subscript_container_recv_type(recv, declared, analyzer),
-            analyzer):
-        return False
-    return _bigint_index_disposition(sub.index, analyzer.get_expr_type(sub.obj),
-                                     analyzer, declared) != "reject"
+    return _any_value_dict(
+        _subscript_container_recv_type(recv, declared, analyzer), analyzer)
 
 def _typed_dict_write_target(
         sub: 'TpyExpr', declared: dict[str, TpyType], pointers: set[str],
@@ -7175,8 +7172,11 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
             and _slice_index_ok(sl, declared, analyzer)):
         note_detail("setitem.slice")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    # The element-typed list sema hints the RHS with (`list[E]`).
-    target_type = analyzer.get_expr_type(sub)
+    # The variant's value parameter; one taking the value's elements (a
+    # protocol, `Iterable[...]`) holds the value at its own type, as an
+    # argument there is.
+    target_type = analyzer.get_expr_type(
+        stmt.value if store_takes_elements(fi) else sub)
     recv = _lower_slice_recv(sub.obj, lc, declared, loc)
     # A generator-FACTORY call RHS (`d[1:3] = gen_values()`) is consumed by
     # the helper as an iterable, not stored: it takes the iterable-position
@@ -7195,12 +7195,15 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
                          form=value.form, loc=loc)
     # A non-empty array-literal RHS renders `{...}`; the checked helper cannot
     # deduce its Range from a bare brace, so it takes the std::vector<E>
-    # prefix. Empty literals already spell their
-    # own type; other sources (names, calls) land bare.
+    # prefix, E the element the variant's value parameter iterates. Empty
+    # literals already spell their own type; other sources (names, calls)
+    # land bare.
     value_vector_cpp = None
+    value_param = unwrap_qualifiers(fi.params[-1].type)
     if (isinstance(stmt.value, TpyArrayLiteral) and stmt.value.elements
-            and is_list(target_type) and target_type.type_args):
-        value_vector_cpp = lc.render_type(target_type.type_args[0])
+            and store_takes_elements(fi) and value_param.type_args):
+        value_vector_cpp = lc.render_type(
+            unwrap_own(unwrap_qualifiers(value_param.type_args[0])))
     _witness("setitem.slice")
     return THIRSliceAssign(
         receiver=recv,
@@ -9205,11 +9208,10 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
 def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
                         receiver: THIRExpr, args: tuple[THIRExpr, ...],
                         lc: '_LowerCtx', loc) -> THIRMethodCall:
-    """A record subscript store or `del` as the explicit
-    `t.__setitem__(k, v)` / `t.__delitem__(k)` call it is: a method call
-    on `receiver` to the variant sema resolved (`_record_dunder`),
-    rendered by that variant's own binding."""
-    fi = _record_dunder(sub, kind, lc.analyzer)
+    """A subscript store or `del` as the explicit `t.__setitem__(k, v)` /
+    `t.__delitem__(k)` call it is: a method call on `receiver` to the
+    variant sema resolved, rendered by that variant's own binding."""
+    fi = sub.dunder(kind)
     assert fi is not None
     binding = _bound_call_of(fi, fi.name)
     call = THIRMethodCall(
@@ -9221,6 +9223,22 @@ def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
     return with_method_callee(with_method_stub(call, fi, lc.analyzer), fi,
                               lc.analyzer,
                               lambda: receiver_is_const(sub.obj, lc))
+
+
+def _set_item(stmt: TpyStmt, sub: TpySubscript, target: THIRSubscript,
+              value: THIRExpr, lc: '_LowerCtx', loc,
+              held: tuple[THIRArgTemp, ...] = ()) -> THIRSetItem:
+    """The element store `sub = value` of `stmt`, rendered by the
+    `__setitem__` variant sema stamped (`_dunder_render`)."""
+    render = _dunder_render(sub, SubscriptDunder.SET)
+    if render is None:
+        note_detail("setitem.unresolved_dunder")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    return THIRSetItem(
+        target=target, value=value, setter=render.binding,
+        unchecked_setter=render.unchecked,
+        stub_callee=setitem_stub_callee(sub, target, lc.analyzer),
+        held=held, loc=loc)
 
 
 @dataclass(frozen=True)
@@ -9326,11 +9344,29 @@ def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
                             declared: dict[str, TpyType]) -> _AugSubscript:
     sub = stmt.target
     assert isinstance(sub, TpySubscript)
-    setter = _record_dunder(sub, SubscriptDunder.SET, lc.analyzer)
+    # The store's key as the variant sema resolved receives it, built
+    # whichever node renders the store (`_record_key`).
+    setter = sub.dunder(SubscriptDunder.SET)
     read = _lower_expr(sub, lc, declared)
     assert isinstance(read, THIRSubscript)
-    set_key = (_record_key(sub.setitem_index, setter, lc, declared)
-               if setter is not None else None)
+    getter = sub.dunder(SubscriptDunder.GET)
+    set_key = None
+    if setter is not None and sub.setitem_index is not None:
+        if _subscript_call(sub, SubscriptDunder.SET) is not None:
+            set_key = _record_key(sub, sub.setitem_index, setter, lc,
+                                  declared)
+        elif not (getter is not None and without_readonly(
+                getter.params[0].type) == without_readonly(
+                    setter.params[0].type)):
+            # An element store whose key parameter differs from the
+            # getter's: its key converted at its own parameter, an operand
+            # of the lookup as the read's is. One the getter shares reads
+            # the read's key.
+            set_key = _lower_expr(sub.setitem_index, lc, declared,
+                                  use=_ExprUse(pos=SinkPos.OPERAND,
+                                               forms=_LEND_OK),
+                                  field_owned_str_ok=isinstance(
+                                      sub.setitem_index, TpyFieldAccess))
     # The store's receiver is the read's without the getter's const pin.
     receiver = read.receiver
     if (isinstance(receiver, THIRCoerce)
@@ -9358,16 +9394,21 @@ def _received_value(received: TpyExpr, value: THIRExpr, lc: '_LowerCtx',
         lc.prelowered = saved
 
 
-def _record_store_call(sub: TpySubscript, target: THIRExpr,
-                       value: THIRExpr, lc: '_LowerCtx',
-                       loc) -> THIRExprStmt:
-    """`t[k] = v` on a record: `_record_dunder_call` to its setter over
-    the store target's receiver and key (the read arm lowered them for
-    the setter's key slot) and the value."""
-    assert isinstance(target, THIRSubscript)
+def _store_item(stmt: TpyStmt, target: THIRExpr, value: THIRExpr,
+                lc: '_LowerCtx', loc,
+                held: tuple[THIRArgTemp, ...] = ()) -> THIRStmt:
+    """The store `t[k] = v` of `stmt` -- plain, or an augmented store's
+    write-back -- over the store target's receiver and key and the value,
+    answered by the setter's contract for every receiver: the call
+    `_record_dunder_call` to it, or the element store (`_set_item`) when it
+    declares the element-access contract."""
+    sub = stmt.target
+    assert isinstance(sub, TpySubscript) and isinstance(target, THIRSubscript)
+    if _subscript_call(sub, SubscriptDunder.SET) is None:
+        return _set_item(stmt, sub, target, value, lc, loc, held=held)
     return THIRExprStmt(expr=_record_dunder_call(
         sub, SubscriptDunder.SET, target.receiver, (target.index, value),
-        lc, loc), loc=loc)
+        lc, loc), held=held, loc=loc)
 
 
 def _ptr_union_value(stmt: TpyVarDecl, ptr_u: 'UnionType', is_const: bool,
@@ -12195,8 +12236,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     td_elem, lc),
                 loc=loc)
         elif isinstance(stmt.target, TpySubscript):
-            any_dict_write = _any_dict_setitem_ok(
-                stmt, declared, pointers, narrowed, analyzer)
+            # A store that is a call takes the call arm, whatever the
+            # receiver (`_call_arm_variant`).
+            any_dict_write = (
+                _subscript_call(stmt.target, SubscriptDunder.SET) is None
+                and _any_dict_setitem_ok(stmt, declared, pointers, narrowed,
+                                         analyzer))
             user_setitem = (not any_dict_write and _user_record_setitem_ok(
                 stmt, declared, pointers, narrowed, analyzer))
             if not (any_dict_write or user_setitem or _container_setitem_ok(
@@ -12230,9 +12275,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             note_detail("assign.field_write_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         if isinstance(stmt.target, TpySubscript) and user_setitem:
-            # User-record `recv[key] = v` -> the checked THIRSetItem, which
-            # emits `::tpy::__setitem__(recv, key, v)` (the non-container
-            # write form). The target lowers through the record_getitem READ arm
+            # The call arm's `recv[key] = v` (a setter that is a call, or a
+            # user record's) -> the setter's arguments, stored by
+            # `_store_item`. The target lowers through the record_getitem READ arm
             # (NOT subscript_prechecked, which is the container-element path):
             # its receiver/index feed the checked write emit; the value renders
             # against the elem slot bare (a value scalar / char / enum, or a
@@ -12252,12 +12297,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     value=_lower_expr(_svn, lc, declared),
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.user_record")
-                return _record_store_call(stmt.target, target, value, lc, loc)
+                return _store_item(stmt, target, value, lc, loc)
             if (_nested_container_elem_type(elem_t)
                     and not isinstance(v, TpyName)):
                 _witness("setitem.user_record")
-                return _record_store_call(
-                    stmt.target, target,
+                return _store_item(
+                    stmt, target,
                     _lower_container_elem_value(
                         stmt, unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(elem_t))),
@@ -12286,10 +12331,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                           allow_unrouted_name=True),
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.record_move")
-                    return _record_store_call(stmt.target, target, value,
-                                              lc, loc)
-            setitem = _record_dunder(stmt.target, SubscriptDunder.SET,
-                                     analyzer)
+                    return _store_item(stmt, target, value, lc, loc)
+            setitem = _call_arm_variant(stmt.target, SubscriptDunder.SET,
+                                        analyzer)
             assert setitem is not None
             # The value is the setter's argument: a literal is pinned to
             # its parameter's own type, so C++ binds that variant
@@ -12310,7 +12354,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                             setitem.root.params[-1].type)))),
                     elem_t, lc)
             _witness("setitem.user_record")
-            return _record_store_call(stmt.target, target, value, lc, loc)
+            return _store_item(stmt, target, value, lc, loc)
         if isinstance(stmt.target, TpySubscript):
             # Container subscript write: the target lowers to the same
             # subscript node a read produces (bounds_safe + the BigInt index
@@ -12728,8 +12772,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                      else "setitem.checked")
             if isinstance(stmt.target.obj, TpyFieldAccess):
                 _witness("setitem.field_recv")
-            return THIRSetItem(target=target, value=value,
-                               stub_callee=setitem_stub_callee(target, analyzer), loc=loc)
+            return _store_item(stmt, target, value, lc, loc)
         # Name-target assign: the same self-append peephole as the var-decl
         # reassignment -- it applies at both sites.
         if (isinstance(stmt.target, TpyName)
@@ -13037,16 +13080,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         received = THIRMove(
                             result_type=update_read.result_type,
                             value=update_read, form=update_read.form, loc=loc)
-                    return THIRExprStmt(expr=_record_dunder_call(
-                        stmt.target, SubscriptDunder.SET, aug_sub.receiver,
-                        (store_key, received), lc, loc), held=held, loc=loc)
-            if (isinstance(stmt.target, TpySubscript)
-                    and stmt.target.typed_dict_field is None):
+                    target = replace(target, receiver=aug_sub.receiver,
+                                     index=store_key)
+                    return _store_item(stmt, target, received, lc, loc,
+                                       held=held)
                 target = replace(target, receiver=aug_sub.receiver,
                                  index=aug_sub.store_index)
-                return THIRSetItem(target=target, value=stored,
-                                   stub_callee=setitem_stub_callee(target, analyzer),
-                                   held=held, loc=loc)
+                return _store_item(stmt, target, stored, lc, loc, held=held)
             return THIRAssign(target=target, value=stored,
                               recv_eval=recv_eval, recv_wrap=recv_wrap,
                               held=held, loc=loc)
@@ -13757,8 +13797,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             raise ThirUnsupported("stmt.global:global.unseeded")
         return THIRNoOpStmt(loc=loc)
     if isinstance(stmt, TpyDelItem):
-        # `::tpy::__delitem__(c, k);` -- the no-method-fi form, one
-        # statement line per target in source order.
+        # The stamped `__delitem__` variant's binding over the receiver and
+        # key (`::tpy::__delitem__(c, k);`), one statement line per target
+        # in source order.
         # The index rides gen_index_expr: bare for the fixed-int / str-key
         # shapes, the `.to_fixed_check<int32_t>()` narrow for a runtime-BigInt
         # one (the view-key pin still cannot fire -- view-typed keys are not
@@ -13772,6 +13813,32 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             if isinstance(recv, TpyName) and (lc.binding(recv.name).pointer
                                               or recv.name in lc.narrow.narrowed):
                 raise ThirUnsupported("stmt.del_item:recv_shape")
+            # Asked of the stamped winner first, as a read or store is
+            # (`_call_arm_variant`): a deleter that is a call is the explicit
+            # `t.__delitem__(k)`, its receiver and key prepared as that
+            # call's are, whatever the receiver; the receiver form decides
+            # only an element access.
+            deleter = _call_arm_variant(sub, SubscriptDunder.DEL, analyzer)
+            if deleter is not None:
+                if not _dunder_call_receiver_ok(
+                        recv, declared, analyzer, lc.names_with("pointer"),
+                        lc.prescan.binds_global):
+                    raise ThirUnsupported("stmt.del_item:recv_or_index")
+                _witness("delitem.user_record")
+                receiver = _lower_call_receiver(
+                    sub.obj, lc, declared, allow_temps=False,
+                    forms=_recv_forms(False, True))
+                # The key is the explicit call's argument, by the one
+                # argument sink (an `Own[str]` slot takes its owned copy).
+                key = _lower_call_arg(
+                    sub.index, deleter.params[0].type, lc, declared,
+                    temp_args=True, method_arg=True, callee_fi=deleter,
+                    arg_index=0, member_shaped=True)
+                calls.append(_flush_witness(
+                    "flush.expr_stmt",
+                    _record_dunder_call(sub, SubscriptDunder.DEL, receiver,
+                                        (key,), lc, loc)))
+                continue
             recv_t = _subscript_container_recv_type(recv, declared, analyzer)
             if (recv_t is None and isinstance(recv, TpySubscript)
                     and recv.slice_function_info is None
@@ -13783,58 +13850,30 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 recv_t = analyzer.get_expr_type(recv)
                 if recv_t is not None:
                     _witness("delitem.subscript_recv")
-            # A user record defining `__delitem__` takes the same
-            # `::tpy::__delitem__(recv, key)` form the container path
-            # emits -- so the record receiver rides the container arm's key
-            # slice.
-            deleter = _record_dunder(sub, SubscriptDunder.DEL, analyzer)
-            user_del = recv_t is not None and deleter is not None
             # The container receiver is admitted ELEMENT-BLIND: the del emit
             # never constructs, converts or reads the element slot, so the
             # key slice alone decides byte-parity (the reasoning
             # `_any_value_dict` applies to a dict[K, Any] value, generalized
             # to every element family).
             if not (recv_t is not None
-                    and (user_del
-                         or (_container_del_recv(recv_t, analyzer)
-                             and _witness("delitem.container")))
-                    and _bigint_index_disposition(
-                            sub.index, analyzer.get_expr_type(sub.obj),
-                            analyzer, declared) != "reject"):
+                    and _container_del_recv(recv_t, analyzer)
+                    and _witness("delitem.container")):
                 raise ThirUnsupported("stmt.del_item:recv_or_index")
-            if user_del:
-                _witness("delitem.user_record")
-                calls.append(_record_dunder_call(
-                    sub, SubscriptDunder.DEL,
-                    _lower_expr(
-                        sub.obj, lc, declared,
-                        use=(_ExprUse(result=_ExprResultUse.RECEIVER)
-                             if _module_var_recv(sub.obj, declared, analyzer)
-                             else _ExprUse(pos=SinkPos.RECEIVER,
-                                           forms=_recv_forms(False, False))),
-                        field_prechecked=isinstance(sub.obj, TpyFieldAccess)),
-                    (_record_key(sub.index, deleter, lc, declared),), lc, loc))
-                continue
-            calls.append(THIRCall(
-                result_type=VoidType(),
-                callee="__delitem__",
-                native_name="tpy::__delitem__",
-                args=(_lower_expr(
-                          sub.obj, lc, declared,
-                          # The module-attr GLOBAL receiver's pointer-slot
-                          # read is a pinned native-slot consumer here
-                          # (`__delitem__((*environ), k)`).
-                          use=(_ExprUse(result=_ExprResultUse.RECEIVER)
-                               if _module_var_recv(sub.obj, declared,
-                                                   analyzer)
-                               else _ExprUse()),
-                          field_prechecked=isinstance(
-                              sub.obj, TpyFieldAccess)),
-                      _narrow_bigint_index(_lower_expr(sub.index, lc, declared),
-                                           sub.index,
-                                           analyzer.get_expr_type(sub.obj),
-                                           analyzer, loc, declared)),
-                loc=loc))
+            if sub.dunder(SubscriptDunder.DEL) is None:
+                note_detail("delitem.unresolved_dunder")
+                raise ThirUnsupported("stmt.del_item:recv_or_index")
+            receiver = _lower_expr(
+                sub.obj, lc, declared,
+                # The module-attr GLOBAL receiver's pointer-slot
+                # read is a pinned native-slot consumer here
+                # (`__delitem__((*environ), k)`).
+                use=(_ExprUse(result=_ExprResultUse.RECEIVER)
+                     if _module_var_recv(sub.obj, declared, analyzer)
+                     else _ExprUse()),
+                field_prechecked=isinstance(sub.obj, TpyFieldAccess))
+            key = _lower_expr(sub.index, lc, declared)
+            calls.append(_record_dunder_call(
+                sub, SubscriptDunder.DEL, receiver, (key,), lc, loc))
         if len(calls) == 1:
             return THIRExprStmt(expr=calls[0], loc=loc)
         _witness("stmt.del_item_multi")

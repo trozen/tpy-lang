@@ -1,5 +1,6 @@
 # A statically out-of-range subscript inside an isinstance-narrowed branch: the
-# index is outside the subscript arm's range, so the body rejects. The
+# literal does not fit the list's int32 index parameter, so the `__getitem__`
+# call it is matches no variant. The
 # isinstance narrow over a two-class union is pinned by
 # tests/cases/union/union_isinstance_basic.
 from tpy import int32
@@ -21,7 +22,7 @@ class Inner:
 
 def wide_index(v: Leaf | Inner, xs: list[int32]) -> int32:
     if isinstance(v, Inner):
-        return xs[9999999999]  # tpyc: error(/subscript\.index/)
+        return xs[9999999999]  # tpyc: error(/Type mismatch in list index: expected int32 or slice, got int/)
     return v.n
 
 

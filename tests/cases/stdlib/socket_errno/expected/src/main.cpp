@@ -58,7 +58,7 @@ void resolve_failure() {
 //     e = OSError("plain")
 //     print("unset:", not e.errno, not e.strerror)
 void unset_defaults() {
-    ::tpy::OSError e = ::tpy::OSError("plain");
+    ::tpy::OSError e = ::tpy::OSError(std::string_view("plain"));
     std::cout << "unset:" << " " << ::tpy::print_bool((!(e.error_number))) << " " << ::tpy::print_bool((!((!e.strerror_text.empty())))) << "\n" << ::tpy::check_signals;
 }
 

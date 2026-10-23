@@ -6,7 +6,7 @@ from tpy import int32
 
 def main() -> None:
     d: dict[int32, str] = {1: "a"}
-    del d["nope"]  # tpyc: error(/Type mismatch in dict key/)
+    del d["nope"]  # tpyc: error(/Type mismatch in dict key: expected int32, got str/)
     print(len(d))
 
 

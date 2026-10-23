@@ -33,6 +33,15 @@ def fw(x: float32) -> str:
     return "f32"
 
 
+def take(x: int32 | str) -> str:
+    return "union"
+
+
+def tick(calls: list[int32]) -> bool:
+    calls.append(1)
+    return True
+
+
 class V:
     def __init__(self) -> None:
         pass
@@ -75,6 +84,9 @@ def main() -> None:
     v = V()
     # A walrus binds a BigInt, converted to the picked fixed width / float32.
     print("method:", v.narrow((n := 100)), v.f((y := 3)), n, y)  # tpyc: ok
+    calls: list[int32] = []
+    # A walrus and a conditional render as BigInt, converted to the member.
+    print("union:", take((z := 3)), take(3 if tick(calls) else 3), z, len(calls))  # tpyc: ok
 
 
 main()

@@ -2,7 +2,7 @@ __tpy__ = {"mod": "native",
            "cpp_namespace": "tpystd::tpy"}
 from .._typing import Self, Iterator, Iterable
 from tpy import Span, Ptr
-from .._bootstrap._decorators import readonly, pure, nocopy, Own, dispatch
+from .._bootstrap._decorators import readonly, auto_readonly, pure, nocopy, Own, dispatch
 from .._bootstrap._extern import native, cpp_template, builtin_type
 from ._types import int32, Comparable, Deref, Spannable, NativeIterable
 
@@ -28,22 +28,25 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __len__(self) -> int32: ...
 
-    @cpp_template("{self}[{0}]")
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
     @pure
-    @readonly
-    def unchecked_get(self, index: int32) -> T: ...
+    @auto_readonly
+    def unchecked_get(self, index: int32) -> auto_readonly[T]: ...
+
+    @cpp_template("{self}[static_cast<std::size_t>({0})] = {1}")
+    def unchecked_set(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch
-    @native("tpy::__getitem__", function=True)
+    @native("tpy::__getitem__", function=True, element_access=unchecked_get)
     @pure
-    @readonly
-    def __getitem__(self, index: int32) -> T: ...
+    @auto_readonly
+    def __getitem__(self, index: int32) -> auto_readonly[T]: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
-    @readonly
-    def __getitem__(self, index: basic_slice) -> Span[T]: ...
+    @auto_readonly
+    def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
 
     @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
@@ -51,7 +54,7 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @native("tpy::__setitem__", function=True)
+    @native("tpy::__setitem__", function=True, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::as_span", function=True)
@@ -82,22 +85,22 @@ class varargs[T](Iterable[T], NativeIterable[T]):
     @readonly
     def __len__(self) -> int32: ...
 
-    @cpp_template("{self}[{0}]")
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
     @pure
-    @readonly
-    def unchecked_get(self, index: int32) -> T: ...
+    @auto_readonly
+    def unchecked_get(self, index: int32) -> auto_readonly[T]: ...
 
     @dispatch
-    @native("tpy::__getitem__", function=True)
+    @native("tpy::__getitem__", function=True, element_access=unchecked_get)
     @pure
-    @readonly
-    def __getitem__(self, index: int32) -> T: ...
+    @auto_readonly
+    def __getitem__(self, index: int32) -> auto_readonly[T]: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
-    @readonly
-    def __getitem__(self, index: basic_slice) -> varargs[T]: ...
+    @auto_readonly
+    def __getitem__(self, index: basic_slice) -> varargs[auto_readonly[T]]: ...
 
     @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
@@ -119,22 +122,25 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __len__(self) -> int32: ...
 
-    @cpp_template("{self}[{0}]")
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
     @pure
-    @readonly
-    def unchecked_get(self, index: int32) -> T: ...
+    @auto_readonly
+    def unchecked_get(self, index: int32) -> auto_readonly[T]: ...
+
+    @cpp_template("{self}[static_cast<std::size_t>({0})] = {1}")
+    def unchecked_set(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch
-    @native("tpy::__getitem__", function=True)
+    @native("tpy::__getitem__", function=True, element_access=unchecked_get)
     @pure
-    @readonly
-    def __getitem__(self, index: int32) -> T: ...
+    @auto_readonly
+    def __getitem__(self, index: int32) -> auto_readonly[T]: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
-    @readonly
-    def __getitem__(self, index: basic_slice) -> Span[T]: ...
+    @auto_readonly
+    def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
 
     @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
@@ -142,7 +148,7 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @readonly
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
-    @native("tpy::__setitem__", function=True)
+    @native("tpy::__setitem__", function=True, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @native("tpy::as_span", function=True)

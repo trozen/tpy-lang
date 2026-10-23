@@ -53,6 +53,12 @@ DUNDER_CPP_TEMPLATES: dict[str, str] = {
 }
 
 
+# The fallback `__getitem__`'s unchecked twin: a protocol-typed receiver's
+# read for an index proven in `0 <= i < len(self)`, which no stub declares
+# (a protocol method has no binding of its own).
+UNCHECKED_GETITEM_CPP_TEMPLATE = "{self}[static_cast<std::size_t>({0})]"
+
+
 def get_dunder_cpp_template(method_name: str) -> str | None:
     """Get the C++ expression template for a dunder method, or None."""
     return DUNDER_CPP_TEMPLATES.get(method_name)

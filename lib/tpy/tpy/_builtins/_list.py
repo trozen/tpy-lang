@@ -1,7 +1,7 @@
 __tpy__ = {"mod": "native",
            "cpp_namespace": "tpystd::builtins"}
 from .._typing import Self, Iterator, Iterable
-from .._bootstrap._decorators import readonly, pure, Own, dispatch
+from .._bootstrap._decorators import readonly, auto_readonly, pure, Own, dispatch
 from .._core._types import int32, Equatable, Comparable, NativeIterable, NativeRangeConstructible, Spannable
 from .._core._containers import Span
 from .._bootstrap._extern import native, cpp_template, builtin_type
@@ -44,22 +44,25 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native
     def clear(self) -> None: ...
 
-    @cpp_template("{self}[{0}]")
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
     @pure
-    @readonly
-    def unchecked_get(self, index: int32) -> T: ...
+    @auto_readonly
+    def unchecked_get(self, index: int32) -> auto_readonly[T]: ...
+
+    @cpp_template("{self}[static_cast<std::size_t>({0})] = {1}")
+    def unchecked_set(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch
-    @native("tpy::__getitem__", function=True)
+    @native("tpy::__getitem__", function=True, element_access=unchecked_get)
     @pure
-    @readonly
-    def __getitem__(self, index: int32) -> T: ...
+    @auto_readonly
+    def __getitem__(self, index: int32) -> auto_readonly[T]: ...
 
     @dispatch
     @cpp_template("::tpy::list_slice({self}, {0})")
     @pure
-    @readonly
-    def __getitem__(self, index: basic_slice) -> Span[T]: ...
+    @auto_readonly
+    def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]: ...
 
     @dispatch
     @cpp_template("::tpy::list_stepped_slice({self}, {0})")
@@ -68,7 +71,8 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     def __getitem__(self, index: slice) -> Own[list[T]]: ...
 
     @dispatch
-    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert")
+    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert",
+            element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
     @dispatch
@@ -79,7 +83,7 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @native("tpy::list_set_stepped_slice", function=True)
     def __setitem__(self, index: slice, value: Iterable[Own[T]]) -> None: ...
 
-    @native("tpy::__delitem__", function=True)
+    @native("tpy::__delitem__", function=True, element_access=True)
     def __delitem__(self, index: int32) -> None: ...
 
     @native("tpy::list_insert", function=True, element_effect="insert")

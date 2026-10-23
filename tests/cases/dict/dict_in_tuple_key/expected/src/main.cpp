@@ -38,20 +38,38 @@ void main() {
     std::cout << ::tpy::print_bool((d.contains(k1))) << " " << ::tpy::print_bool((d.contains(k2))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((!(d.contains(k1)))) << " " << ::tpy::print_bool((!(d.contains(k2)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((s.contains(k1))) << " " << ::tpy::print_bool((s.contains(k2))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{9, 9})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((d.contains(std::tuple<int32_t, int32_t>{1, 2}))) << " " << ::tpy::print_bool((d.contains(std::tuple<int32_t, int32_t>{9, 9}))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__(d2, std::tuple<int32_t, int32_t>{1, 2}) << "\n" << ::tpy::check_signals;
     std::cout << std::get<0>(::tpy::__getitem__(pairs, 0)) << " " << std::get<0>(::tpy::__getitem__(pairs, 1)) << "\n" << ::tpy::check_signals;
     int32_t x = 2;
     std::cout << ::tpy::print_bool(((x == 1) || (x == 2) || (x == 3))) << " " << ::tpy::print_bool(((x == 4) || (x == 5) || (x == 6))) << "\n" << ::tpy::check_signals;
 }
 
+// def float32_needles() -> None:
+//     # A float literal stored into float32 and looked up with the same literal
+//     # converts the same way at both, so it is found (as in CPython).
+//     t: set[float32] = {0.1, 0.5, 0.3}
+//     keys: dict[tuple[float32, int32], str] = {(0.1, 1): "a"}
+//     keys[(0.3, 2)] = "b"
+//     print("float32_needles:", 0.1 in t, 0.3 in t, 0.2 in t)  # tpyc: ok
+//     print("float32_needles:", (0.1, 1) in keys, keys[(0.3, 2)], len(keys))  # tpyc: ok
+void float32_needles() {
+    ::tpy::ordered_set<float> t = ::tpy::ordered_set<float>({0.1f, 0.5f, 0.3f});
+    ::tpy::ordered_map<std::tuple<float, int32_t>, std::string> keys = ::tpy::ordered_map<std::tuple<float, int32_t>, std::string>({{std::tuple<float, int32_t>{0.1f, 1}, "a"}});
+    ::tpy::__setitem__(keys, std::tuple<double, int32_t>{0.3, 2}, "b");
+    std::cout << "float32_needles:" << " " << ::tpy::print_bool((t.contains(0.1))) << " " << ::tpy::print_bool((t.contains(0.3))) << " " << ::tpy::print_bool((t.contains(0.2))) << "\n" << ::tpy::check_signals;
+    std::cout << "float32_needles:" << " " << ::tpy::print_bool((keys.contains(std::tuple<double, int32_t>{0.1, 1}))) << " " << ::tpy::__getitem__(keys, std::tuple<double, int32_t>{0.3, 2}) << " " << ::tpy::__len__(keys) << "\n" << ::tpy::check_signals;
+}
+
 // main()
+// float32_needles()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::main::main();
+    ::tpyapp::main::float32_needles();
 }
 
 } // namespace tpyapp::main

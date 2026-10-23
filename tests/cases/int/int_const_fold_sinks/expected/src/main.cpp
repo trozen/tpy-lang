@@ -370,7 +370,7 @@ void main() {
     ::tpyapp::main::unproven(-1, 3);
     uint64_t y = 3;
     ::tpy::Union<std::string, uint64_t> __tmp_1 = y;
-    ::tpyapp::main::union_narrowed(-1, __tmp_1);
+    ::tpyapp::main::union_narrowed(::tpy::Union<int64_t, std::string>(static_cast<int64_t>(-1)), __tmp_1);
     ::tpyapp::main::enum_compare(Sign::NEG);
     ::tpyapp::main::comprehensions();
     ::tpyapp::main::declined();

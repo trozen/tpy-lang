@@ -13,6 +13,12 @@ def builtin_type(key: str): ...
 @builtin_decorator("tpy.extern.builtin_function")
 def builtin_function(key: str): ...
 
+# Declared here rather than in tpy._typing (which imports this module and
+# re-exports it) so a decorator stub below can annotate a keyword that
+# names a function by reference.
+@builtin_type("typing.Callable")
+class Callable: ...
+
 # Class-level `borrowing_view=True`: every value of the (value) type is a
 # borrow handle into storage it does not own, even a copy of it, so the
 # compiler lifetime-checks it at returns and yields. An unannotated native
@@ -41,6 +47,15 @@ def builtin_function(key: str): ...
 # wider claim: it may replace elements AND move or free every one of them
 # (reallocate, erase), so it invalidates everything inside the receiver.
 # Valid on a method of any @native class. Each use is an audit of the binding.
+# Method-level `element_access=True` / `element_access=<twin>` (here and on
+# @cpp_template), only on `__getitem__` / `__setitem__` / `__delitem__`: the
+# variant performs the container's own operation on the slot the key names
+# and nothing else (docs/NATIVE_INTEROP.md). A twin, named by reference so it
+# must be defined above the variant, is a @cpp_template method of the same
+# class doing the same without the bounds check, valid only where the index
+# is proven in `0 <= i < len(self)`. The `Callable` annotation is how the
+# schema spells "a method named by reference". Each use is an audit of the
+# binding.
 # Function-level `transient=True` (here and on @cpp_template): the bound C++
 # reads or writes only its arguments (as their declared mutability allows),
 # retains nothing after return or raise, reaches no other TPy storage and
@@ -67,6 +82,7 @@ def native(name: str = "", function: bool = False, binding: str = "",
            checks_signals: bool = False,
            elements: bool = False, mutates: str = "",
            element_effect: str = "",
+           element_access: bool | Callable[[], None] = False,
            _iter_yields_ref_tuple_proxies: bool = False, *,
            borrows: tuple[str], element_of: tuple[str]): ...
 
@@ -77,7 +93,8 @@ def export(name: str = "", binding: str = ""): ...
 # call (e.g. wrapping in a constructor, type cast, or non-trivial expression).
 @builtin_decorator("tpy.extern.cpp_template")
 def cpp_template(template: str, transient: bool = False,
-                 checks_signals: bool = False, *,
+                 checks_signals: bool = False,
+                 element_access: bool | Callable[[], None] = False, *,
                  borrows: tuple[str], element_of: tuple[str]): ...
 
 @builtin_decorator("tpy.extern.value_ptr_coercion")

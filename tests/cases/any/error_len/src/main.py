@@ -5,7 +5,7 @@ from typing import Any
 
 def main() -> None:
     a: Any = [1, 2, 3]
-    print(len(a))  # tpyc: error(/No matching overload for len/)
+    print(len(a))  # tpyc: error(/No matching overload for 'len'/)
 
 
 main()

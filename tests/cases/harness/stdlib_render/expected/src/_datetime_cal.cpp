@@ -25,7 +25,7 @@ bool _is_leap(const ::tpy::BigInt& year) {
     if (((month == 2) && ::tpystd::_datetime_cal::_is_leap(year))) {
         return ::tpy::BigInt(29);
     }
-    return ::tpy::__getitem__((*_DAYS_IN_MONTH), month.to_fixed_check<int32_t>());
+    return ::tpy::__getitem__((*_DAYS_IN_MONTH), (month).to_fixed_check<int32_t>());
 }
 
 // def _days_before_year(year: int) -> int:
@@ -41,7 +41,7 @@ bool _is_leap(const ::tpy::BigInt& year) {
 //     return _DAYS_BEFORE_MONTH[month] + extra
 ::tpy::BigInt _days_before_month(const ::tpy::BigInt& year, const ::tpy::BigInt& month) {
     int32_t extra = ((((month > 2) && ::tpystd::_datetime_cal::_is_leap(year))) ? (1) : (0));
-    return ((::tpy::__getitem__((*_DAYS_BEFORE_MONTH), month.to_fixed_check<int32_t>())) + (::tpy::BigInt(extra)));
+    return ((::tpy::__getitem__((*_DAYS_BEFORE_MONTH), (month).to_fixed_check<int32_t>())) + (::tpy::BigInt(extra)));
 }
 
 // def _ymd2ord(year: int, month: int, day: int) -> int:
@@ -90,10 +90,10 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _ord2ymd(const ::tpy::Bi
     }
     bool leapyear = ((n1 == 3) && ((n4 != 24) || (n100 == 3)));
     ::tpy::BigInt month = ((((n) + (::tpy::BigInt(50)))) >> (::tpy::BigInt(5)));
-    ::tpy::BigInt preceding = ((::tpy::__getitem__((*_DAYS_BEFORE_MONTH), month.to_fixed_check<int32_t>())) + (::tpy::BigInt(((((month > 2) && leapyear)) ? (1) : (0)))));
+    ::tpy::BigInt preceding = ((::tpy::__getitem__((*_DAYS_BEFORE_MONTH), (month).to_fixed_check<int32_t>())) + (::tpy::BigInt(((((month > 2) && leapyear)) ? (1) : (0)))));
     if ((preceding > n)) {
         month = ((month) - (::tpy::BigInt(1)));
-        preceding = ((preceding) - (((::tpy::__getitem__((*_DAYS_IN_MONTH), month.to_fixed_check<int32_t>())) + (::tpy::BigInt(((((month == 2) && leapyear)) ? (1) : (0)))))));
+        preceding = ((preceding) - (((::tpy::__getitem__((*_DAYS_IN_MONTH), (month).to_fixed_check<int32_t>())) + (::tpy::BigInt(((((month == 2) && leapyear)) ? (1) : (0)))))));
     }
     n = ((n) - (preceding));
     return std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt>{year, month, ((n) + (::tpy::BigInt(1)))};

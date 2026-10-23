@@ -1,1 +1,1 @@
-main.py:11: error: Type mismatch in getattr() default argument: expected str, got IntLiteral(42)
+main.py:11: error: Type mismatch in getattr() default argument: expected str, got int

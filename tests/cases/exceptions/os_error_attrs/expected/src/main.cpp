@@ -16,7 +16,7 @@ namespace tpyapp::main {
 //     raise d
 void fail(bool direct) {
     if (direct) {
-        ::tpy::OSError e = ::tpy::OSError("io failed");
+        ::tpy::OSError e = ::tpy::OSError(std::string_view("io failed"));
         e.error_number = 5;
         e.strerror_text = "Input/output error";
         e.__raise__();

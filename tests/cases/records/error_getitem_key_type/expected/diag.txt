@@ -1,1 +1,1 @@
-main.py:17: error: Type mismatch in argument 'key': expected str, got IntLiteral(42)
+main.py:17: error: Type mismatch in argument 'key': expected str, got int

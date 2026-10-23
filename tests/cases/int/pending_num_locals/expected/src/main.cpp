@@ -562,7 +562,7 @@ void overload_trial() {
     std::cout << std::format("fstring {}", k) << "\n" << ::tpy::check_signals;
     k = ::tpyapp::main::w64(1);
     ::tpy::BigInt j = ::tpy::BigInt(0);
-    std::cout << "index" << " " << ::tpy::__getitem__(xs, j.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+    std::cout << "index" << " " << ::tpy::__getitem__(xs, (j).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
     j = ::tpyapp::main::big();
     ::tpy::BigInt p = ::tpy::BigInt(0);
     ::tpy::BigInt r = ((p) + (::tpy::BigInt(a)));

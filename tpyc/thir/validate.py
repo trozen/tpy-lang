@@ -73,7 +73,7 @@ from .scalar_leaves import (
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
     THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
-    THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
+    THIRCtorCall, THIRDelItem, THIRErrorReturnBind, THIRErrorReturnDiscard,
     THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
     THIRIfExpr, THIRMethodCall, declared_param_type, effective_params,
@@ -1282,6 +1282,11 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRExprStmt):
         _walk_held(owner, node.held, return_type)
         _walk(owner, node.expr, return_type, argtemp_ok=True)
+        return
+    if isinstance(node, THIRDelItem):
+        # Each target's call is its own line, its temps flushed before it.
+        for call in node.calls:
+            _walk(owner, call, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRTupleUnpack):
         # Every holder form that renders an expression source flushes its

@@ -99,10 +99,12 @@ def test_indexed_callee_evaluates_the_receiver_once():
 
 def test_no_receive_loop_outside_the_one_receive_step():
     """Every winner and commit receives its arguments through
-    `CallAnalyzer.receive_winner_args`: the per-argument receive duties are
-    called from its per-argument step and from nowhere else."""
-    duties = {"check_own_param", "mark_pending_arg_context"}
-    callers: set[str] = set()
+    `CallAnalyzer.receive_winner_args`: the argument-only receive duty is
+    called from its per-argument step and from nowhere else, and a pending
+    value meets its deciding slot only there and at a subscript store's
+    value, one value at one slot."""
+    callers: dict[str, set[str]] = {"check_own_param": set(),
+                                    "mark_pending_slot_context": set()}
     sema = pathlib.Path(__file__).resolve().parent
     for path in sorted(sema.glob("*.py")):
         if path.name.startswith("test_"):
@@ -115,9 +117,11 @@ def test_no_receive_loop_outside_the_one_receive_step():
                 for node in ast.walk(fn):
                     if (isinstance(node, ast.Call)
                             and isinstance(node.func, ast.Attribute)
-                            and node.func.attr in duties):
-                        callers.add(f"{cls.name}.{fn.name}")
-    assert callers == {"CallAnalyzer._receive_arg"}
+                            and node.func.attr in callers):
+                        callers[node.func.attr].add(f"{cls.name}.{fn.name}")
+    assert callers["check_own_param"] == {"CallAnalyzer._receive_arg"}
+    assert callers["mark_pending_slot_context"] == {
+        "CallAnalyzer._receive_arg", "StatementAnalyzer._analyze_assign"}
 
 
 # Each refused candidate of the @dispatch generic fallback meets the first

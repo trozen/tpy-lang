@@ -63,7 +63,7 @@ bool _char_ieq(char a, char b) {
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_num(std::string_view data, const ::tpy::BigInt& p, const ::tpy::BigInt& max_len, const ::tpy::BigInt& lo, const ::tpy::BigInt& hi) {
     int32_t m = ::tpy::__len__(data);
     int32_t avail = 0;
-    while ((((::tpy::BigInt(avail) < max_len) && (((p) + (::tpy::BigInt(avail))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(avail))).to_fixed_check<int32_t>())))) {
+    while ((((::tpy::BigInt(avail) < max_len) && (((p) + (::tpy::BigInt(avail))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (((p) + (::tpy::BigInt(avail)))).to_fixed_check<int32_t>())))) {
         avail = (::tpy::add_check<int32_t>(avail, 1));
     }
     int32_t ln = avail;
@@ -89,7 +89,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_num(std::string_view data, const 
 std::tuple<::tpy::BigInt, ::tpy::BigInt> _take_exact_num(std::string_view data, const ::tpy::BigInt& p, const ::tpy::BigInt& ln) {
     int32_t m = ::tpy::__len__(data);
     int32_t k = 0;
-    while ((((::tpy::BigInt(k) < ln) && (((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
+    while ((((::tpy::BigInt(k) < ln) && (((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (((p) + (::tpy::BigInt(k)))).to_fixed_check<int32_t>())))) {
         k = (::tpy::add_check<int32_t>(k, 1));
     }
     if ((::tpy::BigInt(k) < ln)) {
@@ -123,7 +123,7 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt> _match_name(std::string_view data, cons
     ::tpy::BigInt i = start;
     int32_t n = ::tpy::__len__(names);
     while ((i < ::tpy::BigInt(n))) {
-        std::string cand = ::tpy::__getitem__(names, i.to_fixed_check<int32_t>());
+        std::string cand = ::tpy::__getitem__(names, (i).to_fixed_check<int32_t>());
         int32_t cl = ::tpy::__len__(cand);
         if (((cl > best_len) && (((p) + (::tpy::BigInt(cl))) <= ::tpy::__len__(data)))) {
             if ((::tpy::str_lower(::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(cl))).to_fixed_check<int32_t>()})) == ::tpy::str_lower(cand))) {
@@ -215,16 +215,16 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
 ::tpy::BigInt _parse_zoffset(std::string_view data, const ::tpy::BigInt& __param_p, _ParseState& st, std::string_view fmt) {
     ::tpy::BigInt p = __param_p;
     int32_t m = ::tpy::__len__(data);
-    if (((p < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == 'Z'))) {
+    if (((p < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) == 'Z'))) {
         st.has_gmtoff = true;
         st.gmtoff = ::tpy::BigInt(0);
         st.gmtoff_fraction = ::tpy::BigInt(0);
         return ((p) + (::tpy::BigInt(1)));
     }
-    if (((p >= m) || ((::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) != '+') && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) != '-')))) {
+    if (((p >= m) || ((::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) != '+') && (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) != '-')))) {
         ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
-    bool negative = (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == '-');
+    bool negative = (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) == '-');
     p = ((p) + (::tpy::BigInt(1)));
     auto __tup_1 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(2));
     const ::tpy::BigInt& hh = std::get<0>(__tup_1);
@@ -233,7 +233,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
         ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
     p = p2;
-    bool colon = ((p < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == ':'));
+    bool colon = ((p < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) == ':'));
     if (colon) {
         p = ((p) + (::tpy::BigInt(1)));
     }
@@ -247,7 +247,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     ::tpy::BigInt ss = ::tpy::BigInt(0);
     bool has_ss = false;
     if ((p < ::tpy::BigInt(m))) {
-        if ((::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == ':')) {
+        if ((::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) == ':')) {
             if ((!(colon))) {
                 throw ::tpy::ValueError(std::format("Inconsistent use of : in {}", data));
             }
@@ -259,22 +259,22 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
                 has_ss = true;
                 p = sp;
             }
-        } else if (((((!(colon)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>()))) && (((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>())))) {
+        } else if (((((!(colon)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()))) && (((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m))) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>())))) {
             ::tpy::BigInt v2 = ::tpy::BigInt::from_str(::tpy::str_slice(data, ::tpy::BasicSlice{p.to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(2))).to_fixed_check<int32_t>()}));
             if ((v2 <= 59)) {
                 ss = v2;
                 has_ss = true;
                 p = ((p) + (::tpy::BigInt(2)));
             }
-        } else if ((colon && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>())))) {
+        } else if ((colon && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (p).to_fixed_check<int32_t>())))) {
             throw ::tpy::ValueError(std::format("Inconsistent use of : in {}", data));
         }
     }
     ::tpy::BigInt frac = ::tpy::BigInt(0);
-    if (((has_ss && (p < ::tpy::BigInt(m))) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == '.'))) {
+    if (((has_ss && (p < ::tpy::BigInt(m))) && (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) == '.'))) {
         ::tpy::BigInt q = ((p) + (::tpy::BigInt(1)));
         int32_t k = 0;
-        while ((((((q) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((q) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
+        while ((((((q) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (((q) + (::tpy::BigInt(k)))).to_fixed_check<int32_t>())))) {
             k = (::tpy::add_check<int32_t>(k, 1));
         }
         if ((k < 1)) {
@@ -452,7 +452,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
 ::tpy::BigInt _apply_directive(char d, std::string_view data, const ::tpy::BigInt& p, _ParseState& st, std::string_view fmt) {
     int32_t m = ::tpy::__len__(data);
     if ((d == '%')) {
-        if (((p >= m) || (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) != '%'))) {
+        if (((p >= m) || (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) != '%'))) {
             ::tpystd::_datetime_parse::_parse_fail(data, fmt);
         }
         return ((p) + (::tpy::BigInt(1)));
@@ -462,7 +462,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
         const ::tpy::BigInt& v = std::get<0>(__tup_1);
         const ::tpy::BigInt& p2 = std::get<1>(__tup_1);
         if ((v < 0)) {
-            if (((((((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, p.to_fixed_check<int32_t>()) == ' ')) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()))) && (::tpy::__getitem__(data, ((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>()) != '0'))) {
+            if (((((((p) + (::tpy::BigInt(1))) < ::tpy::BigInt(m)) && (::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()) == ' ')) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()))) && (::tpy::__getitem__(data, (((p) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()) != '0'))) {
                 st.day = ::tpy::BigInt::from_str(::tpy::str_slice(data, ::tpy::BasicSlice{((p) + (::tpy::BigInt(1))).to_fixed_check<int32_t>(), ((p) + (::tpy::BigInt(2))).to_fixed_check<int32_t>()}));
                 return ((p) + (::tpy::BigInt(2)));
             }
@@ -610,7 +610,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     }
     if ((d == 'f')) {
         int32_t k = 0;
-        while ((((((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, ((p) + (::tpy::BigInt(k))).to_fixed_check<int32_t>())))) {
+        while ((((((p) + (::tpy::BigInt(k))) < ::tpy::BigInt(m)) && (k < 6)) && ::tpystd::_datetime_parse::_is_digit_char(::tpy::__getitem__(data, (((p) + (::tpy::BigInt(k)))).to_fixed_check<int32_t>())))) {
             k = (::tpy::add_check<int32_t>(k, 1));
         }
         if ((k < 1)) {
@@ -897,14 +897,14 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
                 i = (::tpy::add_check<int32_t>(i, 1));
             }
             ::tpy::BigInt q = p;
-            while (((p < ::tpy::BigInt(m)) && ::tpystd::_datetime_parse::_is_space_char(::tpy::__getitem__(data, p.to_fixed_check<int32_t>())))) {
+            while (((p < ::tpy::BigInt(m)) && ::tpystd::_datetime_parse::_is_space_char(::tpy::__getitem__(data, (p).to_fixed_check<int32_t>())))) {
                 p = ((p) + (::tpy::BigInt(1)));
             }
             if ((p == q)) {
                 ::tpystd::_datetime_parse::_parse_fail(data, fmt);
             }
         } else {
-            if (((p >= m) || (!(::tpystd::_datetime_parse::_char_ieq(::tpy::__getitem__(data, p.to_fixed_check<int32_t>()), ch))))) {
+            if (((p >= m) || (!(::tpystd::_datetime_parse::_char_ieq(::tpy::__getitem__(data, (p).to_fixed_check<int32_t>()), ch))))) {
                 ::tpystd::_datetime_parse::_parse_fail(data, fmt);
             }
             i = (::tpy::add_check<int32_t>(i, 1));

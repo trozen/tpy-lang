@@ -202,6 +202,7 @@ from .predicates import (
     _module_var_recv,
     _module_var_read_cpp,
     _record_dunder,
+    _call_arm_variant,
     _record_getitem_idx_recv_ok,
     _subscript_index_and_tuple,
     _callable_value,
@@ -216,7 +217,6 @@ from .predicates import (
     _wrapper_ref_tuple_return,
     _arg_ptr_union_slot,
     _union_bytes_literal_temp_arg,
-    _bigint_index_disposition,
     _call_ret_union_ok,
     _bytes_concat_operand,
     _coerce_disposition,
@@ -286,6 +286,8 @@ from .predicates import (
     _user_deref_field_recv_ok,
     _int_constant_value,
     _numeric_literal_type,
+    _numeric_literal_value,
+    _literal_cpp_type,
     _is_bytes_family,
     _is_type_param_slot,
     _open_tparam_pass_arg,
@@ -295,7 +297,6 @@ from .predicates import (
     _isinstance_narrow_info,
     _any_narrow_info,
     _member_valued_union_slot,
-    _narrow_bigint_index,
     _narrow_fact_member,
     _narrow_facts_ok,
     _nonvalue_container_ret,
@@ -1463,10 +1464,7 @@ def _borrow_elem_subscript_shape(e: TpyExpr, locals_: dict[str, TpyType],
     if e.slice_function_info is not None or isinstance(e.index, TpySlice):
         return False
     recv_t = _chained_subscript_recv_type(e.obj, locals_, analyzer, pointers)
-    if recv_t is None or not elem_family(recv_t, analyzer):
-        return False
-    return (_bigint_index_disposition(e.index, analyzer.get_expr_type(e.obj),
-                                      analyzer, locals_) != "reject")
+    return recv_t is not None and bool(elem_family(recv_t, analyzer))
 
 def _field_over_container_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
                                        analyzer,
@@ -3077,7 +3075,8 @@ def _subscript_elem_reject(t: TpyType, analyzer) -> str:
 
 def _setitem_target_ok(
         sub: TpySubscript, declared: dict[str, TpyType], pointers: set[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        narrowed: AbstractSet[str], analyzer, *,
+        held_recv_ok: bool = False) -> bool:
     """The shared write-target half of the subscript-write gates: a
     single-index (non-slice) subscript off a bare in-scope container name --
     or a one-level container FIELD off an admitted receiver name
@@ -3091,7 +3090,10 @@ def _setitem_target_ok(
     (`narrowed_ok`, the `(*recv.field)` unwrap) -- the un-narrowed
     flavor is sema-rejected outright ("Cannot assign to elements of ...
     (read-only)"), so it cannot reach here unproven. A narrowed UNION field
-    still types at the declared union and rejects at the family check."""
+    still types at the declared union and rejects at the family check.
+    `held_recv_ok` admits a receiver the statement evaluates once into a
+    temp of its own (an augmented subscript's `hold_parts`), read from it
+    as the record route reads its held receiver."""
     if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
         return note_detail("setitem.slice")
     if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
@@ -3142,6 +3144,8 @@ def _setitem_target_ok(
             recv_t = analyzer.get_expr_type(recv)
         elif _tce is not None:
             recv_t = _tce
+        elif held_recv_ok:
+            recv_t = analyzer.get_expr_type(recv)
         elif (isinstance(recv, TpyFieldAccess)
               and _field_markers_clean(recv)
               and isinstance(recv.obj, TpySubscript)
@@ -3159,9 +3163,6 @@ def _setitem_target_ok(
             or _bytearray_recv(recv_t)
             or _setitem_widened_family_ok(recv_t, analyzer)):
         return note_detail("setitem.family")
-    if (_bigint_index_disposition(sub.index, analyzer.get_expr_type(sub.obj),
-                                  analyzer, declared) == "reject"):
-        return note_detail("setitem.index")
     return True
 
 def _setitem_widened_elem_ok(elem_t: 'TpyType', analyzer) -> bool:
@@ -3264,7 +3265,7 @@ def _record_setitem_own_value_slot(sub: TpySubscript, analyzer) -> bool:
     A copy-shaped record NAME cannot bind such a slot, so only a move source
     or an rvalue is emittable there; a plain `T` slot binds `const T&` and
     copies like any other param."""
-    setitem = _record_dunder(sub, SubscriptDunder.SET, analyzer)
+    setitem = _call_arm_variant(sub, SubscriptDunder.SET, analyzer)
     if setitem is None:
         return False
     v = setitem.root.params[-1].type
@@ -3338,7 +3339,7 @@ def _user_record_setitem_ok(
         return False
     if sub.needs_optional_runtime_check or sub.typed_dict_field is not None:
         return False
-    setitem = _record_dunder(sub, SubscriptDunder.SET, analyzer)
+    setitem = _call_arm_variant(sub, SubscriptDunder.SET, analyzer)
     if setitem is None:
         return False
     # The value slot as declared: an open `T` keys on the subscript's own
@@ -3356,21 +3357,7 @@ def _user_record_setitem_ok(
     if not recv_ok:
         return False
     idx_type = analyzer.get_expr_type(sub.index)
-    # The write target lowers through the record_getitem READ arm, which
-    # applies `_narrow_bigint_index` itself -- so a runtime-BigInt key against
-    # a FIXED-int key param takes the same `.to_fixed_check<T>()` narrow here
-    # as it does on a read (`p[k] = 9` ->
-    # `::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9)`), and this call
-    # is REDUNDANT today: the read gate rejects every index this one would.
-    # It is kept because both gates must answer one index question; no case
-    # can observe the two parting, since a divergence here emits byte-identical
-    # C++, so the gate itself is the pin. Like the read
-    # side, it runs UNCONDITIONALLY: the disposition keys the BigInt half on
-    # the DECLARED type, which a per-occurrence pre-test would not read.
-    idx_ok = ((_resolved_scalar(idx_type, analyzer)
-               and _bigint_index_disposition(
-                       sub.index, analyzer.get_expr_type(sub.obj),
-                       analyzer, declared) != "reject")
+    idx_ok = (_resolved_scalar(idx_type, analyzer)
               or _resolved_viewfam_value(idx_type, analyzer) is not None)
     if not idx_ok:
         return False
@@ -3472,17 +3459,17 @@ def _record_aug_setitem_ok(
         return False
     if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
         return False
-    if _record_dunder(sub, SubscriptDunder.GET, analyzer) is None:
+    if _call_arm_variant(sub, SubscriptDunder.GET, analyzer) is None:
         return False
     # A receiver the statement evaluates once is read from its temp
     # (`TpyAugAssign.hold_parts`).
-    if not _record_getitem_idx_recv_ok(
+    if not _record_getitem_call_ok(
             sub, declared, analyzer, pointers,
             held_recv_ok=any(sub.obj is p.expr for p in stmt.hold_parts)):
         return False
     # The same stamp the PLAIN record-setitem write reads -- one fact, so
     # gate and render cannot drift.
-    if _record_dunder(sub, SubscriptDunder.SET, analyzer) is None:
+    if _call_arm_variant(sub, SubscriptDunder.SET, analyzer) is None:
         return False
     return bool(_witness("setitem.record_aug"))
 
@@ -3502,7 +3489,9 @@ def _container_aug_setitem_ok(
     (op `+` -- the resolved concat renders `::tpy::str_concat(<read>, v)`,
     pinned to the concat-operand slice like the name append)."""
     if not (_setitem_target_ok(
-                stmt.target, declared, pointers, narrowed, analyzer)
+                stmt.target, declared, pointers, narrowed, analyzer,
+                held_recv_ok=any(stmt.target.obj is p.expr
+                                 for p in stmt.hold_parts))
             # A user-record getitem/setitem receiver (`items[0] += 5` on
             # ArrayList): the READ renders the record's bare operator[]
             # (the record-getitem arm) and the WRITE the fixed
@@ -4165,44 +4154,55 @@ def _literal_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
 
 
 def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
-                      fi, analyzer) -> 'TpyType | None':
+                      fi, analyzer) -> 'tuple[TpyType, TpyType] | None':
     """The param slot ONE literal arg must be pinned to -- rendered as a
     value of the slot's own type, so C++ binds the variant sema picked --
-    or None when this arg takes no pin: the callee is a variant C++ picks
-    among its set again (`FunctionInfo.reresolved_by_cpp`: a method's, or a
-    user operator dunder's, whose variants share one C++ name) -- and the
-    arg is a str
-    literal at a `str`/`StrView` slot or an Optional of one (a
-    `const char[N]`'s pointer and boolean conversions outrank the view
-    one) or a numeric literal at a
-    numeric slot or an Optional of one (a bare `3` converts to every
-    arithmetic variant alike, and outranks the user-defined conversion to
-    BigInt). Every call loop asks this with the callee it resolved,
-    whichever way it was spelled."""
+    with the scalar it renders as there (the slot, an Optional's payload,
+    or the value-union member sema landed it in, `TpyCoerce.union_member`),
+    or None when this arg takes no pin. The pin applies where the callee is
+    a variant C++ picks among its set again
+    (`FunctionInfo.reresolved_by_cpp`: a method's, or a user operator
+    dunder's, whose variants share one C++ name), or where the slot is a
+    value union and the argument may not render at the member sema chose:
+    the bare literal may convert to no alternative (`3` at `uint8 | str`).
+    A constant renders at its literal's own C++ type (`_literal_cpp_type`);
+    a walrus or conditional renders at its storage's, which only its lowering
+    knows, so it always takes the pin, whose conversion reads that type
+    (`_pinned_literal_conversion`). The pinned arg is a str
+    literal at a `str`/`StrView` payload (a `const char[N]`'s pointer and
+    boolean conversions outrank the view one) or a numeric literal at a
+    numeric payload (a bare `3` converts to every arithmetic variant alike,
+    and outranks the user-defined conversion to BigInt). Every call loop
+    asks this with the callee it resolved, whichever way it was spelled."""
     is_str = isinstance(_peel_coerce(a), TpyStrLiteral)
-    if not is_str and _numeric_literal_type(a, analyzer) is None:
+    lit_t = _numeric_literal_type(a, analyzer)
+    if not is_str and lit_t is None:
         return None
-    if fi is None or not fi.reresolved_by_cpp:
+    member = a.union_member if isinstance(a, TpyCoerce) else None
+    if ((fi is None or not fi.reresolved_by_cpp)
+            and (member is None or lit_t is None or (
+                _numeric_literal_value(a, analyzer) is not None
+                and member == _literal_cpp_type(
+                    lit_t, analyzer.ctx.default_int_type)))):
         return None
     slot = (unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype, TpyType) else None)
     if slot is None:
         return None
-    payload = _pinned_literal_payload(slot)
+    if member is not None:
+        payload = repr_shape(unwrap_readonly(member))
+    else:
+        payload = repr_shape(slot)
+        if isinstance(payload, OptionalType):
+            payload = repr_shape(payload.inner)
     if is_str:
-        return slot if (is_str_type(payload) or is_str_view_type(payload)) else None
+        return ((slot, payload)
+                if (is_str_type(payload) or is_str_view_type(payload))
+                else None)
     if (is_fixed_int_type(payload) or is_big_int_type(payload)
             or is_float_type(payload)):
-        return slot
+        return slot, payload
     return None
-
-
-def _pinned_literal_payload(slot: TpyType) -> TpyType:
-    """The scalar a numeric literal pinned at `slot` renders as: the slot,
-    or an Optional slot's payload."""
-    slot = repr_shape(slot)
-    return (repr_shape(slot.inner)
-            if isinstance(slot, OptionalType) else slot)
 
 
 def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
@@ -8773,6 +8773,45 @@ def _scalar_call_recv_ok(t: 'TpyType | None', analyzer) -> bool:
     marker-call and binop receiver sites, so the family cannot drift."""
     return bool(_resolved_scalar(t, analyzer)
                 and _witness("method.recv.scalar_call"))
+
+
+def _record_getitem_call_ok(sub: 'TpySubscript',
+                            locals_: dict[str, TpyType], analyzer,
+                            pointers: 'AbstractSet[str]',
+                            binds_global: 'Callable[[str], bool] | None'
+                            = None, **shapes) -> bool:
+    """The record-getitem arm's admission: the receiver and key the explicit
+    `t.__getitem__(k)` call takes -- the key at the variant's parameter by
+    the method-argument rows (`_METHOD_ARG_SINK`), a receiver by the method
+    receiver rows -- beside the name / field / held shapes
+    `_record_getitem_idx_recv_ok` reads (`shapes` passes its flags)."""
+    if _record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers,
+                                   **shapes):
+        return True
+    getitem = _call_arm_variant(sub, SubscriptDunder.GET, analyzer)
+    if getitem is None or sub.needs_optional_runtime_check:
+        return False
+    if not arg_ok(_METHOD_ARG_SINK, sub.index, getitem.params[0].type,
+                  locals_, analyzer, param_names=frozenset(),
+                  narrowed=frozenset(), temps_ok=False, index=0,
+                  overload=getitem, pointers=pointers):
+        return False
+    return _dunder_call_receiver_ok(sub.obj, locals_, analyzer, pointers,
+                                    binds_global)
+
+
+def _dunder_call_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
+                             analyzer, pointers: 'AbstractSet[str]',
+                             binds_global: 'Callable[[str], bool] | None'
+                             = None) -> bool:
+    """The receiver of a subscript that is the explicit `t.__getitem__(k)`
+    / `t.__delitem__(k)` call, admitted by the method receiver rows."""
+    return ((isinstance(recv, TpyName) and recv.name in locals_
+             and recv.name not in pointers)
+            or (isinstance(recv, TpyFieldAccess)
+                and _field_receiver_ok(recv, locals_, analyzer))
+            or _method_nonname_receiver_ok(recv, locals_, analyzer, pointers,
+                                           binds_global))
 
 
 def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],

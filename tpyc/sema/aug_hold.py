@@ -239,8 +239,9 @@ class _RepeatProof(WriteProof):
         return super().visit(e)
 
     def key_operation(self, e: 'TpySubscript') -> None:
-        """A builtin subscript hashes and compares its key."""
-        if e.dunder(SubscriptDunder.GET) is None:
+        """An element access hashes and compares its key (a call that
+        runs code of its own is judged as the call it is)."""
+        if not self.runs_getitem(e):
             self.operation(e.index.children() if isinstance(e.index, TpySlice)
                            else [e.index])
 

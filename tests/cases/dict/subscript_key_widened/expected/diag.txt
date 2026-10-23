@@ -1,0 +1,3 @@
+main.py:70: warning: lookup key narrows from int64 to int32: a key outside int32 raises OverflowError instead of not being found; write int32(...) to convert it explicitly
+main.py:72: warning: lookup key narrows from int64 to int32: a key outside int32 raises OverflowError instead of not being found; write int32(...) to convert it explicitly
+main.py:74: warning: lookup key narrows from int64 to int32: a key outside int32 raises OverflowError instead of not being found; write int32(...) to convert it explicitly

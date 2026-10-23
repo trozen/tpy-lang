@@ -30,8 +30,7 @@ from ..codegen_cpp.context import (
 from ..codegen_cpp import emit_prims
 from ..codegen_cpp.forms import LocalBinding, LoopBinding, is_plain_nonvalue
 from ..type_def_registry import (
-    is_array, is_big_int_type, is_bytearray_type, is_bytes_type,
-    is_bytes_view_type, is_dict,
+    is_array, is_big_int_type, is_bytes_type, is_dict,
     is_float32_type, is_list,
     is_set, is_str_type, is_string_type, view_to_owned_conv,
 )
@@ -1218,30 +1217,21 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
             # Generic val_or_ptr slot: read as a usable value/reference.
             get = f"::tpy::tuple_elem_ref({get})"
         return f"(*{get})" if e.deref else get
-    # Container (list / dict) index/key lookup. A runtime-BigInt index arrives
-    # pre-wrapped in its `.to_fixed_check<int32_t>()` THIRCoerce (lowering's
-    # `_narrow_bigint_index`), so the emit stays index-type-neutral.
+    # Container index/key lookup, rendered by the stamped variant: its
+    # unchecked twin for an index proven in range, else its own binding. A
+    # runtime-BigInt index arrives converted at the variant's key parameter
+    # (sema's checked narrow, a `.to_fixed_check<int32_t>()` THIRCoerce).
     idx = _emit_expr(e.index, state)
-    if e.bound_getitem is not None:
-        return _emit_bound_call(e.bound_getitem, recv, [idx])
     if e.record_getitem:
         # User-record operator[]: bare, no size_t cast (the operator takes the
         # user's declared key type).
         return f"{recv}[{idx}]"
-    if e.bounds_safe:
-        # Index proven in [0, len): skip normalize_index. A literal index needs no
-        # cast (a compile-time constant is -Wsign-conversion-exempt); a variable
-        # index casts to size_t for the builtin operator[].
-        if isinstance(e.index, THIRLiteral):
-            return f"{recv}[{idx}]"
-        return f"{recv}[static_cast<std::size_t>({idx})]"
-    rt = unwrap_qualifiers(e.receiver.result_type)
-    if is_bytes_type(rt) or is_bytes_view_type(rt) or is_bytearray_type(rt):
-        # bytes' `__getitem__(int32)` is a @native free-function dunder, not
-        # the containers' checked `::tpy::__getitem__` template.
-        # bytearray shares that dunder (its own natives are the WRITE side).
-        return f"::tpy::bytes_getitem({recv}, {idx})"
-    return f"::tpy::__getitem__({recv}, {idx})"
+    if e.bounds_safe and e.unchecked_getitem is not None:
+        return _emit_bound_call(e.unchecked_getitem, recv, [idx])
+    if e.bound_getitem is None:
+        raise THIRCodeGenError("container subscript read without its "
+                               "__getitem__ binding")
+    return _emit_bound_call(e.bound_getitem, recv, [idx])
 
 
 def _emit_fstring(e: THIRFString, state: _EmitState) -> str:
@@ -4255,28 +4245,19 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             out.write(f"{indent}{target_cpp} = {value_cpp};\n")
     elif isinstance(stmt, THIRSetItem):
         # The subscript write (and the aug-assign subscript form, whose
-        # synthetic binop value arrives pre-built): bounds-safe writes share
-        # _emit_subscript's operator[] render; checked writes call the
-        # free-function dunder.
+        # synthetic binop value arrives pre-built): the stamped setter's
+        # binding, or its unchecked twin for an index proven in range.
         _emit_held(stmt.held, state)
         value_cpp = _emit_expr(stmt.value, state)
-        if stmt.target.bounds_safe:
-            target_cpp = _emit_subscript(stmt.target, state)
-            state.temps.flush(out, indent)
-            out.write(f"{indent}{target_cpp} = {value_cpp};\n")
-        else:
-            recv_cpp = _emit_expr(stmt.target.receiver, state)
-            idx_cpp = _emit_expr(stmt.target.index, state)
-            state.temps.flush(out, indent)
-            # bytearray's `__setitem__` is its own @native free-function
-            # dunder (range-checked value), not the containers' checked
-            # template -- the write-side twin of the bytes_getitem read
-            # arm.
-            rt = unwrap_qualifiers(stmt.target.receiver.result_type)
-            sym = ("::tpy::bytearray_setitem" if is_bytearray_type(rt)
-                   else "::tpy::__setitem__")
-            out.write(f"{indent}{sym}({recv_cpp}, {idx_cpp}, "
-                      f"{value_cpp});\n")
+        recv_cpp = _emit_expr(stmt.target.receiver, state)
+        idx_cpp = _emit_expr(stmt.target.index, state)
+        state.temps.flush(out, indent)
+        setter = (stmt.unchecked_setter
+                  if stmt.target.bounds_safe
+                  and stmt.unchecked_setter is not None else stmt.setter)
+        out.write(f"{indent}"
+                  f"{_emit_bound_call(setter, recv_cpp, [idx_cpp, value_cpp])}"
+                  f";\n")
     elif isinstance(stmt, THIRSliceAssign):
         # The resolved slice __setitem__ @native free-function
         # (list_set_slice / list_set_stepped_slice) over the
@@ -4740,8 +4721,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         for name in stmt.names:
             out.write(f"{indent}{name}.reset();\n")
     elif isinstance(stmt, THIRDelItem):
-        # One `::tpy::__delitem__(recv, key);` line per target, in source
-        # order.
+        # One `__delitem__` call line per target, in source order.
         for call in stmt.calls:
             call_cpp = _emit_expr(call, state)
             state.temps.flush(out, indent)

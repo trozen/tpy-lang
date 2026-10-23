@@ -13,7 +13,7 @@ namespace tpyapp::main {
 //         case _:
 //             return "?"
 std::string describe(const std::vector<::tpystd::tplib::box::Box<Animal>>& animals, const ::tpy::BigInt& i) {
-    auto& __match_subject_1 = ::tpy::__getitem__(animals, i.to_fixed_check<int32_t>());
+    auto& __match_subject_1 = ::tpy::__getitem__(animals, (i).to_fixed_check<int32_t>());
     if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
         const Dog& __case_0 = *__mpoly_0;
         return "dog";

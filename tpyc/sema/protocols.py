@@ -37,7 +37,7 @@ from ..type_def_registry import (
 )
 from ..typesys import is_numeric_type
 from .bound_check import find_method_class_param_bound_violation
-from .dyn_erasure import record_inherits_dynamic
+from .dyn_erasure import declares_dynamic_base, record_inherits_dynamic
 
 
 def dynamic_dispatch_type_conforms(
@@ -179,7 +179,9 @@ class ProtocolChecker:
         return self.classify_protocol_conformance(actual, protocol) is not None
 
     def directly_implements_dynamic(self, concrete: TpyType, protocol: NominalType) -> bool:
-        """True iff `concrete` C++-inherits the @dynamic protocol base.
+        """True iff `concrete`'s emitted struct C++-inherits the @dynamic
+        protocol base, itself or through a base class, so it binds to the
+        protocol without an Adapter.
 
         Delegates to `record_inherits_dynamic` (one verdict, no drift).
         Called from the call-analysis path when deciding whether a
@@ -187,6 +189,17 @@ class ProtocolChecker:
         at codegen (see `TpyCall.representational_subst_params`).
         """
         return record_inherits_dynamic(concrete, protocol, self.ctx.registry)
+
+    def converts_to_dynamic_base(self, concrete: TpyType,
+                                 protocol: NominalType) -> bool:
+        """True iff `concrete`'s C++ type converts to the @dynamic protocol
+        base. A covariant wrapper (`Box[Dog]` into `Box[Speaker]`) converts
+        through a constructor that requires `std::is_base_of_v`, so a
+        structural conformer, which the lowering adapts instead, must be
+        refused here rather than by the C++ compiler; a native record whose
+        binding declares the base (`BaseException` -> `::tpy::Throwable`)
+        satisfies it, though `directly_implements_dynamic` still adapts it."""
+        return declares_dynamic_base(concrete, protocol, self.ctx.registry)
 
     def satisfies_bound(self, actual: TpyType, bound: TpyType) -> bool:
         """Does `actual` satisfy a type-parameter `bound`?

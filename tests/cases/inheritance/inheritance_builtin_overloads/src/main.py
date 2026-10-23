@@ -31,6 +31,28 @@ print(ml[0])  # 20
 print(ml[1])  # 30
 print(len(ml))  # 2
 
+
+def out_of_range(m: MyList) -> None:
+    # An inherited `__getitem__` is the list's own checked read.
+    try:
+        print(m[5])  # tpyc: ok
+    except IndexError:
+        print("out_of_range: IndexError")
+
+
+out_of_range(ml)
+
+
+def store(m: MyList, k: int32) -> None:
+    # The inherited contract `__setitem__` is the list's element store, for
+    # the plain and the augmented store alike; the caller sees both writes.
+    m[k] = 7  # tpyc: ok
+    m[k] += 5  # tpyc: ok
+
+
+store(ml, 1)
+print("store:", ml[0], ml[1])
+
 # Also test that regular list pop overloads work (sanity check)
 items: list[int32] = [1, 2, 3, 4, 5]
 print(items.pop())  # 5 - pop last

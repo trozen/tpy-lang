@@ -13,8 +13,9 @@ import textwrap
 from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
 from ..typesys import (
-    FieldInfo, NominalType, OptionalType, RecordInfo, TupleType, TypeRegistry,
+    FieldInfo, NominalType, OptionalType, RecordInfo, TupleType, TypeRegistry, UnionType,
     FunctionInfo, MethodSignature, ProtocolInfo, TypeParamKind, LiteralValue, LiteralTag,
+    CallableType,
     bare_name, unwrap_own,
 )
 from ..module_names import public_module_name
@@ -279,6 +280,13 @@ class _NameArg:
         self.name = name
 
 
+class _UnreadArg:
+    """A decorator keyword value the parser cannot read (an attribute, a
+    call, a lambda). Kept rather than dropped so the schema check rejects
+    it instead of treating the keyword as omitted."""
+    __slots__ = ()
+
+
 @dataclasses.dataclass(frozen=True)
 class _DecoratorArgSchema:
     """Schema for a decorator's positional and keyword arguments.
@@ -287,11 +295,13 @@ class _DecoratorArgSchema:
     pos_required: whether the positional arg must be provided
     pos_description: human-readable type description for error messages (e.g. "bool")
     kwargs: allowed keyword arg names -> expected types (None = no kwargs)
+    kwarg_descriptions: keyword arg name -> its description for error messages
     """
     pos_type: type | None = None
     pos_required: bool = False
     pos_description: str | None = None
-    kwargs: dict[str, type] | None = None
+    kwargs: dict[str, type | tuple[type, ...]] | None = None
+    kwarg_descriptions: dict[str, str] | None = None
 
 
 # Argument schemas for all known decorators. Decorators not listed here
@@ -1156,8 +1166,8 @@ class Parser:
     @staticmethod
     def _decorator_kwarg_values(dec: ast.Call) -> dict[str, object]:
         """The literal keyword values of a decorator call: a constant, a
-        name (`_NameArg`), or a tuple of constants. Any other value is left
-        out, and the schema check reports what is then missing."""
+        name (`_NameArg`), or a tuple of constants. Any other value is an
+        `_UnreadArg`, which no schema type accepts."""
         kw_dict: dict[str, object] = {}
         for kw in dec.keywords:
             if isinstance(kw.value, ast.Constant):
@@ -1167,6 +1177,8 @@ class Parser:
             elif (isinstance(kw.value, ast.Tuple)
                   and all(isinstance(e, ast.Constant) for e in kw.value.elts)):
                 kw_dict[kw.arg] = tuple(e.value for e in kw.value.elts)
+            else:
+                kw_dict[kw.arg] = _UnreadArg()
         return kw_dict
 
     @staticmethod
@@ -1260,17 +1272,24 @@ class Parser:
         Single param -> positional arg. Additional params with defaults -> kwargs.
         A stub whose parameters are all keyword-only (`def d(*, k: ...)`)
         takes no positional arg. Type mapping: bool->bool, str->str,
-        type->_NameArg (type name reference), a tuple of str -> a tuple of
-        names (any length).
+        type->_NameArg (type name reference), Callable->_NameArg (a method
+        named by reference), a tuple of str -> a tuple of names (any
+        length), `bool | str` -> either.
         """
         if not func.params:
             return _DecoratorArgSchema()  # bare only
 
-        def _map_type(ptype: TpyType) -> tuple[type, str] | None:
+        def _map_type(ptype: TpyType) -> tuple[type | tuple[type, ...], str] | None:
             # Optional[T] kwargs default to None and accept either a value of T
             # or no value -- unwrap to T for the schema.
             if isinstance(ptype, OptionalType):
                 ptype = ptype.inner
+            if isinstance(ptype, UnionType):
+                members = [_map_type(m) for m in ptype.members]
+                if any(m is None or isinstance(m[0], tuple) for m in members):
+                    return None
+                return (tuple(m[0] for m in members),
+                        " or ".join(m[1] for m in members))
             if is_bool_type(ptype):
                 return (bool, "bool")
             if is_str_type(ptype):
@@ -1280,19 +1299,26 @@ class Parser:
             if (isinstance(ptype, NominalType)
                     and ptype.qualified_name() == qnames.TYPE):
                 return (_NameArg, "type name")
+            # A callable annotation names a function by reference: the
+            # keyword is written as a bare name, which editors resolve.
+            if isinstance(ptype, CallableType):
+                return (_NameArg, "method name")
             if (isinstance(ptype, TupleType)
                     and all(is_str_type(e) for e in ptype.element_types)):
                 return (tuple, "tuple of names")
             return None
 
+        kwarg_descs: dict[str, str] = {}
         if func.keyword_only_start == 0:
-            kw_only: dict[str, type] = {}
+            kw_only: dict[str, type | tuple[type, ...]] = {}
             for pname, ptype in func.params:
                 match = _map_type(ptype)
                 if match is None:
                     return None
                 kw_only[pname] = match[0]
-            return _DecoratorArgSchema(kwargs=kw_only)
+                kwarg_descs[pname] = match[1]
+            return _DecoratorArgSchema(kwargs=kw_only,
+                                       kwarg_descriptions=kwarg_descs)
 
         # First param -> positional
         _, ptype = func.params[0]
@@ -1303,7 +1329,7 @@ class Parser:
         has_default = func.defaults and func.defaults[0] is not None
 
         # Additional params -> kwargs
-        kwargs: dict[str, type] | None = None
+        kwargs: dict[str, type | tuple[type, ...]] | None = None
         for i in range(1, len(func.params)):
             pname, ptype = func.params[i]
             match = _map_type(ptype)
@@ -1312,9 +1338,55 @@ class Parser:
             if kwargs is None:
                 kwargs = {}
             kwargs[pname] = match[0]
+            kwarg_descs[pname] = match[1]
 
         return _DecoratorArgSchema(pos_type=pos_type, pos_required=not has_default,
-                                   pos_description=pos_desc, kwargs=kwargs)
+                                   pos_description=pos_desc, kwargs=kwargs,
+                                   kwarg_descriptions=kwarg_descs)
+
+    @staticmethod
+    def _reject_free_function_method_kwargs(
+        qname: str, kw: dict[str, object], dec: ast.expr,
+    ) -> None:
+        for method_kw in ("mutates", "element_effect", "element_access"):
+            if method_kw in kw:
+                raise ParseError(
+                    f"@{bare_name(qname)}({method_kw}=...) is only valid "
+                    f"on a method stub: a free function has no receiver "
+                    f"whose elements it acts on", dec)
+
+    @staticmethod
+    def _check_element_access_twin_above(
+        parsed: TpyFunction, node: ast.FunctionDef | ast.AsyncFunctionDef,
+        class_name: str, methods_above: list[TpyFunction],
+    ) -> None:
+        """The twin `element_access=` names is bound when the decorator runs
+        only if the class body defined it earlier: below, CPython raises
+        NameError -- or silently binds a module-level name of that spelling."""
+        twin = parsed.element_access
+        if not isinstance(twin, str) or any(m.name == twin for m in methods_above):
+            return
+        dec = next((d for d in node.decorator_list
+                    if isinstance(d, ast.Call)
+                    and any(k.arg == "element_access" for k in d.keywords)), node)
+        raise ParseError(
+            f"element_access names '{twin}', which is not defined above "
+            f"'{parsed.name}' in class '{class_name}'", dec)
+
+    @staticmethod
+    def _parse_element_access(
+        kw: dict[str, object],
+    ) -> bool | str | None:
+        """`element_access=True` or the twin method's name (written as a bare
+        reference); None when the keyword is absent or False (the variant
+        is an ordinary call). That the twin is defined above the variant is
+        checked where the class body is walked."""
+        value = kw.get("element_access")
+        if value is None or value is False:
+            return None
+        if isinstance(value, _NameArg):
+            return value.name
+        return True
 
     def _validate_decorator_args(
         self, qname: str, arg: object, dec: ast.expr,
@@ -1362,7 +1434,11 @@ class Parser:
                     raise ParseError(f"@{dec_name}() got unexpected keyword argument '{key}'", dec)
                 expected_type = schema.kwargs[key]
                 if not isinstance(val, expected_type):
-                    raise ParseError(f"@{dec_name}({key}=...) expects {expected_type.__name__}", dec)
+                    expected = (schema.kwarg_descriptions or {}).get(key) or (
+                        " or ".join(t.__name__ for t in expected_type)
+                        if isinstance(expected_type, tuple)
+                        else expected_type.__name__)
+                    raise ParseError(f"@{dec_name}({key}=...) expects {expected}", dec)
                 if expected_type is tuple and not all(isinstance(e, str) for e in val):
                     raise ParseError(
                         f"@{dec_name}({key}=...) expects a tuple of names, "
@@ -1380,9 +1456,11 @@ class Parser:
         if arg is None or arg is self._EMPTY_CALL:
             return {}
         # kwargs-only tuple from _resolve_decorator: (None, {k: v, ...})
-        if isinstance(arg, tuple) and len(arg) == 2 and arg[0] is None and isinstance(arg[1], dict):
+        kwargs_only = (isinstance(arg, tuple) and len(arg) == 2 and arg[0] is None
+                       and isinstance(arg[1], dict))
+        if kwargs_only and not any(isinstance(v, _UnreadArg) for v in arg[1].values()):
             return arg[1]
-        if arg is not self._BAD_ARGS:
+        if not kwargs_only and arg is not self._BAD_ARGS:
             dec_name = self._decorator_local_name(dec) or "?"
             raise ParseError(f"@{dec_name} does not take positional arguments", dec)
         if not isinstance(dec, ast.Call):
@@ -1550,7 +1628,7 @@ class Parser:
                             f"@{bare_name(qname)}({call_kw}=...) is only valid on a "
                             f"function or method stub: it declares what a bound C++ "
                             f"call does", dec)
-                for method_kw in ("mutates", "element_effect"):
+                for method_kw in ("mutates", "element_effect", "element_access"):
                     if method_kw in kw:
                         raise ParseError(
                             f"@{bare_name(qname)}({method_kw}=...) is only valid "
@@ -1724,6 +1802,7 @@ class Parser:
                 if is_typed_dict:
                     raise ParseError(f"Methods are not allowed on TypedDict '{node.name}'", item)
                 parsed = self._parse_method(item, node.name, type_param_scope, property_names)
+                self._check_element_access_twin_above(parsed, item, node.name, methods)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
                     # Dual overloads (const + mutable) for correct reference
@@ -2192,6 +2271,7 @@ class Parser:
             for fn in method_nodes:
                 parsed = self._parse_enum_method(fn, node.name, member_names,
                                                  property_names)
+                self._check_element_access_twin_above(parsed, fn, node.name, methods)
                 if parsed.is_property_getter:
                     property_names.add(parsed.name)
                 methods.append(parsed)
@@ -2387,6 +2467,7 @@ class Parser:
         mutates_dec: ast.expr | None = None
         borrow_facts: 'tuple[tuple[str, ...], tuple[str, ...]] | None' = None
         element_effect: str | None = None
+        element_access: bool | str | None = None
         cpp_template: str | None = None
         is_property_getter = False
         is_property_setter = False
@@ -2413,6 +2494,8 @@ class Parser:
             if qname in (qnames.NATIVE, qnames.CPP_TEMPLATE):
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
+                element_access = (self._parse_element_access(kw)
+                                  or element_access)
             if qname == qnames.STATICMETHOD:
                 is_staticmethod = True
             elif qname == qnames.CLASSMETHOD:
@@ -2789,6 +2872,7 @@ class Parser:
             native_function=native_function,
             native_mutates=native_mutates,
             native_element_effect=element_effect,
+            element_access=element_access,
             native_cpp_return_type=native_cpp_return_type,
             cpp_template=cpp_template,
             declared_borrows=borrow_facts[0] if borrow_facts else None,
@@ -2897,6 +2981,7 @@ class Parser:
                     checks_signals_dec = dec
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
+                self._reject_free_function_method_kwargs(qname, kw, dec)
             elif qname == qnames.BUILTIN_DECORATOR:
                 builtin_decorator_key = pos
             elif qname == qnames.BUILTIN_FUNCTION:
@@ -2953,12 +3038,7 @@ class Parser:
                 self._reject_type_fact_kwargs(qname, kw, dec)
                 borrow_facts = (self._parse_borrow_facts(qname, kw, dec)
                                 or borrow_facts)
-                for method_kw in ("mutates", "element_effect"):
-                    if method_kw in kw:
-                        raise ParseError(
-                            f"@{bare_name(qname)}({method_kw}=...) is only valid "
-                            f"on a method stub: a free function has no receiver "
-                            f"whose elements it acts on", dec)
+                self._reject_free_function_method_kwargs(qname, kw, dec)
                 if kw.get("transient"):
                     transient_dec = dec
                 if kw.get("checks_signals"):

@@ -35,7 +35,7 @@ from ..type_def_registry import (
 )
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
-from .overloads import resolve_overload
+from .overloads import call_ranking
 from .slot_hint import SlotHint, params_at_inferred
 from .type_join import NumKind, numeric_kind
 from .numeric_lattice import join_numeric
@@ -45,6 +45,7 @@ if TYPE_CHECKING:
     from ..parse import SourceLocation
     from .context import SemanticContext
     from .protocols import ProtocolChecker
+    from .compatibility import TypeCompatibility
 
 
 _HASHABLE = NominalType("Hashable", is_protocol=True)
@@ -315,6 +316,9 @@ class TypeOperations:
         # pattern in TypeCompatibility. Used by validate_hashable_container_elem
         # for Hashable + Equatable conformance.
         self.protocols: ProtocolChecker
+        # The argument receive a `__deref__` set is ranked with
+        # (`call_ranking`); wired like `protocols`.
+        self.compat: TypeCompatibility
         # How an undecided container argument meets one overload
         # candidate's parameter (`PendingNums.overload_leaves`), for the
         # overload matchers; wired like `protocols`.
@@ -2056,11 +2060,11 @@ class TypeOperations:
         # positional args. Otherwise an arity-mismatched-but-LHS-matching
         # candidate could be the sole contributor in the probe's
         # single-LHS-matching gate -- biasing arg analysis toward a
-        # candidate that ``resolve_overload`` will reject anyway.
+        # candidate that ``CallRanking.resolve`` will reject anyway.
         # Conservative direction: ``func.max_args`` includes keyword-only
         # params (it's ``len(self.params)``), while ``n_args`` is positional
         # only. The gate may over-admit a candidate with required keyword-
-        # only params -- safe because ``resolve_overload`` still catches it,
+        # only params -- safe because ``CallRanking.resolve`` still catches it,
         # the probe just wastes work building a hint that ends up unused.
         if n_args > func.max_args or n_args < func.min_args:
             return None
@@ -2263,6 +2267,7 @@ class TypeOperations:
             native_function=method.native_function,
             native_mutates=method.native_mutates,
             native_element_effect=method.native_element_effect,
+            element_access=method.element_access,
             cpp_template=method.cpp_template,
             value_ptr_coercion=method.value_ptr_coercion,
             error_return_type=method.error_return_type,
@@ -2312,7 +2317,8 @@ class TypeOperations:
         overloads = record_info.get_method_overloads("__deref__")
         if not overloads:
             return None
-        method = resolve_overload(
+        method = call_ranking(self.ctx, self.protocols, self,
+                              self.compat).resolve(
             overloads, [], is_readonly_receiver=is_readonly)
         if method is None:
             return None

@@ -680,8 +680,7 @@ def main() -> None:
     ak = Keys()
     print("async:", asyncio.run(later(Table(), ak)), ak.calls)
 
-    # pop: a key from a writing builtin is popped once (`bytearray.pop()`
-    # stands in for `indices.pop()`: BUGS.md#own-int-subscript-index-rejects)
+    # pop: a key from a writing builtin is popped once
     pops = bytearray(b"\x00\x01")
     xs[pops.pop()] += 10  # tpyc: ok
     print("pop:", xs, len(pops))
@@ -1077,6 +1076,54 @@ def ident_s(x: str) -> str:
     return x
 
 
+def own_key_param(ob: OwnGet, key: str) -> int32:
+    # A `str` parameter key at an `Own[str]` getter arrives as the explicit
+    # call's owned copy.
+    return ob[key] + ob.__getitem__(key)  # tpyc: ok
+
+
+class UA:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+
+class UB:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+
+class UTable:
+    v: int32
+
+    def __init__(self) -> None:
+        self.v = 0
+
+    def __getitem__(self, k: UA | UB) -> int32:
+        if isinstance(k, UA):
+            return k.n + self.v
+        return -1
+
+    def __setitem__(self, k: UA | UB, v: int32) -> None:
+        if isinstance(k, UA):
+            self.v = v - k.n
+
+
+def union_key(t: UTable, k: UA | UB) -> None:
+    # A mutable union key reaches dunders whose key parameter they only read
+    # as the const view their explicit calls pass.
+    print("union_key_read:", t[k], t.__getitem__(k))  # tpyc: ok
+    t[k] += 5  # tpyc: ok
+    print("union_key_aug:", t.v, t[k])
+    # The key crosses by reference: a write to it shows in the next read.
+    if isinstance(k, UA):
+        k.n += 10
+    print("union_key_alias:", t[k], t.__getitem__(k))  # tpyc: ok
+
+
 def opt_key(t: Token | None) -> int32:
     if t is None:
         return 0
@@ -1167,6 +1214,11 @@ def facts() -> None:
     xs[ob[spell(tk, "o")]] += 1  # tpyc: ok
     print("owned_getitem:", xs, tk.calls, LOG)
     LOG.clear()
+    # owned_key_param: a view key reaches the owning getter as its call does
+    print("owned_key_param:", own_key_param(ob, "p"), LOG)
+    LOG.clear()
+    # union_key: a union key at a const key parameter, read and aug store
+    union_key(UTable(), UA(3))
     # in_place_key: a key `min(..., key=)` may hand back in place is named
     # first, and the Own setter does not move it out of the list
     names = ["a-key-longer-than-the-small-string-buffer",

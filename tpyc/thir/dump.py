@@ -318,7 +318,7 @@ def _expr(e: THIRExpr) -> str:
         # renders bare (`t[0]`); a dynamic container index renders the expr (`c[i]`).
         idx = e.index.value if isinstance(e.index, THIRLiteral) else _expr(e.index)
         flags = " bounds_safe" if e.bounds_safe else ""
-        if e.bound_getitem is not None:
+        if e.bound_getitem is not None and not e.element_access:
             b = e.bound_getitem
             name = b.cpp_template or b.native_function_name or b.method_cpp
             flags += f" bound({name})"

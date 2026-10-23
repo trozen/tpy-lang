@@ -1,1 +1,1 @@
-main.py:6: error: No matching overload for 'OSError(float, str)'
+main.py:6: error: No matching overload for 'OSError' with argument types (float, str)

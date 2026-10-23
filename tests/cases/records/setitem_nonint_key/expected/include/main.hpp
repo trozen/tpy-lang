@@ -9,6 +9,7 @@ namespace tpyapp::main {
 
 struct Store;
 struct IntBox;
+struct Sink;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -66,6 +67,27 @@ struct IntBox {
 
 inline std::ostream& operator<<(std::ostream& os, const IntBox& obj) {
     ::tpy::print_object_default(os, "IntBox", obj);
+    return os;
+}
+
+// class Sink:
+struct Sink {
+    // last: int32
+    int32_t last;
+
+    // def __init__(self) -> None:
+    Sink();
+
+    // def __setitem__(self, key: str, value: int32) -> None:
+    void __setitem__(std::string_view key, int32_t value);
+
+    // def __delitem__(self, key: str) -> None:
+    void __delitem__(std::string_view key);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Sink& obj) {
+    ::tpy::print_object_default(os, "Sink", obj);
     return os;
 }
 
@@ -142,6 +164,22 @@ inline void IntBox::__delitem__(int32_t i) {
 
 inline int32_t IntBox::operator[](int32_t i) const {
     return __getitem__(i);
+}
+
+// def __init__(self) -> None:
+//     self.last = 0
+inline Sink::Sink() : last(0) {}
+
+// def __setitem__(self, key: str, value: int32) -> None:
+//     self.last = value
+inline void Sink::__setitem__(std::string_view key, int32_t value) {
+    this->last = value;
+}
+
+// def __delitem__(self, key: str) -> None:
+//     self.last = -len(key)
+inline void Sink::__delitem__(std::string_view key) {
+    this->last = ::tpy::neg_check<int32_t>(::tpy::__len__(key));
 }
 void __tpy_init();
 } // namespace tpyapp::main

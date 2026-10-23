@@ -1,1 +1,1 @@
-main.py:340: warning: lambda at line 340 copies the object 'v' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:520: warning: lambda at line 520 copies the object 'v' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)

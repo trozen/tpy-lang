@@ -2866,7 +2866,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     lowered_args.append(_lower_call_arg(
                         a, fi.params[i].type, lc, declared,
                         frame_capturing=True, temp_args=True,
-                        readonly_target=(dcbp is not None and i in dcbp)))
+                        readonly_target=(dcbp is not None and i in dcbp),
+                        callee_fi=fi))
                 await_args[operand] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")

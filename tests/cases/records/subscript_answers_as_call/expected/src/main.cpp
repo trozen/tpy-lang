@@ -507,8 +507,7 @@ int32_t closure(const Table& t) {
 //     ak = Keys()
 //     print("async:", asyncio.run(later(Table(), ak)), ak.calls)
 //
-//     # pop: a key from a writing builtin is popped once (`bytearray.pop()`
-//     # stands in for `indices.pop()`: BUGS.md#own-int-subscript-index-rejects)
+//     # pop: a key from a writing builtin is popped once
 //     pops = bytearray(b"\x00\x01")
 //     xs[pops.pop()] += 10  # tpyc: ok
 //     print("pop:", xs, len(pops))
@@ -692,7 +691,7 @@ void main() {
     ::tpy::ByteArray pops = ::tpy::ByteArray(::tpy::bytes_literal("\000\x01", 2));
     {
         auto __tmp_5 = ::tpy::bytearray_pop(pops);
-        ::tpy::__setitem__(xs, __tmp_5, ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, __tmp_5), 10));
+        ::tpy::__setitem__(xs, static_cast<int32_t>(__tmp_5), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, static_cast<int32_t>(__tmp_5)), 10));
     }
     std::cout << "pop:" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::__len__(pops) << "\n" << ::tpy::check_signals;
     int32_t w_i = 0;
@@ -982,7 +981,7 @@ void positions() {
     std::array<int32_t, 3> vals = {0, 0, 0};
     {
         auto&& __tmp_9 = ::tpy::next_or(pit, pd);
-        ::tpy::__setitem__(vals, __tmp_9.v.to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(vals, __tmp_9.v.to_fixed_check<int32_t>()), 5));
+        ::tpy::__setitem__(vals, (__tmp_9.v).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(vals, (__tmp_9.v).to_fixed_check<int32_t>()), 5));
     }
     std::cout << "wrapped_borrow:" << " " << ::tpy::__getitem__(pqs, 0).q.v << " " << ::tpy::__getitem__(pqs, 1).v << " " << ::tpy::ListPrinter(vals) << "\n" << ::tpy::check_signals;
     Keys ak = Keys();
@@ -1158,7 +1157,7 @@ void regions() {
     }
     {
         auto __tmp_8 = ((rk.key() > 5) && (5 > rk.key()));
-        ::tpy::__setitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_8)).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_8)).to_fixed_check<int32_t>()), 1));
+        ::tpy::__setitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_8))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_8))).to_fixed_check<int32_t>()), 1));
     }
     std::cout << "region_chained:" << " " << ::tpy::ListPrinter(rt.nums) << " " << ::tpy::ListPrinter(xs) << " " << rk.calls << "\n" << ::tpy::check_signals;
     {
@@ -1474,6 +1473,35 @@ std::string ident_s(std::string_view x) {
     return std::string(x);
 }
 
+// def own_key_param(ob: OwnGet, key: str) -> int32:
+//     # A `str` parameter key at an `Own[str]` getter arrives as the explicit
+//     # call's owned copy.
+//     return ob[key] + ob.__getitem__(key)  # tpyc: ok
+int32_t own_key_param(const OwnGet& ob, std::string_view key) {
+    return (::tpy::add_check<int32_t>(ob[std::string(key)], ob.__getitem__(std::string(key))));
+}
+
+// def union_key(t: UTable, k: UA | UB) -> None:
+//     # A mutable union key reaches dunders whose key parameter they only read
+//     # as the const view their explicit calls pass.
+//     print("union_key_read:", t[k], t.__getitem__(k))  # tpyc: ok
+//     t[k] += 5  # tpyc: ok
+//     print("union_key_aug:", t.v, t[k])
+//     # The key crosses by reference: a write to it shows in the next read.
+//     if isinstance(k, UA):
+//         k.n += 10
+//     print("union_key_alias:", t[k], t.__getitem__(k))  # tpyc: ok
+void union_key(UTable& t, ::tpy::Union<UA*, UB*> k) {
+    std::cout << "union_key_read:" << " " << t[k.as_const()] << " " << t.__getitem__(k.as_const()) << "\n" << ::tpy::check_signals;
+    t.__setitem__(k.as_const(), ::tpy::add_check<int32_t>(t[k.as_const()], 5));
+    std::cout << "union_key_aug:" << " " << t.v << " " << t[k.as_const()] << "\n" << ::tpy::check_signals;
+    if (std::holds_alternative<UA*>(k)) {
+        auto& __k = *std::get<UA*>(k);
+        __k.n = ::tpy::add_check<int32_t>(__k.n, 10);
+    }
+    std::cout << "union_key_alias:" << " " << t[k.as_const()] << " " << t.__getitem__(k.as_const()) << "\n" << ::tpy::check_signals;
+}
+
 // def opt_key(t: Token | None) -> int32:
 //     if t is None:
 //         return 0
@@ -1577,6 +1605,11 @@ std::string long_label() {
 //     xs[ob[spell(tk, "o")]] += 1  # tpyc: ok
 //     print("owned_getitem:", xs, tk.calls, LOG)
 //     LOG.clear()
+//     # owned_key_param: a view key reaches the owning getter as its call does
+//     print("owned_key_param:", own_key_param(ob, "p"), LOG)
+//     LOG.clear()
+//     # union_key: a union key at a const key parameter, read and aug store
+//     union_key(UTable(), UA(3))
 //     # in_place_key: a key `min(..., key=)` may hand back in place is named
 //     # first, and the Own setter does not move it out of the list
 //     names = ["a-key-longer-than-the-small-string-buffer",
@@ -1622,7 +1655,7 @@ void facts() {
     std::array<int32_t, 4> zs = {0, 0, 0, 0};
     {
         auto __tmp_3 = ::tpy::__getitem__(hb, k);
-        ::tpy::__setitem__(zs, __tmp_3.to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(zs, __tmp_3.to_fixed_check<int32_t>()), ::tpyapp::main::refill_big(hb)));
+        ::tpy::__setitem__(zs, (__tmp_3).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(zs, (__tmp_3).to_fixed_check<int32_t>()), ::tpyapp::main::refill_big(hb)));
     }
     std::cout << "hash_settled_int:" << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
     auto it = ::tpy::__iter__(std::array<std::string, 2>{"aa", "3"});
@@ -1632,7 +1665,7 @@ void facts() {
     }
     {
         auto __tmp_5 = ::tpy::BigInt::from_str(::tpy::next_or(it, "0"));
-        ::tpy::__setitem__(xs, __tmp_5.to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, __tmp_5.to_fixed_check<int32_t>()), 1));
+        ::tpy::__setitem__(xs, (__tmp_5).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, (__tmp_5).to_fixed_check<int32_t>()), 1));
     }
     Shelf sh = Shelf();
     {
@@ -1663,13 +1696,13 @@ void facts() {
     std::array<EqV, 1> ws = {EqV(1)};
     {
         auto __tmp_10 = ::tpy::seq_contains(vs, a);
-        ::tpy::__setitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_10)).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_10)).to_fixed_check<int32_t>()), 1));
+        ::tpy::__setitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_10))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_10))).to_fixed_check<int32_t>()), 1));
     }
     std::cout << "eq_in:" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter((*LOG)) << "\n" << ::tpy::check_signals;
     LOG->clear();
     {
         auto __tmp_11 = (vs == ws);
-        ::tpy::__setitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_11)).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_11)).to_fixed_check<int32_t>()), 1));
+        ::tpy::__setitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_11))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_11))).to_fixed_check<int32_t>()), 1));
     }
     std::cout << "eq_list:" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter((*LOG)) << "\n" << ::tpy::check_signals;
     LOG->clear();
@@ -1677,7 +1710,7 @@ void facts() {
     __gen_counted g = ::tpyapp::main::counted(gk);
     {
         auto __tmp_12 = ({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 1) { __found = true; break; } } __found; });
-        ::tpy::__setitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_12)).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, ::tpy::BigInt(static_cast<int32_t>(__tmp_12)).to_fixed_check<int32_t>()), 1));
+        ::tpy::__setitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_12))).to_fixed_check<int32_t>(), ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, (::tpy::BigInt(static_cast<int32_t>(__tmp_12))).to_fixed_check<int32_t>()), 1));
     }
     std::cout << "generator_in:" << " " << ::tpy::ListPrinter(xs) << " " << gk.calls << "\n" << ::tpy::check_signals;
     Keys tk = Keys();
@@ -1700,30 +1733,35 @@ void facts() {
     }
     std::cout << "owned_getitem:" << " " << ::tpy::ListPrinter(xs) << " " << tk.calls << " " << ::tpy::ListPrinter((*LOG)) << "\n" << ::tpy::check_signals;
     LOG->clear();
+    std::cout << "owned_key_param:" << " " << ::tpyapp::main::own_key_param(ob, "p") << " " << ::tpy::ListPrinter((*LOG)) << "\n" << ::tpy::check_signals;
+    LOG->clear();
+    UTable __tmp_18 = UTable();
+    UA __tmp_19 = UA(3);
+    ::tpyapp::main::union_key(__tmp_18, ::tpy::Union<UA*, UB*>{&__tmp_19});
     std::array<std::string, 2> names = {"a-key-longer-than-the-small-string-buffer", "a-key-longer-than-the-small-string-buffer-and-more"};
     OwnKeys ow = OwnKeys();
     std::string mk = ::tpy::min_key(::tpy::__getitem__(names, 0), ::tpy::__getitem__(names, 1), rank);
     ow.__setitem__(mk, ::tpy::add_check<int32_t>(ow[mk], 1));
     std::cout << "in_place_key:" << " " << ::tpy::DictPrinter(ow.m) << " " << ::tpy::ListPrinter(names) << "\n" << ::tpy::check_signals;
     {
-        auto&& __tmp_18 = Lender<Logged>(Logged(7));
-        auto&& __tmp_19 = __tmp_18.get();
-        __tmp_19.x = ::tpy::add_check<int32_t>(__tmp_19.x, 1);
+        auto&& __tmp_20 = Lender<Logged>(Logged(7));
+        auto&& __tmp_21 = __tmp_20.get();
+        __tmp_21.x = ::tpy::add_check<int32_t>(__tmp_21.x, 1);
     }
     std::cout << "attr_temp:" << " " << ::tpy::ListPrinter((*LOG)) << "\n" << ::tpy::check_signals;
     LOG->clear();
     ::tpy::ordered_map<int32_t, std::string> d = ::tpy::ordered_map<int32_t, std::string>({{1, ::tpyapp::main::long_label()}});
-    auto&& __tmp_20 = ::tpy::dict_setdefault(d, 1, "");
-    std::string r1 = ((!__tmp_20.empty()) ? __tmp_20 : std::string(std::string_view("dflt")));
-    auto&& __tmp_21 = ::tpy::min_key(::tpy::__getitem__(names, 0), ::tpy::__getitem__(names, 1), rank);
-    std::string r2 = ((!__tmp_21.empty()) ? __tmp_21 : std::string(std::string_view("z")));
+    auto&& __tmp_22 = ::tpy::dict_setdefault(d, 1, "");
+    std::string r1 = ((!__tmp_22.empty()) ? __tmp_22 : std::string(std::string_view("dflt")));
+    auto&& __tmp_23 = ::tpy::min_key(::tpy::__getitem__(names, 0), ::tpy::__getitem__(names, 1), rank);
+    std::string r2 = ((!__tmp_23.empty()) ? __tmp_23 : std::string(std::string_view("z")));
     std::cout << "select_ref:" << " " << ::tpy::print_bool((r1 == ::tpy::__getitem__(d, 1))) << " " << ::tpy::print_bool((r2 == ::tpy::__getitem__(names, 0))) << " " << ::tpy::ListPrinter(names) << "\n" << ::tpy::check_signals;
-    auto&& __tmp_22 = ::tpyapp::main::long_label();
-    std::string s = ((!__tmp_22.empty()) ? __tmp_22 : std::string(std::string_view("none")));
+    auto&& __tmp_24 = ::tpyapp::main::long_label();
+    std::string s = ((!__tmp_24.empty()) ? __tmp_24 : std::string(std::string_view("none")));
     std::cout << "select_local:" << " " << s << "\n" << ::tpy::check_signals;
-    auto&& __tmp_23 = ::tpyapp::main::empty_label();
-    auto&& __tmp_24 = ((!__tmp_23.empty()) ? __tmp_23 : ::tpyapp::main::long_label());
-    std::string x = ((!__tmp_24.empty()) ? __tmp_24 : std::string(std::string_view("z")));
+    auto&& __tmp_25 = ::tpyapp::main::empty_label();
+    auto&& __tmp_26 = ((!__tmp_25.empty()) ? __tmp_25 : ::tpyapp::main::long_label());
+    std::string x = ((!__tmp_26.empty()) ? __tmp_26 : std::string(std::string_view("z")));
     std::cout << "select_chain:" << " " << x << "\n" << ::tpy::check_signals;
 }
 

@@ -46,6 +46,20 @@ std::string fw__float32(float x) {
     return "f32";
 }
 
+// def take(x: int32 | str) -> str:
+//     return "union"
+std::string take(const ::tpy::Union<int32_t, std::string>& x) {
+    return "union";
+}
+
+// def tick(calls: list[int32]) -> bool:
+//     calls.append(1)
+//     return True
+bool tick(std::vector<int32_t>& calls) {
+    calls.push_back(1);
+    return true;
+}
+
 // def main() -> None:
 //     # Two int literals at the int / float variants of the builtins.
 //     print("builtins:", divmod(7, 2), pow(2, 10))  # tpyc: ok
@@ -58,6 +72,9 @@ std::string fw__float32(float x) {
 //     v = V()
 //     # A walrus binds a BigInt, converted to the picked fixed width / float32.
 //     print("method:", v.narrow((n := 100)), v.f((y := 3)), n, y)  # tpyc: ok
+//     calls: list[int32] = []
+//     # A walrus and a conditional render as BigInt, converted to the member.
+//     print("union:", take((z := 3)), take(3 if tick(calls) else 3), z, len(calls))  # tpyc: ok
 void main() {
     std::cout << "builtins:" << " " << ::tpy::TuplePrinter(::tpy::divmod_bigint(::tpy::BigInt(7), ::tpy::BigInt(2))) << " " << (::tpy::BigInt(2)).pow(::tpy::BigInt(10)) << "\n" << ::tpy::check_signals;
     std::cout << "free_function:" << " " << ::tpyapp::main::m__int32(3) << " " << ::tpyapp::main::w__int64(3) << "\n" << ::tpy::check_signals;
@@ -67,6 +84,9 @@ void main() {
     ::tpy::BigInt n;
     ::tpy::BigInt y;
     std::cout << "method:" << " " << v.narrow(((n = 100)).to_fixed_check<int64_t>()) << " " << ::tpy::print_float(v.f(static_cast<float>(static_cast<double>((y = 3))))) << " " << n << " " << y << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> calls = std::vector<int32_t>{};
+    ::tpy::BigInt z;
+    std::cout << "union:" << " " << ::tpyapp::main::take(::tpy::Union<int32_t, std::string>(((z = 3)).to_fixed_check<int32_t>())) << " " << ::tpyapp::main::take(::tpy::Union<int32_t, std::string>((((::tpyapp::main::tick(calls)) ? (::tpy::BigInt(3)) : (::tpy::BigInt(3)))).to_fixed_check<int32_t>())) << " " << z << " " << ::tpy::__len__(calls) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -131,6 +131,16 @@ def distinct_elements(rows: list[list[int32]]) -> None:
     print("distinct_elements", rows[2])
 
 
+# slice_store_holder: an element binding held across a slice store of its
+# list, which may reallocate the elements, is warned as a mutation.
+def slice_store_holder(ps: list[P], go: bool) -> None:
+    r = ps[0]
+    ps[0:1] = [P(7), P(8)]  # tpyc: warning(/Mutation of 'ps' while borrowed \(slice assignment may invalidate references\)/)
+    if go:
+        print("slice_store_holder", r.v)
+    print("slice_store_holder", len(ps), ps[1].v)
+
+
 def main() -> None:
     comp_in_iterable()
     named_like_iterator([P(1)], [1, 2], False)
@@ -139,6 +149,7 @@ def main() -> None:
     iterating_wording([1, 2], Box(), False)
     outer_loop_kept([[1, 2]], [3], False)
     distinct_elements([[1], [2, 3], []])
+    slice_store_holder([P(1), P(2)], False)
 
 
 main()

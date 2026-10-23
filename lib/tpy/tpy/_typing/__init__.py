@@ -1,7 +1,7 @@
 __tpy__ = {"cpp_namespace": "tpystd::typing"}
 from tpy import int32
 from .._bootstrap._decorators import readonly
-from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function
+from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function, Callable
 
 
 @builtin_type("typing.Protocol")
@@ -23,9 +23,6 @@ class Final: ...
 
 @builtin_type("typing.ClassVar")
 class ClassVar: ...
-
-@builtin_type("typing.Callable")
-class Callable: ...
 
 @builtin_type("typing.Literal")
 class Literal: ...

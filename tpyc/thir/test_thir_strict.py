@@ -243,6 +243,15 @@ _STMT_PINS = [
         "in the initializer of 'A': this construct is not yet supported by "
         "C++ code generation (const.tuple_slot)",
         6, "class_const:const.tuple_slot", id="class_const"),
+    # An augmented store into a dict's reference-type value, the twin of
+    # `list/error_aug_reference_element`
+    # (BUGS.md#aug-assign-reference-element-rejects).
+    pytest.param(
+        'def main() -> None:\n    d = {"a": [1]}\n    d["a"] += [2]\n'
+        '    print(d)\n\n\nmain()\n',
+        "in function 'main': this construct is not yet supported by C++ "
+        "code generation (stmt.aug_assign)",
+        3, "body:stmt.aug_assign", id="aug_reference_value"),
 ]
 
 # The two folds whose reject is decided before any statement lowers, so the

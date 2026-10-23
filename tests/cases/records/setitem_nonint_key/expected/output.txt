@@ -4,3 +4,5 @@
 -5
 99 2
 0
+write-only: 8
+write-only: -3

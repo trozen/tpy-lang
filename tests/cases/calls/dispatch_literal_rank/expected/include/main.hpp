@@ -4,6 +4,8 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
 #include "tpystd/math.hpp"
 
 namespace tpyapp::main {
@@ -11,10 +13,14 @@ namespace tpyapp::main {
 struct Animal;
 struct Dog;
 struct V;
+struct Cu;
 
 extern V* v;
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_yield_union;
+struct __coro_af;
+struct __coro_await_af;
 struct __gen_gen;
 
 // @dispatch
@@ -86,6 +92,46 @@ std::string big__int64(int64_t x);
 // @dispatch
 // def big(x: int) -> str:
 std::string big__int(const ::tpy::BigInt& x);
+// @dispatch
+// def um(x: int64 | str, k: int32) -> str:
+std::string um__int64_str__int32(const ::tpy::Union<int64_t, std::string>& x, int32_t k);
+// @dispatch
+// def um(x: bytes, k: int32) -> str:
+std::string um__bytes__int32(::tpy::BytesView x, int32_t k);
+// @dispatch
+// def u(x: int | str) -> str:
+std::string u__int_str(const ::tpy::Union<::tpy::BigInt, std::string>& x);
+// @dispatch
+// def u(x: float) -> str:
+std::string u__float(double x);
+// @dispatch
+// def code_of() -> str:
+std::string code_of__noargs();
+// @dispatch
+// def code_of(c: int32 | str | None) -> str:
+std::string code_of__None_int32_str(const ::tpy::Union<std::monostate, int32_t, std::string>& c);
+// @dispatch
+// def pk(x: uint8 | str) -> str:
+std::string pk__str_uint8(const ::tpy::Union<std::string, uint8_t>& x);
+// @dispatch
+// def pk(x: float) -> str:
+std::string pk__float(double x);
+// def huge(x: float32 | str) -> str:
+std::string huge(const ::tpy::Union<float, std::string>& x);
+// def yield_union(x: int64 | str) -> Iterator[int64]:
+__gen_yield_union yield_union(::tpy::Union<int64_t, std::string> x);
+// def va(*xs: uint8 | str) -> None:
+void va(::tpy::varargs<const ::tpy::Union<std::string, uint8_t>> xs);
+// async def af(x: uint8 | str) -> str:
+__coro_af af(::tpy::Union<std::string, uint8_t> x);
+// async def await_af() -> str:
+__coro_await_af await_af();
+// @dispatch
+// def tp(p: tuple[int, int]) -> str:
+std::string tp__tuple_int_int(const std::tuple<::tpy::BigInt, ::tpy::BigInt>& p);
+// @dispatch
+// def tp(p: tuple[float, float]) -> str:
+std::string tp__tuple_float_float(const std::tuple<double, double>& p);
 // def ticked(calls: list[int32]) -> bool:
 bool ticked(std::vector<int32_t>& calls);
 // def free_function() -> None:
@@ -96,14 +142,22 @@ void overload_stubs();
 void method();
 // def inverse() -> None:
 void inverse();
+// def union_member(p: int32) -> None:
+void union_member(int32_t p);
+// def union_literal(k: int32, code: int32 | str | None) -> None:
+void union_literal(int32_t k, const ::tpy::Union<std::monostate, int32_t, std::string>& code);
+// def union_render() -> None:
+void union_render();
+// def arg_positions() -> None:
+void arg_positions();
 // def gen() -> Iterator[int]:
 __gen_gen gen();
 // def generator() -> None:
 void generator();
 // def comprehension() -> None:
 void comprehension();
-// def run(f: Callable[[], str]) -> str:
-std::string run(const std::function<std::string()>& f);
+// def call0(f: Callable[[], str]) -> str:
+std::string call0(const std::function<std::string()>& f);
 // def lambda_body() -> None:
 void lambda_body();
 // def main() -> None:
@@ -211,6 +265,54 @@ struct V {
     std::string fo(std::string_view x) const;
 
     // @dispatch
+    // def um(self, x: int64 | str, k: int32) -> str:
+    std::string um(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const;
+
+    // @dispatch
+    // def um(self, x: bytes, k: int32) -> str:
+    std::string um(::tpy::BytesView x, int32_t k) const;
+
+    // @dispatch
+    // def u(self, x: int | str) -> str:
+    std::string u(const ::tpy::Union<::tpy::BigInt, std::string>& x) const;
+
+    // @dispatch
+    // def u(self, x: float) -> str:
+    std::string u(double x) const;
+
+    // @dispatch
+    // def b(self, x: int64 | str) -> str:
+    std::string b(const ::tpy::Union<int64_t, std::string>& x) const;
+
+    // @dispatch
+    // def b(self, x: float) -> str:
+    std::string b(double x) const;
+
+    // @dispatch
+    // def pk(self, x: uint8 | str) -> str:
+    std::string pk(const ::tpy::Union<std::string, uint8_t>& x) const;
+
+    // @dispatch
+    // def pk(self, x: float) -> str:
+    std::string pk(double x) const;
+
+    // @dispatch
+    // def huge(self, x: float) -> str:
+    std::string huge(double x) const;
+
+    // @dispatch
+    // def huge(self, x: float32 | str) -> str:
+    std::string huge(const ::tpy::Union<float, std::string>& x) const;
+
+    // @dispatch
+    // def hw(self, x: float32 | str) -> str:
+    std::string hw(const ::tpy::Union<float, std::string>& x) const;
+
+    // @dispatch
+    // def hw(self, x: int64) -> str:
+    std::string hw(int64_t x) const;
+
+    // @dispatch
     // def wide(self, x: int32) -> str:
     std::string wide(int32_t x) const;
 
@@ -222,6 +324,22 @@ struct V {
 
 inline std::ostream& operator<<(std::ostream& os, const V& obj) {
     ::tpy::print_object_default(os, "V", obj);
+    return os;
+}
+
+// class Cu:
+struct Cu {
+    // self.x = x
+    ::tpy::Union<std::string, uint8_t> x;
+
+    // def __init__(self, x: uint8 | str) -> None:
+    Cu() = default;
+    explicit Cu(const ::tpy::Union<std::string, uint8_t>& x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cu";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cu& obj) {
+    ::tpy::print_object_default(os, "Cu", obj);
     return os;
 }
 
@@ -237,6 +355,78 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     ::tpy::print_object_default(os, "Dog", obj);
     return os;
 }
+
+// async def af(x: uint8 | str) -> str:
+struct __coro_af {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::Union<std::string, uint8_t> x;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_af(::tpy::Union<std::string, uint8_t> x_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          x(std::move(x_)) {}
+
+    ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_af&) {
+        return os << "<coroutine af>";
+    }
+};
+
+// async def await_af() -> str:
+struct __coro_await_af {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::optional<__coro_af> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_await_af()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_await_af&) {
+        return os << "<coroutine await_af>";
+    }
+};
+
+// def yield_union(x: int64 | str) -> Iterator[int64]:
+struct __gen_yield_union : public ::tpy::next_iter_mixin<__gen_yield_union, int64_t> {
+    ::tpy::frame_state __state;
+    ::tpy::Union<int64_t, std::string> x;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_yield_union(::tpy::Union<int64_t, std::string> x_)
+        : __state(S_INITIAL),
+          x(std::move(x_)) {}
+
+    std::expected<int64_t, ::tpy::StopIteration> __next__();
+    __gen_yield_union& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_yield_union&) {
+        return os << "<generator yield_union>";
+    }
+};
 
 // def gen() -> Iterator[int]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, ::tpy::BigInt> {
@@ -412,6 +602,90 @@ inline std::string V::fo(std::string_view x) const {
 }
 
 // @dispatch
+// def um(self, x: int64 | str, k: int32) -> str:
+//     return "union"
+inline std::string V::um(const ::tpy::Union<int64_t, std::string>& x, int32_t k) const {
+    return "union";
+}
+
+// @dispatch
+// def um(self, x: bytes, k: int32) -> str:
+//     return "bytes"
+inline std::string V::um(::tpy::BytesView x, int32_t k) const {
+    return "bytes";
+}
+
+// @dispatch
+// def u(self, x: int | str) -> str:
+//     return "union"
+inline std::string V::u(const ::tpy::Union<::tpy::BigInt, std::string>& x) const {
+    return "union";
+}
+
+// @dispatch
+// def u(self, x: float) -> str:
+//     return "float"
+inline std::string V::u(double x) const {
+    return "float";
+}
+
+// @dispatch
+// def b(self, x: int64 | str) -> str:
+//     return "union"
+inline std::string V::b(const ::tpy::Union<int64_t, std::string>& x) const {
+    return "union";
+}
+
+// @dispatch
+// def b(self, x: float) -> str:
+//     return "float"
+inline std::string V::b(double x) const {
+    return "float";
+}
+
+// @dispatch
+// def pk(self, x: uint8 | str) -> str:
+//     return "union"
+inline std::string V::pk(const ::tpy::Union<std::string, uint8_t>& x) const {
+    return "union";
+}
+
+// @dispatch
+// def pk(self, x: float) -> str:
+//     return "float"
+inline std::string V::pk(double x) const {
+    return "float";
+}
+
+// @dispatch
+// def huge(self, x: float) -> str:
+//     return "float"
+inline std::string V::huge(double x) const {
+    return "float";
+}
+
+// @dispatch
+// def huge(self, x: float32 | str) -> str:
+//     return "union"
+inline std::string V::huge(const ::tpy::Union<float, std::string>& x) const {
+    return "union";
+}
+
+// @dispatch
+// def hw(self, x: float32 | str) -> str:
+//     return "union"
+inline std::string V::hw(const ::tpy::Union<float, std::string>& x) const {
+    return "union";
+}
+
+// @dispatch
+// def hw(self, x: int64) -> str:
+//     return "int64"
+inline std::string V::hw(int64_t x) const {
+    return "int64";
+}
+
+// @dispatch
 // def wide(self, x: int32) -> str:
 //     return "int32"
 inline std::string V::wide(int32_t x) const {
@@ -424,6 +698,10 @@ inline std::string V::wide(int32_t x) const {
 inline std::string V::wide(int64_t x) const {
     return "int64";
 }
+
+// def __init__(self, x: uint8 | str) -> None:
+//     self.x = x
+inline Cu::Cu(const ::tpy::Union<std::string, uint8_t>& x) : x(x) {}
 
 // def __init__(self) -> None:
 //     super().__init__()

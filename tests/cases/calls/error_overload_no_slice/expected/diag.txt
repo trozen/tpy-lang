@@ -1,1 +1,1 @@
-main.py:15: error: Slicing is not supported for MyList
+main.py:15: error: Type mismatch in argument 'index': expected int32, got slice

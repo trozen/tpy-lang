@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     e = OSError(2, "No such file or directory")
 //     raise e
 void main() {
-    ::tpy::OSError e = ::tpy::OSError(2, "No such file or directory");
+    ::tpy::OSError e = ::tpy::OSError(2, std::string_view("No such file or directory"));
     e.__raise__();
 }
 

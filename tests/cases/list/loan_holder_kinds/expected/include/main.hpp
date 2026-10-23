@@ -32,6 +32,8 @@ void iterating_wording(std::vector<int32_t>& xs, Box& b, bool go);
 void outer_loop_kept(std::vector<std::vector<int32_t>>& rows, std::vector<int32_t>& other, bool go);
 // def distinct_elements(rows: list[list[int32]]) -> None:
 void distinct_elements(std::vector<std::vector<int32_t>>& rows);
+// def slice_store_holder(ps: list[P], go: bool) -> None:
+void slice_store_holder(std::vector<P>& ps, bool go);
 // def main() -> None:
 void main();
 

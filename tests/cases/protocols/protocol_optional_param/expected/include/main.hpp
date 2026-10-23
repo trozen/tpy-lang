@@ -196,13 +196,13 @@ template<::tpystd::typing::Sequence<::tpy::BigInt> T_items, typename T_extra>
     ::tpy::BigInt result = ::tpy::BigInt(0);
     ::tpy::BigInt i = ::tpy::BigInt(0);
     while ((i < ::tpy::BigInt(::tpy::__len__(items)))) {
-        result = ((result) + (items[static_cast<std::size_t>(i.to_fixed_check<int32_t>())]));
+        result = ((result) + (items[static_cast<std::size_t>((i).to_fixed_check<int32_t>())]));
         i = ((i) + (::tpy::BigInt(1)));
     }
     if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
         ::tpy::BigInt j = ::tpy::BigInt(0);
         while ((j < ::tpy::BigInt(::tpy::__len__((*extra))))) {
-            result = ((result) + ((*extra)[static_cast<std::size_t>(j.to_fixed_check<int32_t>())]));
+            result = ((result) + ((*extra)[static_cast<std::size_t>((j).to_fixed_check<int32_t>())]));
             j = ((j) + (::tpy::BigInt(1)));
         }
     }

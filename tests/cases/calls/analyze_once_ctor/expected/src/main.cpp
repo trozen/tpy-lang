@@ -117,13 +117,13 @@ void main() {
     std::cout << "generic-ctor-field:" << " " << Holder<int32_t>(std::move(__tmp_1)).item << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_3;
     c = &*(__slot_3 = B(3));
-    std::cout << "group:" << " " << ::tpy::OSError(std::move(*c).take().v, "three").error_number << "\n" << ::tpy::check_signals;
+    std::cout << "group:" << " " << ::tpy::OSError(std::move(*c).take().v, std::string_view("three")).error_number << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_4;
     c = &*(__slot_4 = B(4));
     std::cout << "group-fstring:" << " " << std::string(::tpy::__str__(::tpy::OSError(std::format("{}", std::move(*c).take().v)))) << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_5;
     c = &*(__slot_5 = B(5));
-    std::cout << "group-select:" << " " << ::tpy::OSError(((flag) ? (std::move(*c).take().v) : (0)), "five").error_number << "\n" << ::tpy::check_signals;
+    std::cout << "group-select:" << " " << ::tpy::OSError(((flag) ? (std::move(*c).take().v) : (0)), std::string_view("five")).error_number << "\n" << ::tpy::check_signals;
     std::optional<B> __slot_6;
     c = &*(__slot_6 = B(6));
     {

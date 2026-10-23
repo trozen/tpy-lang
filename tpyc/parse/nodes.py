@@ -972,7 +972,9 @@ class TpySubscript(TpyExpr):
     enum_from_name: 'NominalType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
-    slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
+    # Set by sema: the key is a slice, written (`a[i:j]`) or a slice-typed
+    # value (`a[s]`).
+    slice_key: bool = False
     # Set by sema: the dunder variant each form of this subscript calls on a
     # record receiver (a class, library or `@native` record), resolved once
     # as the explicit `t.__getitem__(k)` / `__setitem__` / `__delitem__` call
@@ -992,18 +994,45 @@ class TpySubscript(TpyExpr):
     # read: `g[k] = v` calls `__setitem__` only, so the read-side analysis
     # must not credit a `__getitem__` call on the receiver.
     is_write_target: bool = False
+    # Set where `t[k] op= v` is built (`TpyAugAssign`): its key is the
+    # argument of both `__getitem__` and `__setitem__`.
+    is_aug_target: bool = False
     typed_dict_field: str | None = None  # Set by sema: d["key"] on TypedDict -> field access
     typed_dict_optional: bool = False  # Set by sema: total=False field, needs runtime check
 
     def children(self) -> list[TpyExpr]:
         return [self.obj, self.index]
 
+    def reset_dunders(self) -> None:
+        """Clear what sema decided about the dunder calls: every analysis
+        decides them afresh (an overload trial may have analyzed this node
+        under a receiver the winner does not have), from the key as
+        written."""
+        if self.written_index is not None:
+            self.index = self.written_index
+        self.needs_optional_runtime_check = False
+        self.dunders = SubscriptDunders()
+        self.written_index = self.setitem_index = None
+        self.const_dunders = frozenset()
+        self.slice_key = self.is_stepped_slice = self.bounds_safe = False
+
     def dunder(self, kind: SubscriptDunder) -> 'FunctionInfo | None':
-        """The record dunder variant form `kind` of this subscript calls,
-        as sema resolved it; None on a builtin receiver (a container, str,
-        bytes, tuple, an element-typed `@native` wrapper's element read
-        aside) or a form this subscript is not."""
+        """The dunder variant form `kind` of this subscript calls, as sema
+        resolved it -- the explicit `t.__getitem__(k)` / `__setitem__` /
+        `__delitem__` call's winner, substituted at the receiver; None for a
+        tuple, a TypedDict field, an enum name lookup, a protocol receiver
+        or a form this subscript is not."""
         return self.dunders.of(kind)
+
+    @property
+    def slice_function_info(self) -> 'FunctionInfo | None':
+        """The slice variant this subscript calls: None unless its key is
+        a slice, then the `__setitem__` winner of a slice store and the
+        `__getitem__` winner of a slice read."""
+        if not self.slice_key:
+            return None
+        return (self.dunders.set if self.is_write_target
+                else self.dunders.get)
 
 
 @dataclass
@@ -1016,6 +1045,9 @@ class TpyCoerce(TpyExpr):
     context_kind: str
     context_msg: str
     runtime_bigint: bool = False
+    # The member of a value-union argument slot the value lands in, as the
+    # compatibility check chose it; lowering renders the value at it.
+    union_member: "TpyType | None" = None
 
     def children(self) -> list[TpyExpr]:
         return [self.expr]
@@ -1255,6 +1287,10 @@ class TpyAugAssign(TpyStmt):
     # statement evaluates once, ahead of the store, and reads by name
     # (`sema/aug_hold.py`), in evaluation order. Not children.
     hold_parts: 'tuple[AugHeldPart, ...]' = ()
+
+    def __post_init__(self) -> None:
+        if isinstance(self.target, TpySubscript):
+            self.target.is_aug_target = True
 
     def exprs(self) -> list[TpyExpr]:
         return [self.target, self.value]
@@ -1966,6 +2002,8 @@ class TpyFunction:
     native_mutates: str | None = None
     # @native(element_effect=...): see FunctionInfo.native_element_effect.
     native_element_effect: str | None = None
+    # @native / @cpp_template(element_access=...): see FunctionInfo.element_access.
+    element_access: bool | str | None = None
     # Set when @export is applied inside an ext module: the function
     # stays DEFAULT linkage (an ordinary TPy function) but the extension glue
     # generator emits a CPython wrapper + PyMethodDef entry for it.

@@ -479,12 +479,12 @@ __coro_elem_distinct elem_distinct(std::vector<Source>& rows) {
         }
     }
     case S_JOIN_1: {
-        ::tpy::__getitem__(rows, i.to_fixed_check<int32_t>()).push(x);
+        ::tpy::__getitem__(rows, (i).to_fixed_check<int32_t>()).push(x);
         __state = S_JOIN_0;
         continue;
     }
     case S_JOIN_2: {
-        std::cout << "elem_unknown:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, i.to_fixed_check<int32_t>()).seen) << "\n" << ::tpy::check_signals;
+        std::cout << "elem_unknown:" << " " << ::tpy::ListPrinter(::tpy::__getitem__(rows, (i).to_fixed_check<int32_t>()).seen) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

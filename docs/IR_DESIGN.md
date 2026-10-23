@@ -457,6 +457,9 @@ THIRSubscript
   container: THIRExpr
   index: THIRExpr
   bounds_safe: bool                    # proven in-bounds
+  bound_getitem: THIRBoundCall         # the stamped __getitem__ winner's binding
+  element_access: bool                 # the winner declares the element-access contract
+  unchecked_getitem: THIRBoundCall | None  # its twin, rendered when bounds_safe
   result_type: TpyType
 
 THIRBinOp

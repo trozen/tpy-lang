@@ -93,6 +93,10 @@ generator_in: [0, 3, 3, 1] 1
 optional_arg: [0, 4, 3, 1] 1
 nocopy_literal: [0, 5, 3, 1] 2
 owned_getitem: [0, 6, 3, 1] 3 ['getitem']
+owned_key_param: 2 ['getitem', 'getitem']
+union_key_read: 3 3
+union_key_aug: 5 8
+union_key_alias: 18 18
 in_place_key: {'a-key-longer-than-the-small-string-buffer': 2, 'v': 1} ['a-key-longer-than-the-small-string-buffer', 'a-key-longer-than-the-small-string-buffer-and-more']
 attr_temp: ['x=8']
 select_ref: True True ['a-key-longer-than-the-small-string-buffer', 'a-key-longer-than-the-small-string-buffer-and-more']

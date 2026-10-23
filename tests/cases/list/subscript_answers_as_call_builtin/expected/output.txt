@@ -1,0 +1,41 @@
+module [3, 2, 4] {'a': 4, 'b': 2}
+free 2 [20, 8] {'a': 8, 'c': 30}
+ctor [3, 2] {'a': 4, 'b': 2}
+method 3 [3, 3] {'b': 2, 'z': 3}
+gen [2, 11, 3] [9, 3] {'a': 2}
+async 22 [11, 3] {'a': 11}
+comp [2, 3]
+closure [101, 2] {'a': 101}
+with [6, 3] {'b': 3}
+try [2, 3] {'a': 2}
+error_return 6 [2, 2] {'b': 4}
+match [2, 2] {'b': 4}
+keys 10 50 30 20
+widths 20 30 40 50
+bounds [11, 21, 31, 41, 51]
+slices [21, 31] [11, 31, 51] [11, 31]
+slice store [11, 7, 8, 9, 41, 51]
+recv e el 98 b'yt' 120 bytearray(b'xyc') 7 9 v iew 4 6
+recv views o wned 98
+proven 3 1111 bytearray(b'BBB') 1 3
+own bytearray 97
+own back bytearray(b'ab')
+readonly 8
+optional 3
+generic 2
+ref read 9
+ref dict read {'a': [1, 2]}
+ref store 6 7 8
+recv called
+key called
+value called
+effects [6, 2] 1
+nested [[1, 7], [3]] [7] [2]
+pending 1 [1, 2, 5000000000] [5000000000, 2] 4 10
+repeat 4 [0, 4, 0]
+pending del [2, 3, 5000000000]
+record keys 12 8 3 6
+explicit 1 [1, 2, 5000000000] [5000000000, 2] 3 [{'b': 2}] [(5, 6.0)] [(5000000000, 6)]
+union store 6
+popped 40 [10, 21, 7, 40] [0]
+proven bump 2 3

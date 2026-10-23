@@ -17,7 +17,7 @@ and `registry`. Both the sema `AnalyzerContext` and the codegen
 from enum import Enum, auto
 from typing import Any, Callable, NamedTuple, Protocol
 
-from .typesys import pointer_repr_optional, pointer_variant_union
+from .typesys import element_access, pointer_repr_optional, pointer_variant_union
 from .typesys import (
     FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
     TypeParamRef, OwnType, UnionType,
@@ -469,18 +469,21 @@ def return_type_is_cpp_ref(rt: 'TpyType | None') -> bool:
 
 
 def getitem_call_of(expr: TpyExpr) -> 'FunctionInfo | None':
-    """The record `__getitem__` a subscript read calls (`TpySubscript.dunder`)
+    """The `__getitem__` a subscript read calls (`TpySubscript.dunder`)
     when its result is NOT a C++ reference -- the reads whose consumption
     differs from a container element read (a by-value result is a
     temporary, a pointer-repr Optional one already borrow-form `T*`), so
     the borrow / storage and value-category classifiers treat them as the
     call they are. The callee as declared (`root`): its convention, not its
-    substitution, is the C++ one. None for a reference-returning read,
-    which consumes as an element lvalue does."""
+    substitution, is the C++ one. None for an element access (a winner
+    declaring the contract reads the container's own storage element) and
+    for a reference-returning read, which consumes as an element lvalue
+    does."""
     if not isinstance(expr, TpySubscript):
         return None
     fi = expr.dunder(SubscriptDunder.GET)
-    if fi is None or return_type_is_cpp_ref(unwrap_readonly(fi.return_type)):
+    if (fi is None or element_access(expr, SubscriptDunder.GET) is not None
+            or return_type_is_cpp_ref(unwrap_readonly(fi.return_type))):
         return None
     return fi.root
 

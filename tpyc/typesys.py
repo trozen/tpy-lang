@@ -2199,6 +2199,12 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def without_readonly(t: 'TpyType') -> 'TpyType':
+    """`t` with `readonly` dropped at every depth: identity does not
+    depend on access."""
+    return unwrap_readonly(t).map_inner_types(without_readonly)
+
+
 def is_readonly_ref_param(typ: 'TpyType | None') -> bool:
     """An explicit readonly[T] param whose underlying T passes by C++
     reference (const T&). The wrapper defeats is_ref_param() by design (a
@@ -2434,13 +2440,43 @@ def answers_as_call(receiver: 'TpyType') -> bool:
     return isinstance(bare, NominalType) and bare.is_user_record
 
 
-def subscript_answers_as_call(receiver: 'TpyType') -> bool:
-    """Whether a subscript of `receiver` answers like its explicit
-    `__getitem__` / `__setitem__` / `__delitem__` call (`answers_as_call`),
-    unless the record reads elements the builtin way (an element-typed
-    `@native` wrapper, which the element rules answer)."""
-    bare = unwrap_qualifiers(receiver)
-    return answers_as_call(bare) and bare.get_element_type() is None
+def element_access(sub: Any, kind: Any) -> 'FunctionInfo | None':
+    """The winner sema stamped for form `kind` (`SubscriptDunder`) of
+    subscript `sub` when that variant declares the element-access contract
+    (`FunctionInfo.element_access`, docs/NATIVE_INTEROP.md): the operation
+    is the container's own on the slot the key names, a place rather than a
+    call running class code. None for a winner without it -- a call, as a
+    record's dunder is -- and for a form `sub` does not call."""
+    fi = sub.dunder(kind)
+    return fi if fi is not None and fi.root.element_access is not None else None
+
+
+def access_free(t: TpyType) -> TpyType:
+    """`t` with its readonly qualifiers (plain and `auto_readonly`) removed:
+    what an element-access twin's signature is compared at, since the twin
+    and its variant differ in access, not in type."""
+    return without_readonly(strip_auto_readonly(t))
+
+
+def twin_takes_variant_args(variant: 'FunctionInfo',
+                            twin: 'FunctionInfo') -> bool:
+    """Whether `twin`, a method an element-access variant names, takes the
+    variant's arguments, readonly aside: the twin replaces the variant's
+    call over the same received arguments."""
+    return ([access_free(p.type) for p in twin.params]
+            == [access_free(p.type) for p in variant.params])
+
+
+def element_access_getitem(record: 'RecordInfo | None') -> 'FunctionInfo | None':
+    """The `__getitem__` variant of `record` declaring the element-access
+    contract, for a question about the type with no subscript at hand (the
+    index or key it takes, whether its elements read as places); None when
+    no variant declares it."""
+    if record is None:
+        return None
+    return next((fi for fi in record.get_method_overloads("__getitem__")
+                 if fi.element_access is not None and len(fi.params) == 1),
+                None)
 
 
 def store_slot_type(setter: 'FunctionInfo',
@@ -2453,6 +2489,13 @@ def store_slot_type(setter: 'FunctionInfo',
     if subst:
         value = substitute_type_params_simple(value, subst)
     return unwrap_own(value)
+
+
+def store_takes_elements(setter: 'FunctionInfo') -> bool:
+    """Whether a `__setitem__` variant's value slot takes the value's
+    elements rather than the value: a protocol slot (a slice store's
+    `Iterable[Own[T]]`), whose own coercion checks each element."""
+    return is_protocol_type(unwrap_qualifiers(store_slot_type(setter)))
 
 
 def types_held_by_value(typ: 'TpyType', *,
@@ -3286,12 +3329,15 @@ def canonical_readonly(t: 'TpyType') -> 'TpyType':
 
 
 class ImplicitReadonly(Enum):
-    """Why a method is readonly without the user spelling it, which makes
-    its borrowed result readonly (`readonly_result`); decided at
-    registration."""
+    """Why a method is readonly without the user spelling it; decided at
+    registration. PURE, FROZEN and DUNDER make its borrowed result readonly
+    (`readonly_result`); DUNDER_PAIR is the readonly half of the
+    mutable / readonly pair a reference-returning dunder gets implicitly,
+    whose result follows the receiver."""
     PURE = "pure"
     FROZEN = "frozen"
     DUNDER = "dunder"
+    DUNDER_PAIR = "dunder_pair"
 
 
 def settled_substitution(declared: 'TpyType', substituted: 'TpyType') -> 'TpyType':
@@ -7892,6 +7938,14 @@ class RecordInfo:
         return self.builtin_type_key is not None and not self.methods and not self.fields
 
     @property
+    def stub_names_hidden(self) -> bool:
+        """Whether this type's dunders and their parameter names are a
+        stub's, which the user never wrote (a builtin type's): a
+        diagnostic about an operation on it speaks in the operation's
+        terms (`dict key`, `slice assignment`), never in the stub's."""
+        return self.builtin_type_key is not None
+
+    @property
     def display_name(self) -> str:
         """The name a diagnostic spells: an enum's companion is the enum the
         user wrote, never its internal record name."""
@@ -8176,6 +8230,18 @@ class FunctionInfo:
     # from then on, or only compares it / hands it back
     # (`tpyc/sema/list_elem.py`). None: neither is declared.
     native_element_effect: Optional[str] = None
+    # @native / @cpp_template(element_access=...) on a subscript dunder
+    # variant: it performs the container's own operation on the slot the key
+    # names and nothing else (docs/NATIVE_INTEROP.md). True: plain element
+    # access; a string: also the name of the @cpp_template twin method that
+    # does it without the bounds check, for an index proven in range. None:
+    # the variant is an ordinary call.
+    element_access: bool | str | None = None
+    # The @cpp_template twin `element_access=<twin>` names, resolved once
+    # at registration (`_validate_element_access`); on a winner sema
+    # stamped at a subscript, substituted at the receiver with its
+    # placeholders resolved, as the winner's own binding is.
+    unchecked_twin: 'Optional[FunctionInfo]' = None
     # `__enter__` only (computed at registration): can what this returns root
     # at `self`? False means it lends storage that is NOT the receiver's, so a
     # `with` target aliasing it does not force the manager to stay alive.
@@ -8439,6 +8505,12 @@ class FunctionInfo:
     @property
     def const_borrow_params(self) -> Optional[frozenset[int]]:
         return self.root._const_borrow_params
+
+    def const_borrow_param(self, index: int) -> bool:
+        """Whether parameter `index` takes the const borrow ABI (the
+        `const_borrow_params` verdict), the slot an argument is lowered at."""
+        cbp = self.const_borrow_params
+        return bool(cbp) and index in cbp
 
     def set_const_borrow_verdict(self, sig: frozenset[int]) -> None:
         """Store the per-param const ABI verdict on THIS fi (the raw fi --

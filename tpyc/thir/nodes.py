@@ -1142,10 +1142,9 @@ class THIRCall(THIRExpr):
     so a `::` would miss it.) Mutually exclusive with
     `native_name`/`cpp_template`; `callee` stays the source name for the dump.
 
-    `native_name` (when set) is a runtime-helper C++ symbol -- an fi-resolved
-    `@native` free-function builtin (e.g. `tpy::__len__` for `len(c)`) or a
-    hardcoded helper (`tpy::__delitem__`
-    for `del c[k]`): the emitter renders
+    `native_name` (when set) is a runtime-helper C++ symbol -- the
+    fi-resolved `@native` free function the call binds (e.g. `tpy::__len__`
+    for `len(c)`, `tpy::__hash__` for `hash(x)`): the emitter renders
     `qualify_native_name(native_name)(args)` instead of the bare callee, so the
     dispatch keys on the resolved symbol, not the source name (a user function
     that happens to be named `len` has `native_name=None` and stays a plain
@@ -2143,14 +2142,13 @@ class THIRSubscript(THIRExpr):
     resolved `StrView` (drives the S1 owned-sink `std::string(x)` copy),
     STORAGE when it resolved owned (bare -- the `const std::string&` element
     copies implicitly at owned sinks). `index` is
-    the lowered index expression; `bounds_safe` (sema value-range analysis)
-    picks the emit -- `receiver[static_cast<std::size_t>(index)]` when proven
-    in-bounds (a literal index needs no cast), else the checked dunder
-    `::tpy::__getitem__(receiver, index)` (str's `__getitem__` @cpp_template
-    spells the same dunder, so one emit covers both; a BYTES receiver instead
-    dispatches to `::tpy::bytes_getitem(receiver, index)` -- bytes'
-    `__getitem__(int32)` is a @native free-function dunder). The index is a
-    value
+    the lowered index expression. The read renders the stamped variant's
+    binding (`bound_getitem`: `::tpy::__getitem__(receiver, index)`,
+    `::tpy::bytes_getitem(...)`, a template or a member call), or, when
+    sema's value-range analysis proved the index in range (`bounds_safe`),
+    the unchecked twin its element-access contract names
+    (`unchecked_getitem`: `receiver[static_cast<std::size_t>(index)]`).
+    The index is a value
     scalar (a runtime-BigInt one arrives pre-wrapped in its
     `.to_fixed_check<int32_t>()` THIRCoerce from lowering) or, for an
     owned-str-keyed dict, a
@@ -2169,10 +2167,19 @@ class THIRSubscript(THIRExpr):
     # index (no size_t cast -- the operator takes the user's declared key type,
     # like the concrete-user-record / fi-fallback arms).
     record_getitem: bool = False
-    # A read off a non-builtin `@native` record: its resolved `__getitem__`
-    # stub's binding (`l[k]` -> `l.at(k)`), which the checked builtin dunder
-    # and the bare operator[] are not.
+    # Every other container read: the binding of the `__getitem__` variant
+    # sema stamped (`TpySubscript.dunder`), rendered over the receiver and
+    # the key (`l[k]` -> `l.at(k)`, `::tpy::__getitem__(xs, i)`). A
+    # protocol receiver, which stamps no variant, carries its dunder
+    # fallback's. None on a store target, which renders its setter.
     bound_getitem: THIRBoundCall | None = None
+    # The variant declares the element-access contract
+    # (`FunctionInfo.element_access`): the read names the element slot, a
+    # place, rather than calling class code.
+    element_access: bool = False
+    # The unchecked twin that contract names: rendered instead of
+    # `bound_getitem` when `bounds_safe` proves the index in range.
+    unchecked_getitem: THIRBoundCall | None = None
     # An UNPROVEN value-repr Optional[scalar] ELEMENT read consumed as its
     # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
     # runtime-checked unwrap), the subscript twin of THIRName's flag.
@@ -2202,7 +2209,7 @@ class THIRSubscript(THIRExpr):
         leaf (`typesys.certified_primitive_subscript`): no tuple projection,
         record dunder, Optional unwrap or generic element reference."""
         return (self.tuple_index is None and not self.record_getitem
-                and self.bound_getitem is None and not self.elem_ref
+                and self.element_access and not self.elem_ref
                 and not self.opt_deref_check and not self.deref
                 and certified_primitive_subscript(self.receiver.result_type, self.index.result_type,
                                                   self.result_type))
@@ -2842,13 +2849,12 @@ class THIRAssign(THIRStmt):
 @dataclass(frozen=True)
 class THIRSetItem(THIRStmt):
     """A container subscript write `c[k] = v`. `target` is the lowered
-    subscript node (receiver + index + `bounds_safe`), reused for both emit
-    arms: the checked free-function dunder (`::tpy::__setitem__(c, k, v);`
-    for list/Array/Span/dict; a bytearray receiver dispatches to its own
-    `::tpy::bytearray_setitem` at emit, like the bytes_getitem read arm),
-    or -- when sema proved the index in
-    [0, len) -- the direct `c[static_cast<std::size_t>(k)] = v;` (a literal
-    index needs no cast), sharing `_emit_subscript`'s bounds-safe render.
+    subscript node (receiver + index + `bounds_safe`); the write renders the
+    binding of the `__setitem__` variant sema stamped (`setter`:
+    `::tpy::__setitem__(c, k, v);`, `::tpy::bytearray_setitem(...)`) or --
+    when sema proved the index in [0, len) -- the unchecked twin its
+    element-access contract names (`unchecked_setter`:
+    `c[static_cast<std::size_t>(k)] = v;`).
     An augmented `c[k] OP= v` lowers to the same node with `value` the
     synthetic `c[k] OP v` binop and `bounds_safe` forced off on BOTH reads
     -- the augmented form never takes the bounds-safe form. `value` is a flushable position (arg temps hoist
@@ -2859,6 +2865,8 @@ class THIRSetItem(THIRStmt):
     otherwise. Analysis only: no render reads it."""
     target: 'THIRSubscript'
     value: THIRExpr
+    setter: THIRBoundCall
+    unchecked_setter: THIRBoundCall | None = None
     stub_callee: THIRStubCallee | None = None
     # The values the statement evaluates once, in order, before the write:
     # argument temps it declares, which the write reads again by name

@@ -1,1 +1,1 @@
-main.py:6: error: Slice bound must be an integer, got 'float'
+main.py:6: error: Slice start must be an integer type, got float

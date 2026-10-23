@@ -1,1 +1,1 @@
-main.py:11: error: Cannot index type TermAttributes: no __getitem__ method
+main.py:11: error: Type 'TermAttributes' is not subscriptable

@@ -5,6 +5,33 @@
 
 namespace tpyapp::main {
 
+// def yield_union(x: int64 | str) -> Iterator[int64]:
+//     if not isinstance(x, str):
+//         yield x                                      # -> S_RESUME_0
+inline std::expected<int64_t, ::tpy::StopIteration> __gen_yield_union::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        if ((!(std::holds_alternative<std::string>(x)))) {
+            const auto& __x = std::get<int64_t>(x);
+            __state = S_RESUME_0;
+            return __x;
+        } else {
+            const auto& __x = std::get<std::string>(x);
+            __state = S_JOIN_0;
+            continue;
+        }
+    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // def gen() -> Iterator[int]:
 //     v = V()
 //     # A generator body renders the pin as a function body does.

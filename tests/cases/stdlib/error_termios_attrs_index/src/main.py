@@ -8,7 +8,7 @@ import termios
 def main() -> None:
     master, slave = os.openpty()
     attrs = termios.tcgetattr(slave)
-    print(attrs[3])  # tpyc: error(/Cannot index type TermAttributes: no __getitem__/)
+    print(attrs[3])  # tpyc: error(/Type 'TermAttributes' is not subscriptable/)
 
 
 main()

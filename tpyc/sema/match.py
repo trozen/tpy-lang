@@ -66,8 +66,11 @@ def _expr_path_parts(expr: TpyExpr) -> tuple[str, ...] | None:
         base = _expr_path_parts(expr.obj)
         if base is None:
             return None
-        if isinstance(expr.index, TpyIntLiteral):
-            return base + (f"[{expr.index.value}]",)
+        # The key as written: a dunder call converts it at its parameter.
+        index = (expr.written_index if expr.written_index is not None
+                 else expr.index)
+        if isinstance(index, TpyIntLiteral):
+            return base + (f"[{index.value}]",)
         return base + ("[*]",)
     return None
 

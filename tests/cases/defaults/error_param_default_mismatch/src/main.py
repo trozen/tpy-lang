@@ -3,7 +3,7 @@
 from tpy import int32
 
 
-def width(s: str = 5) -> int32:  # tpyc: error(/expected str, got IntLiteral/)
+def width(s: str = 5) -> int32:  # tpyc: error(/expected str, got int/)
     return len(s)
 
 

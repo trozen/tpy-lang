@@ -1,6 +1,7 @@
 # obj[k]=v / del obj[k] on a user class with a non-int (str) key dispatch to the
 # user __setitem__/__delitem__ (written value read back); int-keyed record +
-# containers confirm no over-trigger.
+# containers confirm no over-trigger; a write-only mapping (no __getitem__)
+# takes a store and a del.
 from tpy import int32
 
 
@@ -46,6 +47,19 @@ class IntBox:
         self.v = -i
 
 
+class Sink:
+    last: int32
+
+    def __init__(self) -> None:
+        self.last = 0
+
+    def __setitem__(self, key: str, value: int32) -> None:
+        self.last = value
+
+    def __delitem__(self, key: str) -> None:
+        self.last = -len(key)
+
+
 def main() -> None:
     s = Store()
     s["a"] = 10            # str-key __setitem__
@@ -70,6 +84,13 @@ def main() -> None:
     d["x"] = 5
     del d["x"]
     print(len(d))          # 0
+
+    # write-only mapping: a store and a del need no __getitem__
+    w = Sink()
+    w["k"] = 8
+    print("write-only:", w.last)  # 8
+    del w["abc"]
+    print("write-only:", w.last)  # -3
 
 
 main()

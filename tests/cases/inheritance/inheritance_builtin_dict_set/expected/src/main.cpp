@@ -18,12 +18,50 @@ void add_tag(Tags& t, int32_t tag) {
     t.insert(tag);
 }
 
+// def missing(c: Counter) -> None:
+//     # An inherited `__getitem__` is the dict's own lookup: a missing key
+//     # raises and inserts nothing.
+//     try:
+//         print(c["zz"])  # tpyc: ok
+//     except KeyError:
+//         print("missing:", len(c))
+void missing(const Counter& c) {
+    {
+        try {
+            std::cout << ::tpy::__getitem__(c, "zz") << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::KeyError&) {
+            std::cout << "missing:" << " " << ::tpy::__len__(c) << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// def missing_elem(cs: list[Counter]) -> None:
+//     # A container-element receiver: the inherited lookup on `cs[0]` raises
+//     # for a missing key and inserts nothing.
+//     try:
+//         print(cs[0]["zz"])  # tpyc: ok
+//     except KeyError:
+//         print("missing_elem: KeyError")
+void missing_elem(const std::vector<Counter>& cs) {
+    {
+        try {
+            std::cout << ::tpy::__getitem__(::tpy::__getitem__(cs, 0), "zz") << "\n" << ::tpy::check_signals;
+        } catch (const ::tpy::KeyError&) {
+            std::cout << "missing_elem: KeyError" << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
 // def main() -> None:
 //     c = Counter("hits")
 //     c["a"] = 1  # inherited __setitem__ on a record receiver
 //     bump(c, "a")
 //     bump(c, "b")
 //     print(c.label, len(c), c["a"], c["b"])
+//     missing(c)
+//     cs: list[Counter] = []
+//     cs.append(Counter("elems"))
+//     missing_elem(cs)
 //
 //     t = Tags()
 //     t.add(7)  # inherited set.add on a record receiver
@@ -37,7 +75,11 @@ void main() {
     ::tpy::__setitem__(c, "a", 1);
     ::tpyapp::main::bump(c, "a");
     ::tpyapp::main::bump(c, "b");
-    std::cout << c.label << " " << ::tpy::__len__(c) << " " << c["a"] << " " << c["b"] << "\n" << ::tpy::check_signals;
+    std::cout << c.label << " " << ::tpy::__len__(c) << " " << ::tpy::__getitem__(c, "a") << " " << ::tpy::__getitem__(c, "b") << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::missing(c);
+    std::vector<Counter> cs = std::vector<Counter>{};
+    cs.push_back(Counter("elems"));
+    ::tpyapp::main::missing_elem(cs);
     Tags t = Tags();
     t.insert(7);
     ::tpyapp::main::add_tag(t, 8);

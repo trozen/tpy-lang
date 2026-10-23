@@ -1,1 +1,1 @@
-main.py:5: error: No matching overload for make_default()
+main.py:5: error: No matching overload for 'make_default' with argument types ()

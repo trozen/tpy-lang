@@ -1,1 +1,1 @@
-main.py:4: error: No matching overload for zip(list[int32])
+main.py:4: error: No matching overload for 'zip' with argument types (list[int32])

@@ -2835,7 +2835,7 @@ class _Lowering:
         names (`raises`: the index is not proven in range, or a key may be
         missing). The stub binding a native receiver's read renders through
         is spelling only: the type's element contract is what is modeled."""
-        _plain(expr, {"receiver", "index", "bounds_safe", "bound_getitem"})
+        _plain(expr, {"receiver", "index", "bounds_safe", "bound_getitem", "element_access", "unchecked_getitem"})
         _require(expr, expr.tuple_index is None, "tuple projection of a container")
         place = self.container_place(expr.receiver)
         shape = place.shape_of()
@@ -3557,7 +3557,8 @@ class _Lowering:
                 result = f.leaf(typ, f.splice(call), loc)
                 writing = self.call_writes(expr)
             case th.THIRSubscript() if expr.tuple_index is None:
-                _plain(expr, {"receiver", "index", "bounds_safe"})
+                _plain(expr, {"receiver", "index", "bounds_safe", "bound_getitem", "element_access",
+                              "unchecked_getitem"})
                 _require(expr, expr.certified_op, "uncertified element read")
                 receiver = self.operand(expr.receiver, self.lent_value(expr.receiver))
                 _require(expr, owned_leaf(self.lent_type(expr.receiver, receiver)), "element read needs an owned leaf")
@@ -4218,7 +4219,7 @@ class _Lowering:
         element) or writes through a view, which cannot change its source's
         shape; otherwise the `__setitem__` call it is, a structure write of
         the receiver derived from the stub like any container method."""
-        _plain(stmt, {"target", "value", "stub_callee"})
+        _plain(stmt, {"target", "value", "setter", "unchecked_setter", "stub_callee"})
         callee = stmt.stub_callee
         _require(stmt, isinstance(callee, th.THIRStubCallee) and callee.receiver, "element write needs a stub contract")
         target = stmt.target

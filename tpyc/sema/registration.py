@@ -57,6 +57,8 @@ from ..typesys import (
     unwrap_readonly,
     unwrap_ref_type,
     CallableType, is_bodyless_binding,
+    access_free, declared_result_readonly, strip_auto_readonly,
+    twin_takes_variant_args, without_readonly,
 )
 from ..compilation_context import get_current_compiler, require_current_compiler
 from ..module_names import public_module_name
@@ -1871,7 +1873,7 @@ class TypeRegistrar:
         # Runs self-flag derivation, validation, @auto_readonly / property
         # setter wrapping, and cloning.  Idempotent on already-expanded
         # clones, so running once per record here is safe.
-        expand_methods_for_record(record)
+        implicit_pairs = expand_methods_for_record(record)
 
         # Check for duplicate method definitions (second definition silently wins in Python,
         # but it is always a bug and can interfere with @override checks).
@@ -2234,6 +2236,7 @@ class TypeRegistrar:
                 native_function=method.native_function,
                 native_mutates=method.native_mutates,
                 native_element_effect=method.native_element_effect,
+                element_access=method.element_access,
                 # Only `__enter__` needs it, and only it pays the body walk.
                 returns_self_borrow=(
                     returns_borrow_rooted_at_self(method)
@@ -2252,7 +2255,9 @@ class TypeRegistrar:
                 originating_module=self.ctx.module_name,
             )
             func_info.following_components = method.following_components
-            func_info.implicit_readonly_result = implicit_result
+            func_info.implicit_readonly_result = (
+                ImplicitReadonly.DUNDER_PAIR if method in implicit_pairs
+                else implicit_result)
             compiler = get_current_compiler()
             if compiler is not None and not method.is_stub:
                 compiler.method_bodies.setdefault(
@@ -2342,6 +2347,7 @@ class TypeRegistrar:
                 method_nodes[method.name] = [method]
 
         self._validate_method_overload_groups(record)
+        self._validate_element_access(record, methods, method_nodes)
 
         # Per-method same-param-diff-return check. Mirrors the free-function
         # check in register_overload_group, with the auto_readonly /
@@ -2954,6 +2960,7 @@ class TypeRegistrar:
                 f"Inconsistent base-class ordering in '{record.name}': {exc}",
                 record.loc,
             ) from exc
+        self._keep_measured_twins(record_info)
 
         # Phase 20 Stage 2c: Throwable conformance rules.
         # (1) Concrete Throwable implementers must inherit builtins.BaseException
@@ -4102,6 +4109,136 @@ class TypeRegistrar:
                 f"@error_return requires a ReturnException exception",
                 func.loc
             )
+
+    _ELEMENT_ACCESS_DUNDERS = ("__getitem__", "__setitem__", "__delitem__")
+
+    @staticmethod
+    def _validate_element_access(
+        record: TpyRecord,
+        methods: dict[str, list[FunctionInfo]],
+        method_nodes: dict[str, list[TpyFunction]],
+    ) -> None:
+        """`element_access=` (docs/NATIVE_INTEROP.md): declared only on a
+        subscript dunder variant, and a named twin is a template method of
+        the same class taking the variant's arguments, (for a read)
+        returning its result, readonly aside, and accepting its receiver: a
+        readonly variant's twin is readonly. The twin is stored on the
+        variant (`FunctionInfo.unchecked_twin`), the one place it is
+        resolved."""
+        for name, nodes in method_nodes.items():
+            for node, info in zip(nodes, methods[name]):
+                access = info.element_access
+                if access is None:
+                    continue
+                where = f"'{record.display_name}.{name}'"
+                if name not in TypeRegistrar._ELEMENT_ACCESS_DUNDERS:
+                    raise SemanticError(
+                        f"element_access= on {where}: only a __getitem__, "
+                        f"__setitem__ or __delitem__ variant performs an "
+                        f"element access", node.loc or record.loc)
+                if access is True:
+                    continue
+                twin = f"'{record.display_name}.{access}'"
+                twins = methods.get(access)
+                if not twins:
+                    raise SemanticError(
+                        f"element_access= on {where} names '{access}', which "
+                        f"is not a method of '{record.display_name}'",
+                        node.loc or record.loc)
+                templates = [t for t, t_node in zip(twins, method_nodes[access])
+                             if t_node.cpp_template is not None]
+                if not templates:
+                    raise SemanticError(
+                        f"element_access= on {where} names {twin}, which is "
+                        f"not bound by @cpp_template", node.loc or record.loc)
+                same_args = [t for t in templates
+                             if twin_takes_variant_args(info, t)]
+                if not same_args:
+                    raise SemanticError(
+                        f"element_access= on {where} names {twin}, whose "
+                        f"parameters do not match the variant's "
+                        f"({', '.join(str(p.type) for p in info.params)})",
+                        node.loc or record.loc)
+                if name == "__getitem__":
+                    same_args = [t for t in same_args
+                                 if access_free(t.return_type)
+                                 == access_free(info.return_type)]
+                    if not same_args:
+                        raise SemanticError(
+                            f"element_access= on {where} names {twin}, whose "
+                            f"result does not match the variant's "
+                            f"'{access_free(info.return_type)}'",
+                            node.loc or record.loc)
+                if info.is_readonly and not any(t.is_readonly
+                                                for t in same_args):
+                    raise SemanticError(
+                        f"element_access= on {where} names {twin}, which "
+                        f"does not accept a readonly receiver: "
+                        f"{TypeRegistrar._readonly_variant(name, info)} "
+                        f"(declare the twin @readonly)",
+                        node.loc or record.loc)
+                # A variant with no twin of its own access (a mutable
+                # `@auto_readonly` clone beside a `@readonly`-only twin)
+                # keeps its checked binding, as does one on a type whose
+                # `len()` does not measure its `__len__`
+                # (`_keep_measured_twins`, once the bases are known).
+                info.unchecked_twin = next(
+                    (t for t in same_args
+                     if t.is_readonly == info.is_readonly
+                     and (declared_result_readonly(info)
+                          or not declared_result_readonly(t))), None)
+
+    @staticmethod
+    def _readonly_variant(name: str, info: FunctionInfo) -> str:
+        """Why the subscript variant `info` is readonly, for a diagnostic
+        that names only a readonly-ness the user wrote."""
+        why = info.implicit_readonly_result
+        if why in (ImplicitReadonly.DUNDER, ImplicitReadonly.DUNDER_PAIR):
+            return f"{name} is implicitly readonly"
+        if why is ImplicitReadonly.PURE:
+            return f"{name} is readonly as @pure"
+        if why is ImplicitReadonly.FROZEN:
+            return f"{name} is readonly in a frozen class"
+        return f"{name} takes a readonly receiver"
+
+    def _keep_measured_twins(self, record_info: RecordInfo) -> None:
+        """Drop the element-access twins of `record_info`'s variants when
+        `len(x)` does not measure the class's `__len__` -- its own or the
+        one it inherits (`get_method_overloads_with_parents`) -- since the
+        bounds proof `0 <= i < len(x)` a twin relies on must hold for the
+        length the class declares. Such a variant renders its checked
+        binding."""
+        length = next((m for m in self.ctx.registry
+                       .get_method_overloads_with_parents(record_info, "__len__")
+                       if not m.params), None)
+        if self._len_measures_declared(length):
+            return
+        for name in self._ELEMENT_ACCESS_DUNDERS:
+            for info in record_info.get_method_overloads(name):
+                info.unchecked_twin = None
+
+    @staticmethod
+    def _len_measures_declared(length: FunctionInfo | None) -> bool:
+        """Whether `len(x)` measures the `__len__` variant `length`.
+        `len(x)` renders the generic `__len__` dispatch (the runtime's
+        overload set), which reaches a declared `__len__` that binds that
+        dispatch itself, or a member spelled `__len__` (the dispatch's
+        generic overload calls it, with its checks, as is a `__len__` with
+        a TPy body). A renamed binding (`@native("size")`) or any other
+        template is not what `len(x)` runs. The dispatch is known here only
+        as its template: `len`'s own binding is not registered yet when
+        the builtin containers are, and sema does not bind `len(x)` to a
+        `__len__` (TODO.md "`len(x)` binds its `__len__` in sema"), which
+        would let this read the stamped winner instead."""
+        if length is None:
+            return False
+        dispatch = builtin_modules.get_dunder_cpp_template("__len__")
+        if length.cpp_template is not None:
+            return length.cpp_template == dispatch
+        if length.native_function:
+            return (length.native_name is not None and dispatch ==
+                    f"::{length.native_name.removeprefix('::')}({{self}})")
+        return length.native_name in (None, "__len__")
 
     def _stamp_result_borrows(self, func: TpyFunction, info: FunctionInfo) -> None:
         """The registration-time `return_borrows_from` of a free function:

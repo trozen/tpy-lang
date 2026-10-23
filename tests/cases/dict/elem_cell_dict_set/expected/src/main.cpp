@@ -624,7 +624,7 @@ void set_update_narrower_pos() {
 void tuple_in_pos() {
     ::tpy::ordered_set<std::tuple<int32_t, int32_t>> s = ::tpy::ordered_set<std::tuple<int32_t, int32_t>>({std::tuple<int32_t, int32_t>{1, 2}});
     ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string> d = ::tpy::ordered_map<std::tuple<int32_t, int32_t>, std::string>({{std::tuple<int32_t, int32_t>{1, 2}, "x"}});
-    std::cout << "tuple_in:" << " " << ::tpy::print_bool(::tpy::seq_contains(s, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(::tpy::seq_contains(s, std::tuple<int32_t, int32_t>{3, 4})) << " " << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{1, 2})) << " " << ::tpy::print_bool(::tpy::seq_contains(d, std::tuple<int32_t, int32_t>{2, 1})) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_in:" << " " << ::tpy::print_bool((s.contains(std::tuple<int32_t, int32_t>{1, 2}))) << " " << ::tpy::print_bool((s.contains(std::tuple<int32_t, int32_t>{3, 4}))) << " " << ::tpy::print_bool((d.contains(std::tuple<int32_t, int32_t>{1, 2}))) << " " << ::tpy::print_bool((d.contains(std::tuple<int32_t, int32_t>{2, 1}))) << "\n" << ::tpy::check_signals;
 }
 
 // # update from a dict whose rows and inner dicts are literals of their own:

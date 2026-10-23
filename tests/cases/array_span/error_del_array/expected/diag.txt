@@ -1,1 +1,1 @@
-main.py:6: error: Arrays are fixed-size; cannot delete array elements
+main.py:6: error: Type 'Array[int32, 3]' does not support item deletion

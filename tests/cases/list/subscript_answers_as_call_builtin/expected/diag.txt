@@ -1,0 +1,7 @@
+main.py:321: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:321: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:395: warning: Integer literal 5000000000 is outside default int32 range; promoting variable to int (BigInt).
+main.py:397: warning: Integer literal 5000000000 is outside default int32 range; promoting variable to int (BigInt).
+main.py:409: warning: Integer literal 5000000000 is outside default int32 range; promoting variable to int (BigInt).
+main.py:451: warning: Integer literal 5000000000 is outside default int32 range; promoting variable to int (BigInt).
+main.py:453: warning: Integer literal 5000000000 is outside default int32 range; promoting variable to int (BigInt).

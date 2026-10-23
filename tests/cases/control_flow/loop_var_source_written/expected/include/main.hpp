@@ -1000,7 +1000,7 @@ inline Rows::Rows() : rows(std::vector<std::vector<::tpy::BigInt>>{{1}, {2}}) {}
 //     return self.rows[i]
 inline std::vector<::tpy::BigInt>& Rows::__getitem__(const ::tpy::BigInt& i) {
     ::tpy::__setitem__((*G5), 0, LONG_B);
-    return ::tpy::__getitem__(this->rows, i.to_fixed_check<int32_t>());
+    return ::tpy::__getitem__(this->rows, (i).to_fixed_check<int32_t>());
 }
 
 // def __getitem__(self, i: int) -> list[int]:
@@ -1008,7 +1008,7 @@ inline std::vector<::tpy::BigInt>& Rows::__getitem__(const ::tpy::BigInt& i) {
 //     return self.rows[i]
 inline const std::vector<::tpy::BigInt>& Rows::__getitem__(const ::tpy::BigInt& i) const {
     ::tpy::__setitem__((*G5), 0, LONG_B);
-    return ::tpy::__getitem__(this->rows, i.to_fixed_check<int32_t>());
+    return ::tpy::__getitem__(this->rows, (i).to_fixed_check<int32_t>());
 }
 
 inline const std::vector<::tpy::BigInt>& Rows::operator[](const ::tpy::BigInt& i) const {

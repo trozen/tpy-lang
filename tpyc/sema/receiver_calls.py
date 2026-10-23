@@ -244,20 +244,24 @@ def _invalidates(ctx: SemanticContext, obj_type: TpyType, method: str,
 def check_receiver_call_loans(ctx: SemanticContext, recv: TpyExpr,
                               obj_type: TpyType, method: str,
                               site: TpyExpr | TpyStmt, *,
-                              callee: FunctionInfo | None = None) -> None:
+                              callee: FunctionInfo | None = None,
+                              label: str | None = None) -> None:
     """Warn when calling `method` on `recv` may invalidate a live loan.
 
     Resolves aliases, so `alias.append()` warns when `items` has element
     borrows, and field-path receivers (`self.items.append()`). A resolved
     `callee` answers the invalidation question itself; without one the
-    method is looked up by name."""
+    method is looked up by name. `label` names the operation in the
+    warning where no call is written (`slice assignment`)."""
+    if label is None:
+        label = f"'{method}'"
     bt = ctx.func.borrow_tracker
     storage = bt.resolve_obj_storage(recv)
     if storage is not None:
         if (bt.has_element_borrow(storage)
                 and _invalidates(ctx, obj_type, method, callee)):
             ctx.warning(storage_loan_mutation_warning(
-                bt, storage, f"'{method}'"), site)
+                bt, storage, label), site)
     elif isinstance(recv, TpySubscript):
         # The receiver is itself an element read, which no storage key can
         # spell. A loan taken out of an element of the SAME container is
@@ -268,7 +272,7 @@ def check_receiver_call_loans(ctx: SemanticContext, recv: TpyExpr,
                if elem_of is not None else None)
         if hit is not None and _invalidates(ctx, obj_type, method, callee):
             ctx.warning(element_loan_mutation_warning(
-                f"{elem_of}[...]", f"'{method}'", hit), site)
+                f"{elem_of}[...]", label, hit), site)
 
 
 def credit_receiver_mutation(ctx: SemanticContext, recv: TpyExpr,
@@ -428,7 +432,8 @@ def credit_implicit_receiver_call(
         ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
         callee: FunctionInfo | None, method: str, site: TpyExpr | TpyStmt, *,
         eager: bool = False, check_loans: bool = True,
-        record: bool = True, handle_climbs: bool = False) -> None:
+        record: bool = True, handle_climbs: bool = False,
+        label: str | None = None) -> None:
     """The receiver effects of a dunder call no call node spells.
 
     `callee` is the resolved dunder (found through the MRO); it decides
@@ -442,7 +447,7 @@ def credit_implicit_receiver_call(
     itself, before registering a loan the call must not see (the for
     statement's own iteration loan). `record` as for
     `check_implicit_readonly_receiver`, `handle_climbs` as for
-    `call_mutates_receiver`.
+    `call_mutates_receiver`, `label` as for `check_receiver_call_loans`.
     """
     if record:
         record_implicit_call(site, callee, recv, method)
@@ -453,6 +458,6 @@ def credit_implicit_receiver_call(
                                      record=False)
     if check_loans and obj_type is not None:
         check_receiver_call_loans(ctx, recv, obj_type, method, site,
-                                  callee=callee)
+                                  callee=callee, label=label)
     credit_receiver_mutation(ctx, recv, obj_type, method, callee=callee,
                              eager=eager)

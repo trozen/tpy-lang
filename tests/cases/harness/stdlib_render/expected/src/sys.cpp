@@ -12,8 +12,7 @@ std::vector<std::string>* argv{};
 
 // # TODO: declare as ``NoReturn`` once TPy gains the type; until then code
 // # after a ``sys.exit()`` is not flagged as dead.
-// # The per-alternative variants: BUGS.md#dispatch-union-param-refuses-literal,
-// # BUGS.md#bigint-arg-to-int-union-param-ill-formed.
+// # The per-alternative variants: BUGS.md#bigint-arg-to-int-union-param-ill-formed.
 // @dispatch
 // def exit() -> None:
 //     raise SystemExit()

@@ -30,43 +30,59 @@ if TYPE_CHECKING:
 
 def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
                             registry) -> bool:
-    """Whether concrete_type inherits a @dynamic protocol (directly or transitively).
+    """Whether concrete_type's EMITTED struct converts to the @dynamic
+    `protocol` base (`declares_dynamic_base`), so no adapter wrapping is
+    needed.
 
-    True when the record explicitly implements a @dynamic protocol that
-    is (or transitively inherits from) `protocol`. This means the C++ struct
-    inherits the protocol base class through the inheritance chain and no adapter
-    wrapping is needed.
-
-    Match is by qualified name; type_args are ignored. Cross-instantiation
-    mismatches (e.g. assigning `Container[int32]` into `Container[str]`)
-    are already rejected by sema before this helper runs.
-
-    The ``is_dynamic`` filter is applied at the IMPLEMENTED-protocol level
-    (chain root), not at the target. A non-@dynamic protocol contributes no
-    C++ base, so a chain rooted in a non-@dynamic implemented protocol
-    cannot make ``concrete_type`` C++-inherit anything -- even if a
-    @dynamic ancestor sits further up the chain. This differs from
-    ``sema/type_ops._inherits_protocol`` (which filters on the target,
-    not the root); the closure cached on ``RecordInfo.transitive_supertypes``
-    encodes the unfiltered closure used by the latter, so this helper keeps
-    an explicit per-element walk and uses ``is_subtype`` only for the
-    per-protocol ancestor step.
-
-    @native records are excluded: their C++ representation is opaque to
-    codegen (the struct is hand-written elsewhere), so even when the TPy
-    declaration claims `class NativeRec(SomeDynProto)`, the C++ struct
-    almost certainly does NOT inherit the codegen-emitted protocol base.
-    Routing through Adapter is the only safe lowering for those types.
-    Example: `BaseException` inherits `Throwable` at the TPy level for
-    polymorphism dispatch on `Optional[BaseException]`, but
-    `::tpy::BaseException` in core.hpp does not inherit `tpystd::tpy::Throwable`.
+    @native records are excluded: their struct is hand-written, so the
+    lowering routes them through the Adapter even where the binding
+    declares the base (`::tpy::BaseException` inherits `::tpy::Throwable`,
+    `runtime/cpp/include/tpy/core.hpp`).
     """
     if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
         return False
     record_info = registry.get_record_for_type(concrete_type)
-    target = protocol_info_of(protocol)
-    if record_info is None or record_info.is_native or target is None:
+    if record_info is None or record_info.is_native:
         return False
+    return declares_dynamic_base(concrete_type, protocol, registry)
+
+
+def declares_dynamic_base(concrete_type: TpyType, protocol: NominalType,
+                          registry) -> bool:
+    """Whether a record or one of its base classes implements a @dynamic
+    protocol that is (or inherits) `protocol` -- for a generated record the
+    C++ base its struct chain is emitted with, for a native one the base its
+    binding declares. Match is by qualified name; type_args are ignored
+    (sema rejects a cross-instantiation mismatch before this runs)."""
+    if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
+        return False
+    record_info = registry.get_record_for_type(concrete_type)
+    target = protocol_info_of(protocol)
+    if record_info is None or target is None:
+        return False
+    if _implements_dynamic(record_info, target):
+        return True
+    for base in record_info.mro_ancestors:
+        base_info = registry.get_record_for_type(base)
+        if base_info is not None and _implements_dynamic(base_info, target):
+            return True
+    return False
+
+
+def _implements_dynamic(record_info, target) -> bool:
+    """Whether `record_info` declares a @dynamic protocol that is (or
+    inherits) `target`.
+
+    The ``is_dynamic`` filter is applied at the IMPLEMENTED-protocol level
+    (chain root), not at the target. A non-@dynamic protocol contributes no
+    C++ base, so a chain rooted in a non-@dynamic implemented protocol
+    cannot make the record C++-inherit anything -- even if a @dynamic
+    ancestor sits further up the chain. This differs from
+    ``sema/type_ops._inherits_protocol`` (which filters on the target,
+    not the root); the closure cached on ``RecordInfo.transitive_supertypes``
+    encodes the unfiltered closure used by the latter, so this helper keeps
+    an explicit per-element walk and uses ``is_subtype`` only for the
+    per-protocol ancestor step."""
     for p in record_info.implemented_protocols:
         pi = protocol_info_of(p)
         if pi is None or not pi.is_dynamic:

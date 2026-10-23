@@ -6,7 +6,7 @@ namespace tpystd::typing {
 
 
 // from .._bootstrap._decorators import readonly
-// from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function
+// from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function, Callable
 void __tpy_init() {
 }
 

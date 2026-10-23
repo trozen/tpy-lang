@@ -1,0 +1,14 @@
+sub a
+call a
+get a
+free int
+meth int
+rec 6 -1
+fnpos 1
+sub b
+call b
+get b
+free int
+meth int
+rec 7 -1
+fnpos 2

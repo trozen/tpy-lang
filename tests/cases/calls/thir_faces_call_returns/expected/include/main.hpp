@@ -221,7 +221,7 @@ inline Store::Store() : ps(std::vector<P>{P(::tpy::BigInt(1)), P(::tpy::BigInt(2
 //     return None
 inline P* Store::find(const ::tpy::BigInt& k) {
     if ((k < ::tpy::BigInt(::tpy::__len__(this->ps)))) {
-        return &(::tpy::__getitem__(this->ps, k.to_fixed_check<int32_t>()));
+        return &(::tpy::__getitem__(this->ps, (k).to_fixed_check<int32_t>()));
     }
     return nullptr;
 }

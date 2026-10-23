@@ -14,7 +14,7 @@ namespace tpyapp::main {
     if (((i < 0) || (i >= ::tpy::__len__(xs)))) {
         throw ::tpy::IndexError("custom: index out of bounds");
     }
-    return ::tpy::__getitem__(xs, i.to_fixed_check<int32_t>());
+    return ::tpy::__getitem__(xs, (i).to_fixed_check<int32_t>());
 }
 
 // def main() -> None:

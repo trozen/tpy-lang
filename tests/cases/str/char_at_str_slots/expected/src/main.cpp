@@ -28,7 +28,7 @@ std::string TOP;
 //     # return position: the slot that always worked -- the regression guard
 //     return CHARS[i]  # tpyc: ok
 std::string ret_slot(const ::tpy::BigInt& i) {
-    return std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, i.to_fixed_check<int32_t>())));
+    return std::string(::tpy::char_to_str(::tpy::__getitem__(CHARS, (i).to_fixed_check<int32_t>())));
 }
 
 // def extend_loop() -> Own[list[str]]:

@@ -35,7 +35,7 @@ void main() {
     std::cout << ::tpyapp::main::classify(nullptr) << "\n" << ::tpy::check_signals;
     ::tpy::ValueError __tmp_1 = ::tpy::ValueError("v");
     std::cout << ::tpyapp::main::classify(&(__tmp_1)) << "\n" << ::tpy::check_signals;
-    ::tpy::OSError __tmp_2 = ::tpy::OSError("o");
+    ::tpy::OSError __tmp_2 = ::tpy::OSError(std::string_view("o"));
     std::cout << ::tpyapp::main::classify(&(__tmp_2)) << "\n" << ::tpy::check_signals;
     ::tpy::RuntimeError __tmp_3 = ::tpy::RuntimeError("r");
     std::cout << ::tpyapp::main::classify(&(__tmp_3)) << "\n" << ::tpy::check_signals;

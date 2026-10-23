@@ -45,6 +45,9 @@ struct EqV;
 struct OwnGet;
 template<typename T> struct Lender;
 struct Logged;
+struct UA;
+struct UB;
+struct UTable;
 
 } // namespace tpyapp::main
 
@@ -162,6 +165,10 @@ template<typename T>
 ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x);
 // def ident_s(x: str) -> str:
 std::string ident_s(std::string_view x);
+// def own_key_param(ob: OwnGet, key: str) -> int32:
+int32_t own_key_param(const OwnGet& ob, std::string_view key);
+// def union_key(t: UTable, k: UA | UB) -> None:
+void union_key(UTable& t, ::tpy::Union<UA*, UB*> k);
 // def opt_key(t: Token | None) -> int32:
 int32_t opt_key(const Token* t);
 // def count_tokens(ts: list[Token]) -> int32:
@@ -979,6 +986,61 @@ inline std::ostream& operator<<(std::ostream& os, const Logged& obj) {
     return os;
 }
 
+// class UA:
+struct UA {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    UA() = default;
+    explicit UA(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.UA";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const UA& obj) {
+    ::tpy::print_object_default(os, "UA", obj);
+    return os;
+}
+
+// class UB:
+struct UB {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    UB() = default;
+    explicit UB(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.UB";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const UB& obj) {
+    ::tpy::print_object_default(os, "UB", obj);
+    return os;
+}
+
+// class UTable:
+struct UTable {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self) -> None:
+    UTable();
+
+    // def __getitem__(self, k: UA | UB) -> int32:
+    int32_t __getitem__(::tpy::Union<const UA*, const UB*> k) const;
+
+    // def __setitem__(self, k: UA | UB, v: int32) -> None:
+    void __setitem__(::tpy::Union<const UA*, const UB*> k, int32_t v);
+
+    int32_t operator[](::tpy::Union<const UA*, const UB*> k) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.UTable";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const UTable& obj) {
+    ::tpy::print_object_default(os, "UTable", obj);
+    return os;
+}
+
 // class Sub(Table):
 struct Sub : Table {
 
@@ -1745,6 +1807,45 @@ inline Logged& Logged::operator=(Logged&& other) noexcept {
 inline Logged::~Logged() {
     if (!this->__tpy_owned_) return;
     LOG->push_back(std::format("x={}", this->x));
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline UA::UA(int32_t n) : n(n) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline UB::UB(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+//     self.v = 0
+inline UTable::UTable() : v(0) {}
+
+// def __getitem__(self, k: UA | UB) -> int32:
+//     if isinstance(k, UA):
+//         return k.n + self.v
+//     return -1
+inline int32_t UTable::__getitem__(::tpy::Union<const UA*, const UB*> k) const {
+    if (std::holds_alternative<const UA*>(k)) {
+        auto& __k = *std::get<const UA*>(k);
+        return (::tpy::add_check<int32_t>(__k.n, this->v));
+    }
+    auto& __k = *std::get<const UB*>(k);
+    return -1;
+}
+
+// def __setitem__(self, k: UA | UB, v: int32) -> None:
+//     if isinstance(k, UA):
+//         self.v = v - k.n
+inline void UTable::__setitem__(::tpy::Union<const UA*, const UB*> k, int32_t v) {
+    if (std::holds_alternative<const UA*>(k)) {
+        auto& __k = *std::get<const UA*>(k);
+        this->v = (::tpy::sub_check<int32_t>(v, __k.n));
+    }
+}
+
+inline int32_t UTable::operator[](::tpy::Union<const UA*, const UB*> k) const {
+    return __getitem__(k);
 }
 
 // def __init__(self) -> None:

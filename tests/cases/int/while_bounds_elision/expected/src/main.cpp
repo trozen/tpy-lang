@@ -97,7 +97,7 @@ void test_while_bigint_index() {
     std::vector<int32_t> lst = {1, 2, 3};
     ::tpy::BigInt i = ::tpy::BigInt(0);
     while ((i < ::tpy::BigInt(::tpy::__len__(lst)))) {
-        std::cout << lst[static_cast<std::size_t>(i.to_fixed_check<int32_t>())] << "\n" << ::tpy::check_signals;
+        std::cout << lst[static_cast<std::size_t>((i).to_fixed_check<int32_t>())] << "\n" << ::tpy::check_signals;
         i = (i) + (::tpy::BigInt(1));
     }
 }

@@ -32,17 +32,17 @@
  "array_i__async__borrow_method__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][0] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
+  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [ra"
  ],
  "array_i__async__global_name__decl_alias": [
   "ok",
   "",
-  "[1] %x = form_convert[borrow](*%G) [2] *%x[0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw])"
+  "[1] %x = form_convert[borrow](*%G) [2] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__async__global_name__decl_reassigned": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] *%x[0] = coerce(lit(9) -> int32) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) [6] print(call(len [tpy::__len__], [*%G]) "
+  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) [6] print(call(len ["
  ],
  "array_i__async__global_name__field_write": [
   "ok",
@@ -57,7 +57,7 @@
  "array_i__async__global_name__recv_mut": [
   "ok",
   "",
-  "[1] *%G[0] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
+  "[1] *%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__async__global_name__return_borrow": [
   "reject:stmt.return:return.borrow_form",
@@ -67,17 +67,17 @@
  "array_i__async__global_name__tuple_elem": [
   "ok",
   "",
-  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) [2] %t[0] [borrow][0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw])"
+  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) [2] %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__async__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[0] = lit(9) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[coerce(lit(0) -> int32)] = lit(9) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "array_i__async__local__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[0] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__len__], ["
  ],
  "array_i__async__local__field_write": [
   "ok",
@@ -92,22 +92,22 @@
  "array_i__async__local__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[0] = lit(9) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] *%s0[coerce(lit(0) -> int32)] = lit(9) [3] print(call(len [tpy::__len__], [*%s0]) [raw])"
  ],
  "array_i__async__local__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&*%s0, lit(1)) [3] %t[0] [borrow][0] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%s0]) [raw])"
+  "[2] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&*%s0, lit(1)) [3] %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%s0]) [raw"
  ],
  "array_i__async__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[0] = lit(9)"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__async__local_last__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[0] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw])"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw])"
  ],
  "array_i__async__local_last__field_write": [
   "ok",
@@ -122,22 +122,22 @@
  "array_i__async__local_last__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[0] = lit(9)"
+  "[2] *%s0[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__async__local_last__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] *%t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__async__obj_field__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] *%x[0] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
+  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
  ],
  "array_i__async__obj_field__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] *%x[0] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__le"
+  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] pri"
  ],
  "array_i__async__obj_field__field_write": [
   "ok",
@@ -152,7 +152,7 @@
  "array_i__async__obj_field__recv_mut": [
   "ok",
   "",
-  "[2] *%b._v [storage][0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
+  "[2] *%b._v [storage][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw])"
  ],
  "array_i__async__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
@@ -167,7 +167,7 @@
  "array_i__async__own_call__decl_alias": [
   "ok",
   "",
-  "[1] frame_slot %x <- call(mk, []) [2] *%x[0] = coerce(lit(9) -> int32)"
+  "[1] frame_slot %x <- call(mk, []) [2] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__async__own_call__decl_reassigned": [
   "reject:res.alias_bind",
@@ -197,7 +197,7 @@
  "array_i__async__own_call__tuple_elem": [
   "ok",
   "",
-  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] *%t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__async__param__decl_alias": [
   "reject:res.alias_bind",
@@ -222,7 +222,7 @@
  "array_i__async__param__recv_mut": [
   "ok",
   "",
-  "[1] %pv[0] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
+  "[1] %pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__async__param__return_borrow": [
   "reject:stmt.return:return.borrow_form",
@@ -232,17 +232,17 @@
  "array_i__async__param__tuple_elem": [
   "ok",
   "",
-  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) [2] %t[0] [borrow][0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [%pv]) [raw])"
+  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) [2] %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__ctor__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%x: Array = method_call(%b, v_m, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "array_i__ctor__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len"
  ],
  "array_i__ctor__borrow_method__field_write": [
   "ok",
@@ -262,17 +262,17 @@
  "array_i__ctor__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__ctor__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "array_i__ctor__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, ["
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]"
  ],
  "array_i__ctor__closure_capture__field_write": [
   "ok",
@@ -287,7 +287,7 @@
  "array_i__ctor__closure_capture__recv_mut": [
   "ok",
   "",
-  "%s0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%s0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "array_i__ctor__closure_capture__tuple_elem": [
   "crash:Internal error: composite expr type tuple[PendingList[int32, 2]#N, IntLiteral(1)",
@@ -297,7 +297,7 @@
  "array_i__ctor__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%G %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%x: Array = *%G %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__ctor__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -317,22 +317,22 @@
  "array_i__ctor__global_name__recv_mut": [
   "ok",
   "",
-  "*%G[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "*%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__ctor__global_name__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len_"
  ],
  "array_i__ctor__local__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ctor__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ctor__local__field_write": [
   "ok",
@@ -347,22 +347,22 @@
  "array_i__ctor__local__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__ctor__local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__ctor__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Array = move(%s0) %x[0] = lit(9)"
+  "%x: Array = move(%s0) %x[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__ctor__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__ctor__local_last__field_write": [
   "ok",
@@ -377,17 +377,17 @@
  "array_i__ctor__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9)"
+  "%s0[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__ctor__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%o0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%x: Array = *%o0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "array_i__ctor__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -407,17 +407,17 @@
  "array_i__ctor__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "*%o0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "*%o0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "array_i__ctor__narrowed_opt__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__ctor__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%x: Array = *%pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__ctor__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -437,22 +437,22 @@
  "array_i__ctor__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "*%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "*%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__ctor__narrowed_opt_param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__ctor__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Array = %b._v [storage] %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%x: Array = %b._v [storage] %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "array_i__ctor__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%b._v [sto"
+  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy:"
  ],
  "array_i__ctor__obj_field__field_write": [
   "ok",
@@ -467,7 +467,7 @@
  "array_i__ctor__obj_field__recv_mut": [
   "ok",
   "",
-  "%b._v [storage][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%b._v [storage][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "array_i__ctor__obj_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal",
@@ -477,12 +477,12 @@
  "array_i__ctor__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Array = call(mk, []) %x[0] = coerce(lit(9) -> int32)"
+  "%x: Array = call(mk, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__ctor__own_call__field_write": [
   "ok",
@@ -502,17 +502,17 @@
  "array_i__ctor__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__param__decl_alias": [
   "ok",
   "",
-  "%x: Array = %pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%x: Array = %pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__ctor__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv"
  ],
  "array_i__ctor__param__field_write": [
   "ok",
@@ -527,22 +527,22 @@
  "array_i__ctor__param__recv_mut": [
   "ok",
   "",
-  "%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__ctor__param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__ctor__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32)"
+  "%x: Array = method_call(%b, v_own, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__ctor__prop_own__field_write": [
   "ok",
@@ -562,12 +562,12 @@
  "array_i__ctor__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "%x: Array = method_call(%b, v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "array_i__ctor__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -657,12 +657,12 @@
  "array_i__fn__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%x: Array = method_call(%b, v_m, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "array_i__fn__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len"
  ],
  "array_i__fn__borrow_method__field_write": [
   "ok",
@@ -687,17 +687,17 @@
  "array_i__fn__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__fn__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "array_i__fn__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, ["
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]"
  ],
  "array_i__fn__closure_capture__field_write": [
   "ok",
@@ -712,7 +712,7 @@
  "array_i__fn__closure_capture__recv_mut": [
   "ok",
   "",
-  "%s0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%s0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "array_i__fn__closure_capture__tuple_elem": [
   "crash:Internal error: composite expr type tuple[PendingList[int32, 2]#N, IntLiteral(1)",
@@ -722,7 +722,7 @@
  "array_i__fn__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%G %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%x: Array = *%G %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__fn__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -742,7 +742,7 @@
  "array_i__fn__global_name__recv_mut": [
   "ok",
   "",
-  "*%G[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "*%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__fn__global_name__return_borrow": [
   "ok",
@@ -752,17 +752,17 @@
  "array_i__fn__global_name__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len_"
  ],
  "array_i__fn__local__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__fn__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__fn__local__field_write": [
   "ok",
@@ -777,22 +777,22 @@
  "array_i__fn__local__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__fn__local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__fn__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Array = move(%s0) %x[0] = lit(9)"
+  "%x: Array = move(%s0) %x[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__fn__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__fn__local_last__field_write": [
   "ok",
@@ -807,17 +807,17 @@
  "array_i__fn__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9)"
+  "%s0[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__fn__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%o0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%x: Array = *%o0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "array_i__fn__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -837,17 +837,17 @@
  "array_i__fn__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "*%o0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "*%o0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "array_i__fn__narrowed_opt__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__fn__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%x: Array = *%pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__fn__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -867,22 +867,22 @@
  "array_i__fn__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "*%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "*%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__fn__narrowed_opt_param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__fn__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Array = %b._v [storage] %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%x: Array = %b._v [storage] %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "array_i__fn__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%b._v [sto"
+  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy:"
  ],
  "array_i__fn__obj_field__field_write": [
   "ok",
@@ -897,7 +897,7 @@
  "array_i__fn__obj_field__recv_mut": [
   "ok",
   "",
-  "%b._v [storage][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%b._v [storage][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "array_i__fn__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
@@ -912,12 +912,12 @@
  "array_i__fn__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Array = call(mk, []) %x[0] = coerce(lit(9) -> int32)"
+  "%x: Array = call(mk, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__fn__own_call__field_write": [
   "ok",
@@ -942,17 +942,17 @@
  "array_i__fn__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__param__decl_alias": [
   "ok",
   "",
-  "%x: Array = %pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%x: Array = %pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__fn__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv"
  ],
  "array_i__fn__param__field_write": [
   "ok",
@@ -967,7 +967,7 @@
  "array_i__fn__param__recv_mut": [
   "ok",
   "",
-  "%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__fn__param__return_borrow": [
   "ok",
@@ -977,17 +977,17 @@
  "array_i__fn__param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__fn__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32)"
+  "%x: Array = method_call(%b, v_own, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__fn__prop_own__field_write": [
   "ok",
@@ -1012,12 +1012,12 @@
  "array_i__fn__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "%x: Array = method_call(%b, v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "array_i__fn__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -1147,7 +1147,7 @@
  "array_i__gen__borrow_method__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][0] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_values: [0] "
+  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [ra"
  ],
  "array_i__gen__borrow_method__yield_borrow": [
   "sema:Cannot yield local or temporary as reference. Reference type 'Array[int32, 2]' i",
@@ -1157,12 +1157,12 @@
  "array_i__gen__global_name__decl_alias": [
   "ok",
   "",
-  "[1] %x = form_convert[borrow](*%G) [2] *%x[0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] %x = form_convert[borrow](*%G) [2] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__global_name__decl_reassigned": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] *%x[0] = coerce(lit(9) -> int32) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) [6] print(call(len [tpy::__len__], [*%G]) "
+  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [5] print(call(len [tpy::__len__], [*%s1]) [raw]) [6] print(call(len ["
  ],
  "array_i__gen__global_name__field_write": [
   "ok",
@@ -1177,12 +1177,12 @@
  "array_i__gen__global_name__recv_mut": [
   "ok",
   "",
-  "[1] *%G[0] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] *%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__global_name__tuple_elem": [
   "ok",
   "",
-  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) [2] %t[0] [borrow][0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw]) yield_values: [0] coerc"
+  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) [2] %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%G]) [raw]) y"
  ],
  "array_i__gen__global_name__yield_borrow": [
   "reject:res.yield_type",
@@ -1192,12 +1192,12 @@
  "array_i__gen__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[0] = lit(9) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[coerce(lit(0) -> int32)] = lit(9) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__local__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[0] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_va"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__len__], ["
  ],
  "array_i__gen__local__field_write": [
   "ok",
@@ -1212,22 +1212,22 @@
  "array_i__gen__local__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[0] = lit(9) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%s0[coerce(lit(0) -> int32)] = lit(9) [3] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__local__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&*%s0, lit(1)) [3] %t[0] [borrow][0] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%s0]) [raw]) yield_values: [0] c"
+  "[2] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&*%s0, lit(1)) [3] %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%s0]) [raw"
  ],
  "array_i__gen__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] *%x[0] = lit(9) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] *%x[coerce(lit(0) -> int32)] = lit(9) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__local_last__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[0] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = lit(9) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) yield_values: [0] coerce(lit(0) -> i"
  ],
  "array_i__gen__local_last__field_write": [
   "ok",
@@ -1242,22 +1242,22 @@
  "array_i__gen__local_last__recv_mut": [
   "ok",
   "",
-  "[2] *%s0[0] = lit(9) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%s0[coerce(lit(0) -> int32)] = lit(9) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__local_last__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] *%t[0] [borrow][0] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__obj_field__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] *%x[0] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0)"
  ],
  "array_i__gen__obj_field__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] *%x[0] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy::__le"
+  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] pri"
  ],
  "array_i__gen__obj_field__field_write": [
   "ok",
@@ -1272,7 +1272,7 @@
  "array_i__gen__obj_field__recv_mut": [
   "ok",
   "",
-  "[2] *%b._v [storage][0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%b._v [storage][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [*%b._v [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__obj_field__tuple_elem": [
   "reject:expr.tuple_literal",
@@ -1287,7 +1287,7 @@
  "array_i__gen__own_call__decl_alias": [
   "ok",
   "",
-  "[1] frame_slot %x <- call(mk, []) [2] *%x[0] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] frame_slot %x <- call(mk, []) [2] *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__own_call__decl_reassigned": [
   "reject:res.alias_bind",
@@ -1312,7 +1312,7 @@
  "array_i__gen__own_call__tuple_elem": [
   "ok",
   "",
-  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] *%t[0] [borrow][0] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__own_call__yield_borrow": [
   "sema:Cannot yield local or temporary as reference. Reference type 'Array[int32, 2]' i",
@@ -1342,12 +1342,12 @@
  "array_i__gen__param__recv_mut": [
   "ok",
   "",
-  "[1] %pv[0] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [%pv]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] %pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [2] print(call(len [tpy::__len__], [%pv]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "array_i__gen__param__tuple_elem": [
   "ok",
   "",
-  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) [2] %t[0] [borrow][0] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [%pv]) [raw]) yield_values: [0] coe"
+  "[1] %t = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) [2] %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [3] print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__gen__param__yield_borrow": [
   "ok",
@@ -1357,12 +1357,12 @@
  "array_i__meth__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%x: Array = method_call(%b, v_m, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "array_i__meth__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len"
  ],
  "array_i__meth__borrow_method__field_write": [
   "ok",
@@ -1387,17 +1387,17 @@
  "array_i__meth__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__meth__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "array_i__meth__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, ["
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]"
  ],
  "array_i__meth__closure_capture__field_write": [
   "ok",
@@ -1412,7 +1412,7 @@
  "array_i__meth__closure_capture__recv_mut": [
   "ok",
   "",
-  "%s0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
+  "%s0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(inner, [])"
  ],
  "array_i__meth__closure_capture__tuple_elem": [
   "crash:Internal error: composite expr type tuple[PendingList[int32, 2]#N, IntLiteral(1)",
@@ -1422,7 +1422,7 @@
  "array_i__meth__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%G %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%x: Array = *%G %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__meth__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -1442,7 +1442,7 @@
  "array_i__meth__global_name__recv_mut": [
   "ok",
   "",
-  "*%G[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "*%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
  ],
  "array_i__meth__global_name__return_borrow": [
   "ok",
@@ -1452,17 +1452,17 @@
  "array_i__meth__global_name__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len_"
  ],
  "array_i__meth__local__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__meth__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__meth__local__field_write": [
   "ok",
@@ -1477,22 +1477,22 @@
  "array_i__meth__local__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "array_i__meth__local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__meth__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Array = move(%s0) %x[0] = lit(9)"
+  "%x: Array = move(%s0) %x[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__meth__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__meth__local_last__field_write": [
   "ok",
@@ -1507,17 +1507,17 @@
  "array_i__meth__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9)"
+  "%s0[coerce(lit(0) -> int32)] = lit(9)"
  ],
  "array_i__meth__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%o0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%x: Array = *%o0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "array_i__meth__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -1537,17 +1537,17 @@
  "array_i__meth__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "*%o0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "*%o0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
  ],
  "array_i__meth__narrowed_opt__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__meth__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%x: Array = *%pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__meth__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -1567,22 +1567,22 @@
  "array_i__meth__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "*%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "*%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
  ],
  "array_i__meth__narrowed_opt_param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%pv]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__meth__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Array = %b._v [storage] %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%x: Array = %b._v [storage] %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "array_i__meth__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%b._v [sto"
+  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy:"
  ],
  "array_i__meth__obj_field__field_write": [
   "ok",
@@ -1597,7 +1597,7 @@
  "array_i__meth__obj_field__recv_mut": [
   "ok",
   "",
-  "%b._v [storage][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
+  "%b._v [storage][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw])"
  ],
  "array_i__meth__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
@@ -1612,12 +1612,12 @@
  "array_i__meth__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Array = call(mk, []) %x[0] = coerce(lit(9) -> int32)"
+  "%x: Array = call(mk, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__meth__own_call__field_write": [
   "ok",
@@ -1642,17 +1642,17 @@
  "array_i__meth__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__param__decl_alias": [
   "ok",
   "",
-  "%x: Array = %pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%x: Array = %pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__meth__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv"
  ],
  "array_i__meth__param__field_write": [
   "ok",
@@ -1667,7 +1667,7 @@
  "array_i__meth__param__recv_mut": [
   "ok",
   "",
-  "%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
  ],
  "array_i__meth__param__return_borrow": [
   "ok",
@@ -1677,17 +1677,17 @@
  "array_i__meth__param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw])"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__meth__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32)"
+  "%x: Array = method_call(%b, v_own, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__meth__prop_own__field_write": [
   "ok",
@@ -1712,12 +1712,12 @@
  "array_i__meth__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32)"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
+  "%x: Array = method_call(%b, v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw])"
  ],
  "array_i__meth__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -1822,12 +1822,12 @@
  "array_i__nested__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_m, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
+  "%x: Array = method_call(%b, v_m, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [meth"
+  "ptr_decl[ptr_addr] %x: Array = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len"
  ],
  "array_i__nested__borrow_method__field_write": [
   "ok",
@@ -1852,12 +1852,12 @@
  "array_i__nested__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(nested_in"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__nested__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%G %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
+  "%x: Array = *%G %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -1877,7 +1877,7 @@
  "array_i__nested__global_name__recv_mut": [
   "ok",
   "",
-  "*%G[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
+  "*%G[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__global_name__return_borrow": [
   "ok",
@@ -1887,17 +1887,17 @@
  "array_i__nested__global_name__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%G]) [raw]) call"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%G, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len_"
  ],
  "array_i__nested__local__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nes"
  ],
  "array_i__nested__local__field_write": [
   "ok",
@@ -1912,22 +1912,22 @@
  "array_i__nested__local__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%s0[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__local__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) ca"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%s0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__nested__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Array = %s0 %x[0] = lit(9) call(nested_inner, [])"
+  "%x: Array = %s0 %x[coerce(lit(0) -> int32)] = lit(9) call(nested_inner, [])"
  ],
  "array_i__nested__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[0] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = lit(9) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__local_last__field_write": [
   "ok",
@@ -1942,17 +1942,17 @@
  "array_i__nested__local_last__recv_mut": [
   "ok",
   "",
-  "%s0[0] = lit(9) call(nested_inner, [])"
+  "%s0[coerce(lit(0) -> int32)] = lit(9) call(nested_inner, [])"
  ],
  "array_i__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(move(%s0), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Array = *%o0 %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
+  "%x: Array = *%o0 %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -1972,12 +1972,12 @@
  "array_i__nested__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "*%o0[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
+  "*%o0[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__narrowed_opt__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [*%o0]) [raw]) ca"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(%o0, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len"
  ],
  "array_i__nested__narrowed_opt_param__decl_alias": [
   "reject:stmt.nested_def:nesteddef.param_type",
@@ -2012,12 +2012,12 @@
  "array_i__nested__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Array = %b._v [storage] %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
+  "%x: Array = %b._v [storage] %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%b._v [sto"
+  "%x: Array = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy:"
  ],
  "array_i__nested__obj_field__field_write": [
   "ok",
@@ -2032,7 +2032,7 @@
  "array_i__nested__obj_field__recv_mut": [
   "ok",
   "",
-  "%b._v [storage][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
+  "%b._v [storage][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%b._v [storage]]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Array[int32, 2]' ",
@@ -2047,12 +2047,12 @@
  "array_i__nested__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Array = call(mk, []) %x[0] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%x: Array = call(mk, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__own_call__field_write": [
   "ok",
@@ -2077,17 +2077,17 @@
  "array_i__nested__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(call(mk, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__param__decl_alias": [
   "ok",
   "",
-  "%x: Array = %pv %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
+  "%x: Array = %pv %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
  ],
  "array_i__nested__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_"
+  "ptr_decl[ptr_addr] %x: Array = %pv ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%pv"
  ],
  "array_i__nested__param__field_write": [
   "ok",
@@ -2102,7 +2102,7 @@
  "array_i__nested__param__recv_mut": [
   "ok",
   "",
-  "%pv[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
+  "%pv[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw]) call(nested_inner, [%pv])"
  ],
  "array_i__nested__param__return_borrow": [
   "ok",
@@ -2112,17 +2112,17 @@
  "array_i__nested__param__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%pv]) [raw]) ca"
+  "%t: tuple[Array[int32, 2], int32] = borrow_tuple<std::tuple<std::array<int32_t, 2>*, int32_t>>(&%pv, lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__le"
  ],
  "array_i__nested__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%x: Array = method_call(%b, v_own, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__prop_own__field_write": [
   "ok",
@@ -2147,12 +2147,12 @@
  "array_i__nested__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][0] = coerce(lit(9) -> int32) call(nested_inner, [])"
+  "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_own, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Array = method_call(%b, v, []) %x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw]) call(nested_inner, [])"
+  "%x: Array = method_call(%b, v, []) %x[coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v, [])]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -2550,7 +2550,7 @@
   "method_call(method_call(%b, v_m, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "bytearray__ctor__borrow_method__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -2610,7 +2610,7 @@
   ""
  ],
  "bytearray__ctor__ctor_rvalue__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -2730,7 +2730,7 @@
   "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__local_last__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -2880,7 +2880,7 @@
   ""
  ],
  "bytearray__ctor__own_call__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -2940,7 +2940,7 @@
   "method_call(method_call(%b, v_own, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__prop_own__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -3030,7 +3030,7 @@
   "method_call(method_call(call(mk_b, []), v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
   "",
   ""
  ],
@@ -3060,7 +3060,7 @@
   "method_call(call(mk_b, [])._v [storage], native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_field__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -3095,7 +3095,7 @@
   ""
  ],
  "bytearray__fn__borrow_method__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -3160,7 +3160,7 @@
   ""
  ],
  "bytearray__fn__ctor_rvalue__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -3290,7 +3290,7 @@
   "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__fn__local_last__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -3450,7 +3450,7 @@
   ""
  ],
  "bytearray__fn__own_call__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -3520,7 +3520,7 @@
   ""
  ],
  "bytearray__fn__prop_own__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -3625,7 +3625,7 @@
   ""
  ],
  "bytearray__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
   "",
   ""
  ],
@@ -3660,7 +3660,7 @@
   ""
  ],
  "bytearray__fn__temp_field__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -3965,7 +3965,7 @@
   ""
  ],
  "bytearray__meth__borrow_method__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4030,7 +4030,7 @@
   ""
  ],
  "bytearray__meth__ctor_rvalue__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4160,7 +4160,7 @@
   "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__meth__local_last__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4320,7 +4320,7 @@
   ""
  ],
  "bytearray__meth__own_call__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4390,7 +4390,7 @@
   ""
  ],
  "bytearray__meth__prop_own__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4495,7 +4495,7 @@
   ""
  ],
  "bytearray__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
   "",
   ""
  ],
@@ -4530,7 +4530,7 @@
   ""
  ],
  "bytearray__meth__temp_field__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -4565,7 +4565,7 @@
   ""
  ],
  "bytearray__nested__borrow_method__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4600,7 +4600,7 @@
   ""
  ],
  "bytearray__nested__ctor_rvalue__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4730,7 +4730,7 @@
   "method_call(%s0, native tpy::bytearray_append, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "bytearray__nested__local_last__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4890,7 +4890,7 @@
   ""
  ],
  "bytearray__nested__own_call__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -4960,7 +4960,7 @@
   ""
  ],
  "bytearray__nested__prop_own__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:expr.method_call:method.recv.subscript",
   "",
   ""
  ],
@@ -5065,7 +5065,7 @@
   ""
  ],
  "bytearray__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
   "",
   ""
  ],
@@ -5100,7 +5100,7 @@
   ""
  ],
  "bytearray__nested__temp_field__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
   "",
   ""
  ],
@@ -5352,7 +5352,7 @@
  "deref_list__async__subscript__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw])"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw])"
  ],
  "deref_list__async__subscript__match_capture": [
   "reject:stmt.match",
@@ -5837,7 +5837,7 @@
  "deref_list__ctor__subscript__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__subscript__match_capture": [
   "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
@@ -6422,7 +6422,7 @@
  "deref_list__fn__subscript__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__subscript__match_capture": [
   "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
@@ -6762,7 +6762,7 @@
  "deref_list__gen__subscript__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%h.f [storage]])]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_list__gen__subscript__match_capture": [
   "reject:stmt.match",
@@ -7292,7 +7292,7 @@
  "deref_list__meth__subscript__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__subscript__match_capture": [
   "reject:stmt.expr_stmt:call.native_arg.record_f1_slot",
@@ -7862,7 +7862,7 @@
  "deref_list__nested__subscript__field_write": [
   "ok",
   "copies DL into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__subscript__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -8192,17 +8192,17 @@
  "deref_rec__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] %x->x = coerce(lit(9) -> int32) [4] print(*%xs[0] [borrow].x [raw])"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] %x->x = coerce(lit(9) -> int32) [4] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = coerce(lit(9) -> int32) [6] print(*%s1.x [raw]) [7] print(*%xs[0] [borrow].x [raw])"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = coerce(lit(9) -> int32) [6] print(*%s1.x [raw]) [7] print(*%xs[coerce(lit(0) -> in"
  ],
  "deref_rec__async__subscript__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(*%h.f [storage].x [raw])"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(*%h.f [storage].x [raw])"
  ],
  "deref_rec__async__subscript__match_capture": [
   "reject:stmt.match",
@@ -8212,7 +8212,7 @@
  "deref_rec__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow].x = coerce(lit(9) -> int32) [3] print(*%xs[0] [borrow].x [raw])"
+  "[2] *%xs[coerce(lit(0) -> int32)] [borrow].x = coerce(lit(9) -> int32) [3] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
@@ -8222,7 +8222,7 @@
  "deref_rec__async__subscript__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<DR*, int32_t>>(&*%xs[0] [borrow], lit(1)) [3] %t[0] [borrow].x = coerce(lit(9) -> int32) [4] print(*%xs[0] [borrow].x [raw])"
+  "[2] %t = borrow_tuple<std::tuple<DR*, int32_t>>(&*%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) [3] %t[0] [borrow].x = coerce(lit(9) -> int32) [4] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw]"
  ],
  "deref_rec__ctor__borrow_method__decl_alias": [
   "reject:stmt.expr_stmt:field.receiver_shape",
@@ -8677,32 +8677,32 @@
  "deref_rec__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: DR = %xs[0] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%x: DR = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: DR = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw])"
+  "ptr_decl[ptr_addr] %x: DR = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__ctor__subscript__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: DR* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: DR* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__ctor__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__ctor__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -9262,27 +9262,27 @@
  "deref_rec__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: DR = %xs[0] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%x: DR = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: DR = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw])"
+  "ptr_decl[ptr_addr] %x: DR = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__fn__subscript__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: DR* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: DR* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__fn__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
@@ -9292,7 +9292,7 @@
  "deref_rec__fn__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__fn__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -9602,17 +9602,17 @@
  "deref_rec__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] %x->x = coerce(lit(9) -> int32) [4] print(*%xs[0] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] %x->x = coerce(lit(9) -> int32) [4] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> i"
  ],
  "deref_rec__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = coerce(lit(9) -> int32) [6] print(*%s1.x [raw]) [7] print(*%xs[0] [borrow].x [raw]) yield_values: [0] co"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = coerce(lit(9) -> int32) [6] print(*%s1.x [raw]) [7] print(*%xs[coerce(lit(0) -> in"
  ],
  "deref_rec__gen__subscript__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_rec__gen__subscript__match_capture": [
   "reject:stmt.match",
@@ -9622,12 +9622,12 @@
  "deref_rec__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow].x = coerce(lit(9) -> int32) [3] print(*%xs[0] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%xs[coerce(lit(0) -> int32)] [borrow].x = coerce(lit(9) -> int32) [3] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "deref_rec__gen__subscript__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<DR*, int32_t>>(&*%xs[0] [borrow], lit(1)) [3] %t[0] [borrow].x = coerce(lit(9) -> int32) [4] print(*%xs[0] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %t = borrow_tuple<std::tuple<DR*, int32_t>>(&*%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) [3] %t[0] [borrow].x = coerce(lit(9) -> int32) [4] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw]"
  ],
  "deref_rec__gen__subscript__yield_borrow": [
   "reject:res.yield_type",
@@ -10132,27 +10132,27 @@
  "deref_rec__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: DR = %xs[0] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%x: DR = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: DR = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw])"
+  "ptr_decl[ptr_addr] %x: DR = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__meth__subscript__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: DR* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: DR* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__meth__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "deref_rec__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
@@ -10162,7 +10162,7 @@
  "deref_rec__meth__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw])"
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__meth__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -10702,17 +10702,17 @@
  "deref_rec__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: DR = %xs[0] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "%x: DR = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: DR = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "ptr_decl[ptr_addr] %x: DR = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) "
  ],
  "deref_rec__nested__subscript__field_write": [
   "ok",
   "copies DR into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__subscript__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -10722,7 +10722,7 @@
  "deref_rec__nested__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'DR' is returned b",
@@ -10732,7 +10732,7 @@
  "deref_rec__nested__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "%t: tuple[DR, int32] = borrow_tuple<std::tuple<DR*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow].x = coerce(lit(9) -> int32) print(%xs[coerce(lit(0) -> int32)] [borrow].x ["
  ],
  "deref_rec__nested__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -11042,17 +11042,17 @@
  "dict_si__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tp"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "dict_si__async__subscript__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "dict_si__async__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11062,7 +11062,7 @@
  "dict_si__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow][str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] *%xs[coerce(lit(0) -> int32)] [borrow][str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -11072,7 +11072,7 @@
  "dict_si__async__subscript__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&*%xs[0] [borrow], lit(1)) [3] %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__"
+  "[2] %t = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&*%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) [3] %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print("
  ],
  "dict_si__ctor__borrow_method__decl_alias": [
   "ok",
@@ -11467,17 +11467,17 @@
  "dict_si__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: dict = %xs[coerce(lit(0) -> int32)] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
+  "ptr_decl[ptr_addr] %x: dict = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [t"
  ],
  "dict_si__ctor__subscript__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__ctor__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -11487,12 +11487,12 @@
  "dict_si__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__ctor__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(cal"
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__ctor__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -11982,17 +11982,17 @@
  "dict_si__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: dict = %xs[coerce(lit(0) -> int32)] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
+  "ptr_decl[ptr_addr] %x: dict = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [t"
  ],
  "dict_si__fn__subscript__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__fn__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12002,7 +12002,7 @@
  "dict_si__fn__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -12012,7 +12012,7 @@
  "dict_si__fn__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(cal"
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__fn__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -12322,17 +12322,17 @@
  "dict_si__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] *%x[str('z')] = lit(9) [4] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) yield_values: [0] c"
  ],
  "dict_si__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tp"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] *%x[str('z')] = coerce(lit(9) -> int32) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) "
  ],
  "dict_si__gen__subscript__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12342,12 +12342,12 @@
  "dict_si__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow][str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%xs[coerce(lit(0) -> int32)] [borrow][str('z')] = lit(9) [3] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "dict_si__gen__subscript__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&*%xs[0] [borrow], lit(1)) [3] %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__"
+  "[2] %t = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&*%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) [3] %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print("
  ],
  "dict_si__gen__subscript__yield_borrow": [
   "reject:res.yield_type",
@@ -12782,17 +12782,17 @@
  "dict_si__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: dict = %xs[coerce(lit(0) -> int32)] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
+  "ptr_decl[ptr_addr] %x: dict = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [t"
  ],
  "dict_si__meth__subscript__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "dict_si__meth__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -12802,7 +12802,7 @@
  "dict_si__meth__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "dict_si__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -12812,7 +12812,7 @@
  "dict_si__meth__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(cal"
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__meth__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -13282,17 +13282,17 @@
  "dict_si__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: dict = %xs[0] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%x: dict = %xs[coerce(lit(0) -> int32)] [borrow] %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: dict = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] "
+  "ptr_decl[ptr_addr] %x: dict = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [t"
  ],
  "dict_si__nested__subscript__field_write": [
   "ok",
   "copies dict[str, int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'd",
@@ -13302,7 +13302,7 @@
  "dict_si__nested__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%xs[coerce(lit(0) -> int32)] [borrow][str('z')] = lit(9) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'dict[str, int32]'",
@@ -13312,7 +13312,7 @@
  "dict_si__nested__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(cal"
+  "%t: tuple[dict[str, int32], int32] = borrow_tuple<std::tuple<::tpy::ordered_map<std::string, int32_t>*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow][str('z')] = coerce(lit("
  ],
  "dict_si__nested__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -13622,12 +13622,12 @@
  "gen_rec__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%xs[0] [borrow], get, [])."
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%xs["
  ],
  "gen_rec__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +,"
  ],
  "gen_rec__async__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13642,7 +13642,7 @@
  "gen_rec__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] held [%argtmp(auto&& #N){method_call(*%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%xs[0] [borrow], get, []).x [raw])"
+  "[2] held [%argtmp(auto&& #N){method_call(*%xs[coerce(lit(0) -> int32)] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%xs[coerce(lit(0) -> int32)] [borrow], g"
  ],
  "gen_rec__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14077,12 +14077,12 @@
  "gen_rec__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "%x: Box = %xs[coerce(lit(0) -> int32)] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow]"
  ],
  "gen_rec__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
+  "ptr_decl[ptr_addr] %x: Box = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__ctor__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14092,12 +14092,12 @@
  "gen_rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N"
  ],
  "gen_rec__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, []).x "
  ],
  "gen_rec__ctor__subscript__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14627,12 +14627,12 @@
  "gen_rec__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "%x: Box = %xs[coerce(lit(0) -> int32)] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow]"
  ],
  "gen_rec__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
+  "ptr_decl[ptr_addr] %x: Box = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__fn__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14642,12 +14642,12 @@
  "gen_rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N"
  ],
  "gen_rec__fn__subscript__recv_mut": [
   "ok",
   "",
-  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, []).x "
  ],
  "gen_rec__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14967,12 +14967,12 @@
  "gen_rec__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%xs[0] [borrow], get, [])."
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%xs["
  ],
  "gen_rec__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +,"
  ],
  "gen_rec__gen__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14987,7 +14987,7 @@
  "gen_rec__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] held [%argtmp(auto&& #N){method_call(*%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%xs[0] [borrow], get, []).x [raw]) yield_values: [0] coerce(li"
+  "[2] held [%argtmp(auto&& #N){method_call(*%xs[coerce(lit(0) -> int32)] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%xs[coerce(lit(0) -> int32)] [borrow], g"
  ],
  "gen_rec__gen__subscript__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15462,12 +15462,12 @@
  "gen_rec__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "%x: Box = %xs[coerce(lit(0) -> int32)] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow]"
  ],
  "gen_rec__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
+  "ptr_decl[ptr_addr] %x: Box = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__meth__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15477,12 +15477,12 @@
  "gen_rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N"
  ],
  "gen_rec__meth__subscript__recv_mut": [
   "ok",
   "",
-  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, []).x "
  ],
  "gen_rec__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15997,12 +15997,12 @@
  "gen_rec__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = %xs[coerce(lit(0) -> int32)] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow]"
  ],
  "gen_rec__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
+  "ptr_decl[ptr_addr] %x: Box = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__nested__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -16017,7 +16017,7 @@
  "gen_rec__nested__subscript__recv_mut": [
   "ok",
   "",
-  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[coerce(lit(0) -> int32)] [borrow], get, []).x "
  ],
  "gen_rec__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -16337,17 +16337,17 @@
  "list_i__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->push_back, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] method_call(%x, ->push_back, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) ["
  ],
  "list_i__async__subscript__field_write": [
   "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "list_i__async__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16357,7 +16357,7 @@
  "list_i__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], push_back, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] method_call(*%xs[coerce(lit(0) -> int32)] [borrow], push_back, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
@@ -16792,17 +16792,17 @@
  "list_i__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: list = %xs[0] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: list = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
+  "ptr_decl[ptr_addr] %x: list = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "list_i__ctor__subscript__field_write": [
   "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__ctor__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -16812,7 +16812,7 @@
  "list_i__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__ctor__subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -17342,17 +17342,17 @@
  "list_i__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: list = %xs[0] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: list = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
+  "ptr_decl[ptr_addr] %x: list = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "list_i__fn__subscript__field_write": [
   "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__fn__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17362,7 +17362,7 @@
  "list_i__fn__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
@@ -17682,17 +17682,17 @@
  "list_i__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->push_back, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] method_call(%x, ->push_back, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) yie"
  ],
  "list_i__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print(call(len [tpy"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->push_back, [lit(9)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) ["
  ],
  "list_i__gen__subscript__field_write": [
   "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "list_i__gen__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -17702,7 +17702,7 @@
  "list_i__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], push_back, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%xs[coerce(lit(0) -> int32)] [borrow], push_back, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int3"
  ],
  "list_i__gen__subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -18177,17 +18177,17 @@
  "list_i__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: list = %xs[0] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: list = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
+  "ptr_decl[ptr_addr] %x: list = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "list_i__meth__subscript__field_write": [
   "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "list_i__meth__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18197,7 +18197,7 @@
  "list_i__meth__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "list_i__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
@@ -18712,17 +18712,17 @@
  "list_i__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: list = %xs[0] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%x: list = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%xs[0] ["
+  "ptr_decl[ptr_addr] %x: list = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tp"
  ],
  "list_i__nested__subscript__field_write": [
   "ok",
   "copies list[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 'P",
@@ -18732,7 +18732,7 @@
  "list_i__nested__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], push_back, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'list[int32]' is r",
@@ -21442,17 +21442,17 @@
  "rec__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] %x->x = binop(%x->x, +, lit(1)) [4] print(*%xs[0] [borrow].x [raw])"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] %x->x = binop(%x->x, +, lit(1)) [4] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = binop(%x->x, +, lit(1)) [6] print(*%s1.x [raw]) [7] print(*%xs[0] [borrow].x [raw])"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = binop(%x->x, +, lit(1)) [6] print(*%s1.x [raw]) [7] print(*%xs[coerce(lit(0) -> in"
  ],
  "rec__async__subscript__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(*%h.f [storage].x [raw])"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(*%h.f [storage].x [raw])"
  ],
  "rec__async__subscript__match_capture": [
   "reject:stmt.match",
@@ -21462,7 +21462,7 @@
  "rec__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow].x = binop(*%xs[0] [borrow].x, +, lit(1)) [3] print(*%xs[0] [borrow].x [raw])"
+  "[2] *%xs[coerce(lit(0) -> int32)] [borrow].x = binop(*%xs[coerce(lit(0) -> int32)] [borrow].x, +, lit(1)) [3] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -21472,7 +21472,7 @@
  "rec__async__subscript__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<R*, int32_t>>(&*%xs[0] [borrow], lit(1)) [3] %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) [4] print(*%xs[0] [borrow].x [raw])"
+  "[2] %t = borrow_tuple<std::tuple<R*, int32_t>>(&*%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) [3] %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) [4] print(*%xs[coerce(lit(0) -> int32)] [bor"
  ],
  "rec__ctor__borrow_method__decl_alias": [
   "ok",
@@ -21957,32 +21957,32 @@
  "rec__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: R = %xs[0] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%x: R = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: R = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw])"
+  "ptr_decl[ptr_addr] %x: R = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__ctor__subscript__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: R* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: R* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = binop(%xs[0] [borrow].x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = binop(%xs[coerce(lit(0) -> int32)] [borrow].x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__ctor__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__ctor__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -22572,27 +22572,27 @@
  "rec__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: R = %xs[0] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%x: R = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: R = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw])"
+  "ptr_decl[ptr_addr] %x: R = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__fn__subscript__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw])"
  ],
  "rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: R* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: R* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__fn__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = binop(%xs[0] [borrow].x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = binop(%xs[coerce(lit(0) -> int32)] [borrow].x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22602,7 +22602,7 @@
  "rec__fn__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__fn__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -22912,17 +22912,17 @@
  "rec__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] %x->x = binop(%x->x, +, lit(1)) [4] print(*%xs[0] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] %x->x = binop(%x->x, +, lit(1)) [4] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> i"
  ],
  "rec__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = binop(%x->x, +, lit(1)) [6] print(*%s1.x [raw]) [7] print(*%xs[0] [borrow].x [raw]) yield_values: [0] co"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] %x->x = binop(%x->x, +, lit(1)) [6] print(*%s1.x [raw]) [7] print(*%xs[coerce(lit(0) -> in"
  ],
  "rec__gen__subscript__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(*%h.f [storage].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__subscript__match_capture": [
   "reject:stmt.match",
@@ -22932,12 +22932,12 @@
  "rec__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] *%xs[0] [borrow].x = binop(*%xs[0] [borrow].x, +, lit(1)) [3] print(*%xs[0] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] *%xs[coerce(lit(0) -> int32)] [borrow].x = binop(*%xs[coerce(lit(0) -> int32)] [borrow].x, +, lit(1)) [3] print(*%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) yield_values: [0] coerce(lit(0) -> i"
  ],
  "rec__gen__subscript__tuple_elem": [
   "ok",
   "",
-  "[2] %t = borrow_tuple<std::tuple<R*, int32_t>>(&*%xs[0] [borrow], lit(1)) [3] %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) [4] print(*%xs[0] [borrow].x [raw]) yield_values: [0] coerce(lit(0"
+  "[2] %t = borrow_tuple<std::tuple<R*, int32_t>>(&*%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) [3] %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) [4] print(*%xs[coerce(lit(0) -> int32)] [bor"
  ],
  "rec__gen__subscript__yield_borrow": [
   "reject:res.yield_type",
@@ -23472,27 +23472,27 @@
  "rec__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: R = %xs[0] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%x: R = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: R = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw])"
+  "ptr_decl[ptr_addr] %x: R = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__meth__subscript__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw])"
  ],
  "rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: R* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "hoist %v: R* match %xs[coerce(lit(0) -> int32)] [borrow]: [if_elif_record] case default: as %v [assign_addr] %v->x = binop(%v->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__meth__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = binop(%xs[0] [borrow].x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = binop(%xs[coerce(lit(0) -> int32)] [borrow].x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw])"
  ],
  "rec__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23502,7 +23502,7 @@
  "rec__meth__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[0] [borrow].x [raw])"
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__meth__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -24072,17 +24072,17 @@
  "rec__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: R = %xs[0] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "%x: R = %xs[coerce(lit(0) -> int32)] [borrow] %x.x = binop(%x.x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: R = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "ptr_decl[ptr_addr] %x: R = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) c"
  ],
  "rec__nested__subscript__field_write": [
   "ok",
   "copies R into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(%h.f [storage].x [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subscript__match_capture": [
   "reject:stmt.match:match.capture_shape",
@@ -24092,7 +24092,7 @@
  "rec__nested__subscript__recv_mut": [
   "ok",
   "",
-  "%xs[0] [borrow].x = binop(%xs[0] [borrow].x, +, lit(1)) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "%xs[coerce(lit(0) -> int32)] [borrow].x = binop(%xs[coerce(lit(0) -> int32)] [borrow].x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] [borrow].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -24102,7 +24102,7 @@
  "rec__nested__subscript__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[0] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[0] [borrow].x [raw]) call(nested_inner, [])"
+  "%t: tuple[R, int32] = borrow_tuple<std::tuple<R*, int32_t>>(&%xs[coerce(lit(0) -> int32)] [borrow], lit(1)) %t[0] [borrow]->x = binop(%t[0] [borrow]->x, +, lit(1)) print(%xs[coerce(lit(0) -> int32)] ["
  ],
  "rec__nested__temp_accessor__decl_alias": [
   "reject:expr.method_call:local_decl.lends_from_temporary",
@@ -24647,17 +24647,17 @@
  "set_i__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*"
  ],
  "set_i__async__subscript__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw])"
  ],
  "set_i__async__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -24667,7 +24667,7 @@
  "set_i__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw])"
+  "[2] method_call(*%xs[coerce(lit(0) -> int32)] [borrow], insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -25102,17 +25102,17 @@
  "set_i__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: set = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
+  "ptr_decl[ptr_addr] %x: set = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print"
  ],
  "set_i__ctor__subscript__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__ctor__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25122,7 +25122,7 @@
  "set_i__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__ctor__subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25652,17 +25652,17 @@
  "set_i__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: set = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
+  "ptr_decl[ptr_addr] %x: set = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print"
  ],
  "set_i__fn__subscript__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__fn__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -25672,7 +25672,7 @@
  "set_i__fn__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -25992,17 +25992,17 @@
  "set_i__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [3] method_call(%x, ->insert, [lit(9)]) [4] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) yield_"
  ],
  "set_i__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*%s1]) [raw]) [7] print"
+  "[3] %x = form_convert[borrow](*%xs[coerce(lit(0) -> int32)] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->insert, [coerce(lit(9) -> int32)]) [6] print(call(len [tpy::__len__], [*"
  ],
  "set_i__gen__subscript__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "[3] *%h.f [storage] = *%xs[0] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[3] *%h.f [storage] = *%xs[coerce(lit(0) -> int32)] [borrow] [4] print(call(len [tpy::__len__], [*%h.f [storage]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26012,7 +26012,7 @@
  "set_i__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[0] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] method_call(*%xs[coerce(lit(0) -> int32)] [borrow], insert, [lit(9)]) [3] print(call(len [tpy::__len__], [*%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "set_i__gen__subscript__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26487,17 +26487,17 @@
  "set_i__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "%x: set = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
+  "ptr_decl[ptr_addr] %x: set = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print"
  ],
  "set_i__meth__subscript__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw])"
  ],
  "set_i__meth__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -26507,7 +26507,7 @@
  "set_i__meth__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw])"
  ],
  "set_i__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",
@@ -27022,17 +27022,17 @@
  "set_i__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: set = %xs[0] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "%x: set = %xs[coerce(lit(0) -> int32)] [borrow] method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: set = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len_"
+  "ptr_decl[ptr_addr] %x: set = %xs[coerce(lit(0) -> int32)] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print"
  ],
  "set_i__nested__subscript__field_write": [
   "ok",
   "copies set[int32] into field; use copy() to make this explicit",
-  "%h.f [storage] = %xs[0] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
+  "%h.f [storage] = %xs[coerce(lit(0) -> int32)] [borrow] print(call(len [tpy::__len__], [%h.f [storage]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__subscript__match_capture": [
   "sema:match subject must be a union, enum, primitive, record, or Optional type, got 's",
@@ -27042,7 +27042,7 @@
  "set_i__nested__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[0] [borrow]]) [raw]) call(nested_inner, [])"
+  "method_call(%xs[coerce(lit(0) -> int32)] [borrow], insert, [lit(9)]) print(call(len [tpy::__len__], [%xs[coerce(lit(0) -> int32)] [borrow]]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'set[int32]' is re",

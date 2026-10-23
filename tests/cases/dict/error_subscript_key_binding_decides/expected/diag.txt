@@ -1,0 +1,1 @@
+main.py:17: error: 'xs' holds int32 elements since line 15 (bound as list[int32]), and this value is int64; the list is bound as list[int32], so the value must be int32

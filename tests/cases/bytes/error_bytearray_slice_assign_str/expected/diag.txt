@@ -1,1 +1,1 @@
-main.py:5: error: Type str does not conform to protocol Iterable[uint8] in slice assignment
+main.py:5: error: Type mismatch in slice assignment: expected Iterable[uint8], got str

@@ -1,0 +1,1 @@
+main.py:7: error: Type mismatch in assignment: expected list[int32], got list[str]

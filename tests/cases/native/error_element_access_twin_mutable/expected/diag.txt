@@ -1,0 +1,1 @@
+main.py:15: error: element_access= on 'Ring.__getitem__' names 'Ring.unchecked_get', which does not accept a readonly receiver: __getitem__ takes a readonly receiver (declare the twin @readonly)

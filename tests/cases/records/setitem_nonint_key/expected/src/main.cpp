@@ -28,6 +28,13 @@ namespace tpyapp::main {
 //     d["x"] = 5
 //     del d["x"]
 //     print(len(d))          # 0
+//
+//     # write-only mapping: a store and a del need no __getitem__
+//     w = Sink()
+//     w["k"] = 8
+//     print("write-only:", w.last)  # 8
+//     del w["abc"]
+//     print("write-only:", w.last)  # -3
 void main() {
     Store s = Store();
     s.__setitem__("a", 10);
@@ -48,6 +55,11 @@ void main() {
     ::tpy::__setitem__(d, "x", 5);
     ::tpy::__delitem__(d, "x");
     std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
+    Sink w = Sink();
+    w.__setitem__("k", 8);
+    std::cout << "write-only:" << " " << w.last << "\n" << ::tpy::check_signals;
+    w.__delitem__("abc");
+    std::cout << "write-only:" << " " << w.last << "\n" << ::tpy::check_signals;
 }
 
 // main()

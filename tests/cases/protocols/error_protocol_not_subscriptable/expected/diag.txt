@@ -1,0 +1,1 @@
+main.py:20: error: Type 'Sized2' is not subscriptable

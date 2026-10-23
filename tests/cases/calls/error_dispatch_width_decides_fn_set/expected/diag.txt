@@ -1,0 +1,1 @@
+main.py:33: error: 'xs' holds int32 elements since line 31 (through 'x', an argument to 'take()'), and this value is int64; annotate its first binding: xs: list[int64] = [...]

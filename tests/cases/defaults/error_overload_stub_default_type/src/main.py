@@ -8,7 +8,7 @@ from tpy import int32
 
 
 @overload
-def width(x: int32, s: str = 5) -> int32:  # tpyc: error(/expected str, got IntLiteral/)
+def width(x: int32, s: str = 5) -> int32:  # tpyc: error(/expected str, got int/)
     ...
 
 

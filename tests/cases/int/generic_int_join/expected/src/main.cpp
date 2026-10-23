@@ -136,7 +136,7 @@ void literals() {
     ::tpy::ordered_set<int64_t> s64 = ::tpy::ordered_set<int64_t>({a, b});
     ::tpy::ordered_map<std::string, int64_t> d64 = ::tpy::ordered_map<std::string, int64_t>({{"a", a}, {"b", b}});
     ::tpy::__setitem__(xs, 1, (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(xs, 1))), static_cast<int64_t>(b))));
-    std::cout << "literals" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(ss)) << " " << ::tpy::__getitem__(ks, b) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(vs, 2))), static_cast<int64_t>(b))) << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
+    std::cout << "literals" << " " << ::tpy::ListPrinter(xs) << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int64_t>(ss)) << " " << ::tpy::__getitem__(ks, static_cast<int64_t>(b)) << " " << (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(a, ::tpy::__getitem__(vs, 2))), static_cast<int64_t>(b))) << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::cout << "annotated" << " " << ::tpy::ListPrinter(({
         std::vector<int64_t> __result;
         auto __obj_0 = ::tpy::builtin_sorted<int64_t>(s64);

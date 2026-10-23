@@ -22,12 +22,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (FunctionInfo, MethodSignature, NominalType,
                        OptionalType, PendingContainerType, PendingListType,
                        RecordInfo, TpyType, TypeParamRef, UnionType, NoneType,
-                       contains_type_param, is_protocol_type)
+                       contains_type_param, is_protocol_type,
+                       strip_auto_readonly, without_readonly)
 
 from .pending_num import bare_slot
 
@@ -132,28 +133,53 @@ def _stub(ctx: 'SemanticContext', container: PendingContainerType | type,
 
 def container_calls(ctx: 'SemanticContext',
                     container: PendingContainerType | type, name: str,
-                    arity: int) -> list[ContainerCall]:
+                    arity: int,
+                    admits: Callable[[FunctionInfo], bool] | None = None,
+                    ) -> list[ContainerCall]:
     """Every overload of the method `name` of `container`'s kind taking
-    `arity` arguments, classified (`ContainerCall`). The mutable and const
-    twins of an `@auto_readonly` method use the parts alike: one stands for
-    both."""
+    `arity` arguments, classified (`ContainerCall`); with `admits`, only
+    those it says can take the arguments known so far. The mutable and
+    const twins of an `@auto_readonly` method use the parts alike: one
+    stands for both."""
     stub = _stub(ctx, container)
     if stub is None:
         return []
-    record, steps = stub
-    fns = [fn for fn in record.get_method_overloads(name) or []
-           if len(fn.params) == arity]
-    if len(fns) == 2 and sum(f.is_auto_readonly_mutable_clone
-                             for f in fns) == 1:
-        fns = [f for f in fns if not f.is_auto_readonly_mutable_clone]
-    return [_classify(fn, steps, _qname(container)) for fn in fns]
+    _, steps = stub
+    fns = [fn for fn in container_overloads(ctx, container, name)
+           if len(fn.params) == arity and (admits is None or admits(fn))]
+    return [_classify(fn, steps, _qname(container))
+            for fn in without_mutable_twins(fns)]
+
+
+def container_overloads(ctx: 'SemanticContext',
+                        container: PendingContainerType | type,
+                        name: str) -> list[FunctionInfo]:
+    """The whole overload set of the method `name` of `container`'s kind,
+    as its stub declares it."""
+    stub = _stub(ctx, container)
+    return (stub[0].get_method_overloads(name) or []) if stub else []
+
+
+def without_mutable_twins(fns: list[FunctionInfo]) -> list[FunctionInfo]:
+    """`fns` with each `@auto_readonly` mutable clone dropped whose const
+    twin -- the same parameters, readonly aside -- is among them: the pair
+    is one signature to every question but the receiver's kind."""
+    def shape(fn: FunctionInfo) -> tuple[TpyType, ...]:
+        return tuple(without_readonly(strip_auto_readonly(p.type))
+                     for p in fn.params)
+
+    twins = {shape(fn) for fn in fns if not fn.is_auto_readonly_mutable_clone}
+    return [fn for fn in fns
+            if not (fn.is_auto_readonly_mutable_clone and shape(fn) in twins)]
 
 
 def container_call(ctx: 'SemanticContext',
                    container: PendingContainerType | type, name: str,
-                   arity: int) -> ContainerCall | None:
+                   arity: int,
+                   admits: Callable[[FunctionInfo], bool] | None = None,
+                   ) -> ContainerCall | None:
     """`container_calls` when there is exactly one such overload."""
-    calls = container_calls(ctx, container, name, arity)
+    calls = container_calls(ctx, container, name, arity, admits)
     return calls[0] if len(calls) == 1 else None
 
 

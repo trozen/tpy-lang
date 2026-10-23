@@ -5,3 +5,4 @@ named_like_sink 1 1
 iterating_wording 2 2
 outer_loop_kept 1
 distinct_elements [3, 3]
+slice_store_holder 3 8

@@ -5,7 +5,7 @@ from urllib.parse import urlsplit
 
 def main() -> None:
     p = urlsplit("http://h/path")
-    print(p[0])  # tpyc: error(/Cannot index type SplitResult: no __getitem__/)
+    print(p[0])  # tpyc: error(/Type 'SplitResult' is not subscriptable/)
 
 
 main()

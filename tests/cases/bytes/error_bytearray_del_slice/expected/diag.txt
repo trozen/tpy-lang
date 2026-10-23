@@ -1,1 +1,1 @@
-main.py:7: error: deleting a slice ('del xs[a:b]') is not yet supported
+main.py:7: error: Type 'bytearray' does not support item deletion

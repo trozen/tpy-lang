@@ -48,8 +48,13 @@ class bytes(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __len__(self) -> int32: ...
 
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
+    @readonly
+    @pure
+    def unchecked_get(self, index: int32) -> uint8: ...
+
     @dispatch
-    @native("tpy::bytes_getitem", function=True)
+    @native("tpy::bytes_getitem", function=True, element_access=unchecked_get)
     @readonly
     @pure
     def __getitem__(self, index: int32) -> uint8: ...
@@ -249,8 +254,13 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __len__(self) -> int32: ...
 
+    @cpp_template("{self}[static_cast<std::size_t>({0})]")
+    @readonly
+    @pure
+    def unchecked_get(self, index: int32) -> uint8: ...
+
     @dispatch
-    @native("tpy::bytes_getitem", function=True)
+    @native("tpy::bytes_getitem", function=True, element_access=unchecked_get)
     @readonly
     @pure
     def __getitem__(self, index: int32) -> uint8: ...
@@ -304,8 +314,11 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __contains__(self, value: bytes) -> bool: ...
 
+    @cpp_template("{self}[static_cast<std::size_t>({0})] = {1}")
+    def unchecked_set(self, index: int32, value: uint8) -> None: ...
+
     @dispatch
-    @native("tpy::bytearray_setitem", function=True)
+    @native("tpy::bytearray_setitem", function=True, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: uint8) -> None: ...
 
     @dispatch

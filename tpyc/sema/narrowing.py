@@ -228,17 +228,16 @@ class NarrowingTracker:
                 if actual_type.inner.is_value_type():
                     return None
                 actual_type = actual_type.inner
-            elem_type = actual_type.get_element_type()
-            if elem_type is not None:
-                return elem_type
             if is_protocol_type(actual_type):
                 return self._get_protocol_getitem_type(actual_type)
+            # The slot the subscript's dunder call reads or writes.
             setter = expr.dunder(SubscriptDunder.SET)
             if setter is not None:
                 return store_slot_type(setter)
             getter = expr.dunder(SubscriptDunder.GET)
             if getter is not None:
                 return getter.return_type
+            return actual_type.get_element_type()
         return None
 
     def _get_protocol_getitem_type(self, protocol: NominalType) -> TpyType | None:
@@ -255,29 +254,6 @@ class NarrowingTracker:
                     return self.type_ops.substitute_types(method_sig.return_type, type_subst)
                 return method_sig.return_type
         return None
-
-    def record_getitem_key_ret(self, record_type: NominalType, *,
-                               readonly_receiver: bool = False) -> tuple[TpyType, TpyType] | None:
-        """(key-param type, return type) of a record's single-arg __getitem__.
-
-        Returns None when there is no single-key __getitem__ (e.g. only a slice
-        overload) -- so a non-single-key subscript stays on its normal path.
-        """
-        record = self.ctx.registry.get_record_for_type(record_type)
-        if record is None:
-            return None
-        getitem = self.protocols.lookup_record_method(
-            record, "__getitem__", readonly_receiver=readonly_receiver)
-        # params excludes self; a single-key accessor has exactly one param.
-        if getitem is None or len(getitem.params) != 1:
-            return None
-        key_type = getitem.params[0].type
-        ret_type = getitem.return_type
-        type_subst = self.type_ops.build_type_substitution(record_type)
-        if type_subst:
-            key_type = self.type_ops.substitute_type_params(key_type, type_subst)
-            ret_type = self.type_ops.substitute_type_params(ret_type, type_subst)
-        return key_type, ret_type
 
     # -- Condition fact extraction --------------------------------------
 

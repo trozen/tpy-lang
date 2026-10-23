@@ -27,7 +27,7 @@ def rebind(a: int32) -> None:
     r = Rec(1)
     y = 0.5
     # The seed hints [a] but converts none of its ints.
-    y = tot2(peek(r, [a]))  # tpyc: error(/No matching overload for tot2\(list\[int32\]\)/)
+    y = tot2(peek(r, [a]))  # tpyc: error(/No matching overload for 'tot2' with argument types \(list\[int32\]\)/)
     print(y, r.v)
 
 

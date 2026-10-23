@@ -11,6 +11,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
 void main();
+// def float32_needles() -> None:
+void float32_needles();
 
 void __tpy_init();
 } // namespace tpyapp::main

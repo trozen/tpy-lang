@@ -467,10 +467,8 @@ class SystemExit(BaseException):
     @cpp_template("tpy::SystemExit()")
     def __init__(self) -> None: ...
 
-    # One variant per alternative besides the whole union: overload
-    # resolution does not admit an int literal or a narrowed sub-union at
-    # a union parameter (BUGS.md#dispatch-union-param-refuses-literal), and
-    # an `int` argument there fails the C++ build
+    # One variant per alternative besides the whole union: an `int`
+    # argument at the union fails the C++ build
     # (BUGS.md#bigint-arg-to-int-union-param-ill-formed).
     @dispatch
     @cpp_template("tpy::SystemExit({0})")

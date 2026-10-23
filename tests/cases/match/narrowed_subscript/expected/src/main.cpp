@@ -31,11 +31,11 @@ void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigI
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = std::get<1>(__match_subject_1);
-        std::cout << "str-match" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << " " << ::tpy::__getitem__(__case_0, index.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+        std::cout << "str-match" << " " << ::tpy::__getitem__(__case_0, 0) << " " << ::tpy::__getitem__(__case_0, -1) << " " << ::tpy::__getitem__(__case_0, (index).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
         std::cout << "str-slice" << " " << ::tpy::str_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt}) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << ::tpy::__getitem__(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+                std::cout << ::tpy::__getitem__(__case_0, (((index) + (::tpy::BigInt(10)))).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
                 std::cout << "str-match-bounds" << "\n" << ::tpy::check_signals;
             }
@@ -49,7 +49,7 @@ void string_reads(const ::tpy::Union<int32_t, std::string>& x, const ::tpy::BigI
     }
     if (std::holds_alternative<std::string>(x)) {
         const auto& __x = std::get<std::string>(x);
-        std::cout << "str-isinstance" << " " << ::tpy::__getitem__(__x, 0) << " " << ::tpy::__getitem__(__x, -1) << " " << ::tpy::__getitem__(__x, index.to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
+        std::cout << "str-isinstance" << " " << ::tpy::__getitem__(__x, 0) << " " << ::tpy::__getitem__(__x, -1) << " " << ::tpy::__getitem__(__x, (index).to_fixed_check<int32_t>()) << "\n" << ::tpy::check_signals;
         {
             try {
                 std::cout << ::tpy::__getitem__(__x, -10) << "\n" << ::tpy::check_signals;
@@ -78,11 +78,11 @@ void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tp
     switch (__match_subject_1.index()) {
     case 1: {
         auto& __case_0 = *std::get<1>(__match_subject_1);
-        std::cout << "bytes-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+        std::cout << "bytes-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, (index).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
         std::cout << "bytes-slice" << " " << ::tpy::BytesPrinter(::tpy::bytes_slice(__case_0, ::tpy::BasicSlice{1, std::nullopt})) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, (((index) + (::tpy::BigInt(10)))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
                 std::cout << "bytes-match-bounds" << "\n" << ::tpy::check_signals;
             }
@@ -96,7 +96,7 @@ void bytes_reads(::tpy::Union<const Indexed*, const ::tpy::Bytes*> x, const ::tp
     }
     if (std::holds_alternative<const ::tpy::Bytes*>(x)) {
         auto& __x = *std::get<const ::tpy::Bytes*>(x);
-        std::cout << "bytes-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+        std::cout << "bytes-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, (index).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -142,10 +142,10 @@ void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, co
     switch (__match_subject_1.index()) {
     case 0: {
         auto& __case_0 = *std::get<0>(__match_subject_1);
-        std::cout << "bytearray-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+        std::cout << "bytearray-match" << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__case_0, (index).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
         {
             try {
-                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, ((index) + (::tpy::BigInt(10))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+                std::cout << static_cast<int>(::tpy::bytes_getitem(__case_0, (((index) + (::tpy::BigInt(10)))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::IndexError&) {
                 std::cout << "bytearray-match-bounds" << "\n" << ::tpy::check_signals;
             }
@@ -159,7 +159,7 @@ void bytearray_reads(::tpy::Union<const ::tpy::ByteArray*, const int32_t*> x, co
     }
     if (std::holds_alternative<const ::tpy::ByteArray*>(x)) {
         auto& __x = *std::get<const ::tpy::ByteArray*>(x);
-        std::cout << "bytearray-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, index.to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+        std::cout << "bytearray-isinstance" << " " << static_cast<int>(::tpy::bytes_getitem(__x, 0)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, -1)) << " " << static_cast<int>(::tpy::bytes_getitem(__x, (index).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
         {
             try {
                 std::cout << static_cast<int>(::tpy::bytes_getitem(__x, -10)) << "\n" << ::tpy::check_signals;

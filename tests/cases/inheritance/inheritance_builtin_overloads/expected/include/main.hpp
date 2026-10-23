@@ -15,6 +15,11 @@ extern int32_t first;
 extern std::vector<int32_t>* items;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def out_of_range(m: MyList) -> None:
+void out_of_range(const MyList& m);
+// def store(m: MyList, k: int32) -> None:
+void store(MyList& m, int32_t k);
+
 // class MyList(list[int32]):
 struct MyList : std::vector<int32_t> {
     // name: str

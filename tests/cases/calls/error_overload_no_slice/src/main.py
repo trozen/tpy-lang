@@ -12,6 +12,6 @@ class MyList:
 
 def main() -> None:
     m = MyList()
-    sp = m[int32(0):int32(1)]  # tpyc: error(/Slicing is not supported/)
+    sp = m[int32(0):int32(1)]  # tpyc: error(/Type mismatch in argument 'index': expected int32, got slice/)
 
 main()

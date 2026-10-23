@@ -694,8 +694,8 @@ phrasing is a future cosmetic refinement and is not blocking.
 | `any_var.field` | `Cannot access field '{name}' on type Any` |
 | `any_var()` | `'{name}' is not callable` |
 | `for x in any_var` | `Cannot iterate over type Any` |
-| `any_var[k]` | `Cannot index type Any` |
-| `len(any_var)` | `No matching overload for len(Any)` |
+| `any_var[k]` | `Type 'Any' is not subscriptable` |
+| `len(any_var)` | `No matching overload for 'len' with argument types (Any)` |
 | `any_var + x` (any binop) | `Invalid operand types for '+': Any and {other}` |
 | `any_var is x` for `x != None` | `'is' / 'is not' can only compare objects or None, got Any and {other}` |
 | `cast(T, x)` runtime mismatch | `TypeError: Any holds {actual}, cannot cast to {T}` (catchable) |

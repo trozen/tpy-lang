@@ -1,1 +1,1 @@
-main.py:4: error: Cannot assign to elements of str (read-only)
+main.py:4: error: Type 'str' does not support item assignment

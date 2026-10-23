@@ -233,7 +233,7 @@ void former_refusals() {
     int64_t big = static_cast<int64_t>(99999999999);
     {
         try {
-            std::cout << ::tpy::OSError(::tpy::int_cast_check<int32_t>(big), "msg") << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::OSError(::tpy::int_cast_check<int32_t>(big), std::string_view("msg")) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError&) {
             std::cout << "refusals errno OverflowError" << "\n" << ::tpy::check_signals;
         }

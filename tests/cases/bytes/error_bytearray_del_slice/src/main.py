@@ -1,10 +1,10 @@
-# Deleting a slice is not supported yet (BUGS.md#del-slice-rejected): the
-# rejection says so in plain words, and on bytearray it wins over the
-# missing-__delitem__ message.
+# A slice delete on bytearray, whose type declares no __delitem__
+# (BUGS.md#bytearray-del-item-define-delitem), is refused as any delete on
+# it is; the slice-delete gap itself is list/error_list_del_slice.
 def main() -> None:
     buf = bytearray(b"abcdef")
     i = 2
-    del buf[:i]  # tpyc: error(/deleting a slice \('del xs\[a:b\]'\) is not yet supported/)
+    del buf[:i]  # tpyc: error(/Type 'bytearray' does not support item deletion/)
     print(buf)
 
 

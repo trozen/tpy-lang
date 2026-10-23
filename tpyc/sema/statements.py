@@ -10,14 +10,14 @@ from typing import TYPE_CHECKING, Callable, Iterator, Mapping, NamedTuple
 
 from ..holders import IterHolder
 from ..typesys import (pointer_repr_optional, pointer_variant_union,
-                       ResolvedBinop, store_slot_type,
-                       subscript_answers_as_call)
+                       ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
+                       BASIC_SLICE, SLICE)
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType, make_readonly,
     is_indirection_type,
     FinalType,
     PendingListType, PendingDictType, PendingContainerType, make_list, PendingNumType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, NominalType, TypeParamRef,
-    ListLiteralInfo, DictLiteralInfo, ContainerLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
+    ListLiteralInfo, ContainerLiteralInfo, ViewVarInfo, PtrType, is_readonly_ptr, NoneType, OptionalType, AnyType, UnionType, UnknownElementType,
     is_c_abi_allowed, is_c_abi_element_allowed, c_abi_type_hint,
     C_ABI_TYPE_ERROR,
     is_void_like_type,
@@ -102,7 +102,7 @@ from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
-from .overloads import OverloadAmbiguityError, resolve_overload
+from .overloads import OverloadAmbiguityError
 from .scope_tracker import ScopeTracker
 from .init_tracker import InitTracker
 from .receiver_calls import (
@@ -179,7 +179,7 @@ from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
     is_iterator_adapter,
-    is_dict, is_array, is_span, is_list,
+    is_span, is_list,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
     is_borrowing_view_type,
@@ -3083,14 +3083,8 @@ class StatementAnalyzer:
                         arg_types = [self.expr.analyze_expr(a)
                                      for a in stmt.args]
                     try:
-                        winner = resolve_overload(
-                            init_overloads, arg_types,
-                            protocol_checker=self.protocols.type_conforms_to_protocol,
-                            default_int_type=self.ctx.default_int_type,
-                            subclass_checker=self.ctx.registry.subclass_distance,
-                            protocol_classifier=self.protocols.classify_protocol_conformance,
-                            type_ops=self.type_ops,
-                        )
+                        winner = self.expr.calls.ranking().resolve(
+                            init_overloads, arg_types)
                     except OverloadAmbiguityError as e:
                         raise self.ctx.error(
                             self.compat.ambiguous_overload_text(
@@ -5765,53 +5759,18 @@ class StatementAnalyzer:
             return None
         return self.ctx.get_raw_expr_type(target.obj)
 
-    def _target_cell_list(
-            self, target: TpyExpr,
-    ) -> ContainerCells | ListLiteralInfo | DictLiteralInfo | None:
-        """What decides the element a store through `target` writes, when
-        `target` indexes a cell list or a cell dict, born or not
-        (`PendingNums.cell_container`)."""
-        into = self.pend.cell_container(self._indexed_list(target))
-        return (into if into is not None and isinstance(
-            root_of(into), (PendingListType, PendingDictType)) else None)
-
     def _target_elem_cell(self, target: TpyExpr) -> PendingNumCell | None:
-        """The cell a store through `target` writes to: the element cell of
-        the list literal `target` indexes, the value cell of the dict --
-        the container's last part, which its subscript stores."""
+        """The cell an augmented store through `target` writes to: the
+        element cell of the list literal `target` indexes, the value cell
+        of the dict -- the container's last part. The update is the
+        operator's result, settled with both its sides, which the call's
+        container preparation cannot see."""
         lc = self.pend.container_cells(self._indexed_list(target))
         if lc is None or isinstance(lc.tree, PendingSetType):
             return None
         leaf = at_path(lc.tree, lc.tree.STEPS[-1:])
         return (self.ctx.pending_num_cells.get(min(leaf.cells))
                 if isinstance(leaf, PendingNumType) else None)
-
-    def _store_subscript(self, stmt: TpyAssign, into: object,
-                         target_type: TpyType, value_type: TpyType,
-                         ) -> tuple[TpyType, TpyType, ContainerCells | None]:
-        """`c[k] = v` into a list or dict whose cells decide its leaves,
-        born or not: the value is stored at the container's last part and,
-        for a container whose key is a part, the key at its first (an
-        inserting key widens the key as a value widens the value). Returns
-        the store's target type (that part as the cells have it), the
-        value's type as the container takes it, and the cells that took
-        it."""
-        sub = stmt.target
-        root = root_of(into)
-        keys: tuple[tuple[TpyType, object], ...] = ()
-        if len(root.STEPS) > 1:
-            key_type = self.ctx.get_expr_type(sub.index)
-            if key_type is None:
-                return target_type, value_type, None
-            keys = ((key_type, sub.index),)
-        stored, value_type = self.pend.store_value(
-            self.ctx.get_raw_expr_type(sub.obj),
-            Entry(keys + ((value_type, stmt.value),)), stmt)
-        if stored is None:
-            return target_type, value_type, None
-        target = make_ref(at_path(stored.tree, stored.tree.STEPS[-1:]))
-        self.ctx.set_expr_type(sub, target)
-        return target, value_type, stored
 
     def _bind_list_elem_cell(self, name: str, site: TpyStmt,
                              value: TpyExpr | None,
@@ -7435,88 +7394,46 @@ class StatementAnalyzer:
                 )
                 stmt.is_const_ref.append(eligible)
 
-    def _analyze_slice_assign(self, stmt: TpyAssign) -> None:
-        """Analyze a slice assignment: a[x:y] = rhs or a[x:y:z] = rhs."""
-        assert isinstance(stmt.target, TpySubscript)
-        sl = stmt.target.index
-        assert isinstance(sl, TpySlice)
+    def _written_key_type(self, target: TpySubscript) -> TpyType:
+        """The type of subscript `target`'s key as written: the slice a
+        written slice builds, else what its analysis gave."""
+        if isinstance(target.index, TpySlice):
+            return SLICE if target.is_stepped_slice else BASIC_SLICE
+        key = target.written_index if target.written_index is not None \
+            else target.index
+        key_type = self.ctx.get_raw_expr_type(key)
+        assert key_type is not None
+        return key_type
 
-        stepped = sl.step is not None
-
-        obj_type = self.expr.analyze_expr(stmt.target.obj)
-        actual_type = unwrap_own(unwrap_readonly(unwrap_ref_type(obj_type)))
-
-        # Look up __setitem__(basic_slice/slice, value) overload via .py stubs
-        result = self.expr._find_slice_setitem(actual_type, stepped=stepped)
-        if result is None:
-            raise self.ctx.error(
-                f"Slice assignment not supported for type '{obj_type}'", stmt)
-
-        _value_param_type, fi = result
-        stmt.target.slice_function_info = fi
-        stmt.target.is_stepped_slice = stepped
-
-        self._enforce_readonly_assignment_target(stmt.target)
-
-        # Analyze slice bounds and validate they are integer types
-        for bound in (sl.lower, sl.upper, sl.step):
-            if bound is not None:
-                bound_type = self.expr.analyze_expr(bound)
-                if not is_any_int_type(bound_type):
-                    raise self.ctx.error(
-                        f"Slice bound must be an integer, got '{bound_type}'", bound)
-
-        # Use the container's element type as hint so array literals infer correctly.
-        # Use the stub's value param type (e.g. Iterable[Own[T]]) for coercion,
-        # which accepts any iterable and triggers copy warnings for lvalue sources.
-        elem_type = actual_type.get_element_type()
-        rhs_hint = make_list(elem_type) if elem_type is not None else _value_param_type
-        self.ctx.set_expr_type(stmt.target, rhs_hint)
-
-        value_type = self.expr.analyze_expr_with_hint(stmt.value, rhs_hint)
-        stmt.value = self.compat.coerce_expr(stmt.value, value_type, _value_param_type, "slice assignment",
-                                             coercion_ctx=CoercionContext.ASSIGN,
-                                             target_is_storage_form=True)
-
-        # Mutation tracking
-        # Slice assignment replaces a subrange -- structural mutation.
-        mark_roots(self.ctx, storage_roots(stmt.target, Use.PLACE,
-                                           self.ctx.get_expr_type,
-                                           MayLend(self.ctx)),
-                   MarkRequest(loop_vars=True, through_field=True,
-                               structural=True))
-        storage = self._resolve_obj_storage(stmt.target.obj)
-        if storage is not None:
-            bt = self.ctx.func.borrow_tracker
-            if bt.has_borrow_of_kinds(storage, INVALIDATING_BORROW_KINDS):
-                self.ctx.warning(storage_loan_mutation_warning(
-                    bt, storage, "slice assignment"), stmt)
-            self.ctx.mark_all_view_borrowers_mutated(storage)
-
-    def _credit_user_setitem(self, target: TpySubscript, stmt: TpyStmt, *,
-                             check_loans: bool) -> None:
-        """A user `__setitem__` is a method call on the receiver that may
-        grow it, unlike a builtin element store (answered by the element-hop
-        check at the write site): credit it through the receiver-call
-        chokepoint, so the structural mark reaches a caller holding a loan
-        across the enclosing call. `check_loans=False` when the element-hop
-        check already warned at this write."""
+    def _credit_subscript_setitem(self, target: TpySubscript, stmt: TpyStmt,
+                                  *, check_loans: bool) -> None:
+        """A `__setitem__` without the element-access contract (a record's,
+        a builtin slice store's) is a method call on the receiver that may
+        grow it, unlike an element store (answered by the element-hop check
+        at the write site): credit it through the receiver-call
+        chokepoint, so the structural mark
+        reaches a caller holding a loan across the enclosing call.
+        `check_loans=False` when the element-hop check already warned at
+        this write."""
         callee = target.dunder(SubscriptDunder.SET)
-        if callee is None:
+        if callee is None or callee.root.element_access is not None:
             return
-        recv = self._record_subscript_receiver(target)
+        recv = self._subscript_receiver(target)
         assert recv is not None
+        # A builtin's dunder is no name the user wrote: the warning names
+        # the store.
+        label = self.expr.subscript_arg_context(target, recv[0], 1, [callee])
         credit_implicit_receiver_call(self.ctx, target.obj, recv[0], callee.root,
                                       callee.name, stmt,
-                                      check_loans=check_loans)
+                                      check_loans=check_loans, label=label)
 
-    def _record_subscript_receiver(
-            self, target: TpySubscript) -> 'tuple[NominalType, bool] | None':
-        """The record a subscript calls its dunders on, and whether the
-        receiver is readonly; None for a receiver whose subscripts keep the
-        builtin rule (`subscript_answers_as_call`). A checked Optional
-        receiver answers as its record."""
-        recv = self.ctx.get_expr_type(target.obj)
+    def _subscript_receiver(
+            self, target: TpySubscript) -> 'tuple[TpyType, bool] | None':
+        """The receiver a subscript calls its dunders on -- a checked
+        Optional answering as its inner type -- and whether it is
+        readonly; None for a subscript that is no dunder call (a tuple
+        element, a TypedDict field, a protocol receiver)."""
+        recv = self.ctx.get_raw_expr_type(target.obj)
         if recv is None or target.typed_dict_field is not None:
             return None
         recv = unwrap_own(unwrap_ref_type(recv))
@@ -7524,30 +7441,71 @@ class StatementAnalyzer:
         bare = unwrap_qualifiers(recv)
         if isinstance(bare, OptionalType):
             bare = unwrap_qualifiers(bare.inner)
-        if not (isinstance(bare, NominalType)
-                and subscript_answers_as_call(bare)):
+        if isinstance(bare, TupleType) or is_protocol_type(bare):
             return None
         return bare, readonly
 
-    def _resolve_record_store(self, target: TpySubscript,
-                              value_type: TpyType) -> TpyType | None:
-        """`t[k] = v` on a record is the explicit `t.__setitem__(k, v)`
-        call: its variant resolved on the key and the value
-        (`ExpressionAnalyzer.resolve_subscript_dunder`), the key received at
-        it; the value is the store's, coerced to the variant's value
+    def _resolve_subscript_store(self, target: TpySubscript,
+                                 key_type: TpyType,
+                                 value_type: TpyType) -> TpyType:
+        """`t[k] = v` is the explicit `t.__setitem__(k, v)` call: its
+        variant resolved on the key and the value
+        (`ExpressionAnalyzer.resolve_subscript_dunder`), the key received
+        at it; the value is the store's, coerced to the variant's value
         parameter (`store_slot_type`), which this returns as the target's
-        type. None for a builtin receiver."""
-        recv = self._record_subscript_receiver(target)
-        if recv is None:
-            return None
-        index_type = self.ctx.get_expr_type(target.index)
-        assert index_type is not None
+        type."""
+        recv = self._subscript_receiver(target)
+        assert recv is not None
+        receiver, readonly = recv
         fi = self.expr.resolve_subscript_dunder(
-            target, SubscriptDunder.SET, recv[0], recv[1],
-            [index_type, value_type])
+            target, self.expr.subscript_views(receiver, SubscriptDunder.SET),
+            readonly, [key_type, value_type])
         slot = make_ref(store_slot_type(fi))
         self.ctx.set_expr_type(target, slot)
         return slot
+
+    def _literal_subscript_store(
+            self, stmt: TpyAssign, receiver: TpyType, key_type: TpyType,
+            value_hint: 'TpyType | None',
+    ) -> tuple[TpyType, TpyType, bool]:
+        """`c[k] = v` into a container literal: the call of its
+        `__setitem__` takes the literal's preparation
+        (`MethodAnalyzer.prepare_container_call`), which analyzes the value
+        and stores it -- the key too where the key is one of the
+        container's parts (a dict's) -- then resolves as any store does.
+        Returns the store's target type (the part the cells that took the
+        value have, else the variant's value parameter), the value's type
+        as the container takes it, and whether cells took it."""
+        sub = stmt.target
+        assert isinstance(sub, TpySubscript)
+        args = [sub.index, stmt.value]
+        prepared = self.expr.methods.prepare_container_call(
+            stmt, sub.obj, receiver, SubscriptDunder.SET.value, args,
+            evidence={0: key_type},
+            what=self.expr.describe_pending_use(sub.obj))
+        sub.index, stmt.value = args
+        pre = prepared.args or [None, None]
+        key_type = pre[0] if pre[0] is not None else key_type
+        call_recv = unwrap_readonly(unwrap_ref_type(prepared.receiver))
+        sv = self.expr.subscript_views(call_recv, SubscriptDunder.SET)
+        if pre[1] is None:
+            # The preparation left the value alone (the call decided the
+            # literal first): it is hinted at the receiver as decided.
+            hint = (self.expr.subscript_store_hint(sub, sv, key_type)
+                    if call_recv is not receiver else value_hint)
+            value_type = self.expr.analyze_at_slot(
+                stmt.value, None if isinstance(
+                    unwrap_ref_type(hint), UnknownElementType) else hint,
+                CoercionContext.ASSIGN)
+        else:
+            value_type = pre[1]
+        fi = self.expr.resolve_subscript_dunder(
+            sub, sv, False, [key_type, value_type])
+        stored = prepared.stored
+        target = (make_ref(at_path(stored.tree, stored.tree.STEPS[-1:]))
+                  if stored is not None else make_ref(store_slot_type(fi)))
+        self.ctx.set_expr_type(sub, target)
+        return target, value_type, stored is not None
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
@@ -7567,10 +7525,6 @@ class StatementAnalyzer:
                 f"Cannot assign to '{stmt.target.name}' in nested function"
                 f" without 'nonlocal' declaration",
                 stmt)
-        # Slice assignment: a[x:y] = rhs -- handled separately
-        if isinstance(stmt.target, TpySubscript) and isinstance(stmt.target.index, TpySlice):
-            self._analyze_slice_assign(stmt)
-            return
         # D16 dyn-attr write: if the target is `obj.foo` where foo is undeclared
         # AND the class has __setattr__, the read-side analysis would either
         # resolve via __getattr__ (handled below) or raise "no field". Detect
@@ -7601,8 +7555,14 @@ class StatementAnalyzer:
                                                   (TpyName, TpySubscript))
                                     else None):
             target_type = self.expr.analyze_expr(stmt.target)
-        into = self._target_cell_list(stmt.target)
-        elem_cell = self._target_elem_cell(stmt.target)
+        # A subscript store is its `__setitem__` call; one into a container
+        # literal takes the literal's preparation, which analyzes the value.
+        sub_recv = (self._subscript_receiver(stmt.target)
+                    if isinstance(stmt.target, TpySubscript) else None)
+        literal_store = (sub_recv is not None
+                       and self.expr.methods.prepares(sub_recv[0]))
+        key_type = (self._written_key_type(stmt.target)
+                    if sub_recv is not None else None)
         name_list = (self.pend.cell_container(target_type)
                      if isinstance(stmt.target, TpyName) else None)
         list_cells = (self.pend.container_cells(target_type)
@@ -7650,51 +7610,60 @@ class StatementAnalyzer:
             self._enforce_readonly_assignment_target(stmt.target)
             return
         # A store into a local, or into a numeric field, is a consumer a
-        # pending number reaches.
+        # pending number reaches; a subscript store's value is its dunder's
+        # argument, open where the explicit call's would be.
+        setter = (self.expr.subscript_views(sub_recv[0], SubscriptDunder.SET)
+                  if sub_recv is not None and not literal_store else None)
         numeric_store = (isinstance(stmt.target, TpyName)
-                         or into is not None
                          or (isinstance(stmt.target, TpyFieldAccess)
-                             and is_numeric_slot(target_type)))
-        store_cell = pending_cell if pending_cell is not None else elem_cell
+                             and is_numeric_slot(target_type))
+                         or (setter is not None
+                             and self.expr.calls.number_arg_stays_open(
+                                 setter.views, setter.shape, 1)))
+        store_cell = pending_cell
         if store_cell is not None:
             value_hint = SlotHint.inferred_local(
                 self.pend.known_so_far(store_cell))
         elif list_cells is not None:
             value_hint = SlotHint.inferred_local(
                 self.pend.so_far(target_type, list_cells))
-        elif into is not None:
-            # The element is not known yet, or is a tuple or a row whose
-            # leaves the value is stored into one by one: no hint.
-            value_hint = None
         elif isinstance(unwrap_ref_type(target_type), UnknownElementType):
-            # A record store whose `__setitem__` variants disagree on the
-            # value: they are ranked on the value as analyzed, as the call
-            # ranks its argument.
+            # A store whose `__setitem__` variants taking the key disagree
+            # on the value: they are ranked on the value as analyzed, as the
+            # call ranks its argument.
             value_hint = None
         else:
             value_hint = target_type
-        # A list stored as a row, or rebinding a cell list, is linked to
-        # it undecided.
-        with self.pend.sink(stmt.value if numeric_store else None), \
-                self.pend.list_sink(stmt.value
-                                    if (list_cells is not None
-                                        or isinstance(into, ContainerCells))
-                                    and isinstance(stmt.value, TpyName)
-                                    else None):
-            value_type = (
-                self.expr.analyze_expr_with_hint(stmt.value, value_hint)
-                if store_cell is not None or list_cells is not None
-                or into is not None
-                else self.expr.analyze_at_slot(stmt.value, value_hint,
-                                               CoercionContext.ASSIGN))
-        if isinstance(stmt.target, TpySubscript):
-            target_type = (self._resolve_record_store(stmt.target, value_type)
-                           or target_type)
-        cell_target = elem_cell is not None
-        if into is not None:
-            target_type, value_type, stored = self._store_subscript(
-                stmt, into, target_type, value_type)
-            cell_target = stored is not None
+        cell_target = False
+        if literal_store:
+            assert sub_recv is not None and key_type is not None
+            target_type, value_type, cell_target = (
+                self._literal_subscript_store(stmt, sub_recv[0], key_type,
+                                              value_hint))
+        else:
+            # A list stored as a row, or rebinding a cell list, is linked
+            # to it undecided.
+            with self.pend.sink(stmt.value if numeric_store else None), \
+                    self.pend.list_sink(stmt.value
+                                        if list_cells is not None
+                                        and isinstance(stmt.value, TpyName)
+                                        else None):
+                value_type = (
+                    self.expr.analyze_expr_with_hint(stmt.value, value_hint)
+                    if store_cell is not None or list_cells is not None
+                    else self.expr.analyze_at_slot(stmt.value, value_hint,
+                                                   CoercionContext.ASSIGN))
+            if sub_recv is not None:
+                assert key_type is not None
+                # A value its context types ranks at the slot it was hinted
+                # with, as an argument hinted by its call's survivors does.
+                ranked_value = (self.expr.calls.ranked_at_slot(
+                                    value_type, value_hint)
+                                if value_hint is not None
+                                and self.expr.calls.context_typed(stmt.value)
+                                else value_type)
+                target_type = self._resolve_subscript_store(
+                    stmt.target, key_type, ranked_value)
         if name_list is not None:
             value_type = self._bind_list_elem_cell(
                 stmt.target.name, stmt, stmt.value, value_type, target_type)
@@ -7737,6 +7706,7 @@ class StatementAnalyzer:
                                                                TpySubscript))))
         copy_warning_fired = False
         name_moved = False
+        takes_elements = False
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             # The element of a list literal stays its cell's: the store is
@@ -7744,6 +7714,10 @@ class StatementAnalyzer:
             # known when the element is, as for `append`.
             if declared_target_type is not None and not cell_target:
                 target_type = declared_target_type
+            setter = (stmt.target.dunder(SubscriptDunder.SET)
+                      if isinstance(stmt.target, TpySubscript) else None)
+            takes_elements = (setter is not None
+                              and store_takes_elements(setter))
             # A view FIELD keeps pointing into its source after the statement:
             # the local rule, at every position the field is written from.
             if (isinstance(stmt.target, TpyFieldAccess)
@@ -7791,7 +7765,8 @@ class StatementAnalyzer:
             # Any target: INTO_ANY in compatibility.py emits its own copy
             # warning for reference-type sources -- skip the generic
             # field/container warning here to avoid a double-fire.
-            target_is_any = isinstance(unwrap_qualifiers(target_type), AnyType)
+            target_is_any = (isinstance(unwrap_qualifiers(target_type), AnyType)
+                             or takes_elements)
             # Beyond the declared-type facts above, the shared owning-sink
             # source rule: a select or walrus naming an existing object.
             store_dest = ("field" if isinstance(stmt.target, TpyFieldAccess)
@@ -7981,23 +7956,10 @@ class StatementAnalyzer:
             obj_type = self.ctx.get_expr_type(stmt.target.obj)
             if isinstance(obj_type, TupleType):
                 raise self.ctx.error("Tuples are immutable; cannot assign to tuple elements", stmt)
-            # Dict/TypedDict subscript assignment is always allowed
-            actual_obj = unwrap_readonly(obj_type)
-            is_typed_dict_target = (
-                isinstance(actual_obj, NominalType) and actual_obj.is_record
-                and stmt.target.typed_dict_field is not None
-            )
-            if (not (is_dict(actual_obj) or isinstance(actual_obj, PendingDictType))
-                    and not is_typed_dict_target and not cell_target):
-                elem_type = obj_type.get_element_type()
-                if elem_type is not None:
-                    # Span[readonly[T]] always rejects element assignment
-                    if is_span(obj_type) and is_readonly_span(obj_type):
-                        raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
-                    # Check if type conforms to MutableSequence[elem_type]
-                    mutable_seq = NominalType("MutableSequence", (elem_type,), is_protocol=True)
-                    if not self.protocols.type_conforms_to_protocol(obj_type, mutable_seq):
-                        raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
+            # A span over readonly elements is a const view, which the
+            # `Span[T].__setitem__` stub cannot exclude for a readonly `T`.
+            if is_span(obj_type) and is_readonly_span(obj_type):
+                raise self.ctx.error(f"Cannot assign to elements of {obj_type} (read-only)", stmt)
 
         # Prevent assignment through read-only pointer
         if isinstance(stmt.target, TpyName):
@@ -8028,7 +7990,8 @@ class StatementAnalyzer:
                     self.ctx.warning(element_loan_mutation_warning(
                         f"{storage}[...]", "element assignment", hit), stmt)
                 self.ctx.mark_all_view_borrowers_mutated(storage)
-            self._credit_user_setitem(stmt.target, stmt, check_loans=hit is None)
+            self._credit_subscript_setitem(stmt.target, stmt,
+                                           check_loans=hit is None)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
             # Also check the field-path key itself (e.g. "self.items" for self.items = [...])
@@ -8058,30 +8021,19 @@ class StatementAnalyzer:
                     bt, storage, "field assignment"), stmt)
             self._mark_field_write_views(stmt.target, storage, field_storage)
 
-        # PendingDictType subscript assignment: d[k] = v -- infer key/value
-        # types; a numeric entry seeded the dict's cells instead.
-        if isinstance(stmt.target, TpySubscript) and not cell_target:
-            obj_type_for_dict = self.ctx.get_expr_type(stmt.target.obj)
-            if isinstance(obj_type_for_dict, PendingDictType):
-                index_type = self.ctx.get_expr_type(stmt.target.index)
-                self.deduction.observe_named_store(
-                    stmt.target.obj, obj_type_for_dict,
-                    Entry(((index_type, stmt.target.index),
-                           (value_type, stmt.value))))
-                # Update obj_type and target_type if types were inferred
-                dict_info = self.ctx.container_record(obj_type_for_dict.literal_id)
-                if dict_info and not isinstance(dict_info.key_type, UnknownElementType):
-                    new_pending = dict_info.pending_type()
-                    if new_pending != obj_type_for_dict:
-                        self.deduction.rebind_pending(stmt.target.obj,
-                                                      new_pending)
-                    target_type = dict_info.value_type
-                    self.ctx.set_expr_type(stmt.target, target_type)
-
         # Field / container element targets store the value (storage form);
         # the `T -> Optional[T]` address-take that fires for borrow-form
         # destinations doesn't apply here.
         target_is_storage = isinstance(stmt.target, (TpyFieldAccess, TpySubscript))
+        if sub_recv is not None and not cell_target:
+            # The value is the `__setitem__` call's argument, received at its
+            # parameter as the call receives one: a container literal resolves
+            # against it, an empty one at a protocol takes its element.
+            slot = unwrap_ref_type(target_type)
+            self.expr.calls._maybe_coerce_empty_list_to_protocol(value_type,
+                                                                 slot)
+            self.expr.calls.mark_pending_slot_context(stmt.value, value_type,
+                                                      slot)
         stmt.value = self.compat.coerce_expr(
             stmt.value, value_type, target_type, "assignment",
             coercion_ctx=CoercionContext.ASSIGN,
@@ -8120,7 +8072,8 @@ class StatementAnalyzer:
             _register_tuple_binding_borrows(
                 self.ctx, stmt.target.name, stmt.value, target_type)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
-            if stmt.loc is not None and not copy_warning_fired:
+            if (stmt.loc is not None and not copy_warning_fired
+                    and not takes_elements):
                 if self._is_non_owned_var_copy(stmt, value_type, target_type,
                                                name_moved):
                     self.compat.register_sink_copy(
@@ -8154,24 +8107,14 @@ class StatementAnalyzer:
                 stmt.target, target_type, value_type, stmt.value)
 
     def _analyze_del_item(self, stmt: TpyDelItem) -> None:
-        """Analyze del obj[key] statement."""
+        """`del t[k]`: the explicit `t.__delitem__(k)` call, a container
+        literal's taking its preparation (`prepare_container_call`)."""
         for subscript in stmt.targets:
-            # Analyze obj and index separately to avoid triggering __getitem__
-            # validation (del doesn't read the element, only deletes it).
+            subscript.reset_dunders()
             # The container is named as a consumer of its open cells: what
             # the delete does with its part is the stub's declared effect.
             with self.pend.list_sink(subscript.obj):
-                del_obj_type = self.expr.analyze_expr(subscript.obj)
-            del_cells = self.pend.container_cells(del_obj_type)
-            del_step = self.expr.lookup_step(del_cells, "__delitem__")
-            if (del_cells is not None and not del_cells.settled
-                    and del_step is None):
-                # A list's delete takes an index, not its element, and so
-                # names no part to look up: it decides the list first.
-                del_obj_type = self.pend.force_list(
-                    subscript.obj, del_obj_type, del_cells,
-                    self.expr.describe_pending_use(subscript.obj))
-                self.ctx.set_expr_type(subscript.obj, del_obj_type)
+                self.expr.analyze_expr(subscript.obj)
             # Track mutation of for-each loop variables and parameters
             # del item removes an element from the container -- structural mutation.
             mark_roots(self.ctx, storage_roots(
@@ -8189,66 +8132,45 @@ class StatementAnalyzer:
                 self.ctx.mark_all_view_borrowers_mutated(storage)
             self._enforce_readonly_assignment_target(subscript)
             obj_type = self.ctx.get_expr_type(subscript.obj)
-            actual = unwrap_readonly(obj_type)
-            # Reject known-immutable/fixed-size types before analyzing the index
-            if isinstance(actual, TupleType):
+            if isinstance(unwrap_readonly(obj_type), TupleType):
                 raise self.ctx.error(
                     "Tuples are immutable; cannot delete tuple elements", stmt)
-            if is_array(actual):
-                raise self.ctx.error(
-                    "Arrays are fixed-size; cannot delete array elements", stmt)
-            if is_span(actual):
-                raise self.ctx.error(
-                    "Spans are read-only views; cannot delete span elements", stmt)
+            recv = self._subscript_receiver(subscript)
+            record = (self.ctx.registry.get_record_for_type(recv[0])
+                      if recv is not None else None)
+            if record is None or not self.expr.operators.dunder_overloads(
+                    record, SubscriptDunder.DEL.value):
+                raise self.expr.no_subscript_dunder(
+                    recv[0] if recv is not None else obj_type,
+                    SubscriptDunder.DEL, stmt)
+            # No builtin declares a slice `__delitem__`
+            # (BUGS.md#del-slice-rejected).
             if isinstance(subscript.index, TpySlice):
                 raise self.ctx.error(
                     "deleting a slice ('del xs[a:b]') is not yet supported", stmt)
-            # Check that the type has __delitem__
-            record_info = self.ctx.registry.get_record_for_type(actual)
-            if record_info:
-                if not self.expr.operators.dunder_overloads(
-                        record_info, SubscriptDunder.DEL.value):
-                    raise self.ctx.error(
-                        f"'del' is not supported for type {actual}; "
-                        f"define __delitem__ to enable element deletion", stmt)
-            else:
-                raise self.ctx.error(
-                    f"'del' is not supported for type {actual}", stmt)
-            # Analyze the index expression only after confirming __delitem__ exists
-            index_type = self.expr.analyze_expr(subscript.index)
-            recv = self._record_subscript_receiver(subscript)
-            if recv is not None:
+            assert recv is not None
+            receiver, readonly = recv
+            sv = self.expr.subscript_views(receiver, SubscriptDunder.DEL)
+            key_type = self.expr.analyze_subscript_key(subscript, sv)
+            if self.expr.methods.prepares(receiver):
+                args = [subscript.index]
+                prepared = self.expr.methods.prepare_container_call(
+                    stmt, subscript.obj, receiver, SubscriptDunder.DEL.value,
+                    args, evidence={0: key_type},
+                    what=self.expr.describe_pending_use(subscript.obj))
+                subscript.index = args[0]
+                if prepared.args is not None and prepared.args[0] is not None:
+                    key_type = prepared.args[0]
+                sv = self.expr.subscript_views(
+                    unwrap_readonly(unwrap_ref_type(prepared.receiver)),
+                    SubscriptDunder.DEL)
+            callee = self.expr.resolve_subscript_dunder(
+                subscript, sv, readonly, [key_type])
+            if callee.root.element_access is None:
                 # `del t[k]` is the explicit `t.__delitem__(k)` call, whose
                 # code may write anything.
-                callee = self.expr.resolve_subscript_dunder(
-                    subscript, SubscriptDunder.DEL, recv[0], recv[1],
-                    [index_type])
                 record_implicit_call(subscript, callee.root, subscript.obj,
                                      callee.name)
-                continue
-            decided = self.expr.decide_for_lookup(
-                subscript.obj, del_obj_type, del_step, index_type)
-            if decided is not del_obj_type:
-                actual = unwrap_readonly(self.ctx.get_expr_type(subscript.obj))
-                del_cells = None
-            leaf = self.pend.lookup_leaf(del_cells, del_step, subscript.index,
-                                         index_type)
-            if leaf is not None:
-                # A looked-up key leaves the cells open; its conversion to
-                # the key is judged once they settle.
-                subscript.index = self.pend.pass_at_leaf(
-                    subscript.index, index_type, leaf, "dict key")
-                continue
-            # `del d[k]` hands the key to the same map lookup a read does,
-            # so it takes the same key check and the same narrow node --
-            # otherwise an unchecked key reaches `erase` raw.
-            if is_dict(actual):
-                self.expr.check_dict_key(
-                    subscript, actual.type_args[0], unwrap_readonly(index_type))
-            elif (isinstance(actual, PendingDictType)
-                  and not isinstance(actual.key_type, UnknownElementType)):
-                self.expr.check_dict_key(
-                    subscript, actual.key_type, unwrap_readonly(index_type))
 
     def _write_target_receiver(self, target: TpyFieldAccess) -> TpyType | None:
         """The type of write target `target`'s receiver, analyzed ahead of
@@ -8709,32 +8631,42 @@ class StatementAnalyzer:
         stmt.hold_parts = aug_hold_parts(self.ctx, self.compat, stmt)
 
     def _resolve_aug_store(self, stmt: TpyAugAssign) -> None:
-        """The `__setitem__` of a record subscript `t[k] op= v`: ranked on
-        the key as written and the operation's result (the getter's type
-        where the operator settles later, as the write-back holds the
-        result to it), the key received at it apart from the getter's
+        """The `__setitem__` of a subscript `t[k] op= v`: ranked on the key
+        as written and the operation's result (the getter's type where the
+        operator settles later, as the write-back holds the result to it),
+        the key received at it apart from the getter's
         (`TpySubscript.written_index`), and credited on the receiver."""
         target = stmt.target
         assert isinstance(target, TpySubscript)
-        recv = self._record_subscript_receiver(target)
+        recv = self._subscript_receiver(target)
         if recv is None or target.written_index is None:
             return
         rb = stmt.resolved_binop
         result = (rb.method.return_type if rb is not None
                   else self.ctx.get_expr_type(target))
         key = target.written_index
-        key_type = self.ctx.get_expr_type(key)
-        assert result is not None and key_type is not None
+        # A written slice has no type of its own: the slice it builds.
+        key_type = self._written_key_type(target)
+        assert result is not None
         result = unwrap_ref_type(result)
         # The setter receives the operation's result: its stand-in goes
         # through the call's receiving step.
         value: list[TpyExpr] = [self._aug_result_stand_in(stmt, result)]
+        receiver = recv[0]
+        lc = self.pend.container_cells(receiver)
+        if lc is not None:
+            # A container literal's setter is resolved at the receiver its
+            # getter's call saw (`MethodAnalyzer.prepare_container_call`):
+            # its parts as the cells have them, as the operation's result
+            # has them too.
+            receiver = self.pend.receiver_form(receiver, lc)
         getter_key = target.index
         target.index = key
         try:
             self.expr.resolve_subscript_dunder(
-                target, SubscriptDunder.SET, recv[0], recv[1],
-                [key_type, result], value)
+                target, self.expr.subscript_views(
+                    receiver, SubscriptDunder.SET),
+                recv[1], [key_type, result], value)
         finally:
             target.setitem_index, target.index = target.index, getter_key
         stmt.stored_value = value[0]
@@ -8742,7 +8674,7 @@ class StatementAnalyzer:
         hit = (self.ctx.func.borrow_tracker.element_hop_loan(
                    storage, element_index_key(key))
                if storage is not None else None)
-        self._credit_user_setitem(target, stmt, check_loans=hit is None)
+        self._credit_subscript_setitem(target, stmt, check_loans=hit is None)
 
     def _analyze_aug_assign_body(self, stmt: TpyAugAssign) -> None:
         # In nested defs, aug-assign to an outer variable requires nonlocal

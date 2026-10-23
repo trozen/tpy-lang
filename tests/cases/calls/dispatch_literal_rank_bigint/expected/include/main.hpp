@@ -29,6 +29,10 @@ std::string fw__float(double x);
 // @dispatch
 // def fw(x: float32) -> str:
 std::string fw__float32(float x);
+// def take(x: int32 | str) -> str:
+std::string take(const ::tpy::Union<int32_t, std::string>& x);
+// def tick(calls: list[int32]) -> bool:
+bool tick(std::vector<int32_t>& calls);
 // def main() -> None:
 void main();
 

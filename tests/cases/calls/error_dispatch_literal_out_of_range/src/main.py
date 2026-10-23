@@ -15,7 +15,7 @@ def h(x: str, n: int64) -> str:
 
 def main() -> None:
     n8: int8 = 1
-    print(h(10000000000, n8))  # tpyc: error(/No matching overload for h\(int, int8\)/)
+    print(h(10000000000, n8))  # tpyc: error(/No matching overload for 'h' with argument types \(int, int8\)/)
 
 
 main()

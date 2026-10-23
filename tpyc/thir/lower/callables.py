@@ -4,12 +4,11 @@ from dataclasses import replace
 from typing import TYPE_CHECKING, Callable
 
 from ...compilation_context import get_current_compiler
-from ...parse.nodes import TpyFunction
+from ...parse.nodes import SubscriptDunder, TpyExpr, TpyFunction, TpySubscript
 from ...symbol_binding import SymbolKind
 from ...type_def_registry import ParamPassing, get_type_def
-from ...typesys import subscript_answers_as_call
 from ...typesys import (
-    AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
+    AnyType, FunctionInfo, FunctionLinkage, NominalType, ReadonlyType,
     RecordInfo, RefType, TpyType, VoidType, contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type,
     accessor_role, body_method_info, declares_whole_result_following, property_getter_returns_storage_ref,
     receiver_neutral_return, return_representation, unwrap_readonly, unwrap_ref_type,
@@ -19,7 +18,7 @@ from ..nodes import (
     THIRBorrowedRecord, THIRCallableSignature, THIRExpr, THIRFunctionIdentity, THIRMethodCall, THIRResolvedCallee,
     THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
 )
-from ..scalar_leaves import leaf_constant, native_container_subject, record_owner
+from ..scalar_leaves import native_container_subject, record_owner
 from .context import SlotPosition, slot_for
 from .predicates import param_passing
 from .storage import borrowed_record
@@ -435,29 +434,22 @@ def with_method_callee(node: THIRMethodCall, fi: FunctionInfo | None, analyzer: 
     return replace(node, resolved_callee=callee, receiver_access=THIRBorrowedRecord(receiver, receiver_readonly()))
 
 
-def setitem_stub_callee(target: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:
+def setitem_stub_callee(sub: TpyExpr, target: THIRExpr,
+                        analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:
     """The `__setitem__` stub a subscript write `c[k] = v` dispatches to on
-    a builtin native type (a container, an element-typed `@native`
-    wrapper): the receiver type's overload, substituted at its type
-    arguments, whose index parameter is the written index's type (a
-    subscript write never takes a slice overload). None when the receiver
-    is no native type or no single overload takes the index. A record's
-    store is the call to the variant sema resolved (`_record_dunder_call`),
-    never this."""
-    if not isinstance(target, THIRSubscript):
+    a native type (a container, an element-typed `@native` wrapper): the
+    variant sema resolved for the store (`TpySubscript.dunder`), substituted
+    at the receiver type's arguments. None when the receiver is no native
+    type."""
+    if not isinstance(target, THIRSubscript) or not isinstance(sub, TpySubscript):
         return None
+    setter = sub.dunder(SubscriptDunder.SET)
     bare = unwrap_send_sync(native_container_subject(target.receiver.result_type))
-    assert not subscript_answers_as_call(bare), "record store outside its dunder call"
     record = analyzer.registry.get_record_for_type(bare) if isinstance(bare, NominalType) else None
-    if record is None or not record.is_native or len(bare.type_args) != len(record.type_params):
+    if (setter is None or record is None or not record.is_native
+            or len(bare.type_args) != len(record.type_params)):
         return None
     subst = dict(zip(record.type_params, bare.type_args))
-    key = unwrap_send_sync(unwrap_readonly(unwrap_ref_type(target.index.result_type)))
-    matches = []
-    for overload in record.methods.get("__setitem__", []):
-        method = analyzer.type_ops.substitute_method_type_params(overload, subst) if subst else overload
-        index = unwrap_readonly(unwrap_ref_type(method.params[0].type)) if len(method.params) == 2 else None
-        # An int literal index converts to the fixed-int index parameter that holds it.
-        if index is not None and (index == key or isinstance(key, IntLiteralType) and leaf_constant(index, key.value)):
-            matches.append(method)
-    return method_stub_callee(matches[0], bare, analyzer, arity=2) if len(matches) == 1 else None
+    method = (analyzer.type_ops.substitute_method_type_params(setter.root, subst)
+              if subst else setter.root)
+    return method_stub_callee(method, bare, analyzer, arity=2)

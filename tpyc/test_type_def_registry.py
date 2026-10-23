@@ -938,7 +938,7 @@ def test_type_matches_numeric_rejects_cross_container():
     """Post-Phase-D all builtin containers (list, set, dict, Array, Span, ...)
     share the NominalType class, so `type(arg) == type(param)` is True for any
     pair of containers. type_matches_numeric must also compare the container
-    name -- otherwise resolve_overload could pick a set[int32] overload for a
+    name -- otherwise the overload ranking could pick a set[int32] overload for a
     list[int32] argument via the recursive element-matching branch."""
     from tpyc.sema.overloads import type_matches_numeric
     assert not type_matches_numeric(ts.make_list(ts.INT32), ts.make_set(ts.INT32))

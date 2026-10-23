@@ -23,6 +23,7 @@ import pytest
 from tpyc.sema.overloads import (
     ContainerLeaf,
     ContainerMeet,
+    CallRanking,
     MatchTier,
     OverloadAmbiguityError,
     OverloadFit,
@@ -34,7 +35,6 @@ from tpyc.sema.overloads import (
     _scalar_widening_cost,
     _undecided_container_arm,
     call_resolves_params,
-    resolve_overload,
     type_matches_with_coercion,
     _score,
     _type_args_widening_cost,
@@ -337,14 +337,25 @@ def test_undecided_container_arm_leaves_protocols_and_type_params_alone():
     assert ops.asked == []
 
 
+def _ranking(protocol_checker=None, *, ops=None, subclass_checker=None,
+             classifier=None, receives=lambda a, p: False):
+    """A `CallRanking` of stand-in checkers; the argument receive refuses
+    everything unless `receives` is given."""
+    return CallRanking(
+        protocol_checker=protocol_checker,
+        classifier=classifier or _bool_checker_to_classifier(protocol_checker),
+        deref_checker=None, default_int_type=INT32,
+        subclass_checker=subclass_checker, type_ops=ops, receives=receives)
+
+
 def _convert_fit(args, params, ops=None, subclass_checker=None, declared=None,
                  protocol_checker=None):
     """`_classify_overload` in the conversion stage, at a candidate taking
     `params` (or `declared`)."""
     overload = declared if declared is not None else _fn("f", *params)
-    return _classify_overload(overload, list(args), protocol_checker,
-                              _bool_checker_to_classifier(protocol_checker),
-                              INT32, ops, subclass_checker=subclass_checker,
+    return _classify_overload(overload, list(args),
+                              _ranking(protocol_checker, ops=ops,
+                                       subclass_checker=subclass_checker),
                               convert=True)
 
 
@@ -371,9 +382,8 @@ def test_container_widening_outranks_the_scalar_keys():
     widens = _fn("f", BIGINT, _list(INT64))
     view = _fn("f", BIGINT, _iterable(INT64))
     for overloads in ([widens, view], [view, widens]):
-        assert resolve_overload(overloads, [IntLiteralType(value=1), _OPEN_LIST],
-                                protocol_checker=lambda a, p: True,
-                                default_int_type=INT32, type_ops=ops) is view
+        assert _ranking(lambda a, p: True, ops=ops).resolve(
+            overloads, [IntLiteralType(value=1), _OPEN_LIST]) is view
 
 
 def test_a_cell_passed_twice_must_be_wanted_at_one_type():
@@ -506,7 +516,7 @@ def test_score_equal_inputs_equal_outputs():
     a = ((MatchTier.PROTOCOL_EXPLICIT, 2), (MatchTier.EXACT_CONCRETE, 0))
     b = ((MatchTier.EXACT_CONCRETE, 0), (MatchTier.PROTOCOL_EXPLICIT, 2))
     # Aggregate counts + total cost are equal; score is too (matches the
-    # dedup-then-ambiguity semantics in resolve_overload).
+    # dedup-then-ambiguity semantics in `CallRanking.resolve`).
     assert _score(a) == _score(b)
 
 
@@ -802,8 +812,9 @@ def test_presubstituted_view_widens_an_undecided_container_once():
     ops = _Ops({_iterable(INT64): [(None, INT32, INT64)]})
     ops.protocol_type_args_of = lambda arg, proto: None
     fit = _classify_overload(
-        inst, [_OPEN_LIST], lambda a, p: True,
-        lambda a, p: ProtocolConformanceKind.EXPLICIT, INT32, ops)
+        inst, [_OPEN_LIST],
+        _ranking(lambda a, p: True, ops=ops,
+                 classifier=lambda a, p: ProtocolConformanceKind.EXPLICIT))
     assert fit is not None
     assert (fit.widening, fit.conversion_widening) == (4, 0)
     assert fit.per_arg == ((MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0),)
@@ -952,15 +963,73 @@ def a64() -> int64: return 1099511627776
             "    @dispatch\n    def __init__(self, s: str) -> None:\n"
             "        self.n = -1\n"
             "def main() -> None:\n    ms = [1, 2]\n    print(K(ms).n)\n",
-            r"^No matching overload for 'K\(list\[int32\]\)'$",
+            r"^No matching overload for 'K' with argument types \(list\[int32\]\)",
             id="ctor-group-no-match"),
         # An empty container no candidate takes is named by its container.
         pytest.param(
             "@dispatch\ndef fn(x: int) -> str:\n    return 'int'\n"
             "@dispatch\ndef fn(x: str) -> str:\n    return 'str'\n"
             "def main() -> None:\n    print(fn([]))\n    print(fn(set()))\n",
-            r"^No matching overload for fn\(list\)$",
+            r"^No matching overload for 'fn' with argument types \(list\)$",
             id="empty-container-no-match"),
+        # A Box of a class matching a @dynamic protocol only structurally is
+        # no Box of the protocol, so no variant takes it
+        # (BUGS.md#overload-arg-ctor-not-retyped-at-winner).
+        pytest.param(
+            "from typing import Protocol\nfrom tpy import dynamic, Own, StrView\n"
+            "from tplib import Box\n"
+            "@dynamic\nclass Pet(Protocol):\n    def name(self) -> str: ...\n"
+            "class Dog:\n    label: str\n"
+            "    def __init__(self, label: str) -> None:\n"
+            "        self.label = label\n"
+            "    def name(self) -> StrView:\n        return self.label\n"
+            "@dispatch\ndef pair(x: Own[Box[Pet]], y: str) -> int32:\n"
+            "    return 1\n"
+            "@dispatch\ndef pair(x: Own[Box[Pet]], y: Own[Box[Pet]]) -> int32:\n"
+            "    return 2\n"
+            "def main() -> None:\n"
+            "    print(pair(Box(Dog('Rex')), Box(Dog('Spot'))))\n",
+            r"^No matching overload for 'pair' with argument types "
+            r"\(Box\[Dog\], Box\[Dog\]\)",
+            id="covariant-structural-conformer-no-match"),
+        # The same Box bound to a local first, at a single variant.
+        pytest.param(
+            "from typing import Protocol\nfrom tpy import dynamic, Own, StrView\n"
+            "from tplib import Box\n"
+            "@dynamic\nclass Pet(Protocol):\n    def name(self) -> str: ...\n"
+            "class Dog:\n    label: str\n"
+            "    def __init__(self, label: str) -> None:\n"
+            "        self.label = label\n"
+            "    def name(self) -> StrView:\n        return self.label\n"
+            "def take(x: Own[Box[Pet]]) -> None:\n"
+            "    print(x.get().name())\n"
+            "def main() -> None:\n"
+            "    b = Box(Dog('Rex'))\n"
+            "    take(b)\n",
+            r"^Type mismatch in argument 'x': expected Box\[Pet\], got Box\[Dog\]",
+            id="covariant-structural-conformer-local"),
+        # The overloaded method spelling.
+        pytest.param(
+            "from typing import Protocol\nfrom tpy import dynamic, Own, StrView\n"
+            "from tplib import Box\n"
+            "@dynamic\nclass Pet(Protocol):\n    def name(self) -> str: ...\n"
+            "class Dog:\n    label: str\n"
+            "    def __init__(self, label: str) -> None:\n"
+            "        self.label = label\n"
+            "    def name(self) -> StrView:\n        return self.label\n"
+            "class H:\n"
+            "    @dispatch\n"
+            "    def pair(self, x: Own[Box[Pet]], y: str) -> int32:\n"
+            "        return 1\n"
+            "    @dispatch\n"
+            "    def pair(self, x: Own[Box[Pet]], y: Own[Box[Pet]]) -> int32:\n"
+            "        return 2\n"
+            "def main() -> None:\n"
+            "    h = H()\n"
+            "    print(h.pair(Box(Dog('Rex')), Box(Dog('Spot'))))\n",
+            r"^No matching overload for 'pair' with argument types "
+            r"\(Box\[Dog\], Box\[Dog\]\)",
+            id="covariant-structural-conformer-method-no-match"),
     ],
 )
 def test_overload_paths_without_an_end_to_end_case(body: str,

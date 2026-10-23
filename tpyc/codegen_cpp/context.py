@@ -12,10 +12,10 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Iterator, Mapping, TextIO, TYPE_CHECKING
 
-from ..typesys import pointer_repr_optional, subscript_answers_as_call
+from ..typesys import pointer_repr_optional
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
-    IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo, INT32,
+    IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
     AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
@@ -34,7 +34,7 @@ from ..parse import (
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
     is_bool_type, is_dict, is_set, is_bytes_view_type, is_str_view_type,
-    is_borrowing_view_type, is_big_int_type, is_fixed_int_type,
+    is_borrowing_view_type,
 )
 from ..symbol_binding import lookup_imported, lookup_qualified, resolve_definer, SymbolKind
 from ..identity_map import IdentityMap
@@ -282,40 +282,6 @@ def view_key_target(container_type) -> "TpyType | None":
     if is_bytes_view_type(k) or is_str_view_type(k):
         return k
     return None
-
-
-def bigint_index_narrow_type(container_type, analyzer) -> "TpyType | None":
-    """Narrow target for a runtime-BigInt subscript index, derived from the
-    receiver's declared key/index type. None means the declared key type is
-    itself BigInt, so the index passes through unnarrowed (the container's
-    C++ key type IS tpy::BigInt); a fixed-int key narrows to its declared
-    width (dict[int64] -> int64, an element-typed native's
-    __getitem__(key: int32) -> int32); everything else keeps the
-    int32-indexed sequence domain (list/str/bytes/tuple/Span/Array). A
-    record subscript answering as its dunder call takes no narrow here:
-    sema converts its key at the variant it resolved."""
-    t = unwrap_qualifiers(container_type)
-    if isinstance(t, OptionalType):
-        t = unwrap_qualifiers(t.inner)
-    if subscript_answers_as_call(t):
-        return None
-    key = None
-    if is_dict(t):
-        type_args = getattr(t, "type_args", None)
-        if type_args:
-            key = type_args[0]
-    elif isinstance(t, NominalType) and t.is_record:
-        kr = analyzer.narrowing.record_getitem_key_ret(t)
-        if kr is not None:
-            key = kr[0]
-    if key is None:
-        return INT32
-    key = unwrap_readonly(key)
-    if is_big_int_type(key):
-        return None
-    if is_fixed_int_type(key):
-        return key
-    return INT32
 
 
 def escape_cpp_char(value: str) -> str:

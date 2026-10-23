@@ -10,14 +10,27 @@ void show(HasValue& v) {
     std::cout << v.value() << "\n" << ::tpy::check_signals;
 }
 
+// def grow(v: HasValue) -> None:
+//     v.bump()
+void grow(HasValue& v) {
+    v.bump();
+}
+
 // def main() -> None:
 //     show(Parent(7))
 //     show(Child(7))
+//     c = Child(7)
+//     # A named Child binds the protocol parameter as itself: the bump is seen.
+//     grow(c)
+//     print(c.value())
 void main() {
     Parent __tmp_1{Parent(7)};
     ::tpyapp::main::show(__tmp_1);
-    ::tpy::Adapter<HasValue, Child> __tmp_2{Child(7)};
+    Child __tmp_2{Child(7)};
     ::tpyapp::main::show(__tmp_2);
+    Child c = Child(7);
+    ::tpyapp::main::grow(c);
+    std::cout << c.value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -89,15 +89,16 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
 
     # Pure-READ methods take readonly[K]: the key is only hashed/compared, never
     # stored, so a readonly key is safe. __setitem__/setdefault store K (mutable).
-    @native("tpy::__getitem__", function=True, element_effect="lookup")
+    @native("tpy::__getitem__", function=True, element_effect="lookup", element_access=True)
     @pure
-    @readonly
-    def __getitem__(self, key: readonly[K]) -> V: ...
+    @auto_readonly
+    def __getitem__(self, key: readonly[K]) -> auto_readonly[V]: ...
 
-    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert")
+    @native("tpy::__setitem__", function=True, mutates="elements", element_effect="insert",
+            element_access=True)
     def __setitem__(self, key: K, value: Own[V]) -> None: ...
 
-    @native("tpy::__delitem__", function=True, element_effect="lookup")
+    @native("tpy::__delitem__", function=True, element_effect="lookup", element_access=True)
     def __delitem__(self, key: readonly[K]) -> None: ...
 
     @native("contains", element_effect="lookup")

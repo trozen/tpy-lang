@@ -32,7 +32,7 @@ from ..parse.nodes import (
     TpyVarargPack, VarLinkage, is_super_del_call, walk_body_stmts)
 from ..type_def_registry import (RUNTIME_CONTAINER_CATEGORIES,
                                  RUNTIME_VALUE_CATEGORIES, type_def_of)
-from ..typesys import (PendingContainerType, PtrType, TupleType,
+from ..typesys import (PendingContainerType, PtrType, TupleType, element_access,
                        is_bodyless_binding, is_declaration_only,
                        unwrap_qualifiers)
 
@@ -214,17 +214,28 @@ class InertWalk:
         return record is not None and any(
             f.name == e.field for f in self.ctx.registry.get_all_fields(record))
 
+    @staticmethod
+    def runs_getitem(e: TpySubscript) -> bool:
+        """`e` reads through a `__getitem__` that runs code of its own: the
+        winner sema stamped (`TpySubscript.dunder`) declares no element
+        access and is no slice of the receiver."""
+        return (e.dunder(SubscriptDunder.GET) is not None
+                and element_access(e, SubscriptDunder.GET) is None
+                and not e.slice_key)
+
     def builtin_element_read(self, e: TpySubscript) -> bool:
         """`e` reads an element of a builtin container, a str / bytes, a
-        tuple or through a pointer: sema stamped no class `__getitem__` on
-        it (`TpySubscript.dunder`), no TypedDict field or enum
-        name lookup, and the receiver's family reads elements in runtime
-        code (a protocol's or a type parameter's implementer may run
-        anything)."""
-        if (e.dunder(SubscriptDunder.GET) is not None
+        tuple or through a pointer: its `__getitem__` runs no code of its
+        own (`runs_getitem`), no TypedDict field or enum name lookup, and
+        the receiver's family reads elements in runtime code (a protocol's
+        or a type parameter's implementer may run anything)."""
+        if (self.runs_getitem(e)
                 or e.typed_dict_field is not None
                 or e.enum_from_name is not None):
             return False
+        if element_access(e, SubscriptDunder.GET) is not None:
+            # Its stub declares it reads the slot and runs nothing else.
+            return True
         t = self.ctx.get_expr_type(e.obj)
         if t is None:
             return False
@@ -251,7 +262,7 @@ class InertWalk:
         if isinstance(e, TpySubscript):
             index = (list(e.index.children()) if isinstance(e.index, TpySlice)
                      else [e.index])
-            return ([(e.obj, e.dunder(SubscriptDunder.GET) is None)]
+            return ([(e.obj, not self.runs_getitem(e))]
                     + [(i, False) for i in index])
         if isinstance(e, TpyCall):
             if e.macro_expansion is not None:
@@ -308,7 +319,7 @@ class InertWalk:
                 self.require(self.plain_field_read(e))
             return
         callee = e.dunder(SubscriptDunder.GET)
-        if callee is not None:
+        if callee is not None and self.runs_getitem(e):
             self.require(self.admitted(callee))
             return
         self.require(self.builtin_element_read(e))
