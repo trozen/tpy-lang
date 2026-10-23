@@ -6,7 +6,7 @@ Protocol conformance checking and method/field lookups.
 
 from __future__ import annotations
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import Any, Callable, TYPE_CHECKING
 
 import re
 import dataclasses
@@ -15,7 +15,7 @@ from ..typesys import (
     same_class,
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
-    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
+    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, UnionType, RecursiveAliasInstanceType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
@@ -124,6 +124,39 @@ def record_extends_any(actual: TpyType, protocol_name: str, registry: 'TypeRegis
         if match and match.group(1) == protocol_name:
             return True
     return False
+
+
+def _alias_body(t: RecursiveAliasInstanceType) -> tuple[TpyType, ...] | None:
+    body = t.substituted_body()
+    return None if body is t else (body,)
+
+
+# Composite types whose conformance to a protocol is their parts'
+# conformance: (kind, protocol qnames, parts). This is the bound's question
+# (and a ValueType field's); the copy gates still ask is_value_type(), so a
+# union of reference tuples copies unwarned there
+# (BUGS.md#union-of-reference-tuples-copy-silent).
+_PART_WISE: tuple[tuple[type, frozenset[str],
+                        Callable[[Any], tuple[TpyType, ...] | None]], ...] = (
+    # std::tuple's hash, `<`, `==` and copy are elementwise.
+    (TupleType, frozenset({qnames.HASHABLE, qnames.COMPARABLE,
+                           qnames.EQUATABLE, qnames.VALUE_TYPE}),
+     lambda t: t.element_types),
+    # Copying a union or Optional copies the alternative it holds; Hashable /
+    # Comparable over one keep the answer of the arms below.
+    (UnionType, frozenset({qnames.VALUE_TYPE}), lambda t: t.members),
+    (OptionalType, frozenset({qnames.VALUE_TYPE}), lambda t: (t.inner,)),
+    # A generic recursive alias holds its body under the instance's arguments.
+    (RecursiveAliasInstanceType, frozenset({qnames.VALUE_TYPE}), _alias_body),
+)
+
+
+def _part_wise_parts(actual: TpyType, protocol_qname: str | None,
+                     ) -> tuple[TpyType, ...] | None:
+    for kind, protocol_qnames, parts in _PART_WISE:
+        if isinstance(actual, kind) and protocol_qname in protocol_qnames:
+            return parts(actual)
+    return None
 
 
 class ProtocolConformanceKind(Enum):
@@ -390,29 +423,21 @@ class ProtocolChecker:
             ):
                 return ProtocolConformanceKind.EXPLICIT
 
-        # Tuple: element-wise compiler-intrinsic conformance for Hashable,
-        # Comparable, and Equatable. C++ std::tuple supplies the matching
-        # operators (hash via element hashers, lexicographic < and ==), so
-        # codegen needs no special path here -- the conformance check just
-        # has to reflect what the operators already support. Downgrade to
-        # STRUCTURAL if any element only structurally conforms, so the
-        # weakest link shows through in specificity ranking.
-        if isinstance(actual, TupleType):
-            # Elementwise: a tuple has a property when each element has it. A
-            # tuple holding a class instance is no value type for a bound --
-            # copying the tuple would copy the instance.
-            if protocol.qualified_name() in (
-                qnames.HASHABLE, qnames.COMPARABLE, qnames.EQUATABLE,
-                qnames.VALUE_TYPE,
-            ):
-                kind = ProtocolConformanceKind.EXPLICIT
-                for et in actual.element_types:
-                    elem_kind = self.classify_protocol_conformance(et, protocol)
-                    if elem_kind is None:
-                        return None
-                    if elem_kind is ProtocolConformanceKind.STRUCTURAL:
-                        kind = ProtocolConformanceKind.STRUCTURAL
-                return kind
+        # Composite types conform part-wise (see _PART_WISE). The weakest
+        # link shows through: a part that only structurally conforms makes
+        # the whole STRUCTURAL, for specificity ranking. A recursive alias
+        # re-reaching itself is answered by classify_protocol_conformance's
+        # cycle guard.
+        part_wise = _part_wise_parts(actual, protocol.qualified_name())
+        if part_wise is not None:
+            kind = ProtocolConformanceKind.EXPLICIT
+            for part in part_wise:
+                part_kind = self.classify_protocol_conformance(part, protocol)
+                if part_kind is None:
+                    return None
+                if part_kind is ProtocolConformanceKind.STRUCTURAL:
+                    kind = ProtocolConformanceKind.STRUCTURAL
+            return kind
 
         # Bounded type parameter: T: Sized conforms to Sized (and any protocol its bound conforms to)
         if isinstance(actual, TypeParamRef):

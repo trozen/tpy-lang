@@ -1,0 +1,1 @@
+main.py:12: error: ValueType class 'V': field 't' has type 'tuple[A, int32]', which holds a reference type

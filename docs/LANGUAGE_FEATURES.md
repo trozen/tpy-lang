@@ -4254,7 +4254,7 @@ class Box[T: ValueType]:
 
 **Validation rules:**
 
-- All fields must themselves be value types (or `ValueType`-bounded type params). Non-value-type fields cause a compile error.
+- All fields must themselves be value types (or `ValueType`-bounded type params). Non-value-type fields cause a compile error. A tuple, union or Optional field counts only when every part does, as for a `T: ValueType` bound: `t: tuple[A, int32]` or `tuple[A, int32] | None` with `A` a class is refused (*field 't' has type 'tuple[A, int32]', which holds a reference type*), since copying the record would copy the `A`; `tuple[int32, str] | None` is accepted. A field type naming a type parameter is accepted for now without that check (`BUGS.md#generic-valuetype-field-param-unchecked`).
 - `@nocopy` and `ValueType` are mutually exclusive -- a `@nocopy` class cannot be a `ValueType`.
 - A `ValueType` cannot define `__del__`: a value is copied freely, so there is no single object to release. A type that needs cleanup is a regular class.
 - A `ValueType` cannot define `__copy__` or `__move__`: a value is copied implicitly wherever it is passed or bound, so a copy hook would run user code the program never calls. A type that needs one is a regular class.
@@ -4263,7 +4263,7 @@ class Box[T: ValueType]:
 - An explicit `__init__` is required -- there is no synthesized aggregate constructor, since immutable fields can only be set during construction. (`@native` value types are exempt: they are constructed on the C++ side.)
 - A `@native` value type needs a C++ default constructor, which its placeholder runs; a `static_assert` beside its declaration reports one without (see "`@native` ValueType placeholders" in `docs/NATIVE_INTEROP.md`).
 
-**Implicit conformance:** Built-in value types (int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration.
+**Implicit conformance:** Built-in value types (int32, bool, float, etc.) implicitly conform to `ValueType`, so they can be used as arguments for `T: ValueType` bounded type params without explicit declaration. A tuple, union, Optional or recursive alias conforms only when every part does, so `max(xs, key=k)` over `list[tuple[A, int32] | None]` with a class `A` is refused like the plain `tuple[A, int32]`.
 
 #### Working: `Default` Marker Protocol and `make_default()`
 

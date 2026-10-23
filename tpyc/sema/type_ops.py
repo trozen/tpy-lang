@@ -50,6 +50,8 @@ if TYPE_CHECKING:
 
 _HASHABLE = NominalType("Hashable", is_protocol=True)
 _EQUATABLE = NominalType("Equatable", is_protocol=True)
+VALUE_TYPE_PROTOCOL = NominalType("ValueType", is_protocol=True,
+                                  _module_qname=qnames.VALUE_TYPE)
 
 
 def signature_may_return_borrow(fi: 'FunctionInfo') -> bool:

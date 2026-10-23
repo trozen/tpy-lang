@@ -28,6 +28,7 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
+    type_param_names,
     ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants, overload_facts_stub,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
@@ -88,7 +89,7 @@ from ..type_def_registry import (
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
-from .type_ops import signature_may_return_borrow
+from .type_ops import VALUE_TYPE_PROTOCOL, signature_may_return_borrow
 from ..value_category import iterator_source_callee
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
@@ -3528,9 +3529,14 @@ class TypeRegistrar:
                 )
         for fld in record_info.fields:
             if not self._is_field_value_type(fld.type):
+                # A type whose own shape is a value (a tuple, union, Optional
+                # or recursive alias) is refused for a part it holds.
+                what = (f"has type '{fld.type}', which holds a reference type"
+                        if fld.type.is_value_type()
+                        else f"has non-value type '{fld.type}'")
                 raise SemanticError(
                     f"ValueType class '{record.name}': field '{fld.name}' "
-                    f"has non-value type '{fld.type}'",
+                    + what,
                     fld.loc
                 )
         # Value types are immutable, so fields can only be set in __init__;
@@ -3545,18 +3551,17 @@ class TypeRegistrar:
                 record.loc
             )
 
-    @staticmethod
-    def _is_field_value_type(typ: TpyType) -> bool:
-        """Check if a field type satisfies the ValueType constraint.
-
-        Type parameters are accepted unconditionally -- for generic ValueType
-        records, the C++ is_value_type trait enforces this at instantiation time.
-        """
-        if typ.is_value_type():
-            return True
-        if isinstance(typ, TypeParamRef):
-            return True
-        return False
+    def _is_field_value_type(self, typ: TpyType) -> bool:
+        """Whether a field type satisfies the ValueType constraint: the bound
+        `T: ValueType` answers, so a tuple, union or Optional counts only
+        when every part does."""
+        if type_param_names(typ):
+            # Taken on trust for now: the C++ is_value_type specialization
+            # is unconditional, so an instantiation at a reference type is
+            # not caught (BUGS.md#generic-valuetype-field-param-unchecked).
+            return typ.is_value_type() or isinstance(typ, TypeParamRef)
+        return self.protocols.type_conforms_to_protocol(
+            typ, VALUE_TYPE_PROTOCOL)
 
     def _check_multi_base_order(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Verify that source base-declaration order matches C3 linearization order.
