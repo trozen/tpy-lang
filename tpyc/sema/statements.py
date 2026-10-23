@@ -1433,10 +1433,12 @@ class StatementAnalyzer:
                                         unwrap_own(et)).is_value_type()
                                     for et in inner.element_types))
         if eligible:
+            restored = stmt.value not in self.ctx.all_last_uses
             self.ctx.all_last_uses.add(stmt.value)
             stmt.finally_deferred_capture = True
             self.compat.record_owning_read(FinallyCapture(
-                stmt.value.name, stmt.value, stmt, None))
+                stmt.value.name, stmt.value, stmt, None,
+                restored_last_use=restored))
 
     def _defers_to_settlement(self, name: str) -> bool:
         """A returned name whose finally-deferred capture is marked now: a
@@ -1541,11 +1543,13 @@ class StatementAnalyzer:
             return
         leaves = dict(tuple_literal_leaves(stmt.value))
         for path in paths:
+            restored = leaves[path] not in self.ctx.all_last_uses
             self.ctx.all_last_uses.add(leaves[path])
             # The deferred member is moved out after the chain: a consume.
             self.ctx.mark_own_param_consumed(leaves[path].name)
             self.compat.record_owning_read(FinallyCapture(
-                leaves[path].name, leaves[path], stmt, path))
+                leaves[path].name, leaves[path], stmt, path,
+                restored_last_use=restored))
         stmt.finally_deferred_leaves = tuple(paths)
         stmt.finally_deferred_capture = True
 
@@ -1573,12 +1577,17 @@ class StatementAnalyzer:
                 and isinstance(self._declared_binding(value.name),
                                TupleType)):
             return False
+        restored = value not in self.ctx.all_last_uses
         self.ctx.all_last_uses.add(value)
         self.ctx.mark_own_param_consumed(value.name)
         stmt.finally_deferred_leaves = ((),)
         stmt.finally_deferred_capture = True
+        owned = (None if whole_owned else frozenset(
+            i for i, et in enumerate(exp.element_types)
+            if isinstance(et, OwnType)))
         self.compat.record_owning_read(FinallyCapture(
-            value.name, value, stmt, ()))
+            value.name, value, stmt, (), restored_last_use=restored,
+            owned_elements=owned))
         return True
 
     @staticmethod

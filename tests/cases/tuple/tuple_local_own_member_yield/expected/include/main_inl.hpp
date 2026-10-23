@@ -171,10 +171,10 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 //     while i < n:
 //         t = mk(i)
 //         saved = take_ptr(t[1])
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)      # -> S_RESUME_0
+//         yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)  # -> S_RESUME_0
 //         print("borrowed", saved.items[0])
 //         u = mk(i + 100)
-//         yield u  # tpyc: ok                                                # -> S_RESUME_1
+//         yield u  # tpyc: ok                                                            # -> S_RESUME_1
 //         i += 1
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrowed::__next__() {
     while (true) switch (__state) {
@@ -184,7 +184,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
         std::cout << "borrowed" << " " << ::tpy::__getitem__(saved->items, 0) << "\n" << ::tpy::check_signals;
         u.emplace(::tpyapp::main::mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
@@ -200,7 +200,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
             t.emplace(::tpyapp::main::mk(i));
             saved = &std::get<1>((*t));
             __state = S_RESUME_0;
-            return (*t);
+            return std::tuple<int32_t, Box>((*t));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -222,9 +222,9 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 //         t = mk(i)
 //         saved = take_ptr(t[1])
 //         print("dead-borrow", saved.items[0])
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)         # -> S_RESUME_0
+//         yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)  # -> S_RESUME_0
 //         u = mk(i + 100)
-//         yield u  # tpyc: ok                                                   # -> S_RESUME_1
+//         yield u  # tpyc: ok                                                            # -> S_RESUME_1
 //         i += 1
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_call_init_borrow_dead::__next__() {
     while (true) switch (__state) {
@@ -234,7 +234,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
         u.emplace(::tpyapp::main::mk((::tpy::add_check<int32_t>(i, 100))));
         __state = S_RESUME_1;
         return std::move((*u));
@@ -250,7 +250,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
             saved = &std::get<1>((*t));
             std::cout << "dead-borrow" << " " << ::tpy::__getitem__(saved->items, 0) << "\n" << ::tpy::check_signals;
             __state = S_RESUME_0;
-            return (*t);
+            return std::tuple<int32_t, Box>((*t));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -267,7 +267,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_c
 // def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 //     t = mk(7)
 //     for _ in range(n):
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)  # -> S_RESUME_0
+//         yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)  # -> S_RESUME_0
 //     print("preloop-kept", first_item(t[1]))
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_preloop::__next__() {
     while (true) switch (__state) {
@@ -279,7 +279,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_p
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0:  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+    case S_RESUME_0:  // after: yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             std::cout << "preloop-kept" << " " << ::tpyapp::main::first_item(std::get<1>((*t))) << "\n" << ::tpy::check_signals;
@@ -288,7 +288,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_p
         }
         _ = ((*__for_i_0))++;
         __state = S_RESUME_0;
-        return (*t);
+        return std::tuple<int32_t, Box>((*t));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -305,10 +305,10 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_p
 //         # consumer deliberately does not mutate the yielded Box here -- that
 //         # copy IS a CPython divergence, tracked at
 //         # BUGS.md#tuple-yield-copy-warning-omits-aliasing.
-//         yield t  # tpyc: warning(/copies tuple.* into owned storage/)         # -> S_RESUME_0
+//         yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)  # -> S_RESUME_0
 //         print("live-gen", t[1].val)
 //         u = (i, Box(i))
-//         yield u  # tpyc: ok                                                   # -> S_RESUME_1
+//         yield u  # tpyc: ok                                                            # -> S_RESUME_1
 //         i += 1
 inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_live::__next__() {
     while (true) switch (__state) {
@@ -318,7 +318,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_l
         __state = S_JOIN_0;
         continue;
     }
-    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
         std::cout << "live-gen" << " " << std::get<1>((*t)).val << "\n" << ::tpy::check_signals;
         u.emplace(std::tuple<int32_t, Box>{i, Box(i)});
         __state = S_RESUME_1;
@@ -333,7 +333,7 @@ inline std::expected<std::tuple<int32_t, Box>, ::tpy::StopIteration> __gen_gen_l
         if ((i < n)) {
             t.emplace(std::tuple<int32_t, Box>{i, Box((::tpy::mul_check<int32_t>(i, 10)))});
             __state = S_RESUME_0;
-            return (*t);
+            return std::tuple<int32_t, Box>((*t));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

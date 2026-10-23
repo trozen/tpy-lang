@@ -882,7 +882,7 @@ inline int32_t Acc::tot() const {
 // def make(self) -> Own[list[int32]]:
 //     return [4, 5, 6]
 inline std::vector<int32_t> Acc::make() const {
-    return {4, 5, 6};
+    return std::vector<int32_t>{4, 5, 6};
 }
 
 // def __init__(self) -> None:

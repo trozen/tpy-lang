@@ -138,7 +138,7 @@ RULE_TESTS = {
 
 STATEMENTS_FILE = os.path.join(LOWER, "statements.py")
 RETURN_FUNCS = ("_lower_resumable_return_value", "_return_tuple_literal",
-                "_return_read")
+                "result_value")
 # A construction or kind test in the return arm belongs to the row whose
 # witness / reject key sits in the innermost `if` around it (test + body).
 # The rows landing 1 converts through `convert`; what is left in them is the
@@ -831,7 +831,7 @@ RETURN_AUDIT_STOP = {
                                  "(`Source.binding.pointer` already "
                                  "carries it; the row predates it)",
 }
-RETURN_AUDIT_ENTRIES = ("return_slot", "slot_for", "_return_read",
+RETURN_AUDIT_ENTRIES = ("return_slot", "slot_for", "lower_result",
                         "read_stored", "stored_use")
 
 
@@ -844,16 +844,19 @@ def return_audit():
     known = set(table)
     seeds = set(RETURN_AUDIT_ENTRIES)
     left = {}
-    if arm is not None:
-        for n in ast.walk(arm):
+    # The result sink's literal rows are the arm's own.
+    for unit in [u for u in (arm, _funcs(st).get("result_value"))
+                 if u is not None]:
+        for n in ast.walk(unit):
             if not isinstance(n, ast.Call):
                 continue
             f = n.func
             name = (f.id if isinstance(f, ast.Name)
-                    else f.attr if isinstance(f, ast.Attribute) else None)
+                    else f.attr if isinstance(f, ast.Attribute)
+                    else None)
             if name not in known:
                 continue
-            key = _row_of(arm, n.lineno)
+            key = _row_of(unit, n.lineno)
             if key in RETURN_MIGRATED:
                 seeds.add(name)
             else:
@@ -862,7 +865,7 @@ def return_audit():
                     or "landing 2: the arm's unkeyed scaffolding (the "
                        "statement prologue, the pointer-local arm, the "
                        "generic tail)")
-    else:
+    if arm is None:
         _unresolved("statements.py: the return arm is not found")
     _resolved(RETURN_AUDIT_ENTRIES, known, "RETURN_AUDIT_ENTRIES")
     stops = dict(RETURN_AUDIT_STOP)
@@ -914,6 +917,9 @@ def yield_audit():
                             else None)
                     if name in known:
                         seeds.add(name)
+    # The yield's value is the result sink (and its slot the result slot's
+    # builder) the return audit walks with the return's stops.
+    seeds -= {"result_value", "yield_slot"}
     return audit(entries=tuple(sorted(seeds)))
 
 

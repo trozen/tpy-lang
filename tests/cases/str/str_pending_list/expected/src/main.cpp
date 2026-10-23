@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     return [label]
 std::vector<std::string> in_list() {
     std::string_view label = "no";
-    return {std::string(label)};
+    return std::vector<std::string>{std::string(label)};
 }
 
 // def in_tuple_list() -> Own[list[tuple[int, str]]]:
@@ -17,7 +17,7 @@ std::vector<std::string> in_list() {
 //     return [(0, label)]
 std::vector<std::tuple<::tpy::BigInt, std::string>> in_tuple_list() {
     std::string_view label = "no";
-    return {std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)}};
+    return std::vector<std::tuple<::tpy::BigInt, std::string>>{std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(0), std::string(label)}};
 }
 
 // def in_list_var() -> Own[list[str]]:
@@ -68,7 +68,7 @@ std::vector<std::string> in_list_comp() {
 //     return [(label, (label, 42))]
 std::vector<std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>> in_nested_tuple_list() {
     std::string_view label = "x";
-    return {std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>{std::string(label), std::tuple<std::string, ::tpy::BigInt>{std::string(label), ::tpy::BigInt(42)}}};
+    return std::vector<std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>>{std::tuple<std::string, std::tuple<std::string, ::tpy::BigInt>>{std::string(label), std::tuple<std::string, ::tpy::BigInt>{std::string(label), ::tpy::BigInt(42)}}};
 }
 
 // print(in_list())

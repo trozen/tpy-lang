@@ -88,7 +88,7 @@ std::vector<int32_t> doubled(::tpy::Union<const ::tpy::ByteArray*, const std::ve
         });
     }
     auto& __u = *std::get<const ::tpy::ByteArray*>(u);
-    return {0};
+    return std::vector<int32_t>{0};
 }
 
 namespace {

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_optional_list() -> Own[list[int32 | None]]:
 //     return [int32(1), None, int32(3)]
 std::vector<std::optional<int32_t>> make_optional_list() {
-    return {1, std::nullopt, 3};
+    return std::vector<std::optional<int32_t>>{1, std::nullopt, 3};
 }
 
 // def main():

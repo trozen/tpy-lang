@@ -1328,6 +1328,12 @@ class FinallyCapture(OwningRead):
     the finally chain."""
     ret: Any
     path: 'tuple[int, ...] | None'
+    # The deferral itself put the read's last-use mark back (the finally's
+    # reads withheld it): an eager capture takes it away again.
+    restored_last_use: bool = False
+    # The top-level tuple elements the result owns (None: the whole value):
+    # the capture moves those out of the local, and lends the rest.
+    owned_elements: 'frozenset[int] | None' = None
 
 
 @dataclass(eq=False)
@@ -1419,9 +1425,8 @@ class BindingProvenance:
         local safe). Consulted by is_dangling_return / is_param_derived_expr.
 
       * HAZARD facts (UNION -- flagged if they hold on any path), all for
-        tuple-typed locals: `owns_fresh_idx` (index of the first element that
-        owns fresh non-value storage -- borrowing it across a yield/return
-        dangles), `owning_storage` (bound from an owning-tuple call -- a
+        tuple-typed locals: `owns_fresh_idxs` (the elements that own fresh
+        non-value storage -- borrowing any across a yield/return dangles), `owning_storage` (bound from an owning-tuple call -- a
         borrow-form return would address into the dying local),
         `copy_into_own_idxs` (elements held by reference -- a plain borrow,
         or an owned source not moved in -- which COPY at a NAME->Own[T] slot
@@ -1434,7 +1439,7 @@ class BindingProvenance:
 
     safe_to_return: bool = False
     param_derived: bool = False
-    owns_fresh_idx: int | None = None
+    owns_fresh_idxs: frozenset[int] = frozenset()
     owning_storage: bool = False
     copy_into_own_idxs: frozenset[int] = frozenset()
     # HAZARD (UNION): storage roots a borrow-form tuple local's element
@@ -2246,9 +2251,9 @@ class FunctionTrackingState:
     def bp_remove_loop_var_provenance(self, name: str) -> None:
         self._bp_update(name, param_derived=False, safe_to_return=False)
 
-    def bp_owns_fresh_idx(self, name: str) -> int | None:
+    def bp_owns_fresh_idxs(self, name: str) -> frozenset[int]:
         bp = self.binding_provenance.get(name)
-        return bp.owns_fresh_idx if bp is not None else None
+        return bp.owns_fresh_idxs if bp is not None else frozenset()
 
     def bp_is_owning_storage(self, name: str) -> bool:
         bp = self.binding_provenance.get(name)
@@ -2262,7 +2267,7 @@ class FunctionTrackingState:
         self,
         name: str,
         *,
-        owns_fresh_idx: int | None,
+        owns_fresh_idxs: frozenset[int],
         owning_storage: bool,
         copy_into_own_idxs: frozenset[int],
         borrow_source_roots: frozenset[str],
@@ -2273,7 +2278,7 @@ class FunctionTrackingState:
         # fields, managed separately, untouched.
         self._bp_update(
             name,
-            owns_fresh_idx=owns_fresh_idx,
+            owns_fresh_idxs=owns_fresh_idxs,
             owning_storage=owning_storage,
             copy_into_own_idxs=copy_into_own_idxs,
             borrow_source_roots=borrow_source_roots,

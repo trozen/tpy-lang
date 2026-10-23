@@ -25,7 +25,7 @@ bool node_pos(const Node& n) {
 // def make_nodes() -> Own[list[Node]]:
 //     return [Node(1), Node(2)]
 std::vector<Node> make_nodes() {
-    return {Node(1), Node(2)};
+    return std::vector<Node>{Node(1), Node(2)};
 }
 
 // def main() -> None:

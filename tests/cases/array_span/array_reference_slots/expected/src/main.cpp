@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def fresh() -> Own[Array[int32, 3]]:
 //     return [7, 8, 9]                          # the Own[Array] storage return slot
 std::array<int32_t, 3> fresh() {
-    return {7, 8, 9};
+    return std::array<int32_t, 3>{7, 8, 9};
 }
 
 // def first_or_none(g: Grid, want: bool) -> Array[int32, 3] | None:

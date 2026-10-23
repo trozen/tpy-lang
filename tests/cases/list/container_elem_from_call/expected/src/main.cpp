@@ -41,7 +41,7 @@ std::vector<std::string> make_rows(int32_t n) {
 // def make_ints(n: int32) -> Own[list[int32]]:
 //     return [n]
 std::vector<int32_t> make_ints(int32_t n) {
-    return {n};
+    return std::vector<int32_t>{n};
 }
 
 

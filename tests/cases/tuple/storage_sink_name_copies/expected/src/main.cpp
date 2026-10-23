@@ -129,7 +129,7 @@ std::vector<std::tuple<P, P>> return_list(P& p) {
 //     return [[t]]  # tpyc: warning(/copies P into .*tuple element 0/) warning(/copies P into .*tuple element 1/)
 std::vector<std::vector<std::tuple<P, P>>> nested_list(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return {::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t))};
+    return std::vector<std::vector<std::tuple<P, P>>>{::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t))};
 }
 
 // def nested_tuple(p: P) -> Own[list[tuple[tuple[P, P], int32]]]:
@@ -139,7 +139,7 @@ std::vector<std::vector<std::tuple<P, P>>> nested_list(P& p) {
 //     return [(t, 1)]  # tpyc: warning(/copies P into .*tuple element 0\.0/) warning(/copies P into .*tuple element 0\.1/)
 std::vector<std::tuple<std::tuple<P, P>, int32_t>> nested_tuple(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return {std::tuple<std::tuple<P, P>, int32_t>{::tpy::tuple_to_storage<std::tuple<P, P>>(t), 1}};
+    return std::vector<std::tuple<std::tuple<P, P>, int32_t>>{std::tuple<std::tuple<P, P>, int32_t>{::tpy::tuple_to_storage<std::tuple<P, P>>(t), 1}};
 }
 
 

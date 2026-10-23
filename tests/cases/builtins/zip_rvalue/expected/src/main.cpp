@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def get_names() -> Own[list[str]]:
 //     return ["alice", "bob"]
 std::vector<std::string> get_names() {
-    return {"alice", "bob"};
+    return std::vector<std::string>{"alice", "bob"};
 }
 
 // def get_scores() -> Own[list[int32]]:
 //     return [100, 200]
 std::vector<int32_t> get_scores() {
-    return {100, 200};
+    return std::vector<int32_t>{100, 200};
 }
 
 // def main() -> None:

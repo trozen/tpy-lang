@@ -60,7 +60,7 @@ from ..storage_trace import StepKind, Trace, is_unbound_field, trace
 from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
-    OwnType, ReadonlyType, TpyType, TupleType,
+    OwnType, ReadonlyType, TpyType, TupleType, TypeParamRef,
     unwrap_own, unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
 )
@@ -273,6 +273,19 @@ class IncomingLends(Protocol):
                         prefix: ElemPath = ()) -> frozenset[ElemPath]: ...
 
 
+def _owned_member(ctx: 'SemanticContext', m: TpyExpr) -> bool:
+    """A literal member the tuple takes over: a fresh value, or a parameter
+    handed over (`Own[...]`)."""
+    if binds_owned_value(ctx, m):
+        return True
+    # binding_ownership builds on this module's leaf paths.
+    from .binding_ownership import Acquired, read_ownership
+    m = peel_coerce(m)
+    rb = ctx.read_bindings.get(m) if isinstance(m, TpyName) else None
+    return (rb is not None
+            and read_ownership(ctx, rb).acquired is Acquired.HANDED)
+
+
 def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
                          slot: TpyType | None, prefix: ElemPath = (), *,
                          incoming: IncomingLends | None = None
@@ -313,7 +326,15 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
             path = prefix + (i,)
             m = init.elements[i] if i < len(init.elements) else None
             if incoming is None:
-                if i < len(caps) and caps[i] is TupleElemCapture.VALUE:
+                # A captured open `T` copies an existing object in at a
+                # reference instantiation (`param_to_storage`), as the
+                # binding-borrow registry reads it: it lends, unless fresh
+                # or handed over (`Own`).
+                if (i < len(caps) and caps[i] is TupleElemCapture.VALUE
+                        and not (m is not None
+                                 and isinstance(unwrap_readonly(
+                                     unwrap_ref_type(et)), TypeParamRef)
+                                 and not _owned_member(ctx, m))):
                     continue
             elif m is None:
                 continue

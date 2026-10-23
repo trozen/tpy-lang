@@ -341,8 +341,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     the call-bound mixed local at an insert (D1 above), a list-literal local
     copied into `Own[list]` element slots (`ys = [1, 2]; return (ys, ys)`,
     `BUGS.md#array-literal-in-own-tuple-return`), an Optional member
-    (`BUGS.md#optional-member-own-copy-no-render`), `yield t`
-    (`BUGS.md#yield-tuple-name-own-element`) and a name nested in a returned
+    (`BUGS.md#optional-member-own-copy-no-render`), `yield t` (built since
+    landing 2 U2a) and a name nested in a returned
     literal (`BUGS.md#nested-tuple-name-own-return`); a global name copies
     unwarned (`BUGS.md#global-tuple-name-own-return-unwarned`).
   - [x] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" --
@@ -634,9 +634,9 @@ per shape; the mixed tuple global (D2) waits on that entry.
       (`BUGS.md#nonlocal-rebind-overwrites-in-place`). TPy declares an
       `except` target of the same spelling as the handler's own name
       (`BUGS.md#handler-name-not-unbound`). A generator expression reads
-      a captured pointer tuple as one; one yielding it whole is refused
-      (`res.btuple_yield_source`), as a generator's `yield p` is
-      (`BUGS.md#genexpr-yields-captured-reference-local`). A literal
+      a captured pointer tuple as one; one yielding it whole takes the
+      warned capture copy, and a generator's `yield p` lends it (since
+      landing 2 U2a; `BUGS.md#genexpr-yields-captured-reference-local`). A literal
       element at a pointer-tuple binding is a fresh object, an owning
       call, a value read, a name (copied in at an owned position, warned,
       or moved at its last use) or, at a borrowed position, a place whose

@@ -61,7 +61,7 @@ void holder_writes(std::optional<std::string_view> s, std::string_view text, int
 // def make_list(n: int32) -> Own[list[int32]]:
 //     return [n, n + 1]
 std::vector<int32_t> make_list(int32_t n) {
-    return {n, (::tpy::add_check<int32_t>(n, 1))};
+    return std::vector<int32_t>{n, (::tpy::add_check<int32_t>(n, 1))};
 }
 
 // def make_res(v: int32) -> Own[Res]:
@@ -93,7 +93,7 @@ int32_t count(const std::vector<int32_t>& xs) {
 // def mk(xs: list[int32]) -> Own[list[int32]]:
 //     return [xs[0], 9]
 std::vector<int32_t> mk(const std::vector<int32_t>& xs) {
-    return {::tpy::__getitem__(xs, 0), 9};
+    return std::vector<int32_t>{::tpy::__getitem__(xs, 0), 9};
 }
 
 // def union_tag(x: UA | UB) -> int32:
@@ -374,7 +374,7 @@ void main() {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        __self.pair = std::tuple<::tpy::BigInt, std::string>{n, std::string(text)};
+        __self.pair = std::tuple<::tpy::BigInt, std::string>{n, text};
         __self.show("async.writes");
         ys.emplace(std::vector<int32_t>{n, 40});
         (*ys).push_back(41);

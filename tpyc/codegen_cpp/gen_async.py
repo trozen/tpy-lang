@@ -65,7 +65,9 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import pointer_repr_optional, returns_cpp_reference_shape
+from ..typesys import (ResultPosition, ResultRepresentation,
+                       classify_result_representation, pointer_repr_optional,
+                       returns_cpp_reference_shape, yield_borrow_slot_cpp)
 from ..sema.storage_policy import first_binding_storage
 from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership, body_function_info, body_method_info
 from ..value_category import (async_return_form, AsyncReturnForm,
@@ -73,8 +75,7 @@ from ..value_category import (async_return_form, AsyncReturnForm,
                               for_source_is_rvalue, frame_factory_callee,
                               iterator_source_callee,
                               materializing_temp_source, peel_coerce)
-from .gen_generators import (GeneratorCodegen, GeneratorForInfo,
-                             owned_view_frame_params)
+from .gen_generators import GeneratorCodegen, GeneratorForInfo
 from ..type_def_registry import (is_str_type, is_str_category, is_big_int_type,
                                   is_bytes_type,
                                   is_bytes_category, is_owned_in_coro_frame,
@@ -2838,7 +2839,6 @@ class AsyncCoroCodegen:
         old_pointer_alias_locals = self.ctx.generator_pointer_alias_locals
         old_frame_const_bindings = self.ctx.frame_const_bindings
         old_self_ref = self.ctx.generator_self_ref
-        old_owned_view_params = self.ctx.owned_view_frame_params
         old_in_method = self.ctx.in_method
         old_method_record = self.ctx.current_method_record_type
         # `setup_body_scope` -> `reset_scope` wipes `pointer_locals` and
@@ -2905,7 +2905,6 @@ class AsyncCoroCodegen:
         )
 
         self.ctx.in_generator_body = True
-        self.ctx.owned_view_frame_params = owned_view_frame_params(func.params)
         # Nested defs are frame members: register their names up front so
         # call sites in any resume case (and finally-helper bodies) render
         # the unqualified member call.
@@ -2945,7 +2944,6 @@ class AsyncCoroCodegen:
             self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
             self.ctx.frame_const_bindings = old_frame_const_bindings
             self.ctx.generator_self_ref = old_self_ref
-            self.ctx.owned_view_frame_params = old_owned_view_params
             self.ctx.in_method = old_in_method
             self.ctx.current_method_record_type = old_method_record
             self.ctx.pointer_locals = old_pointer_locals
@@ -3013,8 +3011,16 @@ class AsyncCoroCodegen:
         next_iter_mixin element arg (`_generator_iter_base`); the two must stay
         identical, so they share this single source."""
         yt = func.generator_yield_type
-        return GeneratorCodegen._iter_slot_for_yield(
-            yt, self.types.type_to_cpp(yt), func.generic_yield_borrows)
+        rep = classify_result_representation(
+            yt, position=ResultPosition.GENERATOR_YIELD,
+            generic_borrows=func.generic_yield_borrows)
+        if rep is ResultRepresentation.YIELD_TUPLE:
+            return yt.to_cpp_return()
+        cpp = self.types.type_to_cpp(yt)
+        if rep in (ResultRepresentation.YIELD_BORROW,
+                   ResultRepresentation.YIELD_TRAIT):
+            return yield_borrow_slot_cpp(yt, cpp)
+        return cpp
 
     def _generator_iter_base(self, func: TpyFunction,
                              record_name: str | None = None) -> str:
@@ -3030,7 +3036,7 @@ class AsyncCoroCodegen:
         """The frame body method's return type. Async: `Poll<T>`.
         Generator: `std::expected<T_slot, ::tpy::StopIteration>` where
         T_slot is the iterator slot type from
-        `gen_generators._iter_slot_for_yield` -- borrow form
+        the GENERATOR_YIELD result classification -- borrow form
         (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) for tuple yields,
         bare cpp type otherwise. The yield emit already bridges
         storage-form sources into the borrow-form slot when

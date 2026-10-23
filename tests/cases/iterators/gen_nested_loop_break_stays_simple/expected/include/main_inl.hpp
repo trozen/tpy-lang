@@ -39,7 +39,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
             acc = ::tpy::add_check<int32_t>(acc, j);
         }
         __state = S_RESUME_0;
-        return acc;
+        return std::move(acc);
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -35,9 +35,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_tuple_temp_gen::__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        v = std::string(::tpyapp::main::first_of(std::tuple<std::string, int32_t>{std::string(s), 1}));
+        v = std::string(::tpyapp::main::first_of(std::tuple<std::string, int32_t>{s, 1}));
         __state = S_RESUME_0;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_0: {  // after: yield v
         __state = S_DONE;

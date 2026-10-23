@@ -563,8 +563,6 @@ from .predicates import (
     _ptr_tuple_literal_compare_pair,
     _value_tuple_global,
     _value_tuple_return,
-    _generic_value_tuple_return,
-    _tuple_has_own_element,
     _ru_container_literal_ok,
     _dyn_borrow_return,
     _own_dyn_return,
@@ -13989,41 +13987,6 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         loc=getattr(e, "loc", None))
 
 
-def _lower_yield_tuple_literal(yv_src: TpyTupleLiteral, yt_bare: 'TupleType',
-                               lc: '_LowerCtx',
-                               declared: dict[str, TpyType], *,
-                               generic_face: str, reject: str,
-                               target_readonly: bool = False) -> THIRExpr:
-    """The literal-vs-builder selection of the resumable tuple YIELD slot
-    (and the return slot): the borrow builder for a pointer-repr slot, the generic
-    val_or_ptr builder, else the spelled value literal -- widened by the
-    Own-record storage elements the RETURN slot admits (`yield (i, Box(i*10))`
-    -> `std::tuple<::tpy::BigInt, Box>{i, Box(..)}`; Own elements are held
-    by value, so borrow and storage coincide and the render is
-    position-independent). Ladder order is interchangeable across the two
-    callers: a generic tuple admits only TypeParamRef + narrow value
-    elements, so it can never be pointer-repr."""
-    analyzer = lc.analyzer
-    if yt_bare.has_pointer_repr_element():
-        return _lower_borrow_tuple_literal(yv_src, yt_bare, lc, declared,
-                                           target_readonly=target_readonly)
-    gt = _generic_value_tuple_return(yt_bare, analyzer)
-    if gt is not None:
-        lowered = _lower_generic_tuple_literal(yv_src, gt, lc, declared)
-        _witness(generic_face)
-        return lowered
-    vt = _value_tuple_nested(yt_bare, analyzer)
-    if vt is None and _tuple_has_own_element(yt_bare):
-        # Own-element gate: value-opt elements (the rest of the return
-        # family) stay unwitnessed at the yield slot and keep rejecting.
-        vt = _value_tuple_return(yt_bare, analyzer)
-        if vt is not None:
-            _witness("yield.own_tuple_literal")
-    if vt is None:
-        raise ThirUnsupported(reject)
-    return _lower_tuple_literal(yv_src, vt, lc, declared)
-
-
 def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                                  lc: '_LowerCtx',
                                  declared: dict[str, TpyType]) -> THIRExpr:
@@ -15861,9 +15824,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             slot_t = resolve_tuple_pending(unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer)
             _witness("move.own_tuple_ptr_lift")
-            return (elementwise_tuple_storage(lowered, slot_t,
-                                              param_form=True)
-                    or THIRFormConvert(result_type=slot_t, value=moved,
+            per_elem = elementwise_tuple_storage(lowered, slot_t,
+                                                 param_form=True)
+            return (per_elem.expr if per_elem is not None
+                    else THIRFormConvert(result_type=slot_t, value=moved,
                                        form=Form.STORAGE, param_form=True,
                                        loc=getattr(a, "loc", None)))
         _witness("move.own_tuple")

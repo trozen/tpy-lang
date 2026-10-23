@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def make_xs() -> Own[list[int32]]:
 //     return [1, 2, 3]
 std::vector<int32_t> make_xs() {
-    return {1, 2, 3};
+    return std::vector<int32_t>{1, 2, 3};
 }
 
 // def make_ys() -> Own[list[int32]]:
 //     return [10, 20, 30]
 std::vector<int32_t> make_ys() {
-    return {10, 20, 30};
+    return std::vector<int32_t>{10, 20, 30};
 }
 
 // def add(a: int32, b: int32) -> int32:

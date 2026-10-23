@@ -8,7 +8,7 @@ namespace tpyapp::main {
 // def make() -> Own[list[int32]]:
 //     return [10, 20, 30]
 std::vector<int32_t> make() {
-    return {10, 20, 30};
+    return std::vector<int32_t>{10, 20, 30};
 }
 
 

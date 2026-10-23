@@ -25,7 +25,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_StringIO___iter__:
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
             __state = S_RESUME_0;
-            return line;
+            return std::move(line);
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -56,7 +56,7 @@ inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BytesIO___iter__:
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
             __state = S_RESUME_0;
-            return line;
+            return std::move(line);
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -87,7 +87,7 @@ inline std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_BufferedReader___
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
             __state = S_RESUME_0;
-            return line;
+            return std::move(line);
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

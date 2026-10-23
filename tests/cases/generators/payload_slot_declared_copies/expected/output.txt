@@ -1,0 +1,13 @@
+param_lit 1
+borrowed_name 1
+lending_call 1
+element 1
+field 1
+live 9
+live after 2
+borrow_calls 42
+genexpr_rebind 2
+to_name 1
+to_call 1
+g_mixed 1
+mixed_fin_yield 5

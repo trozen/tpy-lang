@@ -13,7 +13,7 @@ std::vector<std::string>* churn{};
 // def mk_labels() -> Own[list[str]]:
 //     return ["a" * 30, "b" * 30]
 std::vector<std::string> mk_labels() {
-    return {(::tpy::str_repeat("a", 30)), (::tpy::str_repeat("b", 30))};
+    return std::vector<std::string>{(::tpy::str_repeat("a", 30)), (::tpy::str_repeat("b", 30))};
 }
 
 // """Value globals of every family the importing module reads bare."""

@@ -50,7 +50,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_reassign::__ne
             q = (*__self.f);
         }
         __state = S_RESUME_0;
-        return q;
+        return std::move(q);
     }
     case S_RESUME_0: {  // after: yield q
         __state = S_RESUME_1;

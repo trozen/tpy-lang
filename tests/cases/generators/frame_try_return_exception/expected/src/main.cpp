@@ -13,7 +13,7 @@ int32_t m_seen{};
 // def fresh() -> Own[list[Node]]:
 //     return [Node(1), Node(2)]
 std::vector<Node> fresh() {
-    return {Node(1), Node(2)};
+    return std::vector<Node>{Node(1), Node(2)};
 }
 
 

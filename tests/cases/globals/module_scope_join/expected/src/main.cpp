@@ -703,7 +703,7 @@ void walrus_shadow_fn() {
 // def mk_strs() -> Own[list[str]]:
 //     return ["s" * 30, "t" * 30]
 std::vector<std::string> mk_strs() {
-    return {(::tpy::str_repeat("s", 30)), (::tpy::str_repeat("t", 30))};
+    return std::vector<std::string>{(::tpy::str_repeat("s", 30)), (::tpy::str_repeat("t", 30))};
 }
 
 // def show_loop_rebind_temp() -> None:
@@ -738,7 +738,7 @@ void loop_rebind_temp_fn() {
 // def mk_bytes() -> Own[list[bytes]]:
 //     return [b"s" * 30, b"t" * 30]
 std::vector<::tpy::Bytes> mk_bytes() {
-    return {(::tpy::bytes_repeat(::tpy::bytes_literal("s", 1), 30)), (::tpy::bytes_repeat(::tpy::bytes_literal("t", 1), 30))};
+    return std::vector<::tpy::Bytes>{(::tpy::bytes_repeat(::tpy::bytes_literal("s", 1), 30)), (::tpy::bytes_repeat(::tpy::bytes_literal("t", 1), 30))};
 }
 
 // def show_loop_rebind_temp_bytes() -> None:

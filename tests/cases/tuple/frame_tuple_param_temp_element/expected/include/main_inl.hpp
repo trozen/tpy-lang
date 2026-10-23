@@ -177,7 +177,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_owned_view_gen::__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        v = ::tpyapp::main::sv_first(std::tuple<std::string, ::tpy::BigInt>{std::string(s), ::tpy::BigInt(1)});
+        v = ::tpyapp::main::sv_first(std::tuple<std::string, ::tpy::BigInt>{s, ::tpy::BigInt(1)});
         junk.emplace(::tpy::array_from_index<std::string, 8>([&](std::size_t __i_0) -> std::string {
             int32_t i = int32_t(__i_0);
             return (::tpy::str_repeat(::tpy::fixed_to_str<int32_t>(i), 40));

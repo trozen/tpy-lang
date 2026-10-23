@@ -1,0 +1,3 @@
+main.py:294: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:294: warning: copies B into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 291)
+main.py:443: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.

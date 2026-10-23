@@ -39,7 +39,7 @@ inline std::expected<std::string_view, ::tpy::StopIteration> __gen_owned_local::
         __state = S_DONE;  // until a yield sets where to resume
         v = ::tpy::str_strip(s);
         __state = S_RESUME_0;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_0: {  // after: yield v                  # tpyc: ok
         __state = S_DONE;

@@ -412,7 +412,7 @@ void values_fn() {
 // def mk_ps() -> Own[list[P]]:
 //     return [P(40), P(41)]
 std::vector<P> mk_ps() {
-    return {P(::tpy::BigInt(40)), P(::tpy::BigInt(41))};
+    return std::vector<P>{P(::tpy::BigInt(40)), P(::tpy::BigInt(41))};
 }
 
 // def head(xs: list[P]) -> P:

@@ -89,7 +89,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_late_gen::__next__() {
     case S_RESUME_0: {  // after: yield 0
         n = 5;
         __state = S_RESUME_1;
-        return n;
+        return std::move(n);
     }
     case S_RESUME_1: {  // after: yield n
         __state = S_DONE;

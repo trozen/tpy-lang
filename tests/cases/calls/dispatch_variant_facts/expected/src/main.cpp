@@ -13,7 +13,7 @@ R mkr() {
 // def mk() -> Own[list[float]]:
 //     return [1.5]
 std::vector<double> mk() {
-    return {1.5};
+    return std::vector<double>{1.5};
 }
 
 // def grow(xs: list[int32]) -> int32:

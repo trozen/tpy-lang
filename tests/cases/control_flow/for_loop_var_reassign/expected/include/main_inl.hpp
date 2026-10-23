@@ -42,7 +42,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_generator::__nex
         i = ((*__for_i_0))++;
         i = 10;
         __state = S_RESUME_0;
-        return ::tpy::BigInt(i);
+        return ::tpy::BigInt(std::move(i));
     }
     case S_JOIN_1: {
         __state = S_DONE;

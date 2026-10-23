@@ -29,7 +29,7 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_counts::__next__
     case S_RESUME_0: {  // after: yield v      # 6
         v = ((v) + (::tpy::BigInt(10)));
         __state = S_RESUME_1;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_1:  // after: yield v      # 16
     case S_JOIN_0: {

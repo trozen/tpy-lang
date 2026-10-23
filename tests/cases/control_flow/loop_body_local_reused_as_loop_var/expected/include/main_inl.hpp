@@ -37,7 +37,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
                 std::cout << "gen in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_RESUME_1;
-            return n;
+            return std::move(n);
         }
         a = ((*__for_i_0))++;
         n = (::tpy::mul_check<int32_t>(a, 10));
@@ -86,7 +86,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_two_siblings::__ne
                 std::cout << "gen_two_siblings in" << " " << n << "\n" << ::tpy::check_signals;
             }
             __state = S_RESUME_1;
-            return n;
+            return std::move(n);
         }
         a = ((*__for_i_0))++;
         n = (::tpy::mul_check<int32_t>(a, 10));

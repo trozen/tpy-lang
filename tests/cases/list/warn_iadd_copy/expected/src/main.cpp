@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_nodes() -> Own[list[Node]]:
 //     return [Node(int32(1))]
 std::vector<Node> make_nodes() {
-    return {Node(1)};
+    return std::vector<Node>{Node(1)};
 }
 
 // def test_iadd_ref_type_warns() -> None:

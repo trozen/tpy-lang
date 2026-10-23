@@ -19,7 +19,7 @@ int64_t wide() {
 // def fresh_list() -> Own[list[int32]]:
 //     return [1, 2, 3]
 std::vector<int32_t> fresh_list() {
-    return {1, 2, 3};
+    return std::vector<int32_t>{1, 2, 3};
 }
 
 // def fresh_dict() -> Own[dict[str, int32]]:

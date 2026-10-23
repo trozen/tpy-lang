@@ -22,7 +22,7 @@ __gen_fresh fresh(const std::vector<C>& cs) {
 // def make() -> Own[list[C]]:
 //     return [C(3), C(4)]
 std::vector<C> make() {
-    return {C(::tpy::BigInt(3)), C(::tpy::BigInt(4))};
+    return std::vector<C>{C(::tpy::BigInt(3)), C(::tpy::BigInt(4))};
 }
 
 // def param_source(cs: list[C]) -> None:

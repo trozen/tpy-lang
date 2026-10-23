@@ -49,7 +49,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_run::__next__() {
                     total = (total) + (n);
                 }
                 __state = S_RESUME_0;
-                return total;
+                return std::move(total);
             } else {
                 auto& __t = std::get<Emit>((*t));
                 __state = S_RESUME_1;

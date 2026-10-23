@@ -65,7 +65,7 @@ inline F::F(int32_t n) : n(n) {}
 // def make(self) -> Own[list[int32]]:
 //     return [self.n, self.n, self.n]
 inline std::vector<int32_t> F::make() const {
-    return {this->n, this->n, this->n};
+    return std::vector<int32_t>{this->n, this->n, this->n};
 }
 
 // def __init__(self, n: int32) -> None:

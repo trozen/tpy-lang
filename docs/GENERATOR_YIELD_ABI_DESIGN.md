@@ -60,11 +60,11 @@ several places. Where this section and the prose below disagree, **this section 
   a tuple *local* assigned a fresh member (`t = (i, Box(i)); yield t`) is not caught by it -- but the
   shape no longer dangles silently. `_check_tuple_member_local` rejects the bare-name yield/return
   when the boundary type leaves the fresh element in borrow form ("Cannot yield tuple local 't':
-  element 0 ... would dangle. Use Own[A] ..."), and the spellings that get past it -- an
-  `Iterator[tuple[Own[A], int32]]` boundary, or a local bound from an owning call -- hit the THIR
-  reject `res.btuple_yield_source` in a resumable frame. Still open because the fix is to make the
-  whole-tuple yield WORK (the frame owns the slot; the yield wants a storage-form handoff), not to
-  keep rejecting it; the dangle still wants catching at the local-assignment site (BUGS.md).
+  element 0 ... would dangle. Use Own[A] ..."), every element the boundary still borrows checked.
+  Since landing 2 U2a the whole-tuple yield works: a yield converts its value as `return` does, so
+  an `Iterator[tuple[Own[A], int32]]` boundary moves the owned element out of the frame at its last
+  use and a local bound from an owning call is lent from the frame
+  (BUGS.md#generator-resume-overwrites-held-yield for the resumption hazard).
 - **Actual tests** (the "Tests" section names are aspirational): `gen_yield_nocopy`, `gen_yield_del`,
   `gen_method_yield_nocopy`, `gen_own_yield_fresh`, `gen_ref_multi_yield` (mutation guard),
   `genexpr_ref_mutate`, `error_gen_yield_fresh_as_ref`, `error_gen_borrow_yield_onward`,

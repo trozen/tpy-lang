@@ -77,8 +77,8 @@ void main() {
 // # neither arm raises the aliasing question a reference-typed ternary does, and
 // # the conditional is a plain value select. A LITERAL arm beside a name arm pins
 // # to a declared return; without one it is refused by sema
-// # (BUGS.md#literal-elem-tuple-ternary-mismatch), and a generator YIELD of the
-// # same ternary rejects one rung on (res.btuple_yield_source).
+// # (BUGS.md#literal-elem-tuple-ternary-mismatch). A generator YIELD of the
+// # same ternary converts as this return does.
 // import asyncio
 //
 // main()

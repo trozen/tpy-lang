@@ -62,6 +62,29 @@ def walrus(b: Box) -> int32:
     return p[0].val
 
 
+def relay(p: tuple[Box, Box]) -> tuple[Own[Box], Box]:
+    t = p
+    # an alias of a borrowed tuple parameter returned at a mixed slot: the
+    # owned element copies, the borrowed one stays the caller's
+    return t  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
+
+
+def own_separate[T](q: Own[T], b: Box) -> tuple[Own[T], Box]:
+    t = (q, b)
+    # the owned element moves in, the borrowed one stays the caller's
+    return t  # tpyc: ok
+
+
+def mixed_param[T](q: tuple[Own[T], Box]) -> tuple[Own[T], Box]:
+    # a mixed parameter hands back the caller's borrowed element
+    return q  # tpyc: ok
+
+
+def mixed_param_box(q: tuple[Own[Box], Box]) -> tuple[Own[Box], Box]:
+    # the monomorphic twin
+    return q  # tpyc: ok
+
+
 def main() -> None:
     b = Box(7)
     c = Box(8)
@@ -71,6 +94,19 @@ def main() -> None:
     print("loop:", loop_carried(b, c), b.val, c.val)
     print("try:", try_hoisted(b), b.val)
     print("walrus:", walrus(b), b.val)
+    a = Box(1)
+    r = relay((a, b))
+    r[1].val = 9
+    print("relay:", r[0].val, b.val)
+    s1 = own_separate(Box(2), b)
+    b.val = 10
+    print("own_separate:", s1[0].val, s1[1].val)
+    s2 = mixed_param((Box(3), b))
+    b.val = 11
+    print("mixed_param:", s2[0].val, s2[1].val)
+    s3 = mixed_param_box((Box(4), b))
+    b.val = 12
+    print("mixed_param_box:", s3[0].val, s3[1].val)
 
 
 main()

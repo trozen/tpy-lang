@@ -1,1 +1,1 @@
-main.py:15: error: in function 'g': this construct is not yet supported by C++ code generation (res.yield_type)
+main.py:15: error: in function 'g': this construct is not yet supported by C++ code generation (stmt.yield:return.copy_undeclared)

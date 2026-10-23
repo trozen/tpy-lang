@@ -154,7 +154,7 @@ std::expected<std::tuple<std::string, std::vector<std::string>*, std::vector<std
             continue;
         } else {
             stack.emplace(std::vector<std::string>{});
-            (*stack).push_back(std::string(top));
+            (*stack).push_back(top);
             __state = S_JOIN_1;
             continue;
         }

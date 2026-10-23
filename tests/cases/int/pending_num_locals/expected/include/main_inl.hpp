@@ -86,7 +86,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_first_gen::__next__() 
     case S_RESUME_0: {  // after: yield x * 3
         x = static_cast<int32_t>(3);
         __state = S_RESUME_1;
-        return x;
+        return std::move(x);
     }
     case S_RESUME_1: {  // after: yield x
         __state = S_DONE;
@@ -109,12 +109,12 @@ inline std::expected<int64_t, ::tpy::StopIteration> __gen_gen_yield::__next__() 
         __state = S_DONE;  // until a yield sets where to resume
         v = 0;
         __state = S_RESUME_0;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_0: {  // after: yield v
         v = ::tpyapp::main::w64(static_cast<int64_t>(9000000000));
         __state = S_RESUME_1;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_1: {  // after: yield v
         __state = S_DONE;

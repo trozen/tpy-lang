@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_list(n: int32) -> Own[list[int32]]:
 //     return [n, n + 1, n + 2]
 std::vector<int32_t> make_list(int32_t n) {
-    return {n, (::tpy::add_check<int32_t>(n, 1)), (::tpy::add_check<int32_t>(n, 2))};
+    return std::vector<int32_t>{n, (::tpy::add_check<int32_t>(n, 1)), (::tpy::add_check<int32_t>(n, 2))};
 }
 
 // def make_dict() -> Own[dict[int32, int32]]:

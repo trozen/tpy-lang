@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_words() -> Own[list[str]]:
 //     return ["hello", "world", "test"]
 std::vector<std::string> make_words() {
-    return {"hello", "world", "test"};
+    return std::vector<std::string>{"hello", "world", "test"};
 }
 
 namespace {

@@ -89,11 +89,11 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_Wrap_summary<T>::__next__() {
             count = ::tpy::add_check<int32_t>(count, 1);
         }
         __state = S_RESUME_0;
-        return total;
+        return std::move(total);
     }
     case S_RESUME_0: {  // after: yield total
         __state = S_RESUME_1;
-        return count;
+        return std::move(count);
     }
     case S_RESUME_1: {  // after: yield count
         __state = S_DONE;

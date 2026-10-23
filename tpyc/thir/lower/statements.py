@@ -401,6 +401,8 @@ from .predicates import (
 )
 from .context import (
     FrameLocalClass,
+    lends_elements,
+    result_hosts_temps,
     return_slot,
     Slot,
     SlotHolds,
@@ -7329,9 +7331,9 @@ def lower_result(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
     the stored read of its source for the result slot (`read_stored`),
     taken to the slot (`convert`)."""
     # A result has no statement of its own to demote to: it takes a
-    # temporary exactly where its region hosts one.
+    # temporary exactly where its region hosts one and it does not lend.
     read = _field_write.read_stored(v, slot, lc, declared,
-                                    allow_temps=lc.may_hoist)
+                                    allow_temps=result_hosts_temps(slot, lc))
     if read.row is not None:
         _witness("ret." + read.row)
     # A folded literal renders against the result type (literal
@@ -7342,23 +7344,23 @@ def lower_result(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
                        detail=detail).expr
 
 
-def _return_tuple_literal(stmt: TpyReturn, ret_slot: 'Slot', lc: '_LowerCtx',
-                          declared: dict[str, TpyType], scope: '_LowerScope',
-                          loc) -> 'THIRExpr | None':
+def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
+                          lc: '_LowerCtx', declared: dict[str, TpyType],
+                          scope: '_LowerScope', loc) -> 'THIRExpr | None':
     """LITERAL construction of a tuple literal at a tuple result slot: the
     spelled brace-init against the slot, each element landing in its
     element slot. None for a slot no tuple builder spells (the generic
     literal render takes it)."""
     analyzer = lc.analyzer
-    v = stmt.value
     rdecl = ret_slot.declared
 
     def lowered(slot_t: TupleType) -> THIRExpr:
         try:
-            # The return is a statement flush point, so an element's call
-            # may hoist its `__tmp_N` decl ahead of the return.
-            return _lower_tuple_literal(v, slot_t, lc, declared,
-                                        use=_ExprUse(allow_temps=True))
+            # An element's call hoists its `__tmp_N` decl ahead of the
+            # statement where the region hosts one.
+            return _lower_tuple_literal(
+                v, slot_t, lc, declared,
+                use=_ExprUse(allow_temps=result_hosts_temps(ret_slot, lc)))
         except ThirUnsupported as ex:
             raise ex.with_context(stmt_reject_reason(
                 stmt, f"return.tuple_source:{ex.reason}")) from None
@@ -7489,6 +7491,15 @@ def _return_tuple_literal(stmt: TpyReturn, ret_slot: 'Slot', lc: '_LowerCtx',
         # resumable arm's exact builder).
         _witness("ret.generic_tuple_literal")
         return _lower_generic_tuple_literal(v, ret_sgt, lc, declared)
+    ret_bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rdecl)))
+    if isinstance(ret_bt, TupleType) and lends_elements(ret_slot):
+        # The borrow tuple whose elements the F1 slice does not spell (a
+        # container element): the same per-element builder, each borrowed
+        # element taking the address of the lvalue it names.
+        value = _lower_borrow_tuple_literal(
+            v, ret_bt, lc, declared, target_readonly=ret_slot.const)
+        _witness("ret.btuple_literal")
+        return value
     return None
 
 
@@ -7498,12 +7509,115 @@ _RETURN_LITERALS = (TpyNoneLiteral, TpyIntLiteral, TpyFloatLiteral,
                     TpyListRepeat, TpyTupleLiteral)
 
 
-def _return_read(v: TpyExpr, ret_slot: 'Slot', lc: '_LowerCtx',
-                 declared: dict[str, TpyType], stmt: TpyReturn, *,
-                 detail: 'Callable[[], str] | None' = None) -> THIRExpr:
-    """A non-literal return value: `lower_result` at this body's slot."""
-    return lower_result(v, ret_slot, lc, declared,
-                        lambda: stmt_reject_reason(stmt), detail=detail)
+def result_value(v: TpyExpr, slot: 'Slot', lc: '_LowerCtx',
+                 declared: dict[str, TpyType], scope: '_LowerScope',
+                 stmt: TpyStmt) -> THIRExpr:
+    """THE value a body hands out of a result slot -- a `return`'s or a
+    generator `yield`'s (`stmt`, which rejects name): a literal built
+    against the slot (None, a tuple, a container, a closure), else the
+    stored read of the source taken to the slot (`lower_result`)."""
+    analyzer = lc.analyzer
+    loc = getattr(stmt, "loc", None)
+    rh, rst, rdecl = slot.holds, slot.type, slot.declared
+    if rh is SlotHolds.RELOCATE:
+        # A result slot no conversion is known for.
+        note_detail("return.slot_type")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    lit = _peel_coerce(v)
+    if isinstance(v, TpyNoneLiteral) or (
+            isinstance(lit, TpyNoneLiteral)
+            and _own_wrapper_return(rdecl, analyzer) is not None):
+        # LITERAL construction: None as the slot's own empty value --
+        # `nullptr` where the slot is a pointer, else `std::nullopt` /
+        # the empty alternative of a union.
+        _witness("ret.none_literal")
+        return THIRLiteral(
+            result_type=_resolve_plain_alias(rst, analyzer), value=None,
+            form=(Form.BORROW if rh in (SlotHolds.POINTER, SlotHolds.BORROWS)
+                  else Form.STORAGE), loc=loc)
+    if rh is SlotHolds.ERASED and isinstance(lit, CONTAINER_LITERAL_NODES):
+        # LITERAL construction: a container literal's brace-init has no
+        # type to deduce inside the erasing wrap.
+        note_detail("return.slot_type")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if isinstance(v, TpyTupleLiteral):
+        tuple_lit = _return_tuple_literal(v, stmt, slot, lc, declared,
+                                          scope, loc)
+        if tuple_lit is not None:
+            return tuple_lit
+    rec_storage = (_record_storage_return(rdecl, analyzer)
+                   if rh is SlotHolds.OWNS else None)
+    if rec_storage is not None and isinstance(
+            v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
+        # A container LITERAL at the storage slot renders
+        # position-independently (the decl-init brace-init / spelled
+        # ctor emits verbatim, the empty `std::vector<T>{}` spell
+        # included), the slot as its target type; the literal re-checks
+        # the decl gate's element slice.
+        if not _container_literal_shape_ok(v, rec_storage, analyzer):
+            note_detail(_record_source_reject_detail(
+                v, scope.admission_pointers(), lc.narrow.narrowed.keys(),
+                False))
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+        _witness("ret.container_literal")
+    elif rec_storage is not None and isinstance(v, TpyListRepeat):
+        # `return [label] * 3` -- the repeat arm renders the from_range
+        # build target-typed by the storage slot (the untargeted
+        # resolve would demote to the Array flavor).
+        _witness("ret.container_repeat")
+        return _lower_expr(v, lc, declared,
+                           use=_ExprUse(slot_target=rec_storage))
+    elif (rec_storage is not None
+          and type(v) in _comprehensions._COMP_KINDS):
+        # A comprehension renders the decl-init arm's stmt-expr,
+        # target-typed by the storage slot.
+        comp = _comprehensions._lower_comprehension(
+            v, rec_storage, lc, declared, scope.admission_pointers())
+        _witness("ret.container_comp")
+        return comp
+    ret_ow = _own_wrapper_return(rdecl, analyzer)
+    if (ret_ow is not None
+            and isinstance(lit, (TpyArrayLiteral, TpyDictLiteral))
+            and _ru_container_literal_ok(lit, analyzer)):
+        _witness("ret.own_wrapper_literal")
+        return _flush_witness(
+            "flush.return", _lower_ru_literal(lit, ret_ow, lc, declared))
+    if (_own_genrec_return(rdecl) is not None
+            and isinstance(lit, (TpyArrayLiteral, TpyDictLiteral))
+            and _ru_instance_literal_ok(lit, analyzer)):
+        _witness("ret.genrec_literal")
+        return _flush_witness(
+            "flush.return", _lower_ru_literal(
+                lit, analyzer.get_expr_type(lit), lc, declared))
+    if (isinstance(v, TpyLambda) and isinstance(rdecl, CallableType)
+            and not rdecl.is_template):
+        # `return lambda x: ...` at a Callable slot: the escaping
+        # by-value closure (_lower_lambda's captures_by_value arm).
+        _witness("ret.closure_lambda")
+        return _lower_lambda(v, lc, declared)
+    if not isinstance(lit, _RETURN_LITERALS) or (
+            rec_storage is None and isinstance(lit, (
+                TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
+                TpyListRepeat))):
+        return lower_result(v, slot, lc, declared,
+                            lambda: stmt_reject_reason(stmt))
+    # LITERAL construction: the literal renders against the result
+    # slot (a container literal spells the record-storage slot).
+    value = _flush_witness(
+        "flush.return",
+        _lower_expr(v, lc, declared, use=replace(
+            _field_write.stored_use(slot, rst, analyzer,
+                                    allow_temps=result_hosts_temps(slot, lc)),
+            slot_target=(rec_storage if isinstance(
+                v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral))
+                else None))))
+    if rec_storage is not None:
+        # A result may be wrapped (a generator's or an `@error_return`
+        # body's `std::expected`), which no bare brace list-initializes.
+        value = _spell_brace(value, rec_storage, lc)
+    # A float literal returned from a float32 function takes the `f`
+    # suffix (the result type threads into the render).
+    return _slot_literal_retype(value, rdecl, lc)
 
 
 def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
@@ -8953,6 +9067,18 @@ def _peel_tpy_coerce(e: TpyExpr) -> TpyExpr:
     return e
 
 
+def _mixed_local_is_result_form(rec: 'BindingRepr', ret_t: TpyType) -> bool:
+    """A mixed own / borrow tuple local whose C++ is the result's own form:
+    it holds inline exactly the elements the result owns
+    (`std::tuple<A, B*>` for `-> tuple[Own[A], B]`)."""
+    rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret_t)))
+    return (rec.form is BindingForm.BORROW_TUPLE and rec.ptr_tuple is None
+            and isinstance(rt, TupleType)
+            and rec.inline_elems == tuple(
+                isinstance(unwrap_readonly(e), OwnType)
+                for e in rt.element_types))
+
+
 def _finally_deferred_tuple_recipe(
         ret: TpyReturn, value: 'THIRExpr | None', lc: _LowerCtx,
         declared: dict, loc) -> 'THIRFinallyDeferredReturn | None':
@@ -8973,10 +9099,12 @@ def _finally_deferred_tuple_recipe(
         inner = value.value if isinstance(value, THIRMove) else value
         ret_t = _fn_return_type(lc)
         if not (isinstance(src, TpyName) and isinstance(inner, THIRName)
-                and lc.binding(src.name).storage_tuple
                 and src.name in declared and ret_t is not None
-                and lc.render_type(declared[src.name])
-                == lc.render_type(unwrap_ref_type(ret_t))):
+                and (_mixed_local_is_result_form(
+                         lc.binding(src.name), ret_t)
+                     or (lc.binding(src.name).storage_tuple
+                         and lc.render_type(declared[src.name])
+                         == lc.render_type(unwrap_ref_type(ret_t))))):
             return None
         captured = _deferred_capture_base(src, lc, declared)
         if captured is None:
@@ -13103,7 +13231,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _witness("ret.void")
             return THIRReturn(staged=staged, value=None, loc=loc)
         ret_slot = return_slot(lc, implicit_move=not staged)
-        rh, rst, rdecl = ret_slot.holds, ret_slot.type, ret_slot.declared
         if (isinstance(stmt.value, TpyFieldAccess)
                 and stmt.value.consuming_move):
             # A consuming method's `self` is an rvalue ref (`&&`), so returning
@@ -13213,109 +13340,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                         allow_temps=True),
                                     error_return_raw=True)),
                     staged=staged, loc=loc)
-        if rh is SlotHolds.RELOCATE:
-            # A result slot no conversion is known for.
-            note_detail("return.slot_type")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        v = stmt.value
-        lit = _peel_coerce(v)
-        if isinstance(v, TpyNoneLiteral) or (
-                isinstance(lit, TpyNoneLiteral)
-                and _own_wrapper_return(rdecl, analyzer) is not None):
-            # LITERAL construction: None as the slot's own empty value --
-            # `nullptr` where the slot is a pointer, else `std::nullopt` /
-            # the empty alternative of a union.
-            _witness("ret.none_literal")
-            return THIRReturn(staged=staged, value=THIRLiteral(
-                result_type=_resolve_plain_alias(rst, analyzer), value=None,
-                form=(Form.BORROW if rh in (SlotHolds.POINTER,
-                                            SlotHolds.BORROWS)
-                      else Form.STORAGE), loc=loc), loc=loc)
-        if rh is SlotHolds.ERASED and isinstance(lit, CONTAINER_LITERAL_NODES):
-            # LITERAL construction: a container literal's brace-init has no
-            # type to deduce inside the erasing wrap.
-            note_detail("return.slot_type")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
-        if isinstance(v, TpyTupleLiteral):
-            tuple_lit = _return_tuple_literal(stmt, ret_slot, lc, declared,
-                                              scope, loc)
-            if tuple_lit is not None:
-                return THIRReturn(staged=staged, value=tuple_lit, loc=loc)
-        rec_storage = (_record_storage_return(rdecl, analyzer)
-                       if rh is SlotHolds.OWNS else None)
-        if rec_storage is not None and isinstance(
-                v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-            # A container LITERAL at the storage slot renders
-            # position-independently (the decl-init brace-init / spelled
-            # ctor emits verbatim, the empty `std::vector<T>{}` spell
-            # included), the slot as its target type; the literal re-checks
-            # the decl gate's element slice.
-            if not _container_literal_shape_ok(v, rec_storage, analyzer):
-                note_detail(_record_source_reject_detail(
-                    v, scope.admission_pointers(), lc.narrow.narrowed.keys(),
-                    False))
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            _witness("ret.container_literal")
-        elif rec_storage is not None and isinstance(v, TpyListRepeat):
-            # `return [label] * 3` -- the repeat arm renders the from_range
-            # build target-typed by the storage slot (the untargeted
-            # resolve would demote to the Array flavor).
-            _witness("ret.container_repeat")
-            return THIRReturn(staged=staged, value=_lower_expr(
-                v, lc, declared, use=_ExprUse(slot_target=rec_storage)),
-                loc=loc)
-        elif (rec_storage is not None
-              and type(v) in _comprehensions._COMP_KINDS):
-            # A comprehension renders the decl-init arm's stmt-expr,
-            # target-typed by the storage slot.
-            comp = _comprehensions._lower_comprehension(
-                v, rec_storage, lc, declared, scope.admission_pointers())
-            _witness("ret.container_comp")
-            return THIRReturn(staged=staged, value=comp, loc=loc)
-        ret_ow = _own_wrapper_return(rdecl, analyzer)
-        if (ret_ow is not None
-                and isinstance(lit, (TpyArrayLiteral, TpyDictLiteral))
-                and _ru_container_literal_ok(lit, analyzer)):
-            _witness("ret.own_wrapper_literal")
-            return THIRReturn(staged=staged, value=_flush_witness(
-                "flush.return", _lower_ru_literal(lit, ret_ow, lc, declared)),
-                loc=loc)
-        if (_own_genrec_return(rdecl) is not None
-                and isinstance(lit, (TpyArrayLiteral, TpyDictLiteral))
-                and _ru_instance_literal_ok(lit, analyzer)):
-            _witness("ret.genrec_literal")
-            return THIRReturn(staged=staged, value=_flush_witness(
-                "flush.return", _lower_ru_literal(
-                    lit, analyzer.get_expr_type(lit), lc, declared)),
-                loc=loc)
-        if (isinstance(v, TpyLambda) and isinstance(rdecl, CallableType)
-                and not rdecl.is_template):
-            # `return lambda x: ...` at a Callable slot: the escaping
-            # by-value closure (_lower_lambda's captures_by_value arm).
-            _witness("ret.closure_lambda")
-            return THIRReturn(staged=staged,
-                              value=_lower_lambda(v, lc, declared), loc=loc)
-        if not isinstance(lit, _RETURN_LITERALS) or (
-                rec_storage is None and isinstance(lit, (
-                    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
-                    TpyListRepeat))):
-            return THIRReturn(
-                staged=staged,
-                value=_return_read(v, ret_slot, lc, declared, stmt), loc=loc)
-        # LITERAL construction: the literal renders against the result
-        # slot (a container literal spells the record-storage slot).
-        value = _flush_witness(
-            "flush.return",
-            _lower_expr(v, lc, declared, use=replace(
-                _field_write.stored_use(ret_slot, rst, analyzer),
-                slot_target=(rec_storage if isinstance(
-                    v, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral))
-                    else None))))
-        # A float literal returned from a float32 function takes the `f`
-        # suffix (the return type threads into the render).
         return THIRReturn(
-            value=_slot_literal_retype(value, _fn_return_type(lc), lc),
-            staged=staged, loc=loc)
+            staged=staged,
+            value=result_value(stmt.value, ret_slot, lc, declared, scope,
+                               stmt),
+            loc=loc)
     if isinstance(stmt, TpyIf):
         begin_stmt()
         folded = _lower_overload_folded_if(

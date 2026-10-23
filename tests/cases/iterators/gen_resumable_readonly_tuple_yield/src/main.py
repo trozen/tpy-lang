@@ -2,7 +2,7 @@
 # resumable path. The __next__ slot must be the const-borrow form
 # (std::expected<std::tuple<const P&, const P&>, StopIteration>) and the
 # yielded tuple literal must construct const-ref element slots -- a regression
-# guard for _iter_slot_for_yield / _gen_tuple_literal peeling ReadonlyType.
+# guard for the GENERATOR_YIELD classification peeling ReadonlyType.
 from typing import Iterator
 from tpy import int32, readonly
 

@@ -20,7 +20,7 @@ Node mk(int32_t v) {
 // def mk_row(v: int32) -> Own[list[int32]]:
 //     return [v]
 std::vector<int32_t> mk_row(int32_t v) {
-    return {v};
+    return std::vector<int32_t>{v};
 }
 
 

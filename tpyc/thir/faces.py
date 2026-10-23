@@ -1329,9 +1329,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # A str-family FIELD source at a RESUMABLE str return slot: the bare
     # member read feeds the `<ret_cpp> __tpy_async_ret = <value>;` decl.
     "res.return_str_field",
-    # A str-family FIELD at a str YIELD slot: the bare member read is the
-    # yielded expression (`return __case_0.name;`).
-    "res.yield_str_field",
     # A str-family FIELD read under a view-TARGET coerce (`return self.s` at a
     # StrView slot): the coerce renders its inner bare, so the member read is
     # the emitted form. Declared-type keyed -- a narrowed `str | None` field
@@ -1689,7 +1686,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.own_container_comp",       # comprehension stmt-expr inline into an
                                     # Own[container] slot (prvalue moves in)
     "res.btuple_write",             # resumable borrow-tuple frame-field write
-    "res.btuple_yield",             # borrow-tuple yield (literal or lifted source)
     "ret.tuple_opt_elem",
     # A value-`Optional[str]` RETURN element: a str-view source wraps
     # `std::string(view)` through the Optional slot; `None`->`std::nullopt`, a
@@ -2854,8 +2850,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # FRAME field -> storage-form nullopt
     "res.frame_union_call",         # same-union value-union call lands bare
                                     # in the frame field (a = remake())
-    "res.yield_value_opt_none",     # `yield None` at a value-repr Optional
-                                    # yield slot -> std::nullopt
     "res.branch_cond",              # Branch terminator condition render
     "res.await_args",               # sub-coro emplace argument renders
     "res.return_value",             # ReturnT value render for _make_async_return
@@ -2868,39 +2862,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.branch_block_local",       # branch-nested decl of a non-frame local
     "res.leaf_try_except",          # except-only leaf try (sync tiers mid-state)
     "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
-    "res.yield_container_borrow",   # container yield of a frame_slot /
-                                    # pointer-form / alias name (*buf)
-    "res.yield_container_param",    # container yield of a PARAM name, bare
     "res.decl_no_init",             # annotation-only frame-field decl, no code
-    "res.yield_container_ternary",  # ternary of frame-slot containers hands
-                                    # out the branch-picked deref borrow
-    "res.yield_container_field",    # `yield self.a` at a container slot reads
-                                    # the storage member bare
-    "res.yield_record_field",       # `yield self.a` at a record slot reads
-                                    # the storage member bare
-    "res.yield_container_getter",   # `yield self.p` through a borrow-
-                                    # returning getter, the container twin of
-                                    # the field arm
-    "res.yield_record_getter",      # ... and its record twin
-    "res.yield_record_ternary",     # ternary of frame-slot records hands out
-                                    # the branch-picked deref borrow
-    "res.yield_own_ctor",           # ctor call at an OWN record yield slot:
-                                    # the storage render (`return Node(i);`)
-    "res.yield_own_rvalue",         # call DECLARING `-> Own[T]` at an OWN
-                                    # yield slot: the same storage render
-    "res.btuple_yield_generic",     # generic tuple literal yield -- spelled
-                                    # val_or_ptr_t brace-init + to_val_or_ptr
-    "res.btuple_yield_elem_lift",   # container-element source at the btuple
-                                    # yield slot: tuple_to_pointer over the
-                                    # checked element read
-    "res.btuple_yield_storage_name",  # owning frame_slot tuple NAME at its
-                                    # own STORAGE slot: the deref'd read,
-                                    # still live after the yield
-    "res.btuple_yield_storage_name_move",  # ... dead after the yield: the
-                                    # slot moves out instead of copying
-    "res.btuple_yield_storage_name_lift",  # ptr-to-storage tuple loop var at
-                                    # a POINTER-REPR slot: tuple_to_pointer
-                                    # over the deref'd read
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_union_elem",        # value-tuple call source with a value-
                                     # union element at the frame unpack
@@ -2939,8 +2901,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.loop_tuple_bind",          # value-tuple holder loop admitted
     "res.loop_btuple_bind",         # proxy-ref borrow-tuple loop admitted
     "res.loop_value_tuple_bind",    # whole all-value tuple loop var admitted
-    "res.yield_record_borrow",      # record yield of a routed loop-var name
-    "res.yield_record_param",       # record yield of a PARAM name, bare
     "res.yield_value",              # generator yield-value render
     "res.frame_slot_write",         # frame_slot local `.emplace()` write (R1c)
     "res.rebind_ptr_own",           # REBIND_PTR frame local write into its
@@ -2964,7 +2924,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.with_ctx",                 # with-region manager expression render
     "res.with_manager_field",       # borrowed manager read off a field
     "res.with_manager_getter",      # its accessor spelling (a reference-returning getter)
-    "res.btuple_yield_borrow_call", # yield of a borrow-form tuple CALL
     "res.finally_helper",           # helper-based finally body routed (R6)
     "res.for_iter_setup",           # sync for-loop iterable/range render (R3)
     "res.sync_loop",                # body routed with a sync for-loop (R3)
@@ -3154,14 +3113,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # lifted by optional_to_ptr
     "walrus.optptr_call_src",       # ptr-Optional walrus source rung: a
                                     # BORROWING call's `T*` lands bare
-    "res.yield_container_walrus",   # container yield slot walrus delegates
-                                    # to the frame-walrus dispatch
-    # ... and its record-slot twin (recorded through
-    # f"res.yield_{half}_walrus": `yield (x := buf)` over a record local).
-    "res.yield_record_walrus",
-    "yield.own_tuple_literal",      # Own-record-element tuple literal at
-                                    # the resumable tuple yield slot:
-                                    # the spelled storage brace-init
     "decl.type_param_slot",         # bare open type-param decl slot
                                     # (`T newitem = ...;`): plain spelled copy
     "decl.value_opt_tuple_slot",    # value-repr Optional[value tuple] decl

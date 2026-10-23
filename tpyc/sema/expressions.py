@@ -7160,6 +7160,7 @@ class ExpressionAnalyzer:
             expr.inferred_return_type = body_type
             self.compat.check_view_return_dangle(expr.body, body_type, expr.loc)
             self._queue_lambda_borrow_check(expr, body_type)
+            self._lambda_result_sink(expr, body_type)
             concrete_params = tuple(fn_type.param_types)
             if fn_type.is_template:
                 return make_fn_type(concrete_params, body_type)
@@ -7181,30 +7182,7 @@ class ExpressionAnalyzer:
                 raise _LambdaResultMismatch(err.message, err.loc, shown)
         self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
         self._queue_lambda_borrow_check(expr, fn_type.return_type)
-        # A captured tuple name the body returns at an owning slot is read
-        # in place, as a nested def's is.
-        body_value = peel_value_wrappers(expr.body)
-        tuple_target = own_tuple_target(fn_type.return_type)
-        if not self.ctx.slot_step_commits():
-            # The result's ownership verdict is the committed slot's.
-            pass
-        elif (isinstance(body_value, TpyName) and tuple_target is not None
-                and body_value.name in expr.captured_names):
-            self.compat.check_captured_tuple_read(
-                body_value.name, tuple_target, body_value,
-                fn_type.return_type, TupleSink.RETURN)
-        elif (isinstance(body_value, TpyName) and tuple_target is not None
-              and body_value.name in expr.param_names):
-            # A returned parameter hands over what its declared type owns.
-            self.compat.claim_name_move(body_value, OwnType(tuple_target))
-            self.compat.register_sink(
-                body_value, fn_type.return_type, TupleSink.RETURN,
-                per_leaf=True)
-        else:
-            # An owned result is an owning sink whatever the body.
-            self.compat.register_owned_result(expr.body, fn_type.return_type,
-                                              TupleSink.RETURN)
-            self._check_lambda_result_copy(expr, fn_type.return_type)
+        self._lambda_result_sink(expr, fn_type.return_type)
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",
@@ -7212,6 +7190,34 @@ class ExpressionAnalyzer:
 
         expr.inferred_return_type = fn_type.return_type
         return fn_type
+
+    def _lambda_result_sink(self, expr: TpyLambda, result: TpyType) -> None:
+        """The lambda's result as the owning sink of its body, whether the
+        result type came from the hint or from the body (a generic slot's
+        inference): the same checks a `def`'s return runs."""
+        if not self.ctx.slot_step_commits():
+            # The result's ownership verdict is the committed slot's.
+            return
+        # A captured tuple name the body returns at an owning slot is read
+        # in place, as a nested def's is.
+        body_value = peel_value_wrappers(expr.body)
+        tuple_target = own_tuple_target(result)
+        if (isinstance(body_value, TpyName) and tuple_target is not None
+                and body_value.name in expr.captured_names):
+            self.compat.check_captured_tuple_read(
+                body_value.name, tuple_target, body_value, result,
+                TupleSink.RETURN)
+        elif (isinstance(body_value, TpyName) and tuple_target is not None
+              and body_value.name in expr.param_names):
+            # A returned parameter hands over what its declared type owns.
+            self.compat.claim_name_move(body_value, OwnType(tuple_target))
+            self.compat.register_sink(body_value, result, TupleSink.RETURN,
+                                      per_leaf=True)
+        else:
+            # An owned result is an owning sink whatever the body.
+            self.compat.register_owned_result(expr.body, result,
+                                              TupleSink.RETURN)
+            self._check_lambda_result_copy(expr, result)
 
     def _check_lambda_result_copy(self, expr: TpyLambda,
                                   result: TpyType) -> None:

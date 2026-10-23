@@ -19,13 +19,13 @@ inline std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIt
         a.emplace(::tpy::ordered_map<std::string, std::string>());
         ::tpy::__setitem__((*a), "k", "v1");
         __state = S_RESUME_0;
-        return (*a);
+        return std::move((*a));
     }
     case S_RESUME_0: {  // after: yield a
         b.emplace(::tpy::ordered_map<std::string, std::string>());
         ::tpy::__setitem__((*b), "k", "v2");
         __state = S_RESUME_1;
-        return (*b);
+        return std::move((*b));
     }
     case S_RESUME_1: {  // after: yield b
         __state = S_DONE;
@@ -45,7 +45,7 @@ inline std::expected<std::vector<::tpy::BigInt>, ::tpy::StopIteration> __gen_lis
         __state = S_DONE;  // until a yield sets where to resume
         a.emplace(std::vector<::tpy::BigInt>{10, 20, 30});
         __state = S_RESUME_0;
-        return (*a);
+        return std::move((*a));
     }
     case S_RESUME_0: {  // after: yield a
         __state = S_DONE;

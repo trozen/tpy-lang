@@ -1031,7 +1031,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_plain_assign::
             k = ::tpyapp::main::two();
         }
         __state = S_RESUME_0;
-        return s;
+        return std::move(s);
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;
@@ -1104,7 +1104,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_prebound::__ne
             k = std::get<1>(__tup_1);
         }
         __state = S_RESUME_0;
-        return s;
+        return std::move(s);
     }
     case S_RESUME_0: {  // after: yield s
         __state = S_RESUME_1;

@@ -10,13 +10,13 @@ namespace tpyapp::main {
 // def make_cells() -> Own[list[Cell]]:
 //     return [Cell(11), Cell(22)]
 std::vector<Cell> make_cells() {
-    return {Cell(11), Cell(22)};
+    return std::vector<Cell>{Cell(11), Cell(22)};
 }
 
 // def make_values() -> Own[list[int32]]:
 //     return [11, 22]
 std::vector<int32_t> make_values() {
-    return {11, 22};
+    return std::vector<int32_t>{11, 22};
 }
 
 // def make_name() -> Own[str]:

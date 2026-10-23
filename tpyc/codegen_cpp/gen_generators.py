@@ -9,7 +9,7 @@ from ..parse.nodes import (
     TpyFieldAccess, TpyFunction, TpyGeneratorExpression, TpyStmt, TpyForEach, TpyCall, TpyCoerce, TpyMethodCall, TpyName, TpyExpr, TpySubscript, TpyTupleUnpack,
 )
 from ..typesys import pointer_repr_optional
-from ..typesys import IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type, yield_borrow_slot_cpp, yield_slot_borrows
+from ..typesys import IntLiteralType, NominalType, OptionalType, ReadonlyType, TypeParamRef, TupleType, is_protocol_type, unwrap_own, unwrap_readonly, unwrap_ref_type
 from tpyc import modules as builtin_modules
 from ..compilation_context import get_current_compiler
 from ..symbol_binding import SymbolKind, lookup_imported
@@ -111,18 +111,6 @@ class GeneratorForInfo:
     # The loop's own fields take their const from the source's C++ type; this
     # is for the loop var's BINDING, which the rest of the body reads.
     source_is_const: bool = False
-
-
-def owned_view_frame_params(
-        params: 'list[tuple[str, TpyType]]') -> 'set[str]':
-    """Param names whose view is copied into OWNED storage entering a
-    generator/coroutine body.
-
-    The resumable frame (`_CoroParamKind.OWNED_COPY`) keys the copy on
-    `is_owned_in_coro_frame`; one derivation, so the frame layout and the
-    body cannot drift on which params a body reads as owned.
-    """
-    return {pname for pname, ptype in params if is_owned_in_coro_frame(ptype)}
 
 
 def elem_wants_borrow_form(elem_type: 'TpyType | None') -> bool:
@@ -229,49 +217,6 @@ class GeneratorCodegen:
         # re-resolved through the binding table.
         self.same_module_generators: dict[
             tuple[str, str | None], TpyFunction] = {}
-
-    @staticmethod
-    def _iter_slot_for_yield(elem_type: 'TpyType', cpp_elem: str,
-                             generic_borrows: bool) -> str:
-        """Pick the iterator slot type for a generator yield.
-
-        Iterator yields hand out references like function returns (CPython
-        semantics), so borrow form is the default for tuple yields:
-        `tuple[int32, Point]` -> `std::tuple<int32_t, Point&>`,
-        `tuple[P | None, P | None]` -> `std::tuple<P*, P*>`. The outer tuple
-        is a value type that std::optional can hold, with reference-bearing
-        inner elements preserved through the yield boundary.
-
-        A bare non-value yield under `Iterator[T]` (BORROW_REF) wraps the slot
-        in `val_or_ref<T>` -- a pointer-holding value wrapper -- so the
-        std::optional / std::expected slot can hand out a reference to the live
-        object instead of a copy (`std::optional<T&>` is ill-formed pre-C++26).
-        `Iterator[Own[T]]` (OWNED) keeps the bare value slot (moved out), and a
-        value-type element (VALUE) keeps the bare value (copies are free).
-
-        A `readonly[tuple[...]]` yield must peel the ReadonlyType wrapper
-        before the tuple check (`unwrap_ref_type` only strips RefType), else
-        the slot collapses to value form and copies the elements;
-        `to_cpp_return()` on the readonly tuple still yields the const-borrow
-        form (`std::tuple<const T&, ...>`).
-
-        `generic_borrows` is the producer's provenance verdict
-        (`TpyFunction.generic_yield_borrows`) and answers the one case the
-        element type alone cannot: an OPEN `T` spells the instantiation-
-        resolved `::tpy::yield_slot_t<T>` only when this generator's yield
-        sources all outlive a suspension; otherwise it keeps the value slot.
-        """
-        if isinstance(unwrap_ref_type(unwrap_readonly(elem_type)), TupleType):
-            return elem_type.to_cpp_return()
-        # A bare reference element is handed out by reference via val_or_ref<T>
-        # (`val_or_ref<const T>` for a readonly one -- the const rides inside
-        # the slot, so the pull still borrows instead of copying).
-        # yield_slot_borrows excludes the forms with their own representation
-        # (Optional/Union pointer-or-storage, Own move) and folds in the
-        # open-`T` verdict.
-        if yield_slot_borrows(elem_type, generic_borrows):
-            return yield_borrow_slot_cpp(elem_type, cpp_elem)
-        return cpp_elem
 
     def _analyze_for_strategy(self, stmt: TpyForEach, uid: int,
                               pinned_roots: frozenset[str] = frozenset(),

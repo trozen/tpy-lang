@@ -121,7 +121,7 @@ inline std::expected<std::vector<C>, ::tpy::StopIteration> __gen_batches::__next
         if ((::tpy::BigInt(i) < n)) {
             out.emplace(std::vector<C>{C(::tpy::BigInt(i)), C(::tpy::BigInt((::tpy::add_check<int32_t>(i, 1))))});
             __state = S_RESUME_0;
-            return (*out);
+            return std::move((*out));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -155,7 +155,7 @@ inline std::expected<Shelf, ::tpy::StopIteration> __gen_shelves::__next__() {
         if ((::tpy::BigInt(i) < n)) {
             s.emplace(Shelf(std::vector<C>{C(::tpy::BigInt((::tpy::mul_check<int32_t>(i, 10))))}));
             __state = S_RESUME_0;
-            return (*s);
+            return std::move((*s));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});

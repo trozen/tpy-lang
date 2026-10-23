@@ -205,7 +205,7 @@ EventLoop get_running_loop() {
         loop.emplace(::tpystd::asyncio::get_running_loop());
         sock.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*sock).setblocking(false);
-        __sub_0.emplace(std::move((*loop).sock_connect((*sock), std::tuple<std::string, int32_t>{std::string(host), port})));
+        __sub_0.emplace(std::move((*loop).sock_connect((*sock), std::tuple<std::string, int32_t>{host, port})));
         __state = S_RESUME_0;
         continue;
     }
@@ -315,7 +315,7 @@ __coro__accept_loop _accept_loop(::tpystd::tplib::rc::Rc<::tpystd::socket::socke
         __state = S_DONE;  // until a yield sets where to resume
         listener.emplace(::tpystd::socket::socket(::tpystd::socket::AF_INET, ::tpystd::socket::SOCK_STREAM));
         (*listener).setsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_reuseaddr, 1);
-        (*listener).bind(std::tuple<std::string, int32_t>{std::string(host), port});
+        (*listener).bind(std::tuple<std::string, int32_t>{host, port});
         (*listener).listen(128);
         (*listener).setblocking(false);
         cell.emplace(Rc<::tpystd::socket::socket>::new_<::tpystd::socket::socket>(std::move((*listener))));

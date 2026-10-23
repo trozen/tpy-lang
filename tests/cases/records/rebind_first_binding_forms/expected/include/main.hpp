@@ -632,7 +632,7 @@ inline ::tpy::ordered_set<int32_t> Kinds::s_own() const {
 // def a_own(self) -> Own[Array[int32, 2]]:
 //     return [1, 2]
 inline std::array<int32_t, 2> Kinds::a_own() const {
-    return {1, 2};
+    return std::array<int32_t, 2>{1, 2};
 }
 
 // @property

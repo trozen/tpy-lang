@@ -103,12 +103,6 @@ _RENDER_DISAGREEMENTS: dict[tuple[str, str], str] = {
     # A nested def's return of a captured `Own[P | None]` moves the
     # enclosing binding's optional, which the record copies.
     (_B, "return x"): "BUGS.md#nested-def-captured-own-return-copies",
-    # A literal yielded into `Iterator[Own[tuple[...]]]` renders its borrow
-    # form into the storage step (ill-formed).
-    ("def ot_dead() -> Iterator[Own[tuple[A, int32]]]:", "yield (a, 3)"):
-        "BUGS.md#own-tuple-yield-member-unchecked",
-    ("def gen() -> Iterator[Own[tuple[N, int32]]]:", "yield (n, 3)"):
-        "BUGS.md#own-tuple-yield-member-unchecked",
     # A storage tuple local rebound to a borrowed tuple copies at the
     # rebind, which sema reads as a borrow: at the sink its record copies,
     # the C++ moves the local's own copy on.
@@ -430,14 +424,6 @@ _UNLOWERED_BODIES: dict[tuple[str, str, str], tuple[str, str]] = {
      "stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal"):
         ("test_wrapped_and_union_leaves_at_every_owning_sink",
          "BUGS.md#send-own-tuple-leaf-copy-unwarned"),
-    ("def gen(n: N) -> Iterator[tuple[tuple[Own[A], int32], int32]]:", "gen",
-     "res.btuple_yield_source"):
-        ("test_nested_slot_marker_at_owned_yield",
-         "scripts/thir_migration/review/bins_rest.json"),
-    ("def g(a: A, n: int32) -> Iterator[tuple[Own[A], int32]]:", "g",
-     "res.btuple_yield_source"):
-        ("test_yielded_name_is_settled_by_a_loop_back_edge",
-         "scripts/thir_migration/review/bins_rest.json"),
     ("def gen(t: tuple[A | B, int32]) -> Iterator[Own[tuple[A | B, int32]]]:",
      "gen", "res.param_type:tuple"):
         ("test_yielded_tuple_name_union_leaf_warns",
@@ -456,16 +442,12 @@ _UNLOWERED_BODIES: dict[tuple[str, str, str], tuple[str, str]] = {
     ("def nyield[T]", "nyield", "res.param_type:tuple"):
         ("test_nested_yield_member_of_stamped_call_is_hedged",
          "BUGS.md#open-t-tuple-generic-only-rejects"),
-    ("def oaa_name() -> Iterator[Own[tuple[A, A]]]:", "oaa_name",
-     "res.btuple_yield_source"):
-        ("test_own_tuple_yield_live_names_and_positions",
-         "BUGS.md#own-tuple-yield-member-unchecked"),
-    ("def ot_name() -> Iterator[Own[tuple[A, int32]]]:", "ot_name",
-     "res.btuple_yield_source"):
+    ("def to_walrus(a: A) -> Iterator[tuple[Own[A], int32]]:", "to_walrus",
+     "expr.walrus"):
         ("test_own_tuple_yield_takes_the_return_rule",
-         "BUGS.md#own-tuple-yield-member-unchecked"),
+         "BUGS.md#walrus-tuple-owning-sink-rejects"),
     ("def par_alone(t: tuple[Own[A], A]) -> tuple[Own[A], Own[A]]:",
-     "par_alone", "stmt.return:return.tuple_source"):
+     "par_alone", "stmt.return:return.copy_undeclared"):
         ("test_tuple_name_member_borrowed_leaf_warns_at_return_and_yield",
          "scripts/thir_migration/review/bins_stmt3.json"),
     ("def r1(p: A) -> Own[tuple[A, int32]] | None:", "r1",
@@ -767,8 +749,7 @@ class N:
 
 def test_owned_element_yield_of_borrow_call_records_copy() -> None:
     # `yield mk(a)` at an `Own` element: the borrowed element 0 copies,
-    # warned and declared (the C++ build fails there:
-    # BUGS.md#yield-tuple-name-own-element).
+    # warned and declared, as the return's does.
     _compiler, modules = _compile("from typing import Iterator\n" + PRELUDE
                                   + """def gen(a: A) -> Iterator[tuple[Own[A], int32]]:
     yield mk(a)
@@ -2126,12 +2107,12 @@ def lam() -> int32:
     return g((A(3), 1))[1]
 """)
     # A last-use yield moves the element the local owns; one read later
-    # copies, under the yield's whole-tuple warning.
+    # copies that element, warned by its position.
     assert _perms(records[(4, "TpyName")]) == {(0,): P.MOVE}
     assert _perms(records[(7, "TpyName")]) == {(0,): P.WARNED}
     assert [w for w in warnings if "copies" in w] == [
-        "copies tuple[A, int32] into owned storage; use copy() to make this "
-        "explicit"]
+        "copies A into owned storage (tuple element 0); use copy() to make "
+        "this explicit"]
     # A returned parameter hands over what its declared type owns.
     assert _perms(records[(10, "TpyName")]) == {(0,): P.MOVE}
 
@@ -2851,7 +2832,7 @@ _W, _H = P.WARNED, P.HEDGED
       (28, _N): _W, (29, _L): _W},
      [(6, "copies A | B into field (tuple element 0)"),
       (12, "copies A | B into owned storage (tuple element 0)"),
-      (15, "copies tuple[A | B, int32] into owned storage"),
+      (15, "copies A | B into owned storage (tuple element 0)"),
       (16, "copies A | B into owned storage (tuple element 0)"),
       (21, "copies A | B into field (tuple element 0)"),
       (22, "copies A | B into field (tuple element 0)"),
@@ -2868,7 +2849,7 @@ _W, _H = P.WARNED, P.HEDGED
       (28, _N): _W, (29, _L): _W},
      [(6, "copies A into field (tuple element 0)"),
       (12, "copies readonly[A] into owned storage (tuple element 0)"),
-      (15, "copies tuple[readonly[A], int32] into owned storage"),
+      (15, "copies readonly[A] into owned storage (tuple element 0)"),
       (16, "copies A into owned storage (tuple element 0)"),
       (21, "copies readonly[A] into field (tuple element 0)"),
       (22, "copies A into field (tuple element 0)"),
@@ -2890,8 +2871,8 @@ _W, _H = P.WARNED, P.HEDGED
       (28, _N): _H, (29, _L): _H},
      [(6, "may copy Send[T] into field (tuple element 0) if not a value "
        "type"),
-      (15, "may copy tuple[Send[T], int32] into owned storage if not a value "
-       "type"),
+      (15, "may copy Send[T] into owned storage (tuple element 0) if not a "
+       "value type"),
       (21, "may copy Send[T] into field (tuple element 0) if not a value "
        "type"),
       (22, "may copy Send[T] into field (tuple element 0) if not a value "

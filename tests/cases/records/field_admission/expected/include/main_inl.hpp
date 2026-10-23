@@ -40,7 +40,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_Box_gen_writes::__next
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        __self.either = std::string(text);
+        __self.either = text;
         __self.either = 11;
         __self.xs = (::tpy::list_concat(std::vector<int32_t>{n}, std::vector<int32_t>{3}));
         __self.xs.push_back(8);

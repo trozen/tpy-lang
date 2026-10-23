@@ -1,0 +1,13 @@
+main.py:53: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:59: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 57)
+main.py:64: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:69: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:74: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:80: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:86: warning: copies A into owned storage; use copy() to make this explicit
+main.py:87: warning: copies A into owned storage; use copy() to make this explicit
+main.py:94: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:102: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit ('t' is bound to existing storage at line 100)
+main.py:107: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:114: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:123: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit

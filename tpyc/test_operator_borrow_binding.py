@@ -9,17 +9,17 @@ Two families, both here because the CASE harness cannot see the diagnostic:
   WARNING because the warned binding genuinely dangles, so the exec phase's
   -Werror=dangling-reference rejects the generated C++.
 - INTERIM: the Own-slot copy warning at the slots that REJECT right after it
-  (an `Own[T]` parameter of a free function / method / constructor, a `yield`
-  at `Iterator[Own[T]]`, a list-literal element -- the last has no case
-  twin at all, since a record list literal with a borrowed element rejects
-  at expr.container_literal). `compile_with_diagnostics`
-  replaces every accumulated warning with the error text when a CompileError
-  follows, so `# tpyc: warning(...)` on those lines can never be satisfied
-  (TODO.md, "a warning alongside a compile error never reaches diag.txt").
-  When that harness fix lands, move these to annotations on
-  tests/cases/calls/error_own_param_borrow_call_copy and
-  tests/cases/generators/error_yield_own_borrow_call_copy and delete the
-  class below.
+  (an `Own[T]` parameter of a free function / method / constructor, a
+  list-literal element -- the last has no case twin at all, since a record
+  list literal with a borrowed element rejects at expr.container_literal).
+  The `yield` at `Iterator[Own[T]]` compiles to the warned copy and is
+  pinned by tests/cases/generators/payload_slot_declared_copies.
+  `compile_with_diagnostics` replaces every accumulated warning with the
+  error text when a CompileError follows, so `# tpyc: warning(...)` on
+  those lines can never be satisfied (TODO.md, "a warning alongside a
+  compile error never reaches diag.txt"). When that harness fix lands, move
+  these to annotations on tests/cases/calls/error_own_param_borrow_call_copy
+  and delete the class below.
 """
 
 from . import get_lib_dir

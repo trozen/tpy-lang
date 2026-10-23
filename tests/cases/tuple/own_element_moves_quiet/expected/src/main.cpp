@@ -112,7 +112,7 @@ std::tuple<P, P> copy_return(P& p) {
 //     return [(copy(t), 1)]  # tpyc: ok
 std::vector<std::tuple<std::tuple<P, P>, int32_t>> copy_nested_member(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return {std::tuple<std::tuple<P, P>, int32_t>{::tpy::tuple_to_storage<std::tuple<P, P>>(t), 1}};
+    return std::vector<std::tuple<std::tuple<P, P>, int32_t>>{std::tuple<std::tuple<P, P>, int32_t>{::tpy::tuple_to_storage<std::tuple<P, P>>(t), 1}};
 }
 
 // def copy_param(t: tuple[P, P]) -> Own[list[tuple[P, P]]]:
@@ -128,7 +128,7 @@ std::vector<std::tuple<P, P>> copy_param(const std::tuple<const P*, const P*>& t
 //     return [t]  # tpyc: ok
 std::vector<std::tuple<int32_t, int32_t>> values_into_list(int32_t n) {
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{n, 2};
-    return {t};
+    return std::vector<std::tuple<int32_t, int32_t>>{t};
 }
 
 // def main() -> None:

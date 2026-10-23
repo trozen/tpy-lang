@@ -4736,12 +4736,10 @@ class THIRResumableBody:
     await_args: 'IdentityMap'
     return_values: 'IdentityMap'
     yield_values: 'IdentityMap' = field(default_factory=IdentityMap)
-    # The yields (TpyYield keys of `yield_values`) whose lowering granted an
-    # arg-temp right: a VALUE slot takes a copy of what the expression
-    # computes, so a temp may flush ahead of the `return` and die there. A
-    # borrow slot hands out a pointer the temp would not outlive, and is
-    # absent here.
-    yield_temp_rights: 'IdentitySet' = field(default_factory=IdentitySet)
+    # The yield slot's placement: a value or owning slot may flush a
+    # temporary ahead of its `return`; one that lends hands out a pointer the
+    # temporary would not outlive, so it hosts none.
+    yield_hosts_temps: bool = False
     # ERASED/BORROWED await operands (keyed by the operand expr) and
     # bound-method await receivers (keyed by the receiver expr, R5):
     # the skeleton keeps its move / & / .get() / __self-prepend wrap, the leaf

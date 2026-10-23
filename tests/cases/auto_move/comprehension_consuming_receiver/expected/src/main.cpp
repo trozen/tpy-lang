@@ -254,7 +254,7 @@ void shadow_for(std::vector<Box>& ws) {
 // def fresh() -> Own[list[Box]]:
 //     return [Box(7)]
 std::vector<Box> fresh() {
-    return {Box(7)};
+    return std::vector<Box>{Box(7)};
 }
 
 // # an enclosing `for` variable sharing the name: the comprehension's `take(b)` does not make it a consuming loop

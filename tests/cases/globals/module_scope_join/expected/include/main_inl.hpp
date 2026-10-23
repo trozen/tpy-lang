@@ -30,7 +30,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_loop_rebind_gen::_
     case S_RESUME_0: {  // after: yield gv
         ::tpy::__setitem__(gxs, 0, (::tpy::str_repeat("Z", 30)));
         __state = S_RESUME_1;
-        return gv;
+        return std::move(gv);
     }
     case S_RESUME_1: {  // after: yield gv
         __state = S_DONE;

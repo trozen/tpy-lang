@@ -37,8 +37,11 @@ from ...typesys import (
 from ...codegen_cpp.forms import is_plain_nonvalue
 from ...typesys import (
     holds_borrowing_view,
+    classify_result_representation,
     is_readonly_result_type,
     Representation,
+    ResultPosition,
+    ResultRepresentation,
     ReturnPassing,
     return_representation,
 )
@@ -683,7 +686,8 @@ class Slot:
     # parameter); a field asks for none.
     const: bool = False
     # Whether a temporary may be hoisted before the statement here -- the
-    # REGION's grant (`_LowerCtx.placement`), carried as the answer.
+    # REGION's grant (`_LowerCtx.placement`), carried as the answer. A
+    # result that lends takes none (`_lends_result`).
     placement: SlotPlacement = SlotPlacement.STATEMENT
     lifetime: SlotLifetime = SlotLifetime.NONE
     # What the storage type is (None for a slot built by hand).
@@ -937,7 +941,8 @@ def _built_slot(declared: TpyType, st: TpyType,
                 placement: SlotPlacement = SlotPlacement.STATEMENT,
                 const: bool = False, getter: bool = False,
                 element: bool = False, stored: bool = False,
-                implicit_move: bool = False) -> Slot:
+                implicit_move: bool = False,
+                trait: 'TraitAbi | None' = None) -> Slot:
     # `stored`: an element of a tuple the result holds as its own storage
     # (an owned result's, at any depth), not handed back as a result.
     cls = _slot_class(st, analyzer)
@@ -965,8 +970,13 @@ def _built_slot(declared: TpyType, st: TpyType,
                         const=const, element=True, stored=not by_result)
             for e in tup.element_types)
     # A tuple element holds its open `T` by value or by pointer.
-    trait = (None if holds is not SlotHolds.TRAIT
-             else TraitAbi.VAL_OR_PTR if element else TraitAbi.VAL_OR_REF)
+    if holds is not SlotHolds.TRAIT:
+        trait = None
+    elif trait is None:
+        trait = TraitAbi.VAL_OR_PTR if element else TraitAbi.VAL_OR_REF
+    if (construct is SlotConstruct.RETURN and not element
+            and _lends_result(holds, elems)):
+        placement = SlotPlacement.NO_FLUSH_POINT
     return Slot(st, construct, holds=holds, const=const,
                 placement=placement,
                 lifetime=slot_lifetime(declared, position),
@@ -975,19 +985,48 @@ def _built_slot(declared: TpyType, st: TpyType,
                 implicit_move=implicit_move)
 
 
+def _lends_result(holds: SlotHolds, elems: 'tuple[Slot, ...] | None'
+                  ) -> bool:
+    """A result handing back a borrow, whole or per element: what it points
+    into must outlive the body, so no temporary hoisted for it may host its
+    source."""
+    return (holds in (SlotHolds.BORROWS, SlotHolds.POINTER)
+            or (elems is not None
+                and any(e.holds in (SlotHolds.BORROWS, SlotHolds.POINTER)
+                        for e in elems)))
+
+
+def result_hosts_temps(slot: Slot, lc: '_LowerCtx') -> bool:
+    """Whether a result's source may take a hoisted temporary: its region
+    hosts one and the slot does not lend."""
+    return lc.may_hoist and slot.placement is SlotPlacement.STATEMENT
+
+
 def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
              construct: 'SlotConstruct | None' = None,
              signature: 'THIRCallableSignature | None' = None,
              placement: SlotPlacement = SlotPlacement.STATEMENT,
              result_const: bool = False,
-             implicit_move: bool = False) -> 'Slot | None':
+             implicit_move: bool = False,
+             result: 'ResultRepresentation | None' = None) -> 'Slot | None':
     """THE slot builder: the complete contract of the place a value of
     declared type `t` lands in at `position` -- what it holds, how the
     position represents it, how it is constructed, what it obliges its
     source to outlive, where a temporary may go, the class of its storage
     type and, for a tuple, the slot of each element. A RETURN slot's type
     and representation are its body's `signature`'s (None for a body with
-    no result); a STORE slot holds `t`'s own storage. None for no type."""
+    no result), or -- for a result position the signature does not
+    describe, a generator's yield -- `t` held as its classified `result`;
+    a STORE slot holds `t`'s own storage. None for no type."""
+    if position is SlotPosition.RETURN and result is not None:
+        if t is None:
+            return None
+        rep, stored, trait = _result_layout(result, t)
+        return _built_slot(
+            t, storage_type(t), rep, position, SlotConstruct.RETURN,
+            analyzer, placement=placement,
+            const=result_const or is_readonly_result_type(t),
+            stored=stored, implicit_move=implicit_move, trait=trait)
     if position is SlotPosition.RETURN:
         assert signature is not None, (
             "a body with a result lowers under its signature")
@@ -1005,6 +1044,24 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
     assert construct is not None, "a stored slot names its construction"
     return _built_slot(t, t, Representation.STORAGE, position, construct,
                        analyzer, placement=placement)
+
+
+def _result_layout(result: 'ResultRepresentation', t: TpyType
+                   ) -> 'tuple[Representation, bool, TraitAbi | None]':
+    """How a classified result position holds `t`: its representation,
+    whether a tuple holds every element as storage (rather than each as
+    its own result would be), and the template an open `T` is spelled
+    through."""
+    if result is ResultRepresentation.YIELD_TUPLE:
+        return return_representation(t), False, None
+    if result is ResultRepresentation.YIELD_BORROW:
+        return Representation.REFERENCE, False, None
+    if result is ResultRepresentation.YIELD_TRAIT:
+        return Representation.TRAIT, False, TraitAbi.YIELD_SLOT
+    assert result is ResultRepresentation.STORAGE, result
+    # A declared view is held by value but points into storage elsewhere.
+    view = return_representation(t) is Representation.VIEW
+    return (Representation.VIEW if view else Representation.STORAGE), True, None
 
 
 def result_cpp(signature: 'THIRCallableSignature',
@@ -1053,6 +1110,21 @@ def return_slot(lc: '_LowerCtx', *,
                     result_const=(isinstance(declared, TpyType)
                                   and is_readonly_result_type(declared)),
                     implicit_move=implicit_move)
+
+
+def yield_slot(lc: '_LowerCtx') -> 'Slot | None':
+    """The slot a generator's `yield` hands its value to: the yielded
+    element held as its GENERATOR_YIELD classification says. A frame member
+    is no id-expression of the `__next__` body, so nothing moves implicitly:
+    a move out of the frame is spelled."""
+    yt = lc.func.generator_yield_type
+    if not isinstance(yt, TpyType):
+        return None
+    return slot_for(yt, SlotPosition.RETURN, lc.analyzer,
+                    result=classify_result_representation(
+                        yt, position=ResultPosition.GENERATOR_YIELD,
+                        generic_borrows=lc.func.generic_yield_borrows),
+                    implicit_move=False)
 
 
 def narrow_alias_taken(bound_names, frame_field_names, *,

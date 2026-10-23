@@ -14,7 +14,7 @@ namespace tpyapp::main {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        std::string __tpy_async_ret = std::string(tag);
+        std::string __tpy_async_ret = tag;
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -41,7 +41,7 @@ __coro_direct direct(std::string_view tag) {
         {
             bool __fin_ran_1 = false;
             try {
-                std::string __tpy_async_ret_0 = std::string(tag);
+                std::string __tpy_async_ret_0 = tag;
                 __fin_ran_1 = true;
                 std::cout << "cleanup" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
@@ -102,7 +102,7 @@ __coro_in_finally in_finally(std::string_view tag) {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            this->__finally_ret_0 = std::string(tag);
+            this->__finally_ret_0 = tag;
             this->__finally_pending_0 = true;
             __state = S_JOIN_2;
             continue;

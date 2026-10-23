@@ -111,7 +111,7 @@ inline std::string Rect::label() const {
 }
 
 inline std::vector<int32_t> Rect::dims() const {
-    return {this->_w, this->_h};
+    return std::vector<int32_t>{this->_w, this->_h};
 }
 
 inline Color Rect::color() const {

@@ -30,7 +30,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_RESUME_0: {  // after: yield 1
         if ((n.has_value())) {
             __state = S_RESUME_1;
-            return (*n);
+            return std::move((*n));
         } else {
             __state = S_JOIN_0;
             continue;

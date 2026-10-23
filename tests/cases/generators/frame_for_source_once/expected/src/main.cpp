@@ -23,7 +23,7 @@ int32_t churn() {
 // def make_cells() -> Own[list[Cell]]:
 //     return [Cell(10), Cell(20)]
 std::vector<Cell> make_cells() {
-    return {Cell(10), Cell(20)};
+    return std::vector<Cell>{Cell(10), Cell(20)};
 }
 
 

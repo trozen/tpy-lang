@@ -46,7 +46,7 @@ inline Maker::Maker(double k) : k(k) {}
 // def create_vector(self) -> Own[list[float]]:
 //     return [self.k, self.k * 2.0]
 inline std::vector<double> Maker::create_vector() const {
-    return {this->k, ((this->k) * (2.0))};
+    return std::vector<double>{this->k, ((this->k) * (2.0))};
 }
 void __tpy_init();
 } // namespace tpyapp::main

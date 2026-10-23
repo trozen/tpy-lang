@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_list() -> Own[list[int32]]:
 //     return [1, 2]
 std::vector<int32_t> make_list() {
-    return {1, 2};
+    return std::vector<int32_t>{1, 2};
 }
 
 // def make_inner() -> Own[dict[str, int32]]:
@@ -23,7 +23,7 @@ std::vector<int32_t> make_list() {
 // def make_pair() -> Own[Array[int32, 2]]:
 //     return [8, 9]
 std::array<int32_t, 2> make_pair() {
-    return {8, 9};
+    return std::array<int32_t, 2>{8, 9};
 }
 
 // def make_blob() -> Own[bytearray]:

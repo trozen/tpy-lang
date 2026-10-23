@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_list() -> Own[list[int32]]:
 //     return [1, 2, 3]
 std::vector<int32_t> make_list() {
-    return {1, 2, 3};
+    return std::vector<int32_t>{1, 2, 3};
 }
 
 // # Free function, for body: rvalue in both arms (pointer-local + rebind slot).

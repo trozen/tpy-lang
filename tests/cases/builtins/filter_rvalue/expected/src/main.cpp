@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_nums() -> Own[list[int32]]:
 //     return [1, 2, 3, 4, 5, 6]
 std::vector<int32_t> make_nums() {
-    return {1, 2, 3, 4, 5, 6};
+    return std::vector<int32_t>{1, 2, 3, 4, 5, 6};
 }
 
 // def is_even(x: int32) -> bool:

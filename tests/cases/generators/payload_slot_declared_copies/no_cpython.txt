@@ -1,0 +1,1 @@
+Each yield here takes the warned copy into owned storage, so a mutation after the boundary diverges from CPython by design -- the warning is the pin.

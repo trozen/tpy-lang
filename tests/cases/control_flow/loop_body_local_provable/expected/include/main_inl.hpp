@@ -58,7 +58,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_else_gen::__next__() {
         }
         __after_else_0:;
         __state = S_RESUME_0;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_0: {  // after: yield v  # tpyc: ok
         __state = S_DONE;

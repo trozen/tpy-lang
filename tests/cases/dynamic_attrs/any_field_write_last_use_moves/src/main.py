@@ -22,7 +22,7 @@ class Holder:
 
 def store(h: Holder) -> None:
     n = Node(1)
-    h.payload = n  # the last use moves the make_any result, not the source
+    h.payload = n  # the last use moves the source into the box
 
 
 def main() -> None:

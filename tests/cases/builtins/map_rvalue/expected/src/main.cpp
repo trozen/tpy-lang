@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_nums() -> Own[list[int32]]:
 //     return [10, 20, 30]
 std::vector<int32_t> make_nums() {
-    return {10, 20, 30};
+    return std::vector<int32_t>{10, 20, 30};
 }
 
 // def double(x: int32) -> int32:

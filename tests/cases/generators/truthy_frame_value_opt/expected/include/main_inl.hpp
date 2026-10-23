@@ -52,7 +52,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_branch_no_suspend::__n
             n = 1;
         }
         __state = S_RESUME_0;
-        return n;
+        return std::move(n);
     }
     case S_RESUME_0: {  // after: yield n
         __state = S_DONE;

@@ -3025,6 +3025,8 @@ class ResultPosition(Enum):
     SYNC_CALL = "sync_call"
     ASYNC_PAYLOAD = "async_payload"
     ERASED_CALLABLE = "erased_callable"
+    # A generator's yielded element: the iterator slot `__next__` returns.
+    GENERATOR_YIELD = "generator_yield"
 
 
 class ResultRepresentation(Enum):
@@ -3039,6 +3041,15 @@ class ResultRepresentation(Enum):
     ASYNC_TRAIT = "async_trait"
     ERASED_VOID = "erased_void"
     ERASED_DECLARED_TYPE = "erased_declared_type"
+    # A yielded reference in its value wrapper (`val_or_ref<T>`): the slot
+    # hands out a borrow of the live object.
+    YIELD_BORROW = "yield_borrow"
+    # An open `T` yielded through `yield_slot_t<T>`: a borrow or a value per
+    # instantiation.
+    YIELD_TRAIT = "yield_trait"
+    # A tuple yielded in its result form (`to_cpp_return`): each element as
+    # its own result would be, a reference element as a pointer.
+    YIELD_TUPLE = "yield_tuple"
 
 
 def returns_cpp_reference_shape(ret_type: TpyType | None) -> bool:
@@ -3058,13 +3069,35 @@ def returns_cpp_reference_shape(ret_type: TpyType | None) -> bool:
 
 def classify_result_representation(
         ret_type: TpyType | None, *, position: ResultPosition,
-        fi: FunctionInfo | None = None) -> ResultRepresentation:
+        fi: FunctionInfo | None = None,
+        generic_borrows: bool = False) -> ResultRepresentation:
     """Read the current return convention at one specific consuming position.
 
     Normalization is position-specific: erasure renders the declared type
     verbatim, sync strips Ref only, and async also strips outer markers and
     readonly. Keep render-time type/permission handling at the consumer.
+
+    `generic_borrows`: a generator's provenance verdict for an open `T`
+    yield (`TpyFunction.generic_yield_borrows`), which the element type
+    alone cannot answer.
     """
+    if position is ResultPosition.GENERATOR_YIELD:
+        # Iterator yields hand out references like function returns
+        # (CPython semantics), so a tuple yields its result form, which
+        # std::expected can hold. `readonly` is peeled before the tuple test,
+        # or a readonly tuple would collapse to a copying storage slot.
+        if isinstance(unwrap_ref_type(unwrap_readonly(ret_type)), TupleType):
+            return ResultRepresentation.YIELD_TUPLE
+        # A bare reference element is handed out through `val_or_ref<T>`
+        # (`std::optional<T&>` is ill-formed pre-C++26). The forms with a
+        # representation of their own (an Optional / union pointer or
+        # storage, an `Own` move) and a value element keep storage.
+        if yield_slot_borrows(ret_type, generic_borrows):
+            return (ResultRepresentation.YIELD_TRAIT
+                    if isinstance(unwrap_ref_type(unwrap_readonly(ret_type)),
+                                  TypeParamRef)
+                    else ResultRepresentation.YIELD_BORROW)
+        return ResultRepresentation.STORAGE
     if position is ResultPosition.ERASED_CALLABLE:
         return (ResultRepresentation.ERASED_VOID if isinstance(ret_type, VoidType)
                 else ResultRepresentation.ERASED_DECLARED_TYPE)

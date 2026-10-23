@@ -8,7 +8,7 @@ std::vector<Maker>* MAKERS{};
 // def make_row(n: float) -> Own[list[float]]:
 //     return [n, n + 1.0]
 std::vector<double> make_row(double n) {
-    return {n, ((n) + (1.0))};
+    return std::vector<double>{n, ((n) + (1.0))};
 }
 
 // def build() -> Own[list[list[float]]]:

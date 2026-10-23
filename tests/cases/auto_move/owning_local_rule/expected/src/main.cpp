@@ -109,7 +109,7 @@ std::vector<Box> literal(Box& w, bool c) {
     if (c) {
         b = &*(__slot_1 = Box(1));
     }
-    return {(*b)};
+    return std::vector<Box>{(*b)};
 }
 
 // # free function: a consuming method call on a rebound local

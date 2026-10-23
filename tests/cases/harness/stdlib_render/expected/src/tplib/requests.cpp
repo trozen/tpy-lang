@@ -928,7 +928,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
                 continue;
             } else {
                 __state = S_RESUME_0;
-                return chunk;
+                return std::move(chunk);
             }
         } else {
             __state = S_JOIN_2;

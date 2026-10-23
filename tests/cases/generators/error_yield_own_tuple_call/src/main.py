@@ -19,7 +19,7 @@ def mk(i: int32) -> tuple[int32, Own[P]]:
 
 
 # the reject is located at the frame's def, not at the yield inside it
-def g() -> Iterator[tuple[int32, P]]:  # tpyc: error(/res\.btuple_yield_source/)
+def g() -> Iterator[tuple[int32, P]]:  # tpyc: error(/call\.ret_type\.tuple/)
     yield mk(0)
 
 

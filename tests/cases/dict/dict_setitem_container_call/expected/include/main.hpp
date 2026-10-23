@@ -57,7 +57,7 @@ inline Source::Source(int32_t seed) : seed(seed) {}
 // def rows(self) -> Own[list[int32]]:
 //     return [self.seed, self.seed + 1]
 inline std::vector<int32_t> Source::rows() const {
-    return {this->seed, (::tpy::add_check<int32_t>(this->seed, 1))};
+    return std::vector<int32_t>{this->seed, (::tpy::add_check<int32_t>(this->seed, 1))};
 }
 void __tpy_init();
 } // namespace tpyapp::main

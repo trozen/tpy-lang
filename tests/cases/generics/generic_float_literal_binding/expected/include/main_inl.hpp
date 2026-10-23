@@ -16,7 +16,7 @@ inline std::expected<double, ::tpy::StopIteration> __gen_gen::__next__() {
         std::vector<double> __tmp_1 = {1.5, 2.5};
         v = ::tpyapp::main::first_of<double>(__tmp_1);
         __state = S_RESUME_0;
-        return v;
+        return std::move(v);
     }
     case S_RESUME_0: {  // after: yield v
         __state = S_DONE;

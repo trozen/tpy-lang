@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make_nums() -> Own[list[int]]:
 //     return [3, 1, 4, 1, 5]
 std::vector<::tpy::BigInt> make_nums() {
-    return {3, 1, 4, 1, 5};
+    return std::vector<::tpy::BigInt>{3, 1, 4, 1, 5};
 }
 
 // def main() -> None:

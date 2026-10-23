@@ -21,7 +21,7 @@ bool ok(Coord c) {
 // def ring(c: Coord) -> Own[list[Coord]]:
 //     return [Coord(c.column + 1, c.row), Coord(c.column + 2, c.row)]
 std::vector<Coord> ring(Coord c) {
-    return {Coord((::tpy::add_check<int32_t>(c.column, 1)), c.row), Coord((::tpy::add_check<int32_t>(c.column, 2)), c.row)};
+    return std::vector<Coord>{Coord((::tpy::add_check<int32_t>(c.column, 1)), c.row), Coord((::tpy::add_check<int32_t>(c.column, 2)), c.row)};
 }
 
 // @error_return(Err)

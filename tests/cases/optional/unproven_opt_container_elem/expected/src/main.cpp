@@ -11,7 +11,7 @@ std::vector<P>* G{};
 // def make() -> Own[list[P]]:
 //     return [P(5)]
 std::vector<P> make() {
-    return {P(5)};
+    return std::vector<P>{P(5)};
 }
 
 // def free_fn(d: Optional[list[P]]) -> int32:

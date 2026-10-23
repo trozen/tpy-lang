@@ -35,7 +35,7 @@ __gen_four four() {
 // def make_list() -> Own[list[int32]]:
 //     return [4, 5, 6]
 std::vector<int32_t> make_list() {
-    return {4, 5, 6};
+    return std::vector<int32_t>{4, 5, 6};
 }
 
 // def borrow_list(xs: list[int32]) -> list[int32]:

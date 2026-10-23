@@ -294,7 +294,7 @@ class TestDataclassDefaults:
             leaves=IdentityMap(), conds=IdentityMap(),
             await_args=IdentityMap(), return_values=IdentityMap())
         for f in dataclasses.fields(body):
-            if f.name == "signature":
+            if f.name in ("signature", "yield_hosts_temps"):
                 continue  # The body's contract, not a seam table.
             # Forward-referenced annotations keep their quotes in `f.type`.
             if f.type.strip("'\"") == "IdentityMap":

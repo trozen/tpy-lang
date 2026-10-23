@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def mk_list() -> Own[list[int32]]:
 //     return [1]
 std::vector<int32_t> mk_list() {
-    return {1};
+    return std::vector<int32_t>{1};
 }
 
 // def mk_dict() -> Own[dict[str, int32]]:
@@ -31,7 +31,7 @@ std::vector<int32_t> mk_list() {
 // def mk_array() -> Own[Array[int32, 2]]:
 //     return [1, 2]
 std::array<int32_t, 2> mk_array() {
-    return {1, 2};
+    return std::array<int32_t, 2>{1, 2};
 }
 
 // def rebound_list(other: list[int32]) -> None:

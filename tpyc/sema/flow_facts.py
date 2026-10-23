@@ -238,16 +238,6 @@ def merge_borrow_triples(
     return frozenset((s, b, loan) for (s, b), loan in best.items())
 
 
-def _min_idx(x: int | None, y: int | None) -> int | None:
-    if x is None:
-        return y
-    if y is None:
-        return x
-    # Two paths flagging the same local at different fresh-owning indices is
-    # vanishingly rare; keep the earliest for a deterministic diagnostic.
-    return min(x, y)
-
-
 def _combine_bp(
     a: BindingProvenance, b: BindingProvenance, must_intersect: bool,
 ) -> BindingProvenance:
@@ -268,7 +258,7 @@ def _combine_bp(
     return BindingProvenance(
         safe_to_return=safe,
         param_derived=param,
-        owns_fresh_idx=_min_idx(a.owns_fresh_idx, b.owns_fresh_idx),
+        owns_fresh_idxs=a.owns_fresh_idxs | b.owns_fresh_idxs,
         owning_storage=a.owning_storage or b.owning_storage,
         copy_into_own_idxs=a.copy_into_own_idxs | b.copy_into_own_idxs,
         borrow_source_roots=a.borrow_source_roots | b.borrow_source_roots,

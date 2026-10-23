@@ -57,7 +57,7 @@ inline std::expected<std::vector<int64_t>, ::tpy::StopIteration> __gen_gen_lists
         n = ::tpy::__getitem__((*xs), 0);
         (*xs).push_back((::tpy::add_check<int64_t>(n, ::tpyapp::main::w64())));
         __state = S_RESUME_0;
-        return (*xs);
+        return std::move((*xs));
     }
     case S_RESUME_0: {  // after: yield xs  # tpyc: ok
         __state = S_DONE;

@@ -85,7 +85,7 @@ def gen_call_init_borrowed(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
     while i < n:
         t = mk(i)
         saved = take_ptr(t[1])
-        yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+        yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
         print("borrowed", saved.items[0])
         u = mk(i + 100)
         yield u  # tpyc: ok
@@ -103,7 +103,7 @@ def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
         t = mk(i)
         saved = take_ptr(t[1])
         print("dead-borrow", saved.items[0])
-        yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+        yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
         u = mk(i + 100)
         yield u  # tpyc: ok
         i += 1
@@ -115,7 +115,7 @@ def gen_call_init_borrow_dead(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
 def gen_preloop(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
     t = mk(7)
     for _ in range(n):
-        yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+        yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
     print("preloop-kept", first_item(t[1]))
 
 
@@ -129,7 +129,7 @@ def gen_live(n: int32) -> Iterator[tuple[int32, Own[Box]]]:
         # consumer deliberately does not mutate the yielded Box here -- that
         # copy IS a CPython divergence, tracked at
         # BUGS.md#tuple-yield-copy-warning-omits-aliasing.
-        yield t  # tpyc: warning(/copies tuple.* into owned storage/)
+        yield t  # tpyc: warning(/copies Box into owned storage \(tuple element 1\)/)
         print("live-gen", t[1].val)
         u = (i, Box(i))
         yield u  # tpyc: ok

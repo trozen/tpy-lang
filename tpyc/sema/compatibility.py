@@ -175,6 +175,16 @@ def _element_at(t: TupleType, path: ElemPath, *,
     return unwrap_own(leaf if keep_markers else unwrap_send_sync(leaf))
 
 
+def _element_payload(t: TpyType) -> TpyType:
+    """A tuple element's type with its `Own` marker dropped, as the copy
+    warnings name it (`Send[Own[T]]` names `Send[T]`)."""
+    if isinstance(t, OwnType):
+        return t.wrapped
+    if unwrap_send_sync(t) is not t:
+        return dc_replace(t, wrapped=_element_payload(t.wrapped))
+    return t
+
+
 def _tuple_element_context(context: str, i: int) -> str:
     """`context` narrowed to element `i`; a nested element extends the
     enclosing element's path (`1.0`), as the copy warnings spell it."""
@@ -2000,16 +2010,20 @@ class TypeCompatibility:
                 element_decided = (isinstance(source_expr, TpySubscript)
                                    and self.element_read(source_expr)
                                    is not None)
-                # A returned NAME's elements are its own return check's
-                # (`check_name_borrow_into_own`).
-                returned_name = is_return and isinstance(
-                    peel_value_wrappers(source_expr), TpyName)
+                # A returned NAME's elements are its own return check's, and
+                # so are a yielded tuple NAME's (`check_name_borrow_into_own`).
+                returned_name = isinstance(peel_value_wrappers(source_expr),
+                                           TpyName) and (
+                    is_return or (coercion_ctx is CoercionContext.RETURN
+                                  and bare_tuple(self.ctx.get_expr_type(
+                                      source_expr)) is not None))
                 if (ptr_repr_tuple and not element_decided and not returned_name
                         and source_expr is not None and not is_auto_moved):
                     self.check_owned_tuple_sink(
                         source_expr, expected, "owned storage", source_expr)
                     warned_ptr_repr_tuple = True
-                elif (not element_decided and not is_return and ref_scalar
+                elif (not element_decided and not is_return
+                        and not returned_name and ref_scalar
                         and self.source_copies_into_storage(source_expr,
                                                             is_auto_moved)):
                     value_type = self.diag_type(self.ctx.get_expr_type(source_expr))
@@ -3644,12 +3658,19 @@ class TypeCompatibility:
         binding = (self.ctx.read_bindings.get(r.node)
                    if isinstance(r.node, TpyName) else None)
         t = self.ctx.get_expr_type(r.node)
+        paths = reference_paths(t) if bare_tuple(t) is not None else {()}
+        if r.owned_elements is not None:
+            # A mixed result moves only the elements it owns out of the
+            # local; the others it lends, so the local need not own them.
+            paths = [p for p in paths if p[:1] and p[0] in r.owned_elements]
         if (binding is not None and binding.kind is not ReadKind.CAPTURED
-                and read_ownership(self.ctx, binding).owns(
-                    t, reference_paths(t) if bare_tuple(t) is not None
-                    else {()})):
+                and read_ownership(self.ctx, binding).owns(t, paths)):
             return
         ret = r.ret
+        if r.restored_last_use:
+            # The eager capture reads the local before the chain, which may
+            # still reach it: no move there.
+            self.ctx.all_last_uses.discard(r.node)
         if r.path is None or r.path == ():
             ret.finally_deferred_capture = False
             ret.finally_deferred_leaves = ()
@@ -3736,6 +3757,15 @@ class TypeCompatibility:
             if len(reads) != 1:
                 return False
             self.ctx.comp_moves[inner] = CompMove.RECEIVER
+            return True
+        read = self.element_read(inner, values=True)
+        if (is_last_sink and gen.owns_elements and gen.unpack_vars is None
+                and read is not None and read[0] == gen.var):
+            # An element of the variable at the last sink, as a statement's
+            # last-use element read: the sink moves it (the read's record
+            # moves that element of the variable).
+            self.ctx.comp_moves[inner] = CompMove.LAST_SINK
+            self.ctx.comp_moves[inner.obj] = CompMove.LAST_SINK
             return True
         if not (gen.owns_elements
                 and isinstance(inner, TpyName)
@@ -3988,10 +4018,12 @@ class TypeCompatibility:
                 or {(read[1],)})
         return read_ownership(self.ctx, binding).owns(t, need)
 
-    def element_read(self, expr: TpyExpr) -> 'tuple[str, int] | None':
+    def element_read(self, expr: TpyExpr, *, values: bool = False
+                     ) -> 'tuple[str, int] | None':
         """`(name, i)` for `name[i]` with a constant index reading a
-        reference element of a tuple parameter or local; None for any other
-        read. Whether an owning sink moves it out is its record's
+        reference element of a tuple parameter or local (any element with
+        `values`: an owned `str` moves too); None for any other read.
+        Whether an owning sink moves it out is its record's
         (`element_moves_out`)."""
         if not (isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName)):
             return None
@@ -4008,7 +4040,7 @@ class TypeCompatibility:
         if not 0 <= idx < len(tt.element_types):
             return None
         et = unwrap_readonly(tt.element_types[idx])
-        if (not isinstance(et, OwnType)
+        if (not values and not isinstance(et, OwnType)
                 and unwrap_ref_type(et).is_value_type()):
             return None
         return expr.obj.name, idx
@@ -5272,10 +5304,10 @@ class TypeCompatibility:
                 expr
             )
 
-    def _tuple_literal_fresh_borrow_elem(
-            self, tuple_type: TupleType, inner: TpyExpr) -> int | None:
-        """First element index whose non-value (borrow-form) slot has a fresh /
-        dangling source in this tuple literal, else None.
+    def _tuple_literal_fresh_borrow_elems(
+            self, tuple_type: TupleType, inner: TpyExpr) -> frozenset[int]:
+        """The element indices whose non-value (borrow-form) slot has a
+        fresh / dangling source in this tuple literal.
 
         Drives the owns-fresh-tuple-member assignment flag (see
         `update_tuple_member_local_facts`). The literal yield/return path has its
@@ -5284,18 +5316,16 @@ class TypeCompatibility:
         pre-coercion source type, which this name-based flag cannot see.
         """
         if not isinstance(inner, TpyTupleLiteral):
-            return None
-        for i, et in enumerate(tuple_type.element_types):
-            if i >= len(inner.elements):
-                break
-            # Recursive-union wrappers are borrow form here too, so a fresh
-            # wrapper member dangles like any other borrow element; the
-            # is_dangling_return source check tells a fresh local from a
-            # param/self-rooted wrapper, so there is no needs_wrapper() skip.
-            if (not et.is_value_type() and not isinstance(et, (OwnType, TypeParamRef))
-                    and self.is_dangling_return(inner.elements[i])):
-                return i
-        return None
+            return frozenset()
+        # Recursive-union wrappers are borrow form here too, so a fresh
+        # wrapper member dangles like any other borrow element; the
+        # is_dangling_return source check tells a fresh local from a
+        # param/self-rooted wrapper, so there is no needs_wrapper() skip.
+        return frozenset(
+            i for i, et in enumerate(tuple_type.element_types)
+            if i < len(inner.elements) and not et.is_value_type()
+            and not isinstance(et, (OwnType, TypeParamRef))
+            and self.is_dangling_return(inner.elements[i]))
 
     def _tuple_elem_still_borrow(self, tuple_type: TupleType, idx: int) -> bool:
         """Whether element `idx` of the *declared* boundary tuple is still
@@ -5382,7 +5412,7 @@ class TypeCompatibility:
         Derive before clearing so a self-assignment (`t = t`) re-installs its own
         fact instead of losing it to the pop.
         """
-        fresh = None
+        fresh: frozenset[int] = frozenset()
         owning = False
         copy_into_own: list[int] = []
         borrow_roots: frozenset[str] = frozenset()
@@ -5390,20 +5420,22 @@ class TypeCompatibility:
             tt = unwrap_readonly(var_type)
             if isinstance(tt, TupleType):
                 fresh = self._derive_tuple_member_hazards(tt, init_expr)
+                # A local bound from an owning call owns its elements whatever
+                # its own type spells (per-element `Own` included).
+                owning = self._derive_owning_storage(init_expr)
                 if tt.has_pointer_repr_element():
-                    owning = self._derive_owning_storage(init_expr)
                     borrow_roots = self._derive_tuple_borrow_sources(
                         name, tt, init_expr)
                 copy_into_own = self._derive_copy_into_own_hazards(init_expr)
         # All four tuple-member hazard fields are (re)derived together and
         # replaced atomically; the rebind clears the name's old facts first
-        # (so `t = t` re-installs its own, derived above). owns-fresh maps to
-        # the first dangerous element index; the per-element reject/warn sets
-        # and the owning flag are flow-sensitive (UNION-merged) so a hazard on
-        # any reaching path is caught at the boundary check.
+        # (so `t = t` re-installs its own, derived above). The per-element
+        # reject/warn sets and the owning flag are flow-sensitive
+        # (UNION-merged) so a hazard on any reaching path is caught at the
+        # boundary check.
         self.ctx.func.bp_set_tuple_member(
             name,
-            owns_fresh_idx=fresh,
+            owns_fresh_idxs=fresh,
             owning_storage=owning,
             copy_into_own_idxs=frozenset(copy_into_own),
             borrow_source_roots=borrow_roots,
@@ -6739,6 +6771,19 @@ class TypeCompatibility:
             for path in sorted(owned_slot_paths(slot)
                                & reference_paths(tuple_type)):
                 self._name_leaf_copy(tuple_type, path, expr)
+        elif declared_whole and sink is TupleSink.YIELD:
+            # The frame keeps the name, so the yield copies each element the
+            # step owns, named as the result's element warning names it.
+            payloads = dc_replace(tuple_type, element_types=tuple(
+                _element_payload(e) for e in tuple_type.element_types))
+            for path in sorted(p for p in owned_slot_paths(slot)
+                               if len(p) == 1):
+                self._warn_tuple_path_copies(
+                    payloads, (path,), "owned storage", expr, source=expr,
+                    hedge_open=True,
+                    nocopy_hint=self.nocopy_hint(expr, path[0], note=""),
+                    note_read=expr,
+                    note_errors=not self.is_consuming_field_borrow(expr))
         # A movable owned-tuple source at its last use MOVES into the owned
         # sink (forward as arg, return or yield), so it is consumed -- mark it for
         # the unconsumed-param warning. Borrowed/copied sources took the
@@ -6824,12 +6869,12 @@ class TypeCompatibility:
                 and global_binds_by_reference(gt))
 
     def _derive_tuple_member_hazards(
-            self, tt: TupleType, expr: TpyExpr) -> int | None:
-        """Fresh-dangle borrow-member hazard index for an init expr bound to a
-        tuple local of type `tt`, or None.
+            self, tt: TupleType, expr: TpyExpr) -> frozenset[int]:
+        """Fresh-dangle borrow-member hazard indices for an init expr bound
+        to a tuple local of type `tt`.
 
         Dispatches on provenance:
-        - tuple literal: scan its elements (`_tuple_literal_fresh_borrow_elem`).
+        - tuple literal: scan its elements (`_tuple_literal_fresh_borrow_elems`).
         - bare name: inherit the source local's already-recorded fact, re-checked
           against `tt` so an `Own[T]` boundary element (the escape) is dropped.
         - ternary: UNION the two arms -- the result aliases either, so it is
@@ -6839,17 +6884,15 @@ class TypeCompatibility:
         durable borrow (its own fresh members are rejected at its return), and
         durable members alias safely in pointer borrow form.
         """
+        fresh: set[int] = set()
         for inner in ternary_operands(expr):
             if isinstance(inner, TpyName):
-                fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
-                if (fresh is not None
-                        and not self._tuple_elem_still_borrow(tt, fresh)):
-                    fresh = None
+                fresh |= {i for i in self.ctx.func.bp_owns_fresh_idxs(
+                              inner.name)
+                          if self._tuple_elem_still_borrow(tt, i)}
             else:
-                fresh = self._tuple_literal_fresh_borrow_elem(tt, inner)
-            if fresh is not None:
-                return fresh
-        return None
+                fresh |= self._tuple_literal_fresh_borrow_elems(tt, inner)
+        return frozenset(fresh)
 
     def _check_tuple_member_local(self, tuple_type: TupleType,
                                   expr: TpyExpr, verb: str) -> None:
@@ -6873,8 +6916,13 @@ class TypeCompatibility:
 
     def _check_tuple_name_member_local(self, tuple_type: TupleType,
                                        inner: TpyName, verb: str) -> None:
-        fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
-        if fresh is not None and self._tuple_elem_still_borrow(tuple_type, fresh):
+        # An element the boundary still borrows whose source is a fresh
+        # value has no storage of its own at either boundary.
+        dangling = sorted(i for i in self.ctx.func.bp_owns_fresh_idxs(
+                              inner.name)
+                          if self._tuple_elem_still_borrow(tuple_type, i))
+        if dangling:
+            fresh = dangling[0]
             et = tuple_type.element_types[fresh]
             raise self.ctx.error(
                 f"Cannot {verb} tuple local '{inner.name}': element {fresh} "
@@ -6930,15 +6978,7 @@ class TypeCompatibility:
             # element storage (bound from an owning-tuple call), where the
             # lift would point into the dying owner.
             bt = self.ctx.func.borrow_tracker
-            # Owning takes precedence: a local bound from an owning-tuple call
-            # on ANY reaching path (UNION-merged) points into a function-local
-            # slot that dies at return -- unsafe even if another path aliases
-            # param storage (a branch-mixed local also carries that path's
-            # FIELD borrow, which would otherwise mask the owning path here).
-            eff = bt.effective_storage(inner.name).as_name()
-            if (self.ctx.func.bp_is_owning_storage(inner.name)
-                    or eff is not None
-                    and self.ctx.func.bp_is_owning_storage(eff)):
+            if self._tuple_root_is_body_storage(inner.name):
                 dangles = True
             elif self._borrow_chain_enters_storage(bt, inner.name):
                 # EVERY root must be caller-owned: a re-seated name aliases a
@@ -6964,6 +7004,28 @@ class TypeCompatibility:
                 f"such elements to return by value.",
                 inner
             )
+
+    def _tuple_root_is_body_storage(self, name: str) -> bool:
+        """Whether some storage tuple name `name` reaches (any path) is the
+        body's own -- an owning-call-bound local, an ownership-transfer
+        parameter or consuming `self` -- which dies at a return while a
+        borrowed element still points into it
+        (BUGS.md#tuple-borrow-root-lifetime-mir)."""
+        func = self.ctx.func
+        # The name's own binding fact counts beside its roots: a local
+        # owning on one branch also borrows a field on the other.
+        roots = [name] + [k.as_name() for k in
+                          func.borrow_tracker.all_storage_through_borrows(
+                              name)]
+        for root in roots:
+            if root is None:
+                continue
+            if func.bp_is_owning_storage(root):
+                return True
+            if (root in func.current_param_names
+                    and not self._name_is_param_or_global(root)):
+                return True
+        return False
 
     @staticmethod
     def _borrow_chain_enters_storage(bt: BorrowTracker, name: str) -> bool:

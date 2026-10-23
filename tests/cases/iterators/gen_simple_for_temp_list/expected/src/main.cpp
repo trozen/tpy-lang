@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     return [10, 20, 30]
 std::vector<int32_t> make() {
     std::cout << "making" << "\n" << ::tpy::check_signals;
-    return {10, 20, 30};
+    return std::vector<int32_t>{10, 20, 30};
 }
 
 

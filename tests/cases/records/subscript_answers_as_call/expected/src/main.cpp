@@ -148,7 +148,7 @@ int32_t peek_opt(Token* tk) {
 //     return [1]
 std::vector<int32_t> fresh_keys(Keys& ks) {
     ks.calls = ::tpy::add_check<int32_t>(ks.calls, 1);
-    return {1};
+    return std::vector<int32_t>{1};
 }
 
 // def first(xs: list[int32]) -> int32:

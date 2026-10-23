@@ -34,7 +34,7 @@ inline std::expected<int64_t, ::tpy::StopIteration> __gen_gen_arms::__next__() {
         }
         }
         __state = S_RESUME_1;
-        return y;
+        return std::move(y);
     }
     case S_RESUME_1: {  // after: yield y
         __state = S_DONE;

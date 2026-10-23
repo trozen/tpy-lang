@@ -11,7 +11,7 @@
  "field_classifiers": 0,
  "field_write_a": 0,
  "field_write_b": 2,
- "form_kwargs": 406,
+ "form_kwargs": 401,
  "held_form_reads": 1,
  "payload_d": 44,
  "return_a": 0,
@@ -21,5 +21,5 @@
  "return_b_read": 0,
  "return_d": 0,
  "source_writers": 1,
- "yield_d": 48
+ "yield_d": 0
 }

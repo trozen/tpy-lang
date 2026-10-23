@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def mk_arr() -> Own[Array[int32, 4]]:
 //     return [7, 7, 7, 7]
 std::array<int32_t, 4> mk_arr() {
-    return {7, 7, 7, 7};
+    return std::array<int32_t, 4>{7, 7, 7, 7};
 }
 
 // def mk_ba() -> Own[bytearray]:

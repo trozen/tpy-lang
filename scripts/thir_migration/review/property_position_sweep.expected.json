@@ -2408,7 +2408,7 @@
   ""
  ],
  "self_yield__items__meth__self": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "self_yield__items__prop__self": [
@@ -2440,7 +2440,7 @@
   ""
  ],
  "self_yield__own__meth__self": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "self_yield__own__prop__self": [
@@ -2448,7 +2448,7 @@
   ""
  ],
  "self_yield__rec__meth__self": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "self_yield__rec__prop__self": [
@@ -3008,7 +3008,7 @@
   ""
  ],
  "yield_val__items__meth__named": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__items__meth__temp": [
@@ -3016,7 +3016,7 @@
   ""
  ],
  "yield_val__items__prop__named": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__items__prop__temp": [
@@ -3056,23 +3056,23 @@
   ""
  ],
  "yield_val__own__meth__named": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__own__meth__temp": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__own__prop__named": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__own__prop__temp": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__rec__meth__named": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__rec__meth__temp": [
@@ -3080,7 +3080,7 @@
   ""
  ],
  "yield_val__rec__prop__named": [
-  "res.yield_type",
+  "ok",
   ""
  ],
  "yield_val__rec__prop__temp": [

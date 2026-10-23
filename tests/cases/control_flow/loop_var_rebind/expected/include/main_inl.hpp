@@ -37,7 +37,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             total = ::tpy::add_check<int32_t>(total, n);
         }
         __state = S_RESUME_0;
-        return total;
+        return std::move(total);
     }
     case S_RESUME_0: {  // after: yield total
         __state = S_DONE;

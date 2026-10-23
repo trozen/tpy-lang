@@ -26,7 +26,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Box_gen_reassigned
     }
     case S_RESUME_0: {  // after: yield "start"
         __state = S_RESUME_1;
-        return q;
+        return std::move(q);
     }
     case S_RESUME_1: {  // after: yield q
         __state = S_DONE;

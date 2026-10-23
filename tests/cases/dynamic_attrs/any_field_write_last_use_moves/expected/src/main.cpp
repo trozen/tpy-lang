@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def store(h: Holder) -> None:
 //     n = Node(1)
-//     h.payload = n  # the last use moves the make_any result, not the source
+//     h.payload = n  # the last use moves the source into the box
 void store(Holder& h) {
     Node n = Node(1);
     h.payload = ::tpy::make_any(std::move(n));

@@ -1,0 +1,74 @@
+ot_dead 9 3
+ot_dead 9 4
+ot_owned_call 7
+ot_owned_call 7
+ot_fresh 11
+ot_fresh 12
+ot_last_use 12
+ot_last_use 15
+own_one 101
+own_one 107
+own_nocopy 101
+own_nocopy 102
+str_last text
+str_last x
+ref_field 3
+ref_ternary 11 12 1
+bt_frame 7
+bt_frame resumed 7
+bt_frame 7
+inverse_bt 3
+inverse_to 2
+inverse_to 3
+gen_t record 3
+gen_t str s
+gen_t str s
+gen_t int 5
+gen_t int 5
+own_make 8
+own_make 8
+in_finally fin 9
+in_finally 9
+with enter
+with exit
+in_with 4
+genexpr 0 0
+view_first he
+view_first None
+ot_comp [1, 2]
+nocopy_literal 2
+mixed_param 2 3
+own_live 1 2
+own_live after 6 7
+own_live main 7
+union_str ok
+lists 2
+lists 1
+bytes_param 2
+bytes_param 2
+opt_str_param x
+opt_str_param x
+opt_owned [1, 9]
+keep_opts 2
+dict_comp 6
+dict_comp_nocopy 2
+list_comp 7 6
+list_comp_nocopy 1 2
+list_comp_negative 1
+list_comp_str abcdefghijklmnopqrstuvwxyz
+list_comp_opt [7]
+value_union 1
+value_union two
+accessor 6
+mixed_fin 99
+mixed_fin_nocopy 99
+subscript 6 7
+container_field 3
+self_field 4
+lambdas 11
+lambdas 11
+rebound_whole 1 2
+str_param abc
+str_param abc
+ptr_field 3
+in_match 3

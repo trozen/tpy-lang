@@ -36,7 +36,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_steps::__next__() {
     }
     case S_RESUME_0: {  // after: yield 1
         __state = S_RESUME_1;
-        return g;
+        return std::move(g);
     }
     case S_RESUME_1: {  // after: yield g
         __state = S_DONE;

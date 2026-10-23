@@ -66,7 +66,7 @@ void consume_list(std::vector<::tpy::Union<int32_t, std::string>>&& items) {
 // def make_list() -> Own[list[int32 | str]]:
 //     return [1, "hello", 2]
 std::vector<::tpy::Union<int32_t, std::string>> make_list() {
-    return {1, "hello", 2};
+    return std::vector<::tpy::Union<int32_t, std::string>>{1, "hello", 2};
 }
 
 // def main() -> None:

@@ -349,7 +349,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                 if (in_quotes) {
                     if ((c == quotechar)) {
                         if (((doublequote && ((::tpy::add_check<int32_t>(i, 1)) < n)) && (::tpy::str_slice(line, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))}) == quotechar))) {
-                            parts->push_back(std::string(quotechar));
+                            parts->push_back(quotechar);
                             i = ::tpy::add_check<int32_t>(i, 2);
                             continue;
                         }
@@ -395,7 +395,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                 (*row).push_back(::tpy::str_join("", (*parts)));
             }
             __state = S_RESUME_0;
-            return (*row);
+            return std::move((*row));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -586,7 +586,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                 if (in_quotes) {
                     if ((c == quotechar)) {
                         if (((doublequote && ((::tpy::add_check<int32_t>(i, 1)) < n)) && (::tpy::str_slice(line, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))}) == quotechar))) {
-                            parts->push_back(std::string(quotechar));
+                            parts->push_back(quotechar);
                             i = ::tpy::add_check<int32_t>(i, 2);
                             continue;
                         }
@@ -632,7 +632,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                 (*row).push_back(::tpy::str_join("", (*parts)));
             }
             __state = S_RESUME_0;
-            return (*row);
+            return std::move((*row));
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -761,7 +761,7 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             __state = S_RESUME_0;
-            return (*out);
+            return std::move((*out));
         }
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});

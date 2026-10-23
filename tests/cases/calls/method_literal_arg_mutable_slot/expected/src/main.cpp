@@ -13,7 +13,7 @@ int32_t sink(int32_t n) {
 // def mk() -> Own[list[int32]]:
 //     return [1, 2]
 std::vector<int32_t> mk() {
-    return {1, 2};
+    return std::vector<int32_t>{1, 2};
 }
 
 // def push_free(xs: list[int32]) -> int32:

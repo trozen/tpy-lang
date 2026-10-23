@@ -23,6 +23,16 @@ int32_t loop_carried(Box& b, Box& c);
 int32_t try_hoisted(Box& b);
 // def walrus(b: Box) -> int32:
 int32_t walrus(Box& b);
+// def relay(p: tuple[Box, Box]) -> tuple[Own[Box], Box]:
+std::tuple<Box, Box*> relay(const std::tuple<Box*, Box*>& p);
+// def own_separate[T](q: Own[T], b: Box) -> tuple[Own[T], Box]:
+template<typename T>
+std::tuple<::tpy::own_return_t<T>, Box*> own_separate(::tpy::own_param_t<T> q, Box& b);
+// def mixed_param[T](q: tuple[Own[T], Box]) -> tuple[Own[T], Box]:
+template<typename T>
+std::tuple<::tpy::own_return_t<T>, Box*> mixed_param(std::tuple<::tpy::own_return_t<T>, Box*>&& q);
+// def mixed_param_box(q: tuple[Own[Box], Box]) -> tuple[Own[Box], Box]:
+std::tuple<Box, Box*> mixed_param_box(std::tuple<Box, Box*>&& q);
 // def main() -> None:
 void main();
 
@@ -46,5 +56,22 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 inline Box::Box(int32_t val) : val(val) {}
+// def own_separate[T](q: Own[T], b: Box) -> tuple[Own[T], Box]:
+//     t = (q, b)
+//     # the owned element moves in, the borrowed one stays the caller's
+//     return t  # tpyc: ok
+template<typename T>
+std::tuple<::tpy::own_return_t<T>, Box*> own_separate(::tpy::own_param_t<T> q, Box& b) {
+    auto t = std::tuple<T, Box*>{std::move(q), &(b)};
+    return ::tpy::tuple_to_storage<std::tuple<::tpy::own_return_t<T>, Box*>>(t);
+}
+// def mixed_param[T](q: tuple[Own[T], Box]) -> tuple[Own[T], Box]:
+//     # a mixed parameter hands back the caller's borrowed element
+//     return q  # tpyc: ok
+template<typename T>
+std::tuple<::tpy::own_return_t<T>, Box*> mixed_param(std::tuple<::tpy::own_return_t<T>, Box*>&& q) {
+    return q;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -65,6 +65,7 @@ from ...sema.storage_policy import StorageVerdict, first_binding_storage
 from ...sema.storage_walk import pointee_root
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import (is_array, is_bytes_view_type,
+                                  is_owned_in_coro_frame,
                                   is_str_view_type)
 from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         NominalType, OptionalType, OwnType, PendingListType,
@@ -428,6 +429,10 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
         return Held.BORROWED
     if kind is ValueOptKind.SCALAR:
         return Held.VALUE
+    if rec is not None and rec.frame_owned_view:
+        # The frame's own buffer (or its optional), read whole or through
+        # the unwrap.
+        return Held.STORAGE
     if kind is ValueOptKind.VIEW:
         if not deref:
             return Held.VALUE
@@ -885,6 +890,9 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
     ptype = next((t for n, t in inp.params if n == name), None)
     if inp.frame is not None and name in inp.frame.fields:
         f["frame_class"] = inp.frame.classes.get(name, FrameLocalClass.PLAIN)
+        if isinstance(typ, TpyType) and is_owned_in_coro_frame(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(typ)))):
+            f["frame_owned_view"] = True
     # The const verdicts of the function whose parameter it is; `THIRParam`
     # and every reader in the body read them off this record.
     fi = _p._owning_fi(func, analyzer, inp.record_name)
@@ -2314,6 +2322,33 @@ def _loop_form(loop: 'LoopBinding | None') -> F:
     return F.REFERENCE if loop in _REFERENCE_LOOP_BINDINGS else F.VALUE
 
 
+def owned_tuple_step_inline(et: 'TpyType | None',
+                            loop: 'LoopBinding | None'
+                            ) -> 'tuple[bool, ...] | None':
+    """An owned tuple step (`Iterator[Own[tuple[A, int32]]]`) a loop binds
+    as the storage tuple it is handed: every element held inline, as its
+    per-element `Own` twin's -- for a `for` statement's variable and a
+    comprehension clause's alike."""
+    u = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
+    if not (isinstance(u, OwnType) and loop is LoopBinding.OWNED_STORAGE):
+        return None
+    tt = unwrap_readonly(u.wrapped)
+    if not isinstance(tt, TupleType):
+        return None
+    return (True,) * len(tt.element_types)
+
+
+def owned_optional_step(et: 'TpyType | None',
+                        loop: 'LoopBinding | None') -> bool:
+    """An owned optional step (`Iterator[Own[A | None]]`) a loop binds as
+    the storage optional it is handed, which every read of the variable
+    spells -- for a `for` statement's variable and a comprehension
+    clause's alike."""
+    u = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
+    return (isinstance(u, OwnType) and loop is LoopBinding.OWNED_STORAGE
+            and pointer_repr_optional(unwrap_readonly(u.wrapped)) is not None)
+
+
 def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     """A for-each loop variable (`_lower_stmt_dispatch`'s for-each arm): a
     fresh C++ binding of the body."""
@@ -2355,6 +2390,9 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     if storage_tuple:
         f["storage_tuple"] = True
         f["const_storage_tuple"] = yields_const
+    inline = owned_tuple_step_inline(et, f.get("loop_binding"))
+    if inline is not None:
+        f["inline_elems"] = inline
     if outer is not None and outer.is_param:
         # A loop that rebinds a parameter reads as that parameter where a
         # use asks "is this the caller's" (a view field's admission); sema
@@ -2373,6 +2411,8 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         src = (stmt.iterable.obj if isinstance(stmt.iterable, TpyMethodCall)
                else stmt.iterable)
         f["const_storage_opt"] = _st._iteration_yields_const(src, ctx, an)
+    elif owned_optional_step(et, f.get("loop_binding")):
+        f["storage_opt"] = True
     # What the variable owns is its site's (`site.ownership`): the pass's
     # last use moves it where a copy allocates. A hoisted variable is the
     # pass slot the loop writes, unless a consuming loop hands it over; a
@@ -2823,6 +2863,13 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
         if _p.record_like(unwrap_readonly(unwrap_send_sync(tt)), an):
             return _mk(site, name, typ, F.REFERENCE, None, const=const)
         return _mk(site, name, typ, F.VALUE, None)
+    inline = owned_tuple_step_inline(route.et, loop)
+    if inline is not None:
+        return _mk(site, name, typ, _loop_form(loop), None,
+                   loop_binding=loop, inline_elems=inline)
+    if owned_optional_step(route.et, loop):
+        return _mk(site, name, typ, _loop_form(loop), None,
+                   loop_binding=loop, storage_opt=True)
     etp = unwrap_readonly(route.et) if route.et is not None else None
     if isinstance(etp, TupleType) and etp.has_pointer_repr_element():
         return _mk(site, name, typ, F.STORAGE_TUPLE, None, storage_tuple=True,

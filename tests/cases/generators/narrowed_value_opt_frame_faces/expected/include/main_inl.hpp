@@ -22,7 +22,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g::__next__() {
             q = (*p);
         }
         __state = S_RESUME_0;
-        return q;
+        return std::move(q);
     }
     case S_RESUME_0: {  // after: yield q
         if ((p.has_value())) {
@@ -134,7 +134,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_g_frame_whole::__next_
     case S_RESUME_0: {  // after: yield 0
         if ((q2.has_value())) {
             __state = S_RESUME_1;
-            return (*q2);
+            return std::move((*q2));
         } else {
             __state = S_JOIN_0;
             continue;
@@ -197,7 +197,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_g_view::__next__()
         __state = S_DONE;  // until a yield sets where to resume
         if ((s.has_value())) {
             __state = S_RESUME_0;
-            return (*s);
+            return std::move((*s));
         } else {
             __state = S_JOIN_0;
             continue;

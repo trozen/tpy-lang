@@ -31,7 +31,7 @@ void notify(int32_t x) {
 // def make_values() -> Own[list[int32]]:
 //     return [1, 2]
 std::vector<int32_t> make_values() {
-    return {1, 2};
+    return std::vector<int32_t>{1, 2};
 }
 
 // def key(events: list[int32]) -> str:

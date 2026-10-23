@@ -19,7 +19,7 @@ namespace tpyapp::main {
 // def mk() -> Own[list[int]]:
 //     return [1, 2]
 std::vector<::tpy::BigInt> mk() {
-    return {1, 2};
+    return std::vector<::tpy::BigInt>{1, 2};
 }
 
 // def wrap_b(b: bytes) -> Own[Rc[bytes]]:

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def make() -> Own[list[int32]]:
 //     return [1, 2, 2]
 std::vector<int32_t> make() {
-    return {1, 2, 2};
+    return std::vector<int32_t>{1, 2, 2};
 }
 
 // def uniq() -> Own[set[int32]]:

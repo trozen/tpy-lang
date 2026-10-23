@@ -122,6 +122,23 @@ int32_t walrus(Box& b) {
     return std::get<0>(p).val;
 }
 
+// def relay(p: tuple[Box, Box]) -> tuple[Own[Box], Box]:
+//     t = p
+//     # an alias of a borrowed tuple parameter returned at a mixed slot: the
+//     # owned element copies, the borrowed one stays the caller's
+//     return t  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
+std::tuple<Box, Box*> relay(const std::tuple<Box*, Box*>& p) {
+    auto t = p;
+    return ::tpy::tuple_to_storage<std::tuple<Box, Box*>>(t);
+}
+
+// def mixed_param_box(q: tuple[Own[Box], Box]) -> tuple[Own[Box], Box]:
+//     # the monomorphic twin
+//     return q  # tpyc: ok
+std::tuple<Box, Box*> mixed_param_box(std::tuple<Box, Box*>&& q) {
+    return q;
+}
+
 // def main() -> None:
 //     b = Box(7)
 //     c = Box(8)
@@ -131,6 +148,19 @@ int32_t walrus(Box& b) {
 //     print("loop:", loop_carried(b, c), b.val, c.val)
 //     print("try:", try_hoisted(b), b.val)
 //     print("walrus:", walrus(b), b.val)
+//     a = Box(1)
+//     r = relay((a, b))
+//     r[1].val = 9
+//     print("relay:", r[0].val, b.val)
+//     s1 = own_separate(Box(2), b)
+//     b.val = 10
+//     print("own_separate:", s1[0].val, s1[1].val)
+//     s2 = mixed_param((Box(3), b))
+//     b.val = 11
+//     print("mixed_param:", s2[0].val, s2[1].val)
+//     s3 = mixed_param_box((Box(4), b))
+//     b.val = 12
+//     print("mixed_param_box:", s3[0].val, s3[1].val)
 void main() {
     Box b = Box(7);
     Box c = Box(8);
@@ -139,6 +169,19 @@ void main() {
     std::cout << "loop:" << " " << ::tpyapp::main::loop_carried(b, c) << " " << b.val << " " << c.val << "\n" << ::tpy::check_signals;
     std::cout << "try:" << " " << ::tpyapp::main::try_hoisted(b) << " " << b.val << "\n" << ::tpy::check_signals;
     std::cout << "walrus:" << " " << ::tpyapp::main::walrus(b) << " " << b.val << "\n" << ::tpy::check_signals;
+    Box a = Box(1);
+    auto r = ::tpyapp::main::relay(std::tuple<Box*, Box*>{&(a), &(b)});
+    std::get<1>(r)->val = 9;
+    std::cout << "relay:" << " " << std::get<0>(r).val << " " << b.val << "\n" << ::tpy::check_signals;
+    auto s1 = ::tpyapp::main::own_separate<Box>(Box(2), b);
+    b.val = 10;
+    std::cout << "own_separate:" << " " << std::get<0>(s1).val << " " << std::get<1>(s1)->val << "\n" << ::tpy::check_signals;
+    auto s2 = ::tpyapp::main::mixed_param<Box>(std::tuple<Box, Box*>{Box(3), &(b)});
+    b.val = 11;
+    std::cout << "mixed_param:" << " " << std::get<0>(s2).val << " " << std::get<1>(s2)->val << "\n" << ::tpy::check_signals;
+    auto s3 = ::tpyapp::main::mixed_param_box(std::tuple<Box, Box*>{Box(4), &(b)});
+    b.val = 12;
+    std::cout << "mixed_param_box:" << " " << std::get<0>(s3).val << " " << std::get<1>(s3)->val << "\n" << ::tpy::check_signals;
 }
 
 // main()

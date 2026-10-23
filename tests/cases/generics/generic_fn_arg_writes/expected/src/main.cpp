@@ -21,7 +21,7 @@ void bump(R& r) {
 // def mk() -> Own[list[R]]:
 //     return [R(1), R(2)]
 std::vector<R> mk() {
-    return {R(1), R(2)};
+    return std::vector<R>{R(1), R(2)};
 }
 
 // def add(a: int32, b: int32) -> int32:

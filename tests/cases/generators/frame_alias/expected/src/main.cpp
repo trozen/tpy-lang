@@ -525,7 +525,7 @@ void branch_alias(std::vector<int32_t>& xs, bool c) {
 // def make_list() -> Own[list[int32]]:
 //     return [70, 71]
 std::vector<int32_t> make_list() {
-    return {70, 71};
+    return std::vector<int32_t>{70, 71};
 }
 
 

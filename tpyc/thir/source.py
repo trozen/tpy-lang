@@ -36,6 +36,9 @@ class TraitAbi(Enum):
     VAL_OR_REF = "val_or_ref_t"
     PARAM_VAL_OR_REF = "param_val_or_ref_t"
     VAL_OR_PTR = "val_or_ptr_t"
+    # A generator's yield slot (`yield_slot_t`): the frame member it reads
+    # is already the instantiation's `val_or_ref_t`, so it takes it bare.
+    YIELD_SLOT = "yield_slot_t"
 
 
 class Held(Enum):
@@ -426,6 +429,10 @@ class BindingRepr:
     iterator_object: bool = False
     # An `Own[...]` parameter: the caller handed the value over.
     owned: bool = False
+    # A `str` / `bytes` parameter (or its Optional) a resumable frame
+    # captured into owned storage of its own (`is_owned_in_coro_frame`):
+    # a read is the frame's buffer, not the caller's view.
+    frame_owned_view: bool = False
     # A frame field's layout facts the declared type cannot show.
     effective_type: TpyType | None = None
     payload: str | None = None

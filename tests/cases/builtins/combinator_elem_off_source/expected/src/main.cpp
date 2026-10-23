@@ -34,7 +34,7 @@ int32_t valof(const Cell& c) {
 // def mk() -> Own[list[Cell]]:
 //     return [Cell(1), Cell(2)]
 std::vector<Cell> mk() {
-    return {Cell(1), Cell(2)};
+    return std::vector<Cell>{Cell(1), Cell(2)};
 }
 
 

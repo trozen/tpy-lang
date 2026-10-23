@@ -129,7 +129,7 @@ __gen_tuple_temp_gen tuple_temp_gen(std::string_view s) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        v = std::string(::tpyapp::main::first_of(std::tuple<std::string, int32_t>{std::string(s), 1}));
+        v = std::string(::tpyapp::main::first_of(std::tuple<std::string, int32_t>{s, 1}));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

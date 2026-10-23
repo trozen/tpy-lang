@@ -13,7 +13,7 @@ void fill(std::vector<int32_t>& xs) {
 // def mk() -> Own[list[int32]]:
 //     return [1, 2]
 std::vector<int32_t> mk() {
-    return {1, 2};
+    return std::vector<int32_t>{1, 2};
 }
 
 // def main() -> None:

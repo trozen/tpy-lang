@@ -31,10 +31,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_arg_generator::__next_
     __builtin_unreachable();
 }
 
-// # generator: an owned element yielded -- a literal, since the name and call
-// # forms still fail the C++ build (BUGS.md#yield-tuple-name-own-element); the
-// # consuming `for` head copies the yielded tuple once more before moving
-// # element 0 out (BUGS.md#for-head-owned-yield-copies-before-move)
+// # generator: an owned element yielded (the name and call forms are pinned by
+// # generators/payload_slot_declared_copies); the consuming `for` head copies
+// # the yielded tuple once more before moving element 0 out
+// # (BUGS.md#for-head-owned-yield-copies-before-move)
 // def gen_own(p: P) -> Iterator[tuple[Own[P], int32]]:
 //     yield (p, 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)  # -> S_RESUME_0
 inline std::expected<std::tuple<P, int32_t>, ::tpy::StopIteration> __gen_gen_own::__next__() {
