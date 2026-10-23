@@ -487,6 +487,27 @@ class Shelf:
         self.items = copy(data)
 
 
+# element writes: a loop over a list parameter writes each element's scalar
+# and owned-leaf fields; the summary publishes them under the elements region
+class Tag:
+    def __init__(self, n: int32, s: str) -> None:  # tpyc: mir(covered)
+        self.n = n
+        self.s = s
+
+
+def touch_all(ps: list[Tag]) -> None:  # tpyc: mir(covered) mir_summary(known)
+    for p in ps:
+        p.n += 1
+        p.s = "seen"
+
+
+# its caller lowers: the published write reaches the caller's list
+def touch_caller() -> int32:  # tpyc: mir(covered)
+    ps = [Tag(1, "a"), Tag(2, "b")]
+    touch_all(ps)  # tpyc: mir_write(ps[elements].s)
+    return ps[0].n + ps[1].n
+
+
 # kept refusal: a list literal passed as a Span argument (`b.plus_span([3, 4])`) has no
 # container place for the view to borrow
 def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a place$/)
@@ -591,6 +612,10 @@ def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a pla
     rk = Rack()
     print("rack_items:", rack_items(rk, False))
     print("rack_rec:", rack_rec(rk, False))
+    tags = [Tag(5, "x")]
+    touch_all(tags)
+    # The callee wrote the caller's elements in place.
+    print("touch_all:", tags[0].n, tags[0].s, touch_caller())
 
 
 main()

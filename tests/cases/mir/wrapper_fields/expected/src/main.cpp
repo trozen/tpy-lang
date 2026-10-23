@@ -280,6 +280,71 @@ int32_t payload_borrow(const H& h) {
     return 0;
 }
 
+// # kept refusal: a return of an Optional field's payload is never published
+// # (a caller's write through it would replace the whole field); the body lowers
+// def payload_return(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+//     if h.p is not None:
+//         return h.p
+//     return fallback
+P& payload_return(H& h, P& fallback) {
+    if ((h.p.has_value())) {
+        return (*h.p);
+    }
+    return fallback;
+}
+
+// def id_p(p: P) -> P:  # tpyc: mir(covered) mir_summary(known)
+//     return p
+P& id_p(P& p) {
+    return p;
+}
+
+// # kept refusal: the payload returned through a call that lends it back
+// def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+//     if h.p is not None:
+//         return id_p(h.p)
+//     return fallback
+P& payload_return_call(H& h, P& fallback) {
+    if ((h.p.has_value())) {
+        return ::tpyapp::main::id_p((*h.p));
+    }
+    return fallback;
+}
+
+// # kept refusal: a field under the payload is returned (a view of its str)
+// def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+//     if h.o is not None:
+//         return h.o.s
+//     return fallback.s
+std::string_view payload_sub_return(const SH& h, const S& fallback) {
+    if ((h.o.has_value())) {
+        return (*h.o).s;
+    }
+    return fallback.s;
+}
+
+// def set_field(t: S, value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+//     t.s = "changed"
+//     return len(value)
+int32_t set_field(S& t, std::string_view value) {
+    t.s = "changed";
+    return ::tpy::__len__(value);
+}
+
+// # witness, never run: a body returning the payload keeps its unrelated warning (the refusal is the summary's, not the body's)
+// def payload_return_warning(h: H, fallback: P, t: S) -> P:  # tpyc: mir(conflict /argument_alias/) mir_summary(opaque /unsupported return origin/)
+//     set_field(t, t.s)  # tpyc: warning(/argument 't.s' is what 'set_field' modifies through parameter 't' while it still uses 'value'/)
+//     if h.p is not None:
+//         return h.p
+//     return fallback
+P& payload_return_warning(H& h, P& fallback, S& t) {
+    ::tpyapp::main::set_field(t, t.s);
+    if ((h.p.has_value())) {
+        return (*h.p);
+    }
+    return fallback;
+}
+
 // # kept refusal: a write under the payload
 // def payload_write(h: H) -> None:  # tpyc: mir(uncovered /optional field payload write/)
 //     if h.p is not None:
@@ -387,6 +452,9 @@ void local_temporary() {
 //     bump_payload(c)
 //     print("bump_payload", read(c))
 //     print("payload_borrow", payload_borrow(c))
+//     print("payload_return", payload_return(c, seven).x)
+//     print("payload_return_call", payload_return_call(c, seven).x)
+//     print("payload_sub_return", payload_sub_return(SH("sixteen"), S("none")))
 //     payload_write(c)
 //     print("payload_write", read(c))
 //     d = H(None, 1)
@@ -452,18 +520,23 @@ void main() {
     ::tpyapp::main::bump_payload(c);
     std::cout << "bump_payload" << " " << ::tpyapp::main::read(c) << "\n" << ::tpy::check_signals;
     std::cout << "payload_borrow" << " " << ::tpyapp::main::payload_borrow(c) << "\n" << ::tpy::check_signals;
+    std::cout << "payload_return" << " " << ::tpyapp::main::payload_return(c, seven).x << "\n" << ::tpy::check_signals;
+    std::cout << "payload_return_call" << " " << ::tpyapp::main::payload_return_call(c, seven).x << "\n" << ::tpy::check_signals;
+    SH __tmp_17 = SH("sixteen");
+    S __tmp_18 = S("none");
+    std::cout << "payload_sub_return" << " " << ::tpyapp::main::payload_sub_return(__tmp_17, __tmp_18) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::payload_write(c);
     std::cout << "payload_write" << " " << ::tpyapp::main::read(c) << "\n" << ::tpy::check_signals;
     H d = H(nullptr, 1);
     std::cout << "written_then_read" << " " << ::tpyapp::main::written_then_read(d) << "\n" << ::tpy::check_signals;
-    P __tmp_17 = P(14);
-    H __tmp_18 = H(&(__tmp_17), 1);
-    std::cout << "copied_then_read" << " " << ::tpyapp::main::copied_then_read(d, __tmp_18) << "\n" << ::tpy::check_signals;
+    P __tmp_19 = P(14);
+    H __tmp_20 = H(&(__tmp_19), 1);
+    std::cout << "copied_then_read" << " " << ::tpyapp::main::copied_then_read(d, __tmp_20) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::store_found(d);
     std::cout << "store_found" << " " << ::tpyapp::main::read(d) << "\n" << ::tpy::check_signals;
-    P __tmp_19 = P(15);
-    Ro __tmp_20 = Ro(&(__tmp_19));
-    std::cout << "ro_read" << " " << ::tpyapp::main::ro_read(__tmp_20) << "\n" << ::tpy::check_signals;
+    P __tmp_21 = P(15);
+    Ro __tmp_22 = Ro(&(__tmp_21));
+    std::cout << "ro_read" << " " << ::tpyapp::main::ro_read(__tmp_22) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::local();
     std::cout << "local_forms" << " " << ::tpyapp::main::local_forms(a) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::local_temporary();

@@ -19,6 +19,7 @@ struct Holder;
 struct Log;
 struct Stack;
 struct Cell;
+struct Named;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -90,6 +91,18 @@ bool line_copy(const Line& ln);
 int32_t pick(bool c, std::vector<Cell>& a, std::vector<Cell>& b);
 // def caller(xs: list[Cell]) -> int32:  # tpyc: mir(conflict /argument_alias/)
 int32_t caller(std::vector<Cell>& xs);
+// def put(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+int32_t put(std::vector<Named>& ps, std::string_view value);
+// def put_int(xs: list[int], value: int) -> int:  # tpyc: mir(conflict /alias_obligation/)
+::tpy::BigInt put_int(std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& value);
+// def same_element(ps: list[Named]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+int32_t same_element(std::vector<Named>& ps);
+// def same_int_element(xs: list[int]) -> int:  # tpyc: mir(conflict /argument_alias/)
+::tpy::BigInt same_int_element(std::vector<::tpy::BigInt>& xs);
+// def touch(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+int32_t touch(std::vector<Named>& ps, std::string_view value);
+// def element_field(ps: list[Named]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+int32_t element_field(std::vector<Named>& ps);
 // def main() -> None:
 void main();
 
@@ -257,6 +270,22 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
     return os;
 }
 
+// class Named:
+struct Named {
+    // s: str
+    std::string s;
+
+    // def __init__(self, s: str) -> None:
+    Named() = default;
+    explicit Named(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
+    ::tpy::print_object_default(os, "Named", obj);
+    return os;
+}
+
 // def gen_caller(xs: list[int]) -> Iterator[int]:  # tpyc: mir(uncovered /resumable body/)
 struct __gen_gen_caller : public ::tpy::next_iter_mixin<__gen_gen_caller, ::tpy::BigInt> {
     ::tpy::frame_state __state;
@@ -377,5 +406,9 @@ inline const std::vector<int32_t>& Stack::top() const {
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline Cell::Cell(int32_t x) : x(x) {}
+
+// def __init__(self, s: str) -> None:
+//     self.s = s
+inline Named::Named(std::string_view s) : s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

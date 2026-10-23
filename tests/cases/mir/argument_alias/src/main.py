@@ -272,6 +272,45 @@ def caller(xs: list[Cell]) -> int32:  # tpyc: mir(conflict /argument_alias/)
     return pick(True, xs, xs)  # tpyc: warning(/passed as both/)
 
 
+# element identity is not tracked: the callee replaces an element while it
+# still reads a borrow into one, so a borrow into any element warns
+class Named:
+    s: str
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+
+def put(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+    ps[0] = Named("new")
+    return len(value)
+
+
+def put_int(xs: list[int], value: int) -> int:  # tpyc: mir(conflict /alias_obligation/)
+    xs[0] = 5
+    return value
+
+
+def same_element(ps: list[Named]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+    return put(ps, ps[0].s)  # tpyc: warning(/argument 'ps\[0\]\.s' points into 'ps', which 'put' modifies through parameter 'ps' while it still uses 'value'/)
+
+
+def same_int_element(xs: list[int]) -> int:  # tpyc: mir(conflict /argument_alias/)
+    return put_int(xs, xs[0])  # tpyc: warning(/argument 'xs\[0\]' points into 'xs', which 'put_int' modifies through parameter 'xs' while it still uses 'value'/)
+
+
+# a callee whose summary publishes a field write inside an element (ps[elements].s)
+def touch(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+    for p in ps:
+        p.s = "x"
+    return len(value)
+
+
+# the borrowed field of an element is what the callee's element field write replaces: warns
+def element_field(ps: list[Named]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+    return touch(ps, ps[0].s)  # tpyc: warning(/argument 'ps\[0\]\.s' is what 'touch' modifies through parameter 'ps' while it still uses 'value'/)
+
+
 def main() -> None:
     print("other_int", other_int([1], [2]))
     print("local_copy", local_copy([3]))
@@ -298,6 +337,8 @@ def main() -> None:
     print("container_select grown:", len(cells), cells[1].x)
     others[0].x = 9
     print("container_select pick b again:", pick(False, cells, others), len(cells))
+    named = [Named("a"), Named("b")]
+    print("touch", touch(named, "abc"), named[0].s, named[1].s)
 
 
 main()

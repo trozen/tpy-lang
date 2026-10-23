@@ -22,18 +22,18 @@ from .call_contract import (
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import (
-    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, record_fill,
-    resolve_referents, seeded_loan, written_record,
+    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, apply_transfers,
+    record_fill, resolve_referents, seeded_loan, written_record,
 )
-from .shapes import MIRContainerStructure, MIRDeref, MIRTupleIndex
+from .shapes import MIRContainerStructure, MIRDeref, MIRTupleIndex, owned_field
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIREdge, MIRFunction, MIRPlace,
-    MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRPresentCall, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .value import MIRRecords, MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
+from .value import MIRRecords, MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError, container_members
 from .retention import analyze_retention
-from .storage import analyze_storage, owned_field
+from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
 from .summaries import summarize_function
 from .validate import validate_function
@@ -640,6 +640,34 @@ def test_parameter_transfers_apply_before_the_result_fills(program: _Program) ->
     loans = state[MIRPlace(result, (member,))]
     assert MIRReferent(_named(fn, "s")) in loans and any(ref.static for ref in loans)
     assert program.verdicts["alias_result"].conflicts == ("replacement",)
+
+
+def test_a_transfer_through_a_widened_path_step_fails_closed(program: _Program) -> None:
+    # The transfer grammar walks any step a summary path takes, but a
+    # container whose elements hold a loan is refused upstream, so no
+    # summary stores a loan under an elements region.
+    tok = next(t for t in program.definitions.records if t.name == "Tok")
+    assert container_members(NominalType("list", (tok,), _module_qname="builtins.list"), False) == (
+        "container holds a borrow")
+    # A forged transfer under a step the caller's object has no member for
+    # (a tuple member of a record) raises rather than storing nowhere.
+    fn = _lowered(program, "alias_result")
+    point = _call_point(fn, "write_copy")
+    call = _statement(fn, point).value
+    path = _path(call.summary, 0)
+    forged = replace(call, summary=replace(call.summary, transfers=frozenset({
+        MIRLoanTransfer(0, (MIRTupleIndex(0), *path), MIR_STATIC)})))
+    slots = {slot.id: slot for slot in fn.slots}
+    dependencies, _ = _after(fn, point)
+    with pytest.raises(MIRValidationError, match="tuple projection needs tuple payload"):
+        apply_transfers(MIRPresentCall(forged, forged.summary, ()), dict(dependencies.referents[point]), slots,
+                        fn.record_layouts)
+    # One the caller keys no stored loan at raises too.
+    unkeyed = replace(call, summary=replace(call.summary, transfers=frozenset({
+        MIRLoanTransfer(0, (th.THIRFieldIdentity(tok, "n", INT32),), MIR_STATIC)})))
+    with pytest.raises(MIRUnseededLoan):
+        apply_transfers(MIRPresentCall(unkeyed, unkeyed.summary, ()), dict(dependencies.referents[point]), slots,
+                        fn.record_layouts)
 
 
 def test_a_borrowed_result_resolves_after_the_transfers(program: _Program) -> None:

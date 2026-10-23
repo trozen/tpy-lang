@@ -23,6 +23,7 @@ from .call_contract import (
 from .coverage import call_write_places
 from .collect import MIRBodyVerdict, MIRVerdictStatus, MIRWriteKind, analyze_body, enumerate_bodies, line_facts
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
+from .dump import _call as _dump_call
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents
 from .liveness import analyze_liveness
 from .nodes import (
@@ -272,7 +273,7 @@ def test_call_write_places_follow_the_argument_holder() -> None:
             (sid(2), (identity, STRUCTURE), place(2, MIRDeref(), ITEMS, STRUCTURE)),  # through the record
             (sid(3), (ELEMENTS,), place(3, ELEMENTS))):           # a Span: its own region
         call = MIRCall(replace(summary, writes=frozenset({MIRParameterWrite(0, path)})), (argument, sid(4)), True)
-        assert call_write_places(call, slots) == (expected,)
+        assert call_write_places(call, call.summary, slots) == (expected,)
 
 
 # --- dependencies ---------------------------------------------------------------
@@ -648,8 +649,9 @@ def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
     assert result.summary.returns == {MIRReturnOrigin(0)} and result.summary.writes == frozenset()
 
 
-def test_an_element_field_write_keeps_the_summary_opaque(compiled) -> None:
-    # A write of an element's scalar field is no published path shape.
+def test_an_element_field_write_is_published_under_the_elements_region(compiled) -> None:
+    # A write of an element's scalar field is a summary path like any other
+    # walk: `p0[elements].value`, which the caller resolves to its list.
     decl = declared(compiled, "first")
     container = decl.params[0].native_container
     cell = container.element.type
@@ -665,8 +667,11 @@ def test_an_element_field_write_keeps_the_summary_opaque(compiled) -> None:
         return_representation=decl.resolved_callee.signature.return_representation,
         record_fields=declared_fields())
     result = summarize_function(decl, fn, definitions(compiled))
-    assert result.state is MIRSummaryState.OPAQUE and result.reason == (
-        "summary unsupported write origin: invalid call write path")
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    value = th.THIRFieldIdentity(cell, "value", INT32)
+    assert result.summary.writes == {MIRParameterWrite(0, (ELEMENTS, value))}
+    assert result.summary.returns == {MIRReturnOrigin(0)}
+    assert "writes={param0[elements].value}" in _dump_call(MIRCall(result.summary, (sid(0),), True))
 
 
 class _WithBag:
@@ -793,10 +798,9 @@ def test_no_field_is_read_through_a_borrowed_container() -> None:
     # A summary path walks through the same step.
     assert path_walk(xs.shape, (th.THIRFieldIdentity(INTS, "fabricated", INT32),), no_layouts()) == (
         "field needs record storage")
-    # A summary path's fields are read from a record parameter only: a
-    # container parameter's never reaches the walk.
+    # A published write path is walked by the same step from the container parameter.
     write = MIRParameterWrite(0, (th.THIRFieldIdentity(INTS, "fabricated", INT32),))
-    assert write_problem(write, (bound(INTS, ParamPassing.MUT_REF),), no_layouts()) == "invalid call write path"
+    assert write_problem(write, (bound(INTS, ParamPassing.MUT_REF),), no_layouts()) == "field needs record storage"
 
 
 def test_no_field_is_read_from_a_container_field() -> None:

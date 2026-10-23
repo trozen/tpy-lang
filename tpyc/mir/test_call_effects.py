@@ -16,6 +16,7 @@ from ..typesys import VoidType
 from .testutil import compiled_definitions
 from .call_contract import MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, resolve_call_writes
+from .presence import present_call
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dependencies import MIRDependencies, analyze_dependencies
@@ -346,7 +347,8 @@ def test_void_call_requires_assigned_arguments_and_void_signature(artifacts: Art
 def test_missing_origins_are_not_empty_effects(artifacts: Artifacts) -> None:
     fn = body(artifacts, "standalone")
     _, call = calls(fn)[0]
-    assert resolve_call_writes(call, {}, {s.id: s for s in fn.slots}, fn.record_layouts) is None
+    slots = {s.id: s for s in fn.slots}
+    assert resolve_call_writes(present_call(call, frozenset(), slots), {}, slots, fn.record_layouts) is None
     deps = analyze_dependencies(fn, analyze_liveness(fn))
     point, _ = calls(fn)[0]
     broken = replace(deps, referents={point: {}})

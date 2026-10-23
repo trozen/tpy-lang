@@ -14,6 +14,8 @@ struct Built;
 struct Pair;
 struct Ro;
 struct Num;
+struct S;
+struct SH;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -63,6 +65,18 @@ void store_found(H& h);
 void bump_payload(H& h);
 // def payload_borrow(h: H) -> int32:  # tpyc: mir(uncovered /borrow of an Optional field's payload/)
 int32_t payload_borrow(const H& h);
+// def payload_return(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+P& payload_return(H& h, P& fallback);
+// def id_p(p: P) -> P:  # tpyc: mir(covered) mir_summary(known)
+P& id_p(P& p);
+// def payload_return_call(h: H, fallback: P) -> P:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+P& payload_return_call(H& h, P& fallback);
+// def payload_sub_return(h: SH, fallback: S) -> StrView:  # tpyc: mir(covered) mir_summary(opaque /unsupported return origin/)
+std::string_view payload_sub_return(const SH& h, const S& fallback);
+// def set_field(t: S, value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+int32_t set_field(S& t, std::string_view value);
+// def payload_return_warning(h: H, fallback: P, t: S) -> P:  # tpyc: mir(conflict /argument_alias/) mir_summary(opaque /unsupported return origin/)
+P& payload_return_warning(H& h, P& fallback, S& t);
 // def payload_write(h: H) -> None:  # tpyc: mir(uncovered /optional field payload write/)
 void payload_write(H& h);
 // def ro_read(r: Ro) -> int32:  # tpyc: mir(covered) mir_summary(known)
@@ -200,6 +214,38 @@ inline std::ostream& operator<<(std::ostream& os, const Num& obj) {
     return os;
 }
 
+// class S:
+struct S {
+    // s: str
+    std::string s;
+
+    // def __init__(self, s: str) -> None:  # tpyc: mir(covered)
+    S() = default;
+    explicit S(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.S";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const S& obj) {
+    ::tpy::print_object_default(os, "S", obj);
+    return os;
+}
+
+// class SH:
+struct SH {
+    // o: S | None
+    std::optional<S> o;
+
+    // def __init__(self, s: str) -> None:  # tpyc: mir(covered)
+    SH() = default;
+    explicit SH(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SH";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SH& obj) {
+    ::tpy::print_object_default(os, "SH", obj);
+    return os;
+}
+
 
 // def __init__(self, x: int32) -> None:  # tpyc: mir(covered)
 //     self.x = x
@@ -269,5 +315,13 @@ inline Ro::Ro(const P* p) : p(::tpy::ptr_to_optional(p)) {}
 // def __init__(self, k: int32 | None) -> None:  # tpyc: mir(uncovered /unsupported record fields/)
 //     self.k = k
 inline Num::Num(std::optional<int32_t> k) : k(k) {}
+
+// def __init__(self, s: str) -> None:  # tpyc: mir(covered)
+//     self.s = s
+inline S::S(std::string_view s) : s(s) {}
+
+// def __init__(self, s: str) -> None:  # tpyc: mir(covered)
+//     self.o = S(s)
+inline SH::SH(std::string_view s) : o(S(s)) {}
 void __tpy_init();
 } // namespace tpyapp::main

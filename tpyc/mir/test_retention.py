@@ -12,9 +12,12 @@ from .nodes import (
     MIRGoto, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRWrap, MIRIsAlternative, MIRCopy,
 )
-from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
+from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .retention import MIRRetention, MIRRetentionConflict, analyze_retention, dump_retention, may_overlap
+from .call_contract import MIRAliasObligation, MIRParameterWrite
+from .retention import (
+    MIRRetention, MIRRetentionConflict, _one_object, analyze_retention, dump_retention, may_overlap,
+)
 from .storage import MIRStorageEvents, analyze_storage
 from .test_reuse import loop_source, source_function
 from .testutil import (
@@ -179,7 +182,7 @@ def test_optional_in_place_exempts_only_its_own_holder(live_alias: bool) -> None
     )))
     result = analyze(fn)
     assert {c.holder for c in result.conflicts} == ({MIRPlace(SAVED)} if live_alias else set())
-    # An Optional parameter's payload names the parameter outside the body (`external_origin`).
+    # An Optional parameter's payload names the parameter outside the body (`origin`).
     assert all(c.affected == MIRReferent(MIRPlace(CURRENT), True) for c in result.conflicts)
 
 
@@ -463,3 +466,24 @@ def test_conflicts_match_independent_bounded_execution(shape: str, safe: bool, c
     expected = concrete_conflicts(fn, False) | concrete_conflicts(fn, True)
     actual = {(c.point, c.holder, c.affected.place.root) for c in analyze(fn).conflicts}
     assert actual == expected
+
+
+def test_an_elements_step_may_reach_one_element_under_one_origin() -> None:
+    # `put(ps, ps[0].s)` with `put` replacing `ps[0]`: element identity is
+    # not tracked, so a write ending at the elements region and a holder
+    # under it may be one element -- the call breaks the obligation.
+    ps, other = MIRSlotId(B, 0), MIRSlotId(B, 1)
+    field = MIRField(MIRFieldId(INT32, "s"), INT32)
+    obligation = MIRAliasObligation(1, (), MIRParameterWrite(0, (MIRContainerElements(),)))
+    written = MIRReferent(MIRPlace(ps, (MIRDeref(), MIRContainerElements())), external=True)
+    for retained in ((MIRDeref(), MIRContainerElements()), (MIRDeref(), MIRContainerElements(), field)):
+        conflict = MIRRetentionConflict(MIRPoint(A, 0), written, MIRPlace(other), MIRReferent(MIRPlace(ps, retained),
+                                                                                             external=True),
+                                        obligation)
+        assert _one_object(conflict), retained
+    # A write under an element (`ps[elements].s`) is one step like any other.
+    deep = MIRReferent(MIRPlace(ps, (MIRDeref(), MIRContainerElements(), field)), external=True)
+    assert _one_object(MIRRetentionConflict(MIRPoint(A, 0), deep, MIRPlace(other), written, obligation))
+    # Under another origin the two are not one object.
+    elsewhere = MIRReferent(MIRPlace(other, (MIRDeref(), MIRContainerElements())), external=True)
+    assert not _one_object(MIRRetentionConflict(MIRPoint(A, 0), written, MIRPlace(other), elsewhere, obligation))

@@ -5,5 +5,5 @@ main.py:150: warning: Passing borrowed container 'ps' to non-readonly parameter 
 main.py:159: warning: Passing borrowed container 'ps' to non-readonly parameter 'ps' (function may invalidate references)
 main.py:465: warning: Mutation of 'r.items' while borrowed (field assignment may invalidate references)
 main.py:473: warning: Mutation of 'r.rec' while borrowed (field assignment may invalidate references)
-main.py:574: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
-main.py:586: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:595: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:607: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)

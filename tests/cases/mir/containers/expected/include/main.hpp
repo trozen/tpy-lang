@@ -13,6 +13,7 @@ struct Index;
 struct Pts;
 struct Rack;
 struct Shelf;
+struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -114,6 +115,10 @@ int32_t nested(const std::vector<std::vector<int32_t>>& xss);
 int32_t rack_items(Rack& r, bool flag);
 // def rack_rec(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t rack_rec(Rack& r, bool flag);
+// def touch_all(ps: list[Tag]) -> None:  # tpyc: mir(covered) mir_summary(known)
+void touch_all(std::vector<Tag>& ps);
+// def touch_caller() -> int32:  # tpyc: mir(covered)
+int32_t touch_caller();
 // def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a place$/)
 void main();
 
@@ -232,6 +237,24 @@ struct Shelf {
 
 inline std::ostream& operator<<(std::ostream& os, const Shelf& obj) {
     ::tpy::print_object_default(os, "Shelf", obj);
+    return os;
+}
+
+// class Tag:
+struct Tag {
+    // self.n = n
+    int32_t n;
+    // self.s = s
+    std::string s;
+
+    // def __init__(self, n: int32, s: str) -> None:  # tpyc: mir(covered)
+    Tag() = default;
+    explicit Tag(int32_t n, std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
+    ::tpy::print_object_default(os, "Tag", obj);
     return os;
 }
 
@@ -368,5 +391,12 @@ inline void Shelf::refill(const std::vector<int32_t>& data) {
     this->items = std::vector<int32_t>(data);
     this->items = std::vector<int32_t>(data);
 }
+
+// def __init__(self, n: int32, s: str) -> None:  # tpyc: mir(covered)
+//     self.n = n
+//     self.s = s
+inline Tag::Tag(int32_t n, std::string_view s)
+    : n(n),
+      s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

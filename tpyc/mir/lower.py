@@ -638,9 +638,8 @@ class _Lowering:
         its shape stated (`result_shape`)."""
         self.calls[node] = summary
         result = self.call_results[node] = summary.result_at(receiver_readonly)
-        absent = frozenset(i for i, sid in enumerate(arguments) if sid in self.mir.empty_arguments)
         call = MIRCall(summary, tuple(arguments), not summary.normal_return_only, loc,
-                       isinstance(node, th.THIRMethodCall), absent)
+                       isinstance(node, th.THIRMethodCall))
         f.value = MIRValue(call, self.result_shape(node, summary, result), loc)
         return f
 
@@ -2490,7 +2489,6 @@ class _Lowering:
         dest = f.slot(shape)
         if value is None:
             f.write(dest, MIRWrap(0), arg.loc)
-            self.mir.empty_arguments.add(dest)
         else:
             f.write(dest, value, arg.loc)
         f.value = MIRValue(dest, loc=arg.loc)

@@ -54,3 +54,4 @@ extend_it: 6
 refill: 2
 rack_items: 1
 rack_rec: 1
+touch_all: 6 seen 5

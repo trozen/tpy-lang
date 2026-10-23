@@ -42,10 +42,10 @@ from .retention import (
 )
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, object_prefix,
+    MIRContainerElements, MIRContainerStructure, MIRTupleIndex, MIRUnionPayload, object_prefix,
     optional_payload,
 )
-from .storage import MIRStorageEvents, dump_storage, owned_field
+from .storage import MIRStorageEvents, dump_storage, storage_destination
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
     MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
@@ -622,22 +622,18 @@ def _value_write(shape: MIRShape) -> MIRWriteKind | None:
 
 def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
                   records: Mapping[TpyType, MIRRecordLayout]) -> MIRWriteKind | None:
-    match place.projections:
-        case () | (*_, MIRTupleIndex() | MIRContainerElements()):
-            # A slot's own value, a wrapper's member, a container element.
-            return _value_write(place_shape(place, slots, records))
-        case (*_, MIRUnionPayload() as payload) if optional_payload(
-                place_shape(MIRPlace(place.root, place.projections[:-1]), slots, records).cls, payload):
-            return _value_write(place_shape(place, slots, records))
-        case (*_, MIRDeref()):
-            # Whole storage a holder points at: storage_destination's replacement.
-            return MIRWriteKind.OWNED
-        case (*_, MIRField() as field):
-            # A field the record owns is its storage (`owned_field`); any
-            # other is the value its shape says: a scalar leaf, a view
-            # member's loan.
-            return MIRWriteKind.OWNED if owned_field(field) else _value_write(place_shape(place, slots, records))
-    return None
+    """What a write of `place` lands in: the value it reaches, classified
+    (`_value_write`: a scalar element is a scalar, a record element owned
+    storage); a target whose value has no class (an Optional record field)
+    is owned storage when the write replaces storage (`storage_destination`)."""
+    last = place.projections[-1] if place.projections else None
+    if isinstance(last, MIRUnionPayload) and not optional_payload(
+            place_shape(MIRPlace(place.root, place.projections[:-1]), slots, records).cls, last):
+        return None
+    kind = _value_write(place_shape(place, slots, records))
+    if kind is not None:
+        return kind
+    return MIRWriteKind.OWNED if storage_destination(place, slots) else None
 
 
 def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:

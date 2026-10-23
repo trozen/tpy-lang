@@ -12,7 +12,7 @@ from ..thir.scalar_leaves import (  # noqa: F401
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
 )
-from .call_contract import MIRParameterBinding
+from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import MIRCall, MIRPlace, MIRSlot, MIRSlotId, call_place
 from .value import holding_representation
 
@@ -50,11 +50,12 @@ def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
     return tuple(item.name if isinstance(item, th.THIRFieldIdentity) else type(item).__name__ for item in path)
 
 
-def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
-    """The caller's places a call may write: each summarized write's
-    parameter path (`call_place`)."""
+def call_write_places(call: MIRCall, effects: MIRCallSummary, slots: Mapping[MIRSlotId, MIRSlot]
+                      ) -> tuple[MIRPlace, ...]:
+    """The caller's places a call may write: each write of its present
+    effects, at its parameter path (`call_place`)."""
     return tuple(call_place(call, write.parameter, write.path, slots)
-                 for write in sorted(call.present_effects.writes, key=lambda w: (w.parameter, _path_key(w.path))))
+                 for write in sorted(effects.writes, key=lambda w: (w.parameter, _path_key(w.path))))
 
 
 def read_leaf(slot: MIRSlot) -> TpyType:

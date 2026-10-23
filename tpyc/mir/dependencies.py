@@ -6,10 +6,11 @@ from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 
 from ..parse import SourceLocation
-from ..thir.nodes import THIRFieldIdentity
-from .call_contract import MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_aggregate_result, path_step
+from .call_contract import (
+    MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_aggregate_result, path_step, return_endpoint_problem,
+)
 from ..thir.scalar_leaves import (
-    MIRClass, holds_loan, value_class, view_endpoint,
+    MIRClass, holds_loan, value_class,
 )
 from ..typesys import NominalType, TpyType, unwrap_readonly
 from .dump import _place
@@ -19,15 +20,15 @@ from .nodes import (
     MIRConstruct, MIRCopy, MIRFunction, MIRIsAlternative, MIRMove, MIRNot, MIRNotCovered, MIRPlace, MIRRead, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRReturn, statement_target, call_place, place_walk, view_member,
-    MIRWrap, place_shape,
+    MIRWrap, place_shape, MIRPresentCall,
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError, lent_record,
     loan_field, member_types, WRAPPER_CLASSES,
 )
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, OPTIONAL_PAYLOAD, walk,
-    walk_to, object_prefix, optional_payload,
+    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
+    OPTIONAL_PAYLOAD, walk, walk_to, object_prefix, optional_payload,
 )
 from .validate import MIRPrepared, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -165,7 +166,7 @@ def object_keys(slot: MIRSlot, layouts: Mapping[TpyType, MIRRecordLayout]) -> tu
         record = slot.type
     elif (lent := _parameter_lent_record(slot)) is not None:
         # An Optional parameter's payload record is keyed at the parameter,
-        # as a borrowed record parameter's is (`external_origin`).
+        # as a borrowed record parameter's is (`origin`).
         record = lent.type
     else:
         return ()
@@ -303,24 +304,29 @@ def _project(refs: frozenset[MIRReferent],
                      for r in refs for projection in projections)
 
 
-def external_origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
-    """What a parameter or global leaf names outside the body: its own
-    identity, except that a container view (a Span) names the elements
-    region it views, so an element read or a write through it lands there,
-    and an Optional record parameter's payload names the parameter itself
-    -- the record it lends, as a borrowed record parameter's does."""
-    if not leaf.projections and slots[leaf.root].shape.container_view_holder:
-        return MIRPlace(leaf.root, (MIRContainerElements(),))
-    if leaf.projections == (OPTIONAL_PAYLOAD,) and _parameter_lent_record(slots[leaf.root]) is not None:
-        return MIRPlace(leaf.root)
-    return leaf
+@dataclass(frozen=True)
+class MIROrigin:
+    """What a dependency leaf names outside the body (`place`), and the
+    value the projections of a referent rooted there step from (`shape`)."""
+    place: MIRPlace
+    shape: MIRShape
 
 
-def origin_shape(root: MIRSlot) -> MIRShape:
-    """The object a referent rooted at `root` names: the slot's own value,
-    the storage a holder of it points at, or, for an Optional record
-    parameter (`external_origin`), the payload record it lends."""
-    return walk_to(root.shape, object_prefix(root.shape, payload=_parameter_lent_record(root) is not None), {})
+def origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIROrigin:
+    """The one origin of a leaf: its own identity (each tuple member its
+    own), from the object its slot holds (a holder's pointee) -- except that a container view (a Span)
+    names the elements region it views, so an element read or a write
+    through it lands there, and an Optional record parameter's payload
+    names the parameter itself, from the payload record it lends, as a
+    borrowed record parameter's does."""
+    slot = slots[leaf.root]
+    lent = _parameter_lent_record(slot) is not None
+    shape = walk_to(slot.shape, object_prefix(slot.shape, payload=lent), {})
+    if not leaf.projections and slot.shape.container_view_holder:
+        return MIROrigin(MIRPlace(leaf.root, (MIRContainerElements(),)), shape)
+    if leaf.projections == (OPTIONAL_PAYLOAD,) and lent:
+        return MIROrigin(MIRPlace(leaf.root), shape)
+    return MIROrigin(leaf, shape)
 
 
 def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRPlace:
@@ -330,7 +336,7 @@ def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], rec
     does."""
     if not any(isinstance(projection, MIRUnionPayload) for projection in place.projections):
         return place
-    for index, hop in enumerate(walk(origin_shape(slots[place.root]), place.projections, records).hops):
+    for index, hop in enumerate(walk(origin(MIRPlace(place.root), slots).shape, place.projections, records).hops):
         if optional_payload(hop.holder.cls, hop.projection):
             return MIRPlace(place.root, place.projections[:index])
     return place
@@ -475,12 +481,12 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
                 if key not in state:
                     raise MIRUnseededLoan(key, "record move of an object with no stored loan")
             return {key: state[source_key] for key, source_key in moved.items()}
-        case MIRCall(present_effects=effects) if effects.transfers:
+        case MIRPresentCall(call=call, effects=effects) if effects.transfers:
             # An owned record result holds exactly the loans its transfers name.
             filled: dict[MIRPlace, frozenset[MIRReferent]] = {}
             for key, path in keys.items():
                 loans = frozenset().union(*(
-                    transfer_loans(value, t, key, state, slots, layouts) for t in effects.transfers
+                    transfer_loans(call, t, key, state, slots, layouts) for t in effects.transfers
                     if isinstance(t.holder, MIRResultHolder) and tuple(map(path_step, t.path)) == path))
                 if not loans:
                     raise MIRUnseededLoan(key, "record storage filled with no stored loan")
@@ -551,8 +557,8 @@ def transfer_loans(call: MIRCall, transfer: MIRLoanTransfer, key: MIRPlace, stat
     """The caller's loans a transfer's source names at a call: a literal's
     static storage, or what the source argument's place (`call_place`)
     holds -- a view's or a lent owned leaf's referents, or the loan a view
-    member of its object stores. `transfer` is one of the call's
-    `present_effects`."""
+    member of its object stores. `transfer` is one of the call's present
+    effects (`MIRPresentCall`)."""
     if isinstance(transfer.source, MIRStaticLoan):
         return frozenset({MIRReferent(key, external=True, static=True)})
     loans = resolve_referents(call_place(call, transfer.source, transfer.source_path, slots), state, slots, records)
@@ -561,12 +567,13 @@ def transfer_loans(call: MIRCall, transfer: MIRLoanTransfer, key: MIRPlace, stat
     return loans
 
 
-def apply_transfers(call: MIRCall, state: dict[MIRPlace, frozenset[MIRReferent]],
+def apply_transfers(present: MIRPresentCall, state: dict[MIRPlace, frozenset[MIRReferent]],
                     slots: Mapping[MIRSlotId, MIRSlot], records: Mapping[TpyType, MIRRecordLayout]) -> None:
     """Join each loan a callee may store in an argument's object into that
     object's stored-loan entry, to a fixpoint: one transfer's source may be
     another's holder, and the arguments may be one object."""
-    transfers = sorted((t for t in call.present_effects.transfers if not isinstance(t.holder, MIRResultHolder)),
+    call = present.call
+    transfers = sorted((t for t in present.effects.transfers if not isinstance(t.holder, MIRResultHolder)),
                        key=lambda t: (t.holder, len(t.path)))
     changed = True
     while changed:
@@ -588,7 +595,7 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
     return _dependencies(_validated_function(fn), liveness)
 
 
-def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+def resolve_call_returns(present: MIRPresentCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
                          records: Mapping[TpyType, MIRRecordLayout],
                          result: MIRSlot | None = None) -> frozenset[MIRReferent] | None:
     """The caller's origins of a call's borrowed result: each return
@@ -597,8 +604,9 @@ def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRS
     container lends other than itself (an element, a view of it) lies in
     its elements region, so a `result` holder that is no container takes
     that region of a container argument. A path is never re-projected."""
+    call = present.call
     origins: set[MIRReferent] = set()
-    for origin in call.present_effects.returns:
+    for origin in present.effects.returns:
         argument = slots[call.arguments[origin.parameter]]
         refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots, records)
         if not refs:
@@ -610,38 +618,28 @@ def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRS
     return frozenset(origins)
 
 
-def call_return_problem(call: MIRCall, result: MIRSlot, state: MIRReferents,
+def call_return_problem(present: MIRPresentCall, result: MIRSlot, state: MIRReferents,
                         slots: Mapping[MIRSlotId, MIRSlot], records: Mapping[TpyType, MIRRecordLayout]) -> str | None:
-    """Type-check each return origin's place against the holder the
-    result fills: a container holder needs a whole container -- a
-    container argument or a container field -- and never one rooted in an
-    elements region (its writes would land under that region, where no
-    write of the container reaches); a view of an owned leaf needs an
-    owned-leaf endpoint; a record holder a record or an elements region."""
-    for origin in call.present_effects.returns:
+    """Type-check each return origin's place against the holder the result
+    fills by the one return endpoint rule (`return_endpoint_problem`, which
+    the summary met too), plus what only the caller's arguments answer: a
+    container holder of a whole parameter needs a container argument, and
+    never one rooted in an elements region (its writes would land under
+    that region, where no write of the container reaches)."""
+    call = present.call
+    for origin in present.effects.returns:
         argument = slots[call.arguments[origin.parameter]]
-        endpoint = origin.path[-1] if origin.path else None
+        place = call_place(call, origin.parameter, origin.path, slots)
+        problem = return_endpoint_problem(origin.path, lambda: place_shape(place, slots, records).type,
+                                          result.type)
+        if problem is not None:
+            return problem
         if result.shape.whole_container:
-            if endpoint is None and not argument.shape.whole_container:
+            if not origin.path and not argument.shape.whole_container:
                 return "container result of a non-container argument"
-            if endpoint is not None and not (isinstance(endpoint, THIRFieldIdentity)
-                                             and value_class(endpoint.type) is MIRClass.CONTAINER):
-                return "container result of a non-container place"
-            refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots, records)
-            if any(r.place.projections and isinstance(r.place.projections[-1],
-                                                      (MIRContainerStructure, MIRContainerElements))
-                   for r in refs):
+            refs = resolve_referents(place, state, slots, records)
+            if any(r.place.projections and isinstance(r.place.projections[-1], REGION_STEPS) for r in refs):
                 return "container result rooted in an elements region"
-        elif endpoint is not None:
-            if not isinstance(endpoint, THIRFieldIdentity):
-                return "call result of a container region"
-            bare = unwrap_readonly(endpoint.type)
-            if result.shape.view_holder:
-                if not view_endpoint(result.type, bare):
-                    return "view result of a non-leaf place"
-            elif not (result.shape.is_pointer and value_class(bare) is MIRClass.RECORD
-                      and bare == result.type):
-                return "call result of a mismatched place"
     return None
 
 
@@ -666,20 +664,24 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     leaves = {s.id: _leaves(s, slots) + (objects[s.id] if s.shape.is_storage else ())
               for s in fn.slots}
     empty: frozenset[MIRReferent] = frozenset()
+    present = prepared.presence.calls
 
-    def transfer(stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]], final: bool) -> None:
+    def transfer(point: MIRPoint, stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]],
+                 final: bool) -> None:
         if isinstance(stmt, MIRCallStmt):
-            apply_transfers(stmt.call, state, slots, layouts)
+            apply_transfers(present[point], state, slots, layouts)
         if not isinstance(stmt, MIRAssign):
             return
-        target, value = stmt.target, stmt.value
+        target = stmt.target
+        # A call's value is the call as presence sees it (`MIRPresentCall`).
+        value = present[point] if isinstance(stmt.value, MIRCall) else stmt.value
         result: dict[MIRPlace, frozenset[MIRReferent]] = {}
         match value:
-            case MIRCall():
+            case MIRPresentCall(call=call):
                 # What the callee stores in the arguments' objects is in place
                 # before its result is resolved or fills storage.
                 apply_transfers(value, state, slots, layouts)
-                borrowed = value.summary.borrowed_result is not None
+                borrowed = call.summary.borrowed_result is not None
                 returns = (resolve_call_returns(value, state, slots, layouts, slots[target.root])
                            if borrowed or final else None)
                 # Only the fixpoint's states are checked: an intermediate one may still lack an origin.
@@ -753,7 +755,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     # A parameter holder borrows storage outside the body; an owned-leaf
     # global's handle names the global itself (`global:<module>.<name>` by its
     # slot's identity), external and static. External origins may alias.
-    seed = {leaf: frozenset({MIRReferent(external_origin(leaf, slots), external=True)})
+    seed = {leaf: frozenset({MIRReferent(origin(leaf, slots).place, external=True)})
             for slot in fn.slots if slot.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)
             for leaf in _leaves(slot, slots)}
     # The loans the object of a borrowed record parameter, or of one handed
@@ -801,7 +803,7 @@ def caller_stores(prepared: MIRPrepared, dependencies: MIRDependencies) -> tuple
 
 def _flow(fn: MIRFunction, liveness: MIRLiveness, slots: Mapping[MIRSlotId, MIRSlot],
           seed: dict[MIRPlace, frozenset[MIRReferent]],
-          transfer: 'Callable[[MIRStatement, dict[MIRPlace, frozenset[MIRReferent]], bool], None]',
+          transfer: 'Callable[[MIRPoint, MIRStatement, dict[MIRPlace, frozenset[MIRReferent]], bool], None]',
           objects: Mapping[MIRSlotId, tuple[MIRPlace, ...]], stored_loans: frozenset[MIRPlace],
           pinned: frozenset[MIRPlace] = frozenset()) -> MIRDependencies:
     """The dependency states to a fixpoint, then each point's facts in a
@@ -817,8 +819,8 @@ def _flow(fn: MIRFunction, liveness: MIRLiveness, slots: Mapping[MIRSlotId, MIRS
         queued.remove(bid)
         state = incoming[bid].copy()
         block = blocks[bid]
-        for stmt in block.statements:
-            transfer(stmt, state, False)
+        for index, stmt in enumerate(block.statements):
+            transfer(MIRPoint(bid, index), stmt, state, False)
         for edge, dest in outgoing_edges(bid, block.terminator):
             if dest is None:
                 continue
@@ -853,7 +855,7 @@ def _flow(fn: MIRFunction, liveness: MIRLiveness, slots: Mapping[MIRSlotId, MIRS
                     inverse.setdefault(ref, set()).add(leaf)
             holders[point] = MappingProxyType({ref: frozenset(owners) for ref, owners in inverse.items()})
             if index < len(block.statements):
-                transfer(block.statements[index], state, True)
+                transfer(point, block.statements[index], state, True)
     entry = MappingProxyType(live_entries(incoming[fn.entry], liveness.entry_live, stored_loans, pinned))
     return MIRDependencies(fn, MappingProxyType(points), MappingProxyType(active), MappingProxyType(holders), entry,
                            objects, stored_loans, pinned)

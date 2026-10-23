@@ -17,6 +17,7 @@ from .shapes import MIRContainerElements, MIRContainerStructure
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, call_return_problem
+from .presence import present_call
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
@@ -292,7 +293,8 @@ def test_a_container_returned_from_the_receiver_names_its_field(program: _Progra
     result = MIRSlot(MIRSlotId(body, 1), borrowed_shape(INTS, members=(leaf_shape(INT32),)), MIRSlotKind.LOCAL, "xs")
     slots = {slot.id: slot for slot in (receiver, result)}
     state = {MIRPlace(receiver.id): frozenset({MIRReferent(MIRPlace(receiver.id), external=True)})}
-    problem = call_return_problem(MIRCall(summary, (receiver.id,), True), result, state, slots, {})
+    problem = call_return_problem(present_call(MIRCall(summary, (receiver.id,), True), frozenset(), slots), result,
+                                  state, slots, {})
     assert problem == "container result of a non-container argument"
 
 

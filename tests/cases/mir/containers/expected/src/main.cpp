@@ -713,6 +713,32 @@ int32_t rack_rec(Rack& r, bool flag) {
     return p.x;
 }
 
+// def touch_all(ps: list[Tag]) -> None:  # tpyc: mir(covered) mir_summary(known)
+//     for p in ps:
+//         p.n += 1
+//         p.s = "seen"
+void touch_all(std::vector<Tag>& ps) {
+    auto& __obj_0 = ps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.n = ::tpy::add_check<int32_t>(p.n, 1);
+        p.s = "seen";
+    }
+}
+
+// # its caller lowers: the published write reaches the caller's list
+// def touch_caller() -> int32:  # tpyc: mir(covered)
+//     ps = [Tag(1, "a"), Tag(2, "b")]
+//     touch_all(ps)  # tpyc: mir_write(ps[elements].s)
+//     return ps[0].n + ps[1].n
+int32_t touch_caller() {
+    std::vector<Tag> ps = {Tag(1, "a"), Tag(2, "b")};
+    ::tpyapp::main::touch_all(ps);
+    return (::tpy::add_check<int32_t>(::tpy::__getitem__(ps, 0).n, ::tpy::__getitem__(ps, 1).n));
+}
+
 // # kept refusal: a list literal passed as a Span argument (`b.plus_span([3, 4])`) has no
 // # container place for the view to borrow
 // def main() -> None:  # tpyc: mir(uncovered /^call container argument needs a place$/)
@@ -817,6 +843,10 @@ int32_t rack_rec(Rack& r, bool flag) {
 //     rk = Rack()
 //     print("rack_items:", rack_items(rk, False))
 //     print("rack_rec:", rack_rec(rk, False))
+//     tags = [Tag(5, "x")]
+//     touch_all(tags)
+//     # The callee wrote the caller's elements in place.
+//     print("touch_all:", tags[0].n, tags[0].s, touch_caller())
 void main() {
     Bag b = Bag();
     b.push(1);
@@ -911,6 +941,9 @@ void main() {
     Rack rk = Rack();
     std::cout << "rack_items:" << " " << ::tpyapp::main::rack_items(rk, false) << "\n" << ::tpy::check_signals;
     std::cout << "rack_rec:" << " " << ::tpyapp::main::rack_rec(rk, false) << "\n" << ::tpy::check_signals;
+    std::vector<Tag> tags = {Tag(5, "x")};
+    ::tpyapp::main::touch_all(tags);
+    std::cout << "touch_all:" << " " << ::tpy::__getitem__(tags, 0).n << " " << ::tpy::__getitem__(tags, 0).s << " " << ::tpyapp::main::touch_caller() << "\n" << ::tpy::check_signals;
 }
 
 // main()

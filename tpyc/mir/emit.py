@@ -190,8 +190,6 @@ class Fragment:
             self.records: dict[MIRSlotId, _SlotRecord] = {}
             self.block_count = 0
             self.constant_bools: dict[MIRSlotId, bool] = {}
-            # Optional arguments built empty for their call (`MIRCall.absent`).
-            self.empty_arguments: set[MIRSlotId] = set()
             # By the THIR node a backing is published under, and each borrow
             # operation's handles: the block and the statement object it precedes.
             self.backing_places: IdentityMap[object, MIRPlace] = IdentityMap()

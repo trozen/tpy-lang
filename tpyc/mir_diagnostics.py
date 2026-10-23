@@ -20,7 +20,7 @@ from .value_category import peel_coerce
 from .thir.lower import iter_module_callables, iter_module_constructors
 from .mir.call_contract import MIRCallSummary, MIRSummaryState
 from .mir.collect import MIRAnalyses, MIRBodySource, enumerate_body_sources, lower_and_analyze
-from .mir.shapes import MIRContainerElements, MIRContainerStructure
+from .mir.shapes import REGION_STEPS
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import MIRCall, MIRFunction, MIRPlace, MIRSlotKind, source_order, statement_call, call_place
 from .mir.value import MIRField
@@ -57,7 +57,7 @@ def _object(place: MIRPlace) -> MIRPlace:
     """The object a write reaches: a container's shape write is a write of
     the container."""
     projections = place.projections
-    while projections and isinstance(projections[-1], (MIRContainerStructure, MIRContainerElements)):
+    while projections and isinstance(projections[-1], REGION_STEPS):
         projections = projections[:-1]
     return MIRPlace(place.root, projections)
 
@@ -98,17 +98,28 @@ def obligation_calls(body: th.THIRFunction | th.THIRConstructor,
 
 def _place_spelling(fn: MIRFunction, place: MIRPlace) -> str | None:
     """A caller place as the user names it: its slot's source name, then
-    each field; a container region is the container itself."""
+    each field up to the first other step; a write in or under a container
+    region is spelled by the container itself."""
     slot = next(s for s in fn.slots if s.id == place.root)
     name = slot.global_id.name if slot.kind is MIRSlotKind.GLOBAL and slot.global_id is not None else slot.name
     if not name or name.startswith("__") or slot.kind is MIRSlotKind.TEMPORARY:
         return None
     for projection in place.projections:
-        if isinstance(projection, MIRField):
-            name += f".{projection.id.name}"
-        elif not isinstance(projection, (MIRContainerStructure, MIRContainerElements)):
+        if not isinstance(projection, MIRField):
             break
+        name += f".{projection.id.name}"
     return name
+
+
+def _leading_fields(path: tuple[object, ...]) -> tuple[str, ...]:
+    """The fields a summary path names before its first other step: under
+    an element the written storage is spelled by its container."""
+    fields: list[str] = []
+    for step in path:
+        if not isinstance(step, th.THIRFieldIdentity):
+            break
+        fields.append(step.name)
+    return tuple(fields)
 
 
 def argument_aliases(fn: MIRFunction, analyses: MIRAnalyses) -> tuple[MIRArgumentAlias, ...]:
@@ -126,7 +137,7 @@ def argument_aliases(fn: MIRFunction, analyses: MIRAnalyses) -> tuple[MIRArgumen
         stmt = blocks[conflict.point.block].statements[conflict.point.index]
         call = statement_call(stmt)
         assert call is not None
-        fields = tuple(step.name for step in obligation.written.path if isinstance(step, th.THIRFieldIdentity))
+        fields = _leading_fields(obligation.written.path)
         relation = _relation(call, obligation.parameter, obligation.written.parameter, conflict.affected.place,
                              fn, analyses.dependencies.referents[conflict.point])
         found.setdefault(key, []).append(MIRArgumentAlias(

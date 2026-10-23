@@ -6,10 +6,11 @@ imports only `value`."""
 
 from dataclasses import dataclass, replace
 
-from ..thir.scalar_leaves import MIRClass
+from ..thir.scalar_leaves import MIRClass, modeled_members, value_class
 from ..typesys import TpyType
 from .value import (
     SUM_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecords, MIRShape, MIRValidationError, RecordFields, holder_form,
+    loan_field,
     member_shape, require_valid,
 )
 
@@ -127,7 +128,7 @@ def _enter(previous: Projection | None, holder: MIRShape) -> None:
 @dataclass(frozen=True)
 class MIRHop:
     """One projection of a walk: the shape it applies to and the shape it
-    reaches -- None for a container's structure, the terminal region."""
+    reaches -- None for a terminal region (`walk`)."""
     projection: Projection
     holder: MIRShape
     reached: MIRShape | None
@@ -142,22 +143,38 @@ class MIRWalk:
     @property
     def end(self) -> MIRShape | None:
         """What the place denotes: the last reached shape, the root for an
-        empty path; None for the terminal region (`[structure]`), whose
-        hop's holder is the container -- only a write target."""
+        empty path; None for a terminal region, whose hop's holder is the
+        container -- only a write target."""
         return self.hops[-1].reached if self.hops else self.root
 
 
-def walk(shape: MIRShape, projections: tuple[Projection, ...], records: MIRRecords) -> MIRWalk:
+REGION_STEPS = (MIRContainerStructure, MIRContainerElements)
+
+
+def walk(shape: MIRShape, projections: tuple[Projection, ...], records: MIRRecords, *,
+         region_end: bool = False) -> MIRWalk:
     """Each projection with the shape it applies to and the shape it
     reaches, from a value of `shape`; raises on a hop no rule admits. A
-    container's structure is the terminal region: nothing follows it."""
+    container's structure is a terminal region: nothing follows it.
+
+    With `region_end`, a trailing elements region is terminal too: a place
+    that names a region of container storage, demanding no element
+    endpoint. Its container is checked by type (`modeled_members`), since
+    the elements' layouts are whoever holds the container's."""
     hops: list[MIRHop] = []
     holder: MIRShape | None = shape
     previous: Projection | None = None
-    for projection in projections:
+    for index, projection in enumerate(projections):
         require_valid(not isinstance(previous, MIRContainerStructure), REGION_END)
         _enter(previous, holder)
-        reached = None if isinstance(projection, MIRContainerStructure) else step(holder, projection, records)
+        if isinstance(projection, MIRContainerStructure) or (
+                region_end and index == len(projections) - 1 and isinstance(projection, MIRContainerElements)):
+            if region_end:
+                require_valid((holder.cls is MIRClass.CONTAINER and holder.owned_place or holder.container_view_holder)
+                              and modeled_members(holder.type), "element projection needs container storage")
+            reached = None
+        else:
+            reached = step(holder, projection, records)
         hops.append(MIRHop(projection, holder, reached))
         previous, holder = projection, reached
     return MIRWalk(shape, tuple(hops))
@@ -181,8 +198,10 @@ def store_problem(walked: MIRWalk) -> str | None:
     mutable (a pointer's access is its object's); replacing a field also
     needs the field mutable (not declared `readonly[...]`), replacing an
     element only its container: a `list[readonly[R]]` element is replaced,
-    never written into."""
+    never written into. A view never changes its container's shape."""
     for hop in walked.hops:
+        if isinstance(hop.projection, MIRContainerStructure) and hop.holder.container_view_holder:
+            return "store changes the shape of a viewed container"
         if hop.holder.readonly:
             match hop.projection:
                 case MIRDeref():
@@ -193,6 +212,36 @@ def store_problem(walked: MIRWalk) -> str | None:
     last = walked.hops[-1] if walked.hops else None
     if last is not None and isinstance(last.projection, MIRField) and last.reached.readonly:
         return "store through readonly storage"
+    return None
+
+
+def owned_field(field: MIRField) -> bool:
+    """A field whose storage its record owns and a write replaces in place:
+    an owned leaf's buffer, a container, an inline record member or an
+    Optional one -- every member the record stores inline (`loan_field`)
+    but a scalar leaf, which holds no storage. A view member's write
+    rebinds the loan the record holds and replaces no storage."""
+    return not loan_field(field.type) and value_class(field.type) is not MIRClass.LEAF
+
+
+def replacement_reach(projections: tuple[Projection, ...]) -> tuple[tuple[Projection, ...], bool] | None:
+    """For a write at `projections` that replaces storage while keeping the
+    identity of the object around it, the projection path a holder's
+    referent must lie under, and whether the path itself is reached; None
+    for one that replaces whole storage (a root, what a holder points at)
+    or no storage at all. A container's shape write reaches everything
+    inside the container (its iterators, elements, views of them) but not
+    the container object, which every holder of it keeps; an elements
+    write reaches what lies in the elements region; an owned member field
+    write reaches the field. Element identity is never tracked: a write of
+    one element reaches a holder of any element."""
+    match projections:
+        case (*base, MIRContainerStructure()):
+            return tuple(base), False
+        case (*_, MIRContainerElements()):
+            return projections, True
+        case (*_, MIRField() as field) if owned_field(field):
+            return projections, True
     return None
 
 

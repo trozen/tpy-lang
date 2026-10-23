@@ -17,7 +17,6 @@ from .call_contract import (
     MIR_RESULT, MIR_STATIC, MIRGlobalId, MIRLoanTransfer, MIRSummaryResult, MIRSummaryState, summary_problem,
 )
 from .call_effects import analyze_call_effects
-from .coverage import call_write_places
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dependencies import MIRUnseededLoan, analyze_dependencies, apply_transfers
@@ -25,11 +24,12 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
-    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, statement_call,
+    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRPresentCall, MIRRead, MIRSlotKind, present_effects,
+    statement_call,
 )
 from .lower import lower_function
 from .presence import _analyze_presence
-from .validate import validate_function
+from .validate import _validated_function, validate_function
 from .value import MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .region_flow import outgoing_edges
@@ -158,10 +158,36 @@ def present_write(cell: Cell) -> int32:
     maybe_write(cell)
     return cell.value
 
+def bound_absent() -> int32:
+    held: Cell | None = None
+    maybe_write(held)
+    return 0
+
+def one_branch_absent(cell: Cell | None) -> int32:
+    if cell is None:
+        maybe_write(cell)
+    maybe_write(cell)
+    return 0
+
 def noisy(cell: Cell) -> int32:
     before = read(cell)
     print(before)
     return read(cell)
+
+def grow(xs: list[int32]) -> None:
+    xs.append(1)
+
+def infeasible_absent() -> int32:
+    flag: int32 | None = None
+    if flag is not None:
+        maybe_write(None)
+    return 0
+
+def infeasible_call(xs: list[int32]) -> int32:
+    flag: int32 | None = None
+    if flag is not None:
+        grow(xs)
+    return 0
 '''
 
 Artifacts = tuple[dict[str, th.THIRFunction], MIRCallWorkspace, MIRDefinitions, str, str]
@@ -416,24 +442,52 @@ def _call_statement(body: MIRFunction) -> tuple[int, int, MIRCall]:
                 for i, stmt in enumerate(block.statements) if (call := statement_call(stmt)) is not None)
 
 
+def _present_call(body: MIRFunction) -> MIRPresentCall:
+    """The first call of `body` as presence sees it."""
+    b, i, call = _call_statement(body)
+    called = _validated_function(body).presence.calls[MIRPoint(body.blocks[b].id, i)]
+    assert called.call is call
+    return called
+
+
 def test_a_none_argument_is_absent_and_its_writes_reach_nothing(artifacts: Artifacts) -> None:
     _, workspace, _, _, _ = artifacts
     absent = body_named(workspace, "absent_write")
-    _, _, call = _call_statement(absent)
-    assert call.absent == frozenset({0}) and call.summary.writes
-    assert call_write_places(call, {s.id: s for s in absent.slots}) == ()
+    called = _present_call(absent)
+    assert called.call.summary.writes and not called.effects.writes and called.writes == ()
     assert not isinstance(analyze_call_effects(absent, analyze_dependencies(absent, analyze_liveness(absent))),
                           MIRNotCovered)
-    # A present argument is never absent, and the validator refuses the claim.
-    present = body_named(workspace, "present_write")
-    b, i, call = _call_statement(present)
-    assert call.absent == frozenset()
-    block = present.blocks[b]
-    forged = replace(block.statements[i], call=replace(call, absent=frozenset({0})))
-    blocks = (*present.blocks[:b], replace(block, statements=(*block.statements[:i], forged,
-                                                               *block.statements[i + 1:])), *present.blocks[b + 1:])
-    with pytest.raises(MIRValidationError, match="call absent argument is not an empty Optional"):
-        validate_function(replace(present, blocks=blocks))
+    # A present argument is never absent: the call keeps its whole summary.
+    called = _present_call(body_named(workspace, "present_write"))
+    assert called.effects == called.call.summary and len(called.writes) == 1
+
+
+def test_absence_follows_what_presence_proves_before_the_call(artifacts: Artifacts) -> None:
+    _, workspace, _, _, _ = artifacts
+    # A local bound to None is absent at the call, beyond a None literal.
+    called = _present_call(body_named(workspace, "bound_absent"))
+    assert called.call.summary.writes and not called.effects.writes and called.writes == ()
+    # None on one branch only: absent there, and after the join it may be present.
+    body = body_named(workspace, "one_branch_absent")
+    inside, after = (called for _, called in sorted(_validated_function(body).presence.calls.items(),
+                                                     key=lambda item: item[1].call.site.line))
+    assert not inside.effects.writes and inside.writes == ()
+    assert after.effects == after.call.summary and len(after.writes) == 1
+
+
+def test_a_call_presence_never_reaches_keeps_its_own_block_facts(artifacts: Artifacts) -> None:
+    _, workspace, _, _, _ = artifacts
+    for name in ("infeasible_absent", "infeasible_call"):
+        body = body_named(workspace, name)
+        b, i, _ = _call_statement(body)
+        # `flag` is None, so the branch holding the call is infeasible.
+        assert MIRPoint(body.blocks[b].id, i) not in _validated_function(body).presence.points
+    # A None argument is absent by the block's own statements: its writes are filtered.
+    called = _present_call(body_named(workspace, "infeasible_absent"))
+    assert called.call.summary.writes and not called.effects.writes and called.writes == ()
+    # From an unknown entry nothing is proven absent: the call keeps its whole summary.
+    called = _present_call(body_named(workspace, "infeasible_call"))
+    assert called.effects == called.call.summary and len(called.writes) == 1
 
 
 def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artifacts) -> None:
@@ -446,14 +500,14 @@ def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artif
     into_absent = MIRLoanTransfer(0, (value,), MIR_STATIC)
     from_absent = MIRLoanTransfer(MIR_RESULT, (value,), 0)
     forged = replace(call, summary=replace(call.summary, transfers=frozenset({into_absent, from_absent})))
-    assert forged.absent == frozenset({0})
-    assert forged.present_effects.transfers == frozenset()
+    absent = MIRPresentCall(forged, present_effects(forged.summary, frozenset({0})), ())
+    assert absent.effects.transfers == frozenset()
     state: dict = {}
-    apply_transfers(forged, state, slots, records)
+    apply_transfers(absent, state, slots, records)
     assert state == {}
     # Present, the same transfer is applied: the empty Optional holds no object to store into.
     with pytest.raises(MIRUnseededLoan, match="call transfer into no object"):
-        apply_transfers(replace(forged, absent=frozenset()), {}, slots, records)
+        apply_transfers(MIRPresentCall(forged, forged.summary, ()), {}, slots, records)
 
 
 def test_global_reads_union_through_consumed_summaries(artifacts: Artifacts) -> None:

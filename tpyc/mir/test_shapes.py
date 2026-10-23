@@ -24,7 +24,7 @@ from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError,
     lent_record, member_compatible, member_shape, shape_problem, value_shape,
 )
-from .dependencies import object_keys, origin_shape
+from .dependencies import MIROrigin, object_keys, origin
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .shapes import (
@@ -32,6 +32,12 @@ from .shapes import (
     store_problem, walk, object_prefix,
 )
 from .validate import validate_function
+
+
+def origin_shape(slot: MIRSlot) -> MIRShape:
+    """The shape a referent rooted at `slot` steps from (`origin`)."""
+    return origin(MIRPlace(slot.id), {slot.id: slot}).shape
+
 
 SOURCE = """\
 from tpy import int32, StrView, Span, readonly
@@ -764,3 +770,32 @@ def test_a_readonly_container_field_is_never_written_or_lent_mutably(readonly_bo
         validate_function(_swap_field(put, "xs", ro))
     with pytest.raises(MIRValidationError, match="borrow increases access"):
         validate_function(_swap_field(grow, "xs", ro))
+
+
+def test_one_origin_names_a_leafs_place_and_the_shape_its_paths_step_from(program: _Program) -> None:
+    p, h = program.types["P"], program.types["H"]
+    # A Span names the elements region it views, from its own wrapper shape.
+    span = _slot(0, value_shape(program.span, access=True, role=MIRRole.LOAN))
+    assert origin(MIRPlace(span.id), {span.id: span}) == MIROrigin(
+        MIRPlace(span.id, (MIRContainerElements(),)), span.shape)
+    # An Optional record parameter's payload names the parameter, from the record it lends.
+    maybe = _slot(0, value_shape(OptionalType(h), facts=th.THIROptionalLayout(th.THIRBorrowedRecord(h, False))))
+    assert origin(MIRPlace(maybe.id, (MIRUnionPayload(1),)), {maybe.id: maybe}) == MIROrigin(
+        MIRPlace(maybe.id), value_shape(h))
+    # Each borrowed member of a tuple parameter is its own origin.
+    lent = th.THIRBorrowedRecord(p, False)
+    pair = _slot(0, value_shape(TupleType((p, p)), role=MIRRole.LOAN, facts=th.THIRTupleLayout((lent, lent))))
+    first, second = (origin(MIRPlace(pair.id, (MIRTupleIndex(i),)), {pair.id: pair}) for i in (0, 1))
+    assert (first.place, second.place) == (MIRPlace(pair.id, (MIRTupleIndex(0),)), MIRPlace(pair.id, (MIRTupleIndex(1),)))
+    assert first.shape == second.shape == pair.shape
+
+
+def test_a_view_never_changes_its_containers_shape(program: _Program) -> None:
+    view = value_shape(program.span, role=MIRRole.LOAN)
+    assert not view.readonly
+    assert store_problem(walk(view, (MIRContainerStructure(),), program.records)) == (
+        "store changes the shape of a viewed container")
+    assert store_problem(walk(view, (MIRContainerElements(),), program.records)) is None
+    # Container storage changes its own shape.
+    owned = value_shape(program.fields["H.xs"])
+    assert store_problem(walk(owned, (MIRContainerStructure(),), program.records)) is None

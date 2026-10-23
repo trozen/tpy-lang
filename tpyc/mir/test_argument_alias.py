@@ -115,6 +115,36 @@ def reset_through_result(h: Holder) -> int32:
     return h.box().reset(h)
 
 
+class Named:
+    s: str
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+
+def touch(ps: list[Named], v: str) -> int32:
+    for p in ps:
+        p.s = "x"
+    return len(v)
+
+
+def element_field(ps: list[Named]) -> int32:
+    return touch(ps, ps[0].s)
+
+
+def maybe_rename(h: H | None, value: str) -> int32:
+    if h is not None:
+        h.name = "changed"
+    return len(value)
+
+
+def infeasible_rename(h: H) -> int32:
+    flag: int32 | None = None
+    if flag is not None:
+        return maybe_rename(h, h.name)
+    return 0
+
+
 def main() -> None:
     print(keyword([1], ["a"]))
 
@@ -146,17 +176,29 @@ def test_warnings_spell_the_arguments_as_written(compiled) -> None:
     found = {d.loc.line: d.message for d in _warnings(compiled)}
     # A body passing two of its own parameters publishes the obligation
     # again (`forward`, `keyword`); passing one list twice breaks it.
-    assert sorted(found) == [34, 43, 67, 92]
+    assert sorted(found) == [34, 43, 52, 67, 92, 109, 121]
     # An assignment's statement starts at its target, before the call.
     assert found[34].startswith("argument 'h.name' is what 'H.setname' modifies "
                                 "through parameter 'self' while it still uses 'value'")
     assert found[43].startswith("argument 'names[0]' points into 'names', which 'same'")
+    # Element identity is not tracked: replacing `xs[0]` may reach `xs[1]`
+    # (BUGS.md#borrowed-arg-into-mutated-storage).
+    assert found[52].startswith("argument 'xs[1]' points into 'xs', which 'set_first' modifies "
+                                "through parameter 'xs' while it still uses 'v'")
     # A whole container field replaced, as a record field is (`Shelf.refill`).
     assert found[67].startswith("argument 'sh.items' is what 'Shelf.refill' modifies "
                                 "through parameter 'self' while it still uses 'data'")
     # A call-result receiver is spelled by the parameter it binds.
     assert found[92].startswith("the argument for parameter 'self' is what 'Box.reset' modifies "
                                 "through parameter 'h' while it still uses 'self'")
+    # A field write inside every element (`ps[elements].s`) reaches the
+    # borrowed field of one.
+    assert found[109].startswith("argument 'ps[0].s' is what 'touch' modifies "
+                                 "through parameter 'ps' while it still uses 'v'")
+    # A call in a branch presence proves infeasible still warns: its block's
+    # own facts prove nothing absent, so the write reaches `h.name`.
+    assert found[121].startswith("argument 'h.name' is what 'maybe_rename' modifies "
+                                 "through parameter 'h' while it still uses 'value'")
     # A value-type argument is copied by binding it to a local.
     assert found[34].endswith("bind it to a local first ('v = h.name') or restructure so the call "
                               "does not hand over both")
@@ -194,9 +236,15 @@ def test_callers_of_two_parameters_publish_the_obligation(compiled) -> None:
     assert verdicts["reset_through_result"].conflicts == ("argument_alias",)
     assert verdicts["twice"].conflicts == ("argument_alias",)
     assert verdicts["keyword"].conflicts == ("alias_obligation",)
-    # Element identity is not tracked: writing `xs[0]` may or may not reach
-    # `xs[1]`, so the caller keeps a conflict and is not warned.
-    assert verdicts["other_element"].conflicts == ("replacement",)
+    # Element identity is not tracked: writing `xs[0]` may reach `xs[1]`,
+    # an element step like any other, so the caller is warned.
+    assert verdicts["other_element"].conflicts == ("argument_alias",)
+    # A field written inside every element publishes `v` against `ps[elements].s`.
+    touched, = verdicts["touch"].summary.summary.obligations
+    assert (touched.parameter, touched.path, touched.written.parameter) == (1, (), 0)
+    elements, field = touched.written.path
+    assert isinstance(elements, MIRContainerElements) and field.name == "s"
+    assert verdicts["element_field"].conflicts == ("argument_alias",)
 
 
 def test_a_summary_cannot_publish_an_obligation_it_does_not_write(compiled) -> None:
@@ -260,7 +308,7 @@ def test_a_mir_failure_costs_only_its_body_and_never_fails_the_compile(compiled,
         heard: list[str] = []
         added = compiler.report_mir_warnings([(entry, ctx)], on_failure=heard.append)
         # The other bodies' warnings survive the failure in `assigned`, and `-v` hears it.
-        assert [d.loc.line for _, d in added] == [43, 67, 92]
+        assert [d.loc.line for _, d in added] == [43, 52, 67, 92, 109, 121]
         assert len(heard) == 1 and "MIR defect" in heard[0]
         with pytest.raises(RuntimeError, match="MIR defect"):
             compiler.report_mir_warnings([(entry, ctx)], strict=True)

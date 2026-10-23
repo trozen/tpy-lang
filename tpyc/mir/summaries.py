@@ -14,7 +14,7 @@ from .call_contract import (
 )
 from .call_effects import resolve_call_writes
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRTupleIndex, MIRUnionPayload, object_prefix, optional_payload,
+    REGION_STEPS, MIRDeref, MIRContainerElements, object_prefix, optional_payload,
 )
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
@@ -31,7 +31,7 @@ from .nodes import (
     place_shape,
 )
 from .value import AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, lent_record, WRAPPER_CLASSES
-from .validate import owned_leaf_place_type, statement_reads, validate_function
+from .validate import _validated_function, owned_leaf_place_type, statement_reads
 
 # The passings that lend storage to the callee without a copy; a template
 # trait form may copy or bind, so it is no loan.
@@ -137,32 +137,18 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
 
 def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
                   records: MIRRecords) -> MIRShape | None:
-    """What `source` reaches through inline record members of storage the
-    summary accounts for, or None when it reaches none: under a live
-    borrowed record (one leading dereference of its holder) or under the
-    body's private record storage, one or more fields, every one before
-    the last a record member or an Optional record field followed by its
-    inline payload (a selection the body's presence proof checked). The
-    end is the caller's to classify."""
-    # The record a holder points at, or an Optional holder's payload points
-    # at (its presence proof checked).
+    """What `source` reaches under storage the summary accounts for -- past
+    the object a holder points at (an Optional holder's payload record
+    included) or under the body's private storage -- by any walk
+    `shapes.step` takes (a payload selection is the presence proof's), or
+    None when it lies under neither or ends at a container's structure.
+    The end is the caller's to classify."""
     steps = under_object(source, slots, payload=True)
     if steps is None and source.root in private:
         steps = source.projections
     if not steps:
         return None
-    hops = place_walk(source, slots, records).hops[-len(steps):]
-    for index, hop in enumerate(hops):
-        if optional_payload(hop.holder.cls, hop.projection):
-            # The payload of an Optional field, never of a wrapper member.
-            if not (index and isinstance(hops[index - 1].projection, MIRField)):
-                return None
-        elif not isinstance(hop.projection, MIRField):
-            return None
-        elif index < len(hops) - 1 and not (hop.reached.cls is MIRClass.RECORD
-                                            or optional_payload(hop.reached.cls, hops[index + 1].projection)):
-            return None
-    return hops[-1].reached
+    return place_walk(source, slots, records).end
 
 
 def _transfers(body: MIRFunction, dependencies: MIRDependencies,
@@ -236,17 +222,13 @@ def _optional_place(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: f
     return end is not None and end.cls is MIRClass.OPTIONAL
 
 
-def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, MIRSlot]) -> bool:
-    """A read through container storage: an element or a region of it, or a
-    container place itself borrowed by a container holder. Wrapper payloads
-    stay out: selecting one needs a presence proof."""
-    # An Optional holder's payload record (its presence proof checked) is a record like any other.
-    path = under_object(source, slots, payload=True)
-    if path is None:
-        path = source.projections
-    if any(isinstance(p, (MIRUnionPayload, MIRTupleIndex)) for p in path):
-        return False
-    return (any(isinstance(p, (MIRContainerStructure, MIRContainerElements)) for p in source.projections)
+def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, MIRSlot],
+                      private: frozenset[MIRSlotId], records: MIRRecords) -> bool:
+    """A read the dependency pass tracks: a place under accounted storage
+    (`_member_chain`), a region of a container slot, or a whole slot a
+    borrowed aggregate holder takes."""
+    return (_member_chain(source, slots, private, records) is not None
+            or any(isinstance(p, REGION_STEPS) for p in source.projections)
             or target.shape.borrowed_aggregate)
 
 
@@ -264,7 +246,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     as if its receiver were bound at its definition's passing (`CONST_REF`,
     so readonly: `parameter_binding`), so the two summaries compare equal exactly when the twin's
     effects and origins are its definition's."""
-    validate_function(body)
+    present = _validated_function(body).presence.calls
     callee = declaration.resolved_callee
     # A method body binds its receiver as parameter 0, and only a method's callee names an owner.
     method = declaration.receiver is not None
@@ -405,12 +387,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                         return MIRSummaryResult.opaque("view result origin outside the parameters" if view
                                                        else "summary unsupported return origin")
                     index = parameters[origin.place.root]
-                    if lent_record(slots[origin.place.root].shape) is None:
+                    if lent_record(slots[origin.place.root].shape) is None and all(
+                            isinstance(p, REGION_STEPS) for p in path):
                         # A container result, a Span, or a record element of a
                         # container parameter returns as the whole parameter (the
                         # caller projects a container argument into its elements).
-                        if not all(isinstance(p, (MIRContainerStructure, MIRContainerElements)) for p in path):
-                            return MIRSummaryResult.opaque("summary unsupported return origin")
                         returns.add(MIRReturnOrigin(index))
                         continue
                     # Inside a record parameter: the record itself, or a field
@@ -424,7 +405,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     returns.add(returned)
         for index, stmt in enumerate(block.statements):
             state = dependencies.referents.get(MIRPoint(block.id, index), {})
-            if (call := statement_call(stmt)) is not None:
+            if (call := present.get(MIRPoint(block.id, index))) is not None:
                 problem = include_writes(resolve_call_writes(call, state, slots, record_layouts))
                 if problem is not None:
                     return MIRSummaryResult.opaque(problem)
@@ -446,9 +427,6 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 # A view member rebound replaces no storage; what it stores in
                 # an object the caller reaches is a transfer (`_transfers`).
                 continue
-            # A write event is admitted on the body's own storage, which no
-            # caller-visible place reaches, and on an owned-leaf field or a
-            # container's elements, whose write origin is published below.
             leaf_place = owned_leaf_place_type(stmt.target, slots, record_layouts) is not None
             own_storage = not stmt.target.projections and target.shape.is_storage
             elements = stmt.target.projections[-1:] == (MIRContainerElements(),)
@@ -463,8 +441,12 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             member = _aggregate_member(stmt.target, slots, private_records(), record_layouts)
             # An Optional record field replaced whole: published like a member.
             wrapper = _optional_place(stmt.target, slots, private_records(), record_layouts)
-            if stmt.storage_write is not None and not (
-                    leaf_place or own_storage or elements or private_target or member or wrapper):
+            # A write event's target is admitted where its origin is: the
+            # body's own storage, or a caller place the write endpoint rule
+            # admits (`include_writes`). A whole caller object replaced
+            # through its holder has no summary path.
+            through_holder = isinstance(stmt.target.projections[-1] if stmt.target.projections else None, MIRDeref)
+            if stmt.storage_write is not None and through_holder and not (private_target or leaf_place):
                 return MIRSummaryResult.opaque("summary storage operation")
             if stmt.target.projections:
                 problem = include_writes(origins or None)
@@ -503,7 +485,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 case MIRCopy(source=source) if member and (
                         source.projections in ((), object_prefix(slots[source.root].shape, payload=False))
                         or _aggregate_member(source, slots, private_records(), record_layouts)
-                        or _container_access(source, target, slots)):
+                        or _container_access(source, target, slots, private_records(), record_layouts)):
                     # A record copied into a member: a read of the body's own
                     # storage, of what a holder points at, of another member or
                     # of an element.
@@ -514,7 +496,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # field's buffer, or holders (view holders included).
                     pass
                 case MIRCopy(source=source) | MIRBorrow(source=source) | MIRRead(source=source) if (
-                        _container_access(source, target, slots)):
+                        _container_access(source, target, slots, private_records(), record_layouts)):
                     # Element reads and borrows, container views, and borrows
                     # of a container field: reads the dependency pass tracks.
                     pass

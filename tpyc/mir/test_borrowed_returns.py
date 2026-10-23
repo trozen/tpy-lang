@@ -19,6 +19,7 @@ from .call_contract import (
 )
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, resolve_call_returns
+from .presence import present_call
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
@@ -503,7 +504,8 @@ def test_missing_actual_origin_is_not_an_empty_result(workspace: MIRCallWorkspac
     body = workspace.bodies[MIRBodyId("main", "binding")]
     call = next(stmt.value for block in body.blocks for stmt in block.statements
                 if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
-    assert resolve_call_returns(call, {}, {s.id: s for s in body.slots}, body.record_layouts) is None
+    slots = {s.id: s for s in body.slots}
+    assert resolve_call_returns(present_call(call, frozenset(), slots), {}, slots, body.record_layouts) is None
 
 
 def test_scalar_summary_cannot_claim_borrowed_origins(workspace: MIRCallWorkspace) -> None:

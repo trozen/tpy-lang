@@ -14,3 +14,4 @@ line_copy True
 container_select pick b: 2
 container_select grown: 2 5
 container_select pick b again: 9 3
+touch 3 x x

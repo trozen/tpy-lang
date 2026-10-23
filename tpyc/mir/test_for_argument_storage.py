@@ -14,6 +14,7 @@ from ..thir.testutil import _compile, _entry
 from .testutil import compiled_definitions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
+from .dump import _write_step
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
@@ -69,6 +70,10 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
     return result
 
 
+def _dump_path(write) -> str:
+    return f"param{write.parameter}" + "".join(map(_write_step, write.path))
+
+
 def storage(fn: MIRFunction) -> list[MIRSlot]:
     return [s for s in fn.slots if s.shape.is_storage]
 
@@ -89,9 +94,9 @@ def test_for_callers_reach_valid_mir_without_copies(artifacts: Artifacts, name: 
         return
     summary = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
     if name == "records":
-        # A field write through an element of a container parameter is a write origin no summary publishes yet.
-        assert summary.state is MIRSummaryState.OPAQUE and summary.reason == (
-            "summary unsupported write origin: invalid call write path")
+        # A field write through an element of a container parameter is published under its elements region.
+        assert summary.state is MIRSummaryState.KNOWN, summary
+        assert [_dump_path(w) for w in summary.summary.writes] == ["param0[elements].value"]
         return
     # Each activation's argument temporary is the caller's private storage, only lent to the callee.
     assert summary.state is MIRSummaryState.KNOWN, summary

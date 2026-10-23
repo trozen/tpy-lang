@@ -20,8 +20,8 @@ from ..typesys import (
     is_protocol_type, passing_representation, return_representation, unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRWalk, Projection, object_prefix, store_problem,
-    walk,
+    MIRContainerElements, MIRContainerStructure, MIRHop, MIRTupleIndex, MIRUnionPayload, MIRWalk, Projection,
+    REGION_STEPS, object_prefix, replacement_reach, store_problem, walk,
 )
 from .value import (
     AGGREGATE_CLASSES, WRAPPER_CLASSES, Declared, MIRField, MIRFieldId, MIRHolding,
@@ -62,9 +62,11 @@ class MIRGlobalId:
     name: str
 
 
-# A place under a parameter: fields through inline record members, then at
-# most one container projection (`resolve_path` walks it).
-MIRParameterPath = tuple[THIRFieldIdentity | MIRContainerStructure | MIRContainerElements, ...]
+# A place under a parameter: any walk `shapes.step` takes from the object
+# the parameter lends -- fields, container regions, tuple members, a sum's
+# payload (`resolve_path` walks it).
+MIRParameterPath = tuple[THIRFieldIdentity | MIRContainerStructure | MIRContainerElements | MIRTupleIndex
+                         | MIRUnionPayload, ...]
 
 
 @dataclass(frozen=True)
@@ -136,15 +138,6 @@ class MIRLoanTransfer:
     path: MIRParameterPath
     source: 'int | MIRStaticLoan'
     source_path: MIRParameterPath = ()
-
-
-@dataclass(frozen=True)
-class MIRResolvedPath:
-    """A parameter path resolved (`resolve_path`): the walk of its fields
-    from the record the parameter lends (`path_walk`), None for the whole
-    parameter, and its trailing container projection."""
-    walk: MIRWalk | None
-    projection: MIRContainerStructure | MIRContainerElements | None
 
 
 @dataclass(frozen=True)
@@ -730,26 +723,12 @@ def _method_stub_summary(callee: THIRStubCallee) -> MIRCallSummary | str:
                           returns, frozenset(), False, frozenset())
 
 
-_CONTAINER_PROJECTIONS = (MIRContainerStructure, MIRContainerElements)
-
-
-def _path_parts(path: object) -> tuple[tuple[THIRFieldIdentity, ...],
-                                       MIRContainerStructure | MIRContainerElements | None] | None:
-    """The one grammar of a summary path: its leading fields and at most one
-    trailing container projection; None when it is malformed."""
-    if not isinstance(path, tuple):
-        return None
-    projection = path[-1] if path and isinstance(path[-1], _CONTAINER_PROJECTIONS) else None
-    fields = path[:-1] if projection is not None else path
-    return (fields, projection) if all(isinstance(f, THIRFieldIdentity) for f in fields) else None
-
-
-def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
+def path_step(item: object) -> Projection:
     """One item of a summary's parameter path as a MIR projection."""
     match item:
         case THIRFieldIdentity(owner=owner, name=name, type=typ):
             return MIRField(MIRFieldId(owner, name), typ)
-        case MIRContainerStructure() | MIRContainerElements():
+        case MIRContainerStructure() | MIRContainerElements() | MIRTupleIndex() | MIRUnionPayload():
             return item
     raise MIRValidationError("unknown call path item")
 
@@ -757,7 +736,7 @@ def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerEl
 def summary_path(projections: tuple[Projection, ...]) -> MIRParameterPath:
     """A place's projections under a parameter, spelled as a summary path
     (`path_step` reads it back): each field by its THIR identity, any
-    other step as it is (the path grammar refuses what it does not admit)."""
+    other step as it is (the walk refuses what no step admits)."""
     return tuple(THIRFieldIdentity(p.id.owner, p.id.name, p.type) if isinstance(p, MIRField) else p
                  for p in projections)
 
@@ -769,129 +748,133 @@ def path_projections(shape: MIRShape, path: tuple[object, ...]) -> tuple[Project
     return object_prefix(shape, payload=True) + tuple(map(path_step, path))
 
 
-def path_walk(root: MIRShape, fields: tuple[THIRFieldIdentity, ...], layouts: MIRRecords) -> MIRWalk | str:
-    """`fields` walked from the object a value of `root` holds
-    (`path_projections`), each a member of the record storage it is read
-    from by the one membership rule (`field_member`, over the declared
-    fields `layouts` carries); the
-    walk's refusal when a hop is refused. A trailing container projection
-    is the endpoint rule's: the elements' layouts are the callee's."""
-    try:
-        return walk(root, path_projections(root, fields), layouts)
-    except MIRValidationError as refusal:
-        return str(refusal)
-
-
 # The walks a summary's checks made, by the end (a parameter index or the
 # owned-record result) and the path they walked: what a call reads its
 # caller-dependent part off (`crossed_records`) instead of walking again.
 MIRPathWalks = dict[tuple[object, MIRParameterPath], MIRWalk]
 
 
-def _summary_walk(end: object, path: object, root: MIRShape, fields: tuple[THIRFieldIdentity, ...],
-                  layouts: MIRRecords, walks: MIRPathWalks | None) -> MIRWalk | str:
-    """The fields of summary path `path` under `end` walked from `root`
-    (`path_walk`), recorded in `walks` when the walk holds: the one place a
-    summary path is walked, so `walks` holds every path with a field."""
-    walked = path_walk(root, fields, layouts)
-    if walks is not None and not isinstance(walked, str):
+def _path_walk(end: object, path: object, root: MIRShape, layouts: MIRRecords,
+               walks: MIRPathWalks | None) -> MIRWalk | str | None:
+    """Summary path `path` under `end` walked from a value of `root`
+    (`path_projections`, the one stepping table `shapes.step`; a trailing
+    region is terminal, `walk`'s `region_end`), recorded in `walks` when it
+    holds and crosses a field. None when the path is malformed; the walk's
+    refusal when a hop is refused."""
+    if not isinstance(path, tuple):
+        return None
+    try:
+        projections = path_projections(root, path)
+    except MIRValidationError:
+        return None
+    try:
+        walked = walk(root, projections, layouts, region_end=True)
+    except MIRValidationError as refusal:
+        return str(refusal)
+    if walks is not None and any(isinstance(p, MIRField) for p in projections):
         walks[end, path] = walked
     return walked
 
 
+def path_walk(root: MIRShape, path: tuple[object, ...], layouts: MIRRecords) -> MIRWalk | str | None:
+    """`path` walked from a value of `root` (`_path_walk`), recording nothing."""
+    return _path_walk(None, path, root, layouts, None)
+
+
+def path_hops(binding: MIRParameterBinding, walked: MIRWalk) -> tuple[MIRHop, ...]:
+    """The hops of a parameter walk past the object prefix: the path's own."""
+    return walked.hops[len(object_prefix(binding.value, payload=True)):]
+
+
 def resolve_path(parameter: object, path: object, parameters: tuple[MIRParameterBinding, ...],
-                 layouts: MIRRecords, walks: MIRPathWalks | None = None) -> MIRResolvedPath | str | None:
-    """A parameter path of the one grammar writes and return origins share
-    (`_path_parts`), its fields walked from the record the parameter lends
-    (`_summary_walk`). None when the parameter index or the path is
-    malformed (fields under a parameter lending no record included); the
-    walk's refusal when a field is no member of the storage it is read
-    from."""
+                 layouts: MIRRecords, walks: MIRPathWalks | None = None) -> MIRWalk | str | None:
+    """A parameter path walked from the value the parameter binds
+    (`_path_walk`). None when the parameter index or the path is malformed
+    (any path under a protocol parameter included); the walk's refusal when
+    a hop is refused."""
     if type(parameter) is not int or not 0 <= parameter < len(parameters):
         return None
-    parts = _path_parts(path)
-    if parts is None:
-        return None
-    fields, projection = parts
-    if not fields:
-        return MIRResolvedPath(None, projection)
     binding = parameters[parameter]
-    ref = binding.lent_record if isinstance(binding, MIRParameterBinding) else None
-    if ref is None:
+    if not isinstance(binding, MIRParameterBinding) or binding.protocol:
         return None
-    walked = _summary_walk(parameter, path, ref, fields, layouts, walks)
-    return walked if isinstance(walked, str) else MIRResolvedPath(walked, projection)
+    return _path_walk(parameter, path, binding.value, layouts, walks)
 
 
-def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
+def _under_optional_field_payload(path: tuple[object, ...]) -> bool:
+    """Whether a summary path steps into an Optional record field's payload."""
+    return any(isinstance(item, MIRUnionPayload) and isinstance(previous, THIRFieldIdentity)
+               and optional_record_field(previous.type) is not None
+               for previous, item in zip(path, path[1:]))
+
+
+def return_endpoint_problem(path: tuple[object, ...], end: Callable[[], TpyType | None],
+                            result: TpyType) -> str | None:
+    """The one rule for where a published borrowed return ends, read by the
+    summary (`endpoint_admitted`) and by each caller
+    (`dependencies.call_return_problem`), so no summary is known whose
+    result every caller refuses. `end` gives the type the path reaches,
+    asked only for a path the rule does not refuse by its steps.
+
+    A return ends at no region and never at or under an Optional record
+    field's payload: a caller's write through it would replace the whole
+    field (`whole_wrapper_field`). A view result views an owned leaf or is
+    the loan a view member stores; a container or record result is a place
+    of exactly its type. The parameter itself (no path) is the result, or a
+    container parameter holding it in its elements region (the caller
+    projects there): what it lends is checked by each side against its own
+    binding or argument."""
+    if path and isinstance(path[-1], REGION_STEPS):
+        return "call result of a container region"
+    if _under_optional_field_payload(path):
+        return "call result under an Optional field's payload"
+    if not path:
+        return None
+    bare = unwrap_readonly(end())
+    if view_leaf(result):
+        return None if view_endpoint(result, bare) else "view result of a non-leaf place"
+    if bare != result or not (record_type(bare) or native_container_type(bare) and modeled_members(bare)):
+        return "call result of a mismatched place"
+    return None
+
+
+def endpoint_admitted(binding: MIRParameterBinding, walked: MIRWalk,
                       result: THIRBorrowedRecord | None = None) -> bool:
-    """Whether the place a resolved path reaches may be written (`result`
-    None) or reached by the borrowed result `result`: the one endpoint
-    table for summary writes and return origins, read off the walk's end
-    (the last field's member, at the access the walk composed).
+    """Whether the place a parameter walk reaches may be written (`result`
+    None) or reached by the borrowed result `result`: one rule over the
+    walk, whatever kinds the path stepped through.
 
-    Under a record parameter, a write is allowed by the write rule
-    (`store_problem`, over the walk of its fields) and ends at a
-    scalar leaf (written in place), an owned leaf (its buffer replaced), a
-    record or container member or an Optional record field (replaced whole; a write
-    under its payload is published as one) or a container projection of a
-    container field whose members MIR models: an element write keys on the
-    container's access, whatever its elements' (`list[readonly[R]]`). A
-    return ends at no projection: a view result views an owned-leaf field
-    of its family or is the loan a view member of its family stores; a
-    container or record result is a field of exactly its type, never lent
-    with more access than the path lends.
-
-    The whole parameter (no field): a write projects a mutable borrowed or
-    owned container, or the elements of a writable container view (a view
-    cannot change its container's shape). A return is a lent leaf a view
-    result views, a container parameter whose elements or whole self the
-    result is, or a record parameter the record result is."""
-    if resolved.walk is None:
-        return _whole_parameter_endpoint(binding, resolved.projection, result)
-    end = resolved.walk.end
-    bare = end.type
-    container = native_container_type(bare) and modeled_members(bare)
-    if result is None:
-        if store_problem(resolved.walk) is not None:
-            return False
-        if resolved.projection is not None:
-            return container
-        return (storage_leaf(bare) or owned_leaf(bare) or container or record_type(bare)
-                or optional_record_field(bare) is not None)
-    if resolved.projection is not None:
+    Only what the parameter lends lies in caller storage: a holder's object
+    or a view's region, never storage handed over or a value. A write takes
+    at least one step, passes TPy's write rule (`store_problem`: a view
+    never changes its container's shape) and ends where a write replaces
+    storage keeping the object around it (`replacement_reach`: a
+    container's structure or elements, an owned member field) or at a
+    scalar leaf written in place. A return meets the return endpoint rule
+    (`return_endpoint_problem`), never lent with more access than the path
+    lends; the parameter itself is a record result of its own type, or for
+    a container an element or view of its elements or itself."""
+    steps = path_hops(binding, walked)
+    if (steps or result is None) and not (object_prefix(binding.value, payload=True)
+                                          or binding.value.container_view_holder):
         return False
-    if view_leaf(result.type):
-        return view_endpoint(result.type, bare)
-    return ((container or record_type(bare))
-            and bare == result.type and (result.readonly or not end.readonly))
-
-
-def _whole_parameter_endpoint(binding: MIRParameterBinding,
-                              projection: MIRContainerStructure | MIRContainerElements | None,
-                              result: THIRBorrowedRecord | None) -> bool:
-    container = binding.cls in (MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW)
+    projections = tuple(hop.projection for hop in steps)
     if result is None:
-        if projection is None or binding.readonly or not container or not modeled_members(binding.type):
+        if not steps or store_problem(walked) is not None:
             return False
-        return binding.cls is MIRClass.CONTAINER or isinstance(projection, MIRContainerElements)
-    if projection is not None:
+        return replacement_reach(projections) is not None or walked.end.cls is MIRClass.LEAF
+    end = walked.end
+    if return_endpoint_problem(summary_path(projections), lambda: None if end is None else end.type, result.type):
         return False
+    if steps:
+        return view_leaf(result.type) or result.readonly or not end.readonly
     if view_leaf(result.type):
-        # A view result borrows what a lent parameter of its family reaches.
-        return not binding.protocol and binding.value.leaf_borrow and view_compatible(result.type, binding.type)
-    if container:
-        # A container view or element result rooted in a container
-        # parameter's elements is published as the whole parameter, as
-        # is the container itself.
+        return binding.value.leaf_borrow and view_compatible(result.type, binding.type)
+    if binding.cls in (MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW):
         return ((view_compatible(result.type, binding.type) if container_view(result.type)
                  else result.type in binding.type.type_args or result.type == binding.type)
                 and (result.readonly or not binding.readonly))
     source = binding.lent_record
-    # A whole record parameter is a record result of its own type; a
-    # container result of a record parameter names its field.
-    return not (container_view(result.type) or source is None or source.type != result.type
-                or source.readonly and not result.readonly)
+    return not (source is None or source.type != result.type or source.readonly and not result.readonly)
 
 
 def binds_at(records: Mapping[NominalType, 'MIRRecordLayout'], storage: NominalType, slot: NominalType) -> bool:
@@ -911,7 +894,7 @@ def return_origin_problem(origin: MIRReturnOrigin, result: THIRBorrowedRecord,
     (`endpoint_admitted`)."""
     resolved = (resolve_path(origin.parameter, origin.path, parameters, layouts, walks)
                 if isinstance(origin, MIRReturnOrigin) else None)
-    if not isinstance(resolved, MIRResolvedPath):
+    if not isinstance(resolved, MIRWalk):
         return resolved or "invalid return parameter"
     if not endpoint_admitted(parameters[origin.parameter], resolved, result):
         return "unsupported return origin type or access"
@@ -925,7 +908,7 @@ def write_problem(write: MIRParameterWrite, parameters: tuple[MIRParameterBindin
     readonly parameter is never written."""
     resolved = (resolve_path(write.parameter, write.path, parameters, layouts, walks)
                 if isinstance(write, MIRParameterWrite) and write.path else None)
-    if not isinstance(resolved, MIRResolvedPath):
+    if not isinstance(resolved, MIRWalk):
         return resolved or "invalid call write path"
     if not endpoint_admitted(parameters[write.parameter], resolved):
         return "unsupported call write field or access"
@@ -946,7 +929,8 @@ def _stored_member(walked: MIRWalk | None) -> TpyType | None:
 def _end_walk(end: object, path: object, parameters: tuple[MIRParameterBinding, ...], result: TpyType,
               layouts: MIRRecords, walks: MIRPathWalks | None, *, lent_only: bool = False) -> MIRWalk | str | None:
     """The walk of one end of a transfer: under a lent record parameter
-    from the record it lends (`resolve_path`), ending at no projection;
+    from the record it lends, any walk the summary path grammar takes
+    (`_path_walk`) ending at no region;
     under owned aggregate storage -- what an owned result hands
     over, an `Own[...]` parameter's object, unless `lent_only` -- from that
     storage. The walk's refusal when a hop is refused; None when the end
@@ -957,24 +941,24 @@ def _end_walk(end: object, path: object, parameters: tuple[MIRParameterBinding, 
     elif type(end) is int and 0 <= end < len(parameters):
         binding = parameters[end]
         if binding.lent_record is not None:
-            resolved = resolve_path(end, path, parameters, layouts, walks)
-            if not isinstance(resolved, MIRResolvedPath):
-                return resolved
-            return resolved.walk if resolved.projection is None else None
-        storage = binding.value if binding.cls in AGGREGATE_CLASSES and binding.storage and not lent_only else None
+            storage = binding.value
+        else:
+            storage = binding.value if binding.cls in AGGREGATE_CLASSES and binding.storage and not lent_only else None
     else:
         return None
-    parts = _path_parts(path)
-    if storage is None or parts is None or not parts[0] or parts[1] is not None:
+    if storage is None or not path:
         return None
-    return _summary_walk(end, path, storage, parts[0], layouts, walks)
+    walked = _path_walk(end, path, storage, layouts, walks)
+    if isinstance(walked, MIRWalk) and walked.hops and isinstance(walked.hops[-1].projection, REGION_STEPS):
+        return None
+    return walked
 
 
 def crossed_records(summary: 'MIRCallSummary', walks: MIRPathWalks,
                     storage_of: Callable[[int], NominalType | None],
                     skip: Callable[[int, NominalType | None], bool] | None = None) -> Iterator[NominalType]:
     """The records whose fields a call's published paths (`walks`, every
-    path with a field the contract check walked: `_summary_walk`) read: for
+    path with a field the contract check walked: `_path_walk`) read: for
     a lent parameter's first field the record its argument binds
     (`storage_of`; a descendant's layout carries its ancestors' fields),
     else the holder the walk reached it through. The caller's body carries
@@ -1044,7 +1028,7 @@ def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary, 
 def summary_problem(summary: MIRCallSummary, layouts: MIRRecords,
                     walks: MIRPathWalks | None = None) -> str | None:
     """Validate the bounded contract without re-proving its supplying body;
-    its paths walk over `layouts` (`path_walk`), each walk recorded in
+    its paths walk over `layouts` (`_path_walk`), each walk recorded in
     `walks` when given (`crossed_records` reads them). A stub summary must be
     exactly the one its declaration derives, so a hand-built summary cannot
     claim more than the stub declares."""

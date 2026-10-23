@@ -15,6 +15,9 @@ copy_param 7
 copy_both 7
 bump_payload 3
 payload_borrow 3
+payload_return 3
+payload_return_call 3
+payload_sub_return sixteen
 payload_write 5
 written_then_read 2
 copied_then_read 14

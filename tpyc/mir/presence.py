@@ -16,6 +16,7 @@ from .nodes import (
     statement_call, statement_target, MIRSlot, MIRNot, MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIREdge, MIRReturn,
     MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRStorageWrite, MIRStorageWriteMode, MIRIsAlternative,
     MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape, MIRWrap,
+    MIRCall, MIRPresentCall, present_effects,
 )
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, RecordFields, SUM_CLASSES
 from .shapes import MIRContainerStructure, MIRDeref, MIRUnionPayload
@@ -49,6 +50,18 @@ class MIRPresenceIssue:
     message: str
 
 
+def present_call(call: MIRCall, present: 'Facts', slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPresentCall:
+    """`call` under the selections `present` proves before it: an Optional
+    argument whose only possible alternative is 0 is absent, so its effects
+    are the summary's less what it reaches (`present_effects`), and its
+    writes are those effects' places, resolved once (`call_write_places`)."""
+    facts = dict(present)
+    absent = frozenset(i for i, arg in enumerate(call.arguments)
+                       if slots[arg].shape.cls is MIRClass.OPTIONAL and facts.get(MIRPlace(arg)) == frozenset({0}))
+    effects = present_effects(call.summary, absent)
+    return MIRPresentCall(call, effects, call_write_places(call, effects, slots))
+
+
 @dataclass(frozen=True)
 class MIRPresence:
     function: MIRFunction
@@ -59,6 +72,8 @@ class MIRPresence:
     edges: Mapping[MIREdge, Facts]
     engagement: Mapping[MIRPoint, EngagementFacts]
     edge_engagement: Mapping[MIREdge, EngagementFacts]
+    # Every call as presence sees it (`present_call`), at its point.
+    calls: Mapping[MIRPoint, MIRPresentCall] = MappingProxyType({})
 
 
 @dataclass(eq=True)
@@ -226,7 +241,8 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, slots: Mapping[MIRSlotI
         return state
     target = statement_target(stmt)
     call = statement_call(stmt)
-    written = ((target,) if target is not None else ()) + (call_write_places(call, slots) if call is not None else ())
+    written = ((target,) if target is not None else ()) + (
+        present_call(call, state.present, slots).writes if call is not None else ())
 
     def dead(fact_place: MIRPlace) -> bool:
         return bool(fact_place.projections) and any(_reaches(w, fact_place, slots, layouts) for w in written)
@@ -433,10 +449,13 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
     points: dict[MIRPoint, Facts] = {}
     engagement: dict[MIRPoint, EngagementFacts] = {}
     issues: list[MIRPresenceIssue] = []
+    calls: dict[MIRPoint, MIRPresentCall] = {}
     for bid, state in incoming.items():
         for index, stmt in enumerate(blocks[bid].statements):
             point = MIRPoint(bid, index)
             points[point] = state.present
+            if (call := statement_call(stmt)) is not None:
+                calls[point] = present_call(call, state.present, slots)
             engagement[point] = state.engagement
             if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRIteratorRead, MIRIteratorAdvance))
                     and dict(state.present).get(MIRPlace(stmt.value.source)) != frozenset({1})):
@@ -455,5 +474,16 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
             state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts)
         points[MIRPoint(bid, len(blocks[bid].statements))] = state.present
         engagement[MIRPoint(bid, len(blocks[bid].statements))] = state.engagement
+    for block in fn.blocks:
+        if block.id in incoming:
+            continue
+        # A block the fixpoint does not reach: its calls see what the
+        # block's own statements establish from an unknown entry.
+        state = _State()
+        for index, stmt in enumerate(block.statements):
+            if (call := statement_call(stmt)) is not None:
+                calls[MIRPoint(block.id, index)] = present_call(call, state.present, slots)
+            state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts)
     return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues),
-                       MappingProxyType(edge_facts), MappingProxyType(engagement), MappingProxyType(edge_engagement))
+                       MappingProxyType(edge_facts), MappingProxyType(engagement), MappingProxyType(edge_engagement),
+                       MappingProxyType(calls))

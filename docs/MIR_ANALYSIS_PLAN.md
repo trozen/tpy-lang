@@ -4300,11 +4300,11 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   published; `parameter_contract_problem` checks the value's form, so the
   payload is never more mutable than declared.
 - **Origin.** The payload record an Optional parameter lends names the
-  parameter itself outside the body (`dependencies.external_origin`, keyed
+  parameter itself outside the body (`dependencies.origin`, keyed
   like a borrowed record parameter's in `object_keys`), so writes under the
   payload, stored loans (`_transfers`) and alias obligations read it like a
   borrowed record parameter; the object it names is the payload record
-  (`dependencies.origin_shape`), so retention types it as that record. A
+  (the same `origin`), so retention types it as that record. A
   store under any other non-owned root keeps the summary opaque ("summary
   store under an unmodeled holder").
 - **Summary paths** carry no payload step: a path under an Optional
@@ -4320,11 +4320,11 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   a record source, `record_source`). A scalar payload is built into a
   temporary of the full expression. Passing a narrowed Optional or union
   name to a plain parameter is an ordinary scalar or record argument. A
-  `None` argument is ABSENT (`MIRCall.absent`, checked against the empty
-  construct by the validator): the callee's writes, stored loans, return
-  origins and no-alias obligations through that parameter name no caller
-  storage. Every call-effect consumer reads them through the one filtered
-  view, `MIRCall.present_effects`.
+  `None` argument is ABSENT (presence proves its only alternative is 0 at
+  the call, a named `x = None` included): the callee's writes, stored loans,
+  return origins and no-alias obligations through that parameter name no
+  caller storage. Every call-effect consumer reads them through the one
+  `MIRPresentCall` presence records for the call.
 - **Kept refusals.** A ternary Optional argument ("unsupported optional
   argument"); a callee returning its payload as a borrowed record
   ("unsupported metadata: optional_read"); a record-payload temporary at a
@@ -4379,8 +4379,9 @@ Generated C++ is unchanged; only the diagnostic is new. Pinned by
   existing `affects` rule; an overlap is an `argument_alias` conflict at the
   call (`classify_retention` sorts body replacements from call aliases). A
   caller passing two of its own parameters publishes the obligation again.
-  Element writes do not warn: element identity is not tracked, so a write to
-  one element would flag a borrow of another.
+  An `[elements]` step overlaps like any other step: element identity is not
+  tracked, so a write to one element also flags a borrow of another (a
+  constant-index false positive; see "Origins and write reach").
 - **Normal compilation.** `Compiler.report_mir_warnings` runs MIR over the
   user modules' THIR after codegen, analyzing only bodies that call a callee
   with obligations, and adds each `argument_alias` conflict as a warning
@@ -4448,8 +4449,37 @@ still retains what the write replaces
 (`BUGS.md#record-view-member-source-replaced`, `element_view_replaced`).
 
 Still separate, each with its reason: `MIRTupleConstruct`,
-`MIRUnionExtract`, `MIRRecordStorageInit` / `MIRRecordStorageKind`,
-`MIRMemberInitMode` and `MIRCall.absent` (TODO.md "[MIR] FIRST", step (1)).
+`MIRUnionExtract`, `MIRRecordStorageInit` / `MIRRecordStorageKind` and
+`MIRMemberInitMode` (TODO.md "[MIR] FIRST", step (1)).
+
+#### Origins and write reach
+
+A place is a root plus a walk `shapes.step` takes (fields, `[elements]`,
+`[structure]`, tuple members, a sum's payload); each question below is
+answered once:
+
+| Question | One answer |
+|---|---|
+| a summary path (write, return, transfer end, obligation) | any walk from the value the parameter binds (`call_contract.resolve_path`); a trailing region is terminal, its container checked by type (`shapes.walk`'s `region_end`) |
+| may a published write end there | `endpoint_admitted`: the parameter lends, `store_problem` holds (a view never changes its container's shape), and the end is a replacement (`replacement_reach`) or a scalar leaf |
+| may a published return end there | `return_endpoint_problem`, read by the summary and by each caller (`dependencies.call_return_problem`): no region, never at or under an Optional record field's payload, a view of a leaf or a place of exactly the result's type |
+| does a write at this end replace storage | `shapes.replacement_reach` (storage, retention, line facts, the write endpoint) |
+| what a call writes | `MIRPresentCall` per call point (`presence.present_call`): effects less what an argument proven absent reaches, and their places resolved once |
+| what a parameter lends | `dependencies.origin`: the place (a Span's elements region; an Optional record parameter's payload named by the parameter) and the shape its paths step from |
+
+So `bump_all(ps: list[P])` writing `p.x` in `for p in ps` publishes
+`writes={param0[elements].x}` and its callers lower. Kept apart, with
+their reasons: the parameter itself as a return spelling for an element
+or view of a container (the caller projects it to the elements region);
+the caller's "container result rooted in an elements region" (it depends
+on the argument); the summary's value arms (they check the source, not
+where it lands); retention's `_origin` (which referents count as one
+origin) and `seeded_loan` (a member storing a loan). For the
+`argument_alias` warning an `[elements]` step is one step like any
+other: element identity is not tracked, so `put(ps, ps[0].s)` with `put`
+replacing `ps[0]` warns, as `put(ps, ps[1].s)` does (a constant-index
+false positive of the kind field writes already have). Next: one overlap
+function (TODO.md "[MIR] FIRST").
 
 ## Scope matrix and remaining increments
 

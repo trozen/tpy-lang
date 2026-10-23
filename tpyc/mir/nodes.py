@@ -178,32 +178,34 @@ class MIRCall:
     # analyzed call and its argument for each parameter. No MIR fact.
     site: SourceLocation | None = field(default=None, compare=False)
     bound_receiver: bool = field(default=False, compare=False)
-    # The parameters whose argument is an empty Optional built for the call
-    # (`MIRWrap(0)`): the callee reaches nothing through them,
-    # so their summarized effects name no caller storage.
-    absent: frozenset[int] = frozenset()
 
-    @property
-    def present_effects(self) -> MIRCallSummary:
-        """The summary as the caller sees it: an absent argument reaches no
-        caller storage, so no write, stored loan, return origin or no-alias
-        obligation through it names any. Every consumer of a built call's
-        effects (dependencies, retention, `coverage.call_write_places`)
-        reads this, never `summary`'s effect sets. Lowering's admission
-        check (`lower._Lowering`) runs before the call is built and reads
-        the raw summary, so a writing callee given a literal None still
-        counts as writing for its evaluation-order rules (TODO.md)."""
-        absent = self.absent
-        if not absent:
-            return self.summary
-        summary = self.summary
-        return replace(
-            summary,
-            writes=frozenset(w for w in summary.writes if w.parameter not in absent),
-            returns=frozenset(o for o in summary.returns if o.parameter not in absent),
-            transfers=frozenset(t for t in summary.transfers if t.holder not in absent and t.source not in absent),
-            obligations=frozenset(o for o in summary.obligations
-                                  if o.parameter not in absent and o.written.parameter not in absent))
+
+@dataclass(frozen=True)
+class MIRPresentCall:
+    """A call as presence sees it at its point (`presence.present_call`):
+    its effects less what an argument proven absent reaches
+    (`present_effects`), and the caller's places those effects write
+    (`coverage.call_write_places`) -- the one resolved write list every
+    reader of a call's effects takes."""
+    call: 'MIRCall'
+    effects: MIRCallSummary
+    writes: tuple['MIRPlace', ...]
+
+
+def present_effects(summary: MIRCallSummary, absent: frozenset[int]) -> MIRCallSummary:
+    """A call's summary as the caller sees it: an argument presence proves
+    an empty Optional (`absent`, `presence.present_call`) reaches no caller
+    storage, so no write, stored loan, return origin or no-alias obligation
+    through it names any."""
+    if not absent:
+        return summary
+    return replace(
+        summary,
+        writes=frozenset(w for w in summary.writes if w.parameter not in absent),
+        returns=frozenset(o for o in summary.returns if o.parameter not in absent),
+        transfers=frozenset(t for t in summary.transfers if t.holder not in absent and t.source not in absent),
+        obligations=frozenset(o for o in summary.obligations
+                              if o.parameter not in absent and o.written.parameter not in absent))
 
 
 def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],

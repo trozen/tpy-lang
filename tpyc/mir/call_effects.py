@@ -4,20 +4,21 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .coverage import call_write_places
 from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
 from .dump import _place
 from ..typesys import TpyType
-from .nodes import MIRCall, MIRFunction, MIRNotCovered, MIRPoint, MIRSlot, MIRSlotId, statement_call
+from .nodes import MIRFunction, MIRNotCovered, MIRPoint, MIRPresentCall, MIRSlot, MIRSlotId
 from .value import MIRRecordLayout, MIRValidationError
-from .validate import validate_function
+from .validate import _validated_function
 
 
-def resolve_call_writes(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+def resolve_call_writes(call: MIRPresentCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
                         records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent] | None:
-    """None means an effect has no proven origin, not that the call is harmless."""
+    """The referents a call's written places (`MIRPresentCall.writes`)
+    reach. None means an effect has no proven origin, not that the call is
+    harmless."""
     result: set[MIRReferent] = set()
-    for place in call_write_places(call, slots):
+    for place in call.writes:
         origins = resolve_referents(place, state, slots, records)
         if not origins:
             return None
@@ -33,7 +34,7 @@ class MIRCallEffects:
 
 def analyze_call_effects(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
                          ) -> MIRCallEffects | MIRNotCovered:
-    validate_function(fn)
+    present = _validated_function(fn).presence.calls
     if isinstance(dependencies, MIRNotCovered):
         return MIRNotCovered(fn.id, "call effects", dependencies.reason)
     if dependencies.function is not fn:
@@ -43,8 +44,8 @@ def analyze_call_effects(fn: MIRFunction, dependencies: MIRDependencies | MIRNot
     writes: dict[MIRPoint, frozenset[MIRReferent]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            call = statement_call(stmt)
             point = MIRPoint(block.id, index)
+            call = present.get(point)
             if call is None or point not in dependencies.referents:
                 continue
             effects = resolve_call_writes(call, dependencies.referents[point], slots, records)

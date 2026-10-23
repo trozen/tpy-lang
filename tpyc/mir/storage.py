@@ -4,17 +4,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ..thir.scalar_leaves import MIRClass, value_class
-from .coverage import call_write_places
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
     MIRAssign, MIRConstruct, MIRFunction, MIRMove, MIRNotCovered, MIRSlot, MIRSlotId, MIRStorageWrite,
-    MIRTupleConstruct, MIRPlace, statement_call,
+    MIRTupleConstruct, MIRPlace,
 )
-from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex
-from .value import loan_field, MIRField
-from .validate import successors, validate_function
+from .shapes import MIRDeref, MIRTupleIndex, replacement_reach
+from .validate import _validated_function, successors
 
 
 @dataclass(frozen=True)
@@ -32,7 +29,7 @@ class MIRStorageEvents:
 
 
 def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
-    validate_function(fn)
+    present = _validated_function(fn).presence.calls
     blocks = {block.id: block for block in fn.blocks}
     reached = set()
     pending = [fn.entry]
@@ -48,9 +45,8 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
     moves: dict[MIRPoint, MIRPlace] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            if (call := statement_call(stmt)) is not None and block.id in reached:
-                replaced = tuple(place for place in call_write_places(call, slots)
-                                 if storage_destination(place, slots))
+            if (call := present.get(MIRPoint(block.id, index))) is not None and block.id in reached:
+                replaced = tuple(place for place in call.writes if storage_destination(place, slots))
                 if replaced:
                     calls[MIRPoint(block.id, index)] = replaced
             if not isinstance(stmt, MIRAssign):
@@ -71,27 +67,17 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
                             MappingProxyType(moves))
 
 
-def owned_field(field: MIRField) -> bool:
-    """A field whose storage its record owns and a write replaces in place:
-    an owned leaf's buffer, a container, an inline record member or an
-    Optional one -- every member the record stores inline (`loan_field`)
-    but a scalar leaf, which holds no storage. A view member's write
-    rebinds the loan the record holds and replaces no storage."""
-    return not loan_field(field.type) and value_class(field.type) is not MIRClass.LEAF
-
-
 def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """Whether a write to `place` replaces storage a borrow can point into:
     an owned-storage root, the storage a borrowed holder points at (a trailing
-    dereference), an owned-leaf, container or record member field, or a
-    container's shape or elements region. The write's event follows its destination, whatever
-    produces the value; a scalar field is overwritten, never a storage a
-    borrow can point into."""
+    dereference), or a replacement that keeps the object around it
+    (`replacement_reach`: an owned-leaf, container or record member field,
+    a container's shape or elements region). The write's event follows its
+    destination, whatever produces the value; a scalar field is
+    overwritten, never a storage a borrow can point into."""
     if not place.projections:
         return slots[place.root].shape.is_storage
-    last = place.projections[-1]
-    return (isinstance(last, (MIRDeref, MIRContainerStructure, MIRContainerElements))
-            or isinstance(last, MIRField) and owned_field(last))
+    return isinstance(place.projections[-1], MIRDeref) or replacement_reach(place.projections) is not None
 
 
 def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:

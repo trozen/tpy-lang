@@ -71,6 +71,10 @@ def _write_step(step: object) -> str:
             return "[structure]"
         case MIRContainerElements():
             return "[elements]"
+        case MIRTupleIndex(index=index):
+            return f"[{index}]"
+        case MIRUnionPayload(alternative=alternative):
+            return f".alternative[{alternative}]"
     return f".{step.name}"
 
 
@@ -130,14 +134,8 @@ def _place(place: MIRPlace) -> str:
                 text = f"(*{text})"
             case MIRField(id=field):
                 text += f".{field.owner.qualified_name()}::{field.name}"
-            case MIRTupleIndex(index=index):
-                text += f"[{index}]"
-            case MIRUnionPayload(alternative=alternative):
-                text += f".alternative[{alternative}]"
-            case MIRContainerStructure():
-                text += "[structure]"
-            case MIRContainerElements():
-                text += "[elements]"
+            case MIRTupleIndex() | MIRUnionPayload() | MIRContainerStructure() | MIRContainerElements():
+                text += _write_step(projection)
             case _:
                 raise ValueError("unknown place projection")
     return text

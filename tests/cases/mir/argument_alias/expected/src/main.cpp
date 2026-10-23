@@ -275,6 +275,57 @@ int32_t caller(std::vector<Cell>& xs) {
     return ::tpyapp::main::pick(true, xs, xs);
 }
 
+// def put(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+//     ps[0] = Named("new")
+//     return len(value)
+int32_t put(std::vector<Named>& ps, std::string_view value) {
+    ::tpy::__setitem__(ps, 0, Named("new"));
+    return ::tpy::__len__(value);
+}
+
+// def put_int(xs: list[int], value: int) -> int:  # tpyc: mir(conflict /alias_obligation/)
+//     xs[0] = 5
+//     return value
+::tpy::BigInt put_int(std::vector<::tpy::BigInt>& xs, const ::tpy::BigInt& value) {
+    ::tpy::__setitem__(xs, 0, ::tpy::BigInt(5));
+    return value;
+}
+
+// def same_element(ps: list[Named]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+//     return put(ps, ps[0].s)  # tpyc: warning(/argument 'ps\[0\]\.s' points into 'ps', which 'put' modifies through parameter 'ps' while it still uses 'value'/)
+int32_t same_element(std::vector<Named>& ps) {
+    return ::tpyapp::main::put(ps, ::tpy::__getitem__(ps, 0).s);
+}
+
+// def same_int_element(xs: list[int]) -> int:  # tpyc: mir(conflict /argument_alias/)
+//     return put_int(xs, xs[0])  # tpyc: warning(/argument 'xs\[0\]' points into 'xs', which 'put_int' modifies through parameter 'xs' while it still uses 'value'/)
+::tpy::BigInt same_int_element(std::vector<::tpy::BigInt>& xs) {
+    return ::tpyapp::main::put_int(xs, ::tpy::__getitem__(xs, 0));
+}
+
+// # a callee whose summary publishes a field write inside an element (ps[elements].s)
+// def touch(ps: list[Named], value: str) -> int32:  # tpyc: mir(conflict /alias_obligation/)
+//     for p in ps:
+//         p.s = "x"
+//     return len(value)
+int32_t touch(std::vector<Named>& ps, std::string_view value) {
+    auto& __obj_0 = ps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& p = *__beg_0;
+        p.s = "x";
+    }
+    return ::tpy::__len__(value);
+}
+
+// # the borrowed field of an element is what the callee's element field write replaces: warns
+// def element_field(ps: list[Named]) -> int32:  # tpyc: mir(conflict /argument_alias/)
+//     return touch(ps, ps[0].s)  # tpyc: warning(/argument 'ps\[0\]\.s' is what 'touch' modifies through parameter 'ps' while it still uses 'value'/)
+int32_t element_field(std::vector<Named>& ps) {
+    return ::tpyapp::main::touch(ps, ::tpy::__getitem__(ps, 0).s);
+}
+
 // def main() -> None:
 //     print("other_int", other_int([1], [2]))
 //     print("local_copy", local_copy([3]))
@@ -301,6 +352,8 @@ int32_t caller(std::vector<Cell>& xs) {
 //     print("container_select grown:", len(cells), cells[1].x)
 //     others[0].x = 9
 //     print("container_select pick b again:", pick(False, cells, others), len(cells))
+//     named = [Named("a"), Named("b")]
+//     print("touch", touch(named, "abc"), named[0].s, named[1].s)
 void main() {
     std::vector<::tpy::BigInt> __tmp_1 = {1};
     std::vector<::tpy::BigInt> __tmp_2 = {2};
@@ -344,6 +397,8 @@ void main() {
     std::cout << "container_select grown:" << " " << ::tpy::__len__(cells) << " " << ::tpy::__getitem__(cells, 1).x << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(others, 0).x = 9;
     std::cout << "container_select pick b again:" << " " << ::tpyapp::main::pick(false, cells, others) << " " << ::tpy::__len__(cells) << "\n" << ::tpy::check_signals;
+    std::vector<Named> named = {Named("a"), Named("b")};
+    std::cout << "touch" << " " << ::tpyapp::main::touch(named, "abc") << " " << ::tpy::__getitem__(named, 0).s << " " << ::tpy::__getitem__(named, 1).s << "\n" << ::tpy::check_signals;
 }
 
 // from helpers import grow_then_read as gtr

@@ -54,22 +54,6 @@ def handed_storage(slot: MIRSlot, bindings: 'Mapping[MIRSlotId, MIRParameterBind
             and slot.storage_duration is MIRStorageDuration.BODY)
 
 
-def _empty_optionals(fn: MIRFunction) -> frozenset[MIRSlotId]:
-    """The Optional temporaries every write leaves empty: what a call's
-    `absent` parameter may name."""
-    written: dict[MIRSlotId, bool] = {}
-    for block in fn.blocks:
-        for stmt in block.statements:
-            target = statement_target(stmt)
-            if target is not None:
-                empty = (isinstance(stmt, MIRAssign) and not target.projections
-                         and stmt.value == MIRWrap(0))
-                written[target.root] = written.get(target.root, True) and empty
-    return frozenset(s.id for s in fn.slots
-                     if s.kind is MIRSlotKind.TEMPORARY and s.shape.cls is MIRClass.OPTIONAL
-                     and written.get(s.id, False))
-
-
 def elements_place(place: MIRPlace) -> bool:
     return bool(place.projections) and isinstance(place.projections[-1], MIRContainerElements)
 
@@ -818,8 +802,6 @@ def _validate_structure(fn: MIRFunction) -> None:
             _require(len(source.projections) == 1 and isinstance(source.projections[0], MIRUnionPayload)
                      and place_type(source) == slot.type, "invalid payload alias source")
 
-    empty_optionals = _empty_optionals(fn)
-
     def validate_call(call: MIRCall) -> None:
         _require(isinstance(call, MIRCall) and call.summary in call_summaries,
                  "call summary does not belong to this body")
@@ -830,9 +812,6 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(type(call.may_raise) is bool and call.may_raise is (not summary.normal_return_only),
                  "call exit fact mismatch")
         _require(len(call.arguments) == len(summary.parameters), "call arity mismatch")
-        _require(isinstance(call.absent, frozenset) and all(
-            type(i) is int and 0 <= i < len(call.arguments) and call.arguments[i] in empty_optionals
-            for i in call.absent), "call absent argument is not an empty Optional")
         def storage_of(parameter: int) -> NominalType | None:
             argument = slots.get(call.arguments[parameter])
             return argument.type if argument is not None and record_type(argument.type) else None

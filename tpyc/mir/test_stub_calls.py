@@ -650,7 +650,7 @@ def test_user_summaries_publish_container_writes(methods) -> None:
                 bound(types[6], ParamPassing.CONST_REF, True))
     fn = replace(fn, params=tuple(replace(p, passing=b.passing) for p, b in zip(fn.params, bindings)))
     structure, elements = MIRContainerStructure(), MIRContainerElements()
-    for path in ((0, (structure,)), (0, (elements,)), (2, (structure,)), (3, (elements,)),
+    for path in ((0, (structure,)), (0, (elements,)), (3, (elements,)),
                  (5, (items,)), (5, (items, structure)), (5, (items, elements))):
         write = MIRParameterWrite(*path)
         assert summary_problem(_user_summary(fn, bindings, writes={write}), no_layouts()) is None, path
@@ -659,9 +659,11 @@ def test_user_summaries_publish_container_writes(methods) -> None:
         ((1, (structure,)), "unsupported call write field or access"),
         ((4, (elements,)), "unsupported call write field or access"),
         ((3, (structure,)), "unsupported call write field or access"),
-        # A projection ends the path.
-        ((5, (structure, items)), "invalid call write path"),
-        ((0, (elements, elements)), "invalid call write path"),
+        # Storage handed over at OWN is no caller storage a write could reach.
+        ((2, (structure,)), "unsupported call write field or access"),
+        # A region is a container's: none of a record, none of a scalar element.
+        ((5, (structure, items)), "element projection needs container storage"),
+        ((0, (elements, elements)), "element projection needs container storage"),
         ((5, (items, items, structure)), "field needs record storage"),
         ((0, ()), "invalid call write path"),
     ):
