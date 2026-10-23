@@ -7,8 +7,8 @@ from __future__ import annotations
 
 import pytest
 
-from ..diagnostics import SemanticError
-from ..thir.testutil import _compile
+from ..diagnostics import DiagnosticLevel, SemanticError
+from ..thir.testutil import _compile, _entry
 
 
 _PRELUDE = """\
@@ -90,21 +90,108 @@ def test_a_field_of_value_parts_is_accepted(field_type: str) -> None:
     assert _field_error(field_type) is None
 
 
-@pytest.mark.parametrize(("field_type", "refused"), [
-    ("T", False),
-    ("tuple[T, int32]", False),
-    ("tuple[T | None, int32]", False),
-    ("T | None", True),
+@pytest.mark.parametrize(("field_type", "message"), [
+    ("T", "has non-value type 'T'"),
+    ("T | None", "has non-value type 'T | None'"),
+    ("tuple[T, int32]", "has type 'tuple[T, int32]', which holds a reference type"),
+    ("tuple[T | None, int32]",
+     "has type 'tuple[T | None, int32]', which holds a reference type"),
 ])
-def test_a_field_naming_a_type_parameter_keeps_its_answer(
-        field_type: str, refused: bool) -> None:
-    # BUGS.md#generic-valuetype-field-param-unchecked
-    error = _field_error(field_type, "[T]")
-    if refused:
-        assert error == (
-            f"ValueType class 'V': field 't' has non-value type '{field_type}'")
-    else:
-        assert error is None
+def test_an_unbounded_type_parameter_field_is_refused(
+        field_type: str, message: str) -> None:
+    assert _field_error(field_type, "[T]") == (
+        f"ValueType class 'V': field 't' {message}")
+
+
+@pytest.mark.parametrize("field_type", [
+    "Ptr[T]",
+    "Span[T]",
+    "Callable[[T], int32]",
+])
+def test_an_unbounded_type_parameter_behind_a_view_is_accepted(
+        field_type: str) -> None:
+    assert _field_error(field_type, "[T]") is None
+
+
+@pytest.mark.parametrize("field_type", [
+    "T",
+    "T | None",
+    "tuple[T, int32]",
+    "tuple[T | None, int32]",
+])
+def test_a_value_type_bounded_type_parameter_field_is_accepted(
+        field_type: str) -> None:
+    assert _field_error(field_type, "[T: ValueType]") is None
+
+
+@pytest.mark.parametrize("field_type", ["tuple[T, A]", "tuple[T, A] | None"])
+def test_a_bounded_type_parameter_beside_a_reference_part_is_refused(
+        field_type: str) -> None:
+    assert _field_error(field_type, "[T: ValueType]") == (
+        f"ValueType class 'V': field 't' has type '{field_type}', "
+        "which holds a reference type")
+
+
+def test_a_bounded_class_body_optional_annotation_is_accepted() -> None:
+    assert _error("""\
+class V[T: ValueType](ValueType):
+    x: T | None
+    def __init__(self, x: T | None) -> None:
+        self.x = x
+""") is None
+
+
+_BOUNDED_V = """\
+class V[T: ValueType](ValueType):
+    def __init__(self, x: T) -> None:
+        self.x = x
+"""
+
+
+@pytest.mark.parametrize("construct", ["V[int32](1)", "V(2)", "V(P(3))"])
+def test_a_bounded_record_takes_a_value_argument(construct: str) -> None:
+    # The field store is a value copy the bound vouches for: no copy warning.
+    _compiler, modules = _compile(
+        _PRELUDE + _BOUNDED_V
+        + f"def use() -> int32:\n    v = {construct}\n    return 1\n")
+    assert [d.message for d in _entry(modules).analyzer.diagnostics
+            if d.level is DiagnosticLevel.WARNING] == []
+
+
+@pytest.mark.parametrize("construct", ["V[A](A(1))", "V(A(1))"])
+def test_a_bounded_record_refuses_a_reference_argument(construct: str) -> None:
+    error = _error(_BOUNDED_V + f"def use() -> int32:\n    v = {construct}\n"
+                   "    return 1\n")
+    assert error is not None and (
+        "does not satisfy bound 'ValueType' for type parameter 'T' of 'V'"
+        in error), error
+
+
+def test_a_bounded_record_holding_a_bounded_generic_record_is_accepted() -> None:
+    # Inner[T] conforms because Outer's T carries the ValueType bound.
+    assert _error("""\
+class Inner[T: ValueType](ValueType):
+    def __init__(self, x: T) -> None:
+        self.x = x
+
+class Outer[T: ValueType](ValueType):
+    def __init__(self, i: Inner[T]) -> None:
+        self.i = i
+
+def use() -> int32:
+    o = Outer(Inner(1))
+    w = o
+    o = Outer(Inner(2))
+    return w.i.x
+""") is None
+
+
+def test_a_generic_record_holding_no_type_parameter_is_accepted() -> None:
+    assert _error("""\
+class Cell[T](ValueType):
+    def __init__(self, n: int32) -> None:
+        self.n = n
+""") is None
 
 
 _BOUND_USES = {

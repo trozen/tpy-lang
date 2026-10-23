@@ -70,7 +70,7 @@ class Pt(ValueType):
         self.y = y
 
 
-class PV[T](ValueType):
+class PV[T: ValueType](ValueType):
     a: T
 
     def __init__(self, a: Own[T]) -> None:

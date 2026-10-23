@@ -1,0 +1,1 @@
+main.py:14: error: ValueType class 'V': field 'x' has non-value type 'T'

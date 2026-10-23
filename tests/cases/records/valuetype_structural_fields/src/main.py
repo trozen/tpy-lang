@@ -1,5 +1,6 @@
-# A ValueType record may hold an Optional of an all-value tuple; the copy
-# is unobservable (union field: BUGS.md#scalar-tuple-union-field-unlowered).
+# A ValueType record may hold an Optional of an all-value tuple, or of a
+# ValueType-bounded type parameter; the copy is unobservable (union field:
+# BUGS.md#scalar-tuple-union-field-unlowered).
 from tpy import int32, ValueType
 
 
@@ -40,9 +41,46 @@ class Keeper:
         show("method w", w)
 
 
+class Slot[T: ValueType](ValueType):
+    x: T | None  # tpyc: ok
+
+    def __init__(self, x: T | None) -> None:
+        self.x = x
+
+
+class P(ValueType):
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def __str__(self) -> str:
+        return "P(" + str(self.n) + ")"
+
+
+def show_slot[T: ValueType](tag: str, s: Slot[T]) -> None:
+    if s.x is None:
+        print(tag, "none")
+    else:
+        print(tag, s.x)
+
+
+# bounded type parameter: the copy keeps the old value at either instantiation
+def bounded() -> None:
+    v = Slot(1)
+    w = v
+    v = Slot[int32](None)
+    show_slot("bounded int v", v)
+    show_slot("bounded int w", w)
+    p = Slot(P(2))
+    q = p
+    p = Slot(P(3))
+    show_slot("bounded rec p", p)
+    show_slot("bounded rec q", q)
+
+
 def main() -> None:
     free_fn()
     Keeper().run()
+    bounded()
 
 
 main()

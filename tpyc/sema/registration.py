@@ -28,7 +28,6 @@ def _adopt_skeleton(skeleton, full):
 
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
-    type_param_names,
     ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
     mark_overload_group, name_overload_variants, overload_facts_stub,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
@@ -3529,18 +3528,25 @@ class TypeRegistrar:
                     f"ValueType class '{record.name}': parent '{p}' is not a value type",
                     record.loc
                 )
-        for fld in record_info.fields:
-            if not self._is_field_value_type(fld.type):
-                # A type whose own shape is a value (a tuple, union, Optional
-                # or recursive alias) is refused for a part it holds.
-                what = (f"has type '{fld.type}', which holds a reference type"
-                        if fld.type.is_value_type()
-                        else f"has non-value type '{fld.type}'")
-                raise SemanticError(
-                    f"ValueType class '{record.name}': field '{fld.name}' "
-                    + what,
-                    fld.loc
-                )
+        # A type parameter in a field answers through the record's bound.
+        saved_bounds = self.ctx.record_ctx.type_param_bounds
+        self.ctx.record_ctx.type_param_bounds = record.type_param_bounds or None
+        try:
+            for fld in record_info.fields:
+                if not self._is_field_value_type(fld.type):
+                    # A type whose own shape is a value (a tuple, union,
+                    # Optional or recursive alias) is refused for a part it
+                    # holds.
+                    what = (f"has type '{fld.type}', which holds a reference type"
+                            if fld.type.is_value_type()
+                            else f"has non-value type '{fld.type}'")
+                    raise SemanticError(
+                        f"ValueType class '{record.name}': field '{fld.name}' "
+                        + what,
+                        fld.loc
+                    )
+        finally:
+            self.ctx.record_ctx.type_param_bounds = saved_bounds
         # Value types are immutable, so fields can only be set in __init__;
         # an explicit one is required (no synthesized aggregate ctor) to keep
         # construction CPython-portable. @native value types are constructed
@@ -3557,11 +3563,6 @@ class TypeRegistrar:
         """Whether a field type satisfies the ValueType constraint: the bound
         `T: ValueType` answers, so a tuple, union or Optional counts only
         when every part does."""
-        if type_param_names(typ):
-            # Taken on trust for now: the C++ is_value_type specialization
-            # is unconditional, so an instantiation at a reference type is
-            # not caught (BUGS.md#generic-valuetype-field-param-unchecked).
-            return typ.is_value_type() or isinstance(typ, TypeParamRef)
         return self.protocols.type_conforms_to_protocol(
             typ, VALUE_TYPE_PROTOCOL)
 

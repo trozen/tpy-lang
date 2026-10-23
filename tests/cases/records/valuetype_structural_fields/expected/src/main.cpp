@@ -34,12 +34,39 @@ void free_fn() {
     ::tpyapp::main::show("free w", w);
 }
 
+// # bounded type parameter: the copy keeps the old value at either instantiation
+// def bounded() -> None:
+//     v = Slot(1)
+//     w = v
+//     v = Slot[int32](None)
+//     show_slot("bounded int v", v)
+//     show_slot("bounded int w", w)
+//     p = Slot(P(2))
+//     q = p
+//     p = Slot(P(3))
+//     show_slot("bounded rec p", p)
+//     show_slot("bounded rec q", q)
+void bounded() {
+    Slot<int32_t> v = Slot<int32_t>(1);
+    Slot<int32_t> w = v;
+    v = Slot<int32_t>(std::nullopt);
+    ::tpyapp::main::show_slot<int32_t>("bounded int v", v);
+    ::tpyapp::main::show_slot<int32_t>("bounded int w", w);
+    Slot<P> p = Slot<P>(P(2));
+    Slot<P> q = p;
+    p = Slot<P>(P(3));
+    ::tpyapp::main::show_slot<P>("bounded rec p", p);
+    ::tpyapp::main::show_slot<P>("bounded rec q", q);
+}
+
 // def main() -> None:
 //     free_fn()
 //     Keeper().run()
+//     bounded()
 void main() {
     ::tpyapp::main::free_fn();
     Keeper().run();
+    ::tpyapp::main::bounded();
 }
 
 // main()

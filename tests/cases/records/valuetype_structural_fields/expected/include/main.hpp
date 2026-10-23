@@ -9,6 +9,8 @@ namespace tpyapp::main {
 
 struct OptPair;
 struct Keeper;
+template<::tpy::ValueType T> struct Slot;
+struct P;
 
 extern OptPair mv;
 extern OptPair mw;
@@ -18,6 +20,11 @@ inline constexpr std::string_view __name__ = "__main__";
 void show(std::string_view tag, OptPair v);
 // def free_fn() -> None:
 void free_fn();
+// def show_slot[T: ValueType](tag: str, s: Slot[T]) -> None:
+template<::tpy::ValueType T>
+void show_slot(std::string_view tag, Slot<T> s);
+// def bounded() -> None:
+void bounded();
 // def main() -> None:
 void main();
 
@@ -61,6 +68,55 @@ inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
     return os;
 }
 
+// class Slot[T: ValueType](ValueType):
+template<::tpy::ValueType T>
+struct Slot {
+    // x: T | None  # tpyc: ok
+    std::optional<T> x;
+
+    // def __init__(self, x: T | None) -> None:
+    Slot() = default;
+    explicit Slot(std::optional<T> x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Slot";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Slot<T>& obj) {
+    ::tpy::print_object_default(os, "Slot", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<typename T> struct tpy::is_value_type<::tpyapp::main::Slot<T>> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+// class P(ValueType):
+struct P {
+    // self.n = n
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    P() = default;
+    explicit P(int32_t n);
+
+    // def __str__(self) -> str:
+    std::string __str__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.P";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const P& obj) {
+    os << obj.__str__();
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::P> : std::true_type {};
+
+namespace tpyapp::main {
+
+
 
 // def __init__(self, t: tuple[int32, str] | None) -> None:
 //     self.t = t
@@ -82,5 +138,35 @@ inline void Keeper::run() {
     ::tpyapp::main::show("method v", this->v);
     ::tpyapp::main::show("method w", w);
 }
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline P::P(int32_t n) : n(n) {}
+
+// def __str__(self) -> str:
+//     return "P(" + str(self.n) + ")"
+inline std::string P::__str__() const {
+    return (::tpy::str_concat((::tpy::str_concat("P(", ::tpy::fixed_to_str<int32_t>(this->n))), ")"));
+}
+
+// def __init__(self, x: T | None) -> None:
+//     self.x = x
+template<::tpy::ValueType T>
+inline Slot<T>::Slot(std::optional<T> x) : x(::tpy::to_opt_storage<std::optional<T>>(x)) {}
+
+// def show_slot[T: ValueType](tag: str, s: Slot[T]) -> None:
+//     if s.x is None:
+//         print(tag, "none")
+//     else:
+//         print(tag, s.x)
+template<::tpy::ValueType T>
+void show_slot(std::string_view tag, Slot<T> s) {
+    if ((!s.x.has_value())) {
+        std::cout << tag << " " << "none" << "\n" << ::tpy::check_signals;
+    } else {
+        std::cout << tag << " " << ::tpy::print_optional_val(s.x) << "\n" << ::tpy::check_signals;
+    }
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

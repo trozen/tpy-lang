@@ -2,5 +2,9 @@ free v none
 free w 1 a
 method v 6 d
 method w 4 c
+bounded int v none
+bounded int w 1
+bounded rec p P(3)
+bounded rec q P(2)
 module v none
 module w 8 f

@@ -16,7 +16,7 @@ struct H;
 struct Ctx;
 struct G;
 struct Pt;
-template<typename T> struct PV;
+template<::tpy::ValueType T> struct PV;
 struct Named;
 struct N;
 struct Keeper;
@@ -356,15 +356,15 @@ template<> struct tpy::is_value_type<::tpyapp::main::Pt> : std::true_type {};
 namespace tpyapp::main {
 
 
-// class PV[T](ValueType):
-template<typename T>
+// class PV[T: ValueType](ValueType):
+template<::tpy::ValueType T>
 struct PV {
     // a: T
     T a;
 
     // def __init__(self, a: Own[T]) -> None:
     PV() = default;
-    explicit PV(::tpy::own_param_t<T> a);
+    explicit PV(T a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.PV";
 };
 
@@ -2416,8 +2416,8 @@ inline void Setter::set_value(int32_t v) {
 
 // def __init__(self, a: Own[T]) -> None:
 //     self.a = a
-template<typename T>
-inline PV<T>::PV(::tpy::own_param_t<T> a) : a(std::move(a)) {}
+template<::tpy::ValueType T>
+inline PV<T>::PV(T a) : a(std::move(a)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main
