@@ -896,10 +896,12 @@ inline Dest to_pointer_form(Src&& s) {
 
 }  // namespace detail
 
+// The tuple helpers below brace-initialize: an element conversion may run a
+// user __copy__, and only a braced list sequences them left to right.
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_storage_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_storage_elem<std::tuple_element_t<I, ToTuple>>(
-        std::get<I>(std::forward<FromTuple>(t)))...);
+    return ToTuple{detail::to_storage_elem<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(std::forward<FromTuple>(t)))...};
 }
 
 // Lower a borrow-form tuple (T*, ..., U) to its storage form -- per-element
@@ -917,8 +919,8 @@ inline ToTuple tuple_to_storage(FromTuple&& t) {
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_storage_move_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_storage_elem_move<std::tuple_element_t<I, ToTuple>>(
-        std::get<I>(std::forward<FromTuple>(t)))...);
+    return ToTuple{detail::to_storage_elem_move<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(std::forward<FromTuple>(t)))...};
 }
 
 // Move-variant of tuple_to_storage: each pointer-form element's pointee is
@@ -936,8 +938,8 @@ inline ToTuple tuple_to_storage_move(FromTuple&& t) {
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_to_pointer_impl(FromTuple&& t, std::index_sequence<I...>) {
-    return ToTuple(detail::to_pointer_form<std::tuple_element_t<I, ToTuple>>(
-        std::get<I>(std::forward<FromTuple>(t)))...);
+    return ToTuple{detail::to_pointer_form<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(std::forward<FromTuple>(t)))...};
 }
 
 // Lower a storage-form tuple (std::optional<T>, ..., U) to pointer-form
@@ -1056,8 +1058,8 @@ inline Dest borrow_value_elem(Src& s) {
 
 template<typename ToTuple, typename FromTuple, std::size_t... I>
 inline ToTuple tuple_value_to_borrow_impl(FromTuple& t, std::index_sequence<I...>) {
-    return ToTuple(detail::borrow_value_elem<std::tuple_element_t<I, ToTuple>>(
-        std::get<I>(t))...);
+    return ToTuple{detail::borrow_value_elem<std::tuple_element_t<I, ToTuple>>(
+        std::get<I>(t))...};
 }
 
 // Convert a value-form source tuple (rvalue or lvalue) to a borrow-form
