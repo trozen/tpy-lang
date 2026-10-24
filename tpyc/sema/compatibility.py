@@ -391,7 +391,8 @@ class TupleSink(Enum):
 _BORROW_FORM_SINKS = frozenset({TupleSink.RETURN, TupleSink.ARG,
                                 TupleSink.YIELD, TupleSink.LOCAL})
 # The sinks whose codegen MOVES a last-use owned member into the slot; the
-# others lift the literal through `tuple_to_storage`, which copies even then.
+# others build the literal into storage element by element, which copies
+# even then.
 # CONTAINER stays out although the subscript STORE builds its literal by
 # value now: the sink also names a container LITERAL's element, which still
 # lifts, and the rule must not exempt a `@nocopy` member there.
@@ -6960,7 +6961,7 @@ class TypeCompatibility:
         """Reject a borrow-form tuple RETURN read from non-durable storage.
 
         Returning a storage-form source (field / subscript) lifts element
-        ADDRESSES into that storage (codegen's tuple_to_pointer), so the
+        ADDRESSES into that storage (codegen's per-element lend), so the
         storage root must outlive the call: non-Own params, non-consuming
         self, and globals qualify; locals, temporaries, Own params, and
         consuming-method self die at exit. Yields are exempt -- generator

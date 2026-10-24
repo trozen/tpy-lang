@@ -26,8 +26,8 @@ void consume(const std::tuple<const T*, const T*>& p) {
 //     t2 = T(2)
 //     items: list[tuple[T | None, T | None]] = [(t1, t2), (t1, None), (None, None)]
 //
-//     # Subscript read from a list of storage-form tuples flows through
-//     # tuple_to_pointer to match the pointer-form param of consume().
+//     # Subscript read from a list of storage-form tuples is lent element
+//     # by element to match the pointer-form param of consume().
 //     consume(items[0])
 //     consume(items[1])
 //     consume(items[2])
@@ -38,7 +38,7 @@ void consume(const std::tuple<const T*, const T*>& p) {
 //         print(a.x)
 //
 //     # for-loop over a storage-form container: the loop var binds to the
-//     # storage-form element, but flows through tuple_to_pointer at the call.
+//     # storage-form element, but is lent element by element at the call.
 //     for it in items:
 //         consume(it)
 //
@@ -55,11 +55,11 @@ void consume(const std::tuple<const T*, const T*>& p) {
 void main() {
     T t1 = T(1);
     T t2 = T(2);
-    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), &(t2)}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
-    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 0)));
-    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 1)));
-    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(::tpy::__getitem__(items, 2)));
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
+    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = ::tpy::make_vector<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{t1, std::move(t2)}, std::tuple<std::optional<T>, std::optional<T>>{t1, std::nullopt}, std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt});
+    ::tpyapp::main::consume([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0)));
+    ::tpyapp::main::consume([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 1)));
+    ::tpyapp::main::consume([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 2)));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0));
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
@@ -70,16 +70,16 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
+        ::tpyapp::main::consume(std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(it)), ::tpy::optional_to_ptr(std::get<1>(it))});
     }
     auto&& snap = ::tpy::__getitem__(items, 0);
-    ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(snap));
+    ::tpyapp::main::consume(std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(snap)), ::tpy::optional_to_ptr(std::get<1>(snap))});
     auto& __obj_1 = items;
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(__for_tup_0);
+        auto __tup_2 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(__for_tup_0)), ::tpy::optional_to_ptr(std::get<1>(__for_tup_0))};
         T* x = std::get<0>(__tup_2);
         T* y = std::get<1>(__tup_2);
         if ((x != nullptr)) {

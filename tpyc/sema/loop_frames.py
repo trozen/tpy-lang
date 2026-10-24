@@ -1003,7 +1003,7 @@ def stamp_copy_verdicts(ctx: 'SemanticContext',
     element (`holds_only_values`; an element naming a type parameter keeps
     its reference: BUGS.md#generic-loop-var-sees-source-write), and a for
     head's value targets copy out of a holder of values (a tuple holding a
-    reference type is lifted into a detached `tuple_to_pointer` copy its
+    reference type is copied element by element into a detached holder its
     value targets read). `outliving_only`: the rest of the body may write
     the source of a variable read after its loop, so only the bindings that
     outlive the loop copy -- a variable declared before the loop

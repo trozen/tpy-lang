@@ -607,7 +607,7 @@ void main() {
     ::tpyapp::main::block_def(__tmp_2);
     std::function<int32_t()> tget = ::tpyapp::main::tuple_def();
     std::cout << "tuple_def:" << " " << tget() << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<P, P>> __tmp_3 = {::tpy::tuple_to_storage<std::tuple<P, P>>(std::tuple<P, P>{P(1), P(2)})};
+    std::vector<std::tuple<P, P>> __tmp_3 = {std::tuple<P, P>{P(1), P(2)}};
     ::tpyapp::main::tuple_elem(__tmp_3);
     std::vector<int32_t> gx = {1};
     {

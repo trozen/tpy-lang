@@ -918,7 +918,7 @@ inline HCtor::HCtor(Box& v) : bp(std::tuple<Box, Box>{Box(50), Box(60)}) {
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(this->bp);
+    p = std::tuple<Box*, Box*>{&(std::get<0>(this->bp)), &(std::get<1>(this->bp))};
     std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
     std::cout << "ctor-self-root" << " " << std::get<0>(p)->n << " " << std::get<0>(this->bp).n << "\n" << ::tpy::check_signals;
 }

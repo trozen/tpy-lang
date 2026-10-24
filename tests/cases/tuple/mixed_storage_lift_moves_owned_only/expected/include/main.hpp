@@ -108,7 +108,7 @@ inline Holder::Holder() : t(std::tuple<Box, Box>{Box(0), Box(0)}) {}
 //     self.t = p  # tpyc: warning(/tuple element 1/)
 inline Ctor::Ctor(std::tuple<Box, Box*>&& p) {
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
-    this->t = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
+    this->t = std::tuple<Box, Box>{std::move(std::get<0>(p)), (*std::get<1>(p))};
 }
 
 // def __init__(self) -> None:
@@ -120,7 +120,7 @@ inline Sink::Sink() : t(std::tuple<Box, Box>{Box(0), Box(0)}) {}
 //     self.t = p  # tpyc: warning(/tuple element 1/)
 inline void Sink::put(std::tuple<Box, Box*>&& p) {
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 10);
-    this->t = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
+    this->t = std::tuple<Box, Box>{std::move(std::get<0>(p)), (*std::get<1>(p))};
 }
 void __tpy_init();
 } // namespace tpyapp::main

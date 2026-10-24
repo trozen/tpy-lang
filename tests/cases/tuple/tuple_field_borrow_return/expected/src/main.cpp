@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def ret_field(h: Holder) -> tuple[int32, Box]:
 //     return h.pair
 std::tuple<int32_t, Box*> ret_field(Holder& h) {
-    return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+    return std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
 }
 
 // def ret_alias(h: Holder) -> tuple[int32, Box]:
@@ -15,7 +15,7 @@ std::tuple<int32_t, Box*> ret_field(Holder& h) {
 //     return t
 std::tuple<int32_t, Box*> ret_alias(Holder& h) {
     auto&& t = h.pair;
-    return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(t);
+    return std::tuple<int32_t, Box*>{std::get<0>(t), &(std::get<1>(t))};
 }
 
 // def main() -> None:

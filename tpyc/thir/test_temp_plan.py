@@ -14,7 +14,7 @@ from ..temp_schedule import TempQueue
 from ..identity_map import IdentityMap
 from ..codegen_cpp.context import TempState
 from .emit import ModuleCounter, TempSink, emit_thir_body
-from ..typesys import BOOL
+from ..typesys import BOOL, INT32, TupleType
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -380,3 +380,33 @@ def test_emission_rejects_named_channel_and_scope_mismatches(functions: dict[str
                     ctx.temps.rollback_to((0, 0))
                     ctx.temps.create_typed("Cell", "Cell(2)")
                 sink.flush(StringIO(), "")
+
+
+def test_lambda_bound_tuple_source_is_placed_nowhere(
+        functions: dict[str, th.THIRFunction]) -> None:
+    # A tuple source its own lambda binds is no statement temp: the plan
+    # places only what its source holds, banked in the arm it sits in, so
+    # the source runs only when the arm is taken.
+    pair = TupleType((INT32, INT32))
+    arg = th.THIRArgTemp(result_type=INT32, init=th.THIRLiteral(result_type=INT32, value=1),
+                         cpp_type="int32_t", movable=True)
+    bound = th.THIRTupleLiteral(
+        result_type=pair,
+        bound=th.THIRCall(result_type=pair, callee="mk", args=(arg,)),
+        elements=tuple(th.THIRSubscript(result_type=INT32, receiver=th.THIRTempRead(
+            result_type=pair, read_id=th.BOUND_SOURCE_READ),
+            index=th.THIRLiteral(result_type=INT32, value=i),
+            tuple_index=i) for i in range(2)))
+    ret = th.THIRReturn(value=th.THIRIfExpr(
+        result_type=pair, cond=th.THIRName(result_type=BOOL, name="flag"),
+        then=bound, orelse=th.THIRName(result_type=pair, name="other")))
+    plan = prepare_temporaries((ret,))
+    assert plan is not None
+    (placement,) = plan.placements
+    assert placement.node is arg and placement.optional
+    fn = functions["lazy"]
+    planned = _render(fn, (ret,), planned=True)
+    assert planned == _render(fn, (ret,), planned=False)
+    assert ("(flag) ? (__tmp_1.emplace(1), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return "
+            "std::tuple<int32_t, int32_t>{std::get<0>(__t), std::get<1>(__t)}; }"
+            "(mk((*__tmp_1)))) : (other)") in planned, planned

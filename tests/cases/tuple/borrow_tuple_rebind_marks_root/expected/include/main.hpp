@@ -265,9 +265,9 @@ inline H::H(int32_t a)
 //     m.bp[0].n += 1
 //     return t[0].n
 inline int32_t H::meth(H& m, bool c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(this->bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(this->bp)), &(std::get<1>(this->bp))};
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     }
     std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 1);
     return std::get<0>(t)->n;
@@ -281,9 +281,9 @@ inline int32_t H::meth(H& m, bool c) {
 //     m.bp[1].n += 1
 //     self.n = t[1].n
 inline K::K(H& ro, H& m, bool c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     }
     std::get<1>(m.bp).n = ::tpy::add_check<int32_t>(std::get<1>(m.bp).n, 1);
     this->n = std::get<1>(t)->n;

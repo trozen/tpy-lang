@@ -18,6 +18,7 @@ from .nodes import (
     TruthinessMode,
     THIRArgTemp,
     THIRTempRead,
+    BOUND_SOURCE_READ,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -133,7 +134,6 @@ from .nodes import (
     THIRTry,
     THIRTupleLiteral,
     THIRTupleMembership,
-    THIRTupleValueToBorrow,
     THIRVarargPack,
 )
 
@@ -282,6 +282,8 @@ def _expr(e: THIRExpr) -> str:
                 + (f" #{e.read_id}" if e.read_id is not None else ""))
         return f"%argtmp({e.cpp_type or 'auto'}{mods}){{{_expr(e.init)}}}"
     if isinstance(e, THIRTempRead):
+        if e.read_id == BOUND_SOURCE_READ:
+            return "%bound"
         return f"%argtmp#{e.read_id}"
     if isinstance(e, THIRSlotEmplace):
         return f"slot_emplace[{e.cpp_type}]({_expr(e.value)})"
@@ -362,6 +364,9 @@ def _expr(e: THIRExpr) -> str:
         # The wrap template is the emit; the operand fills its `{0}` slot.
         return f"enum_wrap({e.wrap!r}, {_expr(e.operand)})"
     if isinstance(e, THIRTupleLiteral):
+        if e.bound is not None:
+            return (f"tuple[%bound = {_expr(e.bound)}]"
+                    f"({_exprs(e.elements)})")
         return f"tuple({_exprs(e.elements)})"
     if isinstance(e, THIRBorrowTupleLiteral):
         # Per-element address-of / wrap is the borrow-form decision, so it
@@ -372,10 +377,6 @@ def _expr(e: THIRExpr) -> str:
             else ("&" if a else "") + _expr(x)
             for x, a, w in zip(e.elements, e.addr_of, wraps))
         return f"borrow_tuple<{e.spelled_cpp}>({elems})"
-    if isinstance(e, THIRTupleValueToBorrow):
-        elems = ", ".join(("&" if a else "") + _expr(x)
-                          for x, a in zip(e.elements, e.addr_of))
-        return f"tuple_value_to_borrow<{e.dst_cpp}>({e.src_cpp}{{{elems}}})"
     if isinstance(e, THIRArrayComprehension):
         src = "" if e.iterable is None else f" over {_expr(e.iterable)}"
         return (f"array_comp[{e.arm}]({e.array_elem_cpp}, {e.array_size_cpp}, "
@@ -611,8 +612,9 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 f"{stmt.tuple_target.name}[{t.index}]:{t.bind.name.lower()}"
                 + (f":{t.storage.value}" if t.storage is not None else "")
                 for t in stmt.elem_targets)
-        src = _expr(stmt.source_expr) if stmt.source_expr is not None \
-            else f"%{stmt.source}"
+        src = (_expr(stmt.source_expr) if stmt.source_expr is not None
+               else _expr(stmt.source_lent.lent)
+               if stmt.source_lent is not None else f"%{stmt.source}")
         return [f"{pad}{tgts} = {src}"]
     if isinstance(stmt, THIRBreak):
         return [f"{pad}break"]

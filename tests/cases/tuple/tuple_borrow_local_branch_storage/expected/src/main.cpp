@@ -13,12 +13,12 @@ namespace tpyapp::main {
 //     t[1].val = t[1].val + 1
 //     return items[0][1].val
 int32_t pick(Box& b, bool cond) {
-    std::array<std::tuple<int32_t, Box>, 1> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{7, Box(10)})};
+    std::array<std::tuple<int32_t, Box>, 1> items = {std::tuple<int32_t, Box>{7, Box(10)}};
     std::tuple<int32_t, Box*> t;
     if (cond) {
         t = std::tuple<int32_t, Box*>{1, &(b)};
     } else {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0));
+        t = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0));
     }
     std::get<1>(t)->val = (::tpy::add_check<int32_t>(std::get<1>(t)->val, 1));
     return std::get<1>(::tpy::__getitem__(items, 0)).val;

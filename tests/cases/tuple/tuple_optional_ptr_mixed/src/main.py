@@ -1,9 +1,8 @@
 # Mixed Optional[T] + Ptr[U] tuple field: storage form is
-# std::tuple<std::optional<T>, U*>; the runtime tuple_to_storage helper
+# std::tuple<std::optional<T>, U*>; the element-by-element conversion
 # must leave the Ptr slot alone instead of lifting every T*-shaped slot
-# to std::optional. Regression for the
-# "tuple_to_storage / tuple_to_pointer overload mis-converts Ptr[T]
-# mixed with Optional[T]" bug.
+# to std::optional. Regression for a Ptr[T] element mixed with
+# Optional[T] being mis-converted between the tuple forms.
 from tpy import int32, Ptr
 
 

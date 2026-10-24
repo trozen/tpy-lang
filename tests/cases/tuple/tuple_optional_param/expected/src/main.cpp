@@ -40,9 +40,9 @@ void show(const std::tuple<const T*, const T*>& p) {
 void main() {
     T a = T(10);
     T b = T(20);
-    ::tpyapp::main::show(std::tuple<T*, T*>{&(a), &(b)});
-    ::tpyapp::main::show(std::tuple<T*, T*>{&(a), nullptr});
-    ::tpyapp::main::show(std::tuple<T*, T*>{nullptr, nullptr});
+    ::tpyapp::main::show(std::tuple<const T*, const T*>{&(a), &(b)});
+    ::tpyapp::main::show(std::tuple<const T*, const T*>{&(a), nullptr});
+    ::tpyapp::main::show(std::tuple<const T*, const T*>{nullptr, nullptr});
 }
 
 // main()

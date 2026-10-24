@@ -2,13 +2,13 @@
 #
 # Per-element ownership at the call boundary:
 #  - Last-use rvalue / fresh constructor / explicit copy() / None: OK,
-#    each element is moved into the storage-form param via
-#    tuple_to_storage_move (no silent copy of caller's lvalue).
+#    each element is moved into the storage-form param, built element
+#    by element (no silent copy of caller's lvalue).
 #  - Borrowed lvalue at non-last-use: rejected with a clean diagnostic
 #    that points the user at copy() (see sibling error_* test).
 #
 # Storage-form sources (e.g. list[tuple[...]] elements via subscript) keep
-# today's copy semantic via tuple_to_pointer -- the container retains
+# today's copy semantic, lent element by element -- the container retains
 # ownership of its elements and the call can't move out.
 from tpy import int32, Own, copy
 
@@ -61,7 +61,7 @@ def test_none_only() -> None:
 
 
 def test_storage_form_source() -> None:
-    # pairs[0] is a storage-form source -- tuple_to_pointer lift, no
+    # pairs[0] is a storage-form source -- lent element by element, no
     # per-element move because the list still owns its elements.
     p1 = P(7)
     p2 = P(8)
@@ -71,7 +71,7 @@ def test_storage_form_source() -> None:
 
 def test_subscript_access_in_body() -> None:
     # Confirms t[0] reads the storage-form slot correctly when the param
-    # was constructed via tuple_to_storage_move.
+    # was built by moving each element in.
     e = P(9)
     f = P(10)
     print(take_subscript((e, f)))

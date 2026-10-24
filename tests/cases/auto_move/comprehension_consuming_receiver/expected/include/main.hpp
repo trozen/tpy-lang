@@ -397,7 +397,7 @@ std::vector<std::tuple<Box, Box>> double_(T_src&& src) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& b = ::tpy::take_elem(__beg_0);
-            __result.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(b).finish(), Box(b).finish()}));
+            __result.push_back(std::tuple<Box, Box>{Box(b).finish(), Box(b).finish()});
         }
         std::move(__result);
     });

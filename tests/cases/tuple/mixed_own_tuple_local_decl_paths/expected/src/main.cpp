@@ -129,7 +129,7 @@ int32_t walrus(Box& b) {
 //     return t  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
 std::tuple<Box, Box*> relay(const std::tuple<Box*, Box*>& p) {
     auto t = p;
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box*>>(t);
+    return std::tuple<Box, Box*>{(*std::get<0>(t)), std::get<1>(t)};
 }
 
 // def mixed_param_box(q: tuple[Own[Box], Box]) -> tuple[Own[Box], Box]:

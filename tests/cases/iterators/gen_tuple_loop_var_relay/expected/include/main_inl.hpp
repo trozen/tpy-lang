@@ -13,7 +13,7 @@ inline std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen:
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
+        items.emplace(::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)}));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
@@ -27,7 +27,7 @@ inline std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen:
         }
         _ = ((*__for_i_0))++;
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
+        return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__((*items), 0));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

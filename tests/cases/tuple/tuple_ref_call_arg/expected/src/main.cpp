@@ -18,9 +18,9 @@ void show(const std::tuple<const Point*, int32_t>& pair) {
 //     show((p, int32(7)))
 void main() {
     Point p = Point(10, 20);
-    ::tpyapp::main::show(std::tuple<Point*, int32_t>{&(p), 42});
+    ::tpyapp::main::show(std::tuple<const Point*, int32_t>{&(p), 42});
     p.x = 99;
-    ::tpyapp::main::show(std::tuple<Point*, int32_t>{&(p), 7});
+    ::tpyapp::main::show(std::tuple<const Point*, int32_t>{&(p), 7});
 }
 
 // main()

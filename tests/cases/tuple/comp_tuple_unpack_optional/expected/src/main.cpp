@@ -81,7 +81,7 @@ __genexpr_main_1_frame __genexpr_main_1(const std::vector<std::tuple<std::option
 //     total = sum(n for p, n in items)
 //     print(total)
 void main() {
-    std::vector<std::tuple<std::optional<P>, int32_t>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<P*, int32_t>>(std::tuple<P, int32_t>{P(1), 10})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(std::tuple<P*, int32_t>{nullptr, 20}), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, int32_t>>(::tpy::tuple_value_to_borrow<std::tuple<P*, int32_t>>(std::tuple<P, int32_t>{P(3), 30}))};
+    std::vector<std::tuple<std::optional<P>, int32_t>> items = {std::tuple<std::optional<P>, int32_t>{P(1), 10}, std::tuple<std::optional<P>, int32_t>{std::nullopt, 20}, std::tuple<std::optional<P>, int32_t>{P(3), 30}};
     std::vector<int32_t> results = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = items;

@@ -41,7 +41,7 @@ NBox nsink(NBox&& x) {
 //     print("live_local", t[0].n, k)
 void live_local() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(t);
+    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
@@ -70,7 +70,7 @@ void last_use_moves() {
 //     print("nocopy_live", t[0].n, k)
 void nocopy_live() {
     std::tuple<NBox, int32_t> t = ::tpyapp::main::nmk();
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<NBox*, int32_t>>(t);
+    auto __tup_1 = std::tuple<NBox*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
@@ -99,10 +99,10 @@ void nocopy_last_use() {
 //     print("two_unpacks", y.n, t[0].n, k + j)
 void two_unpacks() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(t);
+    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(t);
+    auto __tup_2 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     int32_t j = std::get<1>(__tup_2);
     x.n = 9;
@@ -117,7 +117,7 @@ void two_unpacks() {
 //     x.n = 9
 //     return p[0].n + k
 int32_t param_live(std::tuple<Box, int32_t>&& p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(p);
+    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(p)), std::get<1>(p)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
@@ -131,7 +131,7 @@ int32_t param_live(std::tuple<Box, int32_t>&& p) {
 //     x.n = 9
 //     return p[0].n + k
 int32_t nocopy_param_live(std::tuple<NBox, int32_t>&& p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<NBox*, int32_t>>(p);
+    auto __tup_1 = std::tuple<NBox*, int32_t>{&(std::get<0>(p)), std::get<1>(p)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = 9;
@@ -149,7 +149,7 @@ int32_t nocopy_param_live(std::tuple<NBox, int32_t>&& p) {
 //     print("sink_off_live", y.n, k, t[1])
 void sink_off_live() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(t);
+    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     Box __tmp_1 = x;

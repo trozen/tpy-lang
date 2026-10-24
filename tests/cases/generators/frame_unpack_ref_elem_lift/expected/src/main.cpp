@@ -70,7 +70,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_try::__next__() {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));
+            auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
             a = std::get<0>(__tup_1);
             b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
             __state = S_RESUME_0;
@@ -107,7 +107,7 @@ __gen_gen_value gen_value(const std::vector<std::tuple<int32_t, int32_t>>& pairs
 // def borrow_pair(h: Holder) -> tuple[int32, Box]:
 //     return h.pair
 std::tuple<int32_t, Box*> borrow_pair(Holder& h) {
-    return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+    return std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
 }
 
 
@@ -180,7 +180,7 @@ __gen_gen_loop_root gen_loop_root(std::vector<Holder>& hs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
+        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(hs, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -218,7 +218,7 @@ __coro_coro_chain coro_chain(std::vector<Holder>& hs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));
+        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -382,7 +382,7 @@ __coro_main_coro_chain main_coro_chain(std::vector<Holder>& hs) {
 //     ws: list[Holder] = [Holder(Box(120))]
 //     asyncio.run(main_coro_chain(ws))
 void main() {
-    std::vector<std::tuple<int32_t, Box>> xs = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}));
+    std::vector<std::tuple<int32_t, Box>> xs = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)});
     {
         auto __src_0 = ::tpyapp::main::gen_subscript(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -416,7 +416,7 @@ void main() {
             std::cout << "local" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<std::tuple<int32_t, Box>> ys = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{30, Box(31)}));
+    std::vector<std::tuple<int32_t, Box>> ys = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{30, Box(31)});
     {
         auto __src_6 = ::tpyapp::main::gen_try(ys);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);
@@ -452,7 +452,7 @@ void main() {
     }
     std::cout << "call container" << " " << std::get<1>(h2.pair).n << "\n" << ::tpy::check_signals;
     {
-        std::vector<std::tuple<int32_t, Box>> __tmp_2 = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{70, Box(71)})};
+        std::vector<std::tuple<int32_t, Box>> __tmp_2 = {std::tuple<int32_t, Box>{70, Box(71)}};
         auto __src_12 = ::tpyapp::main::gen_readonly(__tmp_2);
         auto&& __itr_12 = ::tpy::__iter__(__src_12);
         for (;;) {
@@ -462,7 +462,7 @@ void main() {
             std::cout << "readonly" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<std::tuple<int32_t, Box>> zs = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{60, Box(61)}));
+    std::vector<std::tuple<int32_t, Box>> zs = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{60, Box(61)});
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro(zs)));
     Holder ph = Holder(Box(90));
     {
@@ -586,8 +586,8 @@ void main() {
 
 
 // # `a, b = <lvalue>` inside a RESUMABLE body, where the tuple has a reference
-// # element the target aliases as a frame field: the tuple must lift through
-// # `tuple_to_pointer` off the source lvalue, never
+// # element the target aliases as a frame field: the tuple must be lent
+// # element by element off the source lvalue, never
 // # into a by-value `auto` holder -- that holder copies the reference element
 // # (so a write through the alias misses the caller's object) and dies at the
 // # end of its case block (so every post-suspension read through the alias is

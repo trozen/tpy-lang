@@ -37,6 +37,7 @@ from ..type_def_registry import (
 from ..typesys import (NoneType, substitute_cpp_ret, OptionalType, TpyType, TupleType,
                        TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
+from .source import TraitAbi
 from .nodes import (
     THIRRebindSlot,
     THIRStoragePlacement,
@@ -46,6 +47,8 @@ from .nodes import (
     TruthinessMode,
     THIRArgTemp,
     THIRTempRead,
+    BOUND_SOURCE_READ,
+    THIRLent,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -151,7 +154,6 @@ from .nodes import (
     THIRTry,
     THIRRecordCopy,
     THIRBorrowTupleLiteral,
-    THIRTupleValueToBorrow,
     THIRTupleLiteral,
     THIRTupleUnpack,
     TupleElemBind,
@@ -180,6 +182,9 @@ class THIRCodeGenError(Exception):
     emitter disagree on the supported set.
     """
 
+
+# The parameter a tuple's one-parameter lambda binds its source to.
+BOUND_TUPLE_PARAM = "__t"
 
 
 class TempSink:
@@ -294,9 +299,16 @@ class TempSink:
             self._read_names[expr.read_id] = name
         return name
 
+    def name_read(self, read_id: int, cpp: str) -> None:
+        """Name the reads `read_id` identifies by an expression their
+        statement renders itself (a loop's step)."""
+        self._read_names[read_id] = cpp
+
     def read(self, expr: THIRTempRead) -> str:
         """The name of the temp `expr` reads, declared by its statement
         (`held`)."""
+        if expr.read_id == BOUND_SOURCE_READ:
+            return BOUND_TUPLE_PARAM
         name = self._read_names.get(expr.read_id)
         if name is None:
             raise THIRCodeGenError(
@@ -393,6 +405,10 @@ class UnevaluatedTemps(TempSink):
 
     def create(self, cpp_type: str, init_expr: str, *,
                brace_init: bool = False, movable: bool = False) -> str:
+        # A deduced declaration names no type to stand in for: spell what
+        # it would deduce from its initializer.
+        if cpp_type == "auto&&":
+            cpp_type = f"std::remove_reference_t<decltype(({init_expr}))>"
         return f"std::declval<{cpp_type}&>()"
 
     def declare_named(self, name: str, cpp_type: str, *,
@@ -1326,20 +1342,18 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
             return f"::tpy::optional_to_ptr({inner})"
         # F4 U2: a storage `std::variant<A, B>` lvalue (a union field) lifts to
         # the pointer variant; the const helper aliases const pointees (a
-        # readonly receiver). Mirrors context.convert's union BORROW arm.
+        # readonly receiver).
         if isinstance(t, UnionType):
             helper = "to_const_ptr_variant" if e.is_const else "to_ptr_variant"
             return f"::tpy::{helper}({inner})"
+        # An open `T` into its tuple element's `val_or_ptr_t<T>` slot: the
+        # instantiation decides the address-of or the value.
+        if isinstance(t, TypeParamRef) and e.trait is TraitAbi.VAL_OR_PTR:
+            trait = "val_or_cptr_t" if e.is_const else "val_or_ptr_t"
+            return f"::tpy::to_val_or_ptr<::tpy::{trait}<{t.to_cpp()}>>({inner})"
         # F2a plain non-value lvalue -> reseatable `T*` pointer-local: address-of.
         if is_plain_nonvalue(t):
             return f"&({inner})"
-        # F3 storage tuple -> borrow tuple: the runtime helper absorbs the
-        # per-element pointer/optional mask from the spelled destination, so the
-        # only thing to render is that destination (the borrow form, const when
-        # the source is const). Mirrors context.convert's tuple BORROW arm.
-        if isinstance(t, TupleType):
-            borrow_cpp = t.to_cpp_return_const() if e.is_const else t.to_cpp_return()
-            return f"::tpy::tuple_to_pointer<{borrow_cpp}>({inner})"
     elif e.form is Form.STORAGE:
         # borrow `T*` -> storage `std::optional<T>` (write/return direction). An
         # owned source at last use moves (`ptr_to_optional_move`, F2e); a
@@ -1357,21 +1371,10 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
             return f"::tpy::{helper}({inner})"
         # F4 U2: a borrow pointer-variant into a storage `std::variant<A, B>`
         # slot (a union field write) copies the active member out, or moves
-        # it out of pointees the source owns at its last use. Mirrors
-        # context.convert's union STORAGE arm.
+        # it out of pointees the source owns at its last use.
         if isinstance(t, UnionType):
             helper = "to_value_variant_move" if e.move else "to_value_variant"
             return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
-        # F3 borrow tuple -> storage tuple: the helper absorbs the per-element
-        # pointer->optional/value mask from the spelled storage destination. An
-        # owned source at last use moves; a borrow copies. Mirrors context.convert's
-        # tuple STORAGE arm.
-        if isinstance(t, TupleType):
-            dest = t.to_cpp_return() if e.param_form else t.to_cpp()
-            if e.elem_modes:
-                return f"{dest}{{{_tuple_elementwise(inner, e.elem_modes, t)}}}"
-            helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
-            return f"::tpy::{helper}<{dest}>({inner})"
         # S1/S6 str+bytes slices: a view-form source (string_view / span) into
         # an owned storage sink (decl init / return) copies via the family's
         # owned constructor -- `std::string(x)` / `::tpy::Bytes(x)` -- the
@@ -1413,27 +1416,29 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
 
-def _tuple_elementwise(name: str, modes: tuple[str, ...],
-                       dest: TupleType) -> str:
-    """The brace-init elements of an element-wise tuple conversion
-    (`THIRFormConvert.elem_modes`) off the tuple name `name` into `dest`.
-    A nullable element's pointer lifts null-checked into its optional, as
-    `tuple_to_storage` lifts it."""
-    spell = {"move_pointee": "std::move(*std::get<{i}>({n}))",
-             "copy_pointee": "(*std::get<{i}>({n}))",
-             "pointer": "std::get<{i}>({n})",
-             "move": "std::move(std::get<{i}>({n}))",
-             "copy": "std::get<{i}>({n})"}
-    nullable = {"move_pointee": "::tpy::ptr_to_optional_move(std::get<{i}>({n}))",
-                "copy_pointee": "::tpy::ptr_to_optional(std::get<{i}>({n}))"}
+def _emit_lent(lent: THIRLent, holder: str, state: _EmitState, *,
+               deref: bool = True) -> str:
+    """A held tuple lent element by element, its read named by the
+    holder's spelling: through the pointer or iterator `holder` (`deref`),
+    else the holder's own expression."""
+    state.temps.name_read(lent.read_id, f"(*{holder})" if deref else holder)
+    return _emit_expr(lent.lent, state)
 
-    def one(i: int, m: str) -> str:
-        dt = (unwrap_qualifiers(dest.element_types[i])
-              if i < len(dest.element_types) else None)
-        if m in nullable and isinstance(dt, OptionalType):
-            return nullable[m].format(i=i, n=name)
-        return spell[m].format(i=i, n=name)
-    return ", ".join(one(i, m) for i, m in enumerate(modes))
+
+def _tuple_literal_cpp(e: THIRTupleLiteral, state: _EmitState) -> str:
+    """The spelled tuple render (`std::tuple<...>{e1, e2}`): the slot's
+    borrow form where the literal spells one (`spelled`), else its storage
+    `result_type`. A single-element tuple parenthesizes instead (GCC
+    brace-init ambiguity with std::tuple constructors in C++23)."""
+    elems = ", ".join(_emit_expr(x, state) for x in e.elements)
+    if e.spelled is not None:
+        t = unwrap_qualifiers(e.spelled)
+        cpp_type = t.to_cpp_return_const() if e.spelled_const else t.to_cpp_return()
+    else:
+        cpp_type = unwrap_qualifiers(e.result_type).to_cpp()
+    if len(e.elements) == 1:
+        return f"{cpp_type}({elems})"
+    return f"{cpp_type}{{{elems}}}"
 
 
 def _slot_decl(state: '_EmitState', slot_cpp: str) -> tuple[str, str]:
@@ -1620,9 +1625,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                 v = f"{e.emplace_cpp}{v}"
             return f"{e.cpp_name}.emplace({v})"
         if e.slot_cpp is not None:
-            # Reassigned borrow-tuple: the binding's one owning slot.
-            v = (f"::tpy::tuple_to_pointer<{e.borrow_cpp}>"
-                 f"({_own_slot(state, e.own_slot)}.emplace({v}))")
+            # Reassigned borrow-tuple: the binding's one owning slot, filled
+            # and then lent element by element.
+            slot = _own_slot(state, e.own_slot)
+            v = f"({slot}.emplace({v}), {_emit_lent(e.lent, slot, state)})"
         if e.reseat_slot is not None:
             v = own_slot_fill(e.reseat_slot, v, e.rebuild)
         elif e.fill_cpp is not None:
@@ -1940,16 +1946,18 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRListRepeat):
         return _emit_list_repeat(e, state)
     if isinstance(e, THIRTupleLiteral):
-        # The spelled value-tuple render (`std::tuple<...>{e1, e2}`);
-        # result_type is the slot TupleType, whose scalar/owned-str elements
-        # spell identically via to_cpp and the resolver. A single-element
-        # tuple parenthesizes instead (GCC brace-init ambiguity with
-        # std::tuple constructors in C++23).
-        elems = ", ".join(_emit_expr(x, state) for x in e.elements)
-        cpp_type = unwrap_qualifiers(e.result_type).to_cpp()
-        if len(e.elements) == 1:
-            return f"{cpp_type}({elems})"
-        return f"{cpp_type}{{{elems}}}"
+        if e.bound is not None:
+            # The source is evaluated where it is written, once, and lives
+            # to the end of the full expression; the lambda's parameter
+            # names it for the element reads. Captureless: the body reads
+            # nothing else, and a class-scope `decltype` (a frame field's
+            # type) admits no capture-default. Forced inline so an -O0
+            # build does not pay a call per conversion either.
+            init_cpp = _emit_expr(e.bound, state)
+            return ("[] TPY_ALWAYS_INLINE_ATTR "
+                    f"(auto&& {BOUND_TUPLE_PARAM}) {{ return "
+                    f"{_tuple_literal_cpp(e, state)}; }}({init_cpp})")
+        return _tuple_literal_cpp(e, state)
     if isinstance(e, THIRBorrowTupleLiteral):
         # The borrow-slot render: the spelled slot type + per-element bare,
         # `&(...)` lift, or `{0}` wrap template (the generic to_val_or_ptr
@@ -1963,16 +1971,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if len(e.elements) == 1:
             return f"{e.spelled_cpp}({elems})"
         return f"{e.spelled_cpp}{{{elems}}}"
-    if isinstance(e, THIRTupleValueToBorrow):
-        vwraps = e.elem_wraps or (None,) * len(e.elements)
-        elems = ", ".join(
-            w.format(_emit_expr(x, state)) if w is not None
-            else f"&({_emit_expr(x, state)})" if lift
-            else _emit_expr(x, state)
-            for x, lift, w in zip(e.elements, e.addr_of, vwraps))
-        src = (f"{e.src_cpp}({elems})" if len(e.elements) == 1
-               else f"{e.src_cpp}{{{elems}}}")
-        return f"::tpy::tuple_value_to_borrow<{e.dst_cpp}>({src})"
     if isinstance(e, THIRRecordCopy):
         # `copy(x)` of a record: the explicit copy-ctor call `T(x)`.
         return f"{e.cpp_type}({_emit_expr(e.value, state)})"
@@ -2429,9 +2427,11 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
     inner = INDENT * (indent_level + 1)
+    step = f"*{beg}"
+    if stmt.hoisted_step is not None:
+        step = _emit_lent(stmt.hoisted_step, beg, state)
     binding = loop_var_binding(stmt.binding.loop_binding, stmt.elem_type,
-                              escape_cpp_name(stmt.var), f"*{beg}",
-                              hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp,
+                              escape_cpp_name(stmt.var), step,
                               owned_step_expr=f"::tpy::take_elem({beg})",
                               owned_slot=_loop_owned_slot(stmt, n))
     _write_lines(out, inner, binding)
@@ -3896,7 +3896,7 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         elif stmt.cpp_local_representation is LocalBinding.STORAGE_TUPLE_ALIAS:
             # F3 storage-tuple alias: `auto&& name = <lvalue storage tuple>` binds a
             # forwarding reference to the source's storage (no spelled type). Reads
-            # off it lift via tuple_to_pointer at borrow boundaries.
+            # off it are lent element by element at borrow boundaries.
             out.write(f"{indent}auto&& {name} = {_emit_expr(stmt.init, state)};\n")
         elif stmt.cpp_local_representation is LocalBinding.PTR_VARIANT:
             # F4 U2 pointer-variant local: cpp_type carries the full (possibly
@@ -3929,15 +3929,16 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             # emplaces into the binding's owning slot (`own_slot`), which the
             # local aliases through the optional spelling (cpp_type IS that
             # spelling). Init renders before the slot draws its number (the
-            # init's own counter draws come first).
-            assert stmt.btuple_opt_borrow_cpp is not None
+            # init's own counter draws come first); the local takes the
+            # filled payload lent element by element.
+            assert stmt.btuple_lent is not None
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
+            slot = _own_slot(state, stmt.own_slot)
+            out.write(f"{indent}{slot}.emplace({init_cpp});\n")
             out.write(
                 f"{indent}{stmt.cpp_type} {name} = {stmt.cpp_type}"
-                f"{{::tpy::tuple_to_pointer<"
-                f"{stmt.btuple_opt_borrow_cpp}>"
-                f"({_own_slot(state, stmt.own_slot)}.emplace({init_cpp}))}};\n")
+                f"{{{_emit_lent(stmt.btuple_lent, slot, state)}}};\n")
         else:
             # Render before flushing: the init may register arg temps, whose
             # decls flush between the source comment and the statement line.
@@ -4213,19 +4214,19 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             state.temps.flush(out, indent)
             out.write(f"{indent}{escape_cpp_name(stmt.target.name)}"
                       f".emplace({v});\n")
-        elif (stmt.btuple_borrow_cpp is not None
+        elif (stmt.btuple_lent is not None
                 and isinstance(stmt.target, THIRName)):
             # Owning-call reseat of a nullable borrow-tuple local: emplace
-            # into the binding's owning slot, alias via tuple_to_pointer
-            # under the optional spelling.
+            # into the binding's owning slot, then take the payload lent
+            # element by element under the optional spelling.
             v = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             slot = _own_slot(state, stmt.own_slot)
+            out.write(f"{indent}{slot}.emplace({v});\n")
             out.write(
                 f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                f"{stmt.btuple_opt_cpp}{{::tpy::tuple_to_pointer<"
-                f"{stmt.btuple_borrow_cpp}>"
-                f"({slot}.emplace({v}))}};\n")
+                f"{stmt.btuple_opt_cpp}"
+                f"{{{_emit_lent(stmt.btuple_lent, slot, state)}}};\n")
             _witness("btuple.reseat_emplace_emit")
         elif stmt.rebind_storage is not None:
             # Rvalue reseat of a pointer-local: sema's alias-rebind verdict
@@ -4458,17 +4459,14 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         def expr_src() -> str:
             # An expression source renders like a bare expr statement: its
             # arg temps flush before the holder line.
-            cpp = _emit_expr(stmt.source_expr, state)
+            cpp = (_emit_lent(stmt.source_lent, escape_cpp_name(stmt.source),
+                              state)
+                   if stmt.source_lent is not None
+                   else _emit_expr(stmt.source_expr, state))
             state.temps.flush(out, indent)
             return cpp
 
-        if sb is TupleSourceBind.STORAGE_WRAP:
-            if stmt.source_expr is not None:
-                # An expression source (`pairs[0]`) lifts the whole element.
-                src = expr_src()
-            out.write(f"{indent}auto {tmp} = ::tpy::tuple_to_pointer<"
-                      f"{stmt.source_wrap_cpp}>({src});\n")
-        elif sb is TupleSourceBind.RVALUE:
+        if sb in (TupleSourceBind.STORAGE_WRAP, TupleSourceBind.RVALUE):
             out.write(f"{indent}auto {tmp} = {expr_src()};\n")
         elif sb is TupleSourceBind.ONESHOT_DEREF:
             out.write(f"{indent}auto&& {tmp} = "
@@ -5153,11 +5151,21 @@ class ResumableLeafEmitter:
         return _emit_expr(self._lookup(self._body.conds, cond, "condition"),
                           self._state)
 
-    def render_await_args(self, call) -> 'list[str]':
+    def render_await_args(self, call, *,
+                          temps: 'TempSink | None' = None) -> 'list[str]':
         """Render a suspension's sub-coro emplace arguments (same flush
-        contract as `render_cond`)."""
+        contract as `render_cond`). `temps` is the sink for this one render
+        where it is not the statement's: an unevaluated one at the struct's
+        `decltype`."""
         args = self._lookup(self._body.await_args, call, "await args")
-        return [_emit_expr(a, self._state) for a in args]
+        if temps is None:
+            return [_emit_expr(a, self._state) for a in args]
+        saved = self._state.temps
+        self._state.temps = temps
+        try:
+            return [_emit_expr(a, self._state) for a in args]
+        finally:
+            self._state.temps = saved
 
     def render_return_value(self, ret, *, allow_move: bool = False) -> str:
         """Render a `return v`'s value for `_make_async_return`'s
@@ -5215,6 +5223,12 @@ class ResumableLeafEmitter:
         its own move / & / .get() / __self-prepend wrap)."""
         return _emit_expr(self._lookup(self._body.suspend_exprs, expr,
                                        "suspend expr"), self._state)
+
+    def render_loop_step(self, stmt, step_cpp: str) -> str:
+        """Render a borrow-form tuple loop var's step lent element by
+        element, over the step the skeleton holds as `step_cpp`."""
+        lent = self._lookup(self._body.loop_steps, stmt, "loop step")
+        return _emit_lent(lent, step_cpp, self._state, deref=False)
 
     def render_region_expr(self, expr) -> str:
         """Render a region/loop pseudo-statement's user expression (with

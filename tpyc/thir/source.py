@@ -14,15 +14,16 @@ can name the type and every consumer can read it without a cycle.
 from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Set as AbstractSet
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
-from ..typesys import TpyType
+from ..sema.alias_rebind import bare_tuple
+from ..typesys import (OwnType, TpyType, TupleType, UnionType, unwrap_readonly,
+                       unwrap_ref_type, unwrap_send_sync)
 
 if TYPE_CHECKING:
     from ..codegen_cpp.forms import LoopBinding
-    from ..typesys import TupleType
     from .lower.context import FrameLocalClass, ValueOptKind
     from .nodes import THIRTupleLayout
 
@@ -595,6 +596,16 @@ class Source:
     # occurrence may move it (`movable`). None is unknown, which grants no
     # move.
     pointee_owned: bool | None = None
+    # The C++ expression is a prvalue: a value no name refers to (a
+    # by-value call result, a construction, a select of such), which a
+    # conversion holding it once may take apart. False is unknown -- an
+    # lvalue, or a reference into storage the expression does not own.
+    prvalue: bool = False
+    # The expression names a place a second evaluation names again, at no
+    # cost and running no code of the program: a name, a member or tuple
+    # element of one, a builtin container's element by a name or literal
+    # index. A conversion reads such a source once per element.
+    place: bool = False
 
     @property
     def name(self) -> str | None:
@@ -626,3 +637,116 @@ class Source:
         (`std::optional<P>&&`)."""
         return (self.binding is not None and self.binding.owned
                 and self.binding.optional_storage)
+
+
+def _element_type(t: 'TpyType | None', index: int) -> 'TpyType | None':
+    """Element `index` of a tuple type as declared (`Own` kept), None for
+    no tuple."""
+    tup = bare_tuple(t)
+    if tup is not None and index < len(tup.element_types):
+        return tup.element_types[index]
+    return None
+
+
+def element_source(parent: Source, index: int, *,
+                   held: 'Held | None' = None, pointer: bool = False,
+                   trait: 'TraitAbi | None' = None,
+                   const: bool = False, movable: bool = False,
+                   pointee_owned: 'bool | None' = None,
+                   undeclared: bool = False,
+                   copy_declared: bool = False,
+                   own: 'Source | None' = None) -> Source:
+    """THE constructor of a tuple source's leaf (`Source.elems[index]`):
+    the element projected from its `parent` Source plus the layout's answer
+    for it -- `held` where it lives, a bare `pointer` into storage held
+    elsewhere, or an open `T` spelled through `trait`, else inline.
+
+    An inline (or trait) leaf is part of the parent's object: const where
+    the parent is, dying with it. A pointer leaf's const is its pointee's
+    (`const`, the layout's), and its pointee's lifetime is unknown here.
+    Either is captured where the parent is, and must be copied where the
+    whole must. A leaf the parent builds from an expression of its own (a
+    literal's element) is that expression's Source (`own`), with the
+    layout's representation.
+
+    What the layout does not state is unknown and grants nothing: no move
+    (`movable`, `pointee_owned` None), no copy permission
+    (`copy_declared`, the read record's verdict on the leaf)."""
+    if own is not None:
+        # An element the literal holds inline is its storage, whatever form
+        # the expression it was built from reads in.
+        inline_borrow = (own.held is Held.BORROWED and not pointer
+                         and not own.pointer_held)
+        return replace(own, pointer_held=own.pointer_held or pointer,
+                       held=Held.STORAGE if inline_borrow else own.held,
+                       trait=trait, pointee_owned=pointee_owned)
+    assert held is not None, "a projected leaf names where it lives"
+    inline = not pointer
+    return Source(held=held, pointer_held=pointer, trait=trait,
+                  const=const or (inline and parent.const),
+                  movable=movable, pointee_owned=pointee_owned,
+                  undeclared=undeclared,
+                  must_copy=parent.must_copy,
+                  copy_declared=copy_declared,
+                  captured=parent.captured,
+                  temporary=parent.temporary if inline else None,
+                  named_type=_element_type(parent.named_type, index),
+                  analyzed_type=_element_type(parent.analyzed_type, index))
+
+
+def elem_borrow_form_differs(et: TpyType) -> bool:
+    """Whether a tuple element's borrow form is a representation of its own
+    beside its storage: a pointer-variant union, or a nested tuple some
+    element of which differs (`TupleType.to_cpp_return` spells both)."""
+    core = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+    if isinstance(core, UnionType):
+        return core.uses_pointer_repr()
+    if isinstance(core, TupleType):
+        return any(TupleType._element_is_pointer_repr(e)
+                   or TupleType._element_is_val_or_ptr(e)
+                   or elem_borrow_form_differs(e)
+                   for e in core.element_types)
+    return False
+
+
+def tuple_elems(whole: Source, src_t: 'TupleType', *,
+                dead: bool = False) -> tuple[Source, ...]:
+    """Each element of a tuple source as the source holds it: the
+    per-element facts its read stamped (`Source.elems`), else projected
+    from its element TYPE (`Own` kept) in the representation the whole is
+    held in -- a borrow-form tuple (`to_cpp_return`) holds a reference
+    element as a pointer, an open `T` through `val_or_ptr_t`, a union as
+    its pointer variant and a nested tuple in its own borrow form; any
+    other form holds each element inline. `dead`: the whole is a temporary
+    nothing reads after this, so an element it holds inline may move out
+    of it; a pointee it only points at is never its to move."""
+    n = len(src_t.element_types)
+    if whole.elems is not None and len(whole.elems) == n:
+        return whole.elems
+    # A tuple parameter holds every element in its passing form, whatever
+    # the whole's type alone says (`TupleType._param_spelling`) -- unless
+    # the parameter takes the whole tuple's storage (`Own[tuple[...]]`).
+    param = whole.binding.param_type if whole.binding is not None else None
+    # A binding holding the mixed result form (`std::tuple<A, B*>` for
+    # `tuple[Own[A], B]`) lends its non-`Own` elements; a wholly owned
+    # tuple of the same element types (`Own[tuple[Own[A], B]]`) does not.
+    borrow = whole.held is Held.BORROWED or (
+        whole.binding is not None and whole.binding.borrow_tuple_mixed) or (
+        whole.binding is not None and whole.binding.is_param
+        and not isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            param))) if param is not None else None, OwnType))
+    out: list[Source] = []
+    for i, et in enumerate(src_t.element_types):
+        if borrow and TupleType._element_is_pointer_repr(et):
+            out.append(element_source(whole, i, held=Held.BORROWED,
+                                      pointer=True, const=whole.const,
+                                      pointee_owned=False))
+        elif borrow and TupleType._element_is_val_or_ptr(et):
+            out.append(element_source(whole, i, held=Held.BORROWED,
+                                      trait=TraitAbi.VAL_OR_PTR))
+        elif borrow and elem_borrow_form_differs(et):
+            out.append(element_source(whole, i, held=Held.BORROWED))
+        else:
+            out.append(element_source(whole, i, held=Held.STORAGE,
+                                      movable=dead or whole.movable))
+    return tuple(out)

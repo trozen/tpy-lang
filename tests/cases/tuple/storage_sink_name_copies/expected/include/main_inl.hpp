@@ -17,7 +17,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<P*, P*>{&(p), &(p)};
-        ys.emplace(std::array<std::tuple<P, P>, 1>{::tpy::tuple_to_storage<std::tuple<P, P>>(t)});
+        ys.emplace(std::array<std::tuple<P, P>, 1>{std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))}});
         p.xs.push_back(7);
         auto& __for_obj_0 = (*ys);
         __for_it_0.emplace((__for_obj_0).begin());

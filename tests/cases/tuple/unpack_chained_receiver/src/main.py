@@ -1,7 +1,7 @@
 # `a, b = <chained lvalue>` where the tuple has a REFERENCE element: the
 # source may be any field / subscript chain bottoming out in a declared name
 # (`hs[0].pair`, `o.h.pair`, `self.o.h.pair`), not just one hop off the name.
-# The whole chain lifts through `tuple_to_pointer` off the lvalue, so the
+# The whole chain is lent element by element off the lvalue, so the
 # element pointers come off the container and the unpacked element ALIASES it
 # -- every mutating section writes through the alias and reads the change back
 # through the chain, which a copy could not produce. The chain's ROOT decides

@@ -173,7 +173,7 @@ inline std::optional<std::tuple<Box*, int32_t>> Holder::maybe_pair(bool k) {
     if (k) {
         return std::nullopt;
     }
-    return ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(this->pair);
+    return std::tuple<Box*, int32_t>{&(std::get<0>(this->pair)), std::get<1>(this->pair)};
 }
 
 // # method: a borrowed field beside a value.
@@ -232,7 +232,7 @@ inline std::optional<std::tuple<const Box*, int32_t>> Holder::peek(bool k) const
 // def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
 //     return self.pair  # tpyc: ok
 inline std::optional<std::tuple<Box*, int32_t>> Holder::pair_prop() {
-    return ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(this->pair);
+    return std::tuple<Box*, int32_t>{&(std::get<0>(this->pair)), std::get<1>(this->pair)};
 }
 
 // # @property: the marked element follows the receiver, so a mutable
@@ -241,7 +241,7 @@ inline std::optional<std::tuple<Box*, int32_t>> Holder::pair_prop() {
 // def pair_prop(self) -> tuple[auto_readonly[Box], int32] | None:
 //     return self.pair  # tpyc: ok
 inline std::optional<std::tuple<const Box*, int32_t>> Holder::pair_prop() const {
-    return ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(this->pair);
+    return std::tuple<const Box*, int32_t>{&(std::get<0>(this->pair)), std::get<1>(this->pair)};
 }
 void __tpy_init();
 } // namespace tpyapp::main

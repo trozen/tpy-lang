@@ -209,7 +209,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # make()), *n)`, a slot of the site's own
     "expr.walrus_btuple",           # non-reassigned borrow-tuple walrus:
                                     # `std::tuple<..., T*> t;` + borrow
-                                    # literal / tuple_to_pointer lift
+                                    # literal / per-element lend
     "expr.walrus_btuple_mixed_call",  # ... off a MIXED own+borrow tuple
                                     # CALL: binds directly, no lift
     "assign.btuple_elem_field",     # scalar field write through a borrow-
@@ -221,7 +221,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # assign flavor of decl.ptr_none
                                     # (`head = nullptr;`)
     "expr.walrus_btuple_slot",      # reassigned borrow-tuple walrus: owning
-                                    # __slot_N.emplace + tuple_to_pointer +
+                                    # __slot_N.emplace + per-element lend +
                                     # bare-name tail
     "binop.value_select",           # value-position and/or: the once-
                                     # evaluated-LHS ternary
@@ -250,8 +250,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # pair: the deref-aware tuple_eq /
                                     # tuple_lt helper composition
     "binop.tuple_ptr_needle",       # pointer-repr tuple-literal membership
-                                    # needle: the tuple_to_storage lift
-                                    # over the borrow-form literal
+                                    # needle: built into storage element
+                                    # by element over the borrow-form
+                                    # literal
     "subscript.union_elem_tuple",   # `pair[1]` on `tuple[A | B, int32]`:
                                     # the sibling VALUE slot reads bare
     "call.union_elem_tuple_arg",    # ... and the whole tuple at a matching
@@ -836,12 +837,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # __getitem__(recv, i); evaluated for effect/bounds.
     "expr_stmt.subscript_discard",
     # A BORROW-form Own-element tuple NAME at the same return: the warned
-    # copy lifts through `tuple_to_storage<S>(pair)`.
+    # copy is built into storage element by element.
     "ret.own_tuple_borrow_lift",
     "btuple.reseat_borrow_call",    # borrow-tuple name reseated from a call
                                     # returning its own pointer tuple
-    # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`
-    # -> `push_back(tuple_to_storage<S>(t))`).
+    # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`,
+    # built into storage element by element).
     # F1-record element/value slot: a record RVALUE (exact or covariant
     # upcast) forwarded bare by the checked `__setitem__`
     # (`::tpy::__setitem__(s._pool, key, Box<Conn>(std::move(conn)));`).
@@ -1026,7 +1027,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "self.poly_narrowed",
     # A non-value tuple element inside a RESUMABLE frame-emplace container
     # literal (lowering; `std::tuple<int32_t, Box>{1, Box(5)}` bare -- the
-    # emplaced brace is already storage-typed, so no tuple_to_storage wrap).
+    # emplaced brace is already storage-typed, so nothing is converted
+    # element by element).
     "containerlit.tuple_frame_elem",
     # Container-FIELD for-each iterable (lowering; `for x in self.xs:` -- the
     # field renders inside the same lvalue `auto& __obj_N =` capture a name
@@ -1275,11 +1277,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "decl.ru_instance_literal",
     "assign.ru_wrapper_literal",    # the REASSIGN sibling (top-level global
                                     # init `g = [1, [2, 3], 4];`)
-    "containerlit.tuple_storage",   # `[(a, P(1)), ...]` -> tuple_to_storage<S>(S{...})
-    # The REF-element sibling: the inner is the BORROW tuple
-    # (`std::tuple<T*, ..>{&(a), nullptr}`) under the same convert --
-    # the tuple literal's has_ref_elements path.
-    "containerlit.tuple_borrow_storage",
     "containerlit.make",            # make_vector / make_ordered_map / _set
     "containerlit.move",            # `std::move(name)` element at last use
     "containerlit.copy_record",     # `copy(p)` element: the shared
@@ -1295,13 +1292,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "containerlit.tparam_copy_elem",  # `copy(x)` of an open-T NAME at a `T`
                                     # element slot -> the `T(x)` rvalue
     "containerlit.tuple_name_storage",  # bare NAME at a non-value tuple
-                                    # element slot -> the whole non-move
-                                    # tuple_to_storage copy
+                                    # element slot -> the whole tuple
+                                    # copied into storage per element
     "containerlit.tuple_subscript_storage",  # whole storage-tuple element
                                     # read at a non-value tuple slot -> the
                                     # bare `__getitem__` copy (no wrap)
-    "containerlit.tuple_mixed_call",  # mixed-own-tuple call element -> the
-                                    # non-move tuple_to_storage lift
+    "containerlit.tuple_mixed_call",  # mixed-own-tuple call element ->
+                                    # copied into storage per element
     "containerlit.union_member_prefix", # nested array literal: typed member ctor
     "containerlit.tuple_union_elem",   # nested tuple literal w/ union elements
     "list_repeat.lazy",             # `[v] * n` kept unmaterialized: the
@@ -1548,9 +1545,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "btuple.elem_optptr",           # pointer-repr Optional elem slot: None ->
                                     # nullptr, plain lvalue name -> &(name)
     "gentuple.literal",             # generic-slot tuple literal (to_val_or_ptr)
-    "btuple.elem_ptr_union",        # ptr-variant UNION elem slot: const
-                                    # ptr-variant dst + value-variant src
-    "btuple.value_to_borrow",       # rvalue elements via the source-tuple helper
+    "btuple.elem_ptr_union",        # ptr-variant UNION elem slot: the
+                                    # value variant held, lent const
+    "btuple.value_to_borrow",       # rvalue element held in a statement
+                                    # temp the tuple points into
     "btuple.value_arg",             # value-tuple literal call arg
     "btuple.proto_borrow",          # native-protocol slot tuple literal whose
                                     # non-value elements are simple lvalues:
@@ -1793,8 +1791,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # `copy((1, b))` of a whole tuple LITERAL with a reference element ->
     # the storage brace `std::tuple<int32_t, Box>{1, b}` (per-element copy).
     "call.copy_tuple_storage",
-    # `copy(t)` of a tuple NAME with a reference element -> the non-move
-    # `tuple_to_storage<S>(t)` (a storage binding copy-constructs `S(t)`).
+    # `copy(t)` of a tuple NAME with a reference element -> copied into
+    # storage element by element, moving nothing (a storage binding
+    # copy-constructs `S(t)`).
     "call.copy_tuple_name",
     # A REAL scalar-cast coerce over a local name at an Own[scalar] slot
     # binds the cast rvalue bare (no copy at the slot); the
@@ -2162,10 +2161,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # already the local's form, so it is a plain `p = make_mixed(c);`.
     "btuple.reseat_mixed_call",
     "btuple.reseat_literal",        # borrow-tuple local = REF-capture literal
-    "btuple.reseat_lift",           # borrow-tuple local = tuple_to_pointer(lvalue)
+    "btuple.reseat_lift",           # borrow-tuple local = lvalue lent per element
     "decl.opt_btuple_none",         # nullable borrow-tuple local: nullopt
     "decl.opt_btuple_lift",         # ... storage source: optional-wrapped
-                                    # tuple_to_pointer lift
+                                    # per-element lend
     "decl.opt_btuple_slot",         # ... owning call: __slot emplace alias
     "decl.opt_btuple_call",         # ... a call returning that very form:
                                     # `auto` binds it whole
@@ -2376,7 +2375,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # is_const_ref): `const T& a = std::get<i>(__tup_N);`.
     "stmt.tuple_unpack.cref_target",
     # A borrow (is_ref) F1-record target aliasing a storage-form tuple element
-    # via the tuple_to_pointer source wrap + unwrap_ref/tuple_elem_ref bind.
+    # via the source's per-element lend + unwrap_ref/tuple_elem_ref bind.
     "stmt.tuple_unpack.ref_target",
     # For-head ref unpack over an ITER-PROTO source (`for i, p in
     # enumerate(ps):`): the element is already a borrow-form tuple, so the
@@ -2385,14 +2384,14 @@ THIR_FACES: frozenset[str] = frozenset({
     "stmt.tuple_unpack.ref_target_iter",
     # Standalone `a, b = p` where `p` is an already-borrow-form tuple PARAM
     # (`tuple[T, ...]` passes as `const std::tuple<T*, ...>&`): the source binds
-    # `auto& __tup_N = p` (NAME_REF, no tuple_to_pointer lift) and ref targets
+    # `auto& __tup_N = p` (NAME_REF, no per-element lend) and ref targets
     # alias via unwrap_ref/tuple_elem_ref.
     "stmt.tuple_unpack.ref_param_source",
     "stmt.tuple_unpack.subscript_wrap_source",  # `a0, b0 = pairs[0]` -- the
-                                    # whole storage element lifts via
-                                    # tuple_to_pointer off __getitem__
+                                    # whole storage element is lent per
+                                    # element off __getitem__
     "stmt.tuple_unpack.field_wrap_source",  # `a, b = h.pair` -- the member
-                                    # lifts via tuple_to_pointer
+                                    # is lent element by element
     "stmt.tuple_unpack.call_borrow_source",  # `a, b = both(t1, t2)` -- the
                                     # borrow-form call result captures via
                                     # the plain RVALUE bind, no lift
@@ -2468,8 +2467,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.comprehension",        # slot-typed comp ArgTemp at a plain
                                     # container ref slot, free call or ctor
                                     # (accept([x for ..]), Flat([x for ..]))
-    "arg.borrow_tuple_field",       # storage F3-tuple field wrapped
-                                    # tuple_to_pointer at a borrow-tuple slot
+    "arg.borrow_tuple_field",       # storage F3-tuple field lent per
+                                    # element at a borrow-tuple slot
     "arg.borrow_tuple_subscript",   # the container-element twin: a checked
                                     # element read through the same wrap
     "arg.btuple_storage_name",      # storage-form or mixed tuple LOCAL (loop
@@ -2872,7 +2871,7 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # owned element, into the site's field
     "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
     "res.unpack_storage_wrap",      # alias frame targets off a storage-form
-                                    # lvalue: tuple_to_pointer off the lvalue
+                                    # lvalue: per-element lend off the lvalue
                                     # (never a by-value holder copy)
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
@@ -3001,7 +3000,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # The same borrowed result as the bare `::tpy::ptr_truthy(..)` operand.
     "call.ptr_truthy_operand",
     # A tuple LITERAL at a tuple field: the spelled value brace-init, plus
-    # the `tuple_to_storage` wrap at an F3 (non-value-element) slot.
+    # a storage tuple built element by element at an F3 (non-value-element)
+    # slot.
     "field_write.tuple_literal",
     "call.field_copy_borrow_ret",   # the T&-returning call admitted at the
                                     # field-write COPY sink (renders bare)

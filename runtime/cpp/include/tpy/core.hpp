@@ -725,8 +725,11 @@ enum class NoneUseKind : uint8_t { attr, item, operand_left, operand_right, unar
 
 // The None checks are forced inline in every build mode, -O0 included:
 // each site keeps only the test and a cold call, and a debugger's
-// step-into skips them. The throw stays out of line below.
-#define TPY_ALWAYS_INLINE [[gnu::always_inline]] inline
+// step-into skips them. The throw stays out of line below. The bare
+// attribute is for lambdas, which take no `inline`: generated code binds
+// a tuple source in one.
+#define TPY_ALWAYS_INLINE_ATTR [[gnu::always_inline]]
+#define TPY_ALWAYS_INLINE TPY_ALWAYS_INLINE_ATTR inline
 
 [[noreturn, gnu::noinline, gnu::cold]] inline void raise_none_access(
         NoneUseKind kind, std::string_view a = {}, std::string_view b = {}) {

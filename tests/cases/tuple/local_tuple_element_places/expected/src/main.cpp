@@ -192,8 +192,8 @@ int32_t param_alias(const std::tuple<const Box*, int32_t>& pair) {
 //     mutate(b)
 //     return b.n + t[0].n
 int32_t nested_shadow(std::vector<std::tuple<Box, int32_t>>& rows, Box& b) {
-    std::tuple<Box*, int32_t> t = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(::tpy::__getitem__(rows, 0));
-    t = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(::tpy::__getitem__(rows, 1));
+    std::tuple<Box*, int32_t> t = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(rows, 0));
+    t = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(rows, 1));
     auto mutate = [](Box& t) {
         Box& a = t;
         a.n = 9;
@@ -250,7 +250,7 @@ void elem_of_param_list(std::vector<std::tuple<Box, int32_t>>& xs) {
     auto&& t = ::tpy::__getitem__(xs, 0);
     Box& a = std::get<0>(t);
     a.n = ::tpy::add_check<int32_t>(a.n, std::get<1>(t));
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(t);
+    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     x.n = ::tpy::add_check<int32_t>(x.n, k);
@@ -293,7 +293,7 @@ void loop_var(std::vector<std::tuple<Box, int32_t>>& xs) {
 int32_t readonly_elems(const std::vector<std::tuple<Box, int32_t>>& items) {
     auto&& t = ::tpy::__getitem__(items, 0);
     const Box& a = std::get<0>(t);
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(::tpy::__getitem__(items, 0));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(items, 0));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a.n, b.n)), k)), std::get<0>(::tpy::__getitem__(items, 0)).n));
@@ -330,7 +330,7 @@ int32_t readonly_elems(const std::vector<std::tuple<Box, int32_t>>& items) {
 //     s.take((4, Counter(2)))
 //     print("own_param", s.total)
 void main() {
-    std::vector<std::tuple<Box, int32_t>> xs = ::tpy::make_vector<std::tuple<Box, int32_t>>(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(0), 3}));
+    std::vector<std::tuple<Box, int32_t>> xs = ::tpy::make_vector<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(0), 3});
     Box __slot_1 = Box(0);
     Box* b = &__slot_1;
     ::tpyapp::main::literal_local((*b));
@@ -344,13 +344,13 @@ void main() {
     Box __tmp_2 = Box(0);
     std::cout << "literal_mixed_ternary" << " " << ::tpyapp::main::literal_mixed_ternary(__tmp_2, true) << "\n" << ::tpy::check_signals;
     Box __tmp_3 = Box(0);
-    std::vector<std::tuple<int32_t, int32_t, Box>> __tmp_4 = {::tpy::tuple_to_storage<std::tuple<int32_t, int32_t, Box>>(std::tuple<int32_t, int32_t, Box>{0, 0, Box(7)})};
+    std::vector<std::tuple<int32_t, int32_t, Box>> __tmp_4 = {std::tuple<int32_t, int32_t, Box>{0, 0, Box(7)}};
     std::cout << "shadowed_in_comprehension" << " " << ::tpyapp::main::shadowed_in_comprehension(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
-    std::cout << "param_alias" << " " << ::tpyapp::main::param_alias(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(7), 0})) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<Box, int32_t>> __tmp_5 = {::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(1), 0}), ::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(2), 0})};
+    std::cout << "param_alias" << " " << ::tpyapp::main::param_alias([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(7), 0})) << "\n" << ::tpy::check_signals;
+    std::vector<std::tuple<Box, int32_t>> __tmp_5 = {std::tuple<Box, int32_t>{Box(1), 0}, std::tuple<Box, int32_t>{Box(2), 0}};
     Box __tmp_6 = Box(0);
     std::cout << "nested_shadow" << " " << ::tpyapp::main::nested_shadow(__tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
-    std::cout << "readonly_optional_unpack" << " " << ::tpyapp::main::readonly_optional_unpack(::tpy::tuple_value_to_borrow<std::tuple<const Box*, int32_t>>(std::tuple<Box, int32_t>{Box(4), 1})) << "\n" << ::tpy::check_signals;
+    std::cout << "readonly_optional_unpack" << " " << ::tpyapp::main::readonly_optional_unpack([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(4), 1})) << "\n" << ::tpy::check_signals;
     std::optional<Box> __slot_3;
     b = &*(__slot_3 = Box(0));
     ::tpyapp::main::call_local((*b));

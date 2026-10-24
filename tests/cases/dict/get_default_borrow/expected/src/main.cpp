@@ -491,8 +491,8 @@ void owned_elements(::tpy::ordered_map<std::string, P>& d, P& fb) {
     ::tpy::ordered_map<std::string, P> st = ::tpy::ordered_map<std::string, P>();
     ::tpy::__setitem__(st, "k", ::tpy::assert_lent(::tpy::dict_get_default(d, "zz", fb)));
     std::cout << "own_setitem" << " " << ::tpy::__getitem__(st, "k").n << "\n" << ::tpy::check_signals;
-    std::array<std::tuple<P, int32_t>, 1> tl = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(::tpy::assert_lent(::tpy::dict_get_default(d, "a", fb))), 1})};
-    ::tpy::ordered_map<std::string, std::tuple<P, int32_t>> td = ::tpy::make_ordered_map<std::string, std::tuple<P, int32_t>>("q", ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(::tpy::assert_lent(::tpy::dict_get_default(d, "zz", fb))), 2}));
+    std::array<std::tuple<P, int32_t>, 1> tl = {std::tuple<P, int32_t>{P(::tpy::assert_lent(::tpy::dict_get_default(d, "a", fb))), 1}};
+    ::tpy::ordered_map<std::string, std::tuple<P, int32_t>> td = ::tpy::make_ordered_map<std::string, std::tuple<P, int32_t>>("q", std::tuple<P, int32_t>{P(::tpy::assert_lent(::tpy::dict_get_default(d, "zz", fb))), 2});
     auto&& t0 = ::tpy::__getitem__(tl, 0);
     auto&& t1 = ::tpy::__getitem__(td, "q");
     std::cout << "own_tuple_member" << " " << std::get<0>(t0).n << " " << std::get<1>(t0) << " " << std::get<0>(t1).n << " " << std::get<1>(t1) << "\n" << ::tpy::check_signals;

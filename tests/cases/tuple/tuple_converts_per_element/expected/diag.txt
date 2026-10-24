@@ -1,0 +1,23 @@
+main.py:57: warning: copies A into field (tuple element 1); use copy() to make this explicit
+main.py:137: warning: copies A into field (tuple element 0.0); use copy() to make this explicit
+main.py:299: warning: copies A | None into field (tuple element 0); use copy() to make this explicit
+main.py:491: warning: copies Loud into owned storage (tuple element 1); use copy() to make this explicit
+main.py:82: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:95: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit
+main.py:107: warning: copies A | None into owned storage (tuple element 0); use copy() to make this explicit
+main.py:113: warning: copies A | B into owned storage (tuple element 0); use copy() to make this explicit
+main.py:118: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:128: warning: may copy T into owned storage (tuple element 0) if not a value type; use copy() to make this explicit
+main.py:142: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:167: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:182: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:194: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:216: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:337: warning: copies K into owned storage; use copy() to make this explicit
+main.py:351: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:359: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 356)
+main.py:365: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 363)
+main.py:697: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:724: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:726: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:795: warning: copies readonly[A] into owned storage (tuple element 1); use copy() to make this explicit

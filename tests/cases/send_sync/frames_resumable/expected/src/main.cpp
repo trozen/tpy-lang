@@ -206,7 +206,7 @@ void main() {
     std::cout << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_own(std::vector<int32_t>{4, 5}))) << "\n" << ::tpy::check_signals;
     Counter __tmp_1 = Counter(2);
     Counter __tmp_2 = Counter(3);
-    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::tup_ref(std::tuple<Counter*, Counter*>{&(__tmp_1), &(__tmp_2)}))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::tup_ref(std::tuple<const Counter*, const Counter*>{&(__tmp_1), &(__tmp_2)}))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::tup_val(std::tuple<int32_t, int32_t>{4, 5}))) << "\n" << ::tpy::check_signals;
 }
 

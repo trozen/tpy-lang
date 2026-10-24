@@ -492,7 +492,7 @@ inline Store::Store()
 //     a, k = self.t
 //     return a.xs[0]
 inline int32_t Store::t_head() const {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(this->t);
+    auto __tup_1 = std::tuple<const Box*, int32_t>{&(std::get<0>(this->t)), std::get<1>(this->t)};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     return ::tpy::__getitem__(a.xs, 0);

@@ -134,8 +134,8 @@ class TestPointerReprElement:
 
     def test_mixed_elements_are_pointer_repr(self):
         # A tuple mixing a nullable Optional slot with a plain reference slot
-        # is one pointer-repr tuple; the single dest-shape-dispatching
-        # tuple_to_storage converter handles both slot kinds.
+        # is one pointer-repr tuple; `convert.per_element` builds its
+        # `THIRTupleLiteral` element by element over both slot kinds.
         tt = TupleType((OptionalType(RECORD), RECORD))
         assert tt.has_pointer_repr_element()
 

@@ -25,14 +25,14 @@ void main() {
     H h = H(a, b);
     Box x = Box(9);
     Box y = Box(8);
-    h.set(std::tuple<Box*, Box*>{&(x), &(y)});
+    h.set(std::tuple<const Box*, const Box*>{&(x), &(y)});
     Box* first = ::tpy::optional_to_ptr(std::get<0>(h.t));
     if ((first != nullptr)) {
         std::cout << first->val << "\n" << ::tpy::check_signals;
     }
     std::cout << std::get<1>(h.t).val << "\n" << ::tpy::check_signals;
     Box* n = nullptr;
-    h.set(std::tuple<Box*, Box*>{n, &(y)});
+    h.set(std::tuple<const Box*, const Box*>{n, &(y)});
     std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(h.t)) == nullptr)) << "\n" << ::tpy::check_signals;
 }
 

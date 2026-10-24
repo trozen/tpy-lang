@@ -673,7 +673,7 @@ inline N::N(int32_t v) : v(v) {}
 //     # (the borrowed `Q` copies)
 //     self.q = p  # tpyc: warning(/copies Q into field \(tuple element 1\)/)
 inline void H::put_mixed(std::tuple<A, const Q*>&& p) {
-    this->q = ::tpy::tuple_to_storage<std::tuple<A, Q>>(std::move(p));
+    this->q = std::tuple<A, Q>{std::move(std::get<0>(p)), (*std::get<1>(p))};
 }
 
 // def store(self, k: int32) -> None:
@@ -739,7 +739,7 @@ std::vector<std::tuple<A, A>> comp_clause(T_csrc&& csrc) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::tuple<A, A> ct(::tpy::take_elem(__beg_0));
-            __result.push_back(::tpy::tuple_to_storage<std::tuple<A, A>>(std::move(ct)));
+            __result.push_back(std::move(ct));
         }
         std::move(__result);
     });

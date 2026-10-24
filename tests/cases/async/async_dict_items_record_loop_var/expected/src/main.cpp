@@ -63,7 +63,7 @@ __coro_step step(int32_t n) {
             int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(total, ::tpy::__getitem__((*d), n).v));
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        kv = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(*((*__for_it_0))++);
+        { auto&& __for_step_0 = *((*__for_it_0))++; kv = std::tuple<int32_t, Box*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
         __sub_0.emplace(std::get<0>(kv));
         __state = S_RESUME_0;
         continue;

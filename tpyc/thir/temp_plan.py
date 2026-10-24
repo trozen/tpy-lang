@@ -6,7 +6,7 @@ from types import MappingProxyType
 
 from ..codegen_cpp.forms import LocalBinding
 from ..identity_map import IdentityMap, IdentitySet
-from ..temp_schedule import TempQueue, banks_in_region
+from ..temp_schedule import TempQueue
 from . import nodes as th
 from .metadata import unsupported_metadata
 
@@ -111,7 +111,7 @@ class _Planner:
         match expr:
             case th.THIRArgTemp():
                 self.expr(expr.init)
-                self.queue.register(expr, banks_in_region(expr.cpp_type or "auto", expr.movable))
+                self.queue.register(expr, expr.would_bank())
                 if expr.read_id is not None:
                     self.read_ids.add(expr.read_id)
             case th.THIRTempRead():
@@ -154,6 +154,27 @@ class _Planner:
                 self.expr(expr.cond)
                 self.lazy(expr.then)
                 self.lazy(expr.orelse)
+            case th.THIRTupleLiteral():
+                # A tuple converted element by element: its source bound by
+                # the literal's own lambda (no declaration), then each
+                # element read off it.
+                _plain(expr, {"elements", "tuple_layout", "spelled",
+                              "spelled_const", "bound"})
+                if expr.bound is not None:
+                    self.expr(expr.bound)
+                    self.read_ids.add(th.BOUND_SOURCE_READ)
+                for element in expr.elements:
+                    self.expr(element)
+            case th.THIRSubscript() if expr.tuple_index is not None:
+                _plain(expr, {"receiver", "index", "tuple_index", "elem_ref",
+                              "deref", "elem_pointer"})
+                self.expr(expr.receiver)
+            case th.THIRMove():
+                self.expr(expr.value)
+            case th.THIRFormConvert():
+                _plain(expr, {"value", "is_const", "move", "materialize",
+                              "generic_return"})
+                self.expr(expr.value)
             case _:
                 raise _Unplanned()
 

@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     t[1].val = 99
 //     print(items[0][1].val)
 void from_list() {
-    std::vector<std::tuple<int32_t, Box>> items = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)}));
+    std::vector<std::tuple<int32_t, Box>> items = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)});
     auto&& t = ::tpy::__getitem__(items, 0);
     std::get<1>(t).val = 99;
     std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n" << ::tpy::check_signals;
@@ -35,7 +35,7 @@ void from_field() {
 //     u[1].val = 11
 //     print(items[0][1].val)
 void chain_alias() {
-    std::vector<std::tuple<int32_t, Box>> items = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(3)}));
+    std::vector<std::tuple<int32_t, Box>> items = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(3)});
     auto&& t = ::tpy::__getitem__(items, 0);
     auto&& u = t;
     std::get<1>(u).val = 11;

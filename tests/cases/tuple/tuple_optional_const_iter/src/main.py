@@ -1,6 +1,6 @@
 # Const-source iteration of list[tuple[T | None, ...]] passed to a
 # const-inferred consumer. Pre-fix this failed at C++ compile because
-# tuple_to_pointer<tuple<T*, T*>> rejected the const T* derived from
+# the borrow conversion to tuple<T*, T*> rejected the const T* from
 # iterating a const-bound source. The fix: const-inference on consume's
 # tuple param, plus matching const slots through the conversion helper.
 #

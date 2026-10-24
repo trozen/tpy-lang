@@ -66,7 +66,7 @@ __gen_gen gen(const std::vector<std::tuple<std::optional<P>, std::optional<P>>>&
 //     for v in gen(data):
 //         print(v)
 void main() {
-    std::vector<std::tuple<std::optional<P>, std::optional<P>>> data = {::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P, P*>{P(1), nullptr})), ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_value_to_borrow<std::tuple<P*, P*>>(std::tuple<P*, P>{nullptr, P(4)}))};
+    std::vector<std::tuple<std::optional<P>, std::optional<P>>> data = {std::tuple<std::optional<P>, std::optional<P>>{P(1), std::nullopt}, std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, P(4)}};
     {
         auto __src_0 = ::tpyapp::main::gen(data);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

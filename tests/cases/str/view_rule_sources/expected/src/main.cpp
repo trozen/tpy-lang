@@ -1112,10 +1112,10 @@ void sec_tuple_unpack_over_field() {
     PS q = PS(1);
     auto&& qu = q.u;
     auto&& qub = q.ub;
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string, Rec*>>(qu);
+    auto __tup_1 = std::tuple<std::string, Rec*>{std::get<0>(qu), &(std::get<1>(qu))};
     std::string y = std::get<0>(__tup_1);
     auto&& r0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<::tpy::Bytes, Rec*>>(qub);
+    auto __tup_2 = std::tuple<::tpy::Bytes, Rec*>{std::get<0>(qub), &(std::get<1>(qub))};
     ::tpy::Bytes z = std::get<0>(__tup_2);
     auto&& rb0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
     q.u = std::tuple<std::string, Rec>{::tpyapp::main::mk_s(7), Rec(7)};
@@ -1124,10 +1124,10 @@ void sec_tuple_unpack_over_field() {
     P p = P(1);
     auto&& u = p.u;
     auto&& ub = p.ub;
-    auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<Rec*, std::string>>(u);
+    auto __tup_3 = std::tuple<Rec*, std::string>{&(std::get<0>(u)), std::get<1>(u)};
     auto&& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
     std::string y2 = std::get<1>(__tup_3);
-    auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<Rec*, ::tpy::Bytes>>(ub);
+    auto __tup_4 = std::tuple<Rec*, ::tpy::Bytes>{&(std::get<0>(ub)), std::get<1>(ub)};
     auto&& rb = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
     ::tpy::Bytes z2 = std::get<1>(__tup_4);
     p.u = std::tuple<Rec, std::string>{Rec(7), ::tpyapp::main::mk_s(7)};

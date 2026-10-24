@@ -68,6 +68,6 @@ inline std::string Point::__repr__() const {
 
 // def __init__(self, pair: tuple[Optional[Point], int32]) -> None:
 //     self.pair = pair  # tpyc: warning(/copies/)
-inline Holder::Holder(const std::tuple<const Point*, int32_t>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, int32_t>>(pair)) {}
+inline Holder::Holder(const std::tuple<const Point*, int32_t>& pair) : pair(std::tuple<std::optional<Point>, int32_t>{::tpy::ptr_to_optional(std::get<0>(pair)), std::get<1>(pair)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

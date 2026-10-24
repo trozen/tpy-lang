@@ -110,7 +110,7 @@ std::expected<std::tuple<A, A*>, ::tpy::StopIteration> __genexpr_genexpr_rebind_
     }
     while ((*__for_i_0) < (*__for_stop_0)) {
         i = ((*__for_i_0))++;
-        return ::tpy::tuple_to_storage<std::tuple<A, A*>>(p);
+        return std::tuple<A, A*>{(*std::get<0>(p)), std::get<1>(p)};
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -247,7 +247,7 @@ void main() {
         }
     }
     std::cout << "lending_call" << " " << p.v << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<A, int32_t>> ts = ::tpy::make_vector<std::tuple<A, int32_t>>(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 1}));
+    std::vector<std::tuple<A, int32_t>> ts = ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 1});
     {
         auto __src_6 = ::tpyapp::main::element(ts);
         auto&& __itr_6 = ::tpy::__iter__(__src_6);

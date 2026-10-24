@@ -84,7 +84,7 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3.emplace(std::move(__r3).value());
         __sub_3.reset();
-        auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<std::vector<int32_t>*, int32_t>>((*__await_lift_3));
+        auto __tup_4 = std::tuple<std::vector<int32_t>*, int32_t>{&(std::get<0>((*__await_lift_3))), std::get<1>((*__await_lift_3))};
         lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4))));
         m = std::get<1>(__tup_4);
         lst->push_back(30);

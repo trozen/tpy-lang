@@ -94,7 +94,7 @@ class GeneratorForInfo:
     # (dict_items: operator* returns std::tuple<const K&, V&> by value).
     # The loop element cannot be address-taken (`&(*it)` is ill-formed on
     # the prvalue proxy), so the loop var's frame slot is the borrow-form
-    # tuple (std::tuple<..., T*>) assigned via tuple_to_pointer; the element
+    # tuple (std::tuple<..., T*>) lent element by element; the element
     # refs point into stable node storage, so aliasing across yield/resume
     # still holds. None for non-proxy iterators.
     borrow_tuple_loop_var: str | None = None
@@ -347,7 +347,8 @@ class GeneratorCodegen:
             elem_for_form = unwrap_ref_type(native_elem) if native_elem else None
             # Proxy-ref tuple iterators (dict_items): `&(*it)` is ill-formed
             # on the prvalue proxy, so the loop element binds as a borrow-form
-            # tuple via tuple_to_pointer instead of a `T*` to the element.
+            # tuple lent element by element instead of a `T*` to the
+            # element.
             yields_proxy = iter_yields_ref_tuple_proxies(iterable_type)
             pointer_form_targets: frozenset[str] = frozenset()
             target_payloads: dict[str, str] = {}

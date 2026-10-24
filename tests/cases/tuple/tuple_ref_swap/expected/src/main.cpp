@@ -20,7 +20,7 @@ std::tuple<int32_t, Point*> swap(const std::tuple<Point*, int32_t>& p) {
 void main() {
     Point p = Point(1, 2);
     auto t = std::tuple<Point, int32_t>{std::move(p), 10};
-    auto result = ::tpyapp::main::swap(::tpy::tuple_to_pointer<std::tuple<Point*, int32_t>>(t));
+    auto result = ::tpyapp::main::swap(std::tuple<Point*, int32_t>{&(std::get<0>(t)), std::get<1>(t)});
     std::cout << std::get<0>(result) << "\n" << ::tpy::check_signals;
     std::cout << std::get<1>(result)->x << "\n" << ::tpy::check_signals;
     std::cout << std::get<1>(result)->y << "\n" << ::tpy::check_signals;

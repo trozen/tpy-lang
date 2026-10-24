@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     d[2][1].append(9)  # inner list is a real vector reached through the tuple
 //     print(d)
 void main() {
-    ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::vector<int32_t>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::vector<int32_t>>>({{1, ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {1, 2}})}, {2, ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {3, 4, 5}})}});
+    ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::vector<int32_t>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::vector<int32_t>>>({{1, std::tuple<int32_t, std::vector<int32_t>>{0, {1, 2}}}, {2, std::tuple<int32_t, std::vector<int32_t>>{0, {3, 4, 5}}}});
     std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;
     std::get<1>(::tpy::__getitem__(d, 2)).push_back(9);
     std::cout << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;

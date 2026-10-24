@@ -679,8 +679,8 @@ borrow slot (`ValueForm` in `typesys.py`): `VALUE` (copied), `OWN` (moved),
 `val_or_ptr_t<T>`), `PTR_OPTIONAL` (nullable `T*`), and `BORROW_REF`
 (non-null `T*`). It drives the tuple borrow/storage form split --
 `TupleType.has_pointer_repr_element()` and the per-element C++ renderings --
-and is the sema-side anchor for the boundary conversions
-(`tuple_to_pointer` / `tuple_to_storage`). The OWNERSHIP half of the same
+and is the sema-side anchor for the boundary conversions (element by
+element, `convert.per_element`). The OWNERSHIP half of the same
 taxonomy is `TupleType.is_owned_movable()` (every non-value element owned,
 so the tuple is owned storage) versus `is_mixed_own()` (owned AND borrowed
 elements, so it has no single form) -- `has_own_element()` alone answers

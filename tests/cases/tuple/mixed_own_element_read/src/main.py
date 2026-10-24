@@ -82,8 +82,8 @@ def wholly_owned_still_dots() -> int32:
     return p[1].val
 
 
-# The storage sinks below all run the mixed tuple through tuple_to_storage,
-# which materializes the ref element BY VALUE -- so they must keep reading `.`,
+# The storage sinks below all rebuild the mixed tuple element by element,
+# copying the ref element in BY VALUE -- so they must keep reading `.`,
 # even though the tuple type still carries the `Own`. Reading the borrow form
 # off the TYPE instead of the SOURCE breaks exactly these.
 #

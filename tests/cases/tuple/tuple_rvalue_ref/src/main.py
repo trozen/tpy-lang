@@ -1,8 +1,8 @@
 # Rvalue tuple literal targeting a ref-form (T&) slot. The old codegen
 # emitted `std::tuple<T, T>{T(1), T(2)}` which doesn't bind to the
-# function param's `const std::tuple<T&, T&>&`. The fix wraps the
-# value-tuple source with ::tpy::tuple_value_to_borrow so the resulting
-# tuple holds T& slots bound to the source temp.
+# function param's `const std::tuple<T&, T&>&`. The fix lends each rvalue
+# element for the call's full expression, so the tuple's slots stay valid
+# through the call.
 from tpy import int32
 
 

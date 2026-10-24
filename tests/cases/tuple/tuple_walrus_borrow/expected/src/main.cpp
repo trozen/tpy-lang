@@ -23,9 +23,9 @@ void literal_capture() {
 //     t[1].val = 42
 //     print(items[0][1].val)
 void storage_source() {
-    std::vector<std::tuple<int32_t, Box>> items = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)}));
+    std::vector<std::tuple<int32_t, Box>> items = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(7)});
     std::tuple<int32_t, Box*> t;
-    std::cout << std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(items, 0)))) << "\n" << ::tpy::check_signals;
+    std::cout << std::get<0>((t = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0)))) << "\n" << ::tpy::check_signals;
     std::get<1>(t)->val = 42;
     std::cout << std::get<1>(::tpy::__getitem__(items, 0)).val << "\n" << ::tpy::check_signals;
 }

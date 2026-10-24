@@ -47,13 +47,13 @@ std::vector<std::tuple<T, std::string>> by_name(const std::vector<std::tuple<T, 
 //     return min(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
 std::tuple<T, int32_t> smaller(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b) {
-    return ::tpy::tuple_to_storage<std::tuple<T, int32_t>>(::tpy::min_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); }));
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(__t))), std::get<1>(__t)}; }(::tpy::min_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); }));
 }
 // def larger[T](a: tuple[T, int32], b: tuple[T, int32]) -> Own[tuple[T, int32]]:
 //     return max(a, b, key=lambda p: p[1])  # tpyc: warning(/may copy T into owned storage \(tuple element 0\)/)
 template<typename T>
 std::tuple<T, int32_t> larger(const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& a, const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& b) {
-    return ::tpy::tuple_to_storage<std::tuple<T, int32_t>>(::tpy::max_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); }));
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T, int32_t>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(__t))), std::get<1>(__t)}; }(::tpy::max_key(a, b, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); }));
 }
 // # local: the fresh min result bound, then rebound to a borrowed parameter;
 // # the binding holds a copy, hedged whole at the local

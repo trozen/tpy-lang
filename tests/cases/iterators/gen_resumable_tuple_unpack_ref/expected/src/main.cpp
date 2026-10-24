@@ -18,7 +18,7 @@ __gen_process process(std::vector<std::tuple<int32_t, Item>>& rows) {
 //     # Mutations through the unpacked reference propagated to the source.
 //     print(rows[0][1].n, rows[1][1].n)
 void main() {
-    std::vector<std::tuple<int32_t, Item>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{1, Item(0)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Item>>(std::tuple<int32_t, Item>{2, Item(0)})};
+    std::vector<std::tuple<int32_t, Item>> rows = {std::tuple<int32_t, Item>{1, Item(0)}, std::tuple<int32_t, Item>{2, Item(0)}};
     {
         auto __src_0 = ::tpyapp::main::process(rows);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

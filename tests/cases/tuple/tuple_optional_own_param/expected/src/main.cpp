@@ -12,7 +12,7 @@ namespace tpyapp::main {
 //         return a.x
 //     return int32(0)
 int32_t take(std::tuple<std::optional<P>, std::optional<P>> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(t)), ::tpy::optional_to_ptr(std::get<1>(t))};
     P* a = std::get<0>(__tup_1);
     P* b = std::get<1>(__tup_1);
     if (((a != nullptr) && (b != nullptr))) {
@@ -76,7 +76,7 @@ void test_none_only() {
 }
 
 // def test_storage_form_source() -> None:
-//     # pairs[0] is a storage-form source -- tuple_to_pointer lift, no
+//     # pairs[0] is a storage-form source -- lent element by element, no
 //     # per-element move because the list still owns its elements.
 //     p1 = P(7)
 //     p2 = P(8)
@@ -85,13 +85,13 @@ void test_none_only() {
 void test_storage_form_source() {
     P p1 = P(7);
     P p2 = P(8);
-    std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = ::tpy::make_vector<std::tuple<std::optional<P>, std::optional<P>>>(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<P*, P*>{&(p1), &(p2)}));
+    std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = ::tpy::make_vector<std::tuple<std::optional<P>, std::optional<P>>>(std::tuple<std::optional<P>, std::optional<P>>{std::move(p1), std::move(p2)});
     std::cout << ::tpyapp::main::take(::tpy::__getitem__(pairs, 0)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_subscript_access_in_body() -> None:
 //     # Confirms t[0] reads the storage-form slot correctly when the param
-//     # was constructed via tuple_to_storage_move.
+//     # was built by moving each element in.
 //     e = P(9)
 //     f = P(10)
 //     print(take_subscript((e, f)))

@@ -1,6 +1,6 @@
 # A generator yielding its LOOP VAR whole, where the loop var is the storage-form
 # tuple element of a `list[tuple[int32, C]]` and the yield slot is the pointer-repr
-# borrow form: the yield lifts the name via tuple_to_pointer, so the consumer
+# borrow form: the yield lends the name element by element, so the consumer
 # aliases the source element rather than copying it. One section per position; a
 # two-yield generator is not "simple", so those sections take the resumable frame
 # and the loop var reads through the frame's pointer field.

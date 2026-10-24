@@ -337,6 +337,106 @@ std::tuple<NC, B*> mixed_fin_nocopy(B& b) {
     }
 }
 
+// def mk_ab() -> Own[tuple[A, B]]:
+//     return (A(1), B(2))
+std::tuple<A, B> mk_ab() {
+    return std::tuple<A, B>{A(1), B(2)};
+}
+
+// def mk_aob() -> Own[tuple[A, B | None]]:
+//     return (A(1), B(2))
+std::tuple<A, std::optional<B>> mk_aob() {
+    return std::tuple<A, std::optional<B>>{A(1), B(2)};
+}
+
+// def mk_abc() -> Own[tuple[A, B | C]]:
+//     return (A(1), B(2))
+std::tuple<A, ::tpy::Union<B, C>> mk_abc() {
+    return std::tuple<A, ::tpy::Union<B, C>>{A(1), B(2)};
+}
+
+
+// def move_lend() -> Iterator[tuple[Own[A], B]]:
+__gen_move_lend move_lend() {
+    return __gen_move_lend();
+}
+
+
+// def move_lend_live() -> Iterator[tuple[Own[A], B]]:
+__gen_move_lend_live move_lend_live() {
+    return __gen_move_lend_live();
+}
+
+
+// def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
+__gen_move_lend_opt move_lend_opt() {
+    return __gen_move_lend_opt();
+}
+
+
+// def move_lend_union() -> Iterator[tuple[Own[A], B | C]]:
+__gen_move_lend_union move_lend_union() {
+    return __gen_move_lend_union();
+}
+
+// def move_lend_section() -> None:
+//     for q in move_lend():
+//         q[1].v += 10
+//         print("move_lend", q[0].v, q[1].v)
+//     for q2 in move_lend_live():
+//         # only the lent element is written: CPython shares both
+//         q2[1].v += 10
+//         print("move_lend_live", q2[0].v, q2[1].v)
+//     for q3 in move_lend_opt():
+//         # no read of the lent Optional element lowers in the loop yet
+//         print("move_lend_opt", q3[0].v)
+//     for q4 in move_lend_union():
+//         print("move_lend_union", q4[0].v)
+void move_lend_section() {
+    {
+        auto __src_0 = ::tpyapp::main::move_lend();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& q = ::tpy::unwrap_ref(*__r_1);
+            std::get<1>(q)->v = ::tpy::add_check<int32_t>(std::get<1>(q)->v, 10);
+            std::cout << "move_lend" << " " << std::get<0>(q).v << " " << std::get<1>(q)->v << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __src_2 = ::tpyapp::main::move_lend_live();
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& q2 = ::tpy::unwrap_ref(*__r_3);
+            std::get<1>(q2)->v = ::tpy::add_check<int32_t>(std::get<1>(q2)->v, 10);
+            std::cout << "move_lend_live" << " " << std::get<0>(q2).v << " " << std::get<1>(q2)->v << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __src_4 = ::tpyapp::main::move_lend_opt();
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& q3 = ::tpy::unwrap_ref(*__r_5);
+            std::cout << "move_lend_opt" << " " << std::get<0>(q3).v << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __src_6 = ::tpyapp::main::move_lend_union();
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            auto&& q4 = ::tpy::unwrap_ref(*__r_7);
+            std::cout << "move_lend_union" << " " << std::get<0>(q4).v << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
 // def opt_section() -> None:
 //     g = opt_str_param("x")
 //     try:
@@ -743,6 +843,7 @@ void view_section() {
 //     for ma in in_match(1, mp):
 //         ma.v = 3
 //     print("in_match", mp.v)
+//     move_lend_section()
 void main() {
     {
         auto __src_0 = ::tpyapp::main::ot_dead();
@@ -1171,6 +1272,7 @@ void main() {
         }
     }
     std::cout << "in_match" << " " << mp.v << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::move_lend_section();
 }
 
 

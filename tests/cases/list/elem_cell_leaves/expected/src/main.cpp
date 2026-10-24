@@ -526,7 +526,7 @@ void warned_copy_pos() {
 //     print("tuple_copy:", zs)
 void tuple_copy_pos() {
     std::vector<int32_t> zs = {5};
-    std::array<std::tuple<int32_t, std::vector<int32_t>>, 1> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, const std::vector<int32_t>*>{1, &(zs)})};
+    std::array<std::tuple<int32_t, std::vector<int32_t>>, 1> xs = {std::tuple<int32_t, std::vector<int32_t>>{1, zs}};
     std::cout << "tuple_copy:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     zs.push_back(6);
     std::cout << "tuple_copy:" << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;

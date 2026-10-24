@@ -18,7 +18,7 @@ std::tuple<int32_t, Box*> pick(Holder& h) {
     auto __tup_1 = ::tpyapp::main::make_pair(9);
     Box __slot_1 = std::move(std::get<1>(__tup_1));
     std::tuple<int32_t, Box*> t{std::move(std::get<0>(__tup_1)), &__slot_1};
-    t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+    t = std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
     return t;
 }
 

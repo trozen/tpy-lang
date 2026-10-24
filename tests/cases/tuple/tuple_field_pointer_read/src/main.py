@@ -1,6 +1,6 @@
 # Storage->borrow round-trip through a tuple FIELD: the field stores the
 # value form (std::tuple<int32, Box>), reading it into a borrow-tuple param
-# goes through tuple_to_pointer's value->T* (addressof) branch, and mutating
+# lends each element (`&(std::get<i>(t))`), and mutating
 # through the borrow reaches the field's element.
 from tpy import int32
 

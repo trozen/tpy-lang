@@ -18,12 +18,12 @@ machinery to reproduce, not to improve.
 
 ## Headline finding
 
-- **Conversion is already semi-centralized.** A `CppForm` enum (`BORROW` /
+- **Conversion was already semi-centralized.** A `CppForm` enum (`BORROW` /
   `STORAGE`) and a single chokepoint `CodeGenContext.convert(val, dst_type,
-  dst_form)` (`tpyc/codegen_cpp/context.py` ~2008-2051) already route most
-  borrow<->storage bridging through the runtime helpers. `FormValue` carries an
-  expr's current form. **This is the prototype of the THIR `FormConvert` node** --
-  the design should generalize it, not invent it.
+  dst_form)` routed most borrow<->storage bridging through the runtime helpers,
+  with `FormValue` carrying an expr's current form. **That was the prototype of
+  the THIR `FormConvert` node**; all three are now replaced by `convert()` in
+  `tpyc/thir/lower/convert.py` (section 2a).
 - **Detection is distributed.** *Which* form a site needs is re-derived per-site
   from ~12 predicates + ~22 local side-sets + the `RefType` wrapper. **This is
   what the form fact replaces:** a tag carried on the type/node so consumers read
@@ -60,11 +60,14 @@ here because the form fact subsumes the split (Open Q 11 "scope extension").
 ## 2. The conversion surface (= the `THIRFormConvert` node kinds)
 
 ### 2a. The codegen chokepoint (prototype of the IR node)
-- `CodeGenContext.convert(val, dst_type, dst_form)` -- `context.py` ~2008-2051.
-  Single door for borrow<->storage; dispatches per type family to the helpers
-  below. Takes a `FormValue` (expr + current `CppForm` + const-ness).
-- `CppForm` enum (`BORROW`/`STORAGE`); `FormValue`; `source_form(expr)`
-  (`context.py` ~1965-2006) classifies a leaf expr borrow/storage/value.
+- `CodeGenContext.convert(val, dst_type, dst_form)` taking a `FormValue` was the
+  single codegen door for borrow<->storage. Both are gone: the one conversion is
+  `convert()` in `tpyc/thir/lower/convert.py`, whose scalar rows build
+  `THIRFormConvert` and whose tuple rows build the tuple element by element
+  (below).
+- The `CppForm` enum (`BORROW`/`STORAGE`) and `source_form(expr)`, which
+  classified a leaf expr borrow/storage/value, went with it: THIR reads a
+  source's form off its `Source` fact.
 
 ### 2b. Runtime bridge helpers (catalog -- each is a conversion kind)
 **Optional** (`runtime/cpp/include/tpy/format.hpp` ~744-790):
@@ -73,10 +76,23 @@ here because the form fact subsumes the split (Open Q 11 "scope extension").
 **Union** (`runtime/cpp/include/tpy/variant_ref.hpp` ~81-146):
 `to_ptr_variant`, `to_const_ptr_variant`, `to_value_variant`.
 
-**Tuple** (`format.hpp` ~801-1047):
-`tuple_to_storage`(`_move`), `tuple_to_pointer`, `tuple_value_to_borrow`; per-elem
-dispatchers `detail::to_storage_elem`(`_move`), `detail::to_pointer_form`;
-comparison-across-forms `tuple_eq`/`tuple_lt`/`tuple_elem_eq`/`tuple_cmp_ref`.
+**Tuple**: no conversion helper. A tuple whose source form differs from its
+slot's is built element by element (`per_element` in `tpyc/thir/lower/convert.py`:
+a `THIRTupleLiteral` over `THIRSubscript` element reads), each element converted
+as its scalar is at that element's slot -- a reference lent (`&(std::get<i>(t))`)
+or its pointee copied (`(*std::get<i>(t))`), an owned element moved, an Optional
+or union element through the helpers above, an open `T` through
+`param_to_storage<T>(tuple_elem_ref(...))` / `to_val_or_ptr`. A source that is
+no place is evaluated once where it is written (`THIRTupleLiteral.bound`): a
+captureless one-parameter lambda binds it and the literal is its body
+(`[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, A>{...}; }(mka(a))`), so it and its
+temporaries live to the end of the full expression, as a helper's operand
+would. A tuple literal's rvalue elements at a borrow slot are built by value
+into the lambda's argument and lent from its parameter; any other record
+element lent out of a temporary is refused (`tuple.lend_from_temporary`),
+an Optional or union one is lent from the parameter.
+Comparison across forms stays in the runtime (`format.hpp`):
+`tuple_eq`/`tuple_lt`/`tuple_elem_eq`/`tuple_cmp_ref`.
 
 **Generic slot** (`runtime/cpp/include/tpy/type_traits.hpp` ~174-238):
 `val_or_ref_t`/`val_or_cref_t`/`param_val_or_ref_t`, `val_or_ptr_t`/`val_or_cptr_t`,
@@ -159,19 +175,20 @@ form-tagged node) at lowering.
   (`tuple_eq`/`tuple_lt`; `in`-needle storage lift).
 
 ### Boundary write sites (borrow -> storage, on store)
-- Field write / record ctor field-init (`tuple_to_storage`, `ptr_to_optional`,
-  value-variant store); subscript element write + `_lift_to_element_storage`.
-- Container insert; Own[tuple] param (`tuple_to_storage_move`).
+- Field write / record ctor field-init (a tuple element by element,
+  `ptr_to_optional`, value-variant store); subscript element write +
+  `_lift_to_element_storage`.
+- Container insert; Own[tuple] param (owned elements moved element by element).
 
 ### Boundary lift sites (storage/value -> borrow, on pass/return)
 - Call-arg bridges: `_gen_optional_ptr_arg`, union-arg `to_ptr_variant`, tuple-arg
-  `tuple_to_pointer` (`expressions.py` ~1112-1176, ~274-377).
-- return/yield: `_ensure_optional_return_is_ptr`, tuple yield
-  `convert(.., BORROW)` (`statements.py` ~710, ~1730, ~3740).
+  lent element by element.
+- return/yield: `_ensure_optional_return_is_ptr`, tuple yield lent element
+  by element.
 - await-arg lift; ternary-arm normalization (`_ptr_variant_branch`,
   `_ptr_optional_branch`); walrus borrow bridge.
-- Tuple literal construction slots (`_tuple_literal_slot_info` +
-  `to_val_or_ptr`/`tuple_value_to_borrow`, `expressions.py` ~5736-5950).
+- Tuple literal construction slots (each element in its slot's form; an open
+  `T` element through `to_val_or_ptr`).
 
 ### Known current form-mismatch defects (BUGS.md)
 Nested tuples (outer/inner form disagree); rvalue tuple-of-records into a

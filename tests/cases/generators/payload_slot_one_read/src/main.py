@@ -369,6 +369,64 @@ def mixed_fin_nocopy(b: B) -> tuple[Own[NC], B]:
         t[0].v = 99
 
 
+def mk_ab() -> Own[tuple[A, B]]:
+    return (A(1), B(2))
+
+
+def mk_aob() -> Own[tuple[A, B | None]]:
+    return (A(1), B(2))
+
+
+def mk_abc() -> Own[tuple[A, B | C]]:
+    return (A(1), B(2))
+
+
+def move_lend() -> Iterator[tuple[Own[A], B]]:
+    t = mk_ab()
+    # the frame's owning tuple at its last use at a mixed step: its owned
+    # element moves out, the other is lent from the frame (a copyable A:
+    # BUGS.md#generator-mixed-tuple-nocopy-yield-rejects refuses a @nocopy one)
+    yield t  # tpyc: ok
+
+
+def move_lend_live() -> Iterator[tuple[Own[A], B]]:
+    t = mk_ab()
+    # read after the yield: the owned element is the warned copy, the
+    # other still lent from the frame
+    yield t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+    print("move_lend_live after", t[1].v)
+
+
+def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
+    t = mk_aob()
+    # a lent Optional element: its payload's pointer (no read of it lowers
+    # yet, BUGS.md#lent-optional-tuple-element-match-ice)
+    yield t  # tpyc: ok
+
+
+def move_lend_union() -> Iterator[tuple[Own[A], B | C]]:
+    t = mk_abc()
+    # a lent union element: its pointer variant (a match arm capturing it
+    # is refused,
+    # BUGS.md#lent-union-tuple-element-capture-ill-formed)
+    yield t  # tpyc: ok
+
+
+def move_lend_section() -> None:
+    for q in move_lend():
+        q[1].v += 10
+        print("move_lend", q[0].v, q[1].v)
+    for q2 in move_lend_live():
+        # only the lent element is written: CPython shares both
+        q2[1].v += 10
+        print("move_lend_live", q2[0].v, q2[1].v)
+    for q3 in move_lend_opt():
+        # no read of the lent Optional element lowers in the loop yet
+        print("move_lend_opt", q3[0].v)
+    for q4 in move_lend_union():
+        print("move_lend_union", q4[0].v)
+
+
 def opt_section() -> None:
     g = opt_str_param("x")
     try:
@@ -593,6 +651,7 @@ def main() -> None:
     for ma in in_match(1, mp):
         ma.v = 3
     print("in_match", mp.v)
+    move_lend_section()
 
 
 main()

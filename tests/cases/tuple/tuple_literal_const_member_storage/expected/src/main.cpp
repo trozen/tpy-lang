@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     xs: list[tuple[int32, P]] = [(1, c)]  # tpyc: warning(/copies P into owned storage/)
 //     print(xs[0][1].x)
 void param_member(const P& c) {
-    std::vector<std::tuple<int32_t, P>> xs = ::tpy::make_vector<std::tuple<int32_t, P>>(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)}));
+    std::vector<std::tuple<int32_t, P>> xs = ::tpy::make_vector<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, c});
     std::cout << std::get<1>(::tpy::__getitem__(xs, 0)).x << "\n" << ::tpy::check_signals;
 }
 
@@ -24,7 +24,7 @@ void comp_member(const std::vector<P>& cells) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& c = *__beg_0;
-            __result.push_back(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{1, &(c)}));
+            __result.push_back(std::tuple<int32_t, P>{1, c});
         }
         std::move(__result);
     });

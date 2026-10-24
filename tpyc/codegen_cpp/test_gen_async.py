@@ -268,8 +268,8 @@ def test_routed_frame_captures_from_its_own_lowered_argument() -> None:
     seen: list[list[str]] = []
     original = ResumableLeafEmitter.render_await_args
 
-    def spy(self, call):
-        rendered = original(self, call)
+    def spy(self, call, **kw):
+        rendered = original(self, call, **kw)
         seen.append(rendered)
         return rendered
 

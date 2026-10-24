@@ -20,7 +20,8 @@ load-bearing across union slots):
   * A field write into a POINTER-LIFTED storage slot (pointer-repr Optional /
     pointer-variant union / pointer-repr tuple) never takes a BORROW value --
     the borrow->storage converts (`ptr_to_optional` / `to_value_variant` /
-    `tuple_to_storage`) must have wrapped it. A plain record borrow (`T&`)
+    a tuple built element by element) must have wrapped it. A plain record
+    borrow (`T&`)
     copy-constructs implicitly and form alone cannot tell `T&` from `T*`, so
     plain-record sinks are left unchecked.
   * A MIL cell's value gets the value-side version of the same test (the ctor
@@ -80,7 +81,7 @@ from .nodes import (
     THIRNode, THIRName, THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRFinallyDeferredReturn, DeferredPartKind,
-    THIRSubscript, THIRTupleUnpack, THIRCoroHandleMove, THIRMatch,
+    THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack, THIRCoroHandleMove, THIRMatch,
     THIRMatchBinding, THIRMatchFoldBind, THIRWith, THIRWithItem,
     WithTargetArm,
     THIRFrameSlotWrite, TupleElemBind, UnpackBind,
@@ -971,8 +972,12 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # so form + type cannot tell the two apart -- the same blind spot
         # the pointer-lifted field sink rule names. Its same-form same-type
         # shape is the lift doing its job, not a dead node.
+        # An open `T`'s BORROW convert is its `val_or_ptr_t<T>` lift, the
+        # same reference-to-pointer step at a reference instantiation.
         ref_to_ptr_lift = (node.form is Form.BORROW and cv is not None
-                           and is_plain_nonvalue(cv))
+                           and (is_plain_nonvalue(cv)
+                                or (isinstance(cv, TypeParamRef)
+                                    and node.trait is not None)))
         if (node.form is node.value.form
                 and node.result_type == node.value.result_type
                 and not node.move and not ref_to_ptr_lift):
@@ -1185,13 +1190,15 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
 
 
 # The wrappers this walk treats as pass-through for flushability -- the ONE
-# place that says "transparent": a coerce is a pure inline wrap around its
-# source (`::tpy::as_mut_span({0})`) and an error-return unwrap only composes
-# the `({ ... })` render around its call. Neither moves where an inner temp's
-# decl lands, so a temp reached through one keeps the flush right (and the
-# conditional-operand rule) of the position the wrapper sits in. Both reach
-# their child through the generic tail, which reads this tuple.
-_TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap)
+# place that says "transparent": a coerce and a form conversion are pure
+# inline wraps around their source (`::tpy::as_mut_span({0})`,
+# `::tpy::to_const_ptr_variant({0})`) and an error-return unwrap only
+# composes the `({ ... })` render around its call. Neither moves where an
+# inner temp's decl lands, so a temp reached through one keeps the flush
+# right (and the conditional-operand rule) of the position the wrapper sits
+# in. Both reach their child through the generic tail, which reads this
+# tuple.
+_TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap, THIRFormConvert)
 
 
 def _walk_held(owner: str, held: 'Sequence[THIRArgTemp]',
@@ -1292,6 +1299,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # value position.
         if node.source_expr is not None:
             _walk(owner, node.source_expr, return_type, argtemp_ok=True)
+        if node.source_lent is not None:
+            _walk(owner, node.source_lent.lent, return_type)
         return
     if isinstance(node, (THIRIf, THIRWhile)):
         # Conditions are flushable: _emit_if flushes before the `if (` /
@@ -1347,7 +1356,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
             _walk(owner, node.recv_eval, return_type)
         _walk_held(owner, node.held, return_type)
         # The borrow-tuple reseat renders only under its optional spelling.
-        if (node.btuple_borrow_cpp is None) != (node.btuple_opt_cpp is None):
+        if (node.btuple_lent is None) != (node.btuple_opt_cpp is None):
             _fail(owner, node, "borrow-tuple reseat without its optional spelling")
         _walk(owner, node.target, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
@@ -1454,6 +1463,8 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                 _walk(owner, child, return_type, argtemp_ok=argtemp_ok,
                       eager_only=True)
         return
+    if isinstance(node, THIRTupleLiteral) and node.bound is not None:
+        _check_lambda_bound(owner, node)
     if isinstance(node, THIRValueSelect):
         # Value-position `and`/`or`: the RHS sits in the ternary branch the
         # emit renders, so it is the same conditional-operand position as a
@@ -1608,6 +1619,31 @@ def _own_flush_children(node: THIRNode) -> 'tuple[THIRNode, ...]':
             and node.element is not None):
         return (node.element,)
     return ()
+
+
+def _check_lambda_bound(owner: str, node: THIRTupleLiteral) -> None:
+    """A tuple whose source its own lambda binds (`bound`): the body --
+    the literal's elements -- reads that parameter alone, through element
+    reads, their conversions and moves, and nested tuples of them. The
+    lambda is captureless, so anything else of the enclosing scope would
+    not be in its scope."""
+    def body(e: THIRNode) -> None:
+        if isinstance(e, THIRTempRead):
+            if e.read_id != BOUND_SOURCE_READ:
+                _fail(owner, e, "a lambda-bound tuple reads another temp")
+        elif isinstance(e, THIRSubscript) and e.tuple_index is not None:
+            body(e.receiver)
+        elif isinstance(e, (THIRFormConvert, THIRMove)):
+            body(e.value)
+        elif isinstance(e, THIRTupleLiteral) and e.bound is None:
+            for element in e.elements:
+                body(element)
+        else:
+            _fail(owner, e, "a lambda-bound tuple element reads the "
+                            "enclosing scope")
+
+    for element in node.elements:
+        body(element)
 
 
 def _check_no_statement_temp(owner: str, node: THIRNode) -> None:

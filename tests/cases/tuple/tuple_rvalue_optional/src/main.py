@@ -1,8 +1,7 @@
 # Rvalue tuple literal targeting a pointer-form Optional slot. The old
 # codegen emitted `&(Point(1))` which GCC rejects as "address of rvalue".
-# The fix routes rvalue elements through ::tpy::tuple_value_to_borrow,
-# which materializes a value-tuple temp (lifetime extends to end of full
-# expression) and addresses its slots inside.
+# The fix lends each rvalue element for the call's full expression (a const
+# element binds it inline, as a const reference parameter binds a temporary).
 from tpy import int32
 
 

@@ -15,7 +15,7 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 //     xs[0][1].val = 21
 //     return b.val
 int32_t via_list_literal(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b))};
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 21;
     return b.val;
 }
@@ -27,7 +27,7 @@ int32_t via_list_literal(Box& b) {
 //     return b.val
 int32_t via_append(Box& b) {
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+    xs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 22;
     return b.val;
 }
@@ -37,7 +37,7 @@ int32_t via_append(Box& b) {
 //     d[1][1].val = 23
 //     return b.val
 int32_t via_dict_literal(Box& b) {
-    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::make_ordered_map<int32_t, std::tuple<Box, Box>>(1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::make_ordered_map<int32_t, std::tuple<Box, Box>>(1, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
     std::get<1>(::tpy::__getitem__(d, 1)).val = 23;
     return b.val;
 }
@@ -49,7 +49,7 @@ int32_t via_dict_literal(Box& b) {
 //     return b.val
 int32_t via_setitem(Box& b) {
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
-    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+    ::tpy::__setitem__(d, 1, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
     std::get<1>(::tpy::__getitem__(d, 1)).val = 24;
     return b.val;
 }
@@ -62,7 +62,7 @@ int32_t via_setitem(Box& b) {
 //     q[0][1].val = 25
 //     return b.val
 int32_t via_nested_tuple(Box& b) {
-    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)), 1};
+    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)), 1};
     std::get<1>(std::get<0>(q)).val = 25;
     return b.val;
 }
@@ -75,7 +75,7 @@ int32_t via_dict_comprehension(Box& b) {
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ({
         ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> __result;
         for (int32_t i = 0; i < 1; ++i) {
-            __result.insert_or_assign(i, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+            __result.insert_or_assign(i, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
         }
         std::move(__result);
     });
@@ -91,7 +91,7 @@ int32_t via_dict_comprehension(Box& b) {
 //     xs[0][1].val = 30
 //     return b.val
 int32_t via_ternary_source(Box& b, Box& c, bool flag) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(((flag) ? (::tpyapp::main::make_mixed(b)) : (::tpyapp::main::make_mixed(c))))};
+    std::array<std::tuple<Box, Box>, 1> xs = {[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(((flag) ? (::tpyapp::main::make_mixed(b)) : (::tpyapp::main::make_mixed(c))))};
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 30;
     return b.val;
 }
@@ -103,7 +103,7 @@ int32_t via_ternary_source(Box& b, Box& c, bool flag) {
 int32_t via_comprehension(Box& b) {
     std::array<std::tuple<Box, Box>, 1> xs = ::tpy::array_from_index<std::tuple<Box, Box>, 1>([&](std::size_t __i_0) -> std::tuple<Box, Box> {
         int32_t _ = int32_t(__i_0);
-        return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b));
+        return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b));
     });
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 26;
     return b.val;
@@ -115,7 +115,7 @@ int32_t via_comprehension(Box& b) {
 //         t[1].val = 27
 //     return b.val
 int32_t via_loop_var(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b))};
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

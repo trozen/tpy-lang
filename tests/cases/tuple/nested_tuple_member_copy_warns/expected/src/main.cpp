@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     xs[0][1][1].n = 41
 //     return c.n
 int32_t via_list_literal(const P& c) {
-    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{2, &(c)})}};
+    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = ::tpy::make_vector<std::tuple<int32_t, std::tuple<int32_t, P>>>(std::tuple<int32_t, std::tuple<int32_t, P>>{1, std::tuple<int32_t, P>{2, c}});
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 41;
     return c.n;
 }
@@ -24,7 +24,7 @@ int32_t via_list_literal(const P& c) {
 //     return t[1].n
 int32_t via_inner_lvalue(P& c) {
     auto t = std::tuple<int32_t, P*>{2, &(c)};
-    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(t)}};
+    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = ::tpy::make_vector<std::tuple<int32_t, std::tuple<int32_t, P>>>(std::tuple<int32_t, std::tuple<int32_t, P>>{1, std::tuple<int32_t, P>{std::get<0>(t), (*std::get<1>(t))}});
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 42;
     return std::get<1>(t)->n;
 }
@@ -39,7 +39,7 @@ int32_t via_inner_lvalue(P& c) {
 //     xs[0][1][1].n = 43
 //     return q[1][1].n
 int32_t via_append(const P& c) {
-    std::tuple<int32_t, std::tuple<int32_t, P>> q = std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{2, &(c)})};
+    std::tuple<int32_t, std::tuple<int32_t, P>> q = std::tuple<int32_t, std::tuple<int32_t, P>>{1, std::tuple<int32_t, P>{2, c}};
     std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>>{};
     xs.push_back(q);
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 43;
@@ -51,7 +51,7 @@ int32_t via_append(const P& c) {
 //     h.q[1][1].n = 44
 //     return c.n
 int32_t via_field(Holder& h, const P& c) {
-    h.q = std::tuple<int32_t, std::tuple<int32_t, P>>{9, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{8, &(c)})};
+    h.q = std::tuple<int32_t, std::tuple<int32_t, P>>{9, std::tuple<int32_t, P>{8, c}};
     std::get<1>(std::get<1>(h.q)).n = 44;
     return c.n;
 }
@@ -65,7 +65,7 @@ int32_t via_field(Holder& h, const P& c) {
 //     return c.n
 int32_t via_setitem(const P& c) {
     ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>> d = ::tpy::ordered_map<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>();
-    ::tpy::__setitem__(d, 0, std::tuple<int32_t, std::tuple<int32_t, P>>{9, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{8, &(c)})});
+    ::tpy::__setitem__(d, 0, std::tuple<int32_t, std::tuple<int32_t, P>>{9, std::tuple<int32_t, P>{8, c}});
     std::get<1>(std::get<1>(::tpy::__getitem__(d, 0))).n = 47;
     return c.n;
 }
@@ -75,7 +75,7 @@ int32_t via_setitem(const P& c) {
 //     xs[0][1][1][1].n = 45
 //     return c.n
 int32_t three_levels(const P& c) {
-    std::vector<std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>> xs = {std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>{1, std::tuple<int32_t, std::tuple<int32_t, P>>{2, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{3, &(c)})}}};
+    std::vector<std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>> xs = ::tpy::make_vector<std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>>(std::tuple<int32_t, std::tuple<int32_t, std::tuple<int32_t, P>>>{1, std::tuple<int32_t, std::tuple<int32_t, P>>{2, std::tuple<int32_t, P>{3, c}}});
     std::get<1>(std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0)))).n = 45;
     return c.n;
 }
@@ -86,7 +86,7 @@ int32_t three_levels(const P& c) {
 //     xs[0][1][1].n = 46
 //     return c.n
 int32_t acknowledged(const P& c) {
-    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{2, P(c)})}};
+    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = ::tpy::make_vector<std::tuple<int32_t, std::tuple<int32_t, P>>>(std::tuple<int32_t, std::tuple<int32_t, P>>{1, std::tuple<int32_t, P>{2, P(c)}});
     std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n = 46;
     return c.n;
 }
@@ -97,7 +97,7 @@ int32_t acknowledged(const P& c) {
 //     xs: list[tuple[int32, tuple[int32, P]]] = [(1, (2, P(7)))]  # tpyc: ok
 //     return xs[0][1][1].n
 int32_t fresh_member() {
-    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = {std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{2, P(7)})}};
+    std::vector<std::tuple<int32_t, std::tuple<int32_t, P>>> xs = ::tpy::make_vector<std::tuple<int32_t, std::tuple<int32_t, P>>>(std::tuple<int32_t, std::tuple<int32_t, P>>{1, std::tuple<int32_t, P>{2, P(7)}});
     return std::get<1>(std::get<1>(::tpy::__getitem__(xs, 0))).n;
 }
 

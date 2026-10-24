@@ -456,8 +456,10 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
     if bytes_t is not None:
         return _held_of(_bytes_name_form(name, bytes_t, param_names,
                                          owned_viewfam_params), Form)
-    if _is_string_owned(rtype) or (rec is not None and (rec.storage_tuple
-                                                        or rec.owned)):
+    if _is_string_owned(rtype) or (rec is not None and (
+            rec.storage_tuple or rec.owned
+            # An owned step materialized into its storage type.
+            or rec.loop_binding is LoopBinding.OWNED_STORAGE)):
         return Held.STORAGE
     if rec is not None and (rec.borrow_tuple_mixed
                             or rec.form is F.BORROW_TUPLE):
@@ -2339,20 +2341,35 @@ def _loop_form(loop: 'LoopBinding | None') -> F:
     return F.REFERENCE if loop in _REFERENCE_LOOP_BINDINGS else F.VALUE
 
 
-def owned_tuple_step_inline(et: 'TpyType | None',
-                            loop: 'LoopBinding | None'
-                            ) -> 'tuple[bool, ...] | None':
-    """An owned tuple step (`Iterator[Own[tuple[A, int32]]]`) a loop binds
-    as the storage tuple it is handed: every element held inline, as its
-    per-element `Own` twin's -- for a `for` statement's variable and a
-    comprehension clause's alike."""
+@dataclass(frozen=True)
+class TupleStep:
+    """What a binding a loop hands a tuple step holds of its elements."""
+    # Every element inline (an owned step bound as its storage tuple).
+    inline_elems: 'tuple[bool, ...] | None' = None
+    # The mixed result form (`std::tuple<A, B*>` for `tuple[Own[A], B]`):
+    # the non-`Own` elements are lent.
+    borrow_tuple_mixed: bool = False
+
+
+def tuple_step_facts(et: 'TpyType | None', loop: 'LoopBinding | None', *,
+                     stored: bool) -> TupleStep:
+    """What a binding a loop hands a tuple step of type `et` holds of its
+    elements -- for a `for` statement's variable (a generator expression's
+    included) and a comprehension clause's alike. `stored`: the step is
+    the container's stored tuple itself, every element inline whatever
+    its type says. Otherwise an owned step (`Iterator[Own[tuple[A,
+    int32]]]`) bound as the storage tuple it is handed holds every element
+    inline, as its per-element `Own` twin's, and a step yielded in the
+    mixed result form lends its non-`Own` elements."""
     u = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
-    if not (isinstance(u, OwnType) and loop is LoopBinding.OWNED_STORAGE):
-        return None
-    tt = unwrap_readonly(u.wrapped)
-    if not isinstance(tt, TupleType):
-        return None
-    return (True,) * len(tt.element_types)
+    if isinstance(u, OwnType):
+        tt = unwrap_readonly(u.wrapped)
+        if loop is LoopBinding.OWNED_STORAGE and isinstance(tt, TupleType):
+            return TupleStep(inline_elems=(True,) * len(tt.element_types))
+        return TupleStep()
+    if not stored and isinstance(u, TupleType) and u.is_mixed_own():
+        return TupleStep(borrow_tuple_mixed=True)
+    return TupleStep()
 
 
 def owned_optional_step(et: 'TpyType | None',
@@ -2395,11 +2412,14 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     et = stmt.elem_type
     etu = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
     it_t = an.get_expr_type(stmt.iterable)
+    # A container's element, or the step a consuming loop moves out of
+    # its container, is the stored tuple itself.
     storage_tuple = (isinstance(etu, TupleType)
                      and etu.has_pointer_or_copy_free_borrow_form()
                      and it_t is not None
-                     and is_native_iterable(unwrap_readonly(it_t),
-                                            an.registry)
+                     and (consuming
+                          or is_native_iterable(unwrap_readonly(it_t),
+                                                an.registry))
                      and not (outer is not None and outer.storage_tuple)
                      and _p._borrow_tuple_local_type(
                          name, ctx.declared_view, ctx.names_with("storage_tuple"))
@@ -2407,9 +2427,11 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     if storage_tuple:
         f["storage_tuple"] = True
         f["const_storage_tuple"] = yields_const
-    inline = owned_tuple_step_inline(et, f.get("loop_binding"))
-    if inline is not None:
-        f["inline_elems"] = inline
+    step = tuple_step_facts(et, f.get("loop_binding"), stored=storage_tuple)
+    if step.inline_elems is not None:
+        f["inline_elems"] = step.inline_elems
+    if step.borrow_tuple_mixed:
+        f["borrow_tuple_mixed"] = True
     if outer is not None and outer.is_param:
         # A loop that rebinds a parameter reads as that parameter where a
         # use asks "is this the caller's" (a view field's admission); sema
@@ -2662,7 +2684,7 @@ def unpack_tag(bind: BC) -> UB:
     return UNPACK_BINDS[bind].tag
 
 
-# The binds through an element pointer of the `tuple_to_pointer` wrap
+# The binds through an element pointer of a per-element lend
 # (`auto&&`, `auto*`, `T*`): const as the unpack's source, which the wrap
 # spells (`statements.unpack_wrap_const`).
 ELEM_POINTER_BINDS = frozenset({BC.REF, BC.PTR, BC.OPT_PTR})
@@ -2880,10 +2902,19 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
         if _p.record_like(unwrap_readonly(unwrap_send_sync(tt)), an):
             return _mk(site, name, typ, F.REFERENCE, None, const=const)
         return _mk(site, name, typ, F.VALUE, None)
-    inline = owned_tuple_step_inline(route.et, loop)
-    if inline is not None:
+    # A container's element is its stored tuple; a generator's step is the
+    # form it is yielded in.
+    it_t = route.it_type
+    step = tuple_step_facts(
+        route.et, loop,
+        stored=(it_t is not None and is_native_iterable(
+            unwrap_readonly(it_t), an.registry)))
+    if step.inline_elems is not None:
         return _mk(site, name, typ, _loop_form(loop), None,
-                   loop_binding=loop, inline_elems=inline)
+                   loop_binding=loop, inline_elems=step.inline_elems)
+    if step.borrow_tuple_mixed:
+        return _mk(site, name, typ, _loop_form(loop), None,
+                   loop_binding=loop, borrow_tuple_mixed=True)
     if owned_optional_step(route.et, loop):
         return _mk(site, name, typ, _loop_form(loop), None,
                    loop_binding=loop, storage_opt=True)

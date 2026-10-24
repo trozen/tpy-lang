@@ -317,7 +317,7 @@ void async_positions() {
 //     print("sync", total((A(7), r)), r.v)  # tpyc: ok
 void sync_callee() {
     A r = A(::tpy::BigInt(5));
-    std::cout << "sync" << " " << ::tpyapp::main::total(::tpy::tuple_value_to_borrow<std::tuple<A*, A*>>(std::tuple<A, A*>{A(::tpy::BigInt(7)), &(r)})) << " " << r.v << "\n" << ::tpy::check_signals;
+    std::cout << "sync" << " " << ::tpyapp::main::total([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, A*>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, A*>{A(::tpy::BigInt(7)), &(r)})) << " " << r.v << "\n" << ::tpy::check_signals;
 }
 
 // def ctor_and_closure() -> None:
@@ -383,7 +383,7 @@ void invalidated_element() {
 void owned_element() {
     std::vector<int32_t> ns = {1, 2};
     A r = A(::tpy::BigInt(5));
-    __gen_pairn it = ::tpyapp::main::pairn(std::tuple<::tpy::BigInt, A*>{::tpy::__getitem__(ns, 0), &(r)});
+    __gen_pairn it = ::tpyapp::main::pairn(std::tuple<::tpy::BigInt, const A*>{::tpy::__getitem__(ns, 0), &(r)});
     ns.push_back(3);
     std::cout << "owned" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(it)) << " " << ::tpy::__len__(ns) << "\n" << ::tpy::check_signals;
 }

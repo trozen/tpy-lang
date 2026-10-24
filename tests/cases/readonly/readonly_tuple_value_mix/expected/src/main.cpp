@@ -27,7 +27,7 @@ int32_t mixed(const std::tuple<int32_t, const Counter*>& p) {
 // def keep(t: readonly[tuple[Box, int32]], xs: list[tuple[Box, int32]]) -> None:
 //     xs.append(t)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\); use copy\(\)/)
 void keep(const std::tuple<const Box*, int32_t>& t, std::vector<std::tuple<Box, int32_t>>& xs) {
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(t));
+    xs.push_back(std::tuple<Box, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // def main() -> None:
@@ -45,9 +45,9 @@ void main() {
     Counter c = Counter(5);
     std::cout << "mixed:" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, const Counter*>{10, &(c)}) << "\n" << ::tpy::check_signals;
     Sum s = Sum(100);
-    std::cout << "forward:" << " " << s.plus(std::tuple<int32_t, Counter*>{1, &(c)}) << "\n" << ::tpy::check_signals;
+    std::cout << "forward:" << " " << s.plus(std::tuple<int32_t, const Counter*>{1, &(c)}) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Box, int32_t>> xs = std::vector<std::tuple<Box, int32_t>>{};
-    ::tpyapp::main::keep(::tpy::tuple_value_to_borrow<std::tuple<const Box*, int32_t>>(std::tuple<Box, int32_t>{Box(7), 8}), xs);
+    ::tpyapp::main::keep([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(7), 8}), xs);
     auto&& kept = ::tpy::__getitem__(xs, 0);
     std::cout << "keep:" << " " << std::get<0>(kept).n << " " << std::get<1>(kept) << "\n" << ::tpy::check_signals;
 }

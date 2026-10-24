@@ -50,7 +50,7 @@ P* GP{};
 //     a, b = t
 //     return len(a.xs)
 int32_t take_ro(std::tuple<P, P> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return ::tpy::__len__(a.xs);
@@ -61,7 +61,7 @@ int32_t take_ro(std::tuple<P, P> t) {
 //     a.xs.append(9)
 //     return len(a.xs)
 int32_t take_mut(std::tuple<P, P> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     a.xs.push_back(9);
@@ -72,7 +72,7 @@ int32_t take_mut(std::tuple<P, P> t) {
 //     a, b = t
 //     return len(a.xs) * 10 + len(b.xs)
 int32_t take_both(std::tuple<P, P> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(a.xs), 10)), ::tpy::__len__(b.xs)));
@@ -82,7 +82,7 @@ int32_t take_both(std::tuple<P, P> t) {
 //     a, b = t
 //     return len(a.xs) * 10 + q.n()
 int32_t take_peek(std::tuple<P, P> t, P* q) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(a.xs), 10)), ::tpy::none_attr(q, "n").n()));
@@ -98,7 +98,7 @@ int32_t run_twice(const std::function<int32_t()>& f) {
 //     h, k = t
 //     return len(h.a.xs) + k
 int32_t take_self(std::tuple<H, int32_t> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<H*, int32_t>>(t);
+    auto __tup_1 = std::tuple<H*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& h = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(::tpy::__len__(h.a.xs), k));

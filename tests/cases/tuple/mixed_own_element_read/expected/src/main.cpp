@@ -96,7 +96,7 @@ int32_t method_on_borrow_elem(Box& b) {
 //     return n + b.val
 int32_t pass_whole(Box& b) {
     auto p = ::tpyapp::main::make_mixed(b);
-    int32_t n = ::tpyapp::main::take(::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(p));
+    int32_t n = ::tpyapp::main::take(std::tuple<const Box*, const Box*>{&(std::get<0>(p)), std::get<1>(p)});
     std::get<1>(p)->val = 50;
     return (::tpy::add_check<int32_t>(n, b.val));
 }
@@ -109,8 +109,8 @@ int32_t wholly_owned_still_dots() {
     return std::get<1>(p).val;
 }
 
-// # The storage sinks below all run the mixed tuple through tuple_to_storage,
-// # which materializes the ref element BY VALUE -- so they must keep reading `.`,
+// # The storage sinks below all rebuild the mixed tuple element by element,
+// # copying the ref element in BY VALUE -- so they must keep reading `.`,
 // # even though the tuple type still carries the `Own`. Reading the borrow form
 // # off the TYPE instead of the SOURCE breaks exactly these.
 // #
@@ -129,7 +129,7 @@ int32_t wholly_owned_still_dots() {
 //     xs = [make_mixed(b)]  # tpyc: warning(/copies Box into owned storage/)
 //     return xs[0][1].val
 int32_t in_list(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b))};
     return std::get<1>(::tpy::__getitem__(xs, 0)).val;
 }
 
@@ -137,7 +137,7 @@ int32_t in_list(Box& b) {
 //     d = {1: make_mixed(b)}  # tpyc: warning(/copies Box into owned storage/)
 //     return d[1][1].val
 int32_t in_dict(Box& b) {
-    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::make_ordered_map<int32_t, std::tuple<Box, Box>>(1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+    ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::make_ordered_map<int32_t, std::tuple<Box, Box>>(1, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
     return std::get<1>(::tpy::__getitem__(d, 1)).val;
 }
 
@@ -148,7 +148,7 @@ int32_t in_dict(Box& b) {
 //     q = (make_mixed(b), 1)  # tpyc: warning(/copies Box into owned storage \(tuple element 0.1\)/)
 //     return q[0][1].val
 int32_t in_nested_tuple(Box& b) {
-    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)), 1};
+    std::tuple<std::tuple<Box, Box>, int32_t> q = std::tuple<std::tuple<Box, Box>, int32_t>{[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)), 1};
     return std::get<1>(std::get<0>(q)).val;
 }
 
@@ -159,7 +159,7 @@ int32_t in_nested_tuple(Box& b) {
 //         n = n + t[1].val
 //     return n
 int32_t as_loop_var(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b))};
     int32_t n = 0;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -179,7 +179,7 @@ int32_t as_loop_var(Box& b) {
 //     xs[0][1].val = 41
 //     return b.val
 int32_t in_list_copy_ack(Box& b) {
-    std::array<std::tuple<Box, Box>, 1> xs = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b))};
+    std::array<std::tuple<Box, Box>, 1> xs = {[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b))};
     std::get<1>(::tpy::__getitem__(xs, 0)).val = 41;
     return b.val;
 }
@@ -238,7 +238,7 @@ void main() {
     std::cout << ::tpyapp::main::write_borrow_elem(__tmp_3) << "\n" << ::tpy::check_signals;
     Box __tmp_4 = Box(7);
     std::cout << ::tpyapp::main::read_direct(__tmp_4) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::read_param(::tpy::tuple_value_to_borrow<std::tuple<Box, Box*>>(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_param([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, const Box*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<Box, Box>{Box(5), Box(6)})) << "\n" << ::tpy::check_signals;
     Box __tmp_5 = Box(7);
     std::cout << ::tpyapp::main::unpack_mixed(__tmp_5) << "\n" << ::tpy::check_signals;
     Box __tmp_6 = Box(7);

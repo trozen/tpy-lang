@@ -4411,7 +4411,7 @@ void main() {
         }
     }
     std::cout << "ref_elem" << " " << ::tpy::__getitem__(ns, 0).v << " " << ::tpy::__getitem__(ns, 1).v << "\n" << ::tpy::check_signals;
-    std::array<std::tuple<Node, int32_t>, 2> pairs = {::tpy::tuple_to_storage<std::tuple<Node, int32_t>>(std::tuple<Node, int32_t>{Node(1), 2}), ::tpy::tuple_to_storage<std::tuple<Node, int32_t>>(std::tuple<Node, int32_t>{Node(3), 4})};
+    std::array<std::tuple<Node, int32_t>, 2> pairs = {std::tuple<Node, int32_t>{Node(1), 2}, std::tuple<Node, int32_t>{Node(3), 4}};
     std::cout << "record_unpack" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_65(pairs)) << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __obj_18 = pairs;
@@ -4427,7 +4427,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    std::cout << "record_unpack_literal" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_66(std::in_place, [&]() { return std::array<std::tuple<Node, int32_t>, 1>{::tpy::tuple_to_storage<std::tuple<Node, int32_t>>(std::tuple<Node, int32_t>{Node(1), 10})}; })) << "\n" << ::tpy::check_signals;
+    std::cout << "record_unpack_literal" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_66(std::in_place, [&]() { return std::array<std::tuple<Node, int32_t>, 1>{std::tuple<Node, int32_t>{Node(1), 10}}; })) << "\n" << ::tpy::check_signals;
     std::vector<Node> ms = {Node(1), Node(2)};
     std::cout << "param_loop_var_mutated" << " " << ::tpyapp::main::bump_all(ms) << " " << ::tpy::__getitem__(ms, 0).v << " " << ::tpy::__getitem__(ms, 1).v << "\n" << ::tpy::check_signals;
     std::vector<int32_t> noted = std::vector<int32_t>{};

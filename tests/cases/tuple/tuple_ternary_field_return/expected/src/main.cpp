@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def pick(h: Holder, c: bool) -> tuple[int32, Box]:
 //     return h.a if c else h.b
 std::tuple<int32_t, Box*> pick(Holder& h, bool c) {
-    return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(((c) ? (h.a) : (h.b)));
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(((c) ? (h.a) : (h.b)));
 }
 
 // def main() -> None:

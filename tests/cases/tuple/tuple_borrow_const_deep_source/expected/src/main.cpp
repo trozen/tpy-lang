@@ -16,9 +16,9 @@ int32_t weight_of(const std::tuple<int32_t, const Box*>& t) {
 //         p = rows[1]
 //     return p[0]
 int32_t first_weight(std::vector<std::tuple<int32_t, Box>>& rows, bool again) {
-    std::tuple<int32_t, Box*> p = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(rows, 0));
+    std::tuple<int32_t, Box*> p = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(rows, 0));
     if (again) {
-        p = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(rows, 1));
+        p = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(rows, 1));
     }
     return std::get<0>(p);
 }
@@ -41,7 +41,7 @@ void main() {
     std::cout << h.arg_weight("b") << "\n" << ::tpy::check_signals;
     h.bump("a");
     std::cout << std::get<1>(::tpy::__getitem__(h.store, "a")).val << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, Box>> rows = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{40, Box(7)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{41, Box(8)})};
+    std::vector<std::tuple<int32_t, Box>> rows = {std::tuple<int32_t, Box>{40, Box(7)}, std::tuple<int32_t, Box>{41, Box(8)}};
     std::cout << ::tpyapp::main::first_weight(rows, false) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::first_weight(rows, true) << "\n" << ::tpy::check_signals;
 }

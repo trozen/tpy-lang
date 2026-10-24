@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     b.n += 5
 //     print("subscript_field", a, hs[0].pair[1].n)
 void subscript_field(std::vector<Holder>& hs) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(hs, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -23,7 +23,7 @@ void subscript_field(std::vector<Holder>& hs) {
 //     b.n += 5
 //     print("field_field", a, o.h.pair[1].n)
 void field_field(Outer& o) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(o.h.pair);
+    auto __tup_1 = std::tuple<int32_t, Box*>{std::get<0>(o.h.pair), &(std::get<1>(o.h.pair))};
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -43,7 +43,7 @@ void loop_var(std::vector<Outer>& os_) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& o = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(o.h.pair);
+        auto __tup_1 = std::tuple<int32_t, Box*>{std::get<0>(o.h.pair), &(std::get<1>(o.h.pair))};
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -71,7 +71,7 @@ void nested_loop(std::vector<std::vector<Outer>>& grid) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& o = *__beg_1;
-            auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(o.h.pair);
+            auto __tup_1 = std::tuple<int32_t, Box*>{std::get<0>(o.h.pair), &(std::get<1>(o.h.pair))};
             int32_t a = std::get<0>(__tup_1);
             auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -86,7 +86,7 @@ void nested_loop(std::vector<std::vector<Outer>>& grid) {
 //     a, b = hs[0].pair  # tpyc: ok
 //     print("read_only", a, b.n)
 void read_only(const std::vector<Holder>& hs) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(hs, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(hs, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "read_only" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -105,7 +105,7 @@ void readonly_loop(const std::vector<Holder>& hs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& h = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
+        auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         std::cout << "readonly_loop" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -119,7 +119,7 @@ void readonly_loop(const std::vector<Holder>& hs) {
 //     b.n += 5
 //     print("ref_getitem_hop", a, s[0].pair[1].n)
 void ref_getitem_hop(Store& s) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(s[0].pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(s[0].pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -132,7 +132,7 @@ void ref_getitem_hop(Store& s) {
 //     b.n += 5
 //     print("ref_property_hop", a, o.made.pair[1].n)
 void ref_property_hop(Owner& o) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(o.made().pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(o.made().pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -152,7 +152,7 @@ void pack_read(::tpy::varargs<const Holder> hs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& h = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
+        auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         std::cout << "pack_read" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -172,7 +172,7 @@ void pack_bump(::tpy::varargs<Holder> hs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& h = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+        auto __tup_1 = std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -188,7 +188,7 @@ void pack_bump(::tpy::varargs<Holder> hs) {
 //     a, b = hs[0].pair  # tpyc: ok
 //     print("pack_direct", a, b.n)
 void pack_direct(::tpy::varargs<const Holder> hs) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(hs, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(hs, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "pack_direct" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -200,7 +200,7 @@ void pack_direct(::tpy::varargs<const Holder> hs) {
 //     b.n += 5
 //     print("pack_direct_bump", a, b.n)
 void pack_direct_bump(::tpy::varargs<Holder> hs) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(hs, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(hs, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -214,7 +214,7 @@ void pack_direct_bump(::tpy::varargs<Holder> hs) {
 //     b.n += 5
 //     print("ptr_root_bump", a, p.rows[0].pair[1].n)
 void ptr_root_bump(Grid* p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -226,7 +226,7 @@ void ptr_root_bump(Grid* p) {
 //     a, b = p.rows[0].pair  # tpyc: ok
 //     print("ptr_root_read", a, b.n)
 void ptr_root_read(Grid* p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "ptr_root_read" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -239,7 +239,7 @@ void ptr_root_read(Grid* p) {
 //     a, b = p.rows[0].pair  # tpyc: ok
 //     print("ptr_ro_read", a, b.n)
 void ptr_ro_read(const Grid* p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "ptr_ro_read" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -258,7 +258,7 @@ void ptr_ro_loop(const Grid* p) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& h = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
+        auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         std::cout << "ptr_ro_loop" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -278,7 +278,7 @@ void ro_field_loop(const Grid& g) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& h = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
+        auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         int32_t a = std::get<0>(__tup_1);
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         std::cout << "ro_field_loop" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;

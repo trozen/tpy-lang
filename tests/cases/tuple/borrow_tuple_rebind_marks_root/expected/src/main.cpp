@@ -24,7 +24,7 @@ void written_through(H& ro, H& m) {
     std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(a), &(b)};
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 1);
     std::cout << "written_through" << " " << std::get<0>(t)->n << " " << a.n << "\n" << ::tpy::check_signals;
-    t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+    t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
     std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 5);
     std::cout << "written_through" << " " << std::get<0>(t)->n << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
 }
@@ -37,9 +37,9 @@ void written_through(H& ro, H& m) {
 //     m.bp[0].n += 100
 //     return t[0].n + t[1].n
 int32_t read_only(H& ro, H& m, bool c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     }
     std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 100);
     return (::tpy::add_check<int32_t>(std::get<0>(t)->n, std::get<1>(t)->n));
@@ -56,9 +56,9 @@ int32_t read_only(H& ro, H& m, bool c) {
 //     return inner()
 int32_t nested(H& ro, H& m, bool c) {
     auto inner = [&c, &m, &ro]() -> int32_t {
-        std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+        std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
         if (c) {
-            t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+            t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
         }
         std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 1);
         return std::get<0>(t)->n;
@@ -76,14 +76,14 @@ int32_t nested(H& ro, H& m, bool c) {
 //         s += t[0].n
 //     return s
 int32_t loop_var(H& h0, std::vector<H>& ros, H& m) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h0.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(h0.bp)), &(std::get<1>(h0.bp))};
     int32_t s = 0;
     auto& __obj_0 = ros;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& r = *__beg_0;
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(r.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
         std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 1);
         s = ::tpy::add_check<int32_t>(s, std::get<0>(t)->n);
     }
@@ -104,14 +104,14 @@ int32_t loop_var(H& h0, std::vector<H>& ros, H& m) {
 //         s += r.bp[1].n
 //     return s + t[0].n
 int32_t loop_var_reuse(std::vector<H>& ros, const std::vector<H>& others, H& m) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     int32_t s = 0;
     auto& __obj_0 = ros;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& r = *__beg_0;
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(r.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
         s = ::tpy::add_check<int32_t>(s, std::get<0>(t)->n);
     }
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 1000);
@@ -135,11 +135,11 @@ int32_t loop_var_reuse(std::vector<H>& ros, const std::vector<H>& others, H& m) 
 //         m.bp[1].n += 1
 //     return t[1].n
 int32_t in_try(H& ro, H& m, bool c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     {
         try {
             if (c) {
-                t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+                t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
             }
         } catch (...) {
             std::get<1>(m.bp).n = ::tpy::add_check<int32_t>(std::get<1>(m.bp).n, 1);
@@ -161,11 +161,11 @@ int32_t in_try(H& ro, H& m, bool c) {
 //     m.bp[0].n += 1
 //     return t[0].n
 int32_t in_match(H& ro, H& m, int32_t c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     auto& __match_subject_1 = c;
     switch (__match_subject_1) {
     case 1: {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
         break;
     }
     default: {
@@ -185,12 +185,12 @@ int32_t in_match(H& ro, H& m, int32_t c) {
 //     m.bp[0].n += 1
 //     return t[0].n
 int32_t in_with(H& ro, H& m, bool c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     auto __ctx_1 = Cm();
     auto _k = __ctx_1.__enter__();
     try {
         if (c) {
-            t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+            t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
         }
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -217,9 +217,9 @@ int32_t in_with(H& ro, H& m, bool c) {
 //         raise Bad()
 //     return t[0].n
 std::expected<int32_t, Bad> in_error_return(H& ro, H& m, bool c) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
     }
     std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 1);
     if ((std::get<0>(t)->n < 0)) {
@@ -239,9 +239,9 @@ std::expected<int32_t, Bad> in_error_return(H& ro, H& m, bool c) {
 int32_t hoisted(H& ro, H& m, bool c) {
     std::tuple<Box*, Box*> t;
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(ro.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(ro.bp)), &(std::get<1>(ro.bp))};
     } else {
-        t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+        t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     }
     std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 1);
     return std::get<0>(t)->n;
@@ -259,7 +259,7 @@ int32_t hoisted(H& ro, H& m, bool c) {
 int32_t optional(H& ro, H& m, bool c) {
     std::optional<std::tuple<int32_t, Box*>> t = std::nullopt;
     if (c) {
-        t = std::optional<std::tuple<int32_t, Box*>>{::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(ro.pr)};
+        t = std::optional<std::tuple<int32_t, Box*>>{std::tuple<int32_t, Box*>{std::get<0>(ro.pr), &(std::get<1>(ro.pr))}};
     }
     std::get<1>(m.pr).n = ::tpy::add_check<int32_t>(std::get<1>(m.pr).n, 1);
     if ((t.has_value())) {
@@ -278,9 +278,9 @@ int32_t optional(H& ro, H& m, bool c) {
 //         return t[1].n
 //     return 0
 int32_t optional_from_field(H& ro, H& m, bool c) {
-    std::optional<std::tuple<int32_t, Box*>> t = std::optional<std::tuple<int32_t, Box*>>{::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(ro.pr)};
+    std::optional<std::tuple<int32_t, Box*>> t = std::optional<std::tuple<int32_t, Box*>>{std::tuple<int32_t, Box*>{std::get<0>(ro.pr), &(std::get<1>(ro.pr))}};
     if (c) {
-        t = std::optional<std::tuple<int32_t, Box*>>{::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(m.pr)};
+        t = std::optional<std::tuple<int32_t, Box*>>{std::tuple<int32_t, Box*>{std::get<0>(m.pr), &(std::get<1>(m.pr))}};
     }
     std::get<1>(m.pr).n = ::tpy::add_check<int32_t>(std::get<1>(m.pr).n, 1);
     if ((t.has_value())) {
@@ -309,9 +309,9 @@ int32_t loop_hoisted(std::vector<H>& ros, H& m, bool c) {
         auto&& r = *__beg_0;
         std::tuple<Box*, Box*> t;
         if (c) {
-            t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(r.bp);
+            t = std::tuple<Box*, Box*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
         } else {
-            t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(m.bp);
+            t = std::tuple<Box*, Box*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
         }
         std::get<0>(m.bp).n = ::tpy::add_check<int32_t>(std::get<0>(m.bp).n, 1);
         s = ::tpy::add_check<int32_t>(s, std::get<0>(t)->n);
@@ -328,7 +328,7 @@ int32_t loop_hoisted(std::vector<H>& ros, H& m, bool c) {
 //     return t[1].n
 int32_t walrus_const(const std::vector<std::tuple<int32_t, Box>>& rows, std::vector<std::tuple<int32_t, Box>>& m) {
     std::tuple<int32_t, const Box*> t;
-    std::cout << "walrus" << " " << std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(rows, 0)))) << "\n" << ::tpy::check_signals;
+    std::cout << "walrus" << " " << std::get<0>((t = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(rows, 0)))) << "\n" << ::tpy::check_signals;
     std::get<1>(::tpy::__getitem__(m, 0)).n = ::tpy::add_check<int32_t>(std::get<1>(::tpy::__getitem__(m, 0)).n, 1);
     return std::get<1>(t)->n;
 }
@@ -498,7 +498,7 @@ void main() {
     std::cout << "optional_from_field" << " " << ::tpyapp::main::optional_from_field(h, h, false) << " " << std::get<1>(h.pr).n << "\n" << ::tpy::check_signals;
     std::vector<H> hs2 = {H(1), H(2)};
     std::cout << "loop_hoisted" << " " << ::tpyapp::main::loop_hoisted(hs2, ::tpy::__getitem__(hs2, 1), true) << " " << std::get<0>(::tpy::__getitem__(hs2, 0).bp).n << " " << std::get<0>(::tpy::__getitem__(hs2, 1).bp).n << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, Box>> rows = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(4)}));
+    std::vector<std::tuple<int32_t, Box>> rows = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(4)});
     int32_t w = ::tpyapp::main::walrus_const(rows, rows);
     std::cout << "walrus" << " " << w << " " << std::get<1>(::tpy::__getitem__(rows, 0)).n << "\n" << ::tpy::check_signals;
     std::vector<Box> __tmp_3 = {Box(3), Box(4)};

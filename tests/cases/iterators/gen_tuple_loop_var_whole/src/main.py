@@ -64,7 +64,7 @@ async def walk_async(xs: list[tuple[int32, A]]) -> int32:
 
 
 # dict_items proxy: `&(*it)` is ill-formed on the prvalue proxy, so this one
-# keeps the borrow-form tuple field and its tuple_to_pointer bind
+# keeps the borrow-form tuple field, bound element by element
 def walk_items(d: dict[int32, A]) -> Iterator[int32]:
     for kv in d.items():  # tpyc: ok
         yield kv[0]

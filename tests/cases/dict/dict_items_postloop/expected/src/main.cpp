@@ -34,7 +34,7 @@ void main() {
     std::cout << k << " " << ::tpy::__len__((*v)) << "\n" << ::tpy::check_signals;
     v->push_back(6);
     std::cout << ::tpy::ListPrinter(::tpy::__getitem__(d, "b")) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{1, {10}}), ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{2, {20}})};
+    std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = {std::tuple<int32_t, std::vector<int32_t>>{1, {10}}, std::tuple<int32_t, std::vector<int32_t>>{2, {20}}};
     std::vector<int32_t>* xs = nullptr;
     int32_t n;
     auto& __obj_1 = pairs;
@@ -42,7 +42,7 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, std::vector<int32_t>*>>(__for_tup_0);
+        auto __tup_1 = std::tuple<int32_t, std::vector<int32_t>*>{std::get<0>(__for_tup_0), &(std::get<1>(__for_tup_0))};
         n = std::get<0>(__tup_1);
         xs = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
     }

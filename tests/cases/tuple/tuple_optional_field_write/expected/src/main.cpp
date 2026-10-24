@@ -42,8 +42,8 @@ void main() {
     T t1 = T(1);
     T t2 = T(2);
     Holder h = Holder();
-    h.update(std::tuple<T*, T*>{&(t1), &(t2)});
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h.pair);
+    h.update(std::tuple<const T*, const T*>{&(t1), &(t2)});
+    auto __tup_1 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(h.pair)), ::tpy::optional_to_ptr(std::get<1>(h.pair))};
     T* a = std::get<0>(__tup_1);
     T* b = std::get<1>(__tup_1);
     if ((a != nullptr)) {
@@ -52,28 +52,28 @@ void main() {
     if ((b != nullptr)) {
         std::cout << b->x << "\n" << ::tpy::check_signals;
     }
-    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = ::tpy::make_vector<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}));
+    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = ::tpy::make_vector<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::move(t1), std::nullopt});
     h.copy_from_subscript(items);
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h.pair);
+    auto __tup_2 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(h.pair)), ::tpy::optional_to_ptr(std::get<1>(h.pair))};
     T* a2 = std::get<0>(__tup_2);
     if ((a2 != nullptr)) {
         std::cout << a2->x << "\n" << ::tpy::check_signals;
     }
     Holder h2 = Holder();
     h2.copy_from_field(h);
-    auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(h2.pair);
+    auto __tup_3 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(h2.pair)), ::tpy::optional_to_ptr(std::get<1>(h2.pair))};
     T* a3 = std::get<0>(__tup_3);
     if ((a3 != nullptr)) {
         std::cout << a3->x << "\n" << ::tpy::check_signals;
     }
     GlobalCopier gc = GlobalCopier();
-    auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(gc.pair);
+    auto __tup_4 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(gc.pair)), ::tpy::optional_to_ptr(std::get<1>(gc.pair))};
     T* a4 = std::get<0>(__tup_4);
     if ((a4 != nullptr)) {
         std::cout << a4->x << "\n" << ::tpy::check_signals;
     }
     SubscriptCtor sc = SubscriptCtor(items);
-    auto __tup_5 = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(sc.pair);
+    auto __tup_5 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(sc.pair)), ::tpy::optional_to_ptr(std::get<1>(sc.pair))};
     T* a5 = std::get<0>(__tup_5);
     if ((a5 != nullptr)) {
         std::cout << a5->x << "\n" << ::tpy::check_signals;

@@ -203,7 +203,7 @@ def test_range_head_arguments_leave_body_unplanned(functions: dict[str, th.THIRF
 
 
 @pytest.mark.parametrize("field,value", [
-    ("consuming", True), ("hoisted_tuple_lift_cpp", "tuple"),
+    ("consuming", True), ("hoisted_step", th.THIRLent(1, th.THIRTempRead(None, read_id=1))),
     ("str_literal_iterable", True),
     ("frame_src_field", "source"), ("iterable_lvalue", False),
 ])

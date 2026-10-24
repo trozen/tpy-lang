@@ -16,7 +16,7 @@ int32_t sink(std::tuple<Box, int32_t>&& p) {
 //     return r + ob.val
 int32_t f(Box&& ob) {
     auto pair = std::tuple<Box*, int32_t>{&(ob), 0};
-    int32_t r = ::tpyapp::main::sink(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(pair));
+    int32_t r = ::tpyapp::main::sink(std::tuple<Box, int32_t>{(*std::get<0>(pair)), std::get<1>(pair)});
     return (::tpy::add_check<int32_t>(r, ob.val));
 }
 

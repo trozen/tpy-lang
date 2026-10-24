@@ -76,7 +76,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_value::__next__()
 }
 
 // # dict_items proxy: `&(*it)` is ill-formed on the prvalue proxy, so this one
-// # keeps the borrow-form tuple field and its tuple_to_pointer bind
+// # keeps the borrow-form tuple field, bound element by element
 // def walk_items(d: dict[int32, A]) -> Iterator[int32]:
 //     for kv in d.items():  # tpyc: ok
 //         yield kv[0]                                    # -> S_RESUME_0
@@ -103,7 +103,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walk_items::__next__()
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        kv = ::tpy::tuple_to_pointer<std::tuple<int32_t, A*>>(*((*__for_it_0))++);
+        { auto&& __for_step_0 = *((*__for_it_0))++; kv = std::tuple<int32_t, A*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
         __state = S_RESUME_0;
         return std::get<0>(kv);
     }

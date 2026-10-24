@@ -245,7 +245,7 @@ int32_t local_rebound(Box& b, bool again) {
         std::get<0>(u) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(u) = std::get<1>(__tup_2);
     }
-    return ::tpyapp::main::mixed_take(std::tuple<Tok, Box*>{std::move(*std::get<0>(u)), std::get<1>(u)});
+    return ::tpyapp::main::mixed_take(std::tuple<Tok, Box*>{std::move((*std::get<0>(u))), std::get<1>(u)});
 }
 
 // def mk_box(b: Box) -> tuple[Own[Box], Box]:
@@ -268,7 +268,7 @@ int32_t borrow_write(std::tuple<Box, Box*>&& p) {
 //     got = borrow_write(p)  # tpyc: warning(/copies tuple\[Own\[Box\], Own\[Box\]\] into owned storage/)
 //     return got + p[1].n
 int32_t owned_live(std::tuple<Box, Box>&& p) {
-    int32_t got = ::tpyapp::main::borrow_write(::tpy::tuple_to_pointer<std::tuple<Box, Box*>>(p));
+    int32_t got = ::tpyapp::main::borrow_write(std::tuple<Box, Box*>{std::get<0>(p), &(std::get<1>(p))});
     return (::tpy::add_check<int32_t>(got, std::get<1>(p).n));
 }
 
@@ -281,7 +281,7 @@ int32_t owned_live(std::tuple<Box, Box>&& p) {
 //     return got + t[1].n
 int32_t borrow_local(Box& a, Box& b) {
     auto t = std::tuple<Box*, Box*>{&(a), &(b)};
-    int32_t got = ::tpyapp::main::borrow_write(::tpy::tuple_to_storage<std::tuple<Box, Box*>>(t));
+    int32_t got = ::tpyapp::main::borrow_write(std::tuple<Box, Box*>{(*std::get<0>(t)), std::get<1>(t)});
     return (::tpy::add_check<int32_t>(got, std::get<1>(t)->n));
 }
 
@@ -292,7 +292,7 @@ int32_t borrow_local(Box& a, Box& b) {
 //     return t  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
 std::tuple<Box, Box*> borrow_local_return(Box& a, Box& b) {
     auto t = std::tuple<Box*, Box*>{&(a), &(b)};
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box*>>(t);
+    return std::tuple<Box, Box*>{(*std::get<0>(t)), std::get<1>(t)};
 }
 
 // # closure + unpack: a nested def captures the param and runs in the `return`,
@@ -329,7 +329,7 @@ int32_t closure_unpack_owned(std::tuple<Box, Box>&& p) {
     auto g = [&p]() -> int32_t {
         return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p).n));
     };
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(p);
+    auto __tup_1 = std::tuple<Box*, Box*>{&(std::get<0>(p)), &(std::get<1>(p))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     a.n = 102;
@@ -640,7 +640,7 @@ void main() {
     Init ini = Init(std::tuple<Tok, Box*>{Tok(21), &(b)}, std::tuple<Tok, Tok>{Tok(22), Tok(23)});
     std::cout << "member-init" << " " << ini.n << " " << ini.m << " " << b.n << "\n" << ::tpy::check_signals;
     Slot sl = Slot();
-    sl.put(std::tuple<Box, Box*>{Box(24), &(b)});
+    sl.put(std::tuple<Box, const Box*>{Box(24), &(b)});
     std::cout << "field-write" << " " << std::get<0>(sl.pair).n << " " << std::get<1>(sl.pair).n << "\n" << ::tpy::check_signals;
     Box __tmp_2 = Box(3);
     std::cout << "borrow-local" << " " << ::tpyapp::main::borrow_local(__tmp_2, b) << " " << b.n << "\n" << ::tpy::check_signals;
@@ -745,7 +745,7 @@ void __tpy_init() {
     std::get<0>(G) = &__global_slot_2;
     std::get<1>(G) = std::get<1>(__tup_1);
     std::cout << "global-genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(2, G)) << "\n" << ::tpy::check_signals;
-    std::cout << "global" << " " << ::tpyapp::main::reader(::tpy::tuple_to_storage<std::tuple<Box, Box*>>(G)) << "\n" << ::tpy::check_signals;
+    std::cout << "global" << " " << ::tpyapp::main::reader(std::tuple<Box, Box*>{(*std::get<0>(G)), std::get<1>(G)}) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

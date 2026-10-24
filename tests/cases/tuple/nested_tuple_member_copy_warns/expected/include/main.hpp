@@ -72,6 +72,6 @@ inline P::P(int32_t n) : n(n) {}
 
 // def __init__(self, c: P) -> None:
 //     self.q = (1, (2, c))  # tpyc: warning(/copies P into field \(tuple element 1.1\)/)
-inline Holder::Holder(const P& c) : q(std::tuple<int32_t, std::tuple<int32_t, P>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, const P*>{2, &(c)})}) {}
+inline Holder::Holder(const P& c) : q(std::tuple<int32_t, std::tuple<int32_t, P>>{1, std::tuple<int32_t, P>{2, c}}) {}
 void __tpy_init();
 } // namespace tpyapp::main

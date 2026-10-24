@@ -137,7 +137,7 @@ __coro_sum_items sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ays.emplace(std::vector<std::tuple<int32_t, A>>{std::tuple<int32_t, A>{5, A(50)}});
+        ays.emplace(::tpy::make_vector<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{5, A(50)}));
         __sub_0.emplace((*ays));
         __state = S_RESUME_0;
         continue;
@@ -199,7 +199,7 @@ __coro_async_section async_section() {
 //         print("items", n)
 //     print("items src", d[7].v)
 void main() {
-    std::vector<std::tuple<int32_t, A>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{1, A(10)}), ::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{2, A(20)})};
+    std::vector<std::tuple<int32_t, A>> xs = {std::tuple<int32_t, A>{1, A(10)}, std::tuple<int32_t, A>{2, A(20)}};
     {
         auto __src_0 = ::tpyapp::main::walk_free(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -222,7 +222,7 @@ void main() {
             std::cout << "value" << " " << n << "\n" << ::tpy::check_signals;
         }
     }
-    Holder h = Holder(::tpy::make_vector<std::tuple<int32_t, A>>(::tpy::tuple_to_storage<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)})));
+    Holder h = Holder(::tpy::make_vector<std::tuple<int32_t, A>>(std::tuple<int32_t, A>{3, A(30)}));
     {
         auto __src_4 = h.walk();
         auto&& __itr_4 = ::tpy::__iter__(__src_4);

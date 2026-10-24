@@ -70,7 +70,7 @@ std::tuple<A*, int32_t> lend(Holder& h) {
 //     r.append("post")
 //     print("free_pop", n, len(st), len(r))
 void free_pop() {
-    std::vector<std::tuple<std::vector<std::string>, int32_t>> st = ::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1}));
+    std::vector<std::tuple<std::vector<std::string>, int32_t>> st = ::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1});
     auto __tup_1 = ::tpy::pop_back(st);
     auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
@@ -130,7 +130,7 @@ void ret() {
 //         r.v += 100
 //         print("loop", r.v, len(ps))
 void loop() {
-    std::vector<std::tuple<A, int32_t>> ps = {::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 1}), ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(2), 2})};
+    std::vector<std::tuple<A, int32_t>> ps = {std::tuple<A, int32_t>{A(1), 1}, std::tuple<A, int32_t>{A(2), 2}};
     while ((::tpy::__len__(ps) != 0)) {
         auto __tup_1 = ::tpy::pop_back(ps);
         auto&& a = std::move(std::get<0>(__tup_1));
@@ -208,7 +208,7 @@ void rebound_rebind_first() {
 //     r.v += 100
 //     print("dict_pop", r.v, n, len(d))
 void dict_pop() {
-    ::tpy::ordered_map<int32_t, std::tuple<A, int32_t>> d = ::tpy::make_ordered_map<int32_t, std::tuple<A, int32_t>>(1, ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(4), 1}));
+    ::tpy::ordered_map<int32_t, std::tuple<A, int32_t>> d = ::tpy::make_ordered_map<int32_t, std::tuple<A, int32_t>>(1, std::tuple<A, int32_t>{A(4), 1});
     auto __tup_1 = ::tpy::dict_pop(d, 1);
     auto&& a = std::move(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
@@ -247,7 +247,7 @@ void closure() {
 //         r.v += 100
 //         print("loop_rebound", a.v, r.v)
 void loop_rebound() {
-    std::vector<std::tuple<A, int32_t>> ps = {::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 1}), ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(2), 2})};
+    std::vector<std::tuple<A, int32_t>> ps = {std::tuple<A, int32_t>{A(1), 1}, std::tuple<A, int32_t>{A(2), 2}};
     std::optional<A> __slot_1;
     while ((::tpy::__len__(ps) != 0)) {
         auto __tup_1 = ::tpy::pop_back(ps);
@@ -311,7 +311,7 @@ void read_only() {
 //     print("inv_name", n)
 void inv_name() {
     auto t = ::tpyapp::main::mk();
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, int32_t>>(t);
+    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t n = std::get<1>(__tup_1);
     A __tmp_1 = a;
@@ -344,7 +344,7 @@ void inv_lend() {
 void inv_elem_borrow() {
     auto t = ::tpyapp::main::mk();
     A& b = std::get<0>(t);
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, int32_t>>(t);
+    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t n = std::get<1>(__tup_1);
     a.v = 5;
@@ -361,7 +361,7 @@ void inv_elem_borrow() {
 void inv_rebind() {
     auto t = ::tpyapp::main::mk();
     auto&& t2 = t;
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, int32_t>>(t);
+    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t n = std::get<1>(__tup_1);
     a.v = 6;

@@ -41,7 +41,7 @@ void append_mixed_last_use(std::vector<std::tuple<Box, Box>>& xs, Box& b) {
 //     return t[0].n
 int32_t append_mixed_live(std::vector<std::tuple<Box, Box>>& xs, Box& b) {
     auto t = ::tpyapp::main::make_mixed(b);
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(t));
+    xs.push_back(std::tuple<Box, Box>{std::get<0>(t), (*std::get<1>(t))});
     return std::get<0>(t).n;
 }
 
@@ -49,7 +49,7 @@ int32_t append_mixed_live(std::vector<std::tuple<Box, Box>>& xs, Box& b) {
 // def append_nested_literal(xs: list[tuple[int32, tuple[int32, Box]]], c: Box) -> None:
 //     xs.append((1, (2, c)))  # tpyc: warning(/copies Box into owned storage \(tuple element 1.1\)/)
 void append_nested_literal(std::vector<std::tuple<int32_t, std::tuple<int32_t, Box>>>& xs, const Box& c) {
-    xs.push_back(std::tuple<int32_t, std::tuple<int32_t, Box>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{2, &(c)})});
+    xs.push_back(std::tuple<int32_t, std::tuple<int32_t, Box>>{1, std::tuple<int32_t, Box>{2, c}});
 }
 
 // # free function: a nested value tuple copied between containers by an
@@ -67,8 +67,8 @@ void copy_nested_between_dicts(const ::tpy::ordered_map<int32_t, std::tuple<int3
 //     d[0] = make_pair(b)  # tpyc: warning(/copies Box into container \(tuple element 0\)/)
 //     xs.append(make_pair(b))  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
 void store_call_result(::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>>& d, std::vector<std::tuple<Box, int32_t>>& xs, Box& b) {
-    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(::tpyapp::main::make_pair(b)));
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(::tpyapp::main::make_pair(b)));
+    ::tpy::__setitem__(d, 0, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::make_pair(b)));
+    xs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::make_pair(b)));
 }
 
 // # free function: a container element read stored into another container
@@ -94,7 +94,7 @@ void append_nested_scalar(std::vector<std::tuple<int32_t, std::tuple<int32_t, in
 // def user_slot_mixed_call(s: Taker, b: Box) -> int32:
 //     return s.take(make_mixed(b))  # tpyc: warning(/tuple element 1\)/)
 int32_t user_slot_mixed_call(const Taker& s, Box& b) {
-    return s.take(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+    return s.take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
 }
 
 // def own_param_member(d: dict[int32, tuple[Box, int32]], q: Own[Box]) -> None:

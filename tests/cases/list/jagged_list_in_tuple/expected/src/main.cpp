@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     xs[1][1].append(9)  # inner list is a real vector reached through the tuple
 //     print(xs)
 void main() {
-    std::array<std::tuple<int32_t, std::vector<int32_t>>, 2> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{1, {2, 3}}), ::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{4, {5, 6, 7}})};
+    std::array<std::tuple<int32_t, std::vector<int32_t>>, 2> xs = {std::tuple<int32_t, std::vector<int32_t>>{1, {2, 3}}, std::tuple<int32_t, std::vector<int32_t>>{4, {5, 6, 7}}};
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
     std::get<1>(::tpy::__getitem__(xs, 1)).push_back(9);
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;

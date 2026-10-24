@@ -70,7 +70,7 @@ inline Box::Box(int32_t v) : val(v) {}
 
 // def __init__(self, a: Box, b: Box) -> None:
 //     self.store = {"a": (40, a), "b": (41, b)}  # tpyc: warning(/copies Box into owned storage/) warning(/copies Box into owned storage/)
-inline Holder::Holder(const Box& a, const Box& b) : store(::tpy::ordered_map<std::string, std::tuple<int32_t, Box>>({{"a", ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{40, &(a)})}, {"b", ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{41, &(b)})}})) {}
+inline Holder::Holder(const Box& a, const Box& b) : store(::tpy::ordered_map<std::string, std::tuple<int32_t, Box>>({{"a", std::tuple<int32_t, Box>{40, a}}, {"b", std::tuple<int32_t, Box>{41, b}}})) {}
 
 // def get_weight(self, k: str) -> int32:
 //     pair = self.store[k]
@@ -78,9 +78,9 @@ inline Holder::Holder(const Box& a, const Box& b) : store(::tpy::ordered_map<std
 //         pair = self.store["a"]
 //     return pair[0]
 inline int32_t Holder::get_weight(std::string_view k) {
-    std::tuple<int32_t, Box*> pair = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(this->store, k));
+    std::tuple<int32_t, Box*> pair = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(this->store, k));
     if ((std::get<0>(pair) < 0)) {
-        pair = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(this->store, "a"));
+        pair = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(this->store, "a"));
     }
     return std::get<0>(pair);
 }
@@ -96,7 +96,7 @@ inline int32_t Holder::peek() const {
 // def arg_weight(self, k: str) -> int32:
 //     return weight_of(self.store[k])
 inline int32_t Holder::arg_weight(std::string_view k) const {
-    return ::tpyapp::main::weight_of(::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(this->store, k)));
+    return ::tpyapp::main::weight_of([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(this->store, k)));
 }
 
 // def bump(self, k: str) -> None:

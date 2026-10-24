@@ -883,8 +883,9 @@ def test_for_each_tuple_unpack_over_gen_record_target_routes():
 
 def test_for_each_tuple_unpack_ref_target_routes():
     # A for-head unpack over a storage-form list CONTAINER binds a value scalar
-    # target and aliases a record element target (`is_ref`) via the loop
-    # element's tuple_to_pointer lift -- routes (was a deferred ref-target rung).
+    # target and aliases a record element target (`is_ref`) through the loop
+    # element lent element by element -- routes (was a deferred ref-target
+    # rung).
     # A generator source keeps deferring (see the _over_gen_ test above).
     compiler, entry, f = _fn_body(
         "from tpy import int32\n"

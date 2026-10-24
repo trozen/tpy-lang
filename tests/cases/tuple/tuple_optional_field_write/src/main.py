@@ -1,6 +1,6 @@
 # Field-write of tuple[T | None, ...] outside the constructor needs the
 # same pointer-form -> storage-form lift as field-init: `self.f = p` where
-# p is a pointer-form param goes through tuple_to_storage.
+# p is a pointer-form param is built element by element.
 from tpy import int32
 
 
@@ -20,7 +20,7 @@ class Holder:
 
     def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
         # Source is a subscript -- already storage-form, so the field-write
-        # is a direct copy (no redundant tuple_to_storage wrap).
+        # is a direct copy (no element-by-element rebuild).
         self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
 
     def copy_from_field(self, other: 'Holder') -> None:

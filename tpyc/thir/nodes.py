@@ -17,7 +17,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, ClassVar, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..temp_schedule import banks_in_region
@@ -27,12 +27,13 @@ from ..coercions import coercion_rule
 from ..type_def_registry import ParamPassing
 from ..typesys import (
     FloatLiteralType, IntLiteralType, NominalType, OwnType, Representation, ResolvedBinop, ResolvedUnaryop, TpyType,
+    TupleType, unwrap_qualifiers,
     certified_primitive_comparison, certified_primitive_conversion, certified_primitive_op,
     certified_primitive_promotion, certified_primitive_subscript, is_inert_leaf, is_owned_leaf,
     unwrap_own, unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .scalar_leaves import view_compatible
-from .source import BindingRepr, SelectResult, Source
+from .source import BindingRepr, SelectResult, Source, TraitAbi
 
 if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
@@ -463,12 +464,12 @@ class THIRWalrus(THIRExpr):
     tail: 'str | None' = None
     addr_of: bool = False
     # REASSIGNED borrow-tuple walrus (`(t := make_pair(9))` later rebound):
-    # the value renders `tuple_to_pointer<{borrow_cpp}>(__slot_N.emplace(
-    # {v}))` into the binding's one owning slot (`own_slot`, a
-    # `std::optional<{slot_cpp}>` every owning-call write refills), with the
-    # bare-name result tail (`, t`).
+    # the value emplaces into the binding's one owning slot (`own_slot`, a
+    # `std::optional<{slot_cpp}>` every owning-call write refills) and the
+    # name takes the slot's payload `lent` (`(__slot_N.emplace(v), B{..})`),
+    # with the bare-name result tail (`, t`).
     slot_cpp: 'str | None' = None
-    borrow_cpp: 'str | None' = None
+    lent: 'THIRLent | None' = None
     own_slot: 'THIRRebindSlot | None' = field(
         default=None, kw_only=True, compare=False, repr=False)
     # A resumable-frame `frame_slot<T>` target: the write is
@@ -1240,6 +1241,13 @@ class THIROptionalPtrArg(THIRExpr):
     addr_of: bool = False
     lift: bool = False
 
+    @property
+    def reads_raw_pointer(self) -> bool:
+        return True
+
+    def __post_init__(self) -> None:
+        self._restamp_reads()
+
 
 @dataclass(frozen=True)
 class THIRCtorCall(THIRExpr):
@@ -1363,6 +1371,22 @@ class THIRTempRead(THIRExpr):
     evaluates once and reads at several positions (an augmented subscript's
     receiver and key, read by its getter and its setter)."""
     read_id: int = 0
+
+
+# The read id of a tuple's lambda-bound source (`THIRTupleLiteral.bound`):
+# every such lambda names its parameter alike, and an element reads only
+# its own literal's parameter, so one id serves them all.
+BOUND_SOURCE_READ = -1
+
+
+@dataclass(frozen=True)
+class THIRLent:
+    """A tuple held in storage its statement renders itself -- an owning
+    slot, a loop's step, a frame's one-shot holder -- lent element by
+    element: `lent` reads that holder through the `THIRTempRead`
+    `read_id`, which the emitter names by the holder's spelling."""
+    read_id: int
+    lent: THIRExpr
 
 
 @dataclass(frozen=True)
@@ -1700,9 +1724,25 @@ class THIRTupleLiteral(THIRExpr):
     suffix -- and the S1 view->owned `std::string(x)` wrap for view-form str
     sources). Ref/const-ref element captures, borrow element slots
     (pointer-repr Optional / record refs), TypeParamRef elements, and
-    target-less positions are gate-excluded."""
+    target-less positions are gate-excluded.
+
+    The same node builds a tuple a CONVERSION takes element by element
+    (`convert`'s tuple arm): each element is the converted read of one
+    element of the source. `spelled` is then the slot's declared tuple
+    where the slot holds its elements in their borrow form (a result's
+    `std::tuple<A*, int32_t>`, `own_return_t<T>` at an `Own[T]` element),
+    spelled `to_cpp_return` (const pointees with `spelled_const`); None
+    spells the storage `result_type`. `bound` is a source that is no place,
+    evaluated once where it is written: the parameter of a captureless
+    one-parameter lambda invoked on it binds it
+    (`[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return <literal>; }(<source>)`), so it lives to
+    the end of the full expression, and the elements read that parameter
+    (`THIRTempRead` of `BOUND_SOURCE_READ`)."""
     elements: tuple[THIRExpr, ...]
     tuple_layout: THIRTupleLayout | None = field(default=None, kw_only=True)
+    spelled: 'TpyType | None' = field(default=None, kw_only=True)
+    spelled_const: bool = field(default=False, kw_only=True)
+    bound: 'THIRExpr | None' = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -1719,8 +1759,8 @@ class THIRBorrowTupleLiteral(THIRExpr):
     generic slot's `::tpy::to_val_or_ptr<val_or_ptr_t<T>>({0})` wrap,
     computed at lowering like THIRCoerce's TEMPLATE shape); empty tuple for
     the borrow-only callers, and exclusive with `addr_of[i]` per element.
-    Rvalue borrow elements (the tuple_value_to_borrow helper machinery) and
-    pointer-repr Optional / union slots stay gate-rejected."""
+    An rvalue element is held in a statement temporary whose address it
+    takes (`THIRArgTemp.addr_of`)."""
     spelled_cpp: str
     elements: tuple[THIRExpr, ...]
     addr_of: tuple[bool, ...]
@@ -1732,33 +1772,6 @@ class THIRBorrowTupleLiteral(THIRExpr):
     def __post_init__(self) -> None:
         assert not any(w is not None and a
                        for w, a in zip(self.elem_wraps, self.addr_of))
-
-
-@dataclass(frozen=True)
-class THIRTupleValueToBorrow(THIRExpr):
-    """A tuple literal with RVALUE elements at a borrow-form slot -- the
-    `tuple_value_to_borrow` path: a value-form source
-    tuple is built inline (`src_cpp{...}`; its full-expression lifetime keeps
-    the addresses valid through the consuming call) and the helper takes
-    addresses / binds references into the borrow-form `dst_cpp`. Rvalue
-    elements render VALUE-form (bare, no lift); lvalue elements keep their
-    borrow render + `&(...)` lift inside the source tuple (their src slot is
-    already the pointer part)."""
-    dst_cpp: str
-    src_cpp: str
-    elements: tuple[THIRExpr, ...]
-    addr_of: tuple[bool, ...]
-    # Per-element `{0}` render template, exclusive with addr_of[i] (the
-    # consuming append's `std::move(&({0}))` lvalue wrap); None entries keep
-    # the addr_of/bare treatment. None = no wraps at all.
-    elem_wraps: 'tuple[str | None, ...] | None' = None
-
-    def __post_init__(self) -> None:
-        # Same contract as THIRBorrowTupleLiteral: a wrap replaces the
-        # element's whole render, so it is exclusive with the addr_of lift.
-        if self.elem_wraps:
-            assert not any(w is not None and a
-                           for w, a in zip(self.elem_wraps, self.addr_of))
 
 
 @dataclass(frozen=True)
@@ -2356,34 +2369,23 @@ class THIRFormConvert(THIRExpr):
     instantiation: there `val_or_ref_t<T>` is `T&` and an owned temporary
     would dangle.
 
-    `param_form` spells a tuple STORAGE lift at the slot's parameter form:
-    a mixed `tuple[Own[A], B]` parameter owns its `A` but keeps `B` a
-    pointer (`::tpy::tuple_to_storage<std::tuple<A, B*>>(t)`).
-
-    `elem_modes` converts a pointer-tuple NAME element by element, each
-    element as the scalar at its position converts, spelled into the
-    destination's brace-init: "move_pointee" (`std::move(*std::get<i>(t))`,
-    an object the name owns at its last use), "copy_pointee"
-    (`(*std::get<i>(t))`, a borrowed object copied in), "pointer" (the
-    destination keeps the borrow), "move" / "copy" (a value element)."""
+    A tuple never takes this node: a tuple converts element by element
+    (`THIRTupleLiteral` over its element reads, `convert.per_element`)."""
     value: THIRExpr
     is_const: bool = False
     move: bool = False
     materialize: 'bool | None' = None
     generic_return: bool = False
-    param_form: bool = False
-    elem_modes: tuple[str, ...] = ()
-
-    _ELEM_MODES: ClassVar[frozenset[str]] = frozenset({
-        "move_pointee", "copy_pointee", "pointer", "move", "copy"})
+    # An open-`T` BORROW into a slot that spells it through its trait (a
+    # tuple element's `val_or_ptr_t<T>`): the instantiation decides the
+    # address-of or the value (`::tpy::to_val_or_ptr`). None: the bare
+    # address-of of a reference read.
+    trait: 'TraitAbi | None' = None
 
     def __post_init__(self) -> None:
-        if self.elem_modes:
-            if not (set(self.elem_modes) <= self._ELEM_MODES
-                    and isinstance(self.value, THIRName)):
-                raise ValueError(
-                    "an element-wise conversion takes a tuple NAME and "
-                    "known element modes")
+        if isinstance(unwrap_qualifiers(self.result_type), TupleType):
+            raise ValueError("a tuple converts element by element, never "
+                             "through a form conversion")
 
 
 # --- Statements ---
@@ -2459,14 +2461,13 @@ class THIRVarDecl(THIRStmt):
     # A nullable borrow-tuple decl (`t: tuple[..] | None = make_pair(..)`)
     # bound from an owning call: the storage spelling of the function-local
     # `std::optional<...>` slot the rvalue emplaces into, which the decl
-    # aliases through `btuple_opt_borrow_cpp`. The statement twin of
+    # aliases through `btuple_lent`. The statement twin of
     # THIRWalrus.slot_cpp.
     btuple_slot_cpp: str | None = None
-    # With `btuple_slot_cpp`: cpp_type is the optional spelling and the
-    # emplace RHS wraps through it
-    # (`std::optional<B>{::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))}`);
-    # this carries the borrow tuple spelling B.
-    btuple_opt_borrow_cpp: str | None = None
+    # With `btuple_slot_cpp`: cpp_type is the optional spelling, the init
+    # emplaces into the slot and the decl takes the slot's payload lent
+    # (`std::optional<B>{B{..}}`).
+    btuple_lent: 'THIRLent | None' = None
     # The borrow-tuple slot this decl fills (`btuple_slot_cpp`), which its
     # owning-call reseats refill (see THIRAssign.own_slot).
     own_slot: THIRRebindSlot | None = field(
@@ -2764,12 +2765,11 @@ class THIRAssign(THIRStmt):
     recv_wrap: 'str | None' = None
     # A nullable borrow-tuple reseat from an OWNING tuple call
     # (`t: tuple[..] | None`; `t = make_pair(9)`): the rvalue emplaces into
-    # the binding's one owning slot (`own_slot`, holding `slot_cpp`), the
-    # borrow tuple spelling B here, and renders `t = std::optional<B>{
-    # ::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))};` through
-    # `btuple_opt_cpp` (always set alongside B) -- the reseat sibling of
-    # THIRVarDecl.btuple_slot_cpp.
-    btuple_borrow_cpp: 'str | None' = None
+    # the binding's one owning slot (`own_slot`, holding `slot_cpp`), and
+    # the name takes the payload `btuple_lent` under the optional spelling
+    # `btuple_opt_cpp` (`t = std::optional<B>{B{..}};`) -- the reseat
+    # sibling of THIRVarDecl.btuple_slot_cpp.
+    btuple_lent: 'THIRLent | None' = None
     btuple_opt_cpp: 'str | None' = None
     # An rvalue reseat of a pointer-local (`p = Point(2)` over `T* p`):
     # sema's alias-rebind verdict says where the object lands -- IN_PLACE
@@ -2800,7 +2800,7 @@ class THIRAssign(THIRStmt):
     def binding_slot_cpp(self) -> 'str | None':
         """What the binding's one owning-call slot an owning-call reseat
         of a borrow tuple refills holds (`slot_cpp`), else None."""
-        if self.btuple_borrow_cpp is None or not isinstance(self.target,
+        if self.btuple_lent is None or not isinstance(self.target,
                                                             THIRName):
             return None
         return self.slot_cpp
@@ -2810,7 +2810,7 @@ class THIRAssign(THIRStmt):
         """What the storage of its own this write fills holds (an OWN
         rvalue reseat of a pointer local), else None."""
         if (not isinstance(self.target, THIRName)
-                or self.btuple_borrow_cpp is not None
+                or self.btuple_lent is not None
                 or self.rebind_storage is not RebindStorage.OWN):
             return None
         return self.slot_cpp
@@ -3428,10 +3428,9 @@ class TupleSourceBind(Enum):
                          name with ref/alias elements -- the is_ref rule
                          drops the const; source_cpp carries the deref'd
                          spelling for a pointer loop holder)
-        STORAGE_WRAP  -> auto __tup_N = ::tpy::tuple_to_pointer<
-                         source_wrap_cpp>(<src>);          (storage-form
-                         source lifted so `std::get<i>` yields the `T*`
-                         each ref/alias target uses)
+        STORAGE_WRAP  -> auto __tup_N = <source_expr>;      (a storage-form
+                         source lent element by element, so `std::get<i>`
+                         yields the `T*` each ref/alias target uses)
         NAME_MOVE     -> auto&& __tup_N = std::move(<src>); (an Own-element
                          tuple NAME at its last use -- owned elements move
                          out of the moved-from holder)
@@ -3588,8 +3587,7 @@ class THIRTupleUnpack(THIRStmt):
     imported/native global -- `const auto& __tup_N = ::tpystd::m::name;` --
     or the NAME_REF pointer-holder deref); None renders the escaped bare
     `source`. The source HOLDER form is `source_bind` (TupleSourceBind --
-    each value's render documented there); `source_wrap_cpp` is
-    STORAGE_WRAP's spelled borrow-tuple type.
+    each value's render documented there).
 
     TUPLE-TARGET mode (`tuple_target` set, `targets` empty): the binding
     `t = <rvalue>` of a rebound tuple local held as the pointer tuple. The
@@ -3618,7 +3616,9 @@ class THIRTupleUnpack(THIRStmt):
     # (empty: no such bind).
     slot_fields: tuple[str | None, ...] = ()
     source_bind: TupleSourceBind = TupleSourceBind.NAME_CREF
-    source_wrap_cpp: str | None = None
+    # An RVALUE source that is the one-shot holder `source` (`(*source)`)
+    # lent, in place of `source_expr`.
+    source_lent: 'THIRLent | None' = None
     tuple_target: 'THIRName | None' = None
     elem_targets: tuple[THIRTupleElemTarget, ...] = ()
     tuple_decl_cpp: str | None = None
@@ -3638,22 +3638,22 @@ class THIRTupleUnpack(THIRStmt):
     def __post_init__(self) -> None:
         # The payload/discriminator pairings the old boolean pile left
         # unchecked: each source form consumes exactly its own payload.
-        # STORAGE_WRAP and NAME_CREF take either a NAME source or an
-        # expression source (`a0, b0 = pairs[0]` lifts the rendered element
-        # read; a narrowed value-opt tuple name const-ref-binds its deref).
-        if self.source_bind is TupleSourceBind.STORAGE_WRAP:
-            if self.source_wrap_cpp is None:
-                raise ValueError("STORAGE_WRAP requires source_wrap_cpp")
-        else:
-            if self.source_bind is TupleSourceBind.RVALUE:
-                if self.source_expr is None:
-                    raise ValueError("RVALUE requires source_expr")
-            elif (self.source_expr is not None
-                  and self.source_bind is not TupleSourceBind.NAME_CREF):
+        # NAME_CREF takes either a NAME source or an expression source (a
+        # narrowed value-opt tuple name const-ref-binds its deref).
+        if self.source_lent is not None and (
+                self.source_expr is not None
+                or self.source_bind is not TupleSourceBind.RVALUE):
+            raise ValueError("source_lent is an RVALUE source's only payload")
+        if self.source_bind in (TupleSourceBind.RVALUE,
+                                TupleSourceBind.STORAGE_WRAP):
+            if self.source_expr is None and self.source_lent is None:
                 raise ValueError(
-                    "source_expr belongs to RVALUE / NAME_CREF sources only")
-            if self.source_wrap_cpp is not None:
-                raise ValueError("source_wrap_cpp belongs to STORAGE_WRAP only")
+                    f"{self.source_bind.name} requires source_expr")
+        elif (self.source_expr is not None
+              and self.source_bind is not TupleSourceBind.NAME_CREF):
+            raise ValueError(
+                "source_expr belongs to RVALUE / STORAGE_WRAP / NAME_CREF "
+                "sources only")
         bad = [b for b in self.binds
                if b is not None and not isinstance(b, UnpackBind)]
         if bad:
@@ -3742,10 +3742,8 @@ class THIRForEach(THIRStmt):
     # a fresh local, so the post-loop read sees the last element.
     hoist_loop_var: bool = False
     # A hoisted ptr-repr tuple loop var was predeclared in BORROW form, so the
-    # per-iteration assign lifts the storage element:
-    # `t = ::tpy::tuple_to_pointer<<this>>(*__beg_N);` (loop_var_binding's
-    # hoisted_tuple_lift_cpp arm).
-    hoisted_tuple_lift_cpp: 'str | None' = None
+    # per-iteration assign takes the step lent element by element.
+    hoisted_step: 'THIRLent | None' = None
     # Branch-first-declared value locals used after the loop (see THIRForRange).
     hoist_decls: tuple[HoistDecl, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
@@ -4721,6 +4719,9 @@ class THIRResumableBody:
     # One map for all three kinds -- the skeleton keeps its emplace / &(..) /
     # static_cast wrap, the leaf renders the bare expression.
     region_exprs: 'IdentityMap' = field(default_factory=IdentityMap)
+    # A borrow-form tuple loop var's step (keyed by the for statement),
+    # lent as the loop var's borrow tuple (`THIRLent`).
+    loop_steps: 'IdentityMap' = field(default_factory=IdentityMap)
     # MatchDispatch dispatches (keyed by the TpyMatch): the whole
     # type-aware dispatch (subject + labels + guards) lowered through the
     # sync match tiers with arm BODIES replaced by body_key hooks -- the

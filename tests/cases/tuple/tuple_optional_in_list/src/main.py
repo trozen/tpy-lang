@@ -1,7 +1,7 @@
 # list[tuple[T | None, ...]]: list elements stored as storage-form tuples.
-# Tuple literals at the list-literal site are lifted via tuple_to_storage
-# during list initialization. Subscript reads in pointer-form param context
-# go through tuple_to_pointer.
+# Tuple literals at the list-literal site are built element by element in
+# storage form. Subscript reads in pointer-form param context are lent
+# element by element.
 from tpy import int32
 
 
@@ -24,8 +24,8 @@ def main() -> None:
     t2 = T(2)
     items: list[tuple[T | None, T | None]] = [(t1, t2), (t1, None), (None, None)]
 
-    # Subscript read from a list of storage-form tuples flows through
-    # tuple_to_pointer to match the pointer-form param of consume().
+    # Subscript read from a list of storage-form tuples is lent element
+    # by element to match the pointer-form param of consume().
     consume(items[0])
     consume(items[1])
     consume(items[2])
@@ -36,7 +36,7 @@ def main() -> None:
         print(a.x)
 
     # for-loop over a storage-form container: the loop var binds to the
-    # storage-form element, but flows through tuple_to_pointer at the call.
+    # storage-form element, but is lent element by element at the call.
     for it in items:
         consume(it)
 

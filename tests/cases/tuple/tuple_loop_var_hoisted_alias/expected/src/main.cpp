@@ -12,13 +12,13 @@ namespace tpyapp::main {
 //     print(t[0])
 //     print(items[1][1].val)
 void main() {
-    std::vector<std::tuple<int32_t, Box>> items = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(10)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{2, Box(20)})};
+    std::vector<std::tuple<int32_t, Box>> items = {std::tuple<int32_t, Box>{1, Box(10)}, std::tuple<int32_t, Box>{2, Box(20)}};
     std::tuple<int32_t, Box*> t;
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(*__beg_0);
+        t = std::tuple<int32_t, Box*>{std::get<0>((*__beg_0)), &(std::get<1>((*__beg_0)))};
     }
     std::get<1>(t)->val = 99;
     std::cout << std::get<0>(t) << "\n" << ::tpy::check_signals;

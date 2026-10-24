@@ -46,19 +46,19 @@ Fixed mk(std::string_view tag, const ::tpy::BigInt& n) {
 //     print(take((Box(Zone(7)), 2)))
 void main() {
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_1 = ::tpyapp::main::mk("fixed", ::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::take(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_1), 5})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(__tmp_1), 5})) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_2 = ::tpyapp::main::mk("a", ::tpy::BigInt(4));
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_3 = ::tpyapp::main::mk("b", ::tpy::BigInt(6));
-    std::cout << ::tpyapp::main::take2(::tpy::tuple_value_to_borrow<std::tuple<Box*, Box*>>(std::tuple<Box, Box>{Box(__tmp_2), Box(__tmp_3)})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take2([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, const Box*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<Box, Box>{Box(__tmp_2), Box(__tmp_3)})) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_4 = ::tpyapp::main::mk("opt", ::tpy::BigInt(8));
-    std::cout << ::tpyapp::main::take_opt(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_4), 4})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_opt([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(__tmp_4), 4})) << "\n" << ::tpy::check_signals;
     ::tpy::Union<std::monostate, Fixed, Zone> __tmp_5 = Zone(7);
-    std::cout << ::tpyapp::main::take(::tpy::tuple_value_to_borrow<std::tuple<Box*, int32_t>>(std::tuple<Box, int32_t>{Box(__tmp_5), 2})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Box, int32_t>{Box(__tmp_5), 2})) << "\n" << ::tpy::check_signals;
 }
 
 // # A tuple LITERAL element that is a value-union-param call, where the tuple
-// # crosses a borrow boundary (a tuple param binds by reference, routing rvalue
-// # elements through tuple_value_to_borrow), must evaluate that inner call once
+// # crosses a borrow boundary (a tuple param binds by reference, lending each
+// # rvalue element for the call), must evaluate that inner call once
 // # (regression: the borrow path rendered the element twice -- borrow form then
 // # value form -- doubling side effects and leaking a hoisted temp; the
 // # tuple-literal analog of the method-arg double-eval). Each "eval <tag>" once.

@@ -123,7 +123,7 @@ void main() {
     H h5 = H(std::tuple<P, P>{std::move(c), P(11)});
     std::get<0>(h5.pair).n = 100;
     std::cout << "keyword:" << " " << std::get<0>(h5.pair).n << "\n" << ::tpy::check_signals;
-    D d = D(std::tuple<std::tuple<P, int32_t>, int32_t>{::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(12), 1}), 2});
+    D d = D(std::tuple<std::tuple<P, int32_t>, int32_t>{std::tuple<P, int32_t>{P(12), 1}, 2});
     std::get<0>(std::get<0>(d.v)).n = 120;
     auto&& inner = std::get<0>(d.v);
     std::cout << "nested:" << " " << std::get<0>(inner).n << " " << std::get<1>(inner) << "\n" << ::tpy::check_signals;

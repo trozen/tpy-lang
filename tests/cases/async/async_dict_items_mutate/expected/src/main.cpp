@@ -40,7 +40,7 @@ namespace tpyapp::main {
             int32_t __tpy_async_ret = n;
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
-        __for_tup_0 = ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(*((*__for_it_0))++);
+        { auto&& __for_step_0 = *((*__for_it_0))++; __for_tup_0 = std::tuple<int32_t, C*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
         auto& __tup_1 = __for_tup_0;
         k = std::get<0>(__tup_1);
         c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));

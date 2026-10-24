@@ -12,9 +12,9 @@ inline std::expected<std::tuple<int32_t, Box*>, ::tpy::StopIteration> __gen_gen:
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        items.emplace(std::vector<std::tuple<int32_t, Box>>{std::tuple<int32_t, Box>{1, Box(5)}});
+        items.emplace(::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(5)}));
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*items), 0));
+        return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__((*items), 0));
     }
     case S_RESUME_0: {  // after: yield items[0]
         __state = S_DONE;

@@ -1,5 +1,5 @@
 # dict[K, tuple[T | None, ...]] subscript-assign of a tuple literal lifts
-# pointer-form -> storage-form via tuple_to_storage, copying a named member
+# pointer-form -> storage-form element by element, copying a named member
 # that is read again (a is, below). Storage-form sources (subscript, field,
 # value-form local) skip the wrap.
 from tpy import int32

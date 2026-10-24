@@ -1,7 +1,7 @@
 # For-loop over `list[tuple[T | None, T | None]]` passing the loop var
 # to a `tuple[T | None, T | None]` param: the loop var binds storage form
 # (`std::tuple<std::optional<T>, std::optional<T>>`); the call-arg site
-# lifts via `tuple_to_pointer` to feed the borrow-form param.
+# lends it element by element to feed the borrow-form param.
 from tpy import int32
 
 

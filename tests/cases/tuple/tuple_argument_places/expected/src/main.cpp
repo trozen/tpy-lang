@@ -44,7 +44,7 @@ int32_t sink(std::vector<Box>& keep, Box&& b) {
 //     a, b = t
 //     return (a.x if a is not None else 0) + (b.x if b is not None else 0)
 int32_t take_opt(std::tuple<std::optional<P>, std::optional<P>> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(t)), ::tpy::optional_to_ptr(std::get<1>(t))};
     P* a = std::get<0>(__tup_1);
     P* b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>((((a != nullptr)) ? (a->x) : (0)), (((b != nullptr)) ? (b->x) : (0))));
@@ -122,7 +122,7 @@ void append_own(std::vector<std::tuple<Box, int32_t>>& xs, std::tuple<Box, int32
 // def mixed_call(xs: list[tuple[Box, Box]], b: Box) -> int32:
 //     return keep_m(xs, make_mixed(b))  # tpyc: warning(/tuple element 1\)/)
 int32_t mixed_call(std::vector<std::tuple<Box, Box>>& xs, Box& b) {
-    return ::tpyapp::main::keep_m(xs, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
+    return ::tpyapp::main::keep_m(xs, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)));
 }
 
 // # free function: a tuple FIELD read is a stored lvalue the slot copies
@@ -150,8 +150,8 @@ int32_t literal(std::vector<std::tuple<Box, int32_t>>& xs, const Box& b, Box&& q
 //     return keep(xs, copy(t))  # tpyc: ok
 int32_t borrowed_local(std::vector<std::tuple<Box, int32_t>>& xs, Box& b) {
     auto t = std::tuple<Box*, int32_t>{&(b), 3};
-    ::tpyapp::main::keep(xs, ::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(t));
-    return ::tpyapp::main::keep(xs, ::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(t));
+    ::tpyapp::main::keep(xs, std::tuple<Box, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
+    return ::tpyapp::main::keep(xs, std::tuple<Box, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // # free function: an owned element moves at the tuple's last use
@@ -200,7 +200,7 @@ int32_t optional_member(const P* o) {
 // def nested(c: Box) -> int32:
 //     return nested_borrow((1, (2, c))) + nested_own((1, (2, c)))  # tpyc: warning(/tuple element 1.1\)/)
 int32_t nested(const Box& c) {
-    return (::tpy::add_check<int32_t>(::tpyapp::main::nested_borrow(std::tuple<int32_t, std::tuple<int32_t, const Box*>>{1, std::tuple<int32_t, const Box*>{2, &(c)}}), ::tpyapp::main::nested_own(std::tuple<int32_t, std::tuple<int32_t, Box>>{1, ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, const Box*>{2, &(c)})})));
+    return (::tpy::add_check<int32_t>(::tpyapp::main::nested_borrow(std::tuple<int32_t, std::tuple<int32_t, const Box*>>{1, std::tuple<int32_t, const Box*>{2, &(c)}}), ::tpyapp::main::nested_own(std::tuple<int32_t, std::tuple<int32_t, Box>>{1, std::tuple<int32_t, Box>{2, c}})));
 }
 
 // # free function: a literal over an un-mutated parameter borrows it const
@@ -241,8 +241,8 @@ KB ctor_element(std::tuple<Box, int32_t>&& p) {
 //     d[0] = t  # tpyc: warning(/copies Box into container \(tuple element 0\)/)
 void bigint_name(HN& h, ::tpy::ordered_map<int32_t, std::tuple<Box, ::tpy::BigInt>>& d, Box& b) {
     auto t = std::tuple<Box*, int32_t>{&(b), 3};
-    h.t = ::tpy::tuple_to_storage<std::tuple<Box, ::tpy::BigInt>>(t);
-    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<Box, ::tpy::BigInt>>(t));
+    h.t = std::tuple<Box, ::tpy::BigInt>{(*std::get<0>(t)), std::get<1>(t)};
+    ::tpy::__setitem__(d, 0, std::tuple<Box, ::tpy::BigInt>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // def main() -> None:
@@ -344,7 +344,7 @@ void main() {
     std::cout << "element_last_use stored" << " " << ::tpy::__getitem__(ks, 0).n << "\n" << ::tpy::check_signals;
     std::cout << "element_live" << " " << ::tpyapp::main::element_live(ks, std::tuple<Box, int32_t>{Box(51), 1}) << "\n" << ::tpy::check_signals;
     Box nb = Box(53);
-    std::cout << "method_mixed_element" << " " << Holder().mixed_element(ks, std::tuple<Box, Box*>{Box(52), &(nb)}) << "\n" << ::tpy::check_signals;
+    std::cout << "method_mixed_element" << " " << Holder().mixed_element(ks, std::tuple<Box, const Box*>{Box(52), &(nb)}) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(ks, 2).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(ks, 2).n, 100);
     std::cout << "method_mixed_element stored" << " " << ::tpy::__getitem__(ks, 2).n << " " << nb.n << "\n" << ::tpy::check_signals;
     std::cout << "amp_slot" << " " << ::tpyapp::main::amp_slot() << "\n" << ::tpy::check_signals;

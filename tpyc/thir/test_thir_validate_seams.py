@@ -15,7 +15,8 @@ import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..typesys import BOOL, INT32, NominalType, UnionType, VoidType, unwrap_readonly, unwrap_ref_type
+from ..typesys import (BOOL, INT32, NominalType, TupleType, UnionType, VoidType,
+                       unwrap_readonly, unwrap_ref_type)
 from .nodes import (
     Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp, THIRCall,
     THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRConstructor,
@@ -23,7 +24,9 @@ from .nodes import (
     THIRMilInit,
     THIRFieldAccess, THIRFieldIdentity, THIRFormConvert, THIRFunction, THIRFunctionLayout,
     THIRIf, THIRIfExpr, THIRLiteral,
-    THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
+    THIRLent, THIRMethodCall, THIRName, THIRRaise, THIRResumableBody,
+    THIRReturn, THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
+    THIRTupleUnpack, TupleSourceBind,
     THIRUnionArgLift,
 )
 from . import validate as _validate
@@ -588,6 +591,91 @@ class TestValidator:
                     element=THIRLiteral(result_type=INT32, value=0)),)),),
                 source_in_enclosing=True),))
         validate_function(self._fn_of(THIRExprStmt(expr=inner)))
+
+    # --- a tuple converted element by element binds its source once
+    # --- (`THIRTupleLiteral.bound`), by the literal's own lambda.
+
+    @staticmethod
+    def _held_tuple(*, elements: 'tuple[THIRExpr, ...] | None' = None,
+                    bound: 'THIRExpr | None' = None) -> THIRTupleLiteral:
+        pair = TupleType((INT32, INT32))
+        if elements is None:
+            elements = tuple(THIRSubscript(
+                result_type=INT32,
+                receiver=THIRTempRead(result_type=pair,
+                                      read_id=BOUND_SOURCE_READ),
+                index=THIRLiteral(result_type=INT32, value=i), tuple_index=i)
+                for i in range(2))
+        return THIRTupleLiteral(
+            result_type=pair, elements=elements,
+            bound=bound or THIRCall(result_type=pair, callee="mk", args=()))
+
+    def test_held_tuple_source_runs_in_its_conditional_operand(self):
+        # Bound where it stands, the source runs inside the arm it sits in.
+        held = self._held_tuple()
+        validate_function(self._fn_of(THIRExprStmt(expr=THIRIfExpr(
+            result_type=held.result_type,
+            cond=THIRLiteral(result_type=BOOL, value=True),
+            then=held, orelse=held))))
+
+    def test_held_tuple_source_in_a_mil_cell_declares_nothing(self):
+        validate_constructor(THIRConstructor(
+            record_name="R", params=(),
+            mil_inits=(THIRMilInit(field_cpp="p", value=self._held_tuple()),)))
+
+    def test_lambda_bound_elements_read_only_the_parameter(self):
+        # The lambda is captureless: its body -- the elements -- reads its
+        # parameter through element reads, conversions and moves, and
+        # nothing of the enclosing scope.
+        pair = TupleType((INT32, INT32))
+        read = THIRSubscript(
+            result_type=INT32,
+            receiver=THIRTempRead(result_type=pair, read_id=BOUND_SOURCE_READ),
+            index=THIRLiteral(result_type=INT32, value=0), tuple_index=0)
+        validate_function(self._fn_of(THIRExprStmt(expr=self._held_tuple(
+            elements=(read, read.moved())))))
+        for bad, why in (
+                (THIRName(result_type=INT32, name="x"), "enclosing scope"),
+                (THIRLiteral(result_type=INT32, value=0), "enclosing scope"),
+                (dataclasses.replace(read, receiver=THIRTempRead(
+                    result_type=pair, read_id=2)), "another temp")):
+            with pytest.raises(THIRValidationError, match=why):
+                validate_function(self._fn_of(THIRExprStmt(
+                    expr=self._held_tuple(elements=(read, bad)))))
+
+    def test_lambda_bound_elements_hoist_nothing(self):
+        # The lambda's body has no statement to declare a temp before; its
+        # source does, being part of the enclosing full expression.
+        temp = THIRArgTemp(result_type=INT32,
+                           init=THIRLiteral(result_type=INT32, value=1),
+                           cpp_type="int32_t", movable=True)
+        held = self._held_tuple()
+        validate_function(self._fn_of(THIRExprStmt(expr=self._held_tuple(
+            bound=THIRCall(result_type=held.result_type, callee="mk",
+                           args=(temp,))))))
+        with pytest.raises(THIRValidationError, match="enclosing scope"):
+            validate_function(self._fn_of(THIRExprStmt(
+                expr=self._held_tuple(elements=(temp, temp)))))
+
+    def test_unpack_walks_its_lent_source(self):
+        # A source an unpack lends element by element (`source_lent`) is
+        # walked like any expression: a malformed lend there raises.
+        pair = TupleType((INT32, INT32))
+        bad = THIRFormConvert(result_type=INT32,
+                              value=THIRLiteral(result_type=INT32, value=1,
+                                                form=Form.STORAGE),
+                              form=Form.STORAGE)
+
+        def unpack(elem: THIRExpr) -> THIRTupleUnpack:
+            return THIRTupleUnpack(
+                source="", targets=(), target_cpps=(),
+                source_bind=TupleSourceBind.RVALUE,
+                source_lent=THIRLent(1, THIRTupleLiteral(
+                    result_type=pair, elements=(elem, elem))))
+        validate_function(self._fn_of(unpack(THIRLiteral(
+            result_type=INT32, value=1))))
+        with pytest.raises(THIRValidationError, match="no-op form convert"):
+            validate_function(self._fn_of(unpack(bad)))
 
     def test_borrow_return_of_value_type_raises(self):
         bad = THIRReturn(value=THIRLiteral(result_type=INT32, value=1,

@@ -357,7 +357,7 @@ void main() {
     std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_1(d)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_2(std::in_place, [&]() { return std::array<std::tuple<int32_t, int32_t>, 2>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}; })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_3(std::in_place, [&]() { return std::array<std::tuple<int32_t, int32_t>, 2>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}}; })) << "\n" << ::tpy::check_signals;
-    std::array<std::tuple<P, int32_t>, 2> items = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(1), 2}), ::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(3), 4})};
+    std::array<std::tuple<P, int32_t>, 2> items = {std::tuple<P, int32_t>{P(1), 2}, std::tuple<P, int32_t>{P(3), 4}};
     std::cout << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_4(items)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;

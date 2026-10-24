@@ -537,7 +537,7 @@ void dict_items(::tpy::ordered_map<std::string, P>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, P*>>(__for_tup_2);
+        auto __tup_1 = std::tuple<std::string_view, P*>{std::get<0>(__for_tup_2), &(std::get<1>(__for_tup_2))};
         std::string_view k = std::get<0>(__tup_1);
         auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         ::tpyapp::main::bump(p);
@@ -553,7 +553,7 @@ void tuple_target(std::vector<std::tuple<P, P>>& pairs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_3 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_3);
+        auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(__for_tup_3)), &(std::get<1>(__for_tup_3))};
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         ::tpyapp::main::bump(a);
@@ -1054,13 +1054,13 @@ void loop_shadow_alias(std::vector<P>& ps, const std::vector<P>& qs) {
 //     return s
 int32_t reused_loop_name(std::vector<H>& ros, const std::vector<H>& others, H& m) {
     int32_t s = 0;
-    std::tuple<P*, P*> t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(m.bp);
+    std::tuple<P*, P*> t = std::tuple<P*, P*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     auto& __obj_0 = ros;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& r = *__beg_0;
-        t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(r.bp);
+        t = std::tuple<P*, P*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
     }
     auto& __obj_1 = others;
     auto __beg_1 = __obj_1.begin();
@@ -1085,14 +1085,14 @@ int32_t reused_loop_name(std::vector<H>& ros, const std::vector<H>& others, H& m
 //             t = r.bp
 //     t[0].n += 1000  # tpyc: ok
 void join_loop_name(bool c, std::vector<H>& ros, std::vector<H>& others, H& m) {
-    std::tuple<P*, P*> t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(m.bp);
+    std::tuple<P*, P*> t = std::tuple<P*, P*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     if (c) {
         auto& __obj_0 = ros;
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& r = *__beg_0;
-            t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(r.bp);
+            t = std::tuple<P*, P*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
         }
     } else {
         auto& __obj_1 = others;
@@ -1100,7 +1100,7 @@ void join_loop_name(bool c, std::vector<H>& ros, std::vector<H>& others, H& m) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& r = *__beg_1;
-            t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(r.bp);
+            t = std::tuple<P*, P*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
         }
     }
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 1000);
@@ -1128,7 +1128,7 @@ void raise_if(int32_t k) {
 //             t = r.bp
 //     t[0].n += 1000  # tpyc: ok
 void try_rebound(int32_t k, std::vector<H>& ros, std::vector<H>& others, H& m) {
-    std::tuple<P*, P*> t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(m.bp);
+    std::tuple<P*, P*> t = std::tuple<P*, P*>{&(std::get<0>(m.bp)), &(std::get<1>(m.bp))};
     {
         try {
             auto& __obj_0 = ros;
@@ -1136,7 +1136,7 @@ void try_rebound(int32_t k, std::vector<H>& ros, std::vector<H>& others, H& m) {
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
                 auto&& r = *__beg_0;
-                t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(r.bp);
+                t = std::tuple<P*, P*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
             }
             ::tpyapp::main::raise_if(k);
         } catch (const ::tpy::ValueError&) {
@@ -1145,7 +1145,7 @@ void try_rebound(int32_t k, std::vector<H>& ros, std::vector<H>& others, H& m) {
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
                 auto&& r = *__beg_1;
-                t = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(r.bp);
+                t = std::tuple<P*, P*>{&(std::get<0>(r.bp)), &(std::get<1>(r.bp))};
             }
         }
     }
@@ -1679,7 +1679,7 @@ void main() {
     std::cout << "dict_values:" << " " << ::tpy::__getitem__(d, "a").n << " " << ::tpy::__getitem__(d, "b").n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::dict_items(d);
     std::cout << "dict_items:" << " " << ::tpy::__getitem__(d, "a").n << " " << ::tpy::__getitem__(d, "b").n << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<P, P>> pairs = {::tpy::tuple_to_storage<std::tuple<P, P>>(std::tuple<P, P>{P(1), P(5)}), ::tpy::tuple_to_storage<std::tuple<P, P>>(std::tuple<P, P>{P(2), P(6)})};
+    std::vector<std::tuple<P, P>> pairs = {std::tuple<P, P>{P(1), P(5)}, std::tuple<P, P>{P(2), P(6)}};
     ::tpyapp::main::tuple_target(pairs);
     std::cout << "tuple_target:" << " " << std::get<0>(::tpy::__getitem__(pairs, 0)).n << " " << std::get<1>(::tpy::__getitem__(pairs, 0)).n << " " << std::get<0>(::tpy::__getitem__(pairs, 1)).n << "\n" << ::tpy::check_signals;
     std::optional<std::vector<P>> __slot_21;

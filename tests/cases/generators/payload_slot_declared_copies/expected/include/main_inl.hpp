@@ -34,7 +34,7 @@ inline std::expected<std::tuple<A, int32_t>, ::tpy::StopIteration> __gen_borrowe
         __state = S_DONE;  // until a yield sets where to resume
         t = ::tpyapp::main::mk(p);
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t);
+        return std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)};
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies A into owned storage \(tuple element 0\).*'t' is bound to existing storage/)
         __state = S_DONE;
@@ -53,7 +53,7 @@ inline std::expected<std::tuple<A, int32_t>, ::tpy::StopIteration> __gen_lending
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(::tpyapp::main::mk(p));
+        return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mk(p));
     }
     case S_RESUME_0: {  // after: yield mk(p)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
         __state = S_DONE;
@@ -159,7 +159,7 @@ inline std::expected<std::tuple<A, int32_t>, ::tpy::StopIteration> __gen_to_name
         __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<A*, int32_t>{&(p), 1};
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t);
+        return std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)};
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
         __state = S_DONE;
@@ -178,7 +178,7 @@ inline std::expected<std::tuple<A, int32_t>, ::tpy::StopIteration> __gen_to_call
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(::tpyapp::main::mk(p));
+        return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mk(p));
     }
     case S_RESUME_0: {  // after: yield mk(p)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
         __state = S_DONE;

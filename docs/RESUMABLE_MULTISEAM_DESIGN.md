@@ -180,7 +180,7 @@ wraps, state transitions). The ONLY places it renders user source are:
     `gen_expr(stmt.iterable)`) when the pre-scan allocated no `__for_src`
     field -- i.e. only when the iterable is a re-evaluable named
     expression. Everything else in the advance (counters, exhaustion test,
-    loop-var bind incl. `tuple_to_pointer` and `&(...)` forms) is
+    loop-var bind incl. element-by-element lends and `&(...)` forms) is
     skeleton driven by `GeneratorForInfo` strategy metadata.
 
 (d) Finally-helper bodies: `gen_coro_finally_top_def`
@@ -290,8 +290,8 @@ Oracle evidence that (a)-(c) are the whole render surface:
   slices -- rvalue-source, value-tuple-name, one-shot await-lift
   (`auto&& __tup_N = (*lift);` move-outs, 2026-07-18), and the
   pointer-alias slices (2026-07-19: borrow-tuple CALL/NAME sources with
-  `frame_ptr_elem` alias targets, the one-shot `tuple_to_pointer`
-  bridge, and the deref'd pointer loop-holder head with
+  `frame_ptr_elem` alias targets, the one-shot holder lent element by
+  element, and the deref'd pointer loop-holder head with
   `frame_ptr_addr` targets); in-branch
   `res.leaf_field_write` only outside
   plain_frame_fields; `res.finally_return` only for async helpers

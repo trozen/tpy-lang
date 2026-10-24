@@ -26,9 +26,9 @@ void main() {
     P a = P(1);
     P b = P(2);
     std::vector<std::tuple<std::optional<P>, std::optional<P>>> pairs = std::vector<std::tuple<std::optional<P>, std::optional<P>>>{};
-    pairs.push_back(::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpyapp::main::make_pair(a, b)));
+    pairs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::optional<P>, std::optional<P>>{::tpy::ptr_to_optional(std::get<0>(__t)), ::tpy::ptr_to_optional(std::get<1>(__t))}; }(::tpyapp::main::make_pair(a, b)));
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
-    ::tpy::__setitem__(d, 0, ::tpy::tuple_to_storage<std::tuple<std::optional<P>, std::optional<P>>>(::tpyapp::main::make_pair(a, b)));
+    ::tpy::__setitem__(d, 0, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::optional<P>, std::optional<P>>{::tpy::ptr_to_optional(std::get<0>(__t)), ::tpy::ptr_to_optional(std::get<1>(__t))}; }(::tpyapp::main::make_pair(a, b)));
     std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }

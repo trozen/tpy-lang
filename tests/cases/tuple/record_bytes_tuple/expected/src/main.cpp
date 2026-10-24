@@ -220,19 +220,19 @@ void main() {
     };
     inner();
     std::vector<std::tuple<Rec, ::tpy::Bytes>> xs = std::vector<std::tuple<Rec, ::tpy::Bytes>>{};
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::Bytes>>(::tpyapp::main::pair(r)));
+    xs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Rec, ::tpy::Bytes>{(*std::get<0>(__t)), std::move(std::get<1>(__t))}; }(::tpyapp::main::pair(r)));
     auto& __obj_2 = xs;
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_0 = *__beg_2;
-        auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<Rec*, ::tpy::BytesView>>(__for_tup_0);
+        auto __tup_3 = std::tuple<Rec*, ::tpy::BytesView>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
         auto&& e0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
         ::tpy::BytesView e1 = std::get<1>(__tup_3);
         std::cout << "container" << " " << e0.n << " " << ::tpy::BytesPrinter(e1) << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<Rec, Rec, ::tpy::Bytes>> ys = std::vector<std::tuple<Rec, Rec, ::tpy::Bytes>>{};
-    ys.push_back(::tpy::tuple_to_storage<std::tuple<Rec, Rec, ::tpy::Bytes>>(::tpyapp::main::mix(r)));
+    ys.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Rec, Rec, ::tpy::Bytes>{(*std::get<0>(__t)), std::move(std::get<1>(__t)), std::move(std::get<2>(__t))}; }(::tpyapp::main::mix(r)));
     auto& __obj_3 = ys;
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
@@ -273,13 +273,13 @@ void main() {
     sa.n = 24;
     std::cout << "string unpack" << " " << r.n << " " << ss << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Rec, ::tpy::String>> zs = std::vector<std::tuple<Rec, ::tpy::String>>{};
-    zs.push_back(::tpy::tuple_to_storage<std::tuple<Rec, ::tpy::String>>(::tpyapp::main::spair(r)));
+    zs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Rec, ::tpy::String>{(*std::get<0>(__t)), std::move(std::get<1>(__t))}; }(::tpyapp::main::spair(r)));
     auto& __obj_4 = zs;
     auto __beg_4 = __obj_4.begin();
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         auto&& __for_tup_1 = *__beg_4;
-        auto __tup_5 = ::tpy::tuple_to_pointer<std::tuple<Rec*, ::tpy::String>>(__for_tup_1);
+        auto __tup_5 = std::tuple<Rec*, ::tpy::String>{&(std::get<0>(__for_tup_1)), std::get<1>(__for_tup_1)};
         auto&& z0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_5)));
         const ::tpy::String& z1 = std::get<1>(__tup_5);
         std::cout << "string container" << " " << z0.n << " " << z1 << "\n" << ::tpy::check_signals;

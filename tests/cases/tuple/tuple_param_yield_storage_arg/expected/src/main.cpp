@@ -19,7 +19,7 @@ __gen_gen gen(std::tuple<int32_t, Box*> p) {
 void main() {
     Holder h = Holder(Box(5));
     {
-        auto __src_0 = ::tpyapp::main::gen(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair));
+        auto __src_0 = ::tpyapp::main::gen(std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

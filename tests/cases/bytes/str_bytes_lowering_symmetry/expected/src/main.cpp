@@ -347,8 +347,8 @@ void any_value_dict() {
 //     itemb[0][1].append(5)  # tpyc: ok
 //     print("tuple_elem_recv:", items, itemb)
 void tuple_elem_recv() {
-    std::vector<std::tuple<std::string, std::vector<::tpy::BigInt>>> items = ::tpy::make_vector<std::tuple<std::string, std::vector<::tpy::BigInt>>>(::tpy::tuple_to_storage<std::tuple<std::string, std::vector<::tpy::BigInt>>>(std::tuple<std::string, std::vector<::tpy::BigInt>>{"a", {1}}));
-    std::vector<std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>> itemb = ::tpy::make_vector<std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>>(::tpy::tuple_to_storage<std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>>(std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>{::tpy::bytes_literal_owned("a", 1), {1}}));
+    std::vector<std::tuple<std::string, std::vector<::tpy::BigInt>>> items = ::tpy::make_vector<std::tuple<std::string, std::vector<::tpy::BigInt>>>(std::tuple<std::string, std::vector<::tpy::BigInt>>{"a", {1}});
+    std::vector<std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>> itemb = ::tpy::make_vector<std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>>(std::tuple<::tpy::Bytes, std::vector<::tpy::BigInt>>{::tpy::bytes_literal_owned("a", 1), {1}});
     std::get<1>(::tpy::__getitem__(items, 0)).push_back(5);
     std::get<1>(::tpy::__getitem__(itemb, 0)).push_back(5);
     std::cout << "tuple_elem_recv:" << " " << ::tpy::ListPrinter(items) << " " << ::tpy::ListPrinter(itemb) << "\n" << ::tpy::check_signals;

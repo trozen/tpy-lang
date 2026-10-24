@@ -25,7 +25,7 @@ int32_t use(Holder& h, bool c) {
         std::get<0>(t) = std::move(std::get<0>(__tup_1));
         std::get<1>(t) = &*(__slot_1 = std::move(std::get<1>(__tup_1)));
     } else {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+        t = std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
     }
     std::get<1>(t)->val = 42;
     return std::get<0>(t);

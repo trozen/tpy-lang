@@ -314,7 +314,7 @@ void joined_fresh(H& h, bool c) {
         std::get<0>(ft) = &*(__slot_3 = std::move(std::get<0>(__tup_2)));
         std::get<1>(ft) = &*(__slot_4 = std::move(std::get<1>(__tup_2)));
     }
-    h.m = std::tuple<A, A>{std::move(*std::get<0>(ft)), std::move(*std::get<1>(ft))};
+    h.m = std::tuple<A, A>{std::move((*std::get<0>(ft))), std::move((*std::get<1>(ft)))};
 }
 
 // def hoisted_mixed(h: H, q: Q, k: int32) -> None:
@@ -339,7 +339,7 @@ void hoisted_mixed(H& h, Q& q, int32_t k) {
             std::get<1>(m) = std::get<1>(__tup_2);
         }
     }
-    h.q = std::tuple<A, Q>{std::move(*std::get<0>(m)), (*std::get<1>(m))};
+    h.q = std::tuple<A, Q>{std::move((*std::get<0>(m))), (*std::get<1>(m))};
 }
 
 // def hoisted_finally(k: int32) -> Own[A]:
@@ -686,7 +686,7 @@ std::tuple<A, int32_t> mk_pair(int32_t k) {
 //     print("live_unpack", len(t[0].items), len(a.items), n)
 void live_unpack(int32_t k) {
     std::tuple<A, int32_t> t = ::tpyapp::main::mk_pair(k);
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, int32_t>>(t);
+    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t n = std::get<1>(__tup_1);
     a.items.push_back(9);
@@ -924,14 +924,14 @@ void main() {
     ::tpyapp::main::loop_rebind(__tmp_2, __tmp_3, ys);
     ::tpyapp::main::show("loop_rebind", ::tpy::__getitem__(ys, -1));
     ::tpyapp::main::joined_fresh(h, true);
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, A*>>(h.m);
+    auto __tup_1 = std::tuple<A*, A*>{&(std::get<0>(h.m)), &(std::get<1>(h.m))};
     auto&& m0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& m1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     ::tpyapp::main::show("joined_fresh 0", m0);
     ::tpyapp::main::show("joined_fresh 1", m1);
     Q q = Q(12);
     ::tpyapp::main::hoisted_mixed(h, q, 13);
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<A*, Q*>>(h.q);
+    auto __tup_2 = std::tuple<A*, Q*>{&(std::get<0>(h.q)), &(std::get<1>(h.q))};
     auto&& q0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     auto&& q1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
     ::tpyapp::main::show("hoisted_mixed 0", q0);
@@ -949,7 +949,7 @@ void main() {
     pairs.push_back(std::tuple<A, A>{A(16), A(17)});
     auto __tmp_6 = ::tpy::own_iter(std::move(pairs));
     std::vector<std::tuple<A, A>> moved = ::tpyapp::main::comp_clause(__tmp_6);
-    auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<A*, A*>>(::tpy::__getitem__(moved, 0));
+    auto __tup_3 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, A*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(moved, 0));
     auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
     auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
     ::tpyapp::main::show("comp_clause 0", c0);
@@ -974,15 +974,15 @@ void main() {
     h.n.v = ::tpy::add_check<int32_t>(h.n.v, 1);
     std::cout << "try_finally_nocopy" << " " << h.n.v << "\n" << ::tpy::check_signals;
     Q q23 = Q(23);
-    h.put_mixed(std::tuple<A, Q*>{A(22), &(q23)});
-    auto __tup_4 = ::tpy::tuple_to_pointer<std::tuple<A*, Q*>>(h.q);
+    h.put_mixed(std::tuple<A, const Q*>{A(22), &(q23)});
+    auto __tup_4 = std::tuple<A*, Q*>{&(std::get<0>(h.q)), &(std::get<1>(h.q))};
     auto&& p0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
     auto&& p1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_4)));
     p0.items.push_back(9);
     ::tpyapp::main::show("put_mixed", p0);
     std::vector<std::tuple<int32_t, N>> ns = std::vector<std::tuple<int32_t, N>>{};
     ::tpyapp::main::nocopy_member(ns);
-    auto __tup_5 = ::tpy::tuple_to_pointer<std::tuple<int32_t, N*>>(::tpy::__getitem__(ns, 0));
+    auto __tup_5 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, N*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(ns, 0));
     int32_t nk = std::get<0>(__tup_5);
     auto&& nn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
     std::cout << "nocopy_member" << " " << nk << " " << nn.v << "\n" << ::tpy::check_signals;

@@ -617,7 +617,7 @@ void ref_tuple_no_read_after(const std::vector<int32_t>& xs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t x = *__beg_0;
-            __result.push_back(::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(std::tuple<Cell, int32_t>{Cell(x), x}));
+            __result.push_back(std::tuple<Cell, int32_t>{Cell(x), x});
         }
         std::move(__result);
     });

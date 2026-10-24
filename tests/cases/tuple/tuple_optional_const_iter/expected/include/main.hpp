@@ -73,7 +73,7 @@ inline void Holder::show_all_iter() const {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        ::tpyapp::main::consume(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it));
+        ::tpyapp::main::consume(std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(it)), ::tpy::optional_to_ptr(std::get<1>(it))});
     }
 }
 
@@ -88,7 +88,7 @@ inline void Holder::show_all_unpack() const {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(__for_tup_0);
+        auto __tup_1 = std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__for_tup_0)), ::tpy::optional_to_ptr(std::get<1>(__for_tup_0))};
         const T* a = std::get<0>(__tup_1);
         const T* b = std::get<1>(__tup_1);
         if ((a != nullptr)) {

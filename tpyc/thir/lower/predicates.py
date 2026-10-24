@@ -4900,8 +4900,8 @@ def _f1_tuple_element_ok(e: TpyType, analyzer) -> bool:
     if _owned_viewfam_elem(e, analyzer):
         return True
     # A `Ptr[T]` element spells `T*` in BOTH forms (a pointer VALUE, copied
-    # like a scalar); the runtime tuple_to_storage/tuple_to_pointer helpers
-    # leave the slot alone -- the mixed Optional+Ptr regression case pins it.
+    # like a scalar); a tuple converted element by element leaves the slot
+    # alone -- the mixed Optional+Ptr regression case pins it.
     if _eligible_ptr_value(unwrap_readonly(unwrap_ref_type(
             unwrap_send_sync(e))), analyzer):
         return True
@@ -4914,7 +4914,8 @@ def _f1_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A pointer-repr tuple whose every element is F1-renderable -- the F3 tuple:
     borrow form `std::tuple<..., T*>` differs from storage form
     `std::tuple<..., std::optional<T>>` / `std::tuple<..., T>`, so a storage source
-    lifts via `tuple_to_pointer` and a borrow source stores via `tuple_to_storage`.
+    is lent element by element and a borrow source is built into storage
+    element by element.
     `has_pointer_repr_element` ensures the two forms genuinely differ (an all-value
     tuple needs no conversion). Other tuples reject."""
     if t is None:
@@ -4959,10 +4960,8 @@ def _union_elem_tuple(t: 'TpyType | None', analyzer) -> 'TupleType | None':
     `std::tuple<::tpy::Union<const Cat*, const Dog*>, int32_t>`, storage form
     `std::tuple<std::variant<Cat, Dog>, int32_t>`. A union element is
     excluded from `_element_is_pointer_repr` BY DESIGN (its borrow form is a
-    variant, not a bare `T*`), so this family never routes through
-    tuple_to_pointer / tuple_to_storage -- the WHOLE-tuple
-    `tuple_value_to_borrow` conversion is its only boundary render. None
-    otherwise; the wrapper-REF element family is `_wrapper_ref_tuple_return`'s.
+    variant, not a bare `T*`). None otherwise; the wrapper-REF element family
+    is `_wrapper_ref_tuple_return`'s.
     """
     if t is None:
         return None
@@ -5037,7 +5036,7 @@ def _nested_storage_tuple(t: 'TpyType | None', analyzer) -> 'TupleType | None':
 def _borrow_tuple_return_type(t: TpyType | None, analyzer) -> 'TupleType | None':
     """The function's borrow-form pointer-repr tuple return slot (F3): a
     `tuple[..., Ref]` returned as `std::tuple<..., T*>`, into which a `return
-    <storage tuple lvalue>` lifts via `tuple_to_pointer`."""
+    <storage tuple lvalue>` lifts via the per-element lend."""
     return _f1_tuple(t, analyzer)
 
 def _is_borrow_form_name(t: TpyType | None) -> bool:
@@ -6673,7 +6672,7 @@ def _container_tuple_source_elem(t: TpyType | None, analyzer) -> bool:
 
 def _container_borrow_tuple_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose tuple element feeds a borrow-bind position bare:
-    the caller's `tuple_to_pointer` supplies the storage->borrow lift, so
+    the caller's per-element lend supplies the storage->borrow lift, so
     nothing depends on the element's own form."""
     def elem_ok(a: 'TpyType | int') -> bool:
         eb = _elem_bare(a)
@@ -7934,9 +7933,9 @@ def _renders_own_borrow_tuple(e: TpyExpr, own_locals: 'AbstractSet[str]',
     per-element-Own RETURN produces the shape, so it survives in the call
     result, a both-arms ternary of such calls, and a local bound straight
     from one (`own_locals` -- the `borrow_tuple_mixed` records). Every
-    storage sink materializes the ref element via `tuple_to_storage`, so a
-    container element / field / loop var is NOT this shape even though its
-    tuple type still carries the Own."""
+    storage sink copies the ref element in as it builds the tuple element
+    by element, so a container element / field / loop var is NOT this shape
+    even though its tuple type still carries the Own."""
     if isinstance(e, (TpyCall, TpyMethodCall)):
         fi = e.resolved_function_info
         rt = (unwrap_readonly(fi.return_type)
@@ -7974,8 +7973,8 @@ def _mixed_own_btuple_call(e: TpyExpr, analyzer) -> bool:
 def _mixed_own_storage_source(e: TpyExpr, slot: 'TupleType',
                               own_locals: 'AbstractSet[str]',
                               analyzer) -> 'TpyExpr | None':
-    """The mixed-own SOURCE a storage tuple sink materializes via the
-    NON-move `tuple_to_storage<S>(..)` -- a mixed-own-returning call /
+    """The mixed-own SOURCE a storage tuple sink copies in element by
+    element, moving nothing -- a mixed-own-returning call /
     both-arms ternary (a `copy()` wrapper peels: the wrap IS the copy), with
     the Own-collapsed source type equal to the sink's storage tuple `slot`.
     Returns the peeled source expression, or None."""
@@ -8218,7 +8217,7 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
 
     `const_locals=True` adds the locally declared readonly names -- the
     tuple-unpack receiver and the iteration source ask it, because a
-    `tuple_to_pointer` wrap off a const local must spell `const T*`
+    per-element lend off a const local must spell `const T*`
     elements, and a borrow out of one is const. The verdict cannot
     disagree with an unpack target's use -- a body that writes through an
     unpacked element marks the param mutated, which drops the const

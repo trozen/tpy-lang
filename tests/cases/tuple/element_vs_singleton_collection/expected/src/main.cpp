@@ -29,7 +29,7 @@ int32_t singleton_append(const Box& b) {
 //     return b.n
 int32_t tuple_append(Box& b) {
     std::vector<std::tuple<Box, Box>> xs = std::vector<std::tuple<Box, Box>>{};
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_borrow(b)));
+    xs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{(*std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_borrow(b)));
     std::get<0>(::tpy::__getitem__(xs, 0)).n = 22;
     return b.n;
 }
@@ -53,7 +53,7 @@ int32_t singleton_dict(const Box& b) {
 //     return b.n
 int32_t tuple_dict(Box& b) {
     ::tpy::ordered_map<int32_t, std::tuple<Box, Box>> d = ::tpy::ordered_map<int32_t, std::tuple<Box, Box>>();
-    ::tpy::__setitem__(d, 1, ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_borrow(b)));
+    ::tpy::__setitem__(d, 1, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{(*std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_borrow(b)));
     std::get<0>(::tpy::__getitem__(d, 1)).n = 24;
     return b.n;
 }

@@ -446,7 +446,7 @@ inline Sink::Sink() : n(0) {}
 //     a.xs.append(7)
 //     return len(a.xs)
 inline int32_t Sink::put(std::tuple<P, P> t) const {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     a.xs.push_back(7);
@@ -458,7 +458,7 @@ inline int32_t Sink::put(std::tuple<P, P> t) const {
 //     # BUGS.md#own-tuple-param-unpack-field-copy: `a` could move here
 //     self.a = a  # tpyc: warning(/copies P into field/)
 inline Keeper::Keeper(std::tuple<P, P> t) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
+    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     this->a = a;
@@ -478,7 +478,7 @@ inline void Cm::__exit__(std::monostate exc_type, const ::tpy::BaseException* ex
 // # method: a field store of the call result
 // def __init__(self, p: P) -> None:
 //     self.pair = mk(p)  # tpyc: warning(/copies P into field \(tuple element 0\)/)
-inline PairBox::PairBox(P& p) : pair(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(::tpyapp::main::mk(p))) {}
+inline PairBox::PairBox(P& p) : pair([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mk(p))) {}
 // def gtake[T](t: Own[tuple[T, T]]) -> int32:
 //     return 0
 template<typename T>

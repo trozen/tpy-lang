@@ -200,7 +200,7 @@ void main() {
     std::cout << "gen after" << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::via_async(ll))) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
     std::cout << "capture" << " " << ::tpyapp::main::capture(ll) << " " << ::tpy::__len__(::tpy::__getitem__(ll, 0)) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = ::tpy::make_vector<std::tuple<int32_t, std::vector<int32_t>>>(::tpy::tuple_to_storage<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {1, 2}}));
+    std::vector<std::tuple<int32_t, std::vector<int32_t>>> pairs = ::tpy::make_vector<std::tuple<int32_t, std::vector<int32_t>>>(std::tuple<int32_t, std::vector<int32_t>>{0, {1, 2}});
     std::cout << "tuple" << " " << ::tpyapp::main::unpack_pairs(pairs) << " " << ::tpy::ListPrinter(pairs) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::Union<std::vector<int32_t>, std::string>> us = {std::vector<int32_t>{1, 2}, "a"};
     std::cout << "union" << " " << ::tpyapp::main::collect_union(us) << " " << ::tpy::ListPrinter(us) << "\n" << ::tpy::check_signals;

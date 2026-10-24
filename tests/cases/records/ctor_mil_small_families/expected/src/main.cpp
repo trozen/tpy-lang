@@ -23,7 +23,7 @@ int32_t G{};
 //     print(d.n, d.strict)
 void main() {
     A a = A(1);
-    H h = H(::tpy::Union<const A*, const B*>{&(a)}, std::tuple<A*, int32_t>{&(a), 2}, std::tuple<int32_t, int32_t>{3, 4});
+    H h = H(::tpy::Union<const A*, const B*>{&(a)}, std::tuple<const A*, int32_t>{&(a), 2}, std::tuple<int32_t, int32_t>{3, 4});
     std::cout << ::tpy::print_bool((!h.items.has_value())) << " " << ::tpy::print_bool((!h.ox.has_value())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__str__(h.vu) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((std::holds_alternative<std::monostate>(h.un))) << "\n" << ::tpy::check_signals;
@@ -60,7 +60,7 @@ H::H(::tpy::Union<const A*, const B*> pu, const std::tuple<const A*, int32_t>& f
       pu(::tpy::to_value_variant<::tpy::Union<A, B>>(pu)),
       pr(A(3)),
       pn(std::monostate{}),
-      ft(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(ft)),
+      ft(std::tuple<A, int32_t>{(*std::get<0>(ft)), std::get<1>(ft)}),
       vt(vt),
       tl(std::tuple<int32_t, int32_t>{1, 2}) {}
 // G: int32 = 9

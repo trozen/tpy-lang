@@ -1,7 +1,7 @@
 # A tuple MIXING a pointer-repr Optional element with a plain reference
 # element: the storage write from a borrow-form source dispatches per DEST
-# slot shape (null-checked optional vs deref-copy value) in one
-# tuple_to_storage converter. Copy semantics at the field boundary are
+# slot shape (null-checked optional vs deref-copy value), element by
+# element. Copy semantics at the field boundary are
 # intended (TPy fields own their tuple elements; the copy warnings assert
 # that contract), so no post-write mutation check -- CPython would alias.
 from typing import Optional

@@ -40,7 +40,7 @@ void joined_swapped(H& h, A& a, bool c) {
         std::get<0>(ft) = std::get<0>(__tup_2);
         std::get<1>(ft) = &*(__slot_2 = std::move(std::get<1>(__tup_2)));
     }
-    h.t = ::tpy::tuple_to_storage<std::tuple<A, A>>(ft);
+    h.t = std::tuple<A, A>{(*std::get<0>(ft)), (*std::get<1>(ft))};
 }
 
 // def borrowed_arm(h: H, k: int32) -> None:
@@ -306,7 +306,7 @@ __coro_hoisted_suspend hoisted_suspend(int32_t k) {
 //     # `t` borrows, copies
 //     return t  # tpyc: warning(/copies A into owned storage \(tuple element 1\)/)
 std::tuple<std::tuple<A, int32_t>, A> nested_return(A& p) {
-    auto t = std::tuple<std::tuple<A, int32_t>, A*>{::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(19), 2}), &(p)};
+    auto t = std::tuple<std::tuple<A, int32_t>, A*>{std::tuple<A, int32_t>{A(19), 2}, &(p)};
     return std::tuple<std::tuple<A, int32_t>, A>{std::move(std::get<0>(t)), (*std::get<1>(t))};
 }
 
@@ -384,7 +384,7 @@ void mixed_literal(A& b) {
     A a = A(15);
     std::vector<std::tuple<A, A>> xs = ::tpy::make_vector<std::tuple<A, A>>(std::tuple<A, A>{std::move(a), b});
     b.items.push_back(9);
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, A*>>(::tpy::__getitem__(xs, 0));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, A*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
     auto&& x0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& x1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "mixed_literal" << " " << ::tpy::__len__(x0.items) << " " << ::tpy::__len__(x1.items) << " " << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
@@ -397,7 +397,7 @@ void mixed_literal(A& b) {
 //     return [t]  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 std::vector<std::tuple<A, int32_t>> lift_one(A& a) {
     auto t = std::tuple<A*, int32_t>{&(a), 0};
-    return ::tpy::make_vector<std::tuple<A, int32_t>>(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t));
+    return ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // def lift_one_copy(a: A) -> Own[list[tuple[A, int32]]]:
@@ -406,7 +406,7 @@ std::vector<std::tuple<A, int32_t>> lift_one(A& a) {
 //     return [copy(t)]  # tpyc: ok
 std::vector<std::tuple<A, int32_t>> lift_one_copy(A& a) {
     auto t = std::tuple<A*, int32_t>{&(a), 0};
-    return ::tpy::make_vector<std::tuple<A, int32_t>>(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t));
+    return ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // def lift_dict(a: A) -> Own[dict[int32, tuple[A, int32]]]:
@@ -415,7 +415,7 @@ std::vector<std::tuple<A, int32_t>> lift_one_copy(A& a) {
 //     return {1: t}  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 ::tpy::ordered_map<int32_t, std::tuple<A, int32_t>> lift_dict(A& a) {
     auto t = std::tuple<A*, int32_t>{&(a), 0};
-    return ::tpy::make_ordered_map<int32_t, std::tuple<A, int32_t>>(1, ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t));
+    return ::tpy::make_ordered_map<int32_t, std::tuple<A, int32_t>>(1, std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // def key() -> int32:
@@ -433,7 +433,7 @@ int32_t key() {
 //     return {key(): t}  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 ::tpy::ordered_map<int32_t, std::tuple<A, int32_t>> lift_dict_running(A& a) {
     auto t = std::tuple<A*, int32_t>{&(a), 0};
-    return ::tpy::ordered_map<int32_t, std::tuple<A, int32_t>>({{::tpyapp::main::key(), ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t)}});
+    return ::tpy::ordered_map<int32_t, std::tuple<A, int32_t>>({{::tpyapp::main::key(), std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)}}});
 }
 
 // def count_list(xs: list[A]) -> int32:
@@ -630,7 +630,7 @@ void main() {
     A a = A(5);
     ::tpyapp::main::joined_swapped(h, a, true);
     a.items.push_back(9);
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<A*, A*>>(h.t);
+    auto __tup_1 = std::tuple<A*, A*>{&(std::get<0>(h.t)), &(std::get<1>(h.t))};
     auto&& t0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& t1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "joined_swapped" << " " << ::tpy::__len__(t0.items) << " " << ::tpy::__len__(t1.items) << "\n" << ::tpy::check_signals;
@@ -662,9 +662,9 @@ void main() {
     b.items.push_back(9);
     std::cout << "chained" << " " << ::tpy::__len__(h.p.items) << " " << ::tpy::__len__(h.q.items) << " " << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
     A d = A(5);
-    h.put(std::tuple<A, A*>{A(6), &(d)});
+    h.put(std::tuple<A, const A*>{A(6), &(d)});
     d.items.push_back(9);
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<A*, A*>>(h.t);
+    auto __tup_2 = std::tuple<A*, A*>{&(std::get<0>(h.t)), &(std::get<1>(h.t))};
     auto&& u0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     auto&& u1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
     std::cout << "put" << " " << ::tpy::__len__(u0.items) << " " << ::tpy::__len__(u1.items) << "\n" << ::tpy::check_signals;

@@ -94,7 +94,7 @@ void s1d(std::tuple<A, int32_t>&& t) {
 void s1e(A& a) {
     auto t = std::tuple<A*, A>{&(a), A(2)};
     auto inner = [&t]() -> std::tuple<A, A> {
-        return ::tpy::tuple_to_storage<std::tuple<A, A>>(t);
+        return std::tuple<A, A>{(*std::get<0>(t)), std::get<1>(t)};
     };
     std::tuple<A, A> r = inner();
     std::get<0>(t)->v = 30;
@@ -112,7 +112,7 @@ void s1e(A& a) {
 //     print("s1f", r[0].v, t[0].v)
 void s1f(const std::tuple<A*, int32_t>& t) {
     auto inner = [&t]() -> std::tuple<A, int32_t> {
-        return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t);
+        return std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)};
     };
     auto r = inner();
     std::get<0>(t)->v = 50;
@@ -138,8 +138,8 @@ void main() {
     ::tpyapp::main::s1d(std::tuple<A, int32_t>{A(5), 6});
     A __tmp_1 = A(1);
     ::tpyapp::main::s1e(__tmp_1);
-    ::tpyapp::main::s1f(::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(1), 2}));
-    std::vector<std::tuple<A, int32_t>> ps = ::tpy::make_vector<std::tuple<A, int32_t>>(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 2}));
+    ::tpyapp::main::s1f([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(1), 2}));
+    std::vector<std::tuple<A, int32_t>> ps = ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 2});
     std::vector<std::tuple<A, int32_t>> out = std::vector<std::tuple<A, int32_t>>{};
     ::tpyapp::main::s2d<A>(ps, out);
     std::get<0>(::tpy::__getitem__(out, 0)).v = 7;

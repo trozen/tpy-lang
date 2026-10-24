@@ -56,12 +56,12 @@ void main() {
     ::tpy::__setitem__(d, 0, std::tuple<std::optional<P>, std::optional<P>>{P(a), std::move(b)});
     ::tpy::__setitem__(d, 1, std::tuple<std::optional<P>, std::optional<P>>{std::move(a), std::nullopt});
     ::tpy::__setitem__(d, 2, std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, std::nullopt});
-    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 0)));
-    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 1)));
-    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d, 2)));
+    ::tpyapp::main::show([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const P*, const P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(d, 0)));
+    ::tpyapp::main::show([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const P*, const P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(d, 1)));
+    ::tpyapp::main::show([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const P*, const P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(d, 2)));
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>> d2 = ::tpy::ordered_map<int32_t, std::tuple<std::optional<P>, std::optional<P>>>();
     ::tpy::__setitem__(d2, 0, ::tpy::__getitem__(d, 0));
-    ::tpyapp::main::show(::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(::tpy::__getitem__(d2, 0)));
+    ::tpyapp::main::show([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const P*, const P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(d2, 0)));
 }
 
 // main()

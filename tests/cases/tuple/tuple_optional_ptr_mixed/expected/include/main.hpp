@@ -75,6 +75,6 @@ inline Tag::Tag(int32_t name) : name(name) {}
 
 // def __init__(self, pair: tuple[Point | None, Ptr[Tag]]) -> None:
 //     self.pair = pair  # tpyc: warning(/copies/)
-inline Holder::Holder(const std::tuple<const Point*, Tag*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<std::optional<Point>, Tag*>>(pair)) {}
+inline Holder::Holder(const std::tuple<const Point*, Tag*>& pair) : pair(std::tuple<std::optional<Point>, Tag*>{::tpy::ptr_to_optional(std::get<0>(pair)), std::get<1>(pair)}) {}
 void __tpy_init();
 } // namespace tpyapp::main

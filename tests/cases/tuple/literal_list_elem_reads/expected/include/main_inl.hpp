@@ -38,7 +38,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_reads::__next__() 
     }
     case S_RESUME_1: {  // after: yield b + c + d
         rs.emplace(std::array<std::tuple<int32_t, Box>, 1>{std::tuple<int32_t, Box>{5, Box(6)}});
-        auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__((*rs), 0));
+        auto __tup_3 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__((*rs), 0));
         e = std::get<0>(__tup_3);
         r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3))));
         __state = S_RESUME_2;

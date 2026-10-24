@@ -35,7 +35,7 @@ void main() {
     std::cout << it.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::bump_first(std::tuple<Item*, int32_t>{&(it), 10});
     std::cout << it.n << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::read_pair(::tpy::tuple_value_to_borrow<std::tuple<Item*, int32_t>>(std::tuple<Item, int32_t>{Item(4), 3})) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_pair([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Item*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Item, int32_t>{Item(4), 3})) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::relay<Item>(std::tuple<Item*, int32_t>{&(it), 3}) << "\n" << ::tpy::check_signals;
 }
 

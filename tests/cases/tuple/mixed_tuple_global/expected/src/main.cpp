@@ -62,13 +62,13 @@ std::tuple<::tpyapp::mixmod::Box*, ::tpyapp::mixmod::Box*> relay() {
 // def relay_mixed() -> tuple[Own[Box], Box]:
 //     return M  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
 std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box*> relay_mixed() {
-    return ::tpy::tuple_to_storage<std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box*>>(M);
+    return std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box*>{(*std::get<0>(M)), std::get<1>(M)};
 }
 
 // def relay_owned() -> tuple[Own[Box], Own[Box]]:
 //     return G  # tpyc: warning(/tuple element 0/) warning(/tuple element 1/)
 std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box> relay_owned() {
-    return ::tpy::tuple_to_storage<std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box>>(G);
+    return std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box>{(*std::get<0>(G)), (*std::get<1>(G))};
 }
 
 // def pick(a: Box, b: Box) -> tuple[Box, Box]:
@@ -521,8 +521,8 @@ void __tpy_init() {
     a->n = 22;
     std::cout << "module-unpack" << " " << V->n << " " << std::get<0>(M)->n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
-    std::cout << "last-use" << " " << ::tpyapp::main::reader(::tpy::tuple_to_storage<std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box*>>(M)) << "\n" << ::tpy::check_signals;
-    std::cout << "last-use-owned" << " " << ::tpyapp::main::oreader(::tpy::tuple_to_storage<std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box>>(G)) << "\n" << ::tpy::check_signals;
+    std::cout << "last-use" << " " << ::tpyapp::main::reader(std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box*>{(*std::get<0>(M)), std::get<1>(M)}) << "\n" << ::tpy::check_signals;
+    std::cout << "last-use-owned" << " " << ::tpyapp::main::oreader(std::tuple<::tpyapp::mixmod::Box, ::tpyapp::mixmod::Box>{(*std::get<0>(G)), (*std::get<1>(G))}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show();
     auto __tup_6 = ::tpyapp::mixmod::make_mixed((*V));
     static ::tpyapp::mixmod::Box __global_slot_8 = std::move(std::get<0>(__tup_6));

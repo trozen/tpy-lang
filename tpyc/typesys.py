@@ -2303,9 +2303,9 @@ def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
 def borrow_form_differs(t: 'TpyType') -> bool:
     """Whether a value of this shape is handed out in a borrow form of its
     own rather than as a reference to its storage form: a tuple (per-member
-    references, `tuple_to_pointer`), an Optional (`T*`), a union (a pointer
-    variant). Holding such a value as an owned one takes a materialization
-    into its storage type, not a reference binding."""
+    references, lent element by element), an Optional (`T*`), a union (a
+    pointer variant). Holding such a value as an owned one takes a
+    materialization into its storage type, not a reference binding."""
     return isinstance(unwrap_ref_type(unwrap_readonly(t)),
                       (TupleType, OptionalType, UnionType))
 
@@ -5443,9 +5443,9 @@ class TupleType(TpyType):
         """True if any element is a pointer-repr OptionalType.
 
         Marks tuples that have distinct borrow form (`std::tuple<T*, ...>`)
-        and storage form (`std::tuple<std::optional<T>, ...>`); element-wise
-        conversion at boundaries between the two reps goes through
-        `tpy::tuple_to_pointer` / `tpy::tuple_to_storage`.
+        and storage form (`std::tuple<std::optional<T>, ...>`); a boundary
+        between the two converts the tuple element by element
+        (`convert.per_element`).
         """
         return any(f is ValueForm.PTR_OPTIONAL for f in self.element_forms())
 
@@ -5458,8 +5458,7 @@ class TupleType(TpyType):
         Excludes UnionType elements: a pointer-variant union (`Dog | Cat`)
         borrows as `::tpy::Union<A*, B*>` and a recursive-union wrapper as
         `X&` -- neither is a bare `T*`, and both keep their own borrow form and
-        conversion path rather than routing through tuple_to_pointer /
-        tuple_to_storage."""
+        conversion path, not a tuple's bare-pointer element conversion."""
         form = e.value_form()
         if form is ValueForm.PTR_OPTIONAL:
             return True
@@ -5488,10 +5487,10 @@ class TupleType(TpyType):
 
         Generalizes `has_pointer_repr_optional_element` to also cover plain
         non-value (BORROW_REF) elements: both share one borrow representation
-        (`std::tuple<T*, ...>`) distinct from storage form, with element-wise
-        conversion at boundaries through `tpy::tuple_to_pointer` (storage ->
-        borrow) and `tpy::tuple_to_storage`
-        (borrow -> storage). Drives the storage<->pointer wrap sites."""
+        (`std::tuple<T*, ...>`) distinct from storage form, so a boundary
+        converts the tuple element by element: storage -> borrow lends each
+        element, borrow -> storage copies each pointee in. Drives the
+        storage<->pointer wrap sites."""
         return any(self._element_is_pointer_repr(e) for e in self.element_types)
 
     def has_nested_pointer_repr_element(self) -> bool:

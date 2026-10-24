@@ -786,7 +786,7 @@ void main() {
     if ((u.p.has_value())) {
         std::cout << "built" << " " << (*u.p).x << "\n" << ::tpy::check_signals;
     }
-    Pair pr = Pair(::tpy::tuple_value_to_borrow<std::tuple<int32_t, P*>>(std::tuple<int32_t, P>{1, P(1)}));
+    Pair pr = Pair([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const P*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<int32_t, P>{1, P(1)}));
     std::cout << "pair" << " " << std::get<1>(pr.t).x << "\n" << ::tpy::check_signals;
     Num m = Num(std::nullopt);
     if ((!m.k.has_value())) {

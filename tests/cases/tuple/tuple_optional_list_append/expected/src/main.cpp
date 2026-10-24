@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     # (last-use lvalue, fresh rvalue, None, explicit copy()). Kept inline
 //     # because passing `pairs` through helpers borrows it as const, which
 //     # the storage-form subscript reads below cannot route through
-//     # tuple_to_pointer<tuple<P*, P*>>.
+//     # a borrow-form tuple<P*, P*>.
 //     a = P(1)
 //     b = P(2)
 //     pairs.append((a, b))                    # last-use lvalue pair
@@ -59,7 +59,7 @@ void main() {
     pairs2.push_back(::tpy::__getitem__(pairs, 0));
     pairs2.push_back(::tpy::__getitem__(pairs, 1));
     std::cout << ::tpy::__len__(pairs2) << "\n" << ::tpy::check_signals;
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(pairs, 0));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
     P* a0 = std::get<0>(__tup_1);
     P* b0 = std::get<1>(__tup_1);
     if ((a0 != nullptr)) {
@@ -68,7 +68,7 @@ void main() {
     if ((b0 != nullptr)) {
         std::cout << b0->x << "\n" << ::tpy::check_signals;
     }
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(pairs, 1));
+    auto __tup_2 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 1));
     P* a1 = std::get<0>(__tup_2);
     P* b1 = std::get<1>(__tup_2);
     if ((a1 != nullptr)) {

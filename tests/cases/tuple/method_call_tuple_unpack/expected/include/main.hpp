@@ -162,7 +162,7 @@ inline std::tuple<std::vector<std::string>, int32_t> Maker::make() {
 
 // def __init__(self) -> None:
 //     self.items = [(["u"], 1)]
-inline Stack::Stack() : items(::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(::tpy::tuple_to_storage<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"u"}, 1}))) {}
+inline Stack::Stack() : items(::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"u"}, 1})) {}
 
 // def take(self) -> Own[tuple[list[str], int32]]:
 //     # The method body returning the popped owned tuple.

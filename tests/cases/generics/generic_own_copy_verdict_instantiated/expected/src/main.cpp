@@ -275,7 +275,7 @@ void other_positions() {
 //           subscript_slot(ints, 7))
 void element_positions() {
     Cell c = Cell(6);
-    std::vector<std::tuple<std::string, Cell>> pairs = ::tpy::make_vector<std::tuple<std::string, Cell>>(::tpy::tuple_to_storage<std::tuple<std::string, Cell>>(std::tuple<std::string, Cell>{"a", Cell(1)}));
+    std::vector<std::tuple<std::string, Cell>> pairs = ::tpy::make_vector<std::tuple<std::string, Cell>>(std::tuple<std::string, Cell>{"a", Cell(1)});
     std::vector<std::tuple<std::string, int32_t>> vpairs = {std::tuple<std::string, int32_t>{"a", 1}};
     std::cout << "elems_ctor" << " " << ::tpyapp::main::elems_ctor<Cell>(pairs) << " " << ::tpyapp::main::elems_ctor_twin(pairs) << " " << ::tpyapp::main::elems_ctor<int32_t>(vpairs) << "\n" << ::tpy::check_signals;
     std::vector<Cell> cells = {Cell(2)};

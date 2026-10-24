@@ -484,7 +484,7 @@ inline bool TupleMixed::__eq__(const TupleMixed& other) const {
 }
 
 inline std::string TupleMixed::__repr__() const {
-    return std::format("TupleMixed(pair={})", ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<const Point*, int32_t>>(this->pair)));
+    return std::format("TupleMixed(pair={})", ::tpy::tuple_to_str(std::tuple<const Point*, int32_t>{&(std::get<0>(this->pair)), std::get<1>(this->pair)}));
 }
 
 inline TupleAllDC::TupleAllDC(std::tuple<Point, Point> pair) : pair(std::move(pair)) {}
@@ -494,7 +494,7 @@ inline bool TupleAllDC::__eq__(const TupleAllDC& other) const {
 }
 
 inline std::string TupleAllDC::__repr__() const {
-    return std::format("TupleAllDC(pair={})", ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<const Point*, const Point*>>(this->pair)));
+    return std::format("TupleAllDC(pair={})", ::tpy::tuple_to_str(std::tuple<const Point*, const Point*>{&(std::get<0>(this->pair)), &(std::get<1>(this->pair))}));
 }
 void __tpy_init();
 } // namespace tpyapp::main

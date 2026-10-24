@@ -35,7 +35,7 @@ std::vector<Box>& borrow(std::vector<Box>& w) {
 //     a, b = h.pair
 //     return len(a.xs)
 int32_t head(const Pair& h) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(h.pair);
+    auto __tup_1 = std::tuple<const Box*, const Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return ::tpy::__len__(a.xs);
@@ -221,7 +221,7 @@ Box elem_return(Pair& h, bool c) {
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, &__slot_2};
     if (c) {
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     }
     return Box((*std::get<0>(p)));
 }
@@ -256,9 +256,9 @@ std::tuple<Box, Box> whole(Pair& h, bool c) {
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, &__slot_2};
     if (c) {
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     }
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(p);
+    return std::tuple<Box, Box>{(*std::get<0>(p)), (*std::get<1>(p))};
 }
 
 // # free function: a whole tuple a literal binding borrows and a mixed call half owns
@@ -275,7 +275,7 @@ std::tuple<Box, Box> whole_literal(Box& v, Box& w, bool c) {
         std::get<0>(p) = &*(__slot_1 = std::move(std::get<0>(__tup_1)));
         std::get<1>(p) = std::get<1>(__tup_1);
     }
-    return ::tpy::tuple_to_storage<std::tuple<Box, Box>>(p);
+    return std::tuple<Box, Box>{(*std::get<0>(p)), (*std::get<1>(p))};
 }
 
 // # free function: a whole tuple whose borrowed Optional element copies null-checked
@@ -301,7 +301,7 @@ std::tuple<std::optional<Box>, Box> opt_whole(Box* w, bool c) {
         std::get<0>(p) = std::get<0>(__tup_2);
         std::get<1>(p) = &*(__slot_2 = std::move(std::get<1>(__tup_2)));
     }
-    return std::tuple<std::optional<Box>, Box>{::tpy::ptr_to_optional(std::get<0>(p)), std::move(*std::get<1>(p))};
+    return std::tuple<std::optional<Box>, Box>{::tpy::ptr_to_optional(std::get<0>(p)), std::move((*std::get<1>(p)))};
 }
 
 // # loop back edge: the borrowing rebind comes after the return it reaches
@@ -348,7 +348,7 @@ Box elem_back_edge(Pair& h, int32_t n) {
         if ((i == 1)) {
             return Box((*std::get<0>(p)));
         }
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     return Box(0);
@@ -509,7 +509,7 @@ Box for_head(const std::vector<std::tuple<Box, int32_t>>& ps) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(__for_tup_0);
+        auto __tup_1 = std::tuple<const Box*, int32_t>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t k = std::get<1>(__tup_1);
         if ((k == 1)) {
@@ -885,7 +885,7 @@ Box ov__Pair__bool__int32(Pair& h, bool c, int32_t tag) {
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, &__slot_2};
     if (c) {
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     }
     return Box((*std::get<0>(p)));
 }
@@ -898,7 +898,7 @@ Box ov__Pair__bool__None(Pair& h, bool c, std::monostate tag) {
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, &__slot_2};
     if (c) {
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     }
     return Box((*std::get<0>(p)));
 }
@@ -1301,7 +1301,7 @@ void main() {
     std::optional<Box> __slot_23;
     r = &*(__slot_23 = ::tpyapp::main::unpacked(pw, false));
     std::cout << "unpacked" << " " << ::tpy::ListPrinter(w.xs) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<Box, int32_t>> ps = ::tpy::make_vector<std::tuple<Box, int32_t>>(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(3), 1}));
+    std::vector<std::tuple<Box, int32_t>> ps = ::tpy::make_vector<std::tuple<Box, int32_t>>(std::tuple<Box, int32_t>{Box(3), 1});
     std::optional<Box> __slot_24;
     r = &*(__slot_24 = ::tpyapp::main::for_head(ps));
     std::cout << "for_head" << " " << ::tpy::__len__(ps) << " " << ::tpy::ListPrinter(r->xs) << "\n" << ::tpy::check_signals;

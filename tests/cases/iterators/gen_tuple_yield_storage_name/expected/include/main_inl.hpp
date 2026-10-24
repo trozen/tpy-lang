@@ -26,7 +26,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_storag
         }
         pair = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+        return std::tuple<int32_t, C*>{std::get<0>((*pair)), &(std::get<1>((*pair)))};
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -50,7 +50,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_relay_
     }
     case S_RESUME_0: {  // after: yield pair  # tpyc: ok
         __state = S_RESUME_1;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+        return std::tuple<int32_t, C*>{std::get<0>((*pair)), &(std::get<1>((*pair)))};
     }
     case S_RESUME_1:  // after: yield pair  # tpyc: ok
     case S_JOIN_0: {
@@ -60,7 +60,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_relay_
         }
         pair = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+        return std::tuple<int32_t, C*>{std::get<0>((*pair)), &(std::get<1>((*pair)))};
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -84,7 +84,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_Holder
     }
     case S_RESUME_0: {  // after: yield pair  # tpyc: ok
         __state = S_RESUME_1;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+        return std::tuple<int32_t, C*>{std::get<0>((*pair)), &(std::get<1>((*pair)))};
     }
     case S_RESUME_1:  // after: yield pair  # tpyc: ok
     case S_JOIN_0: {
@@ -94,7 +94,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_Holder
         }
         pair = &(*((*__for_it_0))++);
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>((*pair));
+        return std::tuple<int32_t, C*>{std::get<0>((*pair)), &(std::get<1>((*pair)))};
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

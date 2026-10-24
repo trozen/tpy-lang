@@ -72,12 +72,12 @@ void main() {
     Module m = Module("M");
     std::string_view s = "hello";
     int32_t i = 42;
-    ::mylog::log_dispatch(m._logger, "s={} i={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i}));
-    ::mylog::log_dispatch(m._logger, "status={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::StaticStr*>>(std::tuple<::mylog::StaticStr>(::mylog::static_str("ok"))));
+    ::mylog::log_dispatch(m._logger, "s={} i={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(s), i}));
+    ::mylog::log_dispatch(m._logger, "status={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::StaticStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::StaticStr>(::mylog::static_str("ok"))));
     bool flag = true;
-    ::mylog::log_dispatch(m._logger, "result={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::StaticStr*>>(std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? ("yes") : ("no"))))));
+    ::mylog::log_dispatch(m._logger, "result={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::StaticStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? ("yes") : ("no"))))));
     std::string_view tag = "world";
-    ::mylog::log_dispatch(m._logger, "tag={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*>>(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag))));
+    ::mylog::log_dispatch(m._logger, "tag={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag))));
     ::mylog::LogHandle h = ::mylog::LogHandle("F");
     ::mylog::log_dispatch(h, "free={}", std::tuple<int32_t>(i));
     m.log_auto("ctx", 99);

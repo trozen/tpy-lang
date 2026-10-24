@@ -98,7 +98,7 @@ int32_t owning_call(const A& a) {
 //     return copy(t)  # tpyc: ok
 std::tuple<A, int32_t> remedy(A& a) {
     auto t = ::tpyapp::main::mk(a);
-    return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t);
+    return std::tuple<A, int32_t>{(*std::get<0>(t)), std::get<1>(t)};
 }
 
 // # closure: the copy remedy for a captured tuple returned into an owning
@@ -144,7 +144,7 @@ std::vector<std::tuple<A, A>> keep_both(std::tuple<A, A>&& q) {
 //     return ys
 std::vector<std::tuple<A, A>> append_param(std::tuple<A, const A*>&& p) {
     std::vector<std::tuple<A, A>> ys = std::vector<std::tuple<A, A>>{};
-    ys.push_back(::tpy::tuple_to_storage<std::tuple<A, A>>(std::move(p)));
+    ys.push_back(std::tuple<A, A>{std::move(std::get<0>(p)), (*std::get<1>(p))});
     return ys;
 }
 
@@ -152,7 +152,7 @@ std::vector<std::tuple<A, A>> append_param(std::tuple<A, const A*>&& p) {
 // def forward_param(p: tuple[Own[A], A]) -> Own[list[tuple[A, A]]]:
 //     return keep_both(p)  # tpyc: warning(/copies A into owned storage \(tuple element 1\)/)
 std::vector<std::tuple<A, A>> forward_param(std::tuple<A, const A*>&& p) {
-    return ::tpyapp::main::keep_both(::tpy::tuple_to_storage<std::tuple<A, A>>(std::move(p)));
+    return ::tpyapp::main::keep_both(std::tuple<A, A>{std::move(std::get<0>(p)), (*std::get<1>(p))});
 }
 
 // # free function: a mixed literal local appended at its last use warns its
@@ -201,12 +201,12 @@ void main() {
     std::get<0>(h.bp).x = ::tpy::add_check<int32_t>(std::get<0>(h.bp).x, 1);
     std::cout << "from_mixed" << " " << std::get<0>(h.bp).x << " " << std::get<1>(h.bp).x << "\n" << ::tpy::check_signals;
     std::cout << "from_mixed_live" << " " << h.from_mixed_live(b) << " " << std::get<0>(h.bp).x << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<A, A>> zs = ::tpyapp::main::append_param(std::tuple<A, A*>{A(3), &(b)});
+    std::vector<std::tuple<A, A>> zs = ::tpyapp::main::append_param(std::tuple<A, const A*>{A(3), &(b)});
     std::cout << "append_param" << " " << std::get<0>(::tpy::__getitem__(zs, 0)).x << " " << std::get<1>(::tpy::__getitem__(zs, 0)).x << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<A, A>> vs = ::tpyapp::main::append_mixed_local(b);
     std::get<0>(::tpy::__getitem__(vs, 0)).x = ::tpy::add_check<int32_t>(std::get<0>(::tpy::__getitem__(vs, 0)).x, 1);
     std::cout << "append_mixed_local" << " " << std::get<0>(::tpy::__getitem__(vs, 0)).x << " " << std::get<1>(::tpy::__getitem__(vs, 0)).x << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<A, A>> ws = ::tpyapp::main::forward_param(std::tuple<A, A*>{A(4), &(b)});
+    std::vector<std::tuple<A, A>> ws = ::tpyapp::main::forward_param(std::tuple<A, const A*>{A(4), &(b)});
     std::cout << "forward_param" << " " << std::get<0>(::tpy::__getitem__(ws, 0)).x << " " << std::get<1>(::tpy::__getitem__(ws, 0)).x << "\n" << ::tpy::check_signals;
     A a = A(1);
     std::cout << "alias" << " " << ::tpyapp::main::alias_param(std::tuple<A, int32_t>{A(1), 1}) << "\n" << ::tpy::check_signals;

@@ -67,7 +67,7 @@ inline Module::Module(std::string_view name) : _logger(::mylog::LogHandle(name))
 // def log_auto(self, tag: str, n: int32) -> None:
 //     log(f"tag={tag} n={n}")
 inline void Module::log_auto(std::string_view tag, int32_t n) {
-    ::mylog::log_dispatch(this->_logger, "tag={} n={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*, int32_t>>(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n}));
+    ::mylog::log_dispatch(this->_logger, "tag={} n={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<::mylog::DeferredStr, int32_t>{::mylog::defer_str(tag), n}));
 }
 
 // def __init__(self, name: str) -> None:
@@ -84,7 +84,7 @@ inline ::mylog::LogHandle& Service::get_logger() {
 // def log_auto(self, msg: str) -> None:
 //     log(f"svc={msg}")
 inline void Service::log_auto(std::string_view msg) {
-    ::mylog::log_dispatch(this->get_logger(), "svc={}", ::tpy::tuple_value_to_borrow<std::tuple<::mylog::DeferredStr*>>(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(msg))));
+    ::mylog::log_dispatch(this->get_logger(), "svc={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(msg))));
 }
 void __tpy_init();
 } // namespace tpyapp::main

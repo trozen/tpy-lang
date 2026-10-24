@@ -18,7 +18,7 @@ def main() -> None:
     # (last-use lvalue, fresh rvalue, None, explicit copy()). Kept inline
     # because passing `pairs` through helpers borrows it as const, which
     # the storage-form subscript reads below cannot route through
-    # tuple_to_pointer<tuple<P*, P*>>.
+    # a borrow-form tuple<P*, P*>.
     a = P(1)
     b = P(2)
     pairs.append((a, b))                    # last-use lvalue pair

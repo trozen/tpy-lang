@@ -40,7 +40,7 @@ void main() {
     T t1 = T(1);
     T t2 = T(2);
     ::tpyapp::main::show(::tpyapp::main::f(t1, t2));
-    ::tpyapp::main::show(std::tuple<T*, int32_t, T*>{&(t1), 99, nullptr});
+    ::tpyapp::main::show(std::tuple<const T*, int32_t, const T*>{&(t1), 99, nullptr});
 }
 
 // main()

@@ -1,6 +1,6 @@
 # `a, b = <lvalue>` inside a RESUMABLE body, where the tuple has a reference
-# element the target aliases as a frame field: the tuple must lift through
-# `tuple_to_pointer` off the source lvalue, never
+# element the target aliases as a frame field: the tuple must be lent
+# element by element off the source lvalue, never
 # into a by-value `auto` holder -- that holder copies the reference element
 # (so a write through the alias misses the caller's object) and dies at the
 # end of its case block (so every post-suspension read through the alias is

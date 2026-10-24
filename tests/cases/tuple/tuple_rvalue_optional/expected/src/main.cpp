@@ -63,13 +63,13 @@ void show2(const std::tuple<const Point*, const Point*>& p) {
 //     show2((Point(20), p))
 //     show2((p, Point(30)))
 void main() {
-    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(1), 42}));
+    ::tpyapp::main::show([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Point*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Point, int32_t>{Point(1), 42}));
     Point p = Point(7);
-    ::tpyapp::main::show(::tpy::tuple_value_to_borrow<std::tuple<Point*, int32_t>>(std::tuple<Point, int32_t>{Point(2), 99}));
-    ::tpyapp::main::show(std::tuple<Point*, int32_t>{nullptr, 5});
-    ::tpyapp::main::show(std::tuple<Point*, int32_t>{&(p), 11});
-    ::tpyapp::main::show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point, Point*>{Point(20), &(p)}));
-    ::tpyapp::main::show2(::tpy::tuple_value_to_borrow<std::tuple<Point*, Point*>>(std::tuple<Point*, Point>{&(p), Point(30)}));
+    ::tpyapp::main::show([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Point*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Point, int32_t>{Point(2), 99}));
+    ::tpyapp::main::show(std::tuple<const Point*, int32_t>{nullptr, 5});
+    ::tpyapp::main::show(std::tuple<const Point*, int32_t>{&(p), 11});
+    ::tpyapp::main::show2([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Point*, const Point*>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Point, const Point*>{Point(20), &(p)}));
+    ::tpyapp::main::show2([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Point*, const Point*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<const Point*, Point>{&(p), Point(30)}));
 }
 
 // main()

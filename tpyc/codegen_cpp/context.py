@@ -17,7 +17,7 @@ from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo,
     AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
-    is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
+    is_protocol_type, unwrap_readonly, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
     polymorphic_source_is_pointer, param_takes_ownership,
     declared_result_readonly, shadowed_local_cpp_name, unwrap_own,
@@ -727,7 +727,6 @@ def owned_storage_binding(elem_type: OwnType, cpp_var: str,
 
 def loop_var_binding(
     kind: LoopBinding, elem_type: TpyType, cpp_var: str, deref_expr: str,
-    hoisted_tuple_lift_cpp: str | None = None,
     owned_step_expr: str | None = None,
     owned_slot: str | None = None,
 ) -> list[str]:
@@ -738,11 +737,6 @@ def loop_var_binding(
     Shared by for-loop and comprehension codegen. A consuming loop's
     REFERENCE binds auto&& into OwnIter's move-iterator storage: zero cost
     (no per-element move), but move-ready.
-
-    hoisted_tuple_lift_cpp: a hoisted pointer-repr tuple var is forward-
-    declared in BORROW form (std::tuple<..., T*>, see the branch-hoist
-    pre-declaration), so the per-iteration assignment from the storage
-    element must lift element-wise; the caller passes the borrow C++ type.
 
     owned_step_expr: the loop's step as an owned value for an `Own[T]` loop
     variable (OWNED / OWNED_STORAGE) -- the step's own value as an rvalue
@@ -765,9 +759,6 @@ def loop_var_binding(
         elem_type = elem_type.wrapped
     match kind:
         case LoopBinding.ASSIGN:
-            if hoisted_tuple_lift_cpp is not None:
-                return [f"{cpp_var} = ::tpy::tuple_to_pointer"
-                        f"<{hoisted_tuple_lift_cpp}>({deref_expr});"]
             return [f"{cpp_var} = {deref_expr};"]
         case LoopBinding.REFERENCE:
             return [f"auto&& {cpp_var} = {deref_expr};"]
@@ -1322,12 +1313,12 @@ class LocalCppForm(Enum):
       * `STORAGE_TUPLE` -- `std::tuple<std::optional<T>, ...>` storage form.
         For-loop variables iterating storage containers, locals initialized
         from another storage-form source, `Own[tuple[T|None, ...]]` params.
-        Wraps via `tpy::tuple_to_pointer` when feeding pointer-form tuple
+        Lent element by element when feeding pointer-form tuple
         params/destructure targets.
       * `BORROW_TUPLE` -- `std::tuple<..., T*>` borrow form. A reassigned /
         branch-hoisted pointer-repr tuple local: it aliases storage (its
         element pointers), an owning-call RHS materializes into a storage
-        slot, and a storage-form lvalue RHS lifts via `tpy::tuple_to_pointer`.
+        slot, and a storage-form lvalue RHS is lent element by element.
         The tuple analog of a scalar rvalue-reassigned `POINTER` local.
       * `OPTIONAL_BORROW_TUPLE` -- `std::optional<std::tuple<..., T*>>`. A
         nullable BORROW_TUPLE: `tuple[..., Box] | None` local whose inner tuple
@@ -1346,57 +1337,6 @@ class LocalCppForm(Enum):
     BORROW_TUPLE = auto()
     OPTIONAL_BORROW_TUPLE = auto()
     VALUE = auto()
-
-
-class CppForm(Enum):
-    """The borrow-vs-storage axis of a non-value type's C++ representation.
-
-    Coarser than `LocalCppForm` (which encodes the specific local shapes
-    codegen tracks): `CppForm` is the *kind* of slot -- does it borrow its
-    data or own it -- which is the only axis `convert()` bridges. The
-    concrete helper is then selected from the value's TPy type kind
-    (Optional -> optional_to_ptr family, Union -> variant family, Tuple ->
-    tuple family, record -> address-of) and the const flag. For value types
-    the two forms coincide (cheaply copyable), so `VALUE` needs no bridge.
-
-      * `BORROW`   -- `T*` / `const T*` / `T&` / `::tpy::Union<A*, B*>` /
-                      `std::tuple<..., T*>`. Indirect into storage elsewhere.
-      * `STORAGE`  -- `T` / `std::optional<T>` / `std::variant<A, B>` /
-                      `std::tuple<..., std::optional<T>>`. Self-contained.
-      * `VALUE`    -- value type; borrow and storage coincide.
-    """
-    BORROW = auto()
-    STORAGE = auto()
-    VALUE = auto()
-
-
-@dataclass
-class FormValue:
-    """A rendered C++ expression plus the facts `convert()` needs to bridge
-    its form to a destination slot.
-
-    The load-bearing rule (see `convert`): `form` is a *derived* fact handed
-    over by the producing emitter, never re-guessed by `convert()` from
-    `code` + `type`. A single TPy type (`Box | None`) can render as either
-    `Box*` (borrow) or `std::optional<Box>` (storage) depending on
-    `force_pointer_repr` / storage-field / local form, so the producer -- the
-    only site that knows which C++ it emitted -- must record it here.
-
-    Fields:
-      * `code`     -- the rendered C++ expression string.
-      * `type`     -- its TPy type (selects the conversion helper family).
-      * `form`     -- BORROW / STORAGE / VALUE, as actually emitted.
-      * `is_const` -- the borrow is const-qualified (`const T*` / `const T&` /
-                      const-ptr-variant); picks the const helper overload.
-      * `move`     -- this is a last-use move into an owned sink (an ownership
-                      decision made by the producer/call site, NOT by
-                      `convert()`); selects the `_move` helper variant.
-    """
-    code: str
-    type: TpyType
-    form: CppForm
-    is_const: bool = False
-    move: bool = False
 
 
 @dataclass
@@ -1619,7 +1559,7 @@ class CodeGenContext:
     # representation is the storage form (std::tuple<std::optional<T>, ...>):
     # for-loop variables iterating storage-form containers, and locals
     # initialized from a storage-form source (field, subscript, global).
-    # Read sites need a tuple_to_pointer wrap to flow into pointer-form
+    # Read sites need a per-element lend to flow into pointer-form
     # tuple params/destructure targets.
     storage_form_tuple_locals: set[str] = field(default_factory=set)
     # Subset of storage_form_tuple_locals: locals iterated from a const-bound
@@ -1631,7 +1571,7 @@ class CodeGenContext:
     # tuple RETURN, whose C++ shape is that return's MIXED borrow render
     # (`std::tuple<A, B*>`) rather than a storage materialization. They are
     # storage-form for the whole-tuple lift (the owned element still needs
-    # `tuple_to_pointer`) but their ref elements are already pointers, so a
+    # the per-element lend) but their ref elements are already pointers, so a
     # per-element read must not take them for by-value slots.
     own_borrow_tuple_locals: set[str] = field(default_factory=set)
     # Locals whose C++ shape is `std::optional<T>` (storage form) because they
@@ -2652,14 +2592,15 @@ class CodeGenContext:
 
         Only a per-element-Own RETURN produces that shape, so it survives in
         the call result itself and in a local bound straight from one. Every
-        storage sink runs the value through `tuple_to_storage` first, which
-        materializes the ref element as `B&` (container slot) or `B` (nested
-        tuple / dict value) -- so a container element, field or loop variable
-        is NOT this, even though its tuple type still carries the `Own`.
+        storage sink first builds the value into storage element by element,
+        which materializes the ref element as `B&` (container slot) or `B`
+        (nested tuple / dict value) -- so a container element, field or loop
+        variable is NOT this, even though its tuple type still carries the
+        `Own`.
 
         Distinct from `is_storage_form_source`, which stays True for these:
-        the owned element really is held by value, so the whole-tuple
-        `tuple_to_pointer` lift is still owed. This answers the narrower
+        the owned element really is held by value, so the whole tuple's
+        per-element lend is still owed. This answers the narrower
         per-element question those consumers must not read off that verdict.
         """
         if isinstance(expr, (TpyCall, TpyMethodCall)):
@@ -2686,24 +2627,12 @@ class CodeGenContext:
         for its borrowed half even though `is_storage_form_source` calls the
         tuple storage (that verdict describes only its owned half). Keying on
         the tuple TYPE instead would misjudge every container-stored mixed
-        tuple, which really has been through `tuple_to_storage`.
+        tuple, which really has been built into storage element by
+        element.
         """
         return (TupleType._element_is_pointer_repr(elem)
                 and (self.renders_own_borrow_tuple(obj)
                      or not self.is_storage_form_source(obj)))
-
-    def needs_tuple_storage_lift(self, expr: TpyExpr) -> bool:
-        """Whether an OWNING tuple slot must run `expr` through
-        `tuple_to_storage` rather than take its value as-is.
-
-        A borrow-form source obviously must. A MIXED-render source must too,
-        even though `is_storage_form_source` calls it storage: that verdict
-        describes only its owned half, while its borrowed half is a pointer the
-        owning slot has to materialize. Asking `is_storage_form_source` alone
-        here is what let every storage sink take the mixed render unconverted.
-        """
-        return (not self.is_storage_form_source(expr)
-                or self.renders_own_borrow_tuple(expr))
 
     def is_storage_form_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads a value from a storage location.
@@ -2713,9 +2642,9 @@ class CodeGenContext:
         containers, locals initialized from another storage-form source),
         and function calls whose return type is `Own[tuple[T_ref,...]]`
         (the storage form is the function's return ABI). Used by
-        tuple-of-pointer-Optional callers to decide whether to emit an
-        element-wise tuple_to_pointer wrap; the value's actual type /
-        shape is the caller's responsibility to validate.
+        tuple-of-pointer-Optional callers to decide whether to emit a
+        per-element lend; the value's actual type / shape is the caller's
+        responsibility to validate.
 
         Its any-`Own` branch is scoped to that elementwise-conversion reading:
         it says the OWNED half is storage, not that every element is. A
@@ -2812,58 +2741,6 @@ class CodeGenContext:
                     or expr.name in self.const_indirect_locals
                     or self.frame_binding_is_const(expr.name))
         return False
-
-    def convert(self, val: 'FormValue', *, dst_type: TpyType, dst_form: CppForm) -> str:
-        """The single door for borrow<->storage form conversion.
-
-        Bridges `val.code` from `val.form` to `dst_form`, selecting the runtime
-        helper from the TPy type kind (+ const, + move). It NEVER re-derives
-        `val.form` from `val.code`/`val.type` -- the producing emitter records
-        the form it actually emitted (see `FormValue`), because one TPy type can
-        render in multiple C++ shapes.
-
-        Optional and Union are handled here; an unhandled kind raises so a caller
-        can never get a silent partial conversion.
-        """
-        if val.form is CppForm.VALUE or dst_form is CppForm.VALUE or val.form is dst_form:
-            return val.code
-        t = unwrap_qualifiers(val.type)
-        if isinstance(t, OptionalType):
-            if dst_form is CppForm.BORROW:
-                # storage optional<T> -> T* (const overload auto-selected by
-                # the optional's own const-ness).
-                return f"::tpy::optional_to_ptr({val.code})"
-            helper = "ptr_to_optional_move" if val.move else "ptr_to_optional"
-            return f"::tpy::{helper}({val.code})"
-        if isinstance(t, UnionType):
-            if dst_form is CppForm.BORROW:
-                # value variant<A, B> -> pointer variant<A*, B*>.
-                helper = "to_const_ptr_variant" if val.is_const else "to_ptr_variant"
-                return f"::tpy::{helper}({val.code})"
-            # pointer variant<A*, B*> -> value variant<A, B> (target spelled;
-            # to_cpp() self-resolves a union alias).
-            return f"::tpy::to_value_variant<{t.to_cpp()}>({val.code})"
-        if isinstance(t, TupleType):
-            # The runtime helper absorbs the per-element pointer/optional/value
-            # mask from the destination tuple type, so the only thing to spell
-            # is that destination. `val.type` must be pending-resolved by the
-            # caller (TypeResolver.resolve_tuple_pending) -- to_cpp*/to_cpp_return
-            # do not resolve, matching tuple_storage_cpp / tuple_borrow_cpp.
-            if dst_form is CppForm.BORROW:
-                borrow_cpp = t.to_cpp_return_const() if val.is_const else t.to_cpp_return()
-                return f"::tpy::tuple_to_pointer<{borrow_cpp}>({val.code})"
-            helper = "tuple_to_storage_move" if val.move else "tuple_to_storage"
-            return f"::tpy::{helper}<{t.to_cpp()}>({val.code})"
-        # Plain reference type (record / container): the borrow form is a
-        # pointer to the storage lvalue. Only storage->borrow is bridged;
-        # the reverse is a copy -- an ownership decision that belongs to
-        # the producing site, never to a form conversion.
-        if (isinstance(t, NominalType) and not t.is_value_type()
-                and dst_form is CppForm.BORROW):
-            return f"&({val.code})"
-        raise NotImplementedError(
-            f"convert(): {type(t).__name__} bridging not yet routed through the "
-            f"chokepoint (val.form={val.form}, dst_form={dst_form})")
 
     def callee_returns_own_ptr_optional(self, init: 'TpyExpr') -> bool:
         """True when `init` is a call handing back its pointer-repr Optional

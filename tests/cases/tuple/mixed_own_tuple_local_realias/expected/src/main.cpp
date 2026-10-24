@@ -19,7 +19,7 @@ void realias(Holder& h, Box& b) {
     auto __tup_1 = ::tpyapp::main::make_mixed(b);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
-    p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+    p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     std::get<0>(p)->val = 55;
     std::get<1>(p)->val = 66;
 }

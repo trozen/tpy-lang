@@ -72,3 +72,8 @@ str_param abc
 str_param abc
 ptr_field 3
 in_match 3
+move_lend 1 12
+move_lend_live 1 12
+move_lend_live after 12
+move_lend_opt 1
+move_lend_union 1

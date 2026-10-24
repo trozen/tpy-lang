@@ -291,6 +291,12 @@ AUDIT_ALLOW_TESTS = {
     ("_temporary", "*"): "the Source stamp: a select's lifetime is its "
                          "lowering's decision; a node with no parse node "
                          "is durable only where its kind says so",
+    ("_prvalue", "*"): "the Source stamp: a construction, a by-value call "
+                       "result or a select of such is a prvalue",
+    ("_place", "*"): "the Source stamp: a name, or a member / element of "
+                     "one read without running code, is a place",
+    ("_held_arg_temp", "*"): "temp placement (`_hoisted`): a temp naming "
+                             "what its statement holds reads the held one",
 }
 
 

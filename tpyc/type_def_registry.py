@@ -273,8 +273,8 @@ class TypeDef:
     # std::tuple<const K&, V&> by value, e.g. dict_items): the tuple itself
     # is a prvalue (cannot be address-taken), but its elements reference
     # stable storage. Resumable-frame for-loops must bind the loop element
-    # through tuple_to_pointer instead of `&(*it)`. Set only from the stub's
-    # `@native(..., iter_yields_ref_tuple_proxies=True)`.
+    # by lending it element by element instead of `&(*it)`. Set only from
+    # the stub's `@native(..., iter_yields_ref_tuple_proxies=True)`.
     iter_yields_ref_tuple_proxies: bool = False
     # Iterating this type hands out elements it OWNS (a copy, or one moved out
     # of a source it consumed), never a reference into the storage it walks,

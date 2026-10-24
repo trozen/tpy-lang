@@ -63,7 +63,7 @@ inline Box::Box(int32_t val) : val(val) {}
 template<typename T>
 std::tuple<::tpy::own_return_t<T>, Box*> own_separate(::tpy::own_param_t<T> q, Box& b) {
     auto t = std::tuple<T, Box*>{std::move(q), &(b)};
-    return ::tpy::tuple_to_storage<std::tuple<::tpy::own_return_t<T>, Box*>>(t);
+    return std::tuple<::tpy::own_return_t<T>, Box*>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(t))), std::get<1>(t)};
 }
 // def mixed_param[T](q: tuple[Own[T], Box]) -> tuple[Own[T], Box]:
 //     # a mixed parameter hands back the caller's borrowed element

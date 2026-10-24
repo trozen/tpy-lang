@@ -748,8 +748,8 @@ The same `TpyType` (`Inner | None`) renders as `Inner*` (borrow) or
 `std::optional<Inner>` (storage) depending purely on POSITION -- so form is a
 positional fact, not intrinsic to the type. Putting a form tag on the type would
 force two non-canonical type instances per tuple/optional; putting it on the expr
-keeps types canonical and matches today's `FormValue.form` (the producing emitter
-records the form it actually emitted). So:
+keeps types canonical and matches what codegen's `FormValue.form` recorded (the
+producing emitter recorded the form it actually emitted). So:
 
 ```
 THIRExpr (base)
@@ -846,8 +846,10 @@ this is what distinguishes it from `THIRCoerce` (which changes the TYPE). No
 `kind` field: the spike proved the runtime helper is a pure function of
 (family(result_type), value.form -> form, is_const, move) -- Optional ->
 `optional_to_ptr` / `ptr_to_optional[_move]`; Union -> `to_[const_]ptr_variant` /
-`to_value_variant<...>`; Tuple -> `tuple_to_pointer<...>` / `tuple_to_storage[_move]
-<...>`. (Open caveat below: whether those four inputs suffice for ALL ~150 direct
+`to_value_variant<...>`. A tuple takes no `THIRFormConvert` and no helper: `convert()`
+builds it element by element (`per_element`, `tpyc/thir/lower/convert.py`), a
+`THIRTupleLiteral` over `THIRSubscript` element reads, each element converted as
+its scalar is at that element's slot. (Open caveat below: whether those four inputs suffice for ALL ~150 direct
 sites is what the F1 spike must confirm; if a site needs more, it goes on the node
 then, not pre-emptively.)
 
@@ -2844,10 +2846,32 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    `tuple<T,...>`) at field/container/`Own[]` boundaries. (See
    `LANGUAGE_FEATURES.md` "Borrow Form vs Storage Form" for the canonical definition
    of these forms; this item is specifically about elevating the distinction to a
-   first-class IR fact.) Codegen reconstructs which form is needed at each site and
-   inserts conversions (`tuple_to_storage[_move]` with per-element dest-shape
-   dispatch, `tuple_to_pointer`, `tuple_value_to_borrow`, `to_storage_elem`,
-   `to_pointer_form`, `to_val_or_ptr`). The unification fixed the silent-copy
+   first-class IR fact.) The lowering decides which form each site needs and, where
+   a tuple source's form differs from its slot's, converts it element by element
+   in `convert()` (`per_element`): a `THIRTupleLiteral` over the element reads,
+   a reference element lent (`&(std::get<i>(t))`) or its pointee copied
+   (`(*std::get<i>(t))`), an owned element moved
+   (`std::move(std::get<i>(__t))`), an Optional through
+   `optional_to_ptr` / `ptr_to_optional`, a union through
+   `to_const_ptr_variant` / `to_value_variant`, an open `T` through
+   `param_to_storage<T>(tuple_elem_ref(...))` / `to_val_or_ptr`. A source
+   that is no place is evaluated once (`THIRTupleLiteral.binds`), bound
+   where it is written to the parameter of a captureless one-parameter
+   lambda the literal is the body of
+   (`[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, A>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(mka(a))`):
+   it runs in its operand's order, only on a conditional operand taken, and
+   it and its temporaries live to the end of the full expression, as the
+   operand of a runtime helper would -- in a statement, a lambda body, a
+   constructor member-init and a frame's class-scope `decltype` alike (a
+   captureless lambda is legal there, a capture-default is not). A tuple
+   literal with rvalue elements at a borrow slot binds the same way: the
+   rvalue elements are built by value into the lambda's argument
+   (`std::tuple<int32_t, A>{x, A(2)}`) and lent from its parameter. Nothing
+   else decides a tuple source's lifetime. An Optional or union element of
+   any temporary is lent from the parameter likewise; a record element lent out of any other temporary
+   (`read(make().t)`) is refused at the one lend row (`convert._lends`,
+   `tuple.lend_from_temporary`): whether the borrowing result is done by the end of the full expression
+   is MIR's loan analysis (BUGS.md#tuple-lend-from-temporary-refused). The unification fixed the silent-copy
    bug class (a param-/local-/call-rooted reference-member tuple now ALIASES at
    yield/return, matching CPython; the borrow lives in a pointer-holding frame
    field, which the resumable-frame model CAN express -- the prior assessment
@@ -2866,10 +2890,10 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    - comparison (`tpy::tuple_eq` / `tpy::tuple_lt` routing in the binop
      emitter, plus the `in`-needle storage lift),
    - construction slots (`_tuple_literal_slot_info` + address-of /
-     `tuple_value_to_borrow` / `to_val_or_ptr<Dest>` value rendering),
-   - boundary wraps (`_maybe_wrap_tuple_to_pointer` / `_to_storage`, the
-     call-arg bridge, field writes, return/yield conversion, the await-arg
-     lift).
+     `to_val_or_ptr<Dest>` value rendering),
+   - boundary conversions (the call-arg bridge, field writes, return/yield
+     conversion, the await-arg lift), now all the element-by-element
+     conversion above.
    Closed 2026-09, the resumable-frame tuple local: its field was derived from
    the element TYPE while the write was decided per element, so the two
    disagreed whenever an element was not a plain lvalue borrow. A whole-tuple

@@ -466,7 +466,7 @@ void items_head(Cell& q) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_6 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::string_view, Cell*>>(__for_tup_6);
+        auto __tup_1 = std::tuple<std::string_view, Cell*>{std::get<0>(__for_tup_6), &(std::get<1>(__for_tup_6))};
         std::string_view key = std::get<0>(__tup_1);
         auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         c = &(q);
@@ -482,13 +482,13 @@ void items_head(Cell& q) {
 //         c.n = 50
 //     print("list_tuple_head", ts[0][0].n, q.n)
 void list_tuple_head(Cell& q) {
-    std::array<std::tuple<Cell, int32_t>, 1> ts = {::tpy::tuple_to_storage<std::tuple<Cell, int32_t>>(std::tuple<Cell, int32_t>{Cell(1), 1})};
+    std::array<std::tuple<Cell, int32_t>, 1> ts = {std::tuple<Cell, int32_t>{Cell(1), 1}};
     auto& __obj_0 = ts;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_7 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Cell*, int32_t>>(__for_tup_7);
+        auto __tup_1 = std::tuple<Cell*, int32_t>{&(std::get<0>(__for_tup_7)), std::get<1>(__for_tup_7)};
         auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
         int32_t k = std::get<1>(__tup_1);
         c = &(q);
@@ -625,7 +625,7 @@ void main() {
     ::tpyapp::main::to_fresh();
     ::tpyapp::main::mixed();
     Cell __tmp_1 = Cell(8);
-    ::tpyapp::main::param_src(::tpy::tuple_value_to_borrow<std::tuple<Cell*, int32_t>>(std::tuple<Cell, int32_t>{Cell(1), 2}), __tmp_1);
+    ::tpyapp::main::param_src([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Cell*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Cell, int32_t>{Cell(1), 2}), __tmp_1);
     Cell __tmp_2 = Cell(1);
     Cell __tmp_3 = Cell(8);
     ::tpyapp::main::branch(__tmp_2, __tmp_3, true);
@@ -663,7 +663,7 @@ void main() {
     ::tpyapp::main::try_except(__tmp_14, __tmp_15);
     ::tpyapp::main::two_loops();
     Cell __tmp_16 = Cell(8);
-    ::tpyapp::main::unwritten_param(::tpy::tuple_value_to_borrow<std::tuple<Cell*, int32_t>>(std::tuple<Cell, int32_t>{Cell(1), 2}), __tmp_16);
+    ::tpyapp::main::unwritten_param([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Cell*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<Cell, int32_t>{Cell(1), 2}), __tmp_16);
     std::vector<Cell> __tmp_17 = {Cell(1)};
     std::vector<Cell> __tmp_18 = {Cell(2)};
     Cell __tmp_19 = Cell(8);

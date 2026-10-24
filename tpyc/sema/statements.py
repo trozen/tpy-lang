@@ -495,7 +495,7 @@ def _local_points_into_source(t: TpyType) -> bool:
     """Whether a local of type `t` bound from storage points into it: a
     reference type (`T* p = &(src)`), or a tuple -- bare or Optional -- with
     a pointer-repr element, whose borrow form holds its elements' addresses
-    (`tuple_to_pointer(src)`). A rebound one marks its source's roots
+    (lent element by element). A rebound one marks its source's roots
     mutated, so its pointers are never const; one bound off an ephemeral
     borrow is that borrow under another name."""
     if not t.is_value_type():
@@ -7869,8 +7869,8 @@ class StatementAnalyzer:
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
             # pointer-repr COPIES each element its source lends into the
-            # owned slot (tuple_to_storage) where CPython aliases -- warned
-            # per element by the one per-element check.
+            # owned slot, built element by element, where CPython aliases --
+            # warned per element by the one per-element check.
             if stmt.loc is not None and not target_is_any:
                 tgt_tuple = unwrap_qualifiers(target_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"

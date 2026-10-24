@@ -1,0 +1,91 @@
+free 11 2
+method 12 2
+generator 13 2
+finally ran
+finally 15 2
+async 15
+lambda 16 2
+optional 2
+generic.class 5 6
+generic.str s 7
+generic.twin 8 9
+generic.own 10 11
+const 61 2
+ctor 170 70
+container 180 80
+or True
+mkb 90
+take 90 1
+and True
+frame_for 191
+frame_for 91
+await_arg 93
+held.yield 41
+call.yield 41 41
+async.keyed finally
+async.keyed 43 43
+held.for 42 42
+arg.field 62 62
+arg.temp 31
+walrus 6
+loop.free 5
+loop.gen 1
+loop.gen 2
+loop.gen 2 3
+loop.async 3 12 13
+frame_seat 115 61
+print (A(7), 1)
+ctor.optional 7
+arg.mixed 1 3
+arg.mixed 3
+arg.order first
+loud init 2
+arg.order 3
+arg.order first
+loud init 3
+arg.or True
+arg.life del 1
+arg.life 3
+arg.lambda 5
+loud init 2
+loud init 5
+arg.ctor 5 3
+arg.optional 1
+arg.union 1
+keyed hashes 1
+keyed 3 14 5 14
+own_param.mixed 11
+own_elem.mixed 1 20
+readonly_elem.mixed 130 30
+held.order index
+held.order 0 30 101
+held.cond index
+held.cond 9 30
+held.key 4 3
+loud init 6
+held.ctor index
+loud init 7
+held.ctor 6 7 7
+loud init 3
+loud init 4
+loud init 7
+held.ctor.value 7
+held.bounds 17
+match.lent A other
+frame.select 2
+frame.select 3
+match.lent_gen 1 B
+generic.dyn True 6 7
+generic.call True abab 2
+whole.lend 13 12
+whole.append 1 2
+nest.free 3
+nest.ctor 3
+nest.gen 4
+nest.async 5
+nest.comp [1, 2]
+nest.lambda 6
+yielded.comp [12, 14] 12
+yielded.for 14 13
+yielded.for 16 14
+temp.optional 8

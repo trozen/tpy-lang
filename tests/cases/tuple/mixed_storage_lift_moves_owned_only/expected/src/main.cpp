@@ -26,7 +26,7 @@ void field_local(Holder& h, Box& b) {
 //     h.t = t  # tpyc: warning(/tuple element 0/) warning(/tuple element 1/)
 void field_borrow(Holder& h, Box& c, Box& d) {
     auto t = std::tuple<Box*, Box*>{&(c), &(d)};
-    h.t = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(t);
+    h.t = std::tuple<Box, Box>{(*std::get<0>(t)), (*std::get<1>(t))};
 }
 
 // def main() -> None:

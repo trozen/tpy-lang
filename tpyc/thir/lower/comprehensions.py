@@ -50,7 +50,7 @@ from ..source import BindingForm
 from ..faces import witness as _witness
 from ..nodes import (
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
-    THIRContainerLiteral, THIRExpr, THIRFormConvert, THIRGenExpr, THIRIf,
+    THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf,
     THIRMove, THIRName,
     THIRStmt, THIRTupleUnpack, TupleSourceBind)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
@@ -91,7 +91,6 @@ from .context import (
     _LowerCtx,
     SinkPos,
     SlotPlacement,
-    storage_type,
 )
 from .expressions import (
     _lower_checked_container_elem,
@@ -731,8 +730,9 @@ def _comp_result_slots_ok(
                                     # shape-sensitive families: a tuple
                                     # LITERAL rides the storage-direct/
                                     # borrow-ladder rows, a NAME (bare
-                                    # or under copy()) the whole
-                                    # tuple_to_storage copy.
+                                    # or under copy()) the whole copy
+                                    # built into storage element by
+                                    # element.
                                     or ((isinstance(init.element_expr,
                                                     TpyTupleLiteral)
                                          or storage_tuple_name_source(
@@ -753,8 +753,8 @@ def _comp_result_slots_ok(
                                     or _storage_opt_ternary_elem(
                                         init.element_expr, analyzer)
                                     # ... and the MIXED-own-tuple CALL
-                                    # source (the non-move
-                                    # tuple_to_storage elem row).
+                                    # source (the elem row that copies it
+                                    # into storage element by element).
                                     or (isinstance(
                                             _mcl_b := unwrap_readonly(
                                                 unwrap_ref_type(
@@ -780,7 +780,8 @@ def _comp_result_slots_ok(
         # value `TupleType` slot fails the elem-slot ladder, but a tuple
         # LITERAL value_expr rides the storage-direct row the same way (a
         # bare NAME value_expr keeps rejecting -- it would need the whole
-        # tuple_to_storage copy the list leg's NAME half carries).
+        # element-by-element storage copy the list leg's NAME half
+        # carries).
         value_ok = (_comp_elem_slot_ok(args[1], analyzer, allow_container=True)
                     or (isinstance(init.value_expr, TpyTupleLiteral)
                         and isinstance(
@@ -838,8 +839,9 @@ def _comp_array_route(
                     unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         args_t[0]))), analyzer) is not None)
             # A MIXED-own-tuple CALL element (`[make_mixed(b) for _ in
-            # range(1)]` demoted to an Array): the non-move
-            # tuple_to_storage elem row, node-gated like the literal one.
+            # range(1)]` demoted to an Array): the elem row that copies it
+            # into storage element by element, node-gated like the
+            # literal one.
             or (isinstance(
                     _mca_b := unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(args_t[0]))), TupleType)
@@ -1110,18 +1112,8 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
     inner = e
     while isinstance(inner, TpyCoerce):
         inner = inner.expr
-    lift = lowered.value if isinstance(lowered, THIRMove) else lowered
-    tuple_lift = (isinstance(lift, THIRFormConvert) and not lift.move
-                  and isinstance(storage_type(lift.result_type), TupleType)
-                  and not lift.elem_modes)
-    if tuple_lift and isinstance(lift.value, THIRMove):
-        # The lift takes the variable as an rvalue -- its inline elements
-        # move, its pointees copy -- and its result is a temporary already.
-        return lift
     if lc.analyzer.ctx.comp_moves.get(inner) is not CompMove.LAST_SINK:
         return lowered
-    if tuple_lift:
-        return replace(lift, value=lift.value.moved())
     if not isinstance(lowered, THIRMove):
         lowered = THIRMove(result_type=lowered.result_type, value=lowered,
                            form=lowered.form, loc=getattr(e, "loc", None))

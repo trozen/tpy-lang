@@ -3852,7 +3852,7 @@ void lc_main() {
     ::tpyapp::main::lc_walrus_source();
     std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>> __tmp_4 = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(1), ::tpy::BigInt(2)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(3), ::tpy::BigInt(4)}};
     ::tpyapp::main::lc_holder_names(__tmp_4);
-    std::vector<std::tuple<C, ::tpy::BigInt>> __tmp_5 = {::tpy::tuple_to_storage<std::tuple<C, ::tpy::BigInt>>(std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(1)), ::tpy::BigInt(2)}), ::tpy::tuple_to_storage<std::tuple<C, ::tpy::BigInt>>(std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(2)), ::tpy::BigInt(1)})};
+    std::vector<std::tuple<C, ::tpy::BigInt>> __tmp_5 = {std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(1)), ::tpy::BigInt(2)}, std::tuple<C, ::tpy::BigInt>{C(::tpy::BigInt(2)), ::tpy::BigInt(1)}};
     std::vector<::tpy::ordered_map<std::string, ::tpy::BigInt>> __tmp_6 = {::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}}), ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"b", ::tpy::BigInt(2)}, {"c", ::tpy::BigInt(3)}})};
     std::vector<std::vector<std::optional<C>>> __tmp_7 = {{C(::tpy::BigInt(1)), std::nullopt}, {C(::tpy::BigInt(5))}};
     std::vector<std::vector<::tpy::BigInt>> __tmp_8 = {{1, 2}, {3}};

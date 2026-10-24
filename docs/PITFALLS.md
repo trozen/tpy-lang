@@ -63,8 +63,8 @@ change how `Obj` behaves.
 so TPy printed 1 where CPython prints 9, with no warning -- the target was tagged owned off the
 element's declared `Own` alone, while the scalar twin (`t = mk()` off `-> Own[Box]`, then
 `x = t`) asks whether the USE consumes the source and binds `Box& x = t` when it does not.
-Right: the same question at the unpack, so a live source lifts to `tuple_to_pointer` and its
-elements alias, and only the last-use source moves. Same axis, other shapes: `def f(x: Own[Box])` renders `Box&&` and the body may
+Right: the same question at the unpack, so a live source is lent element by element
+(`&(std::get<0>(t))`) and its elements alias, and only the last-use source moves. Same axis, other shapes: `def f(x: Own[Box])` renders `Box&&` and the body may
 move `x`, while the `Own` element of `def f(p: tuple[Own[Box], Box])` (then a
 `const std::tuple<Box, Box*>&`) could be neither unpacked, consumed nor written through; `xs.append(v)` at `list[Box]` warns and copies, while at
 `list[tuple[Box, Box]]` the literal `xs.append((v, v))` was a hard error, a local `xs.append(t)` an

@@ -10,8 +10,7 @@
  * std::monostate members (representing None in nullable unions) pass through.
  *
  * `Union` is DERIVED from std::variant, so every trait here asks for a base
- * by deduction rather than matching an exact type; the borrow question is the
- * ALTERNATIVE PACK, which is what the two forms actually differ in.
+ * by deduction rather than matching an exact type.
  */
 
 #pragma once
@@ -35,39 +34,6 @@ template<typename T>
 using variant_base_t =
     decltype(detail::variant_base_of(std::declval<const std::remove_cvref_t<T>&>()));
 
-// Trait: is T a std::variant (or derived from one)? Used by the per-element
-// tuple borrow/storage converters to dispatch a union element through the
-// variant boundary helpers.
-template<typename T>
-inline constexpr bool is_variant_v = !std::is_void_v<variant_base_t<T>>;
-
-// Trait: is T the BORROW form of a union? One type spells both forms, so
-// the question is the ALTERNATIVE PACK -- every alternative a pointer, plus a
-// monostate for a nullable union's None (`detail::vc_borrow_pack`). Asked
-// over the deduced base, so a `::tpy::Union` derived class answers for its
-// pack rather than for its head.
-namespace detail {
-template<typename... Ts>
-std::bool_constant<vc_borrow_pack<Ts...>> borrow_pack_of(const std::variant<Ts...>&);
-std::false_type borrow_pack_of(...);
-}  // namespace detail
-
-template<typename T>
-inline constexpr bool is_ptr_variant_v = decltype(
-    detail::borrow_pack_of(std::declval<const std::remove_cvref_t<T>&>()))::value;
-
-// Trait: does this pointer variant have const pointees (std::variant<const A*,
-// ...>)? Selects to_const_ptr_variant vs to_ptr_variant. Every alternative must
-// be a const pointer or monostate (a borrow-form union tuple element is
-// uniform; requiring all alternatives keeps a hypothetical mixed-const variant
-// from silently const-upgrading the mutable ones).
-template<typename T> struct ptr_variant_const_pointee_impl : std::false_type {};
-template<typename... Ts> struct ptr_variant_const_pointee_impl<std::variant<Ts...>>
-    : std::bool_constant<((std::is_same_v<Ts, std::monostate>
-                           || (std::is_pointer_v<Ts>
-                               && std::is_const_v<std::remove_pointer_t<Ts>>)) && ...)> {};
-template<typename T>
-using ptr_variant_const_pointee = ptr_variant_const_pointee_impl<variant_base_t<T>>;
 
 namespace detail {
 
@@ -195,8 +161,7 @@ namespace detail {
 
 // The trait answers generated code relies on, pinned in-header (compiled by
 // every generated TU) because a union is a DERIVED variant: a trait that
-// stopped deducing through the base would answer `false` silently and send a
-// storage union down the wrong branch of borrow_value_elem.
+// stopped deducing through the base would answer for the wrong type silently.
 struct variant_ref_pins {
     struct A { int x; };
     struct B { int y; };
@@ -204,19 +169,6 @@ struct variant_ref_pins {
     using BU = Union<A*, B*>;
     static_assert(std::is_same_v<variant_base_t<SU>, std::variant<A, B>>);
     static_assert(std::is_same_v<variant_base_t<BU>, std::variant<A*, B*>>);
-    static_assert(is_variant_v<SU>);
-    static_assert(is_variant_v<BU>);
-    static_assert(is_variant_v<std::variant<A, B>>);
-    static_assert(!is_variant_v<int>);
-    // The two forms are one type over different packs, and the pack is
-    // what the trait reads -- including through the base, so the bare
-    // variant a `@native` signature may spell answers for its pack too.
-    static_assert(!is_ptr_variant_v<SU>);
-    static_assert(is_ptr_variant_v<BU>);
-    static_assert(is_ptr_variant_v<std::variant<A*, B*>>);
-    static_assert(!is_ptr_variant_v<std::variant<A, B>>);
-    static_assert(!ptr_variant_const_pointee<BU>::value);
-    static_assert(ptr_variant_const_pointee<Union<const A*, const B*>>::value);
     // The converters answer with the borrow form, so a lifted slot needs no
     // spelling of its own.
     static_assert(std::is_same_v<

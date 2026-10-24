@@ -9,8 +9,8 @@ namespace tpyapp::main {
 //     t = h2.pair
 //     return t[1].val
 ::tpy::BigInt f(Holder& h, Holder& h2) {
-    std::tuple<::tpy::BigInt, Box*> t = ::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair);
-    t = ::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h2.pair);
+    std::tuple<::tpy::BigInt, Box*> t = std::tuple<::tpy::BigInt, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
+    t = std::tuple<::tpy::BigInt, Box*>{std::get<0>(h2.pair), &(std::get<1>(h2.pair))};
     return std::get<1>(t)->val;
 }
 

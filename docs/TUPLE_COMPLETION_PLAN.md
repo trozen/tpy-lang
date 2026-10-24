@@ -279,7 +279,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
     loop rule decides at the first read after the loop, so a body-local
     source read after the view is copied rather than hoisted with it.
   - Settled by the instrument: `x, k = h.f` on a field tuple with a REFERENCE
-    element takes the `tuple_to_pointer` lift and aliases (cell
+    element is lent element by element and aliases (cell
     `x__unpack_field__T`), so it is not a U1 item. The whole-tuple copy seen
     earlier is the value-element render -- no divergence, but a hidden
     allocation for an owning `str` / `bytes` element, filed as
@@ -382,10 +382,13 @@ per shape; the mixed tuple global (D2) waits on that entry.
   2026-10-07, replacing the "one elementwise form question" design, whose
   attempt on branch `tuple-u3` grew four modules for three tuple shapes and
   is frozen under tag `keep/tuple-u3-20261006`, not to be landed). The
-  rule: the runtime already converts a tuple element by element for any
-  source form -- a borrowing place renders `::tpy::tuple_to_pointer<Dest>(
-  src)` (or nothing when the C++ types match), an owning place renders
-  `::tpy::tuple_to_storage<Dest>(src)` with `std::move(src)` at a last use.
+  rule: a tuple converts element by element for any source form, in the one
+  conversion (`per_element` in `tpyc/thir/lower/convert.py`; it replaced
+  the runtime `tuple_to_pointer` / `tuple_to_storage` the steps below were
+  written against) -- a borrowing place lends each reference element
+  (`&(std::get<i>(src))`), an owning place copies each pointee in
+  (`(*std::get<i>(src))`) or moves an owned element at a last use, and a
+  source already in the place's form passes whole.
   Per place, the tuple-specific source lists in that place's gate are
   DELETED and the layout question is asked of the one existing fact
   (`_borrow_tuple_local_type` / `_subscript_yields_borrow_ptr`); no new

@@ -1,1 +1,1 @@
-main.py:26: warning: copies Point | None into field (tuple element 0); use copy() to make this explicit
+main.py:25: warning: copies Point | None into field (tuple element 0); use copy() to make this explicit

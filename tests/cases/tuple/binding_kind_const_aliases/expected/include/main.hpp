@@ -164,13 +164,13 @@ inline Holder::Holder(Box&& inner) : inner(std::move(inner)) {}
 
 // def __init__(self, v: int) -> None:
 //     self.items = [(Box(v), 1)]
-inline Pairs::Pairs(const ::tpy::BigInt& v) : items(::tpy::make_vector<std::tuple<Box, ::tpy::BigInt>>(::tpy::tuple_to_storage<std::tuple<Box, ::tpy::BigInt>>(std::tuple<Box, ::tpy::BigInt>{Box(v), ::tpy::BigInt(1)}))) {}
+inline Pairs::Pairs(const ::tpy::BigInt& v) : items(::tpy::make_vector<std::tuple<Box, ::tpy::BigInt>>(std::tuple<Box, ::tpy::BigInt>{Box(v), ::tpy::BigInt(1)})) {}
 
 // def bump(self) -> None:
 //     first, n = self.items[0]
 //     first.v += 10
 inline void Pairs::bump() {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, ::tpy::BigInt>>(::tpy::__getitem__(this->items, 0));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box*, ::tpy::BigInt>{&(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(this->items, 0));
     auto&& first = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     const ::tpy::BigInt& n = std::get<1>(__tup_1);
     first.v = (first.v) + (::tpy::BigInt(10));

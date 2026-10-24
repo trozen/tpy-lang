@@ -21,8 +21,8 @@ std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v) {
 ::tpy::BigInt alias_storage() {
     Holder h = Holder(Box(::tpy::BigInt(5)));
     Holder h2 = Holder(Box(::tpy::BigInt(7)));
-    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
-    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h2.pair)};
+    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))}};
+    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>(h2.pair), &(std::get<1>(h2.pair))}};
     if ((t.has_value())) {
         std::get<1>((*t))->val = ::tpy::BigInt(99);
     }
@@ -39,8 +39,9 @@ std::tuple<::tpy::BigInt, Box> make_pair(const ::tpy::BigInt& v) {
 //         t[1].val = 77
 void alias_after_owning_call(Holder& h) {
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
-    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(::tpy::BigInt(9))))};
-    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
+    __slot_1.emplace(::tpyapp::main::make_pair(::tpy::BigInt(9)));
+    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>((*__slot_1)), &(std::get<1>((*__slot_1)))}};
+    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))}};
     if ((t.has_value())) {
         std::get<1>((*t))->val = ::tpy::BigInt(77);
     }
@@ -57,7 +58,7 @@ void alias_after_owning_call(Holder& h) {
 ::tpy::BigInt conditional(Holder& h, bool flag) {
     std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::nullopt;
     if (flag) {
-        t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
+        t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))}};
     }
     if ((t.has_value())) {
         std::get<1>((*t))->val = ::tpy::BigInt(42);
@@ -79,7 +80,7 @@ void alias_after_owning_call(Holder& h) {
 ::tpy::BigInt branch_declared(Holder& h, bool flag) {
     std::optional<std::tuple<::tpy::BigInt, Box*>> t;
     if (flag) {
-        t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(h.pair)};
+        t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))}};
     } else {
         t = std::nullopt;
     }
@@ -101,8 +102,10 @@ void alias_after_owning_call(Holder& h) {
 //     return -1
 ::tpy::BigInt reowned(const ::tpy::BigInt& v) {
     std::optional<std::tuple<::tpy::BigInt, Box>> __slot_1;
-    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(::tpy::BigInt(9))))};
-    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{::tpy::tuple_to_pointer<std::tuple<::tpy::BigInt, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(v)))};
+    __slot_1.emplace(::tpyapp::main::make_pair(::tpy::BigInt(9)));
+    std::optional<std::tuple<::tpy::BigInt, Box*>> t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>((*__slot_1)), &(std::get<1>((*__slot_1)))}};
+    __slot_1.emplace(::tpyapp::main::make_pair(v));
+    t = std::optional<std::tuple<::tpy::BigInt, Box*>>{std::tuple<::tpy::BigInt, Box*>{std::get<0>((*__slot_1)), &(std::get<1>((*__slot_1)))}};
     if ((t.has_value())) {
         std::get<1>((*t))->val = ::tpy::BigInt(50);
         return ((std::get<0>((*t))) + (std::get<1>((*t))->val));

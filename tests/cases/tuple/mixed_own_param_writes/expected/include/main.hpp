@@ -514,7 +514,7 @@ inline Slot::Slot() : pair(std::tuple<Box, Box>{Box(0), Box(0)}) {}
 // def put(self, p: tuple[Own[Box], Box]) -> None:
 //     self.pair = p  # tpyc: warning(/copies Box into field \(tuple element 1\)/)
 inline void Slot::put(std::tuple<Box, const Box*>&& p) {
-    this->pair = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::move(p));
+    this->pair = std::tuple<Box, Box>{std::move(std::get<0>(p)), (*std::get<1>(p))};
 }
 // # generic: `tuple[Own[T], T]` takes the same transfer, and the borrowed element
 // # reaches the caller's object through a forwarding generic. (`a, c = p` in such

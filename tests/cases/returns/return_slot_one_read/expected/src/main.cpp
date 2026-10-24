@@ -608,7 +608,7 @@ std::string json_text(const Json& j) {
 //     return t  # tpyc: warning(/copies list\[int32\] into owned storage \(tuple element 0\)/) warning(/copies list\[int32\] into owned storage \(tuple element 1\)/)
 std::tuple<std::vector<int32_t>, std::vector<int32_t>> own_tuple_param_lists(std::vector<int32_t>& xs, std::vector<int32_t>& ys) {
     auto t = std::tuple<std::vector<int32_t>*, std::vector<int32_t>*>{&(xs), &(ys)};
-    return ::tpy::tuple_to_storage<std::tuple<std::vector<int32_t>, std::vector<int32_t>>>(t);
+    return std::tuple<std::vector<int32_t>, std::vector<int32_t>>{(*std::get<0>(t)), (*std::get<1>(t))};
 }
 
 // def mk_borrow(a: A) -> tuple[A, int32]:
@@ -622,7 +622,7 @@ std::tuple<A*, int32_t> mk_borrow(A& a) {
 // def borrow_tuple_call(a: A) -> Own[tuple[A, int32]]:
 //     return mk_borrow(a)  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 std::tuple<A, int32_t> borrow_tuple_call(A& a) {
-    return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(::tpyapp::main::mk_borrow(a));
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mk_borrow(a));
 }
 
 // # elem_mixed_result: a container element at a mixed own / borrow result
@@ -630,7 +630,7 @@ std::tuple<A, int32_t> borrow_tuple_call(A& a) {
 // def elem_mixed_result(xs: list[tuple[A, A]]) -> tuple[Own[A], A]:
 //     return xs[0]  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 std::tuple<A, A*> elem_mixed_result(std::vector<std::tuple<A, A>>& xs) {
-    return ::tpy::tuple_to_pointer<std::tuple<A, A*>>(::tpy::__getitem__(xs, 0));
+    return [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A, A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
 }
 
 // def main() -> None:
@@ -1033,7 +1033,7 @@ void main() {
         e.x = ::tpy::add_check<int32_t>(e.x, 10);
     }
     std::cout << "span_records" << " " << ::tpy::__getitem__(sr.items, 0).x << " " << ::tpy::__getitem__(sr.items, 1).x << "\n" << ::tpy::check_signals;
-    auto __tup_7 = ::tpyapp::main::gen_tuple_name<A>(::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(40), 3}));
+    auto __tup_7 = ::tpyapp::main::gen_tuple_name<A>([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(40), 3}));
     auto&& ga = std::move(std::get<0>(__tup_7));
     int32_t gn = std::get<1>(__tup_7);
     std::cout << "gen_tuple_name" << " " << ga.x << " " << gn << "\n" << ::tpy::check_signals;
@@ -1048,21 +1048,21 @@ void main() {
     int32_t gon = std::get<1>(__tup_9);
     go.x = ::tpy::add_check<int32_t>(go.x, 1);
     std::cout << "gen_own_call" << " " << go.x << " " << gon << "\n" << ::tpy::check_signals;
-    auto __tup_10 = ::tpyapp::main::gen_tuple_pair<A>(::tpy::tuple_value_to_borrow<std::tuple<A*, A*>>(std::tuple<A, A>{A(1), A(2)}));
+    auto __tup_10 = ::tpyapp::main::gen_tuple_pair<A>([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, A*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<A, A>{A(1), A(2)}));
     auto&& gpa = std::move(std::get<0>(__tup_10));
     auto&& gpb = std::move(std::get<1>(__tup_10));
     gpa.x = ::tpy::add_check<int32_t>(gpa.x, 10);
     std::cout << "gen_tuple_pair" << " " << gpa.x << " " << gpb.x << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<A, int32_t>> __tmp_7 = {::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(3), 1}), ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(4), 2})};
-    auto __tup_11 = ::tpyapp::main::gen_tuple_loop<A>(__tmp_7, ::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(5), 0}));
+    std::vector<std::tuple<A, int32_t>> __tmp_7 = {std::tuple<A, int32_t>{A(3), 1}, std::tuple<A, int32_t>{A(4), 2}};
+    auto __tup_11 = ::tpyapp::main::gen_tuple_loop<A>(__tmp_7, [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(5), 0}));
     auto&& gla = std::move(std::get<0>(__tup_11));
     int32_t gln = std::get<1>(__tup_11);
     gla.x = ::tpy::add_check<int32_t>(gla.x, 10);
     std::cout << "gen_tuple_loop" << " " << gla.x << " " << gln << "\n" << ::tpy::check_signals;
-    auto __tup_12 = ::tpyapp::main::gen_tuple_select<A>(::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(6), 1}), ::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(7), 2}), true);
+    auto __tup_12 = ::tpyapp::main::gen_tuple_select<A>([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(6), 1}), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(7), 2}), true);
     auto&& gsa = std::move(std::get<0>(__tup_12));
     int32_t gsn = std::get<1>(__tup_12);
-    auto __tup_13 = ::tpyapp::main::gen_tuple_select<A>(::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(6), 1}), ::tpy::tuple_value_to_borrow<std::tuple<A*, int32_t>>(std::tuple<A, int32_t>{A(7), 2}), false);
+    auto __tup_13 = ::tpyapp::main::gen_tuple_select<A>([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(6), 1}), [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(7), 2}), false);
     auto&& gsb = std::move(std::get<0>(__tup_13));
     int32_t gsm = std::get<1>(__tup_13);
     gsa.x = ::tpy::add_check<int32_t>(gsa.x, 10);
@@ -1079,7 +1079,7 @@ void main() {
     auto&& bta = std::move(std::get<0>(__tup_15));
     int32_t btn = std::get<1>(__tup_15);
     std::cout << "borrow_tuple_call" << " " << bta.x << " " << btn << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<A, A>> mys = ::tpy::make_vector<std::tuple<A, A>>(::tpy::tuple_to_storage<std::tuple<A, A>>(std::tuple<A, A>{A(3), A(4)}));
+    std::vector<std::tuple<A, A>> mys = ::tpy::make_vector<std::tuple<A, A>>(std::tuple<A, A>{A(3), A(4)});
     auto __tup_16 = ::tpyapp::main::elem_mixed_result(mys);
     auto&& mo = std::move(std::get<0>(__tup_16));
     auto&& mb = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_16)));

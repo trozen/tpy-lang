@@ -41,7 +41,7 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, ::tpy::BigInt>>(__for_tup_0);
+        auto __tup_1 = std::tuple<const Box*, ::tpy::BigInt>{::tpy::optional_to_ptr(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
         const Box* a = std::get<0>(__tup_1);
         const ::tpy::BigInt& n = std::get<1>(__tup_1);
         const Box* b = a;
@@ -162,7 +162,7 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, ::tpy::BigInt>>(__for_tup_1);
+        auto __tup_1 = std::tuple<Box*, ::tpy::BigInt>{&(std::get<0>(__for_tup_1)), std::get<1>(__for_tup_1)};
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         const ::tpy::BigInt& n = std::get<1>(__tup_1);
         Box* d;
@@ -194,7 +194,7 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, ::tpy::BigInt>>(__for_tup_2);
+        auto __tup_1 = std::tuple<const Box*, ::tpy::BigInt>{&(std::get<0>(__for_tup_2)), std::get<1>(__for_tup_2)};
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         const ::tpy::BigInt& n = std::get<1>(__tup_1);
         const Box& d = a;
@@ -588,12 +588,12 @@ namespace tpyapp::main {
 //     print("with_targets_method:", WithMethod().targets(rc3, rc4, rc4.b))
 void main() {
     Box b = Box(::tpy::BigInt(1));
-    std::cout << "unpack_opt:" << " " << ::tpyapp::main::unpack_opt(std::tuple<Box*, ::tpy::BigInt>{&(b), ::tpy::BigInt(2)}, b) << " " << ::tpyapp::main::unpack_opt(std::tuple<Box*, ::tpy::BigInt>{nullptr, ::tpy::BigInt(5)}, b) << "\n" << ::tpy::check_signals;
-    std::vector<std::tuple<std::optional<Box>, ::tpy::BigInt>> __tmp_1 = {::tpy::tuple_to_storage<std::tuple<std::optional<Box>, ::tpy::BigInt>>(::tpy::tuple_value_to_borrow<std::tuple<Box*, ::tpy::BigInt>>(std::tuple<Box, ::tpy::BigInt>{Box(::tpy::BigInt(3)), ::tpy::BigInt(4)})), ::tpy::tuple_to_storage<std::tuple<std::optional<Box>, ::tpy::BigInt>>(std::tuple<Box*, ::tpy::BigInt>{nullptr, ::tpy::BigInt(5)})};
+    std::cout << "unpack_opt:" << " " << ::tpyapp::main::unpack_opt(std::tuple<const Box*, ::tpy::BigInt>{&(b), ::tpy::BigInt(2)}, b) << " " << ::tpyapp::main::unpack_opt(std::tuple<const Box*, ::tpy::BigInt>{nullptr, ::tpy::BigInt(5)}, b) << "\n" << ::tpy::check_signals;
+    std::vector<std::tuple<std::optional<Box>, ::tpy::BigInt>> __tmp_1 = {std::tuple<std::optional<Box>, ::tpy::BigInt>{Box(::tpy::BigInt(3)), ::tpy::BigInt(4)}, std::tuple<std::optional<Box>, ::tpy::BigInt>{std::nullopt, ::tpy::BigInt(5)}};
     std::cout << "head_opt:" << " " << ::tpyapp::main::head_opt(__tmp_1) << "\n" << ::tpy::check_signals;
     Box __slot_1 = Box(::tpy::BigInt(7));
     Box* c = &__slot_1;
-    std::cout << "unpack_ref:" << " " << ::tpyapp::main::unpack_ref(std::tuple<Box*, ::tpy::BigInt>{c, ::tpy::BigInt(1)}, (*c)) << "\n" << ::tpy::check_signals;
+    std::cout << "unpack_ref:" << " " << ::tpyapp::main::unpack_ref(std::tuple<const Box*, ::tpy::BigInt>{c, ::tpy::BigInt(1)}, (*c)) << "\n" << ::tpy::check_signals;
     Holder __slot_2 = Holder(Box(::tpy::BigInt(4)));
     Holder* h = &__slot_2;
     std::cout << "match_ref:" << " " << ::tpyapp::main::match_ref((*h), h->inner) << "\n" << ::tpy::check_signals;
@@ -612,13 +612,13 @@ void main() {
     std::cout << "reseat:" << " " << ::tpyapp::main::reseat(std::tuple<const Box*, ::tpy::BigInt>{&(b1), ::tpy::BigInt(2)}, std::tuple<const Box*, ::tpy::BigInt>{b2, ::tpy::BigInt(1)}, (*b2)) << "\n" << ::tpy::check_signals;
     std::optional<Box> __slot_5;
     c = &*(__slot_5 = Box(::tpy::BigInt(1)));
-    std::cout << "try_alias:" << " " << ::tpyapp::main::try_alias(std::tuple<Box*, ::tpy::BigInt>{c, ::tpy::BigInt(2)}, (*c)) << "\n" << ::tpy::check_signals;
+    std::cout << "try_alias:" << " " << ::tpyapp::main::try_alias(std::tuple<const Box*, ::tpy::BigInt>{c, ::tpy::BigInt(2)}, (*c)) << "\n" << ::tpy::check_signals;
     Box e = Box(::tpy::BigInt(2));
     std::cout << "subject_alias:" << " " << ::tpyapp::main::subject_alias(&(e), e) << "\n" << ::tpy::check_signals;
     Holder h2 = Holder(Box(::tpy::BigInt(3)));
     std::cout << "hoisted_capture:" << " " << ::tpyapp::main::hoisted_capture(h2, h2.inner) << "\n" << ::tpy::check_signals;
     Box d = Box(::tpy::BigInt(1));
-    std::cout << "alias_chain:" << " " << ::tpyapp::main::alias_chain(std::tuple<Box*, ::tpy::BigInt>{&(d), ::tpy::BigInt(2)}, d) << "\n" << ::tpy::check_signals;
+    std::cout << "alias_chain:" << " " << ::tpyapp::main::alias_chain(std::tuple<const Box*, ::tpy::BigInt>{&(d), ::tpy::BigInt(2)}, d) << "\n" << ::tpy::check_signals;
     std::cout << "two_slots:" << " " << ::tpyapp::main::two_slots(Box(::tpy::BigInt(3)), true) << " " << ::tpyapp::main::two_slots(Box(::tpy::BigInt(3)), false) << "\n" << ::tpy::check_signals;
     std::cout << "later_slot_repointed:" << " " << ::tpyapp::main::later_slot_repointed(Box(::tpy::BigInt(3)), true) << " " << ::tpyapp::main::later_slot_repointed(Box(::tpy::BigInt(3)), false) << "\n" << ::tpy::check_signals;
     RCtx rc1 = RCtx(::tpy::BigInt(1));

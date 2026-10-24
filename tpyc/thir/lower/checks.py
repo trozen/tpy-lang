@@ -1124,8 +1124,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                     return True
             return (isinstance(e, TpyTupleLiteral)
                     or (note_detail("container_lit.elem.tuple") if note else False))
-        # A non-value (pointer-repr-element) tuple LITERAL stores via
-        # `tuple_to_storage<S>(S{...})`: borrow and storage forms differ. This
+        # A non-value (pointer-repr-element) tuple LITERAL is stored element
+        # by element: borrow and storage forms differ. This
         # arm emits the STORAGE-form inner `S{...}` (bare member values), which
         # is byte-exact only when every non-value member is an RVALUE (ctor /
         # literal). A non-value member NAME/lvalue would build the BORROW-form
@@ -1137,8 +1137,7 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
             mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(mslot)))
             # Storage-direct is correct only for scalar / owned-str members
             # (the None family), their owned-bytes twin and F1-record members. Pointer-repr Optional /
-            # union / nested-tuple members route through a borrow intermediate
-            # (`tuple_value_to_borrow`, `&name`) this arm does not build --
+            # union / nested-tuple members have no storage-direct row here --
             # they reject, along with any non-value lvalue NAME member.
             mfam = _container_lit_slot_family(mbare, analyzer)
             if mfam == "container":
@@ -1168,12 +1167,11 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                             if note else False)
             elif mfam == "tuple":
                 # A nested-tuple LITERAL member renders its own storage form
-                # inside the outer tuple (`S{"a", tuple_to_storage<S2>(
-                # S2{"b", Node(1)})}` -- the wrap decision replays per level
-                # via the tail recursion); a MIXED-own-tuple CALL member
-                # takes the same per-member storage lift
-                # (`S{tuple_to_storage<S2>(make_mixed(b)), 1}`); other
-                # non-literal nested members (the borrow-intermediate
+                # inside the outer tuple (`S{"a", S2{"b", Node(1)}}` --
+                # the decision replays per level via the tail recursion); a
+                # MIXED-own-tuple CALL member takes the same per-member
+                # storage lift (its storage tuple built element by element);
+                # other non-literal nested members (the borrow-intermediate
                 # spellings) defer.
                 if not (isinstance(sub, TpyTupleLiteral)
                         or (isinstance(mbare, TupleType)
@@ -1182,8 +1180,8 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                             is not None)
                         # A same-typed plain tuple NAME member (`(1, t)`
                         # with `t = (2, c)` a borrow-tuple local): the
-                        # whole non-move tuple_to_storage copy -- the
-                        # containerlit.tuple_name_storage render.
+                        # whole tuple copied into storage element by element
+                        # -- the containerlit.tuple_name_storage render.
                         or _storage_tuple_name_ok(sub, mbare, declared,
                                                   pointers, analyzer)):
                     return (note_detail("container_lit.elem.tuple")
@@ -1203,42 +1201,39 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
                 note=note, pointers=pointers)
         if (isinstance(e, TpyTupleLiteral) and isinstance(su, TupleType)
                 and len(e.elements) == len(su.element_types)):
-            # A ref-element tuple takes the BORROW ladder
-            # (`tuple_to_storage<S>(std::tuple<T*, ..>{&(a), nullptr})`),
-            # whose per-element admission lives in `_lower_borrow_tuple_literal`
-            # and rejects there -- the storage-direct member rules below do not
-            # describe it.
+            # A tuple holding a reference element whose reference members
+            # are lvalues or pointer-repr Optionals: each member lowers at
+            # its own storage slot, a reference member copied (sema warns)
+            # or moved as its record says, and an unsupported member rejects
+            # there. The member rules below do not admit an lvalue record.
             if (_tuple_literal_has_ref_elements(e, su)
                     and (_tuple_elem_slots_ptr_optional(su)
                          or _tuple_elem_slots_record_lvalue(e, su, analyzer))):
                 return True
-            # Otherwise the storage-DIRECT member rules still apply: this arm
-            # ADDS the borrow ladder, it does not replace the rows that were
-            # already admitted (a ref-element tuple whose members are all
-            # rvalues renders storage-direct).
+            # Any other tuple: each member by the rules for a member of a
+            # storage tuple.
             if all(_tuple_member_ok(i) for i in range(len(e.elements))):
                 return True
         # A whole storage-tuple ELEMENT read (`[items[0]]` at
         # `list[tuple[int32, P]]`): the checked element lvalue is already
-        # the storage value and copies bare -- `needs_tuple_storage_lift`
-        # is False for a subscript source, so nothing wraps it.
+        # the storage value and copies bare, with nothing to convert.
         if (isinstance(e, TpySubscript) and not isinstance(e.index, TpySlice)
                 and _f1_tuple(su, analyzer) is not None
                 and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     analyzer.get_expr_type(e)))) == su):
             return True
         # A MIXED-own-tuple call / ternary-of-calls source (`[make_mixed(b)]`,
-        # copy() peels): the owning slot materializes the borrowed half via
-        # the NON-move `tuple_to_storage<S>(..)`. Call shapes only -- a mixed
-        # NAME source has no witnessed elem render (frozenset keeps ternary
-        # name-arms out too).
+        # copy() peels): the owning slot copies the borrowed half into
+        # storage element by element, moving nothing. Call shapes only -- a
+        # mixed NAME source has no witnessed elem render (frozenset keeps
+        # ternary name-arms out too).
         if (isinstance(su, TupleType)
                 and _mixed_own_storage_source(e, su, frozenset(),
                                               analyzer) is not None):
             return True
         # A same-typed plain tuple NAME (`(1, t)`'s nested member / a loop
-        # var element): the whole non-move tuple_to_storage copy (bare when
-        # the binding already reads storage) -- the
+        # var element): the whole tuple copied into storage element by
+        # element (bare when the binding already reads storage) -- the
         # containerlit.tuple_name_storage render arm's gate half.
         if _storage_tuple_name_ok(e, su, declared, pointers, analyzer):
             return True
@@ -5046,9 +5041,9 @@ def _borrow_tuple_arg(a: TpyExpr, ptype: 'TpyType | None', analyzer, *,
 def _borrow_tuple_field_arg(a: TpyExpr, ptype: 'TpyType | None',
                             analyzer) -> 'TupleType | None':
     """A storage F3-tuple FIELD read at a borrow-tuple param slot
-    (`bump(h.pair)` -> `::tpy::tuple_to_pointer<std::tuple<int32_t,
-    Box*>>(h.pair)`): the bare member read feeds the storage->borrow
-    wrap. Returns the slot's TupleType, or None."""
+    (`bump(h.pair)` -> `bump(std::tuple<int32_t, Box*>{std::get<0>(h.pair),
+    &(std::get<1>(h.pair))})`): the bare member read is lent element by
+    element. Returns the slot's TupleType, or None."""
     return _borrow_tuple_arg(
         a, ptype, analyzer,
         shape_ok=lambda x: isinstance(x, TpyFieldAccess),
@@ -5059,10 +5054,10 @@ def _borrow_tuple_subscript_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 analyzer) -> 'TupleType | None':
     """The container-element sibling of `_borrow_tuple_field_arg`: a storage
     tuple read out of a container at a borrow-tuple param slot
-    (`consume(items[0])` -> `::tpy::tuple_to_pointer<std::tuple<const T*,
-    const T*>>(::tpy::__getitem__(items, 0))`). The checked element read is
-    the same storage lvalue the member read is, so it feeds the identical
-    storage->borrow wrap. Slice subscripts are a different read entirely."""
+    (`consume(items[0])`, lent element by element off
+    `::tpy::__getitem__(items, 0)`). The checked element read is the same
+    storage lvalue the member read is, so it is lent the same way. Slice
+    subscripts are a different read entirely."""
     return _borrow_tuple_arg(
         a, ptype, analyzer,
         shape_ok=lambda x: (isinstance(x, TpySubscript)
@@ -5080,8 +5075,8 @@ def _borrow_tuple_storage_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     """The NAME sibling of the two lift rows above: a local ALREADY reading
     storage form (a loop var over a storage container, a local bound from
     another storage source) at a borrow-tuple param slot
-    (`consume(it)` -> `::tpy::tuple_to_pointer<std::tuple<const T*, const
-    T*>>(it)`). A MIXED-render name (`p = make_mixed(b)`, a mixed global,
+    (`consume(it)`, lent element by element as `std::tuple<const T*,
+    const T*>`). A MIXED-render name (`p = make_mixed(b)`, a mixed global,
     `std::tuple<Box, Box*>`) holds its owned half by value, so a plain
     borrow slot owes it the same lift; a mixed slot binds it by its own rows.
 
@@ -5150,7 +5145,7 @@ def _borrow_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
                            analyzer) -> bool:
     """A ptr-repr tuple PARAM name -- already bound in BORROW form (`const
     std::tuple<T*, ..>&`) -- at the same borrow-tuple param slot: it renders
-    BARE (`inner(p)`), no `tuple_to_pointer` lift.
+    BARE (`inner(p)`), no per-element lend.
 
     Keyed on POSITIVE evidence (the name is such a param) rather than on
     a record that is not `storage_tuple`. Absence proves borrow form only
@@ -5183,10 +5178,8 @@ def _union_elem_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     there is no storage-form binding of it to distinguish, because a union
     element never enters `borrow_form_tuple_locals`/`storage_tuple_locals`
     (it has no pointer-repr element) -- so the arg renders BARE. The family
-    owns its own row rather than joining `_borrow_tuple_slot`: its
-    storage->borrow conversion is the WHOLE-tuple `tuple_value_to_borrow`,
-    not the element-wise `tuple_to_pointer` every row behind that slot
-    emits."""
+    owns its own row rather than joining `_borrow_tuple_slot`, whose rows
+    lift a storage tuple."""
     slot = _union_elem_tuple(ptype, analyzer)
     if slot is None:
         return False
@@ -5259,8 +5252,8 @@ def _tuple_literal_arg(a: TpyExpr, ptype: 'TpyType | None') -> bool:
     if isinstance(slot, OwnType):
         # An `Own[value-tuple]` slot takes the same spelled value render as
         # the bare tuple slot (the tuple-literal lowering arm's unwrap); an
-        # `Own[pointer-repr tuple]` slot takes the CONSUMING
-        # `tuple_to_storage_move` ladder, whose per-element source rules
+        # `Own[pointer-repr tuple]` slot takes the CONSUMING storage tuple
+        # built element by element, whose per-element source rules
         # (last-use lvalue / fresh rvalue / copy() / None) raise inside the
         # builder -- a bad element falls the body back whole, never a
         # divergent render.
@@ -7095,8 +7088,8 @@ def _own_tuple_borrow_lift_arg_facts(
         own_param_names: 'AbstractSet[str]',
         own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
     """A BORROW-form tuple NAME at an Own-element tuple RETURN whose copy
-    sema declared: the F3 `tuple_to_storage` lift copies the referents in
-    (the warned copy). STORAGE-form bindings stay out."""
+    sema declared: the storage tuple built element by element copies the
+    referents in (the warned copy). STORAGE-form bindings stay out."""
     au = _own_tuple_shape_match_facts(a, ptype, locals_, narrowed,
                                       inline_narrowed,
                                       own_borrow_tuple_locals)
@@ -7138,7 +7131,7 @@ def mixed_slot_btuple_name(a: TpyExpr, ptype: 'TpyType | None',
                            narrowed: 'AbstractSet[str]') -> bool:
     """A BORROW-form tuple NAME (`t = (a, b)`, a tuple global) at the mixed
     slot it spells with the `Own` markers stripped: the owned positions copy
-    their referents in (`tuple_to_storage<std::tuple<A, B*>>(t)`)."""
+    their referents in (the per-element storage conversion)."""
     if not (isinstance(a, TpyName) and a.name != "self"
             and a.name in locals_ and a.name not in narrowed):
         return False
@@ -9747,7 +9740,7 @@ def _value_tuple_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
     tuple, so the member read binds the `const std::tuple<...>&` slot
     directly -- bare, the tuple sibling of
     `_container_field_pass_arg` / `_record_field_marker_arg`. A
-    POINTER-REPR tuple field lifts through `tuple_to_pointer` instead,
+    POINTER-REPR tuple field lifts through the per-element lend instead,
     which is why the key is the value-tuple predicate rather than "a tuple
     field"; Own/Optional slots are not tuples and fall out of the same
     predicate, keeping their own cascades. Keyed on the DECLARED field
@@ -10521,9 +10514,9 @@ def _ptr_addr_of_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
 def _storage_form_tuple_return(fi) -> bool:
     """Whether a call's RETURN is a storage-form tuple -- `Own[tuple[..]]`
     or the per-element-Own synthesis with no borrowed half -- so an owning
-    slot takes it bare with no `tuple_to_storage` lift. The call verdict of
-    `needs_tuple_storage_lift`: `is_storage_form_source`'s two
-    call shapes minus `renders_own_borrow_tuple`'s MIXED render."""
+    slot takes it bare with no per-element storage conversion:
+    `is_storage_form_source`'s two call shapes minus
+    `renders_own_borrow_tuple`'s MIXED render."""
     rt = unwrap_readonly(fi.return_type) if fi is not None else None
     if (isinstance(rt, OwnType)
             and isinstance(unwrap_readonly(rt.wrapped), TupleType)):
@@ -10536,7 +10529,7 @@ def _storage_form_tuple_return(fi) -> bool:
 def _borrow_form_tuple_call(v: TpyExpr, analyzer) -> bool:
     """A call whose F3 tuple result is ALREADY in borrow form, so a borrow
     sink relays it bare -- `is_storage_form_source`'s NEGATIVE verdict for a
-    call, which is what decides `_maybe_wrap_tuple_to_pointer`'s wrap. The
+    call, which is what decides whether a borrow sink lends it per element. The
     two storage-return ABIs (`Own[tuple[..]]` and the per-element-Own
     synthesis) keep owing the lift and stay out. Distinct from
     `_storage_form_tuple_return`, which answers the OWNING sink's question
@@ -10568,7 +10561,7 @@ def _storage_field_ternary(v: TpyExpr, declared: dict[str, TpyType],
     """A ternary whose BOTH arms are the same admitted storage field read the
     plain F3 return source already takes -- `is_storage_form_source`'s
     TpyIfExpr arm, so the whole conditional is one storage lvalue taking ONE
-    `tuple_to_pointer` around it. A MIXED pair (a local arm beside a field
+    per-element lend around it. A MIXED pair (a local arm beside a field
     arm) is not a single storage lvalue and stays out, matching the
     all-arms-storage conjunction."""
     if not isinstance(v, TpyIfExpr):
@@ -11922,7 +11915,7 @@ def _r_generic_btuple_name(req: _ArgReq) -> bool:
             and isinstance(a, TpyName) and a.name in req.locals_
             # BINDING-form keyed, not type-keyed: an Own-element literal
             # decl registers storage form (std::tuple<int32_t, Box>) and
-            # needs the tuple_to_pointer lift.
+            # needs the per-element lend.
             and a.name not in req.storage_tuple_locals):
         return False
     _bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -12714,14 +12707,13 @@ _NATIVE_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("native_protocol_field", _r_native_protocol_field),
         _ArgRow("native_iterable_comp", _r_native_iterable_comp),
         # A storage-form tuple NAME at a native/template tuple slot takes
-        # the same `tuple_to_pointer` lift as at a plain callee
-        # (`str(t)` -> `::tpy::tuple_to_str(tuple_to_pointer<..>(t))`);
-        # the lift wraps the read, so it is position-independent.
+        # the same per-element lend as at a plain callee (`str(t)`); the
+        # lift wraps the read, so it is position-independent.
         _ArgRow("borrow_tuple_storage_name", _r_borrow_tuple_storage_name),
         # An F3-tuple FIELD read at the native/template tuple slot takes
-        # the same kind-blind `tuple_to_pointer` lift as the NAME row
-        # (`repr(self.pair)` -> `::tpy::tuple_to_str(tuple_to_pointer<
-        # std::tuple<const Point*, ..>>(this->pair))`).
+        # the same kind-blind per-element lend as the NAME row
+        # (`repr(self.pair)` -> `::tpy::tuple_to_str(std::tuple<const
+        # Point*, ..>{&(std::get<0>(this->pair)), ..})`).
         _ArgRow("borrow_tuple_field", _r_borrow_tuple_field),
         # A bare NAME at an OPEN value-tuple slot (`min(a, b, key=..)` on
         # `tuple[T, int32]` params): no lift -- the open tuple has no
@@ -13354,7 +13346,7 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("deref_coerce", _r_deref_coerce),
         _ArgRow("readonly_container_rvalue", _r_readonly_container_rvalue),
         # A borrow-form tuple NAME at the same borrow-tuple slot binds bare;
-        # a storage-form one takes the `tuple_to_pointer` lift.
+        # a storage-form one takes the per-element lend.
         _ArgRow("btuple_name", _r_btuple_name),
         _ArgRow("borrow_tuple_storage_name", _r_borrow_tuple_storage_name),
         _ArgRow("union_elem_tuple_name", _r_union_elem_tuple_name),
@@ -13425,9 +13417,9 @@ _GENERIC_PLAIN_ARG_SINK = register_sink(_ArgSink(
                 face="call.generic_btuple_name"),
         # A tuple LITERAL at an Own[T]-resolved pointer-repr tuple slot
         # (`poll_ready((xs, int32(2)))` at Own[tuple[list, int32]]): the
-        # CONSUMING storage lift (`tuple_to_storage_move` over the borrow
-        # build) -- `_lower_call_arg`'s own_btuple_literal row; per-element
-        # ownership stays enforced by the builder's ladder.
+        # CONSUMING storage lift (a storage tuple built element by element,
+        # owned elements moved) -- `_lower_call_arg`'s own_btuple_literal
+        # row; per-element ownership stays enforced by the builder.
         _ArgRow("generic_own_btuple_literal", _r_generic_own_btuple_literal),
         _ArgRow("shared_pass_through", _r_shared_pass_through),
         # The callable family into an `Fn[...]` / `Callable` slot
@@ -14285,8 +14277,9 @@ def _container_method_elem(t: 'TpyType | None', analyzer) -> bool:
                 # their inserts carry a wrap the bare push_back does not.
                 or (isinstance(au, UnionType) and not au.needs_wrapper())
                 # A ptr-Optional-element tuple (`list[tuple[P | None, ..]]`):
-                # the insert's consuming tuple_to_storage_move lift is the
-                # arg gate's own row; reads keep their per-consumer gates.
+                # the insert's consuming storage build, element by element,
+                # is the arg gate's own row; reads keep their per-consumer
+                # gates.
                 or (isinstance(au, TupleType)
                     and au.has_pointer_repr_element()
                     and _tuple_elem_slots_ptr_optional(au)))

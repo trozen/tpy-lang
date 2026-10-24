@@ -122,7 +122,7 @@ void exempt_value(int32_t n) {
 //     exempt_value(3)
 void main() {
     std::vector<Cell> cells = {Cell(1), Cell(2)};
-    std::vector<std::tuple<int32_t, Cell>> src = ::tpy::make_vector<std::tuple<int32_t, Cell>>(::tpy::tuple_to_storage<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(5)}));
+    std::vector<std::tuple<int32_t, Cell>> src = ::tpy::make_vector<std::tuple<int32_t, Cell>>(std::tuple<int32_t, Cell>{1, Cell(5)});
     ::tpyapp::main::list_scalar(cells);
     ::tpyapp::main::list_tuple_member(src);
     ::tpyapp::main::dict_value(cells);

@@ -27,13 +27,13 @@ int32_t f(const std::tuple<const T*, const T*>& t) {
 //     for it in items:
 //         print(f(it))
 void main() {
-    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T, T>{T(1), T(2)})), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(::tpy::tuple_value_to_borrow<std::tuple<T*, T*>>(std::tuple<T*, T>{nullptr, T(3)}))};
+    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {std::tuple<std::optional<T>, std::optional<T>>{T(1), T(2)}, std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, T(3)}};
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        std::cout << ::tpyapp::main::f(::tpy::tuple_to_pointer<std::tuple<const T*, const T*>>(it)) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpyapp::main::f(std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(it)), ::tpy::optional_to_ptr(std::get<1>(it))}) << "\n" << ::tpy::check_signals;
     }
 }
 

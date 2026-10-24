@@ -173,13 +173,13 @@ void nested() {
 //     for n, c in ps:
 //         print("mixed", n, c.k)
 void mixed() {
-    std::vector<std::tuple<int64_t, Cnt>> ps = ::tpy::make_vector<std::tuple<int64_t, Cnt>>(::tpy::tuple_to_storage<std::tuple<int64_t, Cnt>>(std::tuple<int64_t, Cnt>{1, Cnt()}));
+    std::vector<std::tuple<int64_t, Cnt>> ps = ::tpy::make_vector<std::tuple<int64_t, Cnt>>(std::tuple<int64_t, Cnt>{1, Cnt()});
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int64_t, Cnt*>>(__for_tup_2);
+        auto __tup_1 = std::tuple<int64_t, Cnt*>{std::get<0>(__for_tup_2), &(std::get<1>(__for_tup_2))};
         int64_t n = std::get<0>(__tup_1);
         auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         c.k = ::tpy::add_check<int64_t>(c.k, 5);
@@ -190,7 +190,7 @@ void mixed() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_3 = *__beg_1;
-        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<int64_t, Cnt*>>(__for_tup_3);
+        auto __tup_2 = std::tuple<int64_t, Cnt*>{std::get<0>(__for_tup_3), &(std::get<1>(__for_tup_3))};
         int64_t n = std::get<0>(__tup_2);
         auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
         std::cout << "mixed" << " " << n << " " << c.k << "\n" << ::tpy::check_signals;

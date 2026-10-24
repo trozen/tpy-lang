@@ -34,7 +34,7 @@ void bump(const std::tuple<T*, T*>& p) {
 void main() {
     T t1 = T(1);
     T t2 = T(2);
-    ::tpyapp::main::show(std::tuple<T*, T*>{&(t1), &(t2)});
+    ::tpyapp::main::show(std::tuple<const T*, const T*>{&(t1), &(t2)});
     ::tpyapp::main::bump(std::tuple<T*, T*>{&(t1), &(t2)});
     std::cout << t1.x << "\n" << ::tpy::check_signals;
 }

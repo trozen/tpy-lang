@@ -182,13 +182,13 @@ void main() {
     std::cout << ::tpyapp::main::read_owned(std::tuple<A, A>{A(1), A(2)}) << "\n" << ::tpy::check_signals;
     A a = A(3);
     A b = A(4);
-    std::cout << ::tpyapp::main::read_borrow(std::tuple<A*, A*>{&(a), &(b)}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::read_borrow(std::tuple<const A*, const A*>{&(a), &(b)}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::read_nocopy(std::tuple<B, B>{B(5), B(6)}) << "\n" << ::tpy::check_signals;
     std::vector<A> kept = std::vector<A>{};
     std::cout << "drop_one" << " " << ::tpyapp::main::drop_one(std::tuple<A, A>{A(1), A(2)}, kept) << "\n" << ::tpy::check_signals;
     std::cout << "drop_first" << " " << H().drop_first(std::tuple<A, A>{A(3), A(4)}, kept) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::drop_on_branch(std::tuple<A, A>{A(5), A(6)}, false, kept);
-    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<A, A*>{A(7), &(a)}) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed" << " " << ::tpyapp::main::mixed(std::tuple<A, const A*>{A(7), &(a)}) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::through_local(A(8), kept);
     ::tpyapp::main::consume_all(std::tuple<A, A>{A(9), A(10)}, kept);
     std::cout << "drop_nocopy" << " " << ::tpyapp::main::drop_nocopy(std::tuple<A, B>{A(11), B(12)}, kept) << "\n" << ::tpy::check_signals;

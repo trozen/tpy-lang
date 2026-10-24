@@ -399,10 +399,15 @@ using readonly_form_t = std::conditional_t<
 // for the three body positions a borrow form cannot serve: a store into `T`
 // storage, an address-of, and a by-value `T` return. Keyed on the constructions
 // the C++ type admits (a view-form source is not implicitly convertible to its
-// owning form), never on which container T is.
+// owning form), never on which container T is. A generic tuple element's
+// borrow form (`val_or_ptr_t<T>`, a `T*`) copies its pointee: the source only
+// lends it, so a moved element read moves at a value instantiation alone.
 template <class T, class Src>
 T param_to_storage(Src&& s) {
-    if constexpr (std::is_constructible_v<T, Src&&>) {
+    using S = std::remove_cvref_t<Src>;
+    if constexpr (std::is_same_v<S, T*> || std::is_same_v<S, const T*>) {
+        return T(*s);
+    } else if constexpr (std::is_constructible_v<T, Src&&>) {
         return T(std::forward<Src>(s));
     } else {
         return T(std::begin(s), std::end(s));

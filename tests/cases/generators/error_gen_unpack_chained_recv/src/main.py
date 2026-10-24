@@ -1,6 +1,6 @@
 # The adjacent shape that must keep rejecting: a frame tuple unpack whose
 # source chain has a CALL in it. A chain of field / subscript hops off a
-# declared name lifts through `tuple_to_pointer` off the lvalue, but a call
+# declared name is lent element by element off the lvalue, but a call
 # result is a temporary that dies at the end of the case block, so the frame's
 # alias field would point past it at the next resume -- the reject is located
 # rather than rendered. Same rule as the sync twins

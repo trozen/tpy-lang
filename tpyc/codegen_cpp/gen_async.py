@@ -4324,9 +4324,9 @@ class AsyncCoroCodegen:
         lowered nodes. The field type has to name exactly what the ctor
         receives, so a coercion applied at one site and not the other (the
         narrowed-Optional unwrap, an `Own[T]` move-out) is an ill-formed C++
-        build, not a style difference. Temps queued by that render are
-        discarded -- decltype doesn't evaluate, and the same args re-render at
-        emplace time.
+        build, not a style difference. An argument temporary renders there
+        as `std::declval` of its type (`UnevaluatedTemps`): decltype doesn't
+        evaluate, and the same args re-render at emplace time.
         """
         positions = self._protocol_param_positions(call)
         if not positions:
@@ -4355,9 +4355,11 @@ class AsyncCoroCodegen:
                     "does not yet support a collection literal argument; pass "
                     "a named iterable instead",
                     loc=getattr(arg, "loc", None) or call.loc)
-        checkpoint = self.ctx.temps.checkpoint()
-        rendered = self._emplace_args(call)
-        self.ctx.temps.rollback_to(checkpoint)
+        # The class-scope `decltype` has no statement to declare an
+        # argument temporary in: it renders as `std::declval` of its type.
+        from ..thir.emit import UnevaluatedTemps
+        rendered = self._leaf.render_await_args(
+            call, temps=UnevaluatedTemps(self.ctx))
         # `await_arg_capture_t` models the callee factory's `T&&` deduction:
         # lvalue arg -> `U&` (borrow), rvalue -> `U` (own). `decltype((arg))`
         # (double parens) carries the value category.
@@ -6895,16 +6897,14 @@ class AsyncCoroCodegen:
         if strat == "begin_end":
             it, end = f"(*__for_it_{uid})", f"(*__for_end_{uid})"
             if info.borrow_tuple_loop_var == stmt.var:
-                # Proxy-ref tuple element (dict_items): lower the prvalue
-                # proxy to the borrow-form tuple; element refs are stable.
-                elem_bare = unwrap_readonly(unwrap_ref_type(
-                    self.types.resolve_type(stmt.elem_type)))
-                borrow_cpp = self.types.tuple_borrow_cpp(
-                    elem_bare,
-                    const=self.ctx.frame_binding_is_const(stmt.var))
-                bind_post = [
-                    f"{cpp_var} = ::tpy::tuple_to_pointer"
-                    f"<{borrow_cpp}>(*({it})++);"]
+                # Proxy-ref tuple element (dict_items): the prvalue proxy is
+                # held for the bind and lent element by element as the
+                # borrow-form tuple; element refs are stable.
+                step = f"__for_step_{uid}"
+                lent = self._leaf.render_loop_step(stmt, step)
+                # One line: the bind counts toward the inline-`__next__` size.
+                bind_post = [f"{{ auto&& {step} = *({it})++; "
+                             f"{cpp_var} = {lent}; }}"]
             elif info.pointer_form_loop_var == stmt.var:
                 bind_post = [f"{cpp_var} = &(*({it})++);"]
             elif info.opt_ptr_loop_var == stmt.var:

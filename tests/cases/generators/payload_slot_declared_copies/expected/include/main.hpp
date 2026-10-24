@@ -408,7 +408,7 @@ inline A& Holds::borrow() {
 template<typename T>
 std::tuple<::tpy::own_return_t<T>, A*> g_mixed(::tpy::param_val_or_ref_t<T> p, A& q) {
     auto t = std::tuple<T, A*>{::tpy::param_to_storage<T>(p), &(q)};
-    return ::tpy::tuple_to_storage<std::tuple<::tpy::own_return_t<T>, A*>>(t);
+    return std::tuple<::tpy::own_return_t<T>, A*>{::tpy::param_to_storage<T>(::tpy::tuple_elem_ref(std::get<0>(t))), std::get<1>(t)};
 }
 
 void __tpy_init();

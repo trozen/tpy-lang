@@ -102,12 +102,12 @@ inline Holder::Holder() : pair(std::tuple<std::optional<T>, std::optional<T>>{st
 // def update(self, p: tuple[T | None, T | None]) -> None:
 //     self.pair = p  # tpyc: warning(/copies/) warning(/copies/)
 inline void Holder::update(const std::tuple<const T*, const T*>& p) {
-    this->pair = ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(p);
+    this->pair = std::tuple<std::optional<T>, std::optional<T>>{::tpy::ptr_to_optional(std::get<0>(p)), ::tpy::ptr_to_optional(std::get<1>(p))};
 }
 
 // def copy_from_subscript(self, items: list[tuple[T | None, T | None]]) -> None:
 //     # Source is a subscript -- already storage-form, so the field-write
-//     # is a direct copy (no redundant tuple_to_storage wrap).
+//     # is a direct copy (no element-by-element rebuild).
 //     self.pair = items[0]  # tpyc: warning(/copies/) warning(/copies/)
 inline void Holder::copy_from_subscript(const std::vector<std::tuple<std::optional<T>, std::optional<T>>>& items) {
     this->pair = ::tpy::__getitem__(items, 0);
@@ -123,7 +123,7 @@ inline void Holder::copy_from_field(const Holder& other) {
 // def __init__(self) -> None:
 //     # Source is a value global -- already storage-form, direct copy.
 //     self.pair = g_pair  # tpyc: warning(/copies/) warning(/copies/)
-inline GlobalCopier::GlobalCopier() : pair(::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(g_pair)) {}
+inline GlobalCopier::GlobalCopier() : pair(std::tuple<std::optional<T>, std::optional<T>>{::tpy::ptr_to_optional(std::get<0>(g_pair)), ::tpy::ptr_to_optional(std::get<1>(g_pair))}) {}
 
 // def __init__(self, items: list[tuple[T | None, T | None]]) -> None:
 //     # Constructor MIL path: subscript source is already storage-form,

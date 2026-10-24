@@ -31,7 +31,7 @@ void union_leaf() {
 //         qs: list[tuple[A, int32]] = [p]  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
 //         print("plain", len(qs), qs[0][0].v)
 void plain_twin() {
-    std::vector<std::tuple<A, int32_t>> ps = ::tpy::make_vector<std::tuple<A, int32_t>>(::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 3}));
+    std::vector<std::tuple<A, int32_t>> ps = ::tpy::make_vector<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 3});
     auto& __obj_0 = ps;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

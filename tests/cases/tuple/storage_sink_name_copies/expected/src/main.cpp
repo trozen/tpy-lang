@@ -22,7 +22,7 @@ void show(std::string_view tag, const std::vector<std::tuple<P, P>>& ys) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const P*, const P*>>(__for_tup_0);
+        auto __tup_1 = std::tuple<const P*, const P*>{&(std::get<0>(__for_tup_0)), &(std::get<1>(__for_tup_0))};
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         std::cout << tag << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(b.xs) << "\n" << ::tpy::check_signals;
@@ -36,7 +36,7 @@ void show(std::string_view tag, const std::vector<std::tuple<P, P>>& ys) {
 //     return ys
 std::vector<std::tuple<P, P>> lit_local(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    std::vector<std::tuple<P, P>> ys = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+    std::vector<std::tuple<P, P>> ys = ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
     return ys;
 }
 
@@ -47,7 +47,7 @@ std::vector<std::tuple<P, P>> lit_local(P& p) {
 //     return ys
 std::vector<std::tuple<P, P>> call_local(P& p) {
     auto t = ::tpyapp::main::mk2(p);
-    std::vector<std::tuple<P, P>> ys = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+    std::vector<std::tuple<P, P>> ys = ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
     return ys;
 }
 
@@ -83,7 +83,7 @@ std::vector<std::tuple<P, P>> owned_from_local(P& p) {
 //     return ys
 std::vector<std::tuple<P, int32_t>> scalar_mix(P& p) {
     auto t = std::tuple<P*, int32_t>{&(p), 3};
-    std::vector<std::tuple<P, int32_t>> ys = ::tpy::make_vector<std::tuple<P, int32_t>>(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(t));
+    std::vector<std::tuple<P, int32_t>> ys = ::tpy::make_vector<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
     return ys;
 }
 
@@ -94,7 +94,7 @@ std::vector<std::tuple<P, int32_t>> scalar_mix(P& p) {
 //     return d
 ::tpy::ordered_map<int32_t, std::tuple<P, P>> dict_value(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    ::tpy::ordered_map<int32_t, std::tuple<P, P>> d = ::tpy::make_ordered_map<int32_t, std::tuple<P, P>>(1, ::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+    ::tpy::ordered_map<int32_t, std::tuple<P, P>> d = ::tpy::make_ordered_map<int32_t, std::tuple<P, P>>(1, std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
     return d;
 }
 
@@ -108,7 +108,7 @@ std::vector<std::tuple<P, P>> comp_elem(P& p) {
         std::vector<std::tuple<P, P>> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t _ = 0; _ < 2; ++_) {
-            __result.push_back(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+            __result.push_back(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
         }
         std::move(__result);
     });
@@ -120,7 +120,7 @@ std::vector<std::tuple<P, P>> comp_elem(P& p) {
 //     return [t]  # tpyc: warning(/copies P into .*tuple element 0/) warning(/copies P into .*tuple element 1/)
 std::vector<std::tuple<P, P>> return_list(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+    return ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
 }
 
 // def nested_list(p: P) -> Own[list[list[tuple[P, P]]]]:
@@ -129,7 +129,7 @@ std::vector<std::tuple<P, P>> return_list(P& p) {
 //     return [[t]]  # tpyc: warning(/copies P into .*tuple element 0/) warning(/copies P into .*tuple element 1/)
 std::vector<std::vector<std::tuple<P, P>>> nested_list(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return std::vector<std::vector<std::tuple<P, P>>>{::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t))};
+    return std::vector<std::vector<std::tuple<P, P>>>{::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))})};
 }
 
 // def nested_tuple(p: P) -> Own[list[tuple[tuple[P, P], int32]]]:
@@ -139,7 +139,7 @@ std::vector<std::vector<std::tuple<P, P>>> nested_list(P& p) {
 //     return [(t, 1)]  # tpyc: warning(/copies P into .*tuple element 0\.0/) warning(/copies P into .*tuple element 0\.1/)
 std::vector<std::tuple<std::tuple<P, P>, int32_t>> nested_tuple(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    return std::vector<std::tuple<std::tuple<P, P>, int32_t>>{std::tuple<std::tuple<P, P>, int32_t>{::tpy::tuple_to_storage<std::tuple<P, P>>(t), 1}};
+    return ::tpy::make_vector<std::tuple<std::tuple<P, P>, int32_t>>(std::tuple<std::tuple<P, P>, int32_t>{std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))}, 1});
 }
 
 
@@ -168,7 +168,7 @@ __gen_gen gen(P& p) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        std::vector<std::tuple<P, P>> __tpy_async_ret = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+        std::vector<std::tuple<P, P>> __tpy_async_ret = ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
         return ::tpystd::tpy::Poll<std::vector<std::tuple<P, P>>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -191,7 +191,7 @@ __coro_coro coro(P& p) {
 std::vector<std::tuple<P, P>> closure(P& p) {
     auto inner = [&p]() -> std::vector<std::tuple<P, P>> {
         auto t = std::tuple<P*, P*>{&(p), &(p)};
-        return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+        return ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
     };
     return inner();
 }
@@ -213,7 +213,7 @@ std::vector<std::tuple<P, P>> in_finally(P& p) {
     {
         try {
             t = std::tuple<P*, P*>{&(p), &(p)};
-            ys = &*(__slot_2 = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t)));
+            ys = &*(__slot_2 = ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))}));
         } catch (...) {
             std::cout << "finally" << "\n" << ::tpy::check_signals;
             throw;
@@ -234,7 +234,7 @@ std::vector<std::tuple<P, P>> in_with(P& p) {
     __ctx_1.__enter__();
     bool __fin_ran_2 = false;
     try {
-        std::vector<std::tuple<P, P>> __tpy_ret_0 = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+        std::vector<std::tuple<P, P>> __tpy_ret_0 = ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
         __fin_ran_2 = true;
         __ctx_1.__exit__({}, nullptr, {});
         return __tpy_ret_0;
@@ -262,7 +262,7 @@ std::vector<std::tuple<P, P>> in_match(P& p, int32_t k) {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
-        return ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+        return ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
     }
     default: {
         return std::vector<std::tuple<P, P>>{};
@@ -280,7 +280,7 @@ std::vector<std::tuple<P, P>> in_match(P& p, int32_t k) {
 //     return ys
 std::expected<std::vector<std::tuple<P, P>>, Bad> in_error_return(P& p) {
     auto t = std::tuple<P*, P*>{&(p), &(p)};
-    std::vector<std::tuple<P, P>> ys = ::tpy::make_vector<std::tuple<P, P>>(::tpy::tuple_to_storage<std::tuple<P, P>>(t));
+    std::vector<std::tuple<P, P>> ys = ::tpy::make_vector<std::tuple<P, P>>(std::tuple<P, P>{(*std::get<0>(t)), (*std::get<1>(t))});
     return ys;
 }
 
@@ -378,12 +378,12 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(__for_tup_2);
+        auto __tup_1 = std::tuple<P*, int32_t>{&(std::get<0>(__for_tup_2)), std::get<1>(__for_tup_2)};
         auto&& b4 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         int32_t n4 = std::get<1>(__tup_1);
         std::cout << "scalar_mix" << " " << ::tpy::__len__(b4.xs) << " " << n4 << "\n" << ::tpy::check_signals;
     }
-    auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(::tpy::__getitem__(y5, 1));
+    auto __tup_2 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, P*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(y5, 1));
     auto&& b5 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     auto&& c5 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
     std::cout << "dict_value" << " " << ::tpy::__len__(b5.xs) << " " << ::tpy::__len__(c5.xs) << "\n" << ::tpy::check_signals;

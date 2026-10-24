@@ -347,7 +347,7 @@ inline Built::Built(int32_t x) : p(P(x)) {}
 // # kept refusal: a tuple field holding a record
 // def __init__(self, t: tuple[int32, P]) -> None:  # tpyc: mir(uncovered /unsupported record fields/)
 //     self.t = t  # tpyc: warning(/copies P into field \(tuple element 1\)/)
-inline Pair::Pair(const std::tuple<int32_t, const P*>& t) : t(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(t)) {}
+inline Pair::Pair(const std::tuple<int32_t, const P*>& t) : t(std::tuple<int32_t, P>{std::get<0>(t), (*std::get<1>(t))}) {}
 
 // # constructor: a readonly Optional record field (a store to it is a sema error)
 // def __init__(self, p: P | None) -> None:  # tpyc: mir(covered)

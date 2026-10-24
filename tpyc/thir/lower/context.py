@@ -667,9 +667,11 @@ class SlotPosition(Enum):
     """Where a slot sits, which decides how its type is represented there:
     a STORE (a field, a container or tuple element, an owning argument)
     holds the type's own storage; a RETURN hands it back as the body's
-    signature publishes it."""
+    signature publishes it; a PARAM holds it as the callee's signature
+    passes it (a tuple each element in its passing form)."""
     STORE = auto()
     RETURN = auto()
+    PARAM = auto()
 
 
 @dataclass(frozen=True, slots=True)
@@ -702,6 +704,9 @@ class Slot:
     # A tuple slot's element slots, each derived from its declared element
     # before `storage_type` erases `Own` / `Ref`.
     elems: 'tuple[Slot, ...] | None' = None
+    # The tuple's elements are held as a result hands them back -- its
+    # borrow form, spelled `to_cpp_return` -- rather than as storage.
+    elements_by_result: bool = False
     # The template a TRAIT slot spells its open `T` through.
     trait: 'TraitAbi | None' = None
     # A result its C++ `return` takes directly: an id-expression naming
@@ -922,11 +927,12 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
     if rep is Representation.VIEW:
         return SlotHolds.VALUE
     if cls is SlotClass.UNCLASSIFIED:
-        if construct is SlotConstruct.RETURN and (
+        if construct in (SlotConstruct.RETURN, SlotConstruct.PASS) and (
                 not st.is_value_type() or _parts_classified(st, analyzer)):
-            # A result is built by its own copy-initialization whatever
-            # the type: a value type's (a tuple or an Optional whose parts
-            # each have a class) takes the source as it renders.
+            # A result or a parameter is built by its own
+            # copy-initialization whatever the type: a value type's (a
+            # tuple or an Optional whose parts each have a class) takes the
+            # source as it renders.
             return SlotHolds.VALUE if st.is_value_type() else SlotHolds.OWNS
         # No conversion is known: only an owned value relocated whole
         # reaches the slot (BUGS.md#field-view-escape-needs-place keeps the
@@ -955,12 +961,13 @@ def _built_slot(declared: TpyType, st: TpyType,
         # An Optional's payload: the tuple it holds has the element slots.
         tup = unwrap_readonly(tup.inner)
     elems = None
+    by_result = False
     if isinstance(tup, TupleType):
         # A result tuple hands each element back as that element's own
         # result would (a reference as a pointer); an owned or stored one
         # holds every element's storage.
-        by_result = (position is SlotPosition.RETURN and not owned
-                     and not stored)
+        by_result = (position in (SlotPosition.RETURN, SlotPosition.PARAM)
+                     and not owned and not stored)
         # An element of a const tuple is const.
         elems = tuple(
             _built_slot(e, storage_type(e) if by_result else e,
@@ -982,7 +989,7 @@ def _built_slot(declared: TpyType, st: TpyType,
                 lifetime=slot_lifetime(declared, position),
                 cls=cls, representation=rep or Representation.STORAGE,
                 declared=declared, elems=elems, trait=trait,
-                implicit_move=implicit_move)
+                implicit_move=implicit_move, elements_by_result=by_result)
 
 
 def _lends_result(holds: SlotHolds, elems: 'tuple[Slot, ...] | None'
@@ -1041,6 +1048,14 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
             implicit_move=implicit_move)
     if t is None:
         return None
+    if position is SlotPosition.PARAM:
+        # Bound for the call's duration; a tuple holds each element as the
+        # signature passes it (`TupleType._param_spelling`), an
+        # `Own[tuple[...]]` every element's storage.
+        return _built_slot(t, storage_type(t), return_representation(t),
+                           position, SlotConstruct.PASS, analyzer,
+                           placement=placement,
+                           const=result_const or is_readonly_result_type(t))
     assert construct is not None, "a stored slot names its construction"
     return _built_slot(t, t, Representation.STORAGE, position, construct,
                        analyzer, placement=placement)

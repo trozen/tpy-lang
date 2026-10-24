@@ -18,8 +18,8 @@ void main() {
     Point p = Point(1);
     Tag tg = Tag(7);
     Tag* ptr = &tg;
-    Holder h1 = Holder(std::tuple<Point*, Tag*>{&(p), ptr});
-    Holder h2 = Holder(std::tuple<Point*, Tag*>{nullptr, ptr});
+    Holder h1 = Holder(std::tuple<const Point*, Tag*>{&(p), ptr});
+    Holder h2 = Holder(std::tuple<const Point*, Tag*>{nullptr, ptr});
     std::cout << ::tpy::none_attr(std::get<1>(h1.pair), "name").name << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::none_attr(std::get<1>(h2.pair), "name").name << "\n" << ::tpy::check_signals;
     tg.name = 99;

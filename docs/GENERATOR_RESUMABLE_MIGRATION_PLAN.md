@@ -401,10 +401,9 @@
     (`std::tuple<T&, ...>` / `std::tuple<P*, ...>`) for tuple yields,
     bare cpp type otherwise. The gate's tuple-yield restriction in
     `_compute_resumable_generator_eligible` was dropped (the `yt is None`
-    guard stays). `gen_yield_value` already bridges storage-form sources
-    into the borrow-form slot via `_maybe_wrap_tuple_to_pointer` (gated on
-    `ctx.current_yield_type`, set by `_resumable_return_lowering`), so no
-    callsite changes were needed. One existing test flipped from the
+    guard stays). The yield already bridged storage-form sources into the
+    borrow-form slot (today: the yield's element-by-element conversion in
+    `tpyc/thir/lower/convert.py`), so no callsite changes were needed. One existing test flipped from the
     legacy struct path: `tuple_optional_yield_prev` (multi-yield
     `tuple[P|None, P|None]` generator) -- output byte-identical, snapshot
     regenerated. Other tuple-yield tests stayed where they were: simple

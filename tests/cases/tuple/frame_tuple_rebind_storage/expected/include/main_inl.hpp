@@ -474,7 +474,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_repoint_param_fiel
         return std::get<0>(p)->n;
     }
     case S_RESUME_0: {  // after: yield p[0].n
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
         std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
         __state = S_RESUME_1;
         return std::get<0>(h.bp).n;
@@ -816,7 +816,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_field_store::__nex
         auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
         std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
-        h.bp = std::tuple<Box, Box>{std::move(*std::get<0>(p)), (*std::get<1>(p))};
+        h.bp = std::tuple<Box, Box>{std::move((*std::get<0>(p))), (*std::get<1>(p))};
         __state = S_RESUME_0;
         return std::get<0>(h.bp).n;
     }
@@ -849,7 +849,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_append::__next__()
         std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
         xs.emplace(std::vector<std::tuple<Box, Box>>{});
-        (*xs).push_back(::tpy::tuple_to_storage<std::tuple<Box, Box>>(p));
+        (*xs).push_back(std::tuple<Box, Box>{(*std::get<0>(p)), (*std::get<1>(p))});
         __state = S_RESUME_0;
         return std::get<0>(::tpy::__getitem__((*xs), 0)).n;
     }
@@ -1840,7 +1840,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_H_walk::__next__() {
         return std::get<0>(p)->n;
     }
     case S_RESUME_0: {  // after: yield p[0].n
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__self.bp);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(__self.bp)), &(std::get<1>(__self.bp))};
         std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
         __state = S_RESUME_1;
         return std::get<0>(__self.bp).n;

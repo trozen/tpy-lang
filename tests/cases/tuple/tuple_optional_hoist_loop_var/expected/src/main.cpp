@@ -30,13 +30,13 @@ void consume(const std::tuple<const T*, const T*>& p) {
 //     consume(last)
 void main() {
     T t1 = T(1);
-    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = {::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{&(t1), nullptr}), ::tpy::tuple_to_storage<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<T*, T*>{nullptr, nullptr})};
-    std::tuple<T*, T*> last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(::tpy::__getitem__(items, 0));
+    std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = ::tpy::make_vector<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::move(t1), std::nullopt}, std::tuple<std::optional<T>, std::optional<T>>{std::nullopt, std::nullopt});
+    std::tuple<T*, T*> last = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0));
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        last = ::tpy::tuple_to_pointer<std::tuple<T*, T*>>(*__beg_0);
+        last = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>((*__beg_0))), ::tpy::optional_to_ptr(std::get<1>((*__beg_0)))};
     }
     ::tpyapp::main::consume(last);
 }

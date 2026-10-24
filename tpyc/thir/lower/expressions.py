@@ -192,6 +192,7 @@ from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import (render_int_literal_value,
                                          target_less_int_literal_type)
 from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
+                      elem_borrow_form_differs, element_source, tuple_elems,
                       SelectResult, Source, TraitAbi, arms_copy_declared)
 from ..nodes import (
     THIRBorrowedRecord,
@@ -202,6 +203,7 @@ from ..nodes import (
     TruthinessMode,
     THIRArgTemp,
     THIRTempRead,
+    THIRLent,
     THIRFieldIdentity,
     THIRNode,
     THIRBinOp,
@@ -257,7 +259,6 @@ from ..nodes import (
     THIRSubscript,
     THIRBoundCall,
     THIRBorrowTupleLiteral,
-    THIRTupleValueToBorrow,
     THIRTupleLiteral,
     THIRUnaryNot,
     THIRUnaryArith,
@@ -389,9 +390,7 @@ from .predicates import (
     _plain_record_field_link,
     _field_receiver_ok,
     _field_receiver_or_unbound_self_ok,
-    _tuple_literal_has_ref_elements,
     _tuple_elem_slots_ptr_optional,
-    _tuple_elem_slots_record_lvalue,
     _mixed_own_storage_source,
     _renders_own_borrow_tuple,
     _mixed_own_btuple_call,
@@ -599,9 +598,11 @@ from .predicates import (
     _unrouted_binding_read,
     _value_opt_view_name,
 )
-from .convert import elementwise_tuple_storage, tuple_storage_lift
-from .context import (FrameLocalClass, _call_arg_forms, _ExprResultUse,
-                      _ExprUse, _LowerCtx,
+from .convert import (elementwise_plan, layout_tuple,
+                      param_tuple_slot, tuple_borrow_lift,
+                      tuple_storage_lift)
+from .context import (FrameLocalClass, _call_arg_forms,
+                      _ExprResultUse, _ExprUse, _LowerCtx,
                       SlotConstruct,
                       _recv_forms, _NO_FORMS, _LEND_OK, _TRANSIENT_OK,
                       _ONLY_BTUPLE_SLOT, _ONLY_FRAME_FACTORY,
@@ -614,7 +615,7 @@ from .context import (FrameLocalClass, _call_arg_forms, _ExprResultUse,
                       ValueOptKind,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
-from .convert import Effect, Refuse, convert
+from .convert import Effect, Refuse, _existing_object, convert, upcast_copy
 
 
 # The coercion tag of a literal pinned at its overload's slot
@@ -3592,7 +3593,8 @@ def _lower_identity(e: TpyBinOp, lc: '_LowerCtx',
         node = stamped(read(operand, slot), lc)
         plan = convert(node, slot, lc.analyzer)
         if isinstance(plan, Refuse):
-            raise ThirUnsupported("binop.identity." + plan.key)
+            raise ThirUnsupported("binop.identity." + plan.key,
+                                  message=plan.message)
         s = node.source
         if plan.effect is not Effect.PASS and (
                 s.held is Held.FRESH
@@ -4230,7 +4232,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                          or (_is_type_param_slot(lt)
                              and _witness("binop.contains_tparam_needle"))
                          # A pointer-repr tuple-LITERAL needle: the
-                         # tuple_to_storage lift over the borrow-form
+                         # per-element storage conversion over the borrow-form
                          # literal render (the compare pair's sibling).
                          or (isinstance(e.left, TpyTupleLiteral)
                              and isinstance(lt_bare, TupleType)
@@ -4450,17 +4452,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if (isinstance(e.left, TpyTupleLiteral)
                 and isinstance(needle_tu, TupleType)
                 and needle_tu.has_pointer_repr_element()):
-            # The borrow-form literal lifts to the stored shape
-            # (`tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<
-            # int32_t, Box*>{1, &(b)})`) so the element comparison is
-            # value-level -- the needle lift.
-            storage_t = resolve_tuple_pending(needle_tu, analyzer)
+            # The literal builds the stored shape
+            # (`std::tuple<int32_t, Box>{1, b}`) so the element comparison
+            # is value-level -- the needle lift.
             _witness("binop.tuple_ptr_needle")
-            needle: THIRExpr = THIRFormConvert(
-                result_type=storage_t,
-                value=_lower_borrow_tuple_literal(e.left, storage_t, lc,
-                                                  declared),
-                form=Form.STORAGE, loc=loc)
+            needle: THIRExpr = _tuple_literal_copy(e.left, needle_tu, lc,
+                                                   declared, loc)
         else:
             # A bytes needle renders against the view: the element compare
             # reads through `::tpy::BytesView` (a str literal is bare for the
@@ -6012,7 +6009,7 @@ _HELD_BY_KIND: dict[type, Held] = {
     # The borrow form a conversion built: a pointer, a pointer variant, a
     # view of an optional, a borrow tuple, a slot's `T&`.
     **dict.fromkeys((THIROptionalPtrArg, THIROptViewArg, THIRUnionArgLift,
-                     THIRTupleValueToBorrow, THIRSlotEmplace),
+                     THIRSlotEmplace),
                     Held.BORROWED),
     # A hoisted argument temporary: storage the statement owns. A further
     # read of one reads the same storage (its creator stamps the temp's own
@@ -6027,6 +6024,25 @@ def _owned_buffer(t: 'TpyType | None', analyzer) -> bool:
     return _viewfam_of(t, analyzer) is not None or _is_string_owned(t)
 
 
+def slot_payload_lent(slot_t: TupleType, lc: '_LowerCtx', *,
+                      const: bool = False) -> THIRLent:
+    """An owning slot's tuple payload lent as the borrow tuple `slot_t`
+    spells (`to_cpp_return`), element by element."""
+    return lent_holder(storage_type(slot_t), slot_t, lc, const=const)
+
+
+def lent_holder(held_t: TpyType, slot_t: TupleType, lc: '_LowerCtx', *,
+                const: bool = False, loc=None) -> THIRLent:
+    """A tuple of type `held_t` that its statement holds in storage it
+    renders itself, lent as the borrow tuple `slot_t` element by element
+    (`THIRLent`)."""
+    read_id = next(lc.temp_read_ids)
+    read = stamped(THIRTempRead(result_type=held_t, read_id=read_id,
+                                loc=loc), lc)
+    return THIRLent(read_id, tuple_borrow_lift(read, slot_t, lc.analyzer,
+                                               const=const))
+
+
 def stamped(node: THIRExpr, lc: '_LowerCtx') -> THIRExpr:
     """`node` with its `Source`, for a node an arm builds beside
     `_lower_expr` (a bare receiver, a coerce's inner, a field source): the
@@ -6036,55 +6052,11 @@ def stamped(node: THIRExpr, lc: '_LowerCtx') -> THIRExpr:
     return replace(node, source=stamp_source(None, node, lc, {}))
 
 
-def _element_type(t: 'TpyType | None', index: int) -> 'TpyType | None':
-    """Element `index` of a tuple type as declared (`Own` kept), None for
-    no tuple."""
-    if t is None:
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
-        t = unwrap_readonly(t.wrapped)
-    if isinstance(t, TupleType) and index < len(t.element_types):
-        return t.element_types[index]
-    return None
-
-
-def element_source(parent: Source, index: int, *,
-                   held: 'Held | None' = None, pointer: bool = False, trait: 'TraitAbi | None' = None,
-                   const: bool = False, movable: bool = False,
-                   pointee_owned: 'bool | None' = None,
-                   undeclared: bool = False,
-                   own: 'Source | None' = None) -> Source:
-    """THE constructor of a tuple source's leaf (`Source.elems[index]`):
-    the element projected from its `parent` Source plus the layout's answer
-    for it -- `held` where it lives, a bare `pointer` into storage held
-    elsewhere, or an open `T` spelled through `trait`, else inline.
-
-    An inline (or trait) leaf is part of the parent's object: const where
-    the parent is, dying with it. A pointer leaf's const is its pointee's
-    (`const`, the layout's), and its pointee's lifetime is unknown here.
-    Either is captured where the parent is, and must be copied where the
-    whole must. A leaf the parent builds from an expression of its own (a
-    literal's element) is that expression's Source (`own`), with the
-    layout's representation.
-
-    What the layout does not state is unknown and grants nothing: no move
-    (`movable`, `pointee_owned` None), no copy permission
-    (`copy_declared`)."""
-    if own is not None:
-        return replace(own, pointer_held=own.pointer_held or pointer,
-                       trait=trait, pointee_owned=pointee_owned)
-    assert held is not None, "a projected leaf names where it lives"
-    inline = not pointer
-    return Source(held=held, pointer_held=pointer, trait=trait,
-                  const=const or (inline and parent.const),
-                  movable=movable, pointee_owned=pointee_owned,
-                  undeclared=undeclared,
-                  must_copy=parent.must_copy,
-                  captured=parent.captured,
-                  temporary=parent.temporary if inline else None,
-                  named_type=_element_type(parent.named_type, index),
-                  analyzed_type=_element_type(parent.analyzed_type, index))
+def _uw_param(rec: BindingRepr) -> 'TpyType | None':
+    """A parameter's declared type under its transparent wrappers."""
+    t = rec.param_type
+    return (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+            if t is not None else None)
 
 
 def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
@@ -6095,8 +6067,14 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
     (`_read_owned_elements`): a borrowed element is someone else's object,
     and one of an undeclared read is nobody's to move. Its pointee is const
     where the binding's pointers are. An owned tuple's element is held as
-    its layout holds it."""
+    its layout holds it. Each element's copy is declared where the read's
+    record copies a leaf of it (`SourceRecord.copies_at`)."""
     movable = parent.movable
+    record = verdict(lc.analyzer.ctx, e)
+
+    def copies(i: int) -> bool:
+        return bool(record.copies_at((i,)))
+
     if rec.ptr_tuple is not None:
         ets = rec.ptr_tuple.element_types
         owned = _read_owned_elements(e, rec, lc, len(ets))
@@ -6107,10 +6085,12 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
                          and i < len(owned) and owned[i]),
                 pointee_owned=(owned[i] if owned is not None
                                and i < len(owned) else None),
-                undeclared=movable and owned is None)
+                undeclared=movable and owned is None,
+                copy_declared=copies(i))
             if TupleType._element_is_pointer_repr(et)
             else element_source(
                 parent, i, held=Held.STORAGE, movable=movable,
+                copy_declared=copies(i),
                 trait=(TraitAbi.VAL_OR_PTR
                        if TupleType._element_is_val_or_ptr(et) else None))
             for i, et in enumerate(ets))
@@ -6137,12 +6117,14 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
             return None
         return tuple(
             element_source(parent, i, held=Held.STORAGE,
-                           movable=movable and owned[i])
+                           movable=movable and owned[i],
+                           copy_declared=copies(i))
             if ((inline_elems is not None and inline_elems[i])
                 or not TupleType._element_is_pointer_repr(et))
             else element_source(
                 parent, i, held=Held.BORROWED, pointer=True, const=rec.const,
-                movable=movable and owned[i], pointee_owned=owned[i])
+                movable=movable and owned[i], pointee_owned=owned[i],
+                copy_declared=copies(i))
             for i, et in enumerate(ets))
     if rec.tuple_layout is None:
         return None
@@ -6151,11 +6133,21 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
         if isinstance(m, THIRBorrowedRecord):
             out.append(element_source(parent, i, held=Held.BORROWED,
                                       pointer=True, const=m.readonly,
-                                      pointee_owned=False))
+                                      pointee_owned=False,
+                                      copy_declared=copies(i)))
         elif isinstance(m, THIROwnedRecord):
-            out.append(element_source(parent, i, held=Held.STORAGE))
+            out.append(element_source(parent, i, held=Held.STORAGE,
+                                      copy_declared=copies(i)))
         else:
-            out.append(element_source(parent, i, held=Held.VALUE))
+            # A parameter holds its elements in their borrow form, which a
+            # union or a nested tuple spells apart from its storage.
+            out.append(element_source(
+                parent, i,
+                held=(Held.BORROWED
+                      if rec.is_param and elem_borrow_form_differs(m)
+                      and not isinstance(_uw_param(rec), OwnType)
+                      else Held.VALUE),
+                copy_declared=copies(i)))
     return tuple(out)
 
 
@@ -6257,7 +6249,9 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
         return False
     if e is not None:
         return _dies(e, lc.analyzer)
-    if isinstance(node, (THIRName, THIRSelf)):
+    if isinstance(node, (THIRName, THIRSelf, THIRTempRead)):
+        # A temp read with no source of its creator's is a loop's step, an
+        # element of the source the loop holds.
         return False
     if isinstance(node, (THIRFieldAccess, THIRSubscript)):
         return stamped(node.receiver, lc).source.temporary
@@ -6266,6 +6260,54 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
     if isinstance(node, THIRNoneCheck):
         return stamped(node.value, lc).source.temporary
     return None
+
+
+def _prvalue(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx') -> bool:
+    """`Source.prvalue`: a construction or a literal, a call whose C++
+    hands back its result by value (neither a lent operand nor a reference
+    into storage), or a select of two such."""
+    if isinstance(node, (THIRCtorCall, THIRTupleLiteral,
+                         THIRBorrowTupleLiteral)):
+        return True
+    if isinstance(node, THIRIfExpr):
+        return all(stamped(a, lc).source.prvalue
+                   for a in (node.then, node.orelse))
+    if (isinstance(node, (THIRCall, THIRMethodCall))
+            and isinstance(e, (TpyCall, TpyMethodCall))):
+        # A borrow-declared binding hands back an operand by reference,
+        # whatever copy its holders make of it (a generic body's COPY
+        # verdict is the hedged contract, not the C++ return).
+        if e.result_form not in (ResultForm.NOT_DECLARED, ResultForm.VALUE):
+            return False
+        return (not is_property_getter_read(e)
+                and not call_returns_cpp_ref(lc.analyzer,
+                                             e.resolved_function_info))
+    return False
+
+
+def _place(node: THIRExpr, lc: '_LowerCtx') -> bool:
+    """`Source.place`: a name, a hoisted temp's read, a member (through no
+    user `__deref__`) or tuple element of a place, or an element of a place
+    by a name or literal index whose read is proven in range and has an
+    unchecked form. Any other element read is no place: reading it again
+    repeats its bounds check, or hashes a key again (running its
+    `__hash__`)."""
+    if isinstance(node, (THIRName, THIRSelf, THIRTempRead)):
+        return True
+    if isinstance(node, THIRFieldAccess):
+        return not node.deref_chain and stamped(node.receiver, lc).source.place
+    if isinstance(node, THIRSubscript):
+        if node.tuple_index is None:
+            index = node.index
+            while isinstance(index, THIRCoerce):
+                index = index.expr
+            if (node.record_getitem or not node.element_access
+                    or not (node.bounds_safe
+                            and node.unchecked_getitem is not None)
+                    or not isinstance(index, (THIRLiteral, THIRName))):
+                return False
+        return stamped(node.receiver, lc).source.place
+    return False
 
 
 def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
@@ -6328,6 +6370,10 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
         const = const or stamped(lowered.receiver, lc).source.const
     elif isinstance(lowered, THIRCoerce):
         const = const or stamped(lowered.expr, lc).source.const
+    elif isinstance(lowered, THIRIfExpr):
+        # A select hands back one of its arms: const where either is.
+        const = const or any(stamped(a, lc).source.const
+                             for a in (lowered.then, lowered.orelse))
     elif isinstance(lowered, THIRNoneCheck):
         # The checked value's referent, const where the value is.
         const = const or stamped(lowered.value, lc).source.const
@@ -6381,7 +6427,10 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                     named_type=named_type,
                     analyzed_type=(lc.analyzer.get_expr_type(e)
                                    if e is not None else None),
-                    copy_type=copy_type)
+                    copy_type=copy_type,
+                    prvalue=(_prvalue(e, lowered, lc)
+                             or (prior is not None and prior.prvalue)),
+                    place=_place(lowered, lc))
     layout_elems = (_tuple_layout_elems(e, rec, lc, source)
                     if rec is not None else None)
     if layout_elems is not None:
@@ -6395,9 +6444,27 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
             element_source(source, i, own=stamped(x, lc).source,
                            pointer=addr)
             for i, (x, addr) in enumerate(zip(lowered.elements, addrs))))
+    if isinstance(lowered, THIRSubscript) and lowered.tuple_index is not None:
+        # An element of a tuple is the leaf its whole holds -- the one
+        # element-Source function a conversion's element reads take theirs
+        # from -- read here with its own record's facts.
+        leaf = _tuple_leaf(lowered, lc)
+        if leaf is not None:
+            source = replace(source, held=leaf.held, trait=leaf.trait,
+                             pointee_owned=leaf.pointee_owned)
     if named:
         binding_shadow.check_read(e, lowered, lc, declared)
     return source
+
+
+def _tuple_leaf(node: THIRSubscript, lc: '_LowerCtx') -> 'Source | None':
+    """Element `node.tuple_index` of the tuple `node` reads, as its whole
+    holds it (`source.tuple_elems`)."""
+    receiver = stamped(node.receiver, lc)
+    layout = layout_tuple(receiver)
+    if layout is None or node.tuple_index >= len(layout.element_types):
+        return None
+    return tuple_elems(receiver.source, layout)[node.tuple_index]
 
 
 def copied_type(t: 'TpyType | None', analyzer, *,
@@ -6933,8 +7000,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and (_resolved_str_value(rtype, analyzer) is not None
                              or _bytes_view_family_value(rtype, analyzer)))
                     # An F3 tuple FIELD read consumed by a borrow lift
-                    # (`t = h.pair` -> `tuple_to_pointer<..>(h.pair)`): the
-                    # bare member read feeds the wrap.
+                    # (`t = h.pair`, lent element by element): the
+                    # bare member read feeds the lend.
                     or (use.result is _ExprResultUse.BORROW_BIND
                         and _f1_tuple(rtype, analyzer) is not None)
                     # A VALUE-tuple field read consumed whole
@@ -8024,7 +8091,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and bool(_witness("subscript.value_tuple_source")))
             # A BORROW-form tuple element read feeding the arg wrap
             # (`consume(items[0])`): the checked read renders bare and the
-            # caller's `tuple_to_pointer` supplies the storage->borrow lift,
+            # caller's per-element lend supplies the storage->borrow lift,
             # so nothing here depends on the element's own form. BORROW_BIND
             # only -- a value-position read of the same element keeps its
             # own rows.
@@ -8400,13 +8467,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and not (lc.func.is_generator or lc.func.is_async)):
             # A HOISTED borrow-tuple walrus with an owning-call value
             # (`(t := make_pair(9))[0]`): the emplace-into-slot render with
-            # the bare-name tail (`(t = ::tpy::tuple_to_pointer<{borrow}>(
-            # __slot_N.emplace(...)), t)`); the if-head hoist pre-declared
-            # the local, a pointer tuple, so the slot is the binding's.
+            # the bare-name tail (`(t = (__slot_N.emplace(...), B{..}), t)`);
+            # the if-head hoist pre-declared the local, a pointer tuple, so
+            # the slot is the binding's.
             wrec = lc.binding(e.target)
-            bc = (vtu.to_cpp_return_const()
-                  if wrec.const
-                  else vtu.to_cpp_return())
+            lent = slot_payload_lent(vtu, lc, const=wrec.const)
             wv = _lower_expr(e.value, lc, declared,
                              use=_ExprUse(result=_ExprResultUse.STORAGE,
                                           allow_temps=True,
@@ -8415,7 +8480,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             node = THIRWalrus(
                 result_type=vtu, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
-                value=wv, slot_cpp=lc.render_type(vtu), borrow_cpp=bc,
+                value=wv, slot_cpp=lc.render_type(vtu), lent=lent,
                 tail="name", loc=loc, binding=wrec)
             lc.storage_slots.stamp(node, e)
             return node
@@ -8547,8 +8612,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # REASSIGNED borrow-tuple walrus (`(t := make_pair(9))` later
             # rebound to a storage alias): per-element-Own collapses to the
             # unified borrow type; the borrow local pre-declares and the
-            # rvalue-call value materializes into the owning `__slot_N`
-            # (`(t = tuple_to_pointer<..>(__slot_N.emplace(v)), t)`).
+            # rvalue-call value materializes into the owning `__slot_N`,
+            # which the local borrows element by element.
             # Non-call sources and hoisted/const targets reject.
             cvt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                 collapse_tuple_own_elements(vtu))))
@@ -8576,12 +8641,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             declared[e.target] = cvt
             _witness("expr.walrus_btuple_slot")
             wrec = lc.binding(e.target)
+            lent = slot_payload_lent(cvt, lc)
             node = THIRWalrus(
                 result_type=cvt, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
                 value=lowered_value,
                 cpp_type=cvt.to_cpp_return(),
-                slot_cpp=lc.render_type(cvt), borrow_cpp=cvt.to_cpp_return(),
+                slot_cpp=lc.render_type(cvt), lent=lent,
                 tail="name", loc=loc, binding=wrec)
             lc.storage_slots.stamp(node, e)
             return node
@@ -8594,8 +8660,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # Non-reassigned borrow-tuple walrus (`(t := (1, b))` /
             # `(t := items[0])` / `(p := make_mixed(b))`): predecl
             # `std::tuple<..., T*> t;` + the plain assign -- a literal
-            # renders borrow-form, a storage lvalue subscript lifts via
-            # tuple_to_pointer (the btuple reseat arm's value split), and a
+            # renders borrow-form, a storage lvalue subscript is lent
+            # element by element (the btuple reseat arm's value split), and a
             # MIXED own+borrow CALL already IS the local's shape, so it
             # binds directly. Reassigned (rebind-slot) walruses and OWNING
             # tuple-call sources reject.
@@ -8615,11 +8681,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                   and not e.value.needs_optional_runtime_check
                   and _subscript_container_recv_type(
                       e.value.obj, declared, analyzer) is not None):
-                lowered_value = THIRFormConvert(
-                    result_type=vtu,
-                    value=_lower_expr(e.value, lc, declared,
-                                      subscript_prechecked=True),
-                    form=Form.BORROW, is_const=const, loc=loc)
+                lowered_value = tuple_borrow_lift(
+                    _lower_expr(e.value, lc, declared,
+                                subscript_prechecked=True),
+                    vtu, analyzer, const=const)
             elif _mixed_own_btuple_call(e.value, analyzer):
                 # The call renders its own mutable borrow tuple.
                 if const:
@@ -11928,7 +11993,7 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         # from the source while the tuple type comes from the local's borrow
         # spelling, and over a `readonly` container the two disagree and emit
         # ill-formed C++ (BUGS.md). A storage-form source would need the
-        # tuple_to_pointer lift.
+        # per-element lend.
         if not (isinstance(e.value, (TpyCall, TpyMethodCall))
                 and _f1_tuple(analyzer.get_expr_type(e.value),
                               analyzer) is not None
@@ -12094,7 +12159,7 @@ def _borrow_tuple_param_names(lc: '_LowerCtx') -> 'frozenset[str]':
     """Params whose C++ binding is ALREADY a borrow-form (pointer-repr) tuple
     -- `const std::tuple<T*, ..>&`. The positive half of the storage-vs-borrow
     split for tuple NAMES; a loop var / alias local is a storage source and
-    needs the `tuple_to_pointer` lift instead.
+    needs the per-element lend instead.
     Mirrors `_borrow_form_tuple_param`'s param scan, which the tuple-unpack
     arm uses for the same discrimination."""
     return frozenset(
@@ -12262,7 +12327,8 @@ def _lower_lambda(e: TpyLambda, lc: '_LowerCtx',
                  else f"lambda.body:{ex.reason}")
         # Unmarked on purpose: demoting an enclosing member-init would not
         # give the lambda body a statement to hoist into.
-        raise ThirUnsupported(f"expr.lambda:{cause}", loc=e.loc) from None
+        raise ThirUnsupported(f"expr.lambda:{cause}", loc=e.loc,
+                              message=ex.message) from None
     finally:
         lc.global_binding_scope = global_scope
 
@@ -12845,8 +12911,8 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
             and _value_tuple(su_tup, lc.analyzer) is None):
         # A bare NAME at a NON-VALUE tuple element slot (`[t for t in src]`
         # at `list[tuple[int32, Cell]]`): the whole borrow-form binding
-        # copies into storage via the non-move tuple_to_storage (the
-        # element wrap over the loop-var read). Only a declared, plain
+        # is copied into storage element by element (each element read off
+        # the loop var). Only a declared, plain
         # (non-pointer, non-narrowed) name is admitted. A `copy()` wrapper
         # is the copy() call's own storage value (its tuple-name row).
         if (_storage_tuple_name_ok(e, su_tup, declared, lc.names_with("pointer"),
@@ -12873,8 +12939,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                 return _elem_maybe_move(inner, e, lc,
                                         suppress_move=suppress_move,
                                         tuple_elem=tuple_elem)
-            return tuple_storage_lift(inner, su_tup,
-                                      loc=getattr(e, "loc", None))
+            return tuple_storage_lift(inner, su_tup, lc.analyzer)
         raise ThirUnsupported("expr.tuple_literal.slot")
     if (isinstance(e, TpySubscript) and isinstance(su_tup, TupleType)
             and su_tup.has_pointer_repr_element()
@@ -12882,7 +12947,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         # A whole storage-tuple ELEMENT read at a non-value tuple slot
         # (`[items[0]]` -> `{::tpy::__getitem__(items, 0)}`): the checked
         # element lvalue is the storage value already, so it copies bare --
-        # no tuple_to_storage wrap (the gate admitted only a
+        # no per-element storage conversion (the gate admitted only a
         # same-type F1 element read).
         _witness("containerlit.tuple_subscript_storage")
         return _lower_expr(
@@ -12894,18 +12959,18 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         _mos = _mixed_own_storage_source(e, su_tup, frozenset(), lc.analyzer)
         if _mos is not None:
             # A MIXED-own-tuple call source: the owning slot materializes
-            # the borrowed half via the NON-move lift
-            # (`{::tpy::tuple_to_storage<std::tuple<Box, Box>>(
-            # make_mixed(b))}`; a `copy()` wrapper peeled -- the wrap IS
-            # the copy).
+            # the borrowed half element by element over the held call
+            # (`std::tuple<Box, Box>{std::move(std::get<0>(__tmp_1)),
+            # (*std::get<1>(__tmp_1))}`; a `copy()` wrapper peeled -- the
+            # conversion IS the copy).
             _witness("containerlit.tuple_mixed_call")
-            return THIRFormConvert(
-                result_type=su_tup,
-                value=_lower_expr(
+            return tuple_storage_lift(
+                _lower_expr(
                     _mos, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.VALUE,
-                                 pos=SinkPos.CONTAINER_ELEM, forms=_ONLY_BTUPLE_SLOT)),
-                form=Form.STORAGE, move=False, loc=getattr(e, "loc", None))
+                                 pos=SinkPos.CONTAINER_ELEM,
+                                 forms=_ONLY_BTUPLE_SLOT)),
+                su_tup, lc.analyzer, copy=True)
     if isinstance(e, TpyTupleLiteral):
         # A nested value-tuple element lowers against its slot TupleType;
         # tuple literals have no generic _lower_expr arm.
@@ -12926,71 +12991,34 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
                 _witness("containerlit.tuple_union_elem")
         if vt is not None:
             return _lower_tuple_literal(e, vt, lc, declared)
-        # A non-value tuple element stores via `tuple_to_storage<S>(S{...})`:
-        # the inner spells the storage tuple S with its members lowered as
-        # storage container elements, and the STORAGE FormConvert emits the
-        # helper (mirrors the MIL pointer-repr-tuple field write). The
-        # resumable frame-EMPLACE position spells a SEQUENCE element BARE
-        # instead (typed_brace_init: the emplaced brace is already
-        # storage-typed, so no per-element wrap applies) -- vector
-        # and fixed-size `Array[T, N]` alike. `frame_bare_tuple` is the
-        # positive signal from the list/Array literal arm rather than a
-        # proxy: the dict VALUE position, which KEEPS the wrap, differs from
-        # a vector element on `retype_scalars` but from an Array element on
-        # nothing else.
+        # A non-value tuple element: each member lowered at its own storage
+        # slot, so the literal is the storage tuple (a reference member
+        # copies or moves as its record says).
         su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
             if slot is not None else None
-        if (isinstance(su, TupleType)
-                and len(e.elements) == len(su.element_types)
-                and _tuple_literal_has_ref_elements(e, su)
-                and (_tuple_elem_slots_ptr_optional(su)
-                     or (_tuple_elem_slots_record_lvalue(e, su, lc.analyzer)
-                         and not _members_record_move(e, su, lc)))):
-            # The has_ref_elements path: the inner is the
-            # BORROW form (`std::tuple<T*, T*>{&(t1), nullptr}`) and the
-            # STORAGE convert emits `tuple_to_storage<S>(...)` over it. The
-            # storage-direct sibling below serves the all-value-slot shape.
-            # `storage_context` gives a simple-lvalue record member the
-            # CONST_REF slot (`const P*` + `&(c)`).
-            # `rvalue_ok`: a container-literal element is a flush position
-            # for the `tuple_value_to_borrow` source tuple, so a ctor rvalue
-            # at a pointer-repr slot renders there exactly as it does at a
-            # call arg (`tuple_to_storage<S>(tuple_value_to_borrow<B>(
-            # std::tuple<P, int32_t>{P(1), 10}))`).
-            _witness("containerlit.tuple_borrow_storage")
-            return THIRFormConvert(
-                result_type=su,
-                value=_lower_borrow_tuple_literal(e, su, lc, declared,
-                                                  storage_context=True,
-                                                  rvalue_ok=True),
-                form=Form.STORAGE, move=False, loc=getattr(e, "loc", None))
         if isinstance(su, TupleType) and len(e.elements) == len(su.element_types):
+            members = []
+            for member, mt in zip(e.elements, su.element_types):
+                el = _lower_container_elem(member, mt, lc, declared,
+                                           tuple_elem=True)
+                # The braced member initializes its element in place.
+                upcast = (upcast_copy(lc.analyzer.get_expr_type(member), mt)
+                          if not isinstance(el, THIRMove)
+                          and el.source is not None
+                          and _existing_object(el.source) else None)
+                if upcast is not None:
+                    raise ThirUnsupported("tuple." + upcast.key,
+                                          loc=getattr(member, "loc", None),
+                                          message=upcast.message)
+                members.append(el)
             inner = THIRTupleLiteral(
-                result_type=su,
-                elements=tuple(
-                    _lower_container_elem(e.elements[i], su.element_types[i],
-                                          lc, declared, tuple_elem=True)
-                    for i in range(len(e.elements))),
+                result_type=su, elements=tuple(members),
                 loc=getattr(e, "loc", None))
             if lc.resumable_leaf_mode and frame_bare_tuple:
                 _witness("containerlit.tuple_frame_elem")
                 return inner
-            if (not su.has_pointer_repr_element()
-                    or _members_record_move(e, su, lc)):
-                # Members the record moves are the storage values already.
-                # The elem wrap keys on
-                # `slot.has_pointer_repr_element()` (+ the always-true-for-
-                # literals `needs_tuple_storage_lift`): a slot with no
-                # pointer-repr element -- e.g. an outer tuple whose only
-                # non-value member is a NESTED tuple -- stores its bare
-                # brace directly; each member replays the decision at its
-                # own slot.
-                _witness("containerlit.tuple_storage_bare")
-                return inner
-            _witness("containerlit.tuple_storage")
-            return THIRFormConvert(result_type=su, value=inner,
-                                   form=Form.STORAGE, move=False,
-                                   loc=getattr(e, "loc", None))
+            _witness("containerlit.tuple_storage_bare")
+            return inner
         raise ThirUnsupported("expr.tuple_literal.slot")
     if isinstance(e, (TpyListComprehension, TpySetComprehension,
                       TpyDictComprehension)):
@@ -13255,8 +13283,7 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
     if (tuple_elem and not suppress_move and isinstance(ou, TupleType)
             and _member_moves_part(e, lc)):
         # A tuple name member some leaves of which move: element by element.
-        return tuple_storage_lift(el, storage_type(ou),
-                                  loc=getattr(e, "loc", None))
+        return tuple_storage_lift(el, storage_type(ou), lc.analyzer)
     return _elem_maybe_move(el, e, lc, suppress_move=suppress_move,
                             tuple_elem=tuple_elem, source=unconverted)
 
@@ -13279,20 +13306,6 @@ def _member_moves_part(m: TpyExpr, lc: '_LowerCtx') -> bool:
     (`Disposition.MIXED`): it lifts element by element
     (`tuple_storage_lift`), never whole."""
     return record_disposition(m, lc.analyzer) is Disposition.MIXED
-
-
-def _members_record_move(e: TpyTupleLiteral, slot: TupleType,
-                         lc: '_LowerCtx') -> bool:
-    """Some reference member of literal `e` at `slot` is a name its owning
-    sink's record moves a leaf of: the literal is built member by member,
-    each converted as its record says (a moving one moved in, any other
-    copied), not lent whole and copied."""
-    return any(
-        record_disposition(m, lc.analyzer) in (Disposition.MOVE,
-                                               Disposition.MIXED)
-        for m, t in zip(e.elements, slot.element_types)
-        if not unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(t))).is_value_type())
 
 
 def _elem_maybe_move(el: THIRExpr, e: TpyExpr, lc: '_LowerCtx', *,
@@ -13379,10 +13392,10 @@ def _elem_needs_emplace(el: THIRExpr, e: TpyExpr, slot: 'TpyType | None',
     alone, with no element to ask about.
 
     The movable name is read under the element's own wraps (a move, a form
-    lift such as `tuple_to_storage(t)`): this switch asks whether the SOURCE
-    dies here, whatever the element render did with it, while `_node_moves`
-    asks whether the node itself may be spelled `std::move` -- so the two
-    peel differently on purpose."""
+    lift such as a storage tuple built element by element): this switch asks
+    whether the SOURCE dies here, whatever the element render did with it,
+    while `_node_moves` asks whether the node itself may be spelled
+    `std::move` -- so the two peel differently on purpose."""
     inner = el
     while isinstance(inner, (THIRMove, THIRFormConvert)):
         inner = inner.value
@@ -13394,14 +13407,13 @@ def _builds_by_move(el: THIRExpr) -> bool:
     """Whether element `el` moves an object in, which a brace-init would
     copy once more out of its const list: a move, a storage lift that moves
     its source or an element of it, a tuple literal one of whose members
-    does. A copying lift (`tuple_to_storage<S>(t)`, `std::string(s)`) keeps
-    the brace-init, which evaluates its elements left to right."""
+    does. A copying lift (a storage tuple built element by element,
+    `std::string(s)`) keeps the brace-init, which evaluates its elements left
+    to right."""
     if isinstance(el, THIRMove):
         return True
     if isinstance(el, THIRFormConvert):
-        return (el.move or _builds_by_move(el.value)
-                or any(m in ("move", "move_pointee")
-                       for m in el.elem_modes or ()))
+        return el.move or _builds_by_move(el.value)
     return (isinstance(el, THIRTupleLiteral)
             and any(_builds_by_move(m) for m in el.elements))
 
@@ -13411,12 +13423,12 @@ def _copy_lift_builds_alone(elements: 'tuple[THIRExpr, ...]',
                             lc: '_LowerCtx') -> bool:
     """Whether a container literal builds through the reserve+emplace
     helpers because a member is a copying storage lift of a value holding
-    a reference leaf (`tuple_to_storage<S>(t)`): a brace-init would copy
-    the lift's temporary once more out of its const list. The helpers
-    evaluate their arguments in no set order, so only where that cannot
-    reorder side effects: every other member is a literal or a name of a
-    value type (BUGS.md#list-literal-owned-elem-initializer-copy keeps the
-    rest)."""
+    a reference leaf (a storage tuple built element by element): a
+    brace-init would copy the lift's temporary once more out of its const
+    list. The helpers evaluate their arguments in no set order, so only
+    where that cannot reorder side effects: every other member is a literal
+    or a name of a value type
+    (BUGS.md#list-literal-owned-elem-initializer-copy keeps the rest)."""
     lifts = [i for i, el in enumerate(elements) if _copying_lift(el)]
     return bool(lifts) and all(
         i in lifts[:1] or _side_effect_free(x, lc)
@@ -13424,11 +13436,13 @@ def _copy_lift_builds_alone(elements: 'tuple[THIRExpr, ...]',
 
 
 def _copying_lift(el: THIRExpr) -> bool:
-    """A storage lift that copies its source into a temporary holding a
-    reference leaf."""
+    """A storage value built into a temporary holding a reference leaf: a
+    form conversion, or a tuple built element by element (a brace-init
+    would copy it once more out of its const list)."""
     st = storage_type(el.result_type)
-    return (isinstance(el, THIRFormConvert) and el.form is Form.STORAGE
-            and not _builds_by_move(el) and st is not None
+    lift = ((isinstance(el, THIRFormConvert) and el.form is Form.STORAGE)
+            or isinstance(el, THIRTupleLiteral))
+    return (lift and not _builds_by_move(el) and st is not None
             and contains_reference_type(st))
 
 
@@ -13544,10 +13558,11 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     subset. Per element the slot-info ladder's sliced arms: VALUE mode lowers
     through the value container-elem rows (bare, no lift); REF/CONST_REF mode
     admits a plain pointer-repr non-value lvalue NAME -- `&(name)`, or bare
-    for an already-pointer name -- and spells `T*` / `const T*`. Everything
-    else (rvalue borrow elements and their tuple_value_to_borrow helper
-    machinery, pointer-repr Optional / union / TypeParamRef element slots,
-    non-name lvalues) rejects with a named detail.
+    for an already-pointer name -- and spells `T*` / `const T*`. At a call
+    argument an rvalue element is built by value into a source tuple the
+    literal's own lambda binds (`THIRTupleLiteral.binds`) and lends from,
+    so it lives to the end of the call's full expression. Everything else
+    rejects with a named detail.
 
     `consuming` marks the OWNING sink (`Own[tuple[...]]`), which keeps the
     tuple past the full-expression: an rvalue element must land in a value
@@ -13573,14 +13588,16 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         note_detail("btuple.frame_elem_nested")
         raise ThirUnsupported("expr.tuple_literal")
     parts: list[str] = []
-    src_parts: list[str] = []
+    # The source tuple's part of an rvalue element built by value.
+    src_parts: dict[int, str] = {}
+    # Per rvalue element, the type the literal lends it as.
+    lent: dict[int, TpyType] = {}
     lowered: list[THIRExpr] = []
     lifts: list[bool] = []
     # `consuming` (the Own[tuple] element sink, `pairs.append((a, b))`):
     # a movable last-use lvalue element moves over its pointer render
     # (`std::move(&(a))`), carried as a per-element wrap.
     wraps: list['str | None'] = []
-    any_rvalue = False
     captures: list[TupleElemCapture] = []
     frame_hoisted: set[int] = set()
     for i in range(n):
@@ -13600,10 +13617,10 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             # here): a value element picks VALUE, every other element the
             # target-provided REF arm (CONST_REF under a readonly target) --
             # the slot-info ladder's non-storage tail. In a STORAGE context
-            # (a container element feeding tuple_to_storage) a simple-lvalue
-            # element is CONST_REF: the borrow tuple is a read-only transient
-            # and a const-pointer slot is required to bind a const member
-            # source (the slot-info storage rule; a
+            # (a container element built into storage element by element) a
+            # simple-lvalue element is CONST_REF: the borrow tuple is a
+            # read-only transient and a const-pointer slot is required to
+            # bind a const member source (the slot-info storage rule; a
             # readonly-typed sema read forces const the same way).
             if et_bare.is_value_type():
                 mode = TupleElemCapture.VALUE
@@ -13651,7 +13668,6 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 raise ThirUnsupported("expr.tuple_literal")
             _witness("btuple.nested_elem")
             parts.append(inner.spelled_cpp)
-            src_parts.append(inner.spelled_cpp)
             lowered.append(inner)
             lifts.append(False)
             wraps.append(None)
@@ -13672,13 +13688,15 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 raise ThirUnsupported("expr.tuple_literal")
             ptr_base = lc.render_type(payload)
             parts.append(f"{ptr_base}*")
-            src_parts.append(ptr_base)
-            lowered.append(_lower_copy_special(
-                member, "copy", payload, lc, declared,
-                getattr(member, "loc", None)))
+            lowered.append(_hoisted(THIRArgTemp(
+                result_type=payload, cpp_type=ptr_base,
+                init=_lower_copy_special(
+                    member, "copy", payload, lc, declared,
+                    getattr(member, "loc", None)),
+                form=Form.BORROW, addr_of=True, movable=payload.is_movable(),
+                loc=getattr(member, "loc", None)), lc))
             lifts.append(False)
             wraps.append(None)
-            any_rvalue = True
             continue
         if mode == TupleElemCapture.VALUE:
             lowered.append(_lower_container_elem(
@@ -13687,7 +13705,6 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             lifts.append(False)
             wraps.append(None)
             parts.append(lc.render_type(et_bare))
-            src_parts.append(lc.render_type(et_bare))
             continue
         # Borrow slot: the earlier slot-info arms (pointer-repr Optional,
         # pointer-variant union, TypeParamRef) each spell their own form --
@@ -13796,7 +13813,6 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 if node is not None:
                     _witness("btuple.elem_optptr")
                     parts.append(slot_part)
-                    src_parts.append(slot_part)
                     lowered.append(node)
                     lifts.append(False)
                     # The consuming sink moves a movable last-use lvalue's
@@ -13827,7 +13843,9 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                 raise ThirUnsupported("expr.tuple_literal")
             _witness("btuple.elem_ptr_union")
             parts.append(et_slot.to_cpp_return_const())
-            src_parts.append(lc.render_type(et_slot))
+            # The value variant, lent as the const pointer variant.
+            src_parts[i] = lc.render_type(et_slot)
+            lent[i] = et_slot
             lowered.append(_lower_expr(
                 elem, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
@@ -13835,7 +13853,6 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                              slot_target=et_slot)))
             lifts.append(False)
             wraps.append(None)
-            any_rvalue = True
             continue
         if (isinstance(et_slot, (OptionalType, UnionType, TypeParamRef))
                 or et_slot.value_form() is not ValueForm.BORROW_REF
@@ -13843,9 +13860,9 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             note_detail("btuple.elem_slot")
             raise ThirUnsupported("expr.tuple_literal")
         if is_rvalue_source(analyzer, elem):
-            # Rvalue-into-borrow: the element renders VALUE-form into the
-            # helper's source tuple; `tuple_value_to_borrow` takes its
-            # address inside. Only the call-arg sink admits it (sema
+            # Rvalue-into-borrow: the element is built by value into the
+            # source tuple, whose element the literal lends. Only the
+            # call-arg sink admits it (sema
             # pre-rejects rvalue elements at borrow yields; decl rvalues go
             # VALUE-capture) -- elsewhere the guard is defensive.
             if not rvalue_ok:
@@ -13886,16 +13903,16 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                         call_reject_reason("expr.tuple_literal"))
                 frame_hoisted.add(i)
                 _witness("argtemp.frame_temp_elem")
-                src_parts.append(ptr_part)
                 lowered.append(_hoisted(THIRArgTemp(
                     result_type=temp_t, cpp_type=lc.render_type(temp_t),
                     init=elem_init, form=Form.BORROW, addr_of=True,
                     movable=unwrap_ref_type(temp_t).is_movable(),
                     loc=getattr(elem, "loc", None)), lc))
                 continue
-            src_parts.append(ptr_base)
+            _witness("btuple.value_to_borrow")
+            src_parts[i] = ptr_base
+            lent[i] = unwrap_readonly(unwrap_ref_type(et_slot))
             lowered.append(elem_init)
-            any_rvalue = True
             continue
         _btuple_elem_passthrough = False
         if isinstance(elem, TpyName):
@@ -13963,7 +13980,6 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         slot_part = (f"const {ptr_base}*"
                      if mode == TupleElemCapture.CONST_REF else f"{ptr_base}*")
         parts.append(slot_part)
-        src_parts.append(slot_part)
         # RECEIVER use: the element is consumed under the `&(...)` lift (an
         # address-of position), so a record-element subscript's `T&` lvalue
         # row admits -- a plain value position would reject it as a copy.
@@ -13990,17 +14006,26 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     spelled = f"std::tuple<{', '.join(parts)}>"
     elem_wraps = (tuple(wraps) if any(w is not None for w in wraps)
                   else None)
-    if any_rvalue:
-        # The value-form source tuple's slots: value cpp for rvalue elements,
-        # the borrow (pointer) part for lvalue ones -- their lifts happen
-        # inside the source, and the helper passes them through.
-        _witness("btuple.value_to_borrow")
-        return THIRTupleValueToBorrow(
-            result_type=slot, dst_cpp=spelled,
-            src_cpp=f"std::tuple<{', '.join(src_parts)}>",
-            elements=tuple(lowered), addr_of=tuple(lifts),
-            elem_wraps=elem_wraps,
-            loc=getattr(e, "loc", None))
+    if lent:
+        # The rvalue elements are built by value into a source tuple, which
+        # converts to the slot element by element as any tuple source does:
+        # its own lambda binds it for the full expression and lends each
+        # rvalue element out of it. An rvalue at a pointer-repr Optional
+        # element is held as its payload, whose pointer the slot spells.
+        src = [src_parts.get(i, p) for i, p in enumerate(parts)]
+        held_t = TupleType(tuple(lent.get(i, et) for i, et
+                                 in enumerate(slot.element_types)))
+        dest = TupleType(tuple(
+            _const_borrow_part(t)
+            if captures[i] == TupleElemCapture.CONST_REF else t
+            for i, t in enumerate(held_t.element_types)))
+        source = stamped(THIRBorrowTupleLiteral(
+            result_type=held_t, spelled_cpp=f"std::tuple<{', '.join(src)}>",
+            elem_cpps=tuple(src), elements=tuple(lowered),
+            addr_of=tuple(lifts), elem_wraps=elem_wraps or (),
+            loc=getattr(e, "loc", None)), lc)
+        return tuple_borrow_lift(source, dest, analyzer,
+                                 const=target_readonly, call_arg=True)
     _witness("btuple.literal")
     return THIRBorrowTupleLiteral(
         result_type=slot, spelled_cpp=spelled, elem_cpps=tuple(parts),
@@ -14008,6 +14033,36 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         elem_wraps=elem_wraps or (),
         tuple_layout=tuple_layout(slot, analyzer, captures=tuple(captures)),
         loc=getattr(e, "loc", None))
+
+
+def _const_borrow_part(et: TpyType) -> TpyType:
+    """The element a borrow slot spells `const T*` for an element `et`
+    captured by const reference: a pointer-repr Optional's pointer is its
+    payload's; a pointer variant spells its own const form."""
+    core = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+    if isinstance(core, UnionType):
+        return et
+    opt = pointer_repr_optional(core)
+    if opt is not None:
+        core = unwrap_readonly(unwrap_ref_type(opt.inner))
+    return ReadonlyType(core)
+
+
+def _tuple_literal_copy(e: TpyTupleLiteral, stu: TupleType,
+                        lc: '_LowerCtx', declared: dict[str, TpyType],
+                        loc) -> THIRTupleLiteral:
+    """A tuple literal built as the storage tuple `stu`, each element
+    straight into its value slot, so a reference element COPY-constructs
+    (`std::tuple<int32_t, Box>{1, b}`): the copy `copy((1, b))` spells,
+    and a membership needle compared by value."""
+    return THIRTupleLiteral(
+        result_type=resolve_tuple_pending(stu, lc.analyzer),
+        elements=tuple(
+            _slot_literal_retype(
+                _lower_expr(el, lc, declared,
+                            use=_ExprUse(slot_target=et)), et, lc)
+            for el, et in zip(e.elements, stu.element_types)),
+        loc=loc)
 
 
 def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
@@ -14032,9 +14087,7 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
     if len(e.elements) != len(slot.element_types):
         note_detail("gentuple.arity")
         raise ThirUnsupported("expr.tuple_literal")
-    parts: list[str] = []
     lowered: list[THIRExpr] = []
-    wraps: list['str | None'] = []
     for i in range(len(e.elements)):
         et = slot.element_types[i]
         mode = (e.elem_capture[i] if i < len(e.elem_capture)
@@ -14078,26 +14131,25 @@ def _lower_generic_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             if not elem_ok:
                 note_detail("gentuple.elem_source")
                 raise ThirUnsupported("expr.tuple_literal")
-            part = f"::tpy::val_or_ptr_t<{lc.render_type(et)}>"
-            parts.append(part)
-            lowered.append(_lower_expr(elem, lc, declared))
-            wraps.append(f"::tpy::to_val_or_ptr<{part}>({{0}})")
+            # The element's `val_or_ptr_t<T>` slot: the conversion's open-T
+            # lend (`to_val_or_ptr`), the instantiation deciding the
+            # address-of or the value.
+            elem_lowered = _lower_expr(elem, lc, declared)
+            lowered.append(THIRFormConvert(
+                result_type=et, value=elem_lowered, form=Form.BORROW,
+                trait=TraitAbi.VAL_OR_PTR,
+                loc=getattr(elem, "loc", None)))
             continue
         if _value_tuple_element_ok(et, analyzer):
-            parts.append(lc.render_type(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(et)))))
             lowered.append(_lower_container_elem(elem, et, lc, declared,
                                                  tuple_elem=True))
-            wraps.append(None)
             continue
         note_detail("gentuple.elem_slot")
         raise ThirUnsupported("expr.tuple_literal")
     _witness("gentuple.literal")
-    return THIRBorrowTupleLiteral(
-        result_type=slot,
-        spelled_cpp=f"std::tuple<{', '.join(parts)}>", elem_cpps=tuple(parts),
-        elements=tuple(lowered), addr_of=tuple(False for _ in lowered),
-        elem_wraps=tuple(wraps), loc=getattr(e, "loc", None))
+    return THIRTupleLiteral(
+        result_type=slot, elements=tuple(lowered), spelled=slot,
+        loc=getattr(e, "loc", None))
 
 
 def _static_repr_subst_cpp(e, lc: '_LowerCtx') -> dict[str, str]:
@@ -14742,18 +14794,16 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     if bt_sub is not None:
         # The container-element twin of the field wrap below: the checked
         # element read is a storage lvalue, so it takes the same
-        # storage->borrow `tuple_to_pointer`. No const-ROOTED source test --
+        # storage->borrow per-element lend. No const-ROOTED source test --
         # a container element's const-ness comes from the slot alone.
         _witness("arg.borrow_tuple_subscript")
-        return THIRFormConvert(
-            result_type=bt_sub,
-            value=_lower_expr(a, lc, declared,
-                              use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-            form=Form.BORROW,
-            is_const=(readonly_target or isinstance(ptype, ReadonlyType)),
-            loc=getattr(a, "loc", None))
+        return tuple_borrow_lift(
+            _lower_expr(a, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+            bt_sub, analyzer,
+            const=(readonly_target or isinstance(ptype, ReadonlyType)), call_arg=True)
     # Kind-blind: a native/template callee's tuple slot is the same borrow
-    # form (`::tpy::tuple_to_str(tuple_to_pointer<..>(t))`), and the lift is
+    # form (the per-element lend), and the lift is
     # position-independent -- it wraps the read, it does not hoist.
     if plain_kind and _own_union_call_pass_arg(a, ptype, analyzer):
         # A same-union Own[A|B]-returning call rvalue moves through the
@@ -14783,18 +14833,16 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         lc.names_with("borrow_tuple_mixed"))
     if bt_name is not None:
         # The NAME twin of the two lift rows above: a storage-form tuple local
-        # takes the same `tuple_to_pointer`. Const-ness is the want_const
+        # takes the same per-element lend. Const-ness is the want_const
         # pair -- the callee's deep-const verdict OR a name bound from a
         # const-iterated source (`const_storage_tuple_locals`).
         _witness("arg.btuple_storage_name")
-        return THIRFormConvert(
-            result_type=bt_name,
-            value=_lower_expr(a, lc, declared,
-                              use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
-            form=Form.BORROW,
-            is_const=(readonly_target or isinstance(ptype, ReadonlyType)
-                      or lc.binding(a.name).const_storage_tuple),
-            loc=getattr(a, "loc", None))
+        return tuple_borrow_lift(
+            _lower_expr(a, lc, declared,
+                        use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
+            bt_name, analyzer,
+            const=(readonly_target or isinstance(ptype, ReadonlyType)
+                   or lc.binding(a.name).const_storage_tuple), call_arg=True)
     if plain_kind and _btuple_pass_arg(a, ptype, analyzer):
         # A borrow-tuple-returning CALL at a MATCHING borrow-form tuple
         # param (`show(f(t1, t2))` at `tuple[T | None, int32, T | None]`):
@@ -14812,20 +14860,19 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
     # takes the same storage->borrow lift over the bare member read.
     bt_slot = _borrow_tuple_field_arg(a, ptype, analyzer)
     if bt_slot is not None:
-        # The storage->borrow tuple wrap over the bare member read
-        # (`bump(::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(
-        # h.pair))`); const-ness is the want_const pair -- the
+        # The bare member read lent element by element
+        # (`bump(std::tuple<int32_t, Box*>{std::get<0>(h.pair),
+        # &(std::get<1>(h.pair))})`); const-ness is the want_const pair -- the
         # callee param's deep-const verdict (threaded readonly_target /
         # readonly spelling) OR a const-ROOTED source field
         # (is_const_storage_source: `h.pair` off a const receiver).
         _witness("arg.borrow_tuple_field")
         field = _lower_expr(a, lc, declared,
                             use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-        return THIRFormConvert(
-            result_type=bt_slot, value=field, form=Form.BORROW,
-            is_const=(readonly_target or isinstance(ptype, ReadonlyType)
-                      or _f1_const_rooted_source(a, lc)),
-            loc=getattr(a, "loc", None))
+        return tuple_borrow_lift(
+            field, bt_slot, analyzer,
+            const=(readonly_target or isinstance(ptype, ReadonlyType)
+                   or _f1_const_rooted_source(a, lc)), call_arg=True)
     _ru_borrow_call = (_recursive_union_borrow_call_arg(a, ptype, analyzer)
                        if plain_kind else False)
     _elem_sub = _record_elem_subscript_arg(a, ptype, analyzer)
@@ -15847,12 +15894,11 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             slot_t = resolve_tuple_pending(unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer)
             _witness("move.own_tuple_ptr_lift")
-            per_elem = elementwise_tuple_storage(lowered, slot_t,
-                                                 param_form=True)
+            per_elem = elementwise_plan(
+                lowered, param_tuple_slot(slot_t, lc.analyzer))
             return (per_elem.expr if per_elem is not None
-                    else THIRFormConvert(result_type=slot_t, value=moved,
-                                       form=Form.STORAGE, param_form=True,
-                                       loc=getattr(a, "loc", None)))
+                    else tuple_borrow_lift(lowered, slot_t, lc.analyzer,
+                                           call_arg=True))
         _witness("move.own_tuple")
         return moved
     if _own_tuple_decay_copy_arg(a, ptype, lc, declared):
@@ -15862,11 +15908,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         lowered = _lower_expr(a, lc, declared, allow_unrouted_name=True)
         if mixed_slot_btuple_name(a, ptype, declared, lc.narrow.narrowed):
             _witness("arg.own_tuple_btuple_lift")
-            return THIRFormConvert(
-                result_type=resolve_tuple_pending(unwrap_readonly(
+            return tuple_borrow_lift(
+                lowered, resolve_tuple_pending(unwrap_readonly(
                     unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer),
-                value=lowered, form=Form.STORAGE, param_form=True,
-                loc=getattr(a, "loc", None))
+                lc.analyzer, call_arg=True)
         _witness("arg.own_tuple_decay_copy")
         return THIRDecayCopy(result_type=lowered.result_type, value=lowered,
                              form=Form.STORAGE, loc=getattr(a, "loc", None))
@@ -15887,10 +15932,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # the same spelled value render as the bare tuple slot; an
             # Own[pointer-repr tuple] slot (`pairs.append((a, b))` at
             # `list[tuple[P | None, ..]]`) takes the CONSUMING storage lift:
-            # the borrow tuple builds with per-element moves and
-            # `tuple_to_storage_move<S>(..)` materializes it (per-element
-            # ownership -- last-use lvalue / fresh rvalue / copy() / None --
-            # enforced by the ladder's source rules; anything else rejects).
+            # the storage tuple is built element by element, owned elements
+            # moved (per-element ownership -- last-use lvalue / fresh rvalue /
+            # copy() / None -- enforced by the element rules; anything else
+            # rejects).
             own_inner = unwrap_readonly(pslot.wrapped)
             if _open_t_tuple_slot(own_inner, lc.analyzer) is not None:
                 # An OPEN-T element slot (`pairs.append((copy(k), n))` at
@@ -15915,9 +15960,8 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if isinstance(pslot, TupleType):
             # A tuple literal at a tuple param slot: value tuples take the
             # spelled value render; pointer-repr slots take the borrow
-            # builder -- lvalue elements lift `&(...)`, rvalue elements ride
-            # the tuple_value_to_borrow source-tuple path (the arg is a full
-            # expression, so the source's lifetime covers a SYNC call). Element
+            # builder -- lvalue elements lift `&(...)`, rvalue elements are
+            # held in statement temporaries the tuple points into. Element
             # shapes outside the builder's slice raise.
             # Shared with the user-record METHOD arg loop (`h.set((x, y))`)
             # and the qualified call; the native arg gate admits a tuple
@@ -15943,9 +15987,9 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                         and _witness("call.union_elem_tuple_arg"))):
                 return _lower_borrow_tuple_literal(
                     a, pslot, lc, declared,
-                    target_readonly=isinstance(
+                    target_readonly=const_ref_slot(
                         unwrap_ref_type(unwrap_send_sync(ptype)),
-                        ReadonlyType),
+                        readonly_target),
                     rvalue_ok=True,
                     use=_ExprUse(allow_temps=temp_args or nested_temps),
                     frame_elems=frame_elems,
@@ -16045,8 +16089,8 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # `xs.append(make_mixed(b))`): an OWNING place, so the source is
         # lowered once and rendered off its node by the field write's
         # storage conversion -- a storage read or an owning return passes
-        # bare, a borrow-form name or call lifts through the non-move
-        # `tuple_to_storage`, an owned name at its last use moves (a mixed
+        # bare, a borrow-form name or call is copied into storage element
+        # by element, an owned name at its last use moves (a mixed
         # local moves its tuple VALUE: inline elements move, pointees copy).
         # A name source that copies must be a copy sema declared.
         _at = lc.analyzer.get_expr_type(a)
@@ -18032,18 +18076,8 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         # element COPY-constructs. Lowering the elements through the
         # container-element row instead would MOVE a last-use name here,
         # inverting the copy the construct exists for.
-        _copy_elems = tuple(
-            _slot_literal_retype(
-                _lower_expr(_el, lc, declared,
-                            use=_ExprUse(slot_target=_et)), _et, lc)
-            for _el, _et in zip(src.elements, stu.element_types))
         _witness("call.copy_tuple_storage")
-        return THIRBorrowTupleLiteral(
-            result_type=stu,
-            spelled_cpp=lc.render_type(resolve_tuple_pending(stu, analyzer)),
-            elements=_copy_elems,
-            addr_of=tuple(False for _ in _copy_elems),
-            elem_wraps=(), loc=loc)
+        return _tuple_literal_copy(src, stu, lc, declared, loc)
     if (isinstance(stu, TupleType) and stu.has_pointer_repr_element()
             and _value_tuple(stu, analyzer) is None
             and isinstance(src, TpyName)
@@ -18051,9 +18085,9 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
             and _storage_tuple_name_ok(src, stu, declared, lc.names_with("pointer"),
                                        analyzer)):
         # `copy(t)` of a tuple NAME with reference elements: the storage
-        # value is the copy. A borrow-form binding lifts through the NON-move
-        # `tuple_to_storage<S>(t)` (each pointee deref-copied, even at the
-        # name's last use); a binding that already reads storage
+        # value is the copy. A borrow-form binding is copied into storage
+        # element by element, moving nothing (each pointee deref-copied, even
+        # at the name's last use); a binding that already reads storage
         # copy-constructs.
         _witness("call.copy_tuple_name")
         _tn = _lower_expr(src, lc, declared)
@@ -18061,8 +18095,8 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
             return THIRCall(result_type=rtype, callee=callee, args=(_tn,),
                             cpp_template=f"{lc.render_type(stu)}({{0}})",
                             loc=loc)
-        return THIRFormConvert(result_type=stu, value=_tn,
-                               form=Form.STORAGE, move=False, loc=loc)
+        return tuple_storage_lift(_tn, stu, analyzer,
+                                  copy=True)
     # `copy(x)` of a concrete container source (`copy(d.get(k, dflt))`):
     # the general `{arg_type.to_cpp()}(<deref read>)` tail
     # -> `std::vector<T>(<src>)`. Containers are never pointer-locals, so
@@ -19724,7 +19758,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     elif isinstance(unwrap_readonly(unwrap_ref_type(slot)), TupleType):
         # A tuple ternary carries its ARMS' form: the render is form-blind
         # (`((c) ? (a) : (b))`), but a storage-form arm makes the whole
-        # result storage, and sinks that lift (tuple_to_pointer) must see
+        # result storage, and sinks that lend per element must see
         # that. Without the propagation a storage arm would report VALUE
         # and slip past a lifting sink's admission check.
         form = (Form.STORAGE

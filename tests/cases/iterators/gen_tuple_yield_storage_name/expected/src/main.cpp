@@ -33,7 +33,7 @@ __gen_relay_twice relay_twice(std::vector<std::tuple<int32_t, C>>& items) {
 //         c.v += n
 //     print("method", [c.v for n, c in h.items])
 void main() {
-    std::vector<std::tuple<int32_t, C>> xs = {::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{1, C(5)}), ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{2, C(6)})};
+    std::vector<std::tuple<int32_t, C>> xs = {std::tuple<int32_t, C>{1, C(5)}, std::tuple<int32_t, C>{2, C(6)}};
     {
         auto __src_0 = ::tpyapp::main::storage_relay(xs);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -90,7 +90,7 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    Holder h = Holder(std::vector<std::tuple<int32_t, C>>{::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{3, C(7)}), ::tpy::tuple_to_storage<std::tuple<int32_t, C>>(std::tuple<int32_t, C>{4, C(8)})});
+    Holder h = Holder(std::vector<std::tuple<int32_t, C>>{std::tuple<int32_t, C>{3, C(7)}, std::tuple<int32_t, C>{4, C(8)}});
     {
         auto __src_6 = h.relay();
         auto&& __itr_6 = ::tpy::__iter__(__src_6);

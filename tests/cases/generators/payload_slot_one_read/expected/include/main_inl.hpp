@@ -630,7 +630,7 @@ inline std::expected<std::tuple<A, B>, ::tpy::StopIteration> __gen_own_live::__n
         __state = S_DONE;  // until a yield sets where to resume
         t.emplace(std::tuple<A, B*>{A(1), &(b)});
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_storage<std::tuple<A, B>>((*t));
+        return std::tuple<A, B>{std::get<0>((*t)), (*std::get<1>((*t)))};
     }
     case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies A into owned storage/) warning(/copies B into owned storage/)
         std::get<0>((*t)).v = ::tpy::add_check<int32_t>(std::get<0>((*t)).v, 5);
@@ -778,6 +778,98 @@ inline std::expected<::tpy::val_or_ref<A>, ::tpy::StopIteration> __gen_accessor:
     __builtin_unreachable();
 }
 
+// def move_lend() -> Iterator[tuple[Own[A], B]]:
+//     t = mk_ab()
+//     # the frame's owning tuple at its last use at a mixed step: its owned
+//     # element moves out, the other is lent from the frame (a copyable A:
+//     # BUGS.md#generator-mixed-tuple-nocopy-yield-rejects refuses a @nocopy one)
+//     yield t  # tpyc: ok                                                          # -> S_RESUME_0
+inline std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __gen_move_lend::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(::tpyapp::main::mk_ab());
+        __state = S_RESUME_0;
+        return std::tuple<A, B*>{std::move(std::get<0>((*t))), &(std::get<1>((*t)))};
+    }
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def move_lend_live() -> Iterator[tuple[Own[A], B]]:
+//     t = mk_ab()
+//     # read after the yield: the owned element is the warned copy, the
+//     # other still lent from the frame
+//     yield t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)  # -> S_RESUME_0
+//     print("move_lend_live after", t[1].v)
+inline std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __gen_move_lend_live::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(::tpyapp::main::mk_ab());
+        __state = S_RESUME_0;
+        return std::tuple<A, B*>{std::get<0>((*t)), &(std::get<1>((*t)))};
+    }
+    case S_RESUME_0: {  // after: yield t  # tpyc: warning(/copies A into owned storage \(tuple element 0\)/)
+        std::cout << "move_lend_live after" << " " << std::get<1>((*t)).v << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
+//     t = mk_aob()
+//     # a lent Optional element: its payload's pointer (no read of it lowers
+//     # yet, BUGS.md#lent-optional-tuple-element-match-ice)
+//     yield t  # tpyc: ok                                                     # -> S_RESUME_0
+inline std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __gen_move_lend_opt::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(::tpyapp::main::mk_aob());
+        __state = S_RESUME_0;
+        return std::tuple<A, B*>{std::move(std::get<0>((*t))), ::tpy::optional_to_ptr(std::get<1>((*t)))};
+    }
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def move_lend_union() -> Iterator[tuple[Own[A], B | C]]:
+//     t = mk_abc()
+//     # a lent union element: its pointer variant (a match arm capturing it
+//     # is refused,
+//     # BUGS.md#lent-union-tuple-element-capture-ill-formed)
+//     yield t  # tpyc: ok                                                    # -> S_RESUME_0
+inline std::expected<std::tuple<A, ::tpy::Union<const B*, const C*>>, ::tpy::StopIteration> __gen_move_lend_union::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(::tpyapp::main::mk_abc());
+        __state = S_RESUME_0;
+        return std::tuple<A, ::tpy::Union<const B*, const C*>>{std::move(std::get<0>((*t))), ::tpy::to_const_ptr_variant(std::get<1>((*t)))};
+    }
+    case S_RESUME_0: {  // after: yield t  # tpyc: ok
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // def opt_owned() -> Iterator[Own[L | None]]:
 //     a: L | None = L(1)
 //     # an owned optional record step
@@ -886,7 +978,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_Holder
     }
     case S_RESUME_0: {  // after: yield self.p  # tpyc: ok
         __state = S_RESUME_1;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(__self.p);
+        return std::tuple<int32_t, C*>{std::get<0>(__self.p), &(std::get<1>(__self.p))};
     }
     case S_RESUME_1:  // after: yield self.p
     case S_JOIN_0: {
@@ -896,7 +988,7 @@ inline std::expected<std::tuple<int32_t, C*>, ::tpy::StopIteration> __gen_Holder
         }
         i = ((*__for_i_0))++;
         __state = S_RESUME_0;
-        return ::tpy::tuple_to_pointer<std::tuple<int32_t, C*>>(__self.p);
+        return std::tuple<int32_t, C*>{std::get<0>(__self.p), &(std::get<1>(__self.p))};
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -348,7 +348,7 @@ inline H::H()
 //     # a mixed tuple parameter: element 0 moves, element 1 copies
 //     self.t = p  # tpyc: warning(/copies A into field \(tuple element 1\)/)
 inline void H::put(std::tuple<A, const A*>&& p) {
-    this->t = ::tpy::tuple_to_storage<std::tuple<A, A>>(std::move(p));
+    this->t = std::tuple<A, A>{std::move(std::get<0>(p)), (*std::get<1>(p))};
 }
 
 // def __init__(self, a: Own[A]) -> None:

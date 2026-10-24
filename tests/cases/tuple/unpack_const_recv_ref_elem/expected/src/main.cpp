@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     a, b = pairs[0]  # tpyc: ok
 //     return a + b.n
 int32_t read_only(const std::vector<std::tuple<int32_t, Box>>& pairs) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(pairs, 0));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return (::tpy::add_check<int32_t>(a, b.n));
@@ -23,7 +23,7 @@ int32_t read_only(const std::vector<std::tuple<int32_t, Box>>& pairs) {
 //     b.n += 10
 //     return a + b.n
 int32_t mutating(std::vector<std::tuple<int32_t, Box>>& pairs) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(pairs, 0));
+    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 10);
@@ -35,7 +35,7 @@ int32_t mutating(std::vector<std::tuple<int32_t, Box>>& pairs) {
 //     a, b = h.pair  # tpyc: ok
 //     return a + b.n
 int32_t field_read(const Holder& h) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
+    auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return (::tpy::add_check<int32_t>(a, b.n));
@@ -48,7 +48,7 @@ int32_t field_read(const Holder& h) {
 //     print("field", field_read(Holder(Box(5))))
 //     print("method", Holder(Box(6)).total())
 void main() {
-    std::vector<std::tuple<int32_t, Box>> xs = ::tpy::make_vector<std::tuple<int32_t, Box>>(::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}));
+    std::vector<std::tuple<int32_t, Box>> xs = ::tpy::make_vector<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)});
     std::cout << "read" << " " << ::tpyapp::main::read_only(xs) << "\n" << ::tpy::check_signals;
     std::cout << "mut" << " " << ::tpyapp::main::mutating(xs) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).n << "\n" << ::tpy::check_signals;
     Holder __tmp_1 = Holder(Box(5));

@@ -62,7 +62,7 @@ inline H::H(const Box& a, const Box& b) : t(std::tuple<std::optional<Box>, Box>{
 // def set(self, p: tuple[Optional[Box], Box]) -> None:
 //     self.t = p  # tpyc: warning(/copies/) warning(/copies/)
 inline void H::set(const std::tuple<const Box*, const Box*>& p) {
-    this->t = ::tpy::tuple_to_storage<std::tuple<std::optional<Box>, Box>>(p);
+    this->t = std::tuple<std::optional<Box>, Box>{::tpy::ptr_to_optional(std::get<0>(p)), (*std::get<1>(p))};
 }
 void __tpy_init();
 } // namespace tpyapp::main

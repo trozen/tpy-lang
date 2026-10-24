@@ -14,7 +14,7 @@ void keep_scalar(const Box& b, std::vector<Box>& ys) {
 //     # The subject: the same copy as the scalar above, per reference element.
 //     xs.append(t)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\); use copy\(\)/)
 void keep(const std::tuple<const Box*, int32_t>& t, std::vector<std::tuple<Box, int32_t>>& xs) {
-    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(t));
+    xs.push_back(std::tuple<Box, int32_t>{(*std::get<0>(t)), std::get<1>(t)});
 }
 
 // def main() -> None:

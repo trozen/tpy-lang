@@ -118,7 +118,7 @@ void c_hoist(const std::tuple<A*, int32_t>& x, const std::tuple<A*, int32_t>& z,
 //         print("c_loop", z[0] == q[0], z[1])
 //     print("c_loop src", xs[0][0].v, xs[1][0].v)
 void c_loop() {
-    std::array<std::tuple<A, int32_t>, 2> xs = {::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 1}), ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(2), 2})};
+    std::array<std::tuple<A, int32_t>, 2> xs = {std::tuple<A, int32_t>{A(1), 1}, std::tuple<A, int32_t>{A(2), 2}};
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -314,7 +314,7 @@ void main() {
     ::tpyapp::main::s_hoist<int32_t>(std::tuple<int32_t, int32_t>{5, 1}, std::tuple<int32_t, int32_t>{6, 2}, true, nop);
     ::tpyapp::main::s_store<A>(A(9), bump);
     ::tpyapp::main::s_store<int32_t>(9, nop);
-    std::vector<std::tuple<A, int32_t>> xs = {::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(1), 1}), ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(std::tuple<A, int32_t>{A(2), 2})};
+    std::vector<std::tuple<A, int32_t>> xs = {std::tuple<A, int32_t>{A(1), 1}, std::tuple<A, int32_t>{A(2), 2}};
     ::tpyapp::main::s_loop<A>(xs, bump);
     std::vector<std::tuple<int32_t, int32_t>> __tmp_1 = {std::tuple<int32_t, int32_t>{5, 1}};
     ::tpyapp::main::s_loop<int32_t>(__tmp_1, nop);

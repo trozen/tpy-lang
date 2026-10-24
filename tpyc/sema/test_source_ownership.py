@@ -355,11 +355,10 @@ def _peel_read(e: object) -> object:
 
 def _peel_moved(e: object) -> object:
     """The read a move of `e` moves out of; None where a conversion between
-    them copies the read first (the move then takes the copy) or converts
-    it element by element (each element's own mode says)."""
+    them copies the read first (the move then takes the copy)."""
     while not isinstance(e, _READS):
         if isinstance(e, THIRFormConvert):
-            if e.elem_modes or not e.move:
+            if not e.move:
                 return None
             e = e.value
         elif isinstance(e, THIRCoerce):
@@ -491,6 +490,13 @@ def _emitted_reads(compiler: object, entry: object, source: str
 
     def mark(e: object, path: tuple, *, implicit: bool = False) -> None:
         read = _peel_read(e)
+        # A tuple converted element by element reads each element of its
+        # source (a located-less tuple subscript): moving one moves that
+        # element of the source read.
+        while (isinstance(read, THIRSubscript) and read.tuple_index is not None
+               and read.loc is None):
+            path = (read.tuple_index,)
+            read = _peel_read(read.receiver)
         at = _at(read)
         if at is not None and isinstance(read, _READS):
             moved.add(at + (path,))
@@ -529,11 +535,7 @@ def _emitted_reads(compiler: object, entry: object, source: str
         elif isinstance(node, THIRMethodCall) and node.move_receiver:
             mark(node.receiver, ())
         elif isinstance(node, THIRFormConvert):
-            if node.elem_modes:
-                for i, m in enumerate(node.elem_modes):
-                    if m in ("move_pointee", "move"):
-                        mark(node.value, (i,))
-            elif node.move:
+            if node.move:
                 mark(node.value, ())
         elif (isinstance(node, THIRReturn) and not frame
               and node.value is not None):
@@ -4321,7 +4323,9 @@ def test_record_moves_where_the_binding_owns_and_a_read_rule_holds() -> None:
     def perms(line: int, kind: str = "TpyName") -> dict:
         return _perms(records[(line, kind)])
     # A mixed tuple parameter owns element 0 only: element 1 is the copy
-    # the C++ makes (`tuple_to_storage(std::move(p))`), the one warned.
+    # the C++ makes as it builds the storage tuple element by element
+    # (`convert.per_element`: element 0 moved, element 1's pointee copied
+    # in), the one warned.
     assert perms(16) == {(0,): P.MOVE, (1,): P.WARNED}
     # A consuming loop moves its variable at every sink, the field store
     # included: no warning.
@@ -4684,19 +4688,22 @@ async def gen_mixed(b: A) -> int32:
 """
 
 
+def _copying_members(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Container elements lowered as a list-repeat's are: never moved."""
+    original = _lower_expressions._elem_maybe_move
+
+    def copying(el: object, e: object, lc: object, **kw: object) -> object:
+        return original(el, e, lc, **{**kw, "suppress_move": True})
+    monkeypatch.setattr(_lower_expressions, "_elem_maybe_move", copying)
+
+
 def test_the_render_gate_fails_on_a_mixed_literal_copied_whole(
         monkeypatch: pytest.MonkeyPatch) -> None:
     # A literal whose member `a` moves and `b` copies converts member by
-    # member; lifting the literal whole copies the moving member, which the
-    # gate fails -- in a plain body and in a resumable frame.
+    # member; a member lowering that copied the moving member too is what
+    # the gate fails -- in a plain body and in a resumable frame.
     compiler, modules = _compile(_MIXED_LITERAL)
-    original = _lower_expressions._members_record_move
-
-    def whole(e: object, slot: object, lc: object) -> bool:
-        return original(e, slot, lc) and all(
-            _lower_expressions._member_record_moves(m, lc)
-            for m in e.elements if isinstance(m, TpyName))
-    monkeypatch.setattr(_lower_expressions, "_members_record_move", whole)
+    _copying_members(monkeypatch)
     compiler, modules = _compile_program(_MIXED_LITERAL)
     with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
         _assert_move_leaves_render_moves(compiler, _entry(modules),
@@ -4715,13 +4722,7 @@ def test_the_render_gate_reads_a_frame_that_is_the_only_failing_body(
     # The copied-whole literal of a resumable frame alone fails the gate;
     # the frame as it lowers passes it.
     _compile(_FRAME_ONLY)
-    original = _lower_expressions._members_record_move
-
-    def whole(e: object, slot: object, lc: object) -> bool:
-        return original(e, slot, lc) and all(
-            _lower_expressions._member_record_moves(m, lc)
-            for m in e.elements if isinstance(m, TpyName))
-    monkeypatch.setattr(_lower_expressions, "_members_record_move", whole)
+    _copying_members(monkeypatch)
     compiler, modules = _compile_program(_FRAME_ONLY)
     with pytest.raises(AssertionError, match=_MOVE_NOT_RENDERED):
         _assert_move_leaves_render_moves(compiler, _entry(modules),

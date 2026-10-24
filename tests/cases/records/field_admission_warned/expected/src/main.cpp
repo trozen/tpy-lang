@@ -385,7 +385,7 @@ void slot_writes() {
 //     pairs[0][1].v = 9
 //     print("holder.literal_tuple_elem", k.t[0], k.t[1].v, pairs[0][1].v)
 void literal_list_elem() {
-    std::array<std::tuple<int32_t, P>, 1> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(2)})};
+    std::array<std::tuple<int32_t, P>, 1> pairs = {std::tuple<int32_t, P>{1, P(2)}};
     Paired k = Paired();
     k.t = ::tpy::__getitem__(pairs, 0);
     std::get<1>(::tpy::__getitem__(pairs, 0)).v = 9;

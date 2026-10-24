@@ -23,11 +23,11 @@ int32_t use(Holder& h, bool c) {
     std::optional<std::tuple<int32_t, Box>> __slot_1;
     std::tuple<int32_t, Box*> t;
     if (c) {
-        if ((std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9))), t)) > 0)) {
+        if ((std::get<0>((t = (__slot_1.emplace(::tpyapp::main::make_pair(9)), std::tuple<int32_t, Box*>{std::get<0>((*__slot_1)), &(std::get<1>((*__slot_1)))}), t)) > 0)) {
             return std::get<1>(t)->val;
         }
     } else {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+        t = std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         std::get<1>(t)->val = 77;
         return std::get<0>(t);
     }

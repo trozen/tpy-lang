@@ -37,7 +37,7 @@ void via_append(const std::vector<std::tuple<int32_t, P>>& items) {
 //     xs: list[tuple[int32, P]] = [(1, P(9))]  # tpyc: ok
 //     print(len(xs))
 void exempt_fresh(int32_t n) {
-    std::vector<std::tuple<int32_t, P>> xs = ::tpy::make_vector<std::tuple<int32_t, P>>(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(9)}));
+    std::vector<std::tuple<int32_t, P>> xs = ::tpy::make_vector<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(9)});
     std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -45,7 +45,7 @@ void exempt_fresh(int32_t n) {
 //     xs: list[tuple[int32, P]] = [(1, copy(p))]  # tpyc: ok
 //     print(len(xs))
 void exempt_copy(const P& p) {
-    std::vector<std::tuple<int32_t, P>> xs = ::tpy::make_vector<std::tuple<int32_t, P>>(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(p)}));
+    std::vector<std::tuple<int32_t, P>> xs = ::tpy::make_vector<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(p)});
     std::cout << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -57,7 +57,7 @@ void exempt_copy(const P& p) {
 //     exempt_fresh(0)
 //     exempt_copy(P(8))
 void main() {
-    std::vector<std::tuple<int32_t, P>> src = ::tpy::make_vector<std::tuple<int32_t, P>>(::tpy::tuple_to_storage<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(5)}));
+    std::vector<std::tuple<int32_t, P>> src = ::tpy::make_vector<std::tuple<int32_t, P>>(std::tuple<int32_t, P>{1, P(5)});
     ::tpyapp::main::list_literal(src);
     ::tpyapp::main::dict_value(src);
     ::tpyapp::main::via_append(src);

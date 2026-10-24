@@ -358,7 +358,7 @@ void typed_slots() {
     std::vector<int64_t> xs = {1, 2};
     xs.push_back(::tpyapp::main::w64());
     auto t = std::tuple<std::vector<int64_t>, int32_t>{std::move(xs), 1};
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<std::vector<int64_t>*, int32_t>>(t);
+    auto __tup_1 = std::tuple<std::vector<int64_t>*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     int32_t k = std::get<1>(__tup_1);
     std::cout << "fn.tuple" << " " << ::tpy::builtin_sum<int64_t>(a) << " " << k << "\n" << ::tpy::check_signals;

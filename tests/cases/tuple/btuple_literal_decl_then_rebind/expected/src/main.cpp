@@ -13,7 +13,7 @@ namespace tpyapp::main {
 int32_t use(Holder& h, Box& b) {
     std::tuple<int32_t, Box*> t = std::tuple<int32_t, Box*>{1, &(b)};
     int32_t first = std::get<1>(t)->val;
-    t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
+    t = std::tuple<int32_t, Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
     std::get<1>(t)->val = 42;
     return first;
 }

@@ -1,5 +1,5 @@
 # A list literal whose elements are non-value tuples (a record member) stores
-# each via tuple_to_storage<S>(S{...}) -- the borrow-vs-storage tuple form
+# each in storage form, built element by element -- the borrow-vs-storage
 # split. The elements are fresh ctor rvalues, so value capture is the only
 # possible semantics (no aliasing dimension); this guards the construction +
 # storage-conversion emit, not a copy-vs-alias distinction. Reading a member

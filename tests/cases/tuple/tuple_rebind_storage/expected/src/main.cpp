@@ -447,7 +447,7 @@ void subscript_source(std::vector<std::tuple<Box, Box>>& xs, Box& b) {
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
-    p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(::tpy::__getitem__(xs, 0));
+    p = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box*, Box*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
     std::get<0>(p)->n = 55;
     a.n = ::tpy::add_check<int32_t>(a.n, 100);
     std::cout << "subscript-source" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).n << " " << a2.n << "\n" << ::tpy::check_signals;
@@ -471,7 +471,7 @@ void arg_last_use(bool c, Box& b) {
         std::get<1>(p) = std::get<1>(__tup_2);
         std::get<2>(p) = std::move(std::get<2>(__tup_2));
     }
-    std::cout << "arg-last-use" << " " << ::tpyapp::main::sink(std::tuple<Tok, Box*, std::string>{std::move(*std::get<0>(p)), std::get<1>(p), std::move(std::get<2>(p))}).n << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "arg-last-use" << " " << ::tpyapp::main::sink(std::tuple<Tok, Box*, std::string>{std::move((*std::get<0>(p))), std::get<1>(p), std::move(std::get<2>(p))}).n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def return_last_use(c: bool) -> Own[tuple[Tok, Tok]]:
@@ -492,7 +492,7 @@ std::tuple<Tok, Tok> return_last_use(bool c) {
         std::get<0>(t) = &*(__slot_3 = std::move(std::get<0>(__tup_2)));
         std::get<1>(t) = &*(__slot_4 = std::move(std::get<1>(__tup_2)));
     }
-    return std::tuple<Tok, Tok>{std::move(*std::get<0>(t)), std::move(*std::get<1>(t))};
+    return std::tuple<Tok, Tok>{std::move((*std::get<0>(t))), std::move((*std::get<1>(t)))};
 }
 
 // def return_borrowed(b: Bag) -> Own[tuple[Bag, Bag]]:
@@ -509,7 +509,7 @@ std::tuple<Bag, Bag> return_borrowed(Bag& b) {
     auto __tup_2 = ::tpyapp::main::make_bag(2, b);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    return std::tuple<Bag, Bag>{std::move(*std::get<0>(p)), (*std::get<1>(p))};
+    return std::tuple<Bag, Bag>{std::move((*std::get<0>(p))), (*std::get<1>(p))};
 }
 
 // def own_arg(b: Box) -> None:
@@ -526,7 +526,7 @@ void own_arg(Box& b) {
     auto __tup_2 = ::tpyapp::main::make_tok(2, b);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    std::cout << "own-arg" << " " << ::tpyapp::main::own_sink(std::tuple<Tok, Box>{std::move(*std::get<0>(p)), (*std::get<1>(p))}) << " " << b.n << "\n" << ::tpy::check_signals;
+    std::cout << "own-arg" << " " << ::tpyapp::main::own_sink(std::tuple<Tok, Box>{std::move((*std::get<0>(p))), (*std::get<1>(p))}) << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def consuming(b: Box) -> None:
@@ -641,7 +641,7 @@ void mutable_sources(Holder& h) {
     auto __tup_2 = ::tpyapp::main::tok_pair(5);
     std::get<0>(t) = &*(__slot_3 = std::move(std::get<0>(__tup_2)));
     std::get<1>(t) = &*(__slot_4 = std::move(std::get<1>(__tup_2)));
-    t = ::tpy::tuple_to_pointer<std::tuple<Tok*, Tok*>>(h.toks);
+    t = std::tuple<Tok*, Tok*>{&(std::get<0>(h.toks)), &(std::get<1>(h.toks))};
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 10);
     std::optional<Tok> __slot_5;
     std::optional<Tok> __slot_6;
@@ -818,7 +818,7 @@ std::tuple<Tok, int32_t> own_elem_return(bool c) {
         std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::move(std::get<1>(__tup_2));
     }
-    return std::tuple<Tok, int32_t>{std::move(*std::get<0>(p)), std::move(std::get<1>(p))};
+    return std::tuple<Tok, int32_t>{std::move((*std::get<0>(p))), std::get<1>(p)};
 }
 
 // def matched(k: int32, v: Box) -> None:
@@ -1069,7 +1069,7 @@ void field_repoint(HB& h) {
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> t{&__slot_1, &__slot_2};
     std::cout << "field-repoint" << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
-    t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    t = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 1);
     std::cout << "field-repoint" << " " << std::get<0>(t)->n << " " << std::get<0>(h.bp).n << "\n" << ::tpy::check_signals;
 }
@@ -1083,7 +1083,7 @@ void field_repoint(HB& h) {
 //     t = (Box(1), Box(2))  # tpyc: ok
 //     print("field-then-literal", t[0].n, h.bp[0].n)
 void field_then_literal(HB& h) {
-    std::tuple<Box*, Box*> t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    std::tuple<Box*, Box*> t = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::cout << "field-then-literal" << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
     std::optional<Box> __slot_1;
     std::optional<Box> __slot_2;
@@ -1107,7 +1107,7 @@ void written_then_field(HB& h, Box& v) {
     std::tuple<Box*, Box*> t{&__slot_1, std::get<1>(__tup_1)};
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 1);
     std::cout << "written-then-field" << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
-    t = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    t = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::get<0>(h.bp).n = ::tpy::add_check<int32_t>(std::get<0>(h.bp).n, 1);
     std::cout << "written-then-field" << " " << std::get<0>(t)->n << " " << std::get<0>(h.bp).n << "\n" << ::tpy::check_signals;
 }
@@ -1210,7 +1210,7 @@ void mixed_arg(Bag& v) {
     auto __tup_2 = ::tpyapp::main::make_bag(2, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    std::cout << "mixed-arg" << " " << ::tpyapp::main::own_mixed(std::tuple<Bag, Bag*>{std::move(*std::get<0>(p)), std::get<1>(p)}) << " " << ::tpy::__len__(v.xs) << "\n" << ::tpy::check_signals;
+    std::cout << "mixed-arg" << " " << ::tpyapp::main::own_mixed(std::tuple<Bag, Bag*>{std::move((*std::get<0>(p))), std::get<1>(p)}) << " " << ::tpy::__len__(v.xs) << "\n" << ::tpy::check_signals;
     v.xs.push_back(1);
     std::cout << "mixed-arg" << " " << ::tpy::__len__(v.xs) << "\n" << ::tpy::check_signals;
 }
@@ -2514,7 +2514,7 @@ void mixed_bindings(HB& h, Box& v) {
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
-    q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    q = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::get<0>(h.bp).n = ::tpy::add_check<int32_t>(std::get<0>(h.bp).n, 10);
     std::get<1>(q)->n = ::tpy::add_check<int32_t>(std::get<1>(q)->n, 1000);
     std::cout << "mixed-bindings" << " " << std::get<0>(q)->n << " " << std::get<1>(q)->n << " " << std::get<0>(p)->n << " " << std::get<1>(h.bp).n << "\n" << ::tpy::check_signals;
@@ -2538,7 +2538,7 @@ void mixed_bindings_reverse(HB& h, Box& v) {
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    std::tuple<Box*, Box*> q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    std::tuple<Box*, Box*> q = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::get<0>(h.bp).n = ::tpy::add_check<int32_t>(std::get<0>(h.bp).n, 10);
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 1000);
     q = p;
@@ -2567,7 +2567,7 @@ void mixed_bindings_read(HB& h, Box& v) {
     std::tuple<Box*, Box*> q = p;
     std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
     std::cout << "mixed-bindings-read" << " " << std::get<0>(q)->n << "\n" << ::tpy::check_signals;
-    q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    q = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::cout << "mixed-bindings-read" << " " << std::get<0>(q)->n << " " << std::get<0>(p)->n << "\n" << ::tpy::check_signals;
 }
 
@@ -2594,7 +2594,7 @@ void field_repoint_loop(HB& h, Box& v) {
     std::tuple<Box*, Box*> q = p;
     for (int32_t i = 0; i < 2; ++i) {
         std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
-        q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+        q = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     }
     std::get<0>(h.bp).n = ::tpy::add_check<int32_t>(std::get<0>(h.bp).n, 10);
     std::get<1>(q)->n = ::tpy::add_check<int32_t>(std::get<1>(q)->n, 1000);
@@ -2625,7 +2625,7 @@ void field_repoint_branch(HB& h, Box& v, bool c) {
     if (c) {
         q = p;
     } else {
-        q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+        q = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     }
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
     std::get<0>(h.bp).n = ::tpy::add_check<int32_t>(std::get<0>(h.bp).n, 10);
@@ -2736,9 +2736,9 @@ void ternary_param_roots(HB& h, HB& g, Box& v, bool c) {
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
-    q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+    q = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
     std::tuple<Box*, Box*> r = p;
-    r = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(g.bp);
+    r = std::tuple<Box*, Box*>{&(std::get<0>(g.bp)), &(std::get<1>(g.bp))};
     auto u = ((c) ? (q) : (r));
     std::get<0>(u)->n = ::tpy::add_check<int32_t>(std::get<0>(u)->n, 100);
     std::cout << "ternary-param-roots" << " " << std::get<0>(u)->n << " " << std::get<0>(h.bp).n << " " << std::get<0>(g.bp).n << " " << std::get<0>(p)->n << "\n" << ::tpy::check_signals;
@@ -2793,7 +2793,7 @@ void nested_own_param(Box& v) {
         auto __tup_2 = ::tpyapp::main::make_mixed(2, w);
         std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.bp)), &(std::get<1>(h.bp))};
         std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
         return std::get<0>(h.bp).n;
     };
@@ -3346,7 +3346,7 @@ void main() {
     ::tpyapp::main::owned_call();
     Box __tmp_6 = Box(8);
     ::tpyapp::main::alias_after(__tmp_6);
-    std::vector<std::tuple<Box, Box>> xs = ::tpy::make_vector<std::tuple<Box, Box>>(::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(1), Box(2)}));
+    std::vector<std::tuple<Box, Box>> xs = ::tpy::make_vector<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(1), Box(2)});
     Box __tmp_7 = Box(7);
     ::tpyapp::main::subscript_source(xs, __tmp_7);
     std::vector<Box> __tmp_8 = {Box(90)};
@@ -3456,7 +3456,7 @@ void main() {
     std::function<int32_t()> cb = ::tpyapp::main::capture_copy(__tmp_51);
     std::cout << "capture-copy" << " " << cb() << "\n" << ::tpy::check_signals;
     Box __tmp_52 = Box(5);
-    std::vector<std::tuple<Box, Box>> __tmp_53 = {::tpy::tuple_to_storage<std::tuple<Box, Box>>(std::tuple<Box, Box>{Box(3), Box(4)})};
+    std::vector<std::tuple<Box, Box>> __tmp_53 = {std::tuple<Box, Box>{Box(3), Box(4)}};
     ::tpyapp::main::lambda_comprehension(__tmp_52, __tmp_53);
     Bag __tmp_54 = Bag(0);
     ::tpyapp::main::walk_rebind(__tmp_54);
@@ -3587,7 +3587,7 @@ void HM::repoint(Box& v) {
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
-    q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(this->bp);
+    q = std::tuple<Box*, Box*>{&(std::get<0>(this->bp)), &(std::get<1>(this->bp))};
     std::get<0>(this->bp).n = ::tpy::add_check<int32_t>(std::get<0>(this->bp).n, 10);
     std::get<1>(q)->n = ::tpy::add_check<int32_t>(std::get<1>(q)->n, 1000);
     std::cout << "field-repoint-method" << " " << std::get<0>(q)->n << " " << std::get<1>(q)->n << " " << std::get<0>(p)->n << " " << std::get<1>(this->bp).n << "\n" << ::tpy::check_signals;

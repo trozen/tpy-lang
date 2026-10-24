@@ -47,7 +47,7 @@ int32_t take(std::tuple<C, const C*>&& t) {
 //     print("arg_quiet", take((C(1), b)))  # tpyc: ok
 void arg_quiet() {
     C b = C(2);
-    std::cout << "arg_quiet" << " " << ::tpyapp::main::take(std::tuple<C, C*>{C(1), &(b)}) << "\n" << ::tpy::check_signals;
+    std::cout << "arg_quiet" << " " << ::tpyapp::main::take(std::tuple<C, const C*>{C(1), &(b)}) << "\n" << ::tpy::check_signals;
 }
 
 // def setitem_quiet(c: C) -> None:
@@ -68,9 +68,9 @@ void setitem_quiet(C& c) {
     C last = C(9);
     ::tpy::__setitem__(d, 2, std::tuple<std::optional<C>, int32_t>{std::move(last), 3});
     c.v = 99;
-    ::tpyapp::main::show("setitem_copy", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 0)));
-    ::tpyapp::main::show("setitem_fresh", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 1)));
-    ::tpyapp::main::show("setitem_last_use", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 2)));
+    ::tpyapp::main::show("setitem_copy", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(d, 0)));
+    ::tpyapp::main::show("setitem_fresh", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(d, 1)));
+    ::tpyapp::main::show("setitem_last_use", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(d, 2)));
 }
 
 // def show(tag: str, p: tuple[C | None, int32]) -> None:

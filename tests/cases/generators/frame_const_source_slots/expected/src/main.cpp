@@ -473,7 +473,7 @@ void main() {
             std::cout << "arraylist" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
-    std::vector<std::tuple<int32_t, Box>> pairs = {::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{1, Box(2)}), ::tpy::tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<int32_t, Box>{3, Box(4)})};
+    std::vector<std::tuple<int32_t, Box>> pairs = {std::tuple<int32_t, Box>{1, Box(2)}, std::tuple<int32_t, Box>{3, Box(4)}};
     {
         auto __src_18 = ::tpyapp::main::unpack_loop(pairs);
         auto&& __itr_18 = ::tpy::__iter__(__src_18);

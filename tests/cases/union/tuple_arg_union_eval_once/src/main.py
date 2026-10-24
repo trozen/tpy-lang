@@ -1,6 +1,6 @@
 # A tuple LITERAL element that is a value-union-param call, where the tuple
-# crosses a borrow boundary (a tuple param binds by reference, routing rvalue
-# elements through tuple_value_to_borrow), must evaluate that inner call once
+# crosses a borrow boundary (a tuple param binds by reference, lending each
+# rvalue element for the call), must evaluate that inner call once
 # (regression: the borrow path rendered the element twice -- borrow form then
 # value form -- doubling side effects and leaking a hoisted temp; the
 # tuple-literal analog of the method-arg double-eval). Each "eval <tag>" once.

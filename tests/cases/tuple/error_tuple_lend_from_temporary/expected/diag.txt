@@ -1,0 +1,1 @@
+main.py:31: error: in function 'main': a tuple element borrowed from a temporary value is not supported; bind the value to a variable first

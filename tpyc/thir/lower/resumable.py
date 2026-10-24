@@ -119,6 +119,7 @@ from .context import (_FRAME_SLOT_CLASSES, FrameLocalClass, _LowerScope,
                       _ONLY_SELF_TYPED, _Prescan,
                       narrow_alias_taken, SinkPos)
 from .expressions import (
+    lent_holder,
     _poly_cast_checks,
     _lower_call_arg,
     _lower_expr,
@@ -814,7 +815,7 @@ def _loop_var_bind_ok(elem_type: 'TpyType | None', name: str, analyzer,
     if (name in loops.borrow_tuple_loop_vars
             or classes.get(name) is FrameLocalClass.BORROW_TUPLE):
         # Proxy-ref holder (dict_items): the advance binds the borrow-form
-        # tuple via tuple_to_pointer (skeleton) and reads ride the
+        # tuple element by element (skeleton) and reads ride the
         # borrow-tuple family off the frame field it re-binds.
         _witness("res.loop_btuple_bind")
         return True
@@ -866,7 +867,7 @@ def _for_advance_reject(t: 'rcfg.AsyncForAdvance', analyzer,
         if (stmt.var in loops.borrow_tuple_loop_vars
                 or classes.get(stmt.var) is FrameLocalClass.BORROW_TUPLE):
             # Proxy-ref holder (dict_items): the advance binds the
-            # borrow-form tuple via tuple_to_pointer (skeleton); the head
+            # borrow-form tuple element by element (skeleton); the head
             # unpack mutable-ref-binds it as a borrow-tuple name source.
             _witness("res.loop_btuple_bind")
             return None
@@ -1337,7 +1338,7 @@ def frame_local_class(lname: str, ltype, kind, analyzer,
         # (`std::tuple<..., T*>`, bare writes). A `__for_tup_*` loop
         # element holder is admitted only as the loop's own proxy-ref
         # borrow-tuple var (dict_items): its bind is the skeleton's
-        # advance (`tuple_to_pointer(*(it)++)`), and the THIR-visible
+        # advance (a per-element lend), and the THIR-visible
         # accesses -- the head unpack's mutable ref-bind and element
         # reads -- are the same borrow-tuple family as a stable field.
         if (lname.startswith("__for_tup_")
@@ -1881,6 +1882,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     yield_values: IdentityMap = IdentityMap()
     suspend_exprs: IdentityMap = IdentityMap()
     region_exprs: IdentityMap = IdentityMap()
+    loop_steps: IdentityMap = IdentityMap()
     match_dispatches: IdentityMap = IdentityMap()
     deferred_returns: IdentityMap = IdentityMap()
 
@@ -2191,6 +2193,17 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
         if not isinstance(t, (rcfg.Fall, rcfg.Unreachable)) \
                 and _bb_cursor_key(t) is not None:
             _bindings.enter(lc, _bb_cursor_key(t))
+        if (isinstance(t, rcfg.AsyncForAdvance)
+                and (t.stmt.var in loops.borrow_tuple_loop_vars
+                     or classes.get(t.stmt.var)
+                     is FrameLocalClass.BORROW_TUPLE)):
+            # A borrow-form tuple loop var binds the step lent element by
+            # element; the skeleton holds the step and names its read.
+            et = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                _loop_elem_type(t.stmt, analyzer))))
+            loop_steps[t.stmt] = lent_holder(
+                et, et, lc, const=t.stmt.var in rstate.const_frame_bindings,
+                loc=t.stmt.loc)
         if isinstance(t, rcfg.ReturnT):
             ret = t.return_stmt
             if not _return_carries_value(ret, lc):
@@ -2505,7 +2518,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                            and yield_result.placement
                            is SlotPlacement.STATEMENT),
         suspend_exprs=suspend_exprs, region_exprs=region_exprs,
-        match_dispatches=match_dispatches,
+        loop_steps=loop_steps, match_dispatches=match_dispatches,
         nested_def_bodies=nested_def_bodies,
         narrow_aliases=narrow_aliases,
         deferred_returns=deferred_returns, signature=lc.signature)

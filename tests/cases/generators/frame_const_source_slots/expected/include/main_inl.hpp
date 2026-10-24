@@ -145,7 +145,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_items_ref::__next__() 
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
-        __for_tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(*((*__for_it_0))++);
+        { auto&& __for_step_0 = *((*__for_it_0))++; __for_tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
         auto& __tup_1 = __for_tup_1;
         k = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -190,7 +190,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_deep_items::__next__()
             __state = S_JOIN_0;
             continue;
         }
-        __for_tup_2 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const std::vector<int32_t>*>>(*((*__for_it_1))++);
+        { auto&& __for_step_1 = *((*__for_it_1))++; __for_tup_2 = std::tuple<int32_t, const std::vector<int32_t>*>{std::get<0>(__for_step_1), &(std::get<1>(__for_step_1))}; }
         auto& __tup_1 = __for_tup_2;
         k = std::get<0>(__tup_1);
         vs = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
@@ -343,7 +343,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_subscript::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(pairs, 0));
+        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __state = S_RESUME_0;
@@ -371,7 +371,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_field::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(h.pair);
+        auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __state = S_RESUME_0;
@@ -399,7 +399,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_unpack_readonly::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(pairs, 0));
+        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __state = S_RESUME_0;

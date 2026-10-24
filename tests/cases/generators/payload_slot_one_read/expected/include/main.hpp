@@ -57,6 +57,10 @@ struct __gen_bytes_param;
 struct __gen_opt_str_param;
 struct __gen_value_union;
 struct __gen_accessor;
+struct __gen_move_lend;
+struct __gen_move_lend_live;
+struct __gen_move_lend_opt;
+struct __gen_move_lend_union;
 struct __gen_opt_owned;
 struct __gen_opt_a;
 struct __gen_nc_steps;
@@ -145,6 +149,22 @@ __gen_accessor accessor(Outer& o);
 std::tuple<A, B*> mixed_fin(B& b);
 // def mixed_fin_nocopy(b: B) -> tuple[Own[NC], B]:
 std::tuple<NC, B*> mixed_fin_nocopy(B& b);
+// def mk_ab() -> Own[tuple[A, B]]:
+std::tuple<A, B> mk_ab();
+// def mk_aob() -> Own[tuple[A, B | None]]:
+std::tuple<A, std::optional<B>> mk_aob();
+// def mk_abc() -> Own[tuple[A, B | C]]:
+std::tuple<A, ::tpy::Union<B, C>> mk_abc();
+// def move_lend() -> Iterator[tuple[Own[A], B]]:
+__gen_move_lend move_lend();
+// def move_lend_live() -> Iterator[tuple[Own[A], B]]:
+__gen_move_lend_live move_lend_live();
+// def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
+__gen_move_lend_opt move_lend_opt();
+// def move_lend_union() -> Iterator[tuple[Own[A], B | C]]:
+__gen_move_lend_union move_lend_union();
+// def move_lend_section() -> None:
+void move_lend_section();
 // def opt_section() -> None:
 void opt_section();
 // def opt_owned() -> Iterator[Own[L | None]]:
@@ -1213,6 +1233,90 @@ struct __gen_accessor : public ::tpy::next_iter_mixin<__gen_accessor, ::tpy::val
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_accessor&) {
         return os << "<generator accessor>";
+    }
+};
+
+// def move_lend() -> Iterator[tuple[Own[A], B]]:
+struct __gen_move_lend : public ::tpy::next_iter_mixin<__gen_move_lend, std::tuple<A, B*>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::tuple<A, B>> t;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_move_lend() : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __next__();
+    __gen_move_lend& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_move_lend&) {
+        return os << "<generator move_lend>";
+    }
+};
+
+// def move_lend_live() -> Iterator[tuple[Own[A], B]]:
+struct __gen_move_lend_live : public ::tpy::next_iter_mixin<__gen_move_lend_live, std::tuple<A, B*>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::tuple<A, B>> t;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_move_lend_live() : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __next__();
+    __gen_move_lend_live& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_move_lend_live&) {
+        return os << "<generator move_lend_live>";
+    }
+};
+
+// def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
+struct __gen_move_lend_opt : public ::tpy::next_iter_mixin<__gen_move_lend_opt, std::tuple<A, B*>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::tuple<A, std::optional<B>>> t;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_move_lend_opt() : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __next__();
+    __gen_move_lend_opt& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_move_lend_opt&) {
+        return os << "<generator move_lend_opt>";
+    }
+};
+
+// def move_lend_union() -> Iterator[tuple[Own[A], B | C]]:
+struct __gen_move_lend_union : public ::tpy::next_iter_mixin<__gen_move_lend_union, std::tuple<A, ::tpy::Union<const B*, const C*>>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::tuple<A, ::tpy::Union<B, C>>> t;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_move_lend_union() : __state(S_INITIAL) {}
+
+    std::expected<std::tuple<A, ::tpy::Union<const B*, const C*>>, ::tpy::StopIteration> __next__();
+    __gen_move_lend_union& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_move_lend_union&) {
+        return os << "<generator move_lend_union>";
     }
 };
 

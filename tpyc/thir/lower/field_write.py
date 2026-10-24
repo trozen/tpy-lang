@@ -394,7 +394,8 @@ def _converted(value: THIRExpr, slot: _ExprUse, lc: _LowerCtx, *,
     plan = convert(value, slot.dest, lc.analyzer,
                    explicit_copy=explicit_copy)
     if isinstance(plan, Refuse):
-        raise ThirUnsupported("field_write." + plan.key, detail=True)
+        raise ThirUnsupported("field_write." + plan.key, detail=True,
+                              message=plan.message)
     if plan.row is not None:
         _witness("field_write." + plan.row)
     return spelled(plan, lc.render_type)

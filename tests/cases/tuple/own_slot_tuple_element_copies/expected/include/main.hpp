@@ -110,7 +110,7 @@ inline void Holder::from_mixed(A& b) {
 //     return t[0].x
 inline int32_t Holder::from_mixed_live(A& b) {
     auto t = std::tuple<A, A*>{A(8), &(b)};
-    this->bp = ::tpy::tuple_to_storage<std::tuple<A, A>>(t);
+    this->bp = std::tuple<A, A>{std::get<0>(t), (*std::get<1>(t))};
     return std::get<0>(t).x;
 }
 void __tpy_init();

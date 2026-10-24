@@ -20,7 +20,7 @@ std::tuple<Box, Box> make_pair(int32_t n) {
 //     a, b = h.pair
 //     return len(a.xs)
 int32_t head(const Pair& h) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Box*, const Box*>>(h.pair);
+    auto __tup_1 = std::tuple<const Box*, const Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     return ::tpy::__len__(a.xs);
@@ -68,7 +68,7 @@ Box elem(Pair& h, bool c) {
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, &__slot_2};
     if (c) {
-        p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+        p = std::tuple<Box*, Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
     }
     return Box((*std::get<0>(p)));
 }

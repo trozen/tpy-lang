@@ -795,7 +795,7 @@ int32_t lambda_same_call() {
 //     return t  # tpyc: warning(/copies tuple\[Own\[Point\], Own\[Point\]\] into owned storage/)
 std::tuple<Point, Point> del_holder_tuple_name(std::tuple<Point, Point>&& t) {
     auto g = [&t]() -> int32_t {
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Point*, Point*>>(t);
+        auto __tup_1 = std::tuple<Point*, Point*>{&(std::get<0>(t)), &(std::get<1>(t))};
         auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
         auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
         a.items.push_back(29);

@@ -286,7 +286,7 @@ void main() {
     A r0 = A(3);
     A r1 = A(4);
     {
-        auto __src_0 = ::tpyapp::main::ro_param(std::tuple<A*, A*>{&(r0), &(r1)});
+        auto __src_0 = ::tpyapp::main::ro_param(std::tuple<const A*, const A*>{&(r0), &(r1)});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

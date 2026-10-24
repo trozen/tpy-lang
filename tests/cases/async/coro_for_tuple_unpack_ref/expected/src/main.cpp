@@ -31,7 +31,7 @@ namespace tpyapp::main {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<const Item*, const Item*>>(__for_tup_0);
+            auto __tup_1 = std::tuple<const Item*, const Item*>{&(std::get<0>(__for_tup_0)), &(std::get<1>(__for_tup_0))};
             auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
             auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
             s = ::tpy::add_check<int32_t>(s, (::tpy::add_check<int32_t>(a.n, b.n)));

@@ -191,7 +191,7 @@ void dict_setitem() {
     ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>> d = ::tpy::ordered_map<int32_t, std::tuple<std::optional<C>, int32_t>>();
     ::tpy::__setitem__(d, 0, std::tuple<std::optional<C>, int32_t>{C(a), 1});
     a.v = 99;
-    ::tpyapp::main::show("dict_setitem", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 0)));
+    ::tpyapp::main::show("dict_setitem", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(d, 0)));
 }
 
 // def list_setitem() -> None:
@@ -203,10 +203,10 @@ void dict_setitem() {
 //     show("list_setitem", xs[0])
 void list_setitem() {
     C b = C(2);
-    std::vector<std::tuple<std::optional<C>, int32_t>> xs = ::tpy::make_vector<std::tuple<std::optional<C>, int32_t>>(::tpy::tuple_to_storage<std::tuple<std::optional<C>, int32_t>>(std::tuple<C*, int32_t>{nullptr, 0}));
+    std::vector<std::tuple<std::optional<C>, int32_t>> xs = ::tpy::make_vector<std::tuple<std::optional<C>, int32_t>>(std::tuple<std::optional<C>, int32_t>{std::nullopt, 0});
     ::tpy::__setitem__(xs, 0, std::tuple<std::optional<C>, int32_t>{C(b), 1});
     b.v = 77;
-    ::tpyapp::main::show("list_setitem", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(xs, 0)));
+    ::tpyapp::main::show("list_setitem", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(xs, 0)));
 }
 
 // def match_arm(tag: int32) -> None:
@@ -234,7 +234,7 @@ void match_arm(int32_t tag) {
     }
     }
     a.v = 98;
-    ::tpyapp::main::show("match_arm", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 0)));
+    ::tpyapp::main::show("match_arm", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(d, 0)));
 }
 
 // def try_body() -> None:
@@ -257,7 +257,7 @@ void try_body() {
         }
     }
     a.v = 97;
-    ::tpyapp::main::show("try_body", ::tpy::tuple_to_pointer<std::tuple<const C*, int32_t>>(::tpy::__getitem__(d, 0)));
+    ::tpyapp::main::show("try_body", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const C*, int32_t>{::tpy::optional_to_ptr(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(d, 0)));
 }
 
 // def main() -> None:
