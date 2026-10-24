@@ -22,7 +22,7 @@ void main() {
     }
     int32_t i = 0;
     while ((i < 3)) {
-        std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
         if ((i == 1)) {
             p = nullptr;
         }

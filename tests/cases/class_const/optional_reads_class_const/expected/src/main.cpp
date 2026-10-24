@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //         # Narrowing silences the warning and elides the runtime check.
 //         print(c.LIMIT)  # tpyc: ok
 void use(const C* c) {
-    std::cout << ({ ::tpy::deref_check(c); C::LIMIT; }) << "\n" << ::tpy::check_signals;
+    std::cout << ({ ::tpy::none_attr(c, "LIMIT"); C::LIMIT; }) << "\n" << ::tpy::check_signals;
     if ((c != nullptr)) {
         std::cout << C::LIMIT << "\n" << ::tpy::check_signals;
     }

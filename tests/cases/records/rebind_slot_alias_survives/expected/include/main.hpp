@@ -695,7 +695,7 @@ inline Escaping::Escaping(int32_t n, Keeper& k)
     : c(Counter(n)),
       k(&k) {
     if ((n == 1)) {
-        ::tpy::deref_check(this->k).save(this->c);
+        ::tpy::none_attr(this->k, "save").save(this->c);
     }
 }
 
@@ -710,7 +710,7 @@ inline int32_t Escaping::value() const {
 // def value(self, v: int32) -> None:
 //     self.k.save(self.c)
 inline void Escaping::set_value(int32_t v) {
-    ::tpy::deref_check(this->k).save(this->c);
+    ::tpy::none_attr(this->k, "save").save(this->c);
 }
 
 // @readonly(False)
@@ -718,7 +718,7 @@ inline void Escaping::set_value(int32_t v) {
 //     self.k.save(self.c)
 //     return self.c
 inline Counter& Escaping::__getitem__(int32_t i) {
-    ::tpy::deref_check(this->k).save(this->c);
+    ::tpy::none_attr(this->k, "save").save(this->c);
     return this->c;
 }
 

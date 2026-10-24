@@ -1,1 +1,1 @@
-TurboPython panic: null pointer dereference
+TurboPython panic: uncaught tpy::NoneTypeError: 'NoneType' object is not subscriptable

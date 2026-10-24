@@ -85,7 +85,7 @@ int32_t take_peek(std::tuple<P, P> t, P* q) {
     auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(t);
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(a.xs), 10)), ::tpy::deref_check(q).n()));
+    return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(a.xs), 10)), ::tpy::none_attr(q, "n").n()));
 }
 
 // def run_twice(f: Callable[[], int32]) -> int32:

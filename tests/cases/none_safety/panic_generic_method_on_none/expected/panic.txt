@@ -1,1 +1,1 @@
-TurboPython panic: null pointer dereference
+TurboPython panic: uncaught tpy::NoneAttributeError: 'NoneType' object has no attribute 'conv'

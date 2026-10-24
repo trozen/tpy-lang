@@ -14,7 +14,7 @@ Left::Left(::hubns::Hub* hub) : hub(hub) {}
 //     return self.hub.read_note(Note())
 int32_t Left::run() const {
     ::hubns::Note __tmp_1 = ::hubns::Note();
-    return ::tpy::deref_check(this->hub).read_note(__tmp_1);
+    return ::tpy::none_attr(this->hub, "read_note").read_note(__tmp_1);
 }
 // # Section through_native: two regular modules in a cycle through a native one.
 // """A regular module of the cycle; its docstring runs no code, so the cycle allows it."""

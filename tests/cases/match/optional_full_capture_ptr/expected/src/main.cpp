@@ -44,7 +44,7 @@ int32_t unproven(const Cat* o) {
         return -1;
     } else {
         auto v = __match_subject_1;
-        return ::tpy::deref_check(v).lives;
+        return ::tpy::none_attr(v, "lives").lives;
     }
     ::std::unreachable();
 }

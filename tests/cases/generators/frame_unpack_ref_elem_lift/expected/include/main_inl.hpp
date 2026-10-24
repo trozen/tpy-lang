@@ -264,7 +264,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ptr_ro::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::deref_check(p).rows, 0).pair);
+        auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
         a = std::get<0>(__tup_1);
         b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
         __state = S_RESUME_0;
@@ -334,7 +334,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_loop_ptr_ro::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto& __for_obj_0 = ::tpy::deref_check(p).rows;
+        auto& __for_obj_0 = ::tpy::none_attr(p, "rows").rows;
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
         __state = S_JOIN_0;

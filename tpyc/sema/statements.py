@@ -706,8 +706,7 @@ class StatementAnalyzer:
             # left from any point of its cycle, where only the loop-entry
             # facts hold -- not what the head proves on its FALSE path nor
             # what the `else` clause establishes.
-            self.init.join_facts(pre_loop)
-            self.init.apply_fact_kills(cycle)
+            self.init.join_entry_from_any_point(pre_loop, cycle)
             on_every_break = frozenset.intersection(*edges.breaks)
             f = self.ctx.func
             if f.init_terminated:
@@ -2218,10 +2217,7 @@ class StatementAnalyzer:
             # See FunctionTrackingState.pending_non_null_ptr_vars for rationale
             # (deferred to statement boundary so within-statement sibling
             # accesses keep their individual null checks).
-            pending = self.ctx.func.pending_non_null_ptr_vars
-            if pending:
-                self.ctx.func.non_null_ptr_vars |= pending
-                pending.clear()
+            self.init.flush_pending_ptr_facts()
         if analyzed and isinstance(stmt, (TpyForEach, TpyWhile)):
             self._note_pass_scoped_frames(stmt)
 
@@ -3428,16 +3424,18 @@ class StatementAnalyzer:
                     self.ctx.all_last_uses.discard(leaf)
                     self.ctx.finally_return_candidates.discard(leaf)
 
-    def _analyze_finally_body(self, stmt: TpyTry,
+    def _analyze_finally_body(self, stmt: TpyTry, before: FlowFacts,
                               try_kills: FactKills | None = None) -> None:
         """Analyze a finally body under all-paths entry facts.
 
         The finally runs on the normal path AND on any mid-try (or
         mid-handler) exception, so check-elision facts the try/else/handler
         bodies may have killed -- or only established -- must not be assumed
-        inside it. After the body, normal-path facts are restored for the
-        code following the try statement (they hold whenever control flows
-        past it normally), minus whatever the finally body itself killed.
+        inside it: its entry is the join of before (the state ahead of
+        the try statement) with the bodies' end state, minus their kills.
+        After the body, normal-path facts are restored for the code
+        following the try statement (they hold whenever control flows past
+        it normally), minus whatever the finally body itself killed.
 
         ``try_kills`` lets callers that already scanned the try body for
         handler entry pass the result in instead of re-scanning.
@@ -3457,7 +3455,7 @@ class StatementAnalyzer:
         normal_narrowed = dict(self.ctx.func.narrowed_types)
         normal_non_null = set(self.ctx.func.non_null_ptr_vars)
         normal_ranges = dict(self.ctx.func.value_ranges)
-        self.init.apply_fact_kills(entry_kills)
+        self.init.join_entry_from_any_point(before, entry_kills)
         prev_in_finally = self.ctx.func.in_finally
         self.ctx.func.in_finally = True
         self.ctx.func.pending_return_borrows.append(
@@ -3484,10 +3482,11 @@ class StatementAnalyzer:
     def _analyze_try_finally_only(self, stmt: TpyTry) -> None:
         """Analyze try/finally with no except handlers."""
         scope_before = set(self.ctx.func.current_scope.bindings.keys())
+        before = self.init.save()
         for s in stmt.try_body:
             self.analyze_stmt(s)
         try_bindings = dict(self.ctx.func.current_scope.bindings)
-        self._analyze_finally_body(stmt)
+        self._analyze_finally_body(stmt, before)
         # Hoist try-body variables so they're accessible in the finally body,
         # and finally-body first bindings so the duplicated finally emissions
         # (catch path / normal path / return sites) all assign one function-
@@ -3628,7 +3627,7 @@ class StatementAnalyzer:
             consumed_after_then, consumed_after_else)
 
         # Analyze finally body (runs on all paths, doesn't affect branch merging)
-        self._analyze_finally_body(stmt, try_kills)
+        self._analyze_finally_body(stmt, before, try_kills)
         self._merge_arm_readonly([try_bindings,
                                   dict(self.ctx.func.current_scope.bindings)])
 
@@ -3774,7 +3773,7 @@ class StatementAnalyzer:
         # function-scope slot, which also keeps them visible after the try,
         # per Python scoping.
         pre_finally_names = set(self.ctx.func.current_scope.bindings.keys())
-        self._analyze_finally_body(stmt, try_kills)
+        self._analyze_finally_body(stmt, before, try_kills)
         finally_new = {
             name: t for name, t in self.ctx.func.current_scope.bindings.items()
             if name not in pre_finally_names and name not in scope_before}
@@ -4032,6 +4031,9 @@ class StatementAnalyzer:
         exit_method = "__aexit__" if stmt.is_async else "__exit__"
         kind_label = "async context manager" if stmt.is_async else "context manager"
 
+        # A suppressing `__exit__` resumes after the statement from any
+        # point its manager covers: from the first item's `__enter__` on.
+        before: FlowFacts | None = None
         pushed: list[tuple[str, Scope, object]] = []
         for item in stmt.items:
             ctx_type = unwrap_own(unwrap_ref_type(self.expr.analyze_expr(item.context_expr)))
@@ -4084,6 +4086,9 @@ class StatementAnalyzer:
             # call on the manager, on every path out of the block.
             item.exit_runs_code = self.ctx.manager_exit_runs_code(ctx_type)
             if item.exit_runs_code:
+                item.enter_call = TpyMethodCall(
+                    obj=item.context_expr, method=enter_method, args=[],
+                    resolved_function_info=enter_info, loc=item.loc)
                 item.exit_call = TpyMethodCall(
                     obj=item.context_expr, method=exit_method, args=[],
                     resolved_function_info=exit_info, loc=item.loc)
@@ -4254,10 +4259,17 @@ class StatementAnalyzer:
                     note_nonowning_bind(self.ctx, item.target,
                                         item.context_expr)
 
+            # A header's proof would go live only at the statement boundary,
+            # past the `__enter__` code that runs in between: drop it.
+            self.ctx.func.pending_non_null_ptr_vars.clear()
+            if item.enter_call is not None:
+                self.narrowing.invalidate_for_code_run(item.enter_call)
             if stmt.is_async:
                 # This item's `__aenter__` awaits before the next item's
                 # context expression (or the body) runs.
                 self.narrowing.invalidate_suspension_facts()
+            if before is None:
+                before = self.init.save()
 
         # Analyze the body -- track new variable declarations so codegen
         # can pre-declare them outside the guard {} scope (C++ scoping).
@@ -4265,6 +4277,18 @@ class StatementAnalyzer:
 
         for s in stmt.body:
             self.analyze_stmt(s)
+        if before is not None and any(
+                item.exit_can_suppress for item in stmt.items):
+            # A suppressing `__exit__` resumes after the statement from
+            # wherever its body raised, as a handler does: only facts that
+            # held once the first manager was entered and that nothing after
+            # it kills. The exit calls kill on every path, so they run after.
+            kills = self.ctx.fact_kills(
+                stmt.body,
+                extra_exprs=[item.context_expr for item in stmt.items[1:]])
+            kills.names.update(item.target for item in stmt.items[1:]
+                               if item.target is not None)
+            self.init.join_entry_from_any_point(before, kills)
         for item in reversed(stmt.items):
             if item.exit_call is not None:
                 self.narrowing.invalidate_for_code_run(item.exit_call)

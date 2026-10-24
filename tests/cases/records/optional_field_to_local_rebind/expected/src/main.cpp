@@ -26,12 +26,12 @@ void test(Holder& h) {
     h.value = Point(1, 2);
     p = ::tpy::optional_to_ptr(h.value);
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     p = nullptr;
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     h.value = Point(3, 4);
     p = ::tpy::optional_to_ptr(h.value);
-    std::cout << ::tpy::deref_check(p).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "y").y << "\n" << ::tpy::check_signals;
 }
 
 // h = Holder()

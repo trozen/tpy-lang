@@ -63,11 +63,11 @@ void __tpy_init() {
     static Edge __global_slot_4 = Edge(p);
     e2 = &__global_slot_4;
     std::cout << ::tpy::print_bool((e2->target.has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(e2->target).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(e2->target).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(e2->target, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(e2->target, "y").y << "\n" << ::tpy::check_signals;
     static Edge __global_slot_5 = Edge(::tpyapp::main::find((*pts), 3));
     e3 = &__global_slot_5;
-    std::cout << ::tpy::deref_optional_check(e3->target).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(e3->target, "x").x << "\n" << ::tpy::check_signals;
     static Edge __global_slot_6 = Edge(::tpyapp::main::find((*pts), 99));
     e4 = &__global_slot_6;
     std::cout << ::tpy::print_bool((!e4->target.has_value())) << "\n" << ::tpy::check_signals;

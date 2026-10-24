@@ -41,7 +41,7 @@ int32_t write_through(Box& b) {
 int32_t read_direct(Box& b) {
     auto p = ::tpyapp::main::make_mixed(b);
     if ((std::get<1>(p) != nullptr)) {
-        return ::tpy::deref_check(std::get<1>(p)).val;
+        return ::tpy::none_attr(std::get<1>(p), "val").val;
     }
     return -1;
 }

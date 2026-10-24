@@ -559,7 +559,7 @@ int32_t first_ro(const std::vector<P>& xs, const ::tpy::ordered_map<std::string,
 //     # An Optional receiver, checked at the access.
 //     return xs[0] + d["a"]  # tpyc: warning(/None/) warning(/None/)
 int32_t opt_reads(const std::vector<int32_t>* xs, const ::tpy::ordered_map<std::string, int32_t>* d) {
-    return (::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::deref_check(xs), 0), ::tpy::__getitem__(::tpy::deref_check(d), "a")));
+    return (::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::none_item(xs), 0), ::tpy::__getitem__(::tpy::none_item(d), "a")));
 }
 
 // def references() -> None:

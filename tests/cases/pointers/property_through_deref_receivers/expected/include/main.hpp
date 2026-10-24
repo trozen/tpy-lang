@@ -143,7 +143,7 @@ inline Holder::Holder(Node* p) : p(p) {}
 //         return a + self.p.twice  # tpyc: ok non_null(self.p)
 //     return a
 inline int32_t Holder::read() const {
-    int32_t a = ::tpy::deref_check(this->p).twice();
+    int32_t a = ::tpy::none_attr(this->p, "twice").twice();
     if ((this->p != nullptr)) {
         return (::tpy::add_check<int32_t>(a, this->p->twice()));
     }

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def bump(p: Ptr[Tag]) -> None:
 //     p.n += 1
 void bump(::tpyapp::red::Tag* p) {
-    ::tpy::deref_check(p).n = (::tpy::deref_check(p).n) + (::tpy::BigInt(1));
+    ::tpy::none_attr(p, "n").n = (::tpy::none_attr(p, "n").n) + (::tpy::BigInt(1));
 }
 
 // def main() -> None:

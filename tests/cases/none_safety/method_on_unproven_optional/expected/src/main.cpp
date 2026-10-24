@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     # targs ride the checked deref
 //     return b.conv(3)           # tpyc: warning(/Potential None access/)
 int32_t generic_on_optional(const Bag* b) {
-    return ::tpy::deref_check(b).conv<int32_t>(3);
+    return ::tpy::none_attr(b, "conv").conv<int32_t>(3);
 }
 
 // def dyn_on_optional(p: Pet | None) -> int32:
 //     # a @dynamic pointee -- the check is pointee-blind
 //     return p.sound()           # tpyc: warning(/Potential None access/)
 int32_t dyn_on_optional(Pet* p) {
-    return ::tpy::deref_check(p).sound();
+    return ::tpy::none_attr(p, "sound").sound();
 }
 
 // def main() -> None:

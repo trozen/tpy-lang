@@ -98,7 +98,7 @@ inline StorageIter<T, N>::StorageIter(::tpy::UninitArrayStorage<T, N>* storage, 
 template<typename T, std::size_t N>
 inline std::expected<T, ::tpy::StopIteration> StorageIter<T, N>::__next__() {
     if ((this->_index < this->_size)) {
-        ::tpy::val_or_ref_t<T> val = ::tpy::deref_check(this->_storage).load(::tpy::int_cast_check<uint32_t>(this->_index));
+        ::tpy::val_or_ref_t<T> val = ::tpy::none_attr(this->_storage, "load").load(::tpy::int_cast_check<uint32_t>(this->_index));
         this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
         return val;
     }

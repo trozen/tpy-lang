@@ -49,8 +49,8 @@ void __tpy_init() {
     h = &__global_slot_2;
     h->value = ::tpy::ptr_to_optional(::tpyapp::main::find((*pts), 2));
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(h->value).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(h->value).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(h->value, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(h->value, "y").y << "\n" << ::tpy::check_signals;
     h->value = ::tpy::ptr_to_optional(::tpyapp::main::find((*pts), 99));
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
 }

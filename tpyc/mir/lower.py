@@ -106,6 +106,15 @@ def _optional_field_target(target: th.THIRExpr) -> bool:
             and optional_record_field(target.field_identity.type) is not None)
 
 
+def _refuse_none_checked(node: th.THIRExpr, receiver: th.THIRExpr, what: str) -> None:
+    """A receiver under its runtime None check is not modeled: the check may
+    raise, and its referent is the Optional's payload. The reason names the
+    representation, a whole `std::optional` or a nullable pointer."""
+    if isinstance(receiver, th.THIRNoneCheck):
+        kind = "optional" if receiver.value.form is th.Form.STORAGE else "pointer"
+        raise MIRUnsupported(node, f"unproven {kind} {what}")
+
+
 def _call_arguments(expr: th.THIRCall | th.THIRMethodCall) -> tuple[th.THIRExpr, ...]:
     """The arguments a call binds in parameter order: a method's receiver is parameter 0."""
     return (expr.receiver, *expr.args) if isinstance(expr, th.THIRMethodCall) else expr.args
@@ -578,6 +587,7 @@ class _Lowering:
             return self.stub_call(expr)
         storage = {"full_expression_storage"} if temporary else set()
         if isinstance(expr, th.THIRMethodCall):
+            _refuse_none_checked(expr, expr.receiver, "method receiver")
             _plain(expr, {"receiver", "method_cpp", "args", "is_arrow", "resolved_callee", "receiver_access"}
                    | storage)
         else:
@@ -724,6 +734,7 @@ class _Lowering:
         or the receiver are."""
         if view:
             _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
+        _refuse_none_checked(expr, expr.receiver, "method receiver")
         _plain(expr, {"receiver", "method_cpp", "args", "native_function_name", "cpp_template", "stub_callee"}
                | _value_result_form(expr))
         callee = expr.stub_callee
@@ -3324,7 +3335,7 @@ class _Lowering:
         Optional record field (`optional_record_field`) is the whole field,
         at the access its path reaches it with, or its payload record once
         THIR narrowed the read (`narrowed_deref`)."""
-        _require(expr, not expr.opt_deref_check, "unproven optional field read")
+        _refuse_none_checked(expr, expr.receiver, "field read")
         fact = expr.field_identity
         payload = optional_record_field(fact.type) if isinstance(fact, th.THIRFieldIdentity) else None
         _plain(expr, {"receiver", "field_cpp", "field_identity", "is_arrow"}

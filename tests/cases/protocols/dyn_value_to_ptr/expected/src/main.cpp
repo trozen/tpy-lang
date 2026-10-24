@@ -14,7 +14,7 @@ void make_waker(Awaker& h, int32_t task_id) {
 // def _consume(p: Ptr[Awaker], task_id: int32) -> None:
 //     p.mark(task_id)
 void _consume(Awaker* p, int32_t task_id) {
-    ::tpy::deref_check(p).mark(task_id);
+    ::tpy::none_attr(p, "mark").mark(task_id);
 }
 
 // def read_only_take(h: Awaker) -> Ptr[readonly[Awaker]]:
@@ -46,7 +46,7 @@ void main() {
     ::tpyapp::main::make_waker(e, 7);
     std::cout << ::tpy::__getitem__(e.log, 0) << "\n" << ::tpy::check_signals;
     Holder h = Holder(e);
-    ::tpy::deref_check(h.awaker).mark(99);
+    ::tpy::none_attr(h.awaker, "mark").mark(99);
     std::cout << ::tpy::__getitem__(e.log, 1) << "\n" << ::tpy::check_signals;
     auto rp = ::tpyapp::main::read_only_take(e);
     std::cout << ::tpy::print_bool((rp != nullptr)) << "\n" << ::tpy::check_signals;

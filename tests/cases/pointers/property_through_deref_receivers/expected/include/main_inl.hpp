@@ -13,7 +13,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpy::deref_check(h.p).twice();
+        return ::tpy::none_attr(h.p, "twice").twice();
     }
     case S_RESUME_0: {  // after: yield h.p.twice  # tpyc: ok
         __state = S_DONE;

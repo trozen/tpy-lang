@@ -342,13 +342,13 @@ inline Holder::Holder(::nb::Root* root) : root(root) {}
 // def top_n(self) -> int32:
 //     return self.root.Top.n  # tpyc: ok
 inline int32_t Holder::top_n() const {
-    return ::tpy::deref_check(this->root).top().n;
+    return ::tpy::none_attr(this->root, "Top").top().n;
 }
 
 // def picked(self) -> int32:
 //     return self.root.pick(2)  # tpyc: ok
 inline int32_t Holder::picked() const {
-    return ::tpy::deref_check(this->root).pick(2);
+    return ::tpy::none_attr(this->root, "pick").pick(2);
 }
 
 // def __init__(self, n: int32) -> None:

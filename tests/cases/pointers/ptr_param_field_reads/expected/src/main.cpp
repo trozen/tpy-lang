@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def read_elem(sector: Ptr[Sector], i: int32) -> int32:
 //     return sector.nums[i]  # tpyc: ok
 int32_t read_elem(Sector* sector, int32_t i) {
-    return ::tpy::__getitem__(::tpy::deref_check(sector).nums, i);
+    return ::tpy::__getitem__(::tpy::none_attr(sector, "nums").nums, i);
 }
 
 // def read_cond(sector: Ptr[Sector], i: int32) -> int32:
@@ -15,7 +15,7 @@ int32_t read_elem(Sector* sector, int32_t i) {
 //         return 10
 //     return 0
 int32_t read_cond(Sector* sector, int32_t i) {
-    if (::tpy::__getitem__(::tpy::deref_check(sector).flags, i)) {
+    if (::tpy::__getitem__(::tpy::none_attr(sector, "flags").flags, i)) {
         return 10;
     }
     return 0;
@@ -28,7 +28,7 @@ int32_t read_cond(Sector* sector, int32_t i) {
 //     fl.append(True)
 //     return len(fl)
 int32_t grow(Sector* sector) {
-    std::vector<bool>& fl = ::tpy::deref_check(sector).flags;
+    std::vector<bool>& fl = ::tpy::none_attr(sector, "flags").flags;
     fl.push_back(true);
     return ::tpy::__len__(fl);
 }
@@ -37,7 +37,7 @@ int32_t grow(Sector* sector) {
 //     fl = sector.flags  # tpyc: ok
 //     return len(fl)
 int32_t count_readonly(const Sector* sector) {
-    const std::vector<bool>& fl = ::tpy::deref_check(sector).flags;
+    const std::vector<bool>& fl = ::tpy::none_attr(sector, "flags").flags;
     return ::tpy::__len__(fl);
 }
 
@@ -47,7 +47,7 @@ int32_t count_readonly(const Sector* sector) {
 //     assert ceil_pic is not None
 //     return ceil_pic.width
 int32_t pic_width(const Seg& seg) {
-    Picture* ceil_pic = ::tpy::optional_to_ptr(::tpy::deref_check(seg.sector_front).ceil_pic);
+    Picture* ceil_pic = ::tpy::optional_to_ptr(::tpy::none_attr(seg.sector_front, "ceil_pic").ceil_pic);
     if (!((ceil_pic != nullptr))) ::tpy::raise_assertion_error();
     return ceil_pic->width;
 }
@@ -55,7 +55,7 @@ int32_t pic_width(const Seg& seg) {
 // def has_pic(seg: Seg) -> bool:
 //     return seg.sector_front.ceil_pic is not None  # tpyc: ok
 bool has_pic(const Seg& seg) {
-    return (::tpy::deref_check(seg.sector_front).ceil_pic.has_value());
+    return (::tpy::none_attr(seg.sector_front, "ceil_pic").ceil_pic.has_value());
 }
 
 // def main():

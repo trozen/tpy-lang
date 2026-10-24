@@ -137,7 +137,7 @@ int32_t loop_read(const Handle& h) {
 void component_inline(Handle& h) {
     {
         auto&& __tmp_1 = h.ptr();
-        ::tpy::deref_check(__tmp_1).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(__tmp_1).item.n, 10);
+        ::tpy::none_attr(__tmp_1, "item").item.n = ::tpy::add_check<int32_t>(::tpy::none_attr(__tmp_1, "item").item.n, 10);
     }
 }
 
@@ -147,7 +147,7 @@ void component_inline(Handle& h) {
 //     q.item.n += 100
 void component_alias(Handle& h) {
     Payload* q = h.ptr();
-    ::tpy::deref_check(q).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(q).item.n, 100);
+    ::tpy::none_attr(q, "item").item.n = ::tpy::add_check<int32_t>(::tpy::none_attr(q, "item").item.n, 100);
 }
 
 // # component_read: the call lends a writable Ptr, which nothing tracks once
@@ -155,13 +155,13 @@ void component_alias(Handle& h) {
 // def component_read(h: Handle) -> int32:
 //     return h.ptr().item.n
 int32_t component_read(Handle& h) {
-    return ::tpy::deref_check(h.ptr()).item.n;
+    return ::tpy::none_attr(h.ptr(), "item").item.n;
 }
 
 // def set_n(p: Ptr[Payload]) -> None:
 //     p.item.n += 1000
 void set_n(Payload* p) {
-    ::tpy::deref_check(p).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(p).item.n, 1000);
+    ::tpy::none_attr(p, "item").item.n = ::tpy::add_check<int32_t>(::tpy::none_attr(p, "item").item.n, 1000);
 }
 
 // # component_arg: the returned Ptr passed to a mutable Ptr parameter keeps the
@@ -190,7 +190,7 @@ void component_nullable(Handle& h) {
 void unmarked_write(const Handle& h) {
     {
         auto&& __tmp_1 = h.raw();
-        ::tpy::deref_check(__tmp_1).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(__tmp_1).item.n, 100000);
+        ::tpy::none_attr(__tmp_1, "item").item.n = ::tpy::add_check<int32_t>(::tpy::none_attr(__tmp_1, "item").item.n, 100000);
     }
 }
 
@@ -200,7 +200,7 @@ void unmarked_write(const Handle& h) {
 //     q.item.n += 1
 void unmarked_alias(const Handle& h) {
     Payload* q = h.raw();
-    ::tpy::deref_check(q).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(q).item.n, 1);
+    ::tpy::none_attr(q, "item").item.n = ::tpy::add_check<int32_t>(::tpy::none_attr(q, "item").item.n, 1);
 }
 
 // def getitem_alias(r: Rows) -> None:
@@ -208,7 +208,7 @@ void unmarked_alias(const Handle& h) {
 //     q.n += 1000000
 void getitem_alias(Rows& r) {
     Item* q = r[0];
-    ::tpy::deref_check(q).n = ::tpy::add_check<int32_t>(::tpy::deref_check(q).n, 1000000);
+    ::tpy::none_attr(q, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(q, "n").n, 1000000);
 }
 
 // def getitem_inline(r: Rows) -> None:
@@ -216,7 +216,7 @@ void getitem_alias(Rows& r) {
 void getitem_inline(Rows& r) {
     {
         auto&& __tmp_1 = r[0];
-        ::tpy::deref_check(__tmp_1).n = ::tpy::add_check<int32_t>(::tpy::deref_check(__tmp_1).n, 10000000);
+        ::tpy::none_attr(__tmp_1, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(__tmp_1, "n").n, 10000000);
     }
 }
 
@@ -224,7 +224,7 @@ void getitem_inline(Rows& r) {
 // def getitem_ro_read(r: readonly[Rows]) -> int32:
 //     return r[0].n  # tpyc: ok
 int32_t getitem_ro_read(const Rows& r) {
-    return ::tpy::deref_check(r[0]).n;
+    return ::tpy::none_attr(r[0], "n").n;
 }
 
 // # loop_exemption: a `for` over an ArrayList takes the Span its `__iter__`

@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def modify_point(p: Ptr[Point]) -> None:
 //     p.x = 999
 void modify_point(Point* p) {
-    ::tpy::deref_check(p).x = 999;
+    ::tpy::none_attr(p, "x").x = 999;
 }
 
 // def read_point(p: Ptr[readonly[Point]]) -> int32:
 //     return p.x
 int32_t read_point(const Point* p) {
-    return ::tpy::deref_check(p).x;
+    return ::tpy::none_attr(p, "x").x;
 }
 
 // def test_coercion() -> None:

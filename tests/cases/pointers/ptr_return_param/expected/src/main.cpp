@@ -28,9 +28,9 @@ Point* addr_global() {
 void main() {
     Point local = Point(10, 20);
     Point* p1 = ::tpyapp::main::addr_param(local);
-    std::cout << ::tpy::deref_check(p1).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p1, "x").x << "\n" << ::tpy::check_signals;
     Point* p2 = ::tpyapp::main::addr_global();
-    std::cout << ::tpy::deref_check(p2).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p2, "y").y << "\n" << ::tpy::check_signals;
 }
 
 // global_pt: Point = Point(1, 2)

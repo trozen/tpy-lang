@@ -22,8 +22,8 @@ std::vector<P> make() {
 //     return n
 int32_t free_fn(const std::vector<P>* d) {
     int32_t n = 0;
-    n = ::tpy::add_check<int32_t>(n, ::tpy::__getitem__(::tpy::deref_check(d), 0).x);
-    std::cout << "free print" << " " << ::tpy::__getitem__(::tpy::deref_check(d), 0).x << "\n" << ::tpy::check_signals;
+    n = ::tpy::add_check<int32_t>(n, ::tpy::__getitem__(::tpy::none_item(d), 0).x);
+    std::cout << "free print" << " " << ::tpy::__getitem__(::tpy::none_item(d), 0).x << "\n" << ::tpy::check_signals;
     return n;
 }
 
@@ -51,7 +51,7 @@ __gen_gen gen(std::vector<P>* d) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+        int32_t __tpy_async_ret = ::tpy::__getitem__(::tpy::none_item(d), 0).x;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -105,7 +105,7 @@ __coro_async_main async_main() {
 //     return inner()
 int32_t closure(const std::vector<P>* d) {
     auto inner = [&d]() -> int32_t {
-        return ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+        return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
     };
     return inner();
 }
@@ -118,7 +118,7 @@ std::vector<int32_t> comprehension(const std::vector<P>* d) {
         std::vector<int32_t> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t _ = 0; _ < 2; ++_) {
-            __result.push_back(::tpy::__getitem__(::tpy::deref_check(d), 0).x);
+            __result.push_back(::tpy::__getitem__(::tpy::none_item(d), 0).x);
         }
         std::move(__result);
     });
@@ -134,7 +134,7 @@ int32_t try_finally(const std::vector<P>* d) {
     {
         bool __fin_ran_1 = false;
         try {
-            int32_t __tpy_ret_0 = ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+            int32_t __tpy_ret_0 = ::tpy::__getitem__(::tpy::none_item(d), 0).x;
             __fin_ran_1 = true;
             std::cout << "finally ran" << "\n" << ::tpy::check_signals;
             return __tpy_ret_0;
@@ -158,7 +158,7 @@ int32_t match_arm(const std::vector<P>* d, int32_t k) {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
-        return ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+        return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
     }
     default: {
         return 0;
@@ -179,14 +179,14 @@ int32_t pointer_local(bool flag) {
     if (flag) {
         d = &*(__slot_1 = std::vector<P>{P(13)});
     }
-    return ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+    return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
 }
 
 // def field_recv(h: H) -> int32:
 //     # field receiver: the storage optional member is checked whole
 //     return h.d[0].x  # tpyc: warning(/Potential None access/)
 int32_t field_recv(const H& h) {
-    return ::tpy::__getitem__(::tpy::deref_optional_check(h.d), 0).x;
+    return ::tpy::__getitem__(::tpy::none_item(h.d), 0).x;
 }
 
 // # The warning is right: the section only reads through `d`; `Own` is spelled
@@ -195,14 +195,14 @@ int32_t field_recv(const H& h) {
 //     # Own param: the rvalue-ref storage optional is checked whole
 //     return d[0].x  # tpyc: warning(/Potential None access/)
 int32_t own_param(std::optional<std::vector<P>>&& d) {
-    return ::tpy::__getitem__(::tpy::deref_optional_check(d), 0).x;
+    return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
 }
 
 // def readonly_param(d: readonly[list[P]] | None) -> int32:
 //     # readonly param: the const pointer is checked
 //     return d[0].x  # tpyc: warning(/Potential None access/)
 int32_t readonly_param(const std::vector<P>* d) {
-    return ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+    return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
 }
 
 // def decl_alias(xs: list[Rec | None] | None) -> None:
@@ -213,18 +213,18 @@ int32_t readonly_param(const std::vector<P>* d) {
 //     # ... so the write is visible through the container
 //     print("decl alias", xs[0].n)  # tpyc: warning(/Potential None access/)
 void decl_alias(std::vector<std::optional<Rec>>* xs) {
-    Rec* r = ::tpy::optional_to_ptr(::tpy::__getitem__(::tpy::deref_check(xs), 0));
+    Rec* r = ::tpy::optional_to_ptr(::tpy::__getitem__(::tpy::none_item(xs), 0));
     if ((r != nullptr)) {
         r->n = 9;
     }
-    std::cout << "decl alias" << " " << ::tpy::deref_optional_check(::tpy::__getitem__(::tpy::deref_check(xs), 0)).n << "\n" << ::tpy::check_signals;
+    std::cout << "decl alias" << " " << ::tpy::none_attr(::tpy::__getitem__(::tpy::none_item(xs), 0), "n").n << "\n" << ::tpy::check_signals;
 }
 
 // def is_none(xs: list[Rec | None] | None) -> bool:
 //     # is-None test of an element off the unproven receiver
 //     return xs[0] is None  # tpyc: warning(/Potential None access/)
 bool is_none(const std::vector<std::optional<Rec>>* xs) {
-    return (!::tpy::__getitem__(::tpy::deref_check(xs), 0).has_value());
+    return (!::tpy::__getitem__(::tpy::none_item(xs), 0).has_value());
 }
 
 // def truthy(xs: list[Rec | None] | None) -> int32:
@@ -234,7 +234,7 @@ bool is_none(const std::vector<std::optional<Rec>>* xs) {
 //         return 1
 //     return 0
 int32_t truthy(const std::vector<std::optional<Rec>>* xs) {
-    if (::tpy::__getitem__(::tpy::deref_check(xs), 0)) {
+    if (::tpy::__getitem__(::tpy::none_item(xs), 0)) {
         return 1;
     }
     return 0;
@@ -246,7 +246,7 @@ int32_t truthy(const std::vector<std::optional<Rec>>* xs) {
 //     t = d[0]  # tpyc: warning(/Potential None access/) type(str)
 //     return len(t)
 int32_t str_elem(const std::vector<std::string>* d) {
-    std::string t = ::tpy::__getitem__(::tpy::deref_check(d), 0);
+    std::string t = ::tpy::__getitem__(::tpy::none_item(d), 0);
     return ::tpy::__len__(t);
 }
 
@@ -255,7 +255,7 @@ int32_t str_elem(const std::vector<std::string>* d) {
 //     t = d[0]  # tpyc: warning(/Potential None access/) type(bytes)
 //     return len(t)
 int32_t bytes_elem(const std::vector<::tpy::Bytes>* d) {
-    ::tpy::Bytes t = ::tpy::__getitem__(::tpy::deref_check(d), 0);
+    ::tpy::Bytes t = ::tpy::__getitem__(::tpy::none_item(d), 0);
     return ::tpy::__len__(t);
 }
 
@@ -265,8 +265,8 @@ int32_t bytes_elem(const std::vector<::tpy::Bytes>* d) {
 //     d.clear()  # tpyc: warning(/Potential None access/)
 //     print("owned after mutation", t)
 void owned_after_mutation(std::vector<std::string>* d) {
-    std::string t = ::tpy::__getitem__(::tpy::deref_check(d), 0);
-    ::tpy::deref_check(d).clear();
+    std::string t = ::tpy::__getitem__(::tpy::none_item(d), 0);
+    ::tpy::none_attr(d, "clear").clear();
     std::cout << "owned after mutation" << " " << t << "\n" << ::tpy::check_signals;
 }
 
@@ -285,7 +285,7 @@ void loop_var_elem(std::vector<std::optional<std::vector<std::string>>>& rows) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& d = *__beg_0;
-        t = ::tpy::__getitem__(::tpy::deref_optional_check(d), 0);
+        t = ::tpy::__getitem__(::tpy::none_item(d), 0);
     }
     rows.clear();
     std::cout << "loop var elem" << " " << t << "\n" << ::tpy::check_signals;
@@ -295,21 +295,21 @@ void loop_var_elem(std::vector<std::optional<std::vector<std::string>>>& rows) {
 //     # index read: the checked receiver keeps the index normalisation
 //     return h.lst[-1]  # tpyc: warning(/Potential None access/)
 int32_t index_read(const H& h) {
-    return ::tpy::__getitem__(::tpy::deref_optional_check(h.lst), -1);
+    return ::tpy::__getitem__(::tpy::none_item(h.lst), -1);
 }
 
 // def nested_field_elem(d: Optional[list[P]]) -> int32:
 //     # nested: an element of an element field
 //     return d[0].rows[1]  # tpyc: warning(/Potential None access/)
 int32_t nested_field_elem(const std::vector<P>* d) {
-    return ::tpy::__getitem__(::tpy::__getitem__(::tpy::deref_check(d), 0).rows, 1);
+    return ::tpy::__getitem__(::tpy::__getitem__(::tpy::none_item(d), 0).rows, 1);
 }
 
 // def nested_elem(d: Optional[list[list[int32]]]) -> int32:
 //     # nested: an element of an element
 //     return d[0][1]  # tpyc: warning(/Potential None access/)
 int32_t nested_elem(const std::vector<std::vector<int32_t>>* d) {
-    return ::tpy::__getitem__(::tpy::__getitem__(::tpy::deref_check(d), 0), 1);
+    return ::tpy::__getitem__(::tpy::__getitem__(::tpy::none_item(d), 0), 1);
 }
 
 // def unpack_source(d: Optional[list[P]]) -> int32:
@@ -317,7 +317,7 @@ int32_t nested_elem(const std::vector<std::vector<int32_t>>* d) {
 //     a, b = d[0].pair  # tpyc: warning(/Potential None access/)
 //     return a + b
 int32_t unpack_source(const std::vector<P>* d) {
-    auto __tup_1 = ::tpy::__getitem__(::tpy::deref_check(d), 0).pair;
+    auto __tup_1 = ::tpy::__getitem__(::tpy::none_item(d), 0).pair;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(a, b));
@@ -335,7 +335,7 @@ std::vector<int32_t> storage_loop_var(const std::vector<std::optional<std::vecto
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& r = *__beg_0;
-            __result.push_back(::tpy::__getitem__(::tpy::deref_optional_check(r), 0));
+            __result.push_back(::tpy::__getitem__(::tpy::none_item(r), 0));
         }
         std::move(__result);
     });
@@ -345,14 +345,14 @@ std::vector<int32_t> storage_loop_var(const std::vector<std::optional<std::vecto
 //     # a user record's `__getitem__` off the unproven receiver
 //     return b[0].x  # tpyc: warning(/Potential None access/)
 int32_t record_getitem(const Bag* b) {
-    return ::tpy::deref_check(b)[0].x;
+    return ::tpy::none_item(b)[0].x;
 }
 
 // def bytearray_read(b: Optional[bytearray]) -> int32:
 //     # a bytearray byte off the unproven receiver
 //     return b[1]  # tpyc: warning(/Potential None access/)
 int32_t bytearray_read(const ::tpy::ByteArray* b) {
-    return static_cast<int32_t>(::tpy::bytes_getitem(::tpy::deref_check(b), 1));
+    return static_cast<int32_t>(::tpy::bytes_getitem(::tpy::none_item(b), 1));
 }
 
 // def overload_trial() -> int32:
@@ -372,7 +372,7 @@ int32_t overload_trial() {
 //     # only a None global reaches a module-level read un-narrowed)
 //     return G[0].x  # tpyc: warning(/Potential None access/)
 int32_t global_slot() {
-    return ::tpy::__getitem__(::tpy::deref_check(G), 0).x;
+    return ::tpy::__getitem__(::tpy::none_item(G), 0).x;
 }
 
 // def main() -> None:

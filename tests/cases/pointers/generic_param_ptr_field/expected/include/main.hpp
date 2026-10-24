@@ -83,7 +83,7 @@ inline Adder<W>::Adder(::tpy::param_val_or_ref_t<W> sink) : _sink(&sink) {}
 //     self._sink.add(n)
 template<Adds W>
 inline void Adder<W>::push(int32_t n) const {
-    ::tpy::deref_check(this->_sink).add(n);
+    ::tpy::none_attr(this->_sink, "add").add(n);
 }
 
 // def make_adder[W: Adds](sink: W) -> Own[Adder[W]]:

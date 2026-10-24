@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.get_value())  # tpyc: nullable(p)
 void main() {
     Counter* p = static_cast<Counter*>(nullptr);
-    std::cout << ::tpy::deref_check(p).get_value() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "get_value").get_value() << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def f(s: Ptr[S]) -> bool:
 //     return s.outer.inner.flag  # tpyc: nullable(s)
 bool f(::xcore::S* s) {
-    return ::tpy::deref_check(s).outer().inner.flag;
+    return ::tpy::none_attr(s, "outer").outer().inner.flag;
 }
 
 // def main() -> None:

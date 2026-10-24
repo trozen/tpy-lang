@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     print(p.x)  # tpyc: nullable(p)
 void main() {
     const Point* p = static_cast<const Point*>(nullptr);
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -14,7 +14,7 @@ Right::Right(::hubns::Hub* hub) : hub(hub) {}
 //     return self.hub.read_tag(Tag())
 int32_t Right::run() const {
     ::hubns::Tag __tmp_1 = ::hubns::Tag();
-    return ::tpy::deref_check(this->hub).read_tag(__tmp_1);
+    return ::tpy::none_attr(this->hub, "read_tag").read_tag(__tmp_1);
 }
 // from tpy.extern import native
 // import hub

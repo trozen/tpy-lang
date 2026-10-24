@@ -89,7 +89,7 @@ int32_t test_readonly_ptr(const Point* p) {
 int32_t test_merge_no_guarantee(Point* p) {
     if ((p != nullptr)) {
     }
-    return ::tpy::deref_check(p).x;
+    return ::tpy::none_attr(p, "x").x;
 }
 
 // def main() -> None:

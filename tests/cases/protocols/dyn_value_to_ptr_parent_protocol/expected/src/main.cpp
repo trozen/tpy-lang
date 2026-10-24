@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def takes_pet_ptr(p: Ptr[Pet]) -> int32:
 //     return p.name()
 int32_t takes_pet_ptr(Pet* p) {
-    return ::tpy::deref_check(p).name();
+    return ::tpy::none_attr(p, "name").name();
 }
 
 // def forward(np: NamedPet) -> int32:

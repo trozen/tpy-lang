@@ -26,7 +26,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_M_bump_each::__next__(
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         _ = ((*__for_i_0))++;
-        ::tpy::deref_check(__self._a).bump();
+        ::tpy::none_attr(__self._a, "bump").bump();
         __state = S_RESUME_0;
         return __self._a->n;
     }

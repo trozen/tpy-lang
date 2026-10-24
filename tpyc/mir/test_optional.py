@@ -7,6 +7,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
+from ..parse.nodes import NoneUse, NoneUseKind
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32_MAX, INT32_MIN, VoidType
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -286,7 +287,9 @@ def test_contradictory_optional_facts_are_rejected(artifacts: Artifacts, change:
     elif change == "form":
         decl = replace(decl, form=th.Form.STORAGE)
     else:
-        decl = replace(decl, init=replace(decl.init, opt_deref_check=True))
+        decl = replace(decl, init=th.THIRNoneCheck(
+            result_type=decl.init.result_type, value=decl.init,
+            use=NoneUse(NoneUseKind.ATTR, attr="x")))
     bad = replace(fn, body=(decl, *fn.body[1:]))
     assert isinstance(lower_function(bad, MIRBodyId("optionals", bad.name)), MIRNotCovered)
 

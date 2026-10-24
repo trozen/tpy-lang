@@ -308,7 +308,7 @@ __coro_peek_n peek_n(const RBox<A>& b) {
 //     m._a.n += 1000
 //     m.xs[1] += 1
 void via_ro(const M& m) {
-    ::tpy::deref_check(m._a).n = ::tpy::add_check<int32_t>(::tpy::deref_check(m._a).n, 1000);
+    ::tpy::none_attr(m._a, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(m._a, "n").n, 1000);
     ::tpy::__setitem__(m.xs, 1, ::tpy::add_check<int32_t>(::tpy::__getitem__(m.xs, 1), 1));
 }
 
@@ -334,7 +334,7 @@ void bump_all(const std::vector<A*>& ps) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         A* p = *__beg_0;
-        ::tpy::deref_check(p).bump();
+        ::tpy::none_attr(p, "bump").bump();
     }
 }
 
@@ -348,7 +348,7 @@ void bump_list(const std::vector<A*>& ps) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         A* p = *__beg_0;
-        ::tpy::deref_check(p).n = ::tpy::add_check<int32_t>(::tpy::deref_check(p).n, 1);
+        ::tpy::none_attr(p, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(p, "n").n, 1);
     }
 }
 
@@ -633,7 +633,7 @@ void main() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpy::deref_check(__self._a).bump();
+        ::tpy::none_attr(__self._a, "bump").bump();
         __state = S_DONE;
         int32_t __tpy_async_ret = __self._a->n;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

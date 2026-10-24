@@ -22,7 +22,7 @@ void main() {
     };
     if ((p != nullptr)) {
         clear();
-        std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     }
 }
 

@@ -174,9 +174,9 @@ void main() {
     got.push_back(4);
     std::cout << "alias" << " " << ::tpy::__len__((*XS)) << " " << ::tpy::__getitem__((*XS), 3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::point_at(&(*LEFT));
-    std::cout << "handle" << " " << ::tpy::deref_check(::tpyapp::main::current()).v << "\n" << ::tpy::check_signals;
+    std::cout << "handle" << " " << ::tpy::none_attr(::tpyapp::main::current(), "v").v << "\n" << ::tpy::check_signals;
     ::tpyapp::main::point_at(&(*RIGHT));
-    std::cout << "handle" << " " << ::tpy::deref_check(::tpyapp::main::current()).v << "\n" << ::tpy::check_signals;
+    std::cout << "handle" << " " << ::tpy::none_attr(::tpyapp::main::current(), "v").v << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::banners();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);

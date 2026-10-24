@@ -8,11 +8,11 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 |---|---|---|
 | Parse `assert` statements | Done | Supports `assert cond` and `assert cond, "literal"` |
 | `assert`-driven Optional narrowing | Done | `assert x is not None` narrows `x` after assertion |
-| Warning + runtime check for Optional field/method/subscript access | Done | Applies when Optional may be `None` |
+| Warning + runtime check for Optional field/method/subscript access | Done | Applies when Optional may be `None`; a None value raises CPython's `AttributeError` / `TypeError` |
 | Elide runtime checks when non-None is proven | Done | Via `if x is not None` and `assert x is not None` |
 | `is None` / `is not None` on value optionals | Done | Uses `std::optional<T>::has_value()` in generated code |
 | Optional-aware identity checks after flow narrowing | Done | Avoids invalid `== nullptr` for value optionals |
-| Optional in value-consuming operators without proof (`x + 1`) | Done | Warns and inserts runtime null checks |
+| Optional in value-consuming operators without proof (`x + 1`) | Done | Warns and inserts a runtime check that raises CPython's `TypeError` |
 | Truthiness narrowing on Optional names (`if x`, `assert x`) | Done | Narrows on true path; value-optionals emit warning |
 | Truthiness narrowing in composed conditions (`not/and/or`) | Done | Name-based facts compose through boolean operators |
 | Truthiness narrowing for field/subscript expressions | Done | Supports stable expression identities (field/chained field, builtin-first simple subscripts) |
@@ -49,7 +49,7 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 | Mixed-variable narrowing isolation | Covered | None |
 | Negation narrowing (`not (x is None)`) | Covered | None |
 | Function-boundary isolation | Covered | None |
-| Operator-phase runtime checks (`+`, comparisons, unary on Optionals) | Covered | Runtime panic tests for binop/comparison/unary optionals |
+| Operator-phase runtime checks (`+`, comparisons, unary on Optionals) | Covered | Uncaught-exception tests for binop/comparison/unary optionals; `none_access_raises` catches each kind at every position |
 | Proven optional comparison unwrapping (`(*x) > 0` vs `x > 0`) | Covered | Dedicated post-assert comparison test |
 | Loop-specific narrowing stress (`while` + reassignment/continue/break) | Covered | Dedicated loop suite: `loop_while_expr_reproof_ok`, `loop_continue_if_merge_narrowing`, `warn_loop_break_does_not_prove_after_loop`, `warn_loop_subscript_fact_stale_after_write`, `warn_loop_field_fact_stale_after_rebind`, `loop_nested_branch_merge`, `loop_short_circuit_reproof`, `loop_foreach_optional_body_narrowing`, `warn_loop_call_invalidation_after_condition`, `loop_body_renarrow_without_header_fact`, `loop_nested_outer_fact_preserved`, `warn_loop_nested_inner_fact_not_leaked` |
 | Field/subscript truthiness narrowing (`if obj.field`, `if items[i]`) | Covered | Stable identity subset implemented; tests added for field/subscript narrowing |
@@ -69,7 +69,7 @@ This document describes TurboPython's `T | None` safety behavior, current limita
 
 ### Non-value optionals (`Point | None`, `list[T] | None`, ...)
 
-- Unproven field/method/subscript access compiles with a warning and inserts a runtime null check.
+- Unproven field/method/subscript access compiles with a warning and inserts a runtime None check. A None value raises the exception CPython raises: `AttributeError` (`'NoneType' object has no attribute 'mag'`) for a field or method, `TypeError` (`'NoneType' object is not subscriptable`) for a subscript, `TypeError` (`'NoneType' object is not callable`) for a call through a `Callable | None` field. The check is `::tpy::none_attr(p, "mag").mag()` / `::tpy::none_item(xs)` / `::tpy::none_call(h.cb)(...)`; a C++ host catches every None access as `const tpy::NoneAccessError&`.
 - Proven non-None access (via guard or assert) does not insert that check.
 
 Example:
@@ -92,7 +92,7 @@ def g(p: Point | None) -> int32:
 - `== None` / `!= None` on optionals is rejected; use `is None` / `is not None`.
 - Truthiness checks (`if x`, `assert x`, `while x`) narrow on true-path but emit warning.
   - Reason: truthiness excludes both `None` and falsy non-None values (`0`, `0.0`, `False`, `""`, etc.).
-- Unproven value-consuming operator use compiles with a warning and inserts runtime checks.
+- Unproven value-consuming operator use compiles with a warning and inserts a runtime check on the operand that raises CPython's `TypeError` (`unsupported operand type(s) for +: 'NoneType' and 'int'`, `bad operand type for unary -: 'NoneType'`): `::tpy::none_operand(x, "+", "int")`.
 - Proven non-None operator use (guard/assert) emits unchecked unwraps with no extra check.
 
 ### Narrowing sources
@@ -192,8 +192,21 @@ where a fact may have died on some path:
 - `except` handlers: analyzed from pre-try state MINUS the try body's
   kill-set (an exception can be thrown at any point in the try body).
 - `finally` bodies: analyzed under all-paths entry facts (try/else/handler
-  kill-sets applied); the normal-path facts are restored for code after
+  kill-sets applied): a fact proved inside a `try` body or a handler
+  does not hold in its `finally`, since an exception may enter it from
+  before the proof. The normal-path facts are restored for code after
   the statement, minus whatever the finally body itself killed.
+- After a `with` whose `__exit__` can suppress (annotated `-> bool`):
+  only the facts that held once the first manager was entered and that
+  nothing in the statement kills -- the body, the later items'
+  expressions and the `__exit__` calls -- survive, since a suppressed
+  exception resumes after the statement from any point of the body. A
+  `__exit__` annotated `-> None` cannot suppress, so the body's facts
+  hold after it.
+
+Both rules can add a *Potential None access* warning after a proof made
+inside the region. Re-check after the block (`if x is not None:` or
+`assert x is not None` again) to silence it.
 - Call sites: once a nonlocal-writing closure has been defined, every
   subsequent call kills facts for its nonlocal targets (any call may
   invoke the closure). The same holds at a meet: a loop body, try body,

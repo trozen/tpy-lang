@@ -140,12 +140,12 @@ void named_like_sink(bool go) {
     while ((i < 2)) {
         p = &*(__slot_2 = P(i));
         if (go) {
-            std::cout << "named_like_sink" << " " << ::tpy::deref_check(__escaped).v << "\n" << ::tpy::check_signals;
+            std::cout << "named_like_sink" << " " << ::tpy::none_attr(__escaped, "v").v << "\n" << ::tpy::check_signals;
         }
         __escaped = &(*p);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "named_like_sink" << " " << ::tpy::deref_check(__escaped).v << " " << p->v << "\n" << ::tpy::check_signals;
+    std::cout << "named_like_sink" << " " << ::tpy::none_attr(__escaped, "v").v << " " << p->v << "\n" << ::tpy::check_signals;
 }
 
 // # iterating_wording: each mutation of storage a loop runs over says so,

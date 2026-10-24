@@ -27,11 +27,11 @@ void loop_carried_section() {
     std::optional<Point> __slot_2;
     while ((i < 2)) {
         p = &*(__slot_2 = Point(i));
-        std::cout << "loop_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+        std::cout << "loop_carried_iter:" << " " << ::tpy::none_attr(q, "x").x << "\n" << ::tpy::check_signals;
         q = &(*p);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "loop_carried:" << " " << ::tpy::deref_check(q).x << " " << p->x << "\n" << ::tpy::check_signals;
+    std::cout << "loop_carried:" << " " << ::tpy::none_attr(q, "x").x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
 // # the `for` spelling
@@ -50,7 +50,7 @@ void for_carried_section() {
     std::optional<Point> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_2 = Point(i));
-        std::cout << "for_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+        std::cout << "for_carried_iter:" << " " << ::tpy::none_attr(q, "x").x << "\n" << ::tpy::check_signals;
         q = &(*p);
     }
     std::cout << "for_carried:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -73,7 +73,7 @@ void foreign_origin_section(std::vector<Point>& xs) {
     std::optional<Point> __slot_1;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_1 = Point(i));
-        std::cout << "foreign_origin_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+        std::cout << "foreign_origin_iter:" << " " << ::tpy::none_attr(q, "x").x << "\n" << ::tpy::check_signals;
         q = &(*p);
     }
     std::cout << "foreign_origin:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -95,7 +95,7 @@ void hoisted_body_bind_section() {
     std::optional<Point> p;
     for (int32_t i = 0; i < 2; ++i) {
         p = Point(i);
-        std::cout << "hoisted_body_bind_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+        std::cout << "hoisted_body_bind_iter:" << " " << ::tpy::none_attr(q, "x").x << "\n" << ::tpy::check_signals;
         q = &(*p);
     }
     std::cout << "hoisted_body_bind:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -285,7 +285,7 @@ void loop_unpack_first_bind_section() {
         auto&& a = std::move(std::get<0>(__tup_1));
         auto&& b = std::move(std::get<1>(__tup_1));
         if ((i == 0)) {
-            std::cout << "loop_unpack_first_bind_iter:" << " " << ::tpy::deref_check(q).x << " " << b.x << "\n" << ::tpy::check_signals;
+            std::cout << "loop_unpack_first_bind_iter:" << " " << ::tpy::none_attr(q, "x").x << " " << b.x << "\n" << ::tpy::check_signals;
         }
         q = &a;
         std::cout << "loop_unpack_first_bind:" << " " << a.x << " " << b.x << "\n" << ::tpy::check_signals;
@@ -321,7 +321,7 @@ void loop_capture_section() {
         {
             p = std::move(__match_subject_1);
             if ((i == 0)) {
-                std::cout << "loop_capture_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+                std::cout << "loop_capture_iter:" << " " << ::tpy::none_attr(q, "x").x << "\n" << ::tpy::check_signals;
             }
             q = &(*p);
             std::cout << "loop_capture:" << " " << p->x << "\n" << ::tpy::check_signals;

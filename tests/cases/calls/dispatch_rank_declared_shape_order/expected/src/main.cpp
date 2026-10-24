@@ -393,7 +393,7 @@ std::string cbf__Animal__float32(Animal& x, float y) {
 //     p.hits += 1
 //     return "base"
 std::string cpp__Animal__Ptr_Animal(const Animal& x, Animal* p) {
-    ::tpy::deref_check(p).hits = ::tpy::add_check<int32_t>(::tpy::deref_check(p).hits, 1);
+    ::tpy::none_attr(p, "hits").hits = ::tpy::add_check<int32_t>(::tpy::none_attr(p, "hits").hits, 1);
     return "base";
 }
 

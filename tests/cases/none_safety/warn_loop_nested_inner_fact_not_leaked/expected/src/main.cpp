@@ -15,7 +15,7 @@ int32_t nested_warn(std::optional<int32_t> x, std::optional<int32_t> y) {
         while ((y.has_value())) {
             break;
         }
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(y), 1));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(y, "+", "int"), 1));
     }
     return 0;
 }

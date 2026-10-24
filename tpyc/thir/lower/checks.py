@@ -310,6 +310,7 @@ from .predicates import (
     _own_declared_call_ret,
     _own_storage_opt_param,
     _optional_ptr_borrow_name,
+    _ptr_value_none_name,
     _own_cascade_fires,
     _own_dyn_return,
     _own_lvalue_temp_slot,
@@ -1546,7 +1547,7 @@ def _field_over_field_ok(e: TpyExpr, locals_: dict[str, TpyType],
     The inner hop may itself be a `Ptr`-valued field read (`self.s.a.q` on
     `s: Ptr[S]`): it carries the auto-deref marker, so it is not
     marker-clean, but it renders through the pointer arm this gate's own
-    receiver resolution already admits (`::tpy::deref_check(this->s).a`, or
+    receiver resolution already admits (`::tpy::none_attr(this->s, "a").a`, or
     `this->s->a` where sema proved the pointer non-null) and the outer hop
     just spells `.q` off it."""
     if not (isinstance(e, TpyFieldAccess)
@@ -2381,7 +2382,7 @@ def _field_write_receiver_ok(target: TpyExpr, declared: dict[str, TpyType],
 
     An Optional-ptr-receiver target is admitted on both faces: proven ->
     `p->field = <value>;` (arrow via `_field_receiver_ok`), unproven ->
-    `::tpy::deref_check(p).field = <value>;` (`_optional_checked_field`).
+    `::tpy::none_attr(p, "field").field = <value>;` (`_optional_checked_field`).
 
     Two receiver shapes are deliberately NOT here. A USER-Deref receiver
     (`rc.field = v`) needs the narrow set to decide its `__deref__()` hop,
@@ -2393,7 +2394,7 @@ def _field_write_receiver_ok(target: TpyExpr, declared: dict[str, TpyType],
             or _ptr_value_field_recv_ok(target, declared, analyzer)
             or _optional_checked_field(target, declared, analyzer)
             # The STORAGE sibling (`h.opt.x = 5` ->
-            # `::tpy::deref_optional_check(h.opt).x = 5;`): the wrap goes
+            # `::tpy::none_attr(h.opt, "x").x = 5;`): the wrap goes
             # around the whole optional lvalue, and that render is position-independent
             # exactly like the already-`T*` name receiver beside it -- the
             # predicate was scoped to reads only by choice, not by render.
@@ -2806,20 +2807,21 @@ def _class_const_write_target_ok(target, declared: dict[str, TpyType],
     other value shapes). Receiver shapes: pure (no eval),
     effectful (the receiver lowers through its own arms -- rejects there
     if unrouted), or an unproven-Optional DECLARED pointer name (the
-    `deref_check(c)` render; pointer_value_expr's global `(*name)` wrap
-    and the field-receiver deref_optional_check shape stay out)."""
+    `none_attr(c, "X")` render; pointer_value_expr's global `(*name)` wrap
+    and the field-receiver whole-optional check shape stay out)."""
     if not (isinstance(target, TpyFieldAccess)
             and target.class_constant_owner is not None):
         return False
     if not _eligible_scalar(analyzer.get_expr_type(target)):
         return False
-    if target.needs_optional_runtime_check:
+    if target.none_use is not None:
         # `pointers` is every pointer record (NOT admission_pointers, which excludes
         # the Optional-ptr borrows this arm exists for): the receiver must
-        # render as the bare `T*` name deref_check takes.
-        return (isinstance(target.obj, TpyName)
-                and target.obj.name in declared
-                and target.obj.name in pointers)
+        # render as the bare `T*` name none_attr takes.
+        return ((isinstance(target.obj, TpyName)
+                 and target.obj.name in declared
+                 and target.obj.name in pointers)
+                or _ptr_value_none_name(target.obj, declared, analyzer))
     if isinstance(target.obj, TpySubscript):
         # An effectful subscript receiver is lowered prechecked (like the
         # field-read twin), so admission owns the receiver shape here.
@@ -2885,14 +2887,14 @@ def _scalar_aug_assign_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
               # sema only admits writable (borrow) receivers here.
               or _field_over_call_ok(target, analyzer)
               # A raw-`Ptr[T]` receiver field (`p.n += 1`): proven renders
-              # `p->n`, unproven `deref_check(p).n` -- the same render on
+              # `p->n`, unproven `none_attr(p, "n").n` -- the same render on
               # both sides, like the Optional-ptr row above.
               or _ptr_value_field_recv_ok(target, declared, analyzer)):
         return False
     # A narrowed-Optional or non-scalar target is rejected here (the former
     # needs an unwrap, the latter is not a binop-substitution shape). An
     # Optional-ptr-receiver field target IS admitted (proven -> `p->x`,
-    # unproven -> `deref_check(p).x` -- the same render lands on both sides of
+    # unproven -> `none_attr(p, "x").x` -- the same render lands on both sides of
     # the synthetic `target = (target OP value)`, which substitutes the
     # target string twice).
     target_type = analyzer.get_expr_type(target)
@@ -8665,7 +8667,7 @@ def _method_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
             or _chain_field_receiver_ok(recv, locals_, analyzer)
             # A field off an explicit `Ptr[record]` binding: the pointer arm
             # renders the receiver itself (`p->field`, or
-            # `::tpy::deref_check(p).field` when sema did not prove the
+            # `::tpy::none_attr(p, "field").field` when sema did not prove the
             # pointer), and the outer method access is `.` either way -- the
             # same composition every other admitted receiver here gets, one
             # deref down.
@@ -9188,7 +9190,7 @@ def _static_generic_reject(e: TpyMethodCall, fi, analyzer) -> str:
 def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
     """Sub-split of a Deref-chain method call by its emit arm:
     the narrowed-payload cast, the Ptr[T]
-    receiver arm (`p->m` / `::tpy::deref_check(p).m` -- no `.__deref__()`
+    receiver arm (`p->m` / `::tpy::none_attr(p, "m").m` -- no `.__deref__()`
     spelling), the builtin arm (cpp_template / native fi), or the plain
     member tail
     (`recv.__deref__()...m(args)` over the arg loop) -- split by
@@ -9740,7 +9742,7 @@ def _value_tuple_field_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
                                 locals_: dict[str, TpyType],
                                 analyzer) -> bool:
     """A VALUE-tuple FIELD read at the same value-tuple ref slot
-    (`::tpy::deref_check(this->_sock).connect(this->_addr)` at
+    (`::tpy::none_attr(this->_sock, "connect").connect(this->_addr)` at
     `tuple[str, int32]`): borrow and storage forms coincide for a value
     tuple, so the member read binds the `const std::tuple<...>&` slot
     directly -- bare, the tuple sibling of
@@ -10100,13 +10102,13 @@ def _ptr_deref_method_call(e: TpyMethodCall, analyzer) -> bool:
     """A single-level Deref method call THROUGH a `Ptr[T]` receiver
     (`cell.release_strong()` on `cell: Ptr[Cell]`): the method-call
     pointer tail renders `p->m(args)` when sema proved the pointer non-null
-    (`e.ptr_non_null`) and `::tpy::deref_check(p).m(args)` otherwise -- the
+    (`e.ptr_non_null`) and `::tpy::none_attr(p, "m").m(args)` otherwise -- the
     existing THIRMethodCall is_arrow / deref_check renders; a pointer
     receiver never spells the `.__deref__()` chain. The ONE discriminator
     consumed by lowering; the caller adds receiver-shape and arg/result
     admission on top (the qualified-marker rows: the same
     first-pass arg loop, Own cascade included). A `@native` member rename and
-    a property getter (`p.Top` -> `deref_check(p).top()`) spell like any
+    a property getter (`p.Top` -> `none_attr(p, "top").top()`) spell like any
     member. Rejected here: any other marker,
     a deeper chain (the pointer arm emits ONE `->` regardless of depth, so a
     `Ptr[Ptr[T]]` render is not reproduced), template and `function=True`
@@ -13642,8 +13644,8 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     borrow name (an `A | None` param / OPTIONAL_TO_PTR local): proven-non-None
     calls render the indirect arm (`p->method(args)`, is_arrow -- the name is
     in the lowering pointer set), unproven ones the runtime-check arm
-    (`::tpy::deref_check(p).method(args)`, the caller's marker carve-out ->
-    `THIRMethodCall.deref_check`).
+    (`::tpy::none_attr(p, "method").method(args)`, the caller's marker carve-out ->
+    a `THIRNoneCheck` receiver).
 
     Method: a plain instance method, resolvable through the MRO (an
     inherited method emits identically for the admitted arg shapes). An
@@ -13725,7 +13727,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     if isinstance(recv_t, OwnType):
         recv_t = unwrap_readonly(recv_t.wrapped)
     # An Optional-ptr borrow receiver dispatches methods on the inner record
-    # (proven -> arrow, unproven -> deref_check; both yield the inner).
+    # (proven -> arrow, unproven -> none_attr; both yield the inner).
     opt_recv = _optional_ptr_borrow(recv_t, analyzer)
     if opt_recv is not None:
         recv_t = unwrap_readonly(opt_recv.inner)

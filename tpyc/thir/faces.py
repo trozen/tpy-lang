@@ -123,7 +123,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.storage_opt_whole",        # narrowed storage-opt local at a
                                     # protocol slot passes the whole optional
     "field.opt_check_storage_name", # unproven access off a storage-opt name
-                                    # -- deref_optional_check(item).field
+                                    # -- none_attr(item, "field").field
     "call.storage_opt_ret",         # Own-optional call result lands bare
                                     # in its storage optional decl slot
     "call.view_inner_opt_ret",      # VIEW-inner value-optional call result
@@ -573,7 +573,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # is_arrow / deref_check renders over a pointer-VALUE receiver).
     "method.overload_set_call",     # genuine (non-mangled) method stub set call
     "method.ptr_arrow",             # proven non-null: `p->m(args)`
-    "method.ptr_checked",           # `::tpy::deref_check(p).m(args)`
+    "method.ptr_checked",           # `::tpy::none_attr(p, "m").m(args)`
     "method.user_deref_chain",      # `r.__deref__()...m(args)` user Deref proxy
     "method.user_deref_stub",       # container MEMBER stub through the Deref chain (push_back)
     "method.ptr_template",          # explicit `@cpp_template` Ptr method
@@ -938,15 +938,15 @@ THIR_FACES: frozenset[str] = frozenset({
     # single-level field read, and admission is the distinguishing site).
     "field.chain_recv",
     # The same chain whose INNER hop is a `Ptr`-valued field read (lowering
-    # admission; `self.s.a.q` -> `::tpy::deref_check(this->s).a.q`, or the
+    # admission; `self.s.a.q` -> `::tpy::none_attr(this->s, "a").a.q`, or the
     # `->` spelling where sema proved the pointer non-null).
     "field.chain_ptr_recv",
     # Unproven member access off a STORAGE Optional[F1-record] field lvalue
-    # (`h.opt.x` -> `::tpy::deref_optional_check(h.opt).x`; lowering) -- the
+    # (`h.opt.x` -> `::tpy::none_attr(h.opt, "x").x`; lowering) -- the
     # optional-lvalue sibling of the deref_check (`T*` receiver) arm.
     "field.opt_check_field_recv",
     # The container-subscript sibling (`d["a"].x` ->
-    # `::tpy::deref_optional_check(::tpy::__getitem__(d, "a")).x`; lowering).
+    # `::tpy::none_attr(::tpy::__getitem__(d, "a"), "x").x`; lowering).
     "field.opt_check_subscript_recv",
     # A RECORD-result user-dunder binop (`a // b` -> Meters, `td1 + td2`):
     # the injected/native cpp_template render, admitted at consumers that
@@ -955,9 +955,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # ...consumed as a PRINT arg (the record-call row's binop twin; gate).
     "print.record_binop",
     "field.opt_check_call_recv",    # unproven field off a ptr-Optional
-                                    # CALL -> deref_check(<call>).field
+                                    # CALL -> none_attr(<call>, "field").field
     "method.opt_check_call_recv",   # the method sibling ->
-                                    # deref_check(<call>).method(args)
+                                    # none_attr(<call>, "method").method(args)
     "print.record_field",           # F1-record FIELD print arg -> RAW stream
                                     # over the bare member read
     # ...consumed as a FIELD-access receiver (`(a // b).v`; gate).
@@ -1173,9 +1173,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # ptr-repr Optional[container] name (read
                                     # or write target) -> the `(*recv)` deref
     "subscript.opt_recv_check_ptr",  # subscript off an UNPROVEN ptr-repr
-                                    # Optional[container] -> deref_check(recv)
+                                    # Optional[container] -> none_item(recv)
     "subscript.opt_recv_check_optional",  # ... off an UNPROVEN storage
-                                    # optional -> deref_optional_check(recv)
+                                    # optional -> none_item(recv)
     "subscript.bytearray_recv",     # `b[i]` off a bytearray name/field ->
                                     # the bytes @native dunder bytes_getitem
     "optptr.container_call_temp",   # container-returning rvalue CALL at an
@@ -2691,7 +2691,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "argtemp.optptr_container_literal",  # container literal into a ptr-repr
                                     # Optional[container] slot: typed __tmp_N
                                     # + &(__tmp_N)
-    "field.opt_deref_check_read",   # unproven opt-scalar field operand unwrap
+    "operand.none_check",           # unproven value-opt operator operand
+                                    # under its None check:
+                                    # none_operand(n, "+", "int")
     "field.whole_optional",         # WHOLE value-repr Optional field read into
                                     # an optional sink -> bare member copy
     "field.assign_narrowed_union",  # .field off an assign-narrowed ptr-variant
@@ -2949,8 +2951,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # `C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X` -- the
     # receiver_eval-None shapes of _class_constant_access_parts).
     "field.class_const",
-    # Class-constant read whose UNPROVEN Optional-ptr name receiver keeps its
-    # runtime check (`({ ::tpy::deref_check(c); C::LIMIT; })`; lowering).
+    # Class-constant read whose UNPROVEN Optional-ptr or Ptr name receiver keeps its
+    # runtime check (`({ ::tpy::none_attr(c, "LIMIT"); C::LIMIT; })`; lowering).
     "field.class_const_recv_check",
     # Class-constant read whose instance receiver has observable cost --
     # evaluated and discarded (`({ static_cast<void>(make_c()); C::LIMIT; })`;
@@ -2968,7 +2970,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "aug.class_const",
     # Class-constant write receiver evals, split off as a leading statement
     # (lowering): the unproven-Optional pointer-name check
-    # (`::tpy::deref_check(c);`) and the effectful receiver discard
+    # (`::tpy::none_attr(c, "X");`) and the effectful receiver discard
     # (`static_cast<void>(make_c());`). Shared by the assign and aug arms.
     "field_write.cc_recv_check",
     "field_write.cc_recv_effect",
@@ -2984,7 +2986,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # lowered). Read and write target alike.
     "field.unbound_self",
     # `.field` through an explicit `Ptr[record]` VALUE receiver -> `p->field`
-    # (proven non-null) or `::tpy::deref_check(p).field` (unproven), picked from
+    # (proven non-null) or `::tpy::none_attr(p, "field").field` (unproven), picked from
     # sema's `ptr_non_null`. Read and write target alike.
     "field.ptr_value",
     # The same explicit `Ptr[record]` receiver at the STORAGE-form field

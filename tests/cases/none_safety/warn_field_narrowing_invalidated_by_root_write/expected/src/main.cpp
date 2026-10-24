@@ -14,7 +14,7 @@ int32_t use_after_rebind(Box& a, Box& b) {
     Box* local = &(a);
     if ((local->value.has_value())) {
         local = &(b);
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(local->value), 1));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(local->value, "+", "int"), 1));
     }
     return 0;
 }

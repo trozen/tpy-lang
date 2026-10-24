@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         return 1
 //     return 0
 int32_t cmp_score(std::optional<int32_t> x) {
-    if ((::tpy::deref_optional_check(x) > 0)) {
+    if ((::tpy::none_operand(x, ">", "int") > 0)) {
         return 1;
     }
     return 0;

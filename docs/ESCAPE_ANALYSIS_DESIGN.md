@@ -214,7 +214,7 @@ See `docs/DEREF_DESIGN.md` Stage 8 for full details.
 When a `Ptr[T]` variable is constructed from a local (`p = take_ptr(x)`), the pointer is
 provably non-null. The sema tracks this in `non_null_ptr_vars` and sets
 `ptr_non_null = True` on field access / method call AST nodes. Codegen emits direct
-`ptr->field` instead of `tpy::deref_check(ptr).field`.
+`ptr->field` instead of the None check `tpy::none_attr(ptr, "field").field`.
 
 **Branch merging**: Uses intersection -- a pointer is only non-null after a branch if
 it was non-null at the end of all branches. Managed by `InitTracker.merge_branches()`.
@@ -381,12 +381,12 @@ merging uses intersection (conservative -- non-null only if all paths agree).
 ```python
 def process(p: Ptr[Point]) -> int32:
     if p is not None:
-        return p.x      # skip deref_check (p proven non-null)
+        return p.x      # no None check (p proven non-null)
     return int32(0)
 
 def with_assert(p: Ptr[Point]) -> int32:
     assert p is not None
-    return p.x           # skip deref_check
+    return p.x           # no None check
 ```
 
 **Files**: `sema/narrowing.py` (`leaf_facts`, `_ptr_null_facts`), `sema/expressions.py` (`branch_states`),

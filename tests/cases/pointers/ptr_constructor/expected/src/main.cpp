@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     print(p.x)
 //     print(p.y)
 void read_via_ptr(Point* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     std::cout << p->y << "\n" << ::tpy::check_signals;
 }
 
@@ -16,7 +16,7 @@ void read_via_ptr(Point* p) {
 //     print(p.x)
 //     print(p.y)
 void read_via_constptr(const Point* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     std::cout << p->y << "\n" << ::tpy::check_signals;
 }
 

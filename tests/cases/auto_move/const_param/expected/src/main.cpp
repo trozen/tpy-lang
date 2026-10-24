@@ -96,7 +96,7 @@ void main() {
     std::cout << p.x << "\n" << ::tpy::check_signals;
     std::vector<Point> pts = {Point(10, 20), Point(30, 40)};
     Point* ptr = ::tpyapp::main::get_elem_ptr(pts, 0);
-    std::cout << ::tpy::deref_check(ptr).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(ptr, "x").x << "\n" << ::tpy::check_signals;
     std::vector<int32_t> nums = {10, 20};
     std::cout << ::tpyapp::main::sum_list(nums) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::append_item(nums, 30);

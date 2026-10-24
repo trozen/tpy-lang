@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def use_rect(r: Ptr[Rect]) -> int32:
 //     return r.w * r.h
 int32_t use_rect(::SDL_Rect* r) {
-    return (::tpy::mul_check<int32_t>(::tpy::deref_check(r).w, ::tpy::deref_check(r).h));
+    return (::tpy::mul_check<int32_t>(::tpy::none_attr(r, "w").w, ::tpy::none_attr(r, "h").h));
 }
 
 // def main() -> None:

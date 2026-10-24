@@ -174,7 +174,7 @@ void constructor_escape(bool c) {
     if (c) {
         t = &*(__slot_2 = Escaping(10, k));
     }
-    ::tpy::deref_check(k.p).bump();
+    ::tpy::none_attr(k.p, "bump").bump();
     std::cout << "constructor-escape" << " " << k.p->n << " " << t->c.n << "\n" << ::tpy::check_signals;
 }
 
@@ -197,7 +197,7 @@ void setter_escape(bool c) {
     if (c) {
         t = &*(__slot_2 = Escaping(10, k));
     }
-    ::tpy::deref_check(k.p).bump();
+    ::tpy::none_attr(k.p, "bump").bump();
     std::cout << "setter-escape" << " " << k.p->n << " " << t->c.n << "\n" << ::tpy::check_signals;
 }
 
@@ -220,7 +220,7 @@ void getitem_escape(bool c) {
     if (c) {
         t = &*(__slot_2 = Escaping(10, k));
     }
-    ::tpy::deref_check(k.p).bump();
+    ::tpy::none_attr(k.p, "bump").bump();
     std::cout << "getitem-escape" << " " << k.p->n << " " << t->c.n << "\n" << ::tpy::check_signals;
 }
 

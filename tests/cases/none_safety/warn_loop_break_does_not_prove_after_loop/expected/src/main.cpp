@@ -17,7 +17,7 @@ int32_t after_break(std::optional<int32_t> x, bool flag) {
         }
         flag = false;
     }
-    return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
+    return (::tpy::add_check<int32_t>(::tpy::none_operand(x, "+", "int"), 1));
 }
 
 // print(after_break(2, False))

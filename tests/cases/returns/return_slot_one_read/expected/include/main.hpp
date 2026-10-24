@@ -704,7 +704,7 @@ inline PH::PH(InA* it) : p(it) {}
 // def get(self) -> A:
 //     return self.p.m  # tpyc: ok
 inline A& PH::get() const {
-    return ::tpy::deref_check(this->p).m;
+    return ::tpy::none_attr(this->p, "m").m;
 }
 
 // def __init__(self, value: int32) -> None:

@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # `a` is never proven non-None before the ordering test.
 //     return a < b  # tpyc: warning(/Potential None access/) warning(/comparison between signed and unsigned/)
 bool f(std::optional<int32_t> a, uint32_t b) {
-    return ::std::cmp_less(::tpy::deref_optional_check(a), b);
+    return ::std::cmp_less(::tpy::none_operand(a, "<", "uint32"), b);
 }
 
 // def main() -> None:

@@ -19,7 +19,7 @@ int32_t narrowing_cleared_on_reassign(std::optional<int32_t> x, std::optional<in
         int32_t i = 0;
         while ((i < n)) {
             x = other;
-            total = (::tpy::add_check<int32_t>(total, ::tpy::deref_optional_check(x)));
+            total = (::tpy::add_check<int32_t>(total, ::tpy::none_operand("int32", "+", x)));
             i = (::tpy::add_check<int32_t>(i, 1));
         }
     }

@@ -2305,7 +2305,7 @@ void lc_src_temps() {
     std::array<C, 3> junk2 = {C(::tpy::BigInt(7)), C(::tpy::BigInt(8)), C(::tpy::BigInt(9))};
     CPtr& h1 = ::tpy::__getitem__(hs, 1);
     C* q = h1.p;
-    std::cout << "lc src ptr" << " " << ::tpy::deref_check(q).n << " " << ::tpy::__len__(junk2) << "\n" << ::tpy::check_signals;
+    std::cout << "lc src ptr" << " " << ::tpy::none_attr(q, "n").n << " " << ::tpy::__len__(junk2) << "\n" << ::tpy::check_signals;
     std::cout << "lc src nested" << " " << ::tpy::ListPrinter(::tpy::array_from_index<std::vector<::tpy::BigInt>, 2>([&](std::size_t __i_6) -> std::vector<::tpy::BigInt> {
         int32_t k = int32_t(__i_6);
         std::vector<C> __tmp_4 = {C(::tpy::BigInt(k)), C(::tpy::BigInt(9))};

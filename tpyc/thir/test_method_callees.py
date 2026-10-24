@@ -11,6 +11,7 @@ from dataclasses import replace
 import pytest
 
 from ..compilation_context import activate_compiler
+from ..parse.nodes import NoneUse, NoneUseKind
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, unwrap_ref_type
 from . import nodes as th
@@ -979,7 +980,9 @@ def test_validator_rejects_a_method_callee_that_disagrees_with_its_call(program:
             replace(call, method_targs_cpp=("int32_t",)),
             replace(call, deref_chain=1),
             replace(call, move_receiver=True),
-            replace(call, callable_value_unwrap=True)):
+            replace(call, receiver=th.THIRNoneCheck(
+                result_type=call.receiver.result_type, value=call.receiver,
+                use=NoneUse(NoneUseKind.ATTR, attr="bump")))):
         with pytest.raises(THIRValidationError, match="resolved method callee on incompatible call"):
             validate_function(_replace_node(fn, call, damaged))
 

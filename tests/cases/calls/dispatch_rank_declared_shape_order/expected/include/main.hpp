@@ -1733,7 +1733,7 @@ std::string cbf__Named__float32(T_x& x, float y) {
 //     return "proto"
 template<Named T_x>
 std::string cpp__Named__Ptr_Animal(const T_x& x, Animal* p) {
-    ::tpy::deref_check(p).hits = ::tpy::add_check<int32_t>(::tpy::deref_check(p).hits, 10);
+    ::tpy::none_attr(p, "hits").hits = ::tpy::add_check<int32_t>(::tpy::none_attr(p, "hits").hits, 10);
     return "proto";
 }
 // @dispatch

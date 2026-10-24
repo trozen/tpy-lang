@@ -36,8 +36,8 @@ void main() {
     Point* ptr = &pt;
     Point* ptr1 = ::tpyapp::main::identity_ptr(ptr);
     Point* ptr2 = ::tpyapp::main::get_ptr_copy(ptr);
-    std::cout << ::tpy::deref_check(ptr1).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(ptr2).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(ptr1, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(ptr2, "y").y << "\n" << ::tpy::check_signals;
 }
 
 // main()

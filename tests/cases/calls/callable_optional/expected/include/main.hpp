@@ -93,7 +93,7 @@ inline void Emitter::set_handler(const std::function<void(std::string_view)>& cb
 //         self.on_event(msg)
 inline void Emitter::emit(std::string_view msg) const {
     if ((this->on_event.has_value())) {
-        (*this).on_event.value()(msg);
+        (*(*this).on_event)(msg);
     }
 }
 

@@ -71,7 +71,7 @@ void mutate_container(const Container& c) {
 int32_t read_after_container_pass(const Container& c) {
     if ((c.node != nullptr)) {
         ::tpyapp::main::mutate_container(c);
-        return ::tpy::deref_check(c.node).value;
+        return ::tpy::none_attr(c.node, "value").value;
     }
     return -1;
 }

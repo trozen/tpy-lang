@@ -1552,6 +1552,7 @@ def _fact_kills_walk(block: BlockSummary, kills: FactKills) -> None:
         if isinstance(stmt, TpyWith):
             for item in stmt.items:
                 if item.exit_call is not None:
+                    _kills_in_expr(item.enter_call, kills)
                     _kills_in_expr(item.exit_call, kills)
                     continue
                 if item.exit_runs_code is not False:

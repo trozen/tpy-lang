@@ -39,8 +39,8 @@ void __tpy_init() {
     points = &__global_slot_1;
     points->push_back(Point(3, 4));
     points->push_back(Point(5, 6));
-    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 3)).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).mag() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(::tpyapp::main::find((*points), 3), "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(::tpyapp::main::find((*points), 5), "mag").mag() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

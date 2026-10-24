@@ -317,7 +317,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
     case S_RESUME_0:  // after: yield row
     case S_JOIN_0: {
         if (true) {
-            line = ::tpy::deref_check(fp).readline();
+            line = ::tpy::none_attr(fp, "readline").readline();
             if ((!((!line.empty())))) {
                 __state = S_DONE;
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -803,7 +803,7 @@ inline _Writer<W>::_Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view del
 //         self._doublequote, self._lineterminator))
 template<::tpystd::tpy::Writable W>
 inline void _Writer<W>::writerow(const std::vector<std::string>& row) const {
-    ::tpy::deref_check(this->_fp).write(::tpystd::csv::_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
+    ::tpy::none_attr(this->_fp, "write").write(::tpystd::csv::_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
 }
 
 // def writerows(self, rows: list[list[str]]) -> None:

@@ -27,8 +27,8 @@ void __tpy_init() {
     b->item = Point(3, 4);
     r = b->get_item();
     std::cout << ::tpy::print_bool((r != nullptr)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(r).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(r).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(r, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(r, "y").y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

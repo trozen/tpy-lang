@@ -1,0 +1,87 @@
+module: 'NoneType' object has no attribute 'x'
+func read: 'NoneType' object has no attribute 'x'
+func write: 'NoneType' object has no attribute 'x'
+func method: 'NoneType' object has no attribute 'm'
+method: 'NoneType' object has no attribute 'x'
+ctor: 'NoneType' object has no attribute 'x'
+ctor v: 0
+gen: 0
+gen: 'NoneType' object has no attribute 'x'
+async: 'NoneType' object has no attribute 'x'
+lambda: 'NoneType' object has no attribute 'x'
+comp: 'NoneType' object has no attribute 'x'
+with: exit
+with: 'NoneType' object has no attribute 'x'
+finally: body
+finally: 'NoneType' object has no attribute 'x'
+errret: 'NoneType' object has no attribute 'x'
+match: 'NoneType' object has no attribute 'x'
+readonly param: 'NoneType' object has no attribute 'x'
+field: 'NoneType' object has no attribute 'x'
+element: 'NoneType' object has no attribute 'x'
+call result: 'NoneType' object has no attribute 'x'
+aug write: 'NoneType' object has no attribute 'x'
+property: 'NoneType' object has no attribute 'double'
+staticmethod: 'NoneType' object has no attribute 's'
+classmethod: 'NoneType' object has no attribute 'c'
+class constant read: 'NoneType' object has no attribute 'LIMIT'
+class constant write: 'NoneType' object has no attribute 'LIMIT'
+field body: 'NoneType' object has no attribute 'x'
+list index: 'NoneType' object is not subscriptable
+dict key: 'NoneType' object is not subscriptable
+own param: 'NoneType' object is not subscriptable
+left +: unsupported operand type(s) for +: 'NoneType' and 'int'
+right +: unsupported operand type(s) for +: 'int' and 'NoneType'
+int32 *: unsupported operand type(s) for *: 'NoneType' and 'int'
+float **: unsupported operand type(s) for ** or pow(): 'NoneType' and 'int'
+left <: '<' not supported between instances of 'NoneType' and 'int'
+right <: '<' not supported between instances of 'int' and 'NoneType'
+unary -: bad operand type for unary -: 'NoneType'
+unary ~: bad operand type for unary ~: 'NoneType'
+field +: unsupported operand type(s) for +: 'NoneType' and 'int'
+element +: unsupported operand type(s) for +: 'NoneType' and 'int'
+call result +: unsupported operand type(s) for +: 'NoneType' and 'int'
+field <: '<' not supported between instances of 'NoneType' and 'int'
+element <: '<' not supported between instances of 'NoneType' and 'int'
+field unary -: bad operand type for unary -: 'NoneType'
+tuple element <: '<' not supported between instances of 'NoneType' and 'int'
+walrus <: '<' not supported between instances of 'NoneType' and 'int'
+flow finally: 'NoneType' object has no attribute 'x'
+flow try: 'NoneType' object has no attribute 'x'
+suppress: exit
+flow after with: 'NoneType' object has no attribute 'x'
+flow assert finally: 'NoneType' object has no attribute 'x'
+flow assert: AssertionError
+suppress: exit
+flow assert after with: 'NoneType' object has no attribute 'x'
+flow exit clears: 'NoneType' object has no attribute 'x'
+suppress: exit
+flow header: 9
+flow plain body: 0
+plain: exit
+flow plain: 0
+finally return p: 'NoneType' object has no attribute 'x'
+2
+1
+finally return q: 'NoneType' object has no attribute 'x'
+finally throw p: 'NoneType' object has no attribute 'x'
+2
+1
+finally throw q: 'NoneType' object has no attribute 'x'
+flow async header: 'NoneType' object has no attribute 'x'
+flow enter proved: 0
+flow enter clears proved: 'NoneType' object has no attribute 'x'
+flow enter clears: 'NoneType' object has no attribute 'x'
+flow enter clears second: 'NoneType' object has no attribute 'x'
+suppress: exit
+flow later target: 'NoneType' object has no attribute 'x'
+call: 'NoneType' object is not callable 1
+call narrowed: 40
+call install: argument ran
+call install: 'NoneType' object is not callable
+ptr read: 'NoneType' object has no attribute 'x'
+ptr method: 'NoneType' object has no attribute 'm'
+ptr class constant: 'NoneType' object has no attribute 'LIMIT'
+ptr class constant write: 'NoneType' object has no attribute 'LIMIT'
+trial: 6
+trial method: 8

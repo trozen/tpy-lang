@@ -30,7 +30,7 @@ void mut() {
 void f(const std::vector<std::optional<int32_t>>& items) {
     if ((::tpy::__getitem__(items, 0).has_value())) {
         ::tpyapp::main::mut();
-        int32_t i = (::tpy::add_check<int32_t>(1, ::tpy::deref_optional_check(::tpy::__getitem__(items, 0))));
+        int32_t i = (::tpy::add_check<int32_t>(1, ::tpy::none_operand("int32", "+", ::tpy::__getitem__(items, 0))));
         std::cout << i << "\n" << ::tpy::check_signals;
     }
 }

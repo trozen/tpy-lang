@@ -36,7 +36,7 @@ void ternary_walrus(bool flag) {
     std::optional<int32_t> o = 5;
     if ((o.has_value())) {
         bool r = ((flag) ? ((!(o = std::nullopt).has_value())) : (false));
-        std::cout << "ternary-walrus" << " " << ::tpy::print_bool(r) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "ternary-walrus" << " " << ::tpy::print_bool(r) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
     std::optional<int32_t> p = 5;
     if ((p.has_value())) {
@@ -53,7 +53,7 @@ void ternary_walrus(bool flag) {
 void ternary_call(bool flag) {
     if ((o_glob.has_value())) {
         int32_t r = ((flag) ? (::tpyapp::main::reset()) : (0));
-        std::cout << "ternary-call" << " " << r << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "ternary-call" << " " << r << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -68,11 +68,11 @@ void ternary_call(bool flag) {
 void bool_ops(bool flag) {
     if ((o_glob.has_value())) {
         bool r = (flag || (::tpyapp::main::reset() > 0));
-        std::cout << "or" << " " << ::tpy::print_bool(r) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "or" << " " << ::tpy::print_bool(r) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
     if ((o_glob.has_value())) {
         bool s = (flag && (::tpyapp::main::reset() > 0));
-        std::cout << "and" << " " << ::tpy::print_bool(s) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "and" << " " << ::tpy::print_bool(s) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -84,7 +84,7 @@ void bool_ops(bool flag) {
 void chained_kill(int32_t k) {
     if ((o_glob.has_value())) {
         bool b = ((0 < k) && (k < ::tpyapp::main::reset()));
-        std::cout << "chained" << " " << ::tpy::print_bool(b) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "chained" << " " << ::tpy::print_bool(b) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -98,7 +98,7 @@ void contains_stmt() {
     Haystack h = Haystack();
     if ((o_glob.has_value())) {
         (void)(h.__contains__(1));
-        std::cout << "contains" << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "contains" << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -141,7 +141,7 @@ void comp_back_edge() {
         std::vector<int32_t> __result;
         if (2 > 0) __result.reserve(static_cast<size_t>(2));
         for (int32_t i = 0; i < 2; ++i) {
-            if (((::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1)) > 0)) {
+            if (((::tpy::add_check<int32_t>(::tpy::none_operand(x, "+", "int"), 1)) > 0)) {
                 if (((x = ::tpyapp::main::maybe(7)).has_value())) {
                     __result.push_back(i);
                 }
@@ -174,7 +174,7 @@ void comp_target_shadow() {
         }
         std::move(__result);
     });
-    std::cout << "comp-shadow" << " " << ::tpy::ListPrinter(ys) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(y), 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp-shadow" << " " << ::tpy::ListPrinter(ys) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(y, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
 }
 
 // def message(ok: bool) -> str:
@@ -197,7 +197,7 @@ void assert_message(bool flag) {
     if (!(flag)) {
         ::tpy::raise_assertion_error(::tpyapp::main::message((!(x = 5).has_value())));
     }
-    std::cout << "assert-fact" << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "assert-fact" << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(x, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     std::optional<std::string> y = "hi";
     if (!(flag)) {
         ::tpy::raise_assertion_error(::tpyapp::main::message((!(y = std::nullopt).has_value())));
@@ -227,7 +227,7 @@ void match_guard(int32_t v) {
             break;
         }
         default: __match_default_2: {
-            std::cout << "match-guard" << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+            std::cout << "match-guard" << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
             break;
         }
         }
@@ -270,14 +270,14 @@ bool rotate(std::vector<int32_t>& xs) {
 // def and_receiver(h: H, q: Ptr[P]) -> bool:
 //     return h.p is not None and h.swap(q) and h.p.x >= 0  # tpyc: nullable(h.p)
 bool and_receiver(H& h, P* q) {
-    return (((h.p != nullptr) && h.swap(q)) && (::tpy::deref_check(h.p).x >= 0));
+    return (((h.p != nullptr) && h.swap(q)) && (::tpy::none_attr(h.p, "x").x >= 0));
 }
 
 // # ternary: the same, in the condition of a conditional expression
 // def ternary_receiver(h: H, q: Ptr[P]) -> int32:
 //     return h.p.x if h.p is not None and h.swap(q) else 0  # tpyc: nullable(h.p)
 int32_t ternary_receiver(H& h, P* q) {
-    return ((((h.p != nullptr) && h.swap(q))) ? (::tpy::deref_check(h.p).x) : (0));
+    return ((((h.p != nullptr) && h.swap(q))) ? (::tpy::none_attr(h.p, "x").x) : (0));
 }
 
 // # and: a later operand's mutation of the container kills the bound an
@@ -407,7 +407,7 @@ void comp_zero_trip(int32_t n, int32_t k) {
         }
         std::move(__result);
     });
-    std::cout << "comp-zero-trip" << " " << ::tpy::ListPrinter(ys) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "comp-zero-trip" << " " << ::tpy::ListPrinter(ys) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(x, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     int32_t d = k;
     std::vector<int32_t> zs = ({
         std::vector<int32_t> __result;
@@ -478,7 +478,7 @@ void literal_join(std::string_view mode) {
 //     print("assert-kill-op", o_glob + 1)  # tpyc: warning(/Potential None access/)
 void assert_kill() {
     if (!(((o_glob.has_value()) && (::tpyapp::main::reset() > 0)))) ::tpy::raise_assertion_error();
-    std::cout << "assert-kill-op" << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1)) << "\n" << ::tpy::check_signals;
+    std::cout << "assert-kill-op" << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
 }
 
 // # while head: a later operand's write through the receiver kills the
@@ -494,7 +494,7 @@ int32_t while_receiver(H& h, P* q) {
     int32_t n = 0;
     int32_t total = 0;
     while ((((h.p != nullptr) && h.swap(q)) && (n < 2))) {
-        total = ::tpy::add_check<int32_t>(total, ::tpy::deref_check(h.p).x);
+        total = ::tpy::add_check<int32_t>(total, ::tpy::none_attr(h.p, "x").x);
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     return total;
@@ -520,7 +520,7 @@ int32_t while_ptr_or(P& a, P* b, int32_t n) {
     P* p = &a;
     if ((p != nullptr)) {
         while (((p != nullptr) || (i < n))) {
-            total = ::tpy::add_check<int32_t>(total, ::tpy::deref_check(p).x);
+            total = ::tpy::add_check<int32_t>(total, ::tpy::none_attr(p, "x").x);
             p = b;
             i = ::tpy::add_check<int32_t>(i, 1);
             if ((i >= n)) {
@@ -541,9 +541,9 @@ int32_t while_ptr_or(P& a, P* b, int32_t n) {
 //     return t
 int32_t pending_and(P* r, P* other, bool c) {
     int32_t t = 0;
-    if ((c && (::tpy::deref_check(r).x > 0))) {
+    if ((c && (::tpy::none_attr(r, "x").x > 0))) {
         r = other;
-        t = ::tpy::add_check<int32_t>(t, ::tpy::deref_check(r).x);
+        t = ::tpy::add_check<int32_t>(t, ::tpy::none_attr(r, "x").x);
     }
     return t;
 }
@@ -586,7 +586,7 @@ void while_head_rebind() {
     std::optional<int32_t> o = ::tpyapp::main::maybe(1);
     if ((o.has_value())) {
         int32_t n = 0;
-        while (((::tpy::add_check<int32_t>(::tpy::deref_optional_check(o), n)) < 4)) {
+        while (((::tpy::add_check<int32_t>(::tpy::none_operand(o, "+", "int32"), n)) < 4)) {
             n = ::tpy::add_check<int32_t>(n, 1);
             o = ::tpyapp::main::maybe(1);
         }
@@ -605,7 +605,7 @@ void break_exit(P* q) {
     while ((p == nullptr)) {
         break;
     }
-    std::cout << "break-exit" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "break-exit" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # break through finally: the finally the break unwinds through writes `p`
@@ -636,7 +636,7 @@ void break_finally(P& a, P* b) {
             }
         }
     }
-    std::cout << "break-finally" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "break-finally" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # loop ranges: a name the body only steps up keeps its lower bound
@@ -821,7 +821,7 @@ void for_break_exit(const std::vector<int32_t>& xs, P& a, P* b, bool c) {
         }
         p = &a;
     }
-    std::cout << "for-break-exit" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "for-break-exit" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # with exit: `__exit__` is TPy code, a call on the manager
@@ -847,7 +847,7 @@ void with_exit_straight() {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, {}, {});
-    std::cout << "with-exit" << " " << ::tpy::deref_optional_check(h.p).x << "\n" << ::tpy::check_signals;
+    std::cout << "with-exit" << " " << ::tpy::none_attr(h.p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # ... on a break that leaves the block
@@ -885,7 +885,7 @@ void with_exit_break() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     if ((i < 2)) {
-        std::cout << "with-exit-break" << " " << ::tpy::deref_optional_check(h.p).x << "\n" << ::tpy::check_signals;
+        std::cout << "with-exit-break" << " " << ::tpy::none_attr(h.p, "x").x << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -919,7 +919,7 @@ void with_exit_loop() {
         __ctx_3.__exit__({}, {}, {});
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    std::cout << "with-exit-loop" << " " << ::tpy::deref_optional_check(h.p).x << "\n" << ::tpy::check_signals;
+    std::cout << "with-exit-loop" << " " << ::tpy::none_attr(h.p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # break through two nested finally bodies: the inner one writes `p`
@@ -965,7 +965,7 @@ void break_two_finally(P& a, P* b) {
             }
         }
     }
-    std::cout << "break-two-finally" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "break-two-finally" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # a try/finally around the loop: a break inside does not run it
@@ -988,7 +988,7 @@ void finally_around(P& a, P* b) {
                 p = &a;
                 break;
             }
-            std::cout << "finally-around" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+            std::cout << "finally-around" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
         } catch (...) {
             p = b;
             throw;
@@ -1029,7 +1029,7 @@ void for_break_finally(const std::vector<int32_t>& xs, P& a, P* b) {
             }
         }
     }
-    std::cout << "for-break-finally" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "for-break-finally" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # step rule: a negative literal step beside a positive one
@@ -1120,7 +1120,7 @@ void terminating_else(bool c, P& a, P* b) {
     } else {
         p = &a;
     }
-    std::cout << "terminating-else" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "terminating-else" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # ... an inner loop whose `else` continues the outer loop
@@ -1150,7 +1150,7 @@ void terminating_else_inner(bool c, P& a, P* b) {
         } else {
             p = &a;
         }
-        std::cout << "terminating-else-inner" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+        std::cout << "terminating-else-inner" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
         return;
     }
 }
@@ -1171,7 +1171,7 @@ void for_else_assert(const P* p, int32_t n) {
         if (!((p != nullptr))) ::tpy::raise_assertion_error();
     }
     __after_else_0:;
-    std::cout << "for-else-assert" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "for-else-assert" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 
@@ -1204,7 +1204,7 @@ void inner_else_break(const P* p, int32_t n) {
         if (!((p != nullptr))) ::tpy::raise_assertion_error();
     }
     __after_else_0:;
-    std::cout << "inner-else-break" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "inner-else-break" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # while head `or`: a break taken while the head was TRUE does not carry the
@@ -1237,7 +1237,7 @@ void break_under_head(const P* p, int32_t n) {
             }
         }
     }
-    std::cout << "break-under-head" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "break-under-head" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # break through a finally: the test that sent the break out is not carried
@@ -1270,7 +1270,7 @@ void finally_narrow(P* p) {
             }
         }
     }
-    std::cout << "finally-narrow" << " " << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << "finally-narrow" << " " << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # with exit that may clear the field: the end of the block, a break out of
@@ -1326,7 +1326,7 @@ void with_exit_clears() {
     }
     __with_exit_5:
     __ctx_5.__exit__({}, {}, {});
-    std::cout << "with-clears" << " " << ::tpy::deref_optional_check(h.p).x << "\n" << ::tpy::check_signals;
+    std::cout << "with-clears" << " " << ::tpy::none_attr(h.p, "x").x << "\n" << ::tpy::check_signals;
     Clearing g = Clearing(false);
     if ((!g.p.has_value())) {
         return;
@@ -1345,7 +1345,7 @@ void with_exit_clears() {
             throw;
         }
     }
-    std::cout << "with-clears-break" << " " << ::tpy::deref_optional_check(g.p).x << "\n" << ::tpy::check_signals;
+    std::cout << "with-clears-break" << " " << ::tpy::none_attr(g.p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // def with_exit_clears_gen() -> Iterator[int32]:
@@ -1389,7 +1389,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_with_exit_clears_gen::__next_
     }
     case S_JOIN_0: {
         __state = S_RESUME_1;
-        return ::tpy::deref_optional_check((*h).p).x;
+        return ::tpy::none_attr((*h).p, "x").x;
     }
     case S_JOIN_1: {
         __state = S_RESUME_0;

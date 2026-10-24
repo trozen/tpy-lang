@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     # Two Ptr hops under a subscript: the whole chain is one read.
 //     return subsectors[0].segs[0].sector_front.floor_h  # tpyc: ok
 int32_t head_floor(const std::vector<SubSector*>& subsectors) {
-    return ::tpy::deref_check(::tpy::deref_check(::tpy::__getitem__(::tpy::deref_check(::tpy::__getitem__(subsectors, 0)).segs, 0)).sector_front).floor_h;
+    return ::tpy::none_attr(::tpy::none_attr(::tpy::__getitem__(::tpy::none_attr(::tpy::__getitem__(subsectors, 0), "segs").segs, 0), "sector_front").sector_front, "floor_h").floor_h;
 }
 
 // def via_local(ss: Ptr[SubSector]) -> int32:
@@ -16,8 +16,8 @@ int32_t head_floor(const std::vector<SubSector*>& subsectors) {
 //     # A Ptr-valued field taken off a Ptr binding, then read again.
 //     return seg.sector_front.floor_h  # tpyc: ok
 int32_t via_local(SubSector* ss) {
-    Seg* seg = ::tpy::__getitem__(::tpy::deref_check(ss).segs, 0);
-    return ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h;
+    Seg* seg = ::tpy::__getitem__(::tpy::none_attr(ss, "segs").segs, 0);
+    return ::tpy::none_attr(::tpy::none_attr(seg, "sector_front").sector_front, "floor_h").floor_h;
 }
 
 // def total(subsectors: list[Ptr[SubSector]]) -> int32:
@@ -34,12 +34,12 @@ int32_t total(const std::vector<SubSector*>& subsectors) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         SubSector* subsector = *__beg_0;
-        auto& __obj_1 = ::tpy::deref_check(subsector).segs;
+        auto& __obj_1 = ::tpy::none_attr(subsector, "segs").segs;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             Seg* seg = *__beg_1;
-            acc = ::tpy::add_check<int32_t>(acc, ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h);
+            acc = ::tpy::add_check<int32_t>(acc, ::tpy::none_attr(::tpy::none_attr(seg, "sector_front").sector_front, "floor_h").floor_h);
         }
     }
     return acc;
@@ -56,12 +56,12 @@ void raise_floors(const std::vector<SubSector*>& subsectors) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         SubSector* subsector = *__beg_0;
-        auto& __obj_1 = ::tpy::deref_check(subsector).segs;
+        auto& __obj_1 = ::tpy::none_attr(subsector, "segs").segs;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             Seg* seg = *__beg_1;
-            ::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h = ::tpy::add_check<int32_t>(::tpy::deref_check(::tpy::deref_check(seg).sector_front).floor_h, 1);
+            ::tpy::none_attr(::tpy::none_attr(seg, "sector_front").sector_front, "floor_h").floor_h = ::tpy::add_check<int32_t>(::tpy::none_attr(::tpy::none_attr(seg, "sector_front").sector_front, "floor_h").floor_h, 1);
         }
     }
 }
@@ -74,7 +74,7 @@ void raise_floors(const std::vector<SubSector*>& subsectors) {
 //     # is on the field reached through the pointer, so the append warns.
 //     p.sectors.append(Sector(3))  # tpyc: warning(/Mutation of 'p.sectors'/)
 void via_ptr(Map* p) {
-    Sector& v = ::tpy::__getitem__(::tpy::deref_check(p).sectors, 0);
+    Sector& v = ::tpy::__getitem__(::tpy::none_attr(p, "sectors").sectors, 0);
     v.floor_h = ::tpy::add_check<int32_t>(v.floor_h, 100);
     p->sectors.push_back(Sector(3));
 }

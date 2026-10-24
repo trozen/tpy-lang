@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def first_x(d: Optional[list[P]]) -> int32:
 //     return d[0].x  # tpyc: warning(/Potential None access/)
 int32_t first_x(const std::vector<P>* d) {
-    return ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+    return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
 }
 
 // def main() -> None:

@@ -4200,7 +4200,7 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
 - **Reads.** A narrowed read `h.p.x` is the place `h.<p>.alternative[1].x`; `is
   None` / `is not None` on a field is `MIRIsAlternative(place, (1,))`; `o = h.p`
   binds an Optional holder of the inline payload (C++
-  `optional_to_ptr(h.p)`). An unproven read (`opt_deref_check`) refuses.
+  `optional_to_ptr(h.p)`). An unproven read (under its `THIRNoneCheck`) refuses.
 - **Writes.** `h.p = None`, `h.p = P(..)`, `h.p = other.p` and `h.p = o`
   are in-place replacement events through storage retention, so a live
   holder of the old payload conflicts -- through the same name, through a

@@ -257,7 +257,7 @@ void ptr_escapes_into_record() {
     Wrap w = Wrap(&(*p));
     std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
-    ::tpy::deref_check(w.p).x = ::tpy::add_check<int32_t>(::tpy::deref_check(w.p).x, 100);
+    ::tpy::none_attr(w.p, "x").x = ::tpy::add_check<int32_t>(::tpy::none_attr(w.p, "x").x, 100);
     std::cout << "ptr_escapes:" << " " << w.p->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 

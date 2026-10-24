@@ -2344,7 +2344,7 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     # A value-repr Optional[scalar] global (`std::optional<T>` at namespace
     # scope) reads exactly like a value-opt LOCAL: bare whole-optional
     # (None-tests, opt slots), `(*g)` on a narrowed occurrence, and
-    # `deref_optional_check(g)` unproven -- the narrowed-global deref
+    # its None check unproven -- the narrowed-global deref
     # family renders through the same local-shaped sites, keyed on
     # `_declared_type_incl_globals`. The name's record is
     # value-opt, so the reads ride _value_opt_scalar_binding.
@@ -2674,14 +2674,16 @@ def _class_const_pure_receiver(e: TpyFieldAccess, declared: dict[str, TpyType],
     """The class-constant receiver shapes whose render is the BARE
     qualified name (no receiver eval): a name receiver (`C.X`, `c.X`,
     `self.X`) or a static-type chain
-    (`Outer.Inner.X`, `mod.C.X`). An unproven-Optional receiver
-    (`deref_check`) or an effectful receiver (a call, evaluated via
-    `static_cast<void>`) renders a statement expression -- out of the arm."""
-    if e.needs_optional_runtime_check:
+    (`Outer.Inner.X`, `mod.C.X`). A receiver under a None check (an
+    unproven Optional or `Ptr`, `none_attr`) or an effectful receiver (a
+    call, evaluated via `static_cast<void>`) renders a statement expression
+    -- out of the arm."""
+    if e.none_use is not None:
         return False
     if isinstance(e.obj, TpyName):
         return True
     return _static_type_chain(e.obj, declared, analyzer)
+
 
 def _class_constant_cpp(e: TpyFieldAccess, analyzer,
                         render_type) -> 'str | None':
@@ -3613,8 +3615,8 @@ def _eligible_ptr_value(t: 'TpyType | None', analyzer) -> bool:
     void (`Ptr[None]` -> `void*`), or a @dynamic-protocol base (`Ptr[
     _RcCellBase]` -> `_RcCellBase*`); `Ptr[readonly[T]]` -> `const T*` rides
     the same arms. The slice renders only bare passes and field reads -- a
-    MEMBER access THROUGH the Ptr takes the `::tpy::deref_check(p)`
-    non-null render (or the proven `->`), which the Ptr-receiver method-call
+    MEMBER access THROUGH the Ptr takes the `::tpy::none_attr(p, "x")`
+    None check (or the proven `->`), which the Ptr-receiver method-call
     arm carries; other deref shapes take their own arms.
 
     The dyn-protocol arm needs no per-flavor spelling check: a Ptr type is
@@ -3677,7 +3679,7 @@ def _subscript_field_recv_ok(e: TpyExpr, analyzer) -> bool:
     own shapes, and an unsupported one rejects there.
 
     Admitted only when the element resolves to an F1 record. A `Ptr` element
-    takes `::tpy::deref_check(<recv>).f` (the sibling Ptr arm's wrap) and an
+    takes `::tpy::none_attr(<recv>, "f").f` (the sibling Ptr arm's wrap) and an
     Optional one its own check; neither is spelled here, and a blanket
     subscript admission was measured to DROP the deref_check on a
     `tuple[P | None, Ptr[Tag]]` element -- a missing null check, not merely a
@@ -3709,7 +3711,7 @@ def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     VALUE -- a local/param NAME (`p.x` on `p: Ptr[Point]`) or an F1-record's
     `Ptr` FIELD read (`m._a.x` on `_a: Ptr[A]`): the field render's pointer
     arm emits `<recv>->x` when sema proved the pointer non-null
-    (`ptr_non_null`) else `::tpy::deref_check(<recv>).x`. A NAME receiver must
+    (`ptr_non_null`) else `::tpy::none_attr(<recv>, "x").x`. A NAME receiver must
     be bound to an eligible `Ptr[F1-record]` (globals take the `(*g)->`
     wrapper arm, out of slice); a FIELD receiver must itself be an admitted
     F1-record field read whose value is such a Ptr (it renders bare, then this
@@ -3741,12 +3743,12 @@ def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     elif isinstance(recv, TpyFieldAccess):
         # A depth-two chain receiver (`self.inner.node.value`) admits like
         # the plain chained read: the inner hops render bare, this arm
-        # wraps the Ptr-valued tail (`deref_check(this->inner.node).value`).
+        # wraps the Ptr-valued tail (`none_attr(this->inner.node, "value").value`).
         if not (_field_receiver_ok(recv, declared, analyzer)
                 or _chained_field_read_ok(recv, analyzer)
                 # A Ptr-valued field read that is ITSELF taken through a
                 # pointer (`seg.sector_front.floor_h`): the inner hop
-                # renders its own `deref_check(seg).sector_front` and this
+                # renders its own `none_attr(seg, "sector_front").sector_front` and this
                 # arm wraps that whole render, so the deref nests one level
                 # per Ptr hop.
                 or _ptr_value_field_recv_ok(recv, declared, analyzer)):
@@ -3754,13 +3756,13 @@ def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
         rt = analyzer.get_expr_type(recv)
     elif isinstance(recv, (TpyCall, TpyMethodCall)):
         # A Ptr-RETURNING call receiver (`h.get_node().value` ->
-        # `::tpy::deref_check(h.get_node()).value`): the call lowers
+        # `::tpy::none_attr(h.get_node(), "value").value`): the call lowers
         # through its own arms (RECEIVER use); this arm wraps the Ptr
         # result exactly like a Ptr NAME's.
         rt = analyzer.get_expr_type(recv)
     elif isinstance(recv, TpySubscript):
         # A Ptr-ELEMENT tuple subscript receiver (`h.pair[1].name` ->
-        # `::tpy::deref_check(std::get<1>(h.pair)).name`): the subscript's
+        # `::tpy::none_attr(std::get<1>(h.pair), "name").name`): the subscript's
         # own arm gates the tuple read (the Ptr-element value row); this
         # arm supplies the wrap the plain subscript-receiver row
         # deliberately does NOT spell (its docstring's measured
@@ -6230,7 +6232,7 @@ def _optional_field_over_container_subscript_ok(
         e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
     """A scalar field read off a STORAGE-form Optional container subscript
     with an unproven None (`d["a"].x` on `dict[str, P | None]` ->
-    `::tpy::deref_optional_check(::tpy::__getitem__(d, "a")).x`) -- the
+    `::tpy::none_attr(::tpy::__getitem__(d, "a"), "x").x`) -- the
     container twin of `_optional_field_over_subscript_ok` (whose tuple
     receiver pre-lifts to `T*` and takes deref_check instead). Read only."""
     return (isinstance(e, TpyFieldAccess) and e.needs_optional_runtime_check
@@ -6242,7 +6244,7 @@ def _optional_field_over_container_subscript_ok(
 def _optional_field_over_subscript_ok(e: TpyExpr, locals_: dict[str, TpyType],
                                       analyzer) -> bool:
     """A scalar field read off an `Optional[record]`-element tuple subscript with an
-    unproven None (`t[N].field` -> `deref_check(...).field`, the
+    unproven None (`t[N].field` -> `none_attr(..., "field").field`, the
     `needs_optional_runtime_check` path). The receiver `t[N]` is a nullable borrow, the
     field a value scalar (checked by the caller). Read only -- writes / binds keep the
     name-receiver gate."""
@@ -7016,7 +7018,7 @@ def _lvalue_chain_hop_ok(link: TpyExpr, declared: dict[str, TpyType],
     such a name has no checked render in the chain, so it walks only under
     the proof (flag cleared and the name in the pointer set). An Optional
     reached any other way (a FIELD link, `o.inner.items[0]`) renders its own
-    `deref_optional_check` inside the chain, so the hop stays an lvalue and
+    the None check inside the chain, so the hop stays an lvalue and
     is left to its own arm."""
     if isinstance(link, TpySubscript) and isinstance(link.index, TpySlice):
         return False
@@ -7194,12 +7196,12 @@ def _optional_checked_field(e: TpyExpr, declared: dict[str, TpyType],
                             analyzer) -> bool:
     """An UNPROVEN field access off a pointer-repr `Optional[F1-record]` borrow
     name: `p.x` where sema could not prove `p` non-None, marked
-    `needs_optional_runtime_check` -> `::tpy::deref_check(p).x`
+    `needs_optional_runtime_check` -> `::tpy::none_attr(p, "x").x`
     (the runtime-check render over the already-`T*` receiver;
     `pointer_value_expr` is the identity for a non-global name). Serves read,
     write-target, and aug-assign-target positions -- the render is
     position-independent. Storage-form Optional sources (fields / subscripts /
-    OPTIONAL_STORAGE names -- the `deref_optional_check` render) never bind a
+    OPTIONAL_STORAGE names -- the whole-optional None check) never bind a
     declared Optional-ptr name in a routed body, so the name check alone pins
     the `deref_check` spelling."""
     if not isinstance(e, TpyFieldAccess):
@@ -7233,7 +7235,7 @@ def _optional_checked_field_over_call_ok(e: TpyExpr, analyzer) -> bool:
     """An UNPROVEN field access whose receiver is a BORROW-returning
     ptr-repr Optional CALL (`find(points, 5).x` -- sema could not prove
     the result non-None): the raw `T*` result is wrapped --
-    `::tpy::deref_check(find(...)).x` -- the call sibling of the
+    `::tpy::none_attr(find(...), "x").x` -- the call sibling of the
     Optional-ptr NAME receiver. A `@property` read is a call whose result is
     NOT that `T*` (the getter hands back the field's `std::optional<T>` by
     reference), so it takes the STORAGE row below instead."""
@@ -7253,7 +7255,7 @@ def _optional_checked_field_over_field_ok(e: TpyExpr,
     """An UNPROVEN field access whose receiver is a clean field READ of a
     STORAGE `Optional[F1-record]` member (`h.opt.x` where sema could not
     prove `h.opt` non-None): the whole optional lvalue is wrapped --
-    `::tpy::deref_optional_check(h.opt).x` -- the storage sibling of
+    `::tpy::none_attr(h.opt, "x").x` -- the storage sibling of
     `_optional_checked_field`'s already-`T*` name receiver. A `@property`
     read joins it: the getter spells the same storage optional, by reference.
     Read positions only (the write target keeps its own gate)."""
@@ -7318,7 +7320,7 @@ def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
         rt = rt.inner
     if isinstance(rt, PtrType):
         # An explicit `Ptr[record]` binding declares the same members as the
-        # pointee; which of `->field` / `deref_check(recv).field` renders is
+        # pointee; which of `->field` / `none_attr(recv, "field").field` renders is
         # the field arm's call off `ptr_non_null`, not a difference in what
         # the field IS. Receiver ADMISSION stays with the callers -- the ones
         # that do not name a Ptr receiver shape reject before reaching here.
@@ -7446,7 +7448,7 @@ def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
                      and _witness("subscript.recv_field_chain"))
                  # ... and a member off an explicit `Ptr[record]` binding
                  # (`sector.flags[i]` on `sector: Ptr[Sector]`): the field
-                 # arm renders `->field` / `deref_check(recv).field` off
+                 # arm renders `->field` / `none_attr(recv, "field").field` off
                  # `ptr_non_null`, and the container binding is the field's
                  # declared type exactly as for a reference receiver.
                  or (_ptr_value_field_recv_ok(recv, locals_, analyzer)

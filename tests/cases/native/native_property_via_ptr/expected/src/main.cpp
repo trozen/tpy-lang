@@ -11,7 +11,7 @@ namespace tpyapp::main {
 //     print(s.Config.v)
 void main() {
     ::x::S* s = get_s();
-    std::cout << ::tpy::deref_check(s).config().v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(s, "Config").config().v << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native, cpp_template

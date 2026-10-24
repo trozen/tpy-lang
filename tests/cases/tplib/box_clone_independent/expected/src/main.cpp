@@ -33,7 +33,7 @@ void sec_reference() {
 // def bump(p: Ptr[Cell]) -> None:
 //     p.n = 99
 void bump(Cell* p) {
-    ::tpy::deref_check(p).n = 99;
+    ::tpy::none_attr(p, "n").n = 99;
 }
 
 // # a payload holding a Ptr field: the record is duplicated, the pointee is not.
@@ -52,7 +52,7 @@ void sec_ptr_field() {
     PtrHolder& live = b.get();
     ::tpyapp::main::bump(live.p);
     PtrHolder& cloned = c.get();
-    std::cout << "ptr-field:" << " " << ::tpy::deref_check(live.p).n << " " << ::tpy::deref_check(cloned.p).n << "\n" << ::tpy::check_signals;
+    std::cout << "ptr-field:" << " " << ::tpy::none_attr(live.p, "n").n << " " << ::tpy::none_attr(cloned.p, "n").n << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

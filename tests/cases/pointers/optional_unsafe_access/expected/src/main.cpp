@@ -10,7 +10,7 @@ std::vector<Point>* points{};
 // def use_without_check(p: Point | None) -> int32:
 //     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
 int32_t use_without_check(const Point* p) {
-    return ::tpy::deref_check(p).mag();
+    return ::tpy::none_attr(p, "mag").mag();
 }
 
 // def find(pts: list[Point], target: int32) -> Point | None:

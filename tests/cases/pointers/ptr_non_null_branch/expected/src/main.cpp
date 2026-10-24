@@ -61,7 +61,7 @@ void main() {
     if ((a.x > 0)) {
         q = ::tpyapp::main::get_ptr(q);
     }
-    std::cout << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(q, "x").x << "\n" << ::tpy::check_signals;
     Point* r = &a;
     int32_t i = 0;
     while ((i < 3)) {
@@ -71,11 +71,11 @@ void main() {
     Point* s = &a;
     int32_t j = 0;
     while ((j < 3)) {
-        std::cout << ::tpy::deref_check(s).x << "\n" << ::tpy::check_signals;
+        std::cout << ::tpy::none_attr(s, "x").x << "\n" << ::tpy::check_signals;
         s = ::tpyapp::main::get_ptr(s);
         j = (::tpy::add_check<int32_t>(j, 1));
     }
-    std::cout << ::tpy::deref_check(s).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(s, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // main()

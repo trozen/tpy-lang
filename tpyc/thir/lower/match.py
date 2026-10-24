@@ -2422,7 +2422,7 @@ def _lower_optional_subject(stmt: TpyMatch, lc: _LowerCtx,
         raise ThirUnsupported("match.optional_subject_shape", detail=True)
     # An Optional-typed intermediate link rejects inside the source lift
     # (`field.opt_receiver` / `subscript.opt_receiver` -- such a link needs a
-    # deref_optional_check the lift's prechecked recursion does not emit).
+    # None check the lift's prechecked recursion does not emit).
     _witness("match.optional_subject_lift")
     lowered = (_lower_subscript_source(stmt.subject, lc, declared)
                if isinstance(stmt.subject, TpySubscript)
@@ -2945,7 +2945,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                 # declared pointer-local arm), an arm-local capture the
                 # in-place decl (`auto q = __match_subject_N;`). Either way
                 # the declared Optional entry keeps body reads on the
-                # nullable borrow model (deref_check on unproven access).
+                # nullable borrow model (a None check on unproven access).
                 mode = "assign" if writes_ptr else "copy"
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,

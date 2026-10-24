@@ -15,7 +15,7 @@ Point* get_ptr(Point* p) {
 //     print(p.x)  # tpyc: nullable(p)
 //     print(p.sum())  # tpyc: non_null(p)
 void read_via_param(Point* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     std::cout << p->sum() << "\n" << ::tpy::check_signals;
 }
 
@@ -60,9 +60,9 @@ void main() {
     Point* q = p;
     std::cout << q->y << "\n" << ::tpy::check_signals;
     Point* r = ::tpyapp::main::get_ptr(p);
-    std::cout << ::tpy::deref_check(r).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(r, "x").x << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::get_ptr(q);
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     Point pt2 = Point(30, 40);
     p = &pt2;
     std::cout << p->x << "\n" << ::tpy::check_signals;

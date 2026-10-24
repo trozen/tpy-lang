@@ -110,14 +110,14 @@ inline Counter::~Counter() {
 // def tick(self) -> None:
 //     self._cell.bump()
 inline void Counter::tick() const {
-    ::tpy::deref_check(this->_cell).bump();
+    ::tpy::none_attr(this->_cell, "bump").bump();
 }
 
 // @readonly
 // def value(self) -> int32:
 //     return self._cell.n
 inline int32_t Counter::value() const {
-    return ::tpy::deref_check(this->_cell).n;
+    return ::tpy::none_attr(this->_cell, "n").n;
 }
 void __tpy_init();
 } // namespace tpyapp::main

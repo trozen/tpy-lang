@@ -407,7 +407,7 @@ template <typename F_k>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_narrowed_closure_written_15_frame<F_k>::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return (::tpy::mul_check<int32_t>(x, ::tpy::deref_optional_check(k)));
+        return (::tpy::mul_check<int32_t>(x, ::tpy::none_operand("int32", "*", k)));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -454,7 +454,7 @@ template <typename F_k>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_narrowed_closure_written_16_frame<F_k>::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return (::tpy::mul_check<int32_t>(x, ::tpy::deref_optional_check(k)));
+        return (::tpy::mul_check<int32_t>(x, ::tpy::none_operand("int32", "*", k)));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -530,7 +530,7 @@ template <typename F_k>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_narrowed_loop_closure_17_frame<F_k>::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return (::tpy::mul_check<int32_t>(x, ::tpy::deref_optional_check(k)));
+        return (::tpy::mul_check<int32_t>(x, ::tpy::none_operand("int32", "*", k)));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -820,7 +820,7 @@ template <typename F_k>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_narrowed_rebound_21_frame<F_k>::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         x = *((*__for_it_0))++;
-        return (::tpy::mul_check<int32_t>(x, ::tpy::deref_optional_check(k)));
+        return (::tpy::mul_check<int32_t>(x, ::tpy::none_operand("int32", "*", k)));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }

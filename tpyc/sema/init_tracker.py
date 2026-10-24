@@ -91,6 +91,14 @@ class InitTracker:
         else:
             self.ctx.func.non_null_ptr_vars.discard(name)
 
+    def flush_pending_ptr_facts(self) -> None:
+        """Make the pointer facts the expressions analyzed so far proved
+        live: at a point sequenced after all of them."""
+        f = self.ctx.func
+        if f.pending_non_null_ptr_vars:
+            f.non_null_ptr_vars |= f.pending_non_null_ptr_vars
+            f.pending_non_null_ptr_vars.clear()
+
     def add_loop_var_provenance(self, name: str) -> None:
         self.ctx.func.bp_add_loop_var_provenance(name)
 
@@ -219,6 +227,16 @@ class InitTracker:
         self.ctx.func.value_ranges = dict(before.value_ranges)
         if kills is not None:
             self.apply_fact_kills(kills, keep_steps=True)
+
+    def join_entry_from_any_point(self, before: FlowFacts,
+                                  kills: FactKills) -> None:
+        """Enter a point control may reach from anywhere in a region: a
+        loop's `break` exit, a `finally` body, the code after a suppressing
+        `with`. Only the check-elision facts that held at the region's start
+        and that nothing in it kills (`kills`) survive, joined with the
+        current ones."""
+        self.join_facts(before)
+        self.apply_fact_kills(kills)
 
     def merge_branches(self, then_state: FlowFacts, else_state: FlowFacts) -> None:
         self.restore(FlowFacts.merge(then_state, else_state))

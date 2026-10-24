@@ -340,13 +340,13 @@ inline M::M() : k(1) {}
 //     # method: the same read beside a self field
 //     return self.k + d[0].x  # tpyc: warning(/Potential None access/)
 inline int32_t M::meth(const std::vector<P>* d) const {
-    return (::tpy::add_check<int32_t>(this->k, ::tpy::__getitem__(::tpy::deref_check(d), 0).x));
+    return (::tpy::add_check<int32_t>(this->k, ::tpy::__getitem__(::tpy::none_item(d), 0).x));
 }
 
 // def __init__(self, d: Optional[list[P]]) -> None:
 //     # constructor: a field init from the read
 //     self.k = d[0].x  # tpyc: warning(/Potential None access/)
-inline Ctor::Ctor(const std::vector<P>* d) : k(::tpy::__getitem__(::tpy::deref_check(d), 0).x) {}
+inline Ctor::Ctor(const std::vector<P>* d) : k(::tpy::__getitem__(::tpy::none_item(d), 0).x) {}
 // @dispatch
 // def trial[T, U](f: Fn[[T], U], xs: list[T]) -> int32:
 //     return 2

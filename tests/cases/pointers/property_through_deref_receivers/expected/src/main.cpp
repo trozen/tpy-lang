@@ -11,14 +11,14 @@ namespace tpyapp::main {
 // def via_param(p: Ptr[Node], h: Holder) -> int32:
 //     return p.twice + h.p.twice  # tpyc: ok nullable(p)
 int32_t via_param(Node* p, const Holder& h) {
-    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).twice(), ::tpy::deref_check(h.p).twice()));
+    return (::tpy::add_check<int32_t>(::tpy::none_attr(p, "twice").twice(), ::tpy::none_attr(h.p, "twice").twice()));
 }
 
 // # free function: an unproven Optional receiver takes the runtime null check
 // def via_optional(n: Node | None) -> int32:
 //     return n.twice  # tpyc: warning(/Potential None access/) nullable(n)
 int32_t via_optional(const Node* n) {
-    return ::tpy::deref_check(n).twice();
+    return ::tpy::none_attr(n, "twice").twice();
 }
 
 
@@ -36,7 +36,7 @@ __gen_gen gen(const Holder& h) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpy::deref_check(h.p).twice();
+        int32_t __tpy_async_ret = ::tpy::none_attr(h.p, "twice").twice();
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -98,7 +98,7 @@ void main() {
     std::cout << "rc" << " " << r.__deref__().twice() << "\n" << ::tpy::check_signals;
     Node* p = &n;
     auto inner = [&p]() -> int32_t {
-        return ::tpy::deref_check(p).twice();
+        return ::tpy::none_attr(p, "twice").twice();
     };
     std::cout << "closure" << " " << inner() << "\n" << ::tpy::check_signals;
 }

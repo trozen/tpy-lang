@@ -18,7 +18,7 @@ void main() {
     auto __match_subject_1 = ::tpy::optional_to_ptr(h.opt);
     {
         q = __match_subject_1;
-        ::tpy::deref_check(q).v = ::tpy::BigInt(99);
+        ::tpy::none_attr(q, "v").v = ::tpy::BigInt(99);
     }
     if ((h.opt.has_value())) {
         std::cout << (*h.opt).v << "\n" << ::tpy::check_signals;

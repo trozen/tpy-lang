@@ -38,7 +38,10 @@ from ..typesys import (
     unwrap_own, coro_struct_owner, collapse_tuple_own_elements, global_binds_by_reference, owned_element_type,
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
-from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling, name_path, walk_expr_tree
+from ..parse.nodes import (
+    GENEXPR_FUNC_PREFIX, NoneUse, NoneUseKind, op_spelling, name_path,
+    walk_expr_tree,
+)
 from ..parse import (
     const_tuple_index,
     ResultForm,
@@ -2826,15 +2829,27 @@ class ExpressionAnalyzer:
         right_effective = right_effective.wrapped if isinstance(right_effective, OwnType) else right_effective
         # Value optionals in operator expressions use runtime null checks unless
         # flow already proved non-None for the specific expression.
-        warned_optional_operator = False
+        expr.none_left = expr.none_right = None
         if expr.op not in ("is", "is not", "&&", "||", "in", "not in", "==", "!="):
-            if isinstance(left_effective, OptionalType) and left_effective.inner.is_value_type():
+            left_none = (isinstance(left_effective, OptionalType)
+                         and left_effective.inner.is_value_type())
+            right_none = (isinstance(right_effective, OptionalType)
+                          and right_effective.inner.is_value_type())
+            if left_none:
                 left_effective = left_effective.inner
-                warned_optional_operator = True
-            if isinstance(right_effective, OptionalType) and right_effective.inner.is_value_type():
+            if right_none:
                 right_effective = right_effective.inner
-                warned_optional_operator = True
-            if warned_optional_operator:
+            # The message names the other operand by its unwrapped type,
+            # as the user wrote it (an int literal is `int`).
+            if left_none:
+                expr.none_left = NoneUse(
+                    NoneUseKind.OPERAND, op=op_spelling(expr.op),
+                    other=python_type_name(right_effective))
+            if right_none:
+                expr.none_right = NoneUse(
+                    NoneUseKind.OPERAND, op=op_spelling(expr.op),
+                    other=python_type_name(left_effective), none_left=False)
+            if left_none or right_none:
                 self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
 
         # For ==/!=, unwrap Optional value-types only for operator resolution
@@ -3027,7 +3042,7 @@ class ExpressionAnalyzer:
             self._validate_comparison(expr, left_effective, right_effective)
             self._resolve_comparison(
                 expr, left_effective, right_effective,
-                None if warned_optional_operator else (left_type, right_type))
+                None if (expr.none_left or expr.none_right) else (left_type, right_type))
             return BOOL
 
         # Membership operators (in, not in) return Bool
@@ -3308,7 +3323,7 @@ class ExpressionAnalyzer:
         if result := self.decide_operator(self.operators.resolve_binop(
                 left_effective, expr.op, right_effective, loc_node=expr), expr):
             expr.resolved_binop = result
-            if not warned_optional_operator:
+            if not (expr.none_left or expr.none_right):
                 scope = (dunder_scope[0] if dunder_scope is not None
                          and any(result.method.root is d.root
                                  for d in dunder_scope[1]) else None)
@@ -3623,6 +3638,7 @@ class ExpressionAnalyzer:
 
     def _analyze_unaryop(self, expr: TpyUnaryOp) -> TpyType:
         """Analyze a unary operation."""
+        expr.none_operand = None
         if expr.op == "!":
             operand_type = self.analyze_condition(expr.operand)
             self._branches[expr] = (
@@ -3656,8 +3672,10 @@ class ExpressionAnalyzer:
 
         # Value optionals in unary arithmetic/bitwise ops use runtime checks
         # unless flow already narrowed them to non-Optional.
-        if expr.op in ("-", "~") and isinstance(operand_type, OptionalType) and operand_type.inner.is_value_type():
-            effective_type = operand_type.inner
+        if expr.op in ("-", "~") and isinstance(effective_type, OptionalType) and effective_type.inner.is_value_type():
+            effective_type = effective_type.inner
+            expr.none_operand = NoneUse(NoneUseKind.OPERAND,
+                                        op=op_spelling(expr.op))
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
 
         # Logical not: validate operand type (Bool, numeric, Optional, or types with __bool__/__len__)
@@ -3988,6 +4006,9 @@ class ExpressionAnalyzer:
 
     def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
+        # Decided afresh: an overload trial may have analyzed this node
+        # under an Optional receiver the winner does not have.
+        expr.none_use = None
         # A filled default's read is spelled by its stamp alone.
         if expr.default_fill:
             if expr.enum_member_of is not None:
@@ -4032,7 +4053,7 @@ class ExpressionAnalyzer:
             if actual_type.inner.is_value_type():
                 raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
-            expr.needs_optional_runtime_check = True
+            expr.none_use = NoneUse(NoneUseKind.ATTR, attr=expr.field)
             actual_type = actual_type.inner
 
         # Pending generic instance: field access is not allowed until resolved
@@ -4074,12 +4095,6 @@ class ExpressionAnalyzer:
         while deref_depth <= 8:
             result = self._try_find_field(current_type, expr)
             if result is not None:
-                # Class constants emit `<owner_qname>::<member>` ignoring
-                # `obj`, so deref state, ptr-non-null narrowing,
-                # ownership-from-self, and field-path narrowing don't apply.
-                if expr.class_constant_owner is not None:
-                    return make_ref(result)
-                expr.deref_depth = deref_depth
                 if deref_depth > 0 and isinstance(actual_type, PtrType):
                     obj_key = _expr_to_narrowing_key(expr.obj)
                     if obj_key is not None:
@@ -4095,6 +4110,16 @@ class ExpressionAnalyzer:
                         # applied immediately to avoid unsafe elision between
                         # unspecified-order siblings in the same expression.
                         self.ctx.func.pending_non_null_ptr_vars.add(obj_key)
+                    if not expr.ptr_non_null and expr.none_use is None:
+                        expr.none_use = NoneUse(NoneUseKind.ATTR,
+                                                attr=expr.field,
+                                                through_ptr=True)
+                # Class constants emit `<owner_qname>::<member>` ignoring
+                # `obj` past its None check, so deref state,
+                # ownership-from-self, and field-path narrowing don't apply.
+                if expr.class_constant_owner is not None:
+                    return make_ref(result)
+                expr.deref_depth = deref_depth
                 # Readonly protects the receiver's own storage: a non-value
                 # field read through it is readonly. A `Ptr` / `Span` field is
                 # a value-typed handle, so it is not wrapped -- what it points
@@ -6698,7 +6723,7 @@ class ExpressionAnalyzer:
             if actual.inner.is_value_type():
                 raise self.ctx.error(f"Cannot index type {obj_type}", expr)
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
-            expr.needs_optional_runtime_check = True
+            expr.none_use = NoneUse(NoneUseKind.SUBSCRIPT)
             actual = unwrap_readonly(actual.inner)
 
         # Protocol types - lookup __getitem__ return type

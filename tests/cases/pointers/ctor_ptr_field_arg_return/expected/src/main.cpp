@@ -33,7 +33,7 @@ Handle make_handle(Node& n) {
 void main() {
     Node n = Node(5);
     Handle h = ::tpyapp::main::make_handle(n);
-    std::cout << ::tpy::deref_check(h.p).v << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(h.p, "v").v << "\n" << ::tpy::check_signals;
     h.p->v = 99;
     std::cout << n.v << "\n" << ::tpy::check_signals;
 }

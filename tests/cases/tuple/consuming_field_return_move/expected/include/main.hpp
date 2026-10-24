@@ -473,7 +473,7 @@ inline Guard& Guard::operator=(Guard&& other) noexcept {
 inline Guard::~Guard() {
     if (!this->__tpy_owned_) return;
     ::tpy::DeferSignals __tpy_defer_signals;
-    std::cout << "sibling_loop_guard del" << " " << ::tpy::deref_check(this->p).n() << "\n" << ::tpy::check_signals;
+    std::cout << "sibling_loop_guard del" << " " << ::tpy::none_attr(this->p, "n").n() << "\n" << ::tpy::check_signals;
 }
 
 // def __init__(self) -> None:

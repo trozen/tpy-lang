@@ -1,0 +1,4 @@
+CPython calls the function the field held when the call began (it prints
+20); TPy re-reads the field after the arguments ran and raises TypeError,
+since keeping the old function alive would copy it on every call. Filed as
+BUGS.md#callable-field-arg-rebinds-callee.

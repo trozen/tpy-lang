@@ -418,7 +418,7 @@ template<typename T>
 inline Arc<T>::~Arc() {
     if (!this->__tpy_owned_) return;
     ::tpy::DeferSignals __tpy_defer_signals;
-    if (::tpy::deref_check(this->_cell).release_strong()) {
+    if (::tpy::none_attr(this->_cell, "release_strong").release_strong()) {
         ::tpy::heap_release(this->_cell);
     }
 }
@@ -468,7 +468,7 @@ template<typename T>
 template<typename U>
 inline Arc<T> Arc<T>::new_(::tpy::own_param_t<U> value) {
     _ArcCell<U>* cell = ::tpy::heap_take(_ArcCell<U>());
-    ::tpy::deref_check(cell).storage.construct(std::move(value));
+    ::tpy::none_attr(cell, "storage").storage.construct(std::move(value));
     return Arc<T>(cell, cell->storage.ptr());
 }
 
@@ -478,7 +478,7 @@ inline Arc<T> Arc<T>::new_(::tpy::own_param_t<U> value) {
 //     return Arc[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline Arc<T> Arc<T>::clone() {
-    ::tpy::deref_check(this->_cell).incr_strong();
+    ::tpy::none_attr(this->_cell, "incr_strong").incr_strong();
     return Arc<T>(this->_cell, this->_payload);
 }
 
@@ -488,7 +488,7 @@ inline Arc<T> Arc<T>::clone() {
 //     return Arc[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline Arc<T> Arc<T>::clone() const {
-    ::tpy::deref_check(this->_cell).incr_strong();
+    ::tpy::none_attr(this->_cell, "incr_strong").incr_strong();
     return Arc<T>(this->_cell, this->_payload);
 }
 
@@ -498,7 +498,7 @@ inline Arc<T> Arc<T>::clone() const {
 //     return Weak[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline Weak<T> Arc<T>::downgrade() {
-    ::tpy::deref_check(this->_cell).incr_weak();
+    ::tpy::none_attr(this->_cell, "incr_weak").incr_weak();
     return Weak<T>(this->_cell, this->_payload);
 }
 
@@ -508,7 +508,7 @@ inline Weak<T> Arc<T>::downgrade() {
 //     return Weak[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline Weak<T> Arc<T>::downgrade() const {
-    ::tpy::deref_check(this->_cell).incr_weak();
+    ::tpy::none_attr(this->_cell, "incr_weak").incr_weak();
     return Weak<T>(this->_cell, this->_payload);
 }
 
@@ -617,7 +617,7 @@ template<typename T>
 inline Weak<T>::~Weak() {
     if (!this->__tpy_owned_) return;
     ::tpy::DeferSignals __tpy_defer_signals;
-    if (::tpy::deref_check(this->_cell).release_weak()) {
+    if (::tpy::none_attr(this->_cell, "release_weak").release_weak()) {
         ::tpy::heap_release(this->_cell);
     }
 }
@@ -629,7 +629,7 @@ inline Weak<T>::~Weak() {
 //     return Arc[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline std::optional<Arc<T>> Weak<T>::upgrade() {
-    if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
+    if ((!(::tpy::none_attr(this->_cell, "try_incr_strong").try_incr_strong()))) {
         return std::nullopt;
     }
     return Arc<T>(this->_cell, this->_payload);
@@ -642,7 +642,7 @@ inline std::optional<Arc<T>> Weak<T>::upgrade() {
 //     return Arc[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline std::optional<Arc<T>> Weak<T>::upgrade() const {
-    if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
+    if ((!(::tpy::none_attr(this->_cell, "try_incr_strong").try_incr_strong()))) {
         return std::nullopt;
     }
     return Arc<T>(this->_cell, this->_payload);
@@ -654,7 +654,7 @@ inline std::optional<Arc<T>> Weak<T>::upgrade() const {
 //     return Weak[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline Weak<T> Weak<T>::clone() {
-    ::tpy::deref_check(this->_cell).incr_weak();
+    ::tpy::none_attr(this->_cell, "incr_weak").incr_weak();
     return Weak<T>(this->_cell, this->_payload);
 }
 
@@ -664,7 +664,7 @@ inline Weak<T> Weak<T>::clone() {
 //     return Weak[auto_readonly[T]](self._cell, self._payload)
 template<typename T>
 inline Weak<T> Weak<T>::clone() const {
-    ::tpy::deref_check(this->_cell).incr_weak();
+    ::tpy::none_attr(this->_cell, "incr_weak").incr_weak();
     return Weak<T>(this->_cell, this->_payload);
 }
 

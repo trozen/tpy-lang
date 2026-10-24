@@ -497,12 +497,12 @@ void kept_cyclic(L& head) {
 //     t.p = q if h.p.x > 5 else h.p
 //     print("queued_deref alias:", h.p.x)  # tpyc: nullable(h.p)
 void queued_deref(Holder& h, P* q, bool c) {
-    h.p = (((::tpy::deref_check(h.p).x > 0)) ? (q) : (h.p));
-    std::cout << "queued_deref direct:" << " " << ::tpy::deref_check(h.p).x << "\n" << ::tpy::check_signals;
+    h.p = (((::tpy::none_attr(h.p, "x").x > 0)) ? (q) : (h.p));
+    std::cout << "queued_deref direct:" << " " << ::tpy::none_attr(h.p, "x").x << "\n" << ::tpy::check_signals;
     std::optional<Holder> __select_slot_1;
     Holder& t = ((c) ? (h) : (__select_slot_1.emplace(Holder(q))));
-    t.p = (((::tpy::deref_check(h.p).x > 5)) ? (q) : (h.p));
-    std::cout << "queued_deref alias:" << " " << ::tpy::deref_check(h.p).x << "\n" << ::tpy::check_signals;
+    t.p = (((::tpy::none_attr(h.p, "x").x > 5)) ? (q) : (h.p));
+    std::cout << "queued_deref alias:" << " " << ::tpy::none_attr(h.p, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // # plain alias bind with no store: a second write path to a ends a.v's fact

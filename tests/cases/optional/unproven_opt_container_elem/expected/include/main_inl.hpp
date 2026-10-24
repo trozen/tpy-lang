@@ -18,7 +18,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     }
     case S_RESUME_0: {  // after: yield 0
         __state = S_RESUME_1;
-        return ::tpy::__getitem__(::tpy::deref_check(d), 0).x;
+        return ::tpy::__getitem__(::tpy::none_item(d), 0).x;
     }
     case S_RESUME_1: {  // after: yield d[0].x  # tpyc: warning(/Potential None access/)
         __state = S_DONE;

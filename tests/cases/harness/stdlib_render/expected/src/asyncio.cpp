@@ -968,14 +968,14 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 ::tpystd::tpy::Poll<::tpy::Bytes> _SockRecv::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::none_attr(this->_sock, "fileno").fileno());
         throw ::tpy::CancelledError("");
     }
     {
         try {
-            return ::tpystd::coro::poll_ready<::tpy::Bytes>(::tpy::deref_check(this->_sock).recv(this->_n));
+            return ::tpystd::coro::poll_ready<::tpy::Bytes>(::tpy::none_attr(this->_sock, "recv").recv(this->_n));
         } catch (const ::tpy::BlockingIOError&) {
-            ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
+            ::tpystd::asyncio::_reactor_register_fd(::tpy::none_attr(this->_sock, "fileno").fileno(), EPOLLIN, waker);
             return ::tpystd::coro::poll_pending<::tpy::Bytes>();
         }
     }
@@ -998,7 +998,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 ::tpystd::tpy::Poll<std::monostate> _SockSendAll::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::none_attr(this->_sock, "fileno").fileno());
         throw ::tpy::CancelledError("");
     }
     uint64_t total = ::tpy::int_cast_check<uint64_t>(::tpy::__len__(this->_data));
@@ -1006,9 +1006,9 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
         int32_t sent;
         {
             try {
-                sent = ::tpy::deref_check(this->_sock)._send_from(this->_data, this->_sent);
+                sent = ::tpy::none_attr(this->_sock, "_send_from")._send_from(this->_data, this->_sent);
             } catch (const ::tpy::BlockingIOError&) {
-                ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLOUT, waker);
+                ::tpystd::asyncio::_reactor_register_fd(::tpy::none_attr(this->_sock, "fileno").fileno(), EPOLLOUT, waker);
                 return ::tpystd::coro::poll_pending<std::monostate>();
             }
         }
@@ -1031,14 +1031,14 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 ::tpystd::tpy::Poll<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>> _SockAccept::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::none_attr(this->_sock, "fileno").fileno());
         throw ::tpy::CancelledError("");
     }
     {
         try {
-            return ::tpystd::coro::poll_ready<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>>(::tpy::deref_check(this->_sock)._accept_nonblocking());
+            return ::tpystd::coro::poll_ready<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>>(::tpy::none_attr(this->_sock, "_accept_nonblocking")._accept_nonblocking());
         } catch (const ::tpy::BlockingIOError&) {
-            ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLIN, waker);
+            ::tpystd::asyncio::_reactor_register_fd(::tpy::none_attr(this->_sock, "fileno").fileno(), EPOLLIN, waker);
             return ::tpystd::coro::poll_pending<std::tuple<::tpystd::socket::socket, std::tuple<std::string, int32_t>>>();
         }
     }
@@ -1074,22 +1074,22 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 ::tpystd::tpy::Poll<std::monostate> _SockConnect::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
-        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::deref_check(this->_sock).fileno());
+        ::tpystd::asyncio::_reactor_unregister_fd(::tpy::none_attr(this->_sock, "fileno").fileno());
         throw ::tpy::CancelledError("");
     }
     if ((!(this->_started))) {
         this->_started = true;
         {
             try {
-                ::tpy::deref_check(this->_sock).connect(this->_addr);
+                ::tpy::none_attr(this->_sock, "connect").connect(this->_addr);
                 return ::tpystd::coro::poll_ready_none();
             } catch (const ::tpy::BlockingIOError&) {
-                ::tpystd::asyncio::_reactor_register_fd(::tpy::deref_check(this->_sock).fileno(), EPOLLOUT, waker);
+                ::tpystd::asyncio::_reactor_register_fd(::tpy::none_attr(this->_sock, "fileno").fileno(), EPOLLOUT, waker);
                 return ::tpystd::coro::poll_pending<std::monostate>();
             }
         }
     }
-    int32_t err = ::tpy::deref_check(this->_sock).getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_error);
+    int32_t err = ::tpy::none_attr(this->_sock, "getsockopt_int").getsockopt_int(::tpy_const_sol_socket, ::tpy_const_so_error);
     if ((err == 0)) {
         return ::tpystd::coro::poll_ready_none();
     }

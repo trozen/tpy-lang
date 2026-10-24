@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         return 1
 //     return 0
 ::tpy::BigInt probe(const A& a) {
-    if ((static_cast<void>(::tpy::deref_optional_check(a.b).c), true)) {
+    if ((static_cast<void>(::tpy::none_attr(a.b, "c").c), true)) {
         return ::tpy::BigInt(1);
     }
     return ::tpy::BigInt(0);

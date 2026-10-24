@@ -68,13 +68,13 @@ void test_bigint_expr_to_int32() {
 // def modify_via_ptr(p: Ptr[Point]) -> None:
 //     p.x = p.x + 100
 void modify_via_ptr(Point* p) {
-    ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, 100));
+    ::tpy::none_attr(p, "x").x = (::tpy::add_check<int32_t>(::tpy::none_attr(p, "x").x, 100));
 }
 
 // def read_via_const_ptr(p: Ptr[readonly[Point]]) -> int32:
 //     return p.x + p.y
 int32_t read_via_const_ptr(const Point* p) {
-    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
+    return (::tpy::add_check<int32_t>(::tpy::none_attr(p, "x").x, ::tpy::none_attr(p, "y").y));
 }
 
 // def test_field_access_to_ptr() -> None:

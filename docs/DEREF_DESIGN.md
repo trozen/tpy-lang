@@ -99,7 +99,7 @@ Two strategies based on type:
 
 Codegen also handles the interaction with Optional receivers:
 - **Narrowed Optional** (`Ref | None` proven non-null): C++ var is still `Ref*`, so codegen emits `r->__deref__().field` (arrow for pointer deref, then user deref chain).
-- **Runtime null check**: Emits `tpy::deref_check(r).__deref__().field`.
+- **Runtime null check**: Emits `tpy::none_attr(r, "field").__deref__().field`, raising `AttributeError` on None.
 
 ### Stage 4: Deref coercion — Done
 
@@ -118,7 +118,7 @@ Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in
 
 ### Stage 6: Null-safety for Ptr / Ptr[readonly[T]] auto-deref -- Done
 
-Replaced unchecked `ptr->field` / `ptr->method()` with `tpy::deref_check(ptr).field` / `tpy::deref_check(ptr).method()` in codegen for `PtrType` (both mutable and const). Every auto-deref through a pointer is now null-checked via the existing `tpy::deref_check()` runtime function, which panics with "null pointer dereference" on null. This matches the behavior of explicit `.__deref__()` calls.
+Replaced unchecked `ptr->field` / `ptr->method()` with a null-checked access for `PtrType` (both mutable and const). Since 2026-10-23 the check is the None-access one (`tpy::none_attr(ptr, "field").field` / `tpy::none_attr(ptr, "method").method()`), raising `AttributeError` as CPython does for an attribute on None, which is what the `Ptr` stub forwards to. The `Ptr` -> `T` coercion and an explicit `deref(p)` / `.__deref__()` keep `tpy::deref_check`, which panics with "null pointer dereference" (TODO.md "null Ptr coercion and explicit deref: which exception").
 
 The C++ optimizer can elide redundant null checks on the same pointer in release builds (`-O2`/`-O3`).
 
@@ -136,7 +136,7 @@ Added flow-tracked `non_null_ptr_vars` set to sema context (alongside existing `
 
 **AST flag**: `ptr_non_null: bool` on `TpyFieldAccess` and `TpyMethodCall`, set by sema when the receiver is a `TpyName` in `non_null_ptr_vars` and the receiver type is `PtrType`.
 
-**Codegen**: When `ptr_non_null` is set, emits `ptr->field` / `ptr->method()` instead of `tpy::deref_check(ptr).field` / `tpy::deref_check(ptr).method()`.
+**Codegen**: When `ptr_non_null` is set, emits `ptr->field` / `ptr->method()`; otherwise sema records the access's None check (`none_use`) and the access renders `tpy::none_attr(ptr, "field").field` / `tpy::none_attr(ptr, "method").method()`. A `Ptr` access with neither fact is refused, so a pointer sema did not decide is never read unchecked. The facts do not outlive a raise: the state at a `finally` entry, a handler entry and after a suppressing `with` keeps only facts that held ahead of the statement.
 
 **Scope**: Field access and method calls only. Deref coercion (`DEREF_COERCION`) remains always null-checked. Function parameters have unknown provenance (caller might pass null).
 

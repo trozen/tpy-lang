@@ -74,11 +74,11 @@ void __tpy_init() {
     p2 = &__global_slot_2;
     line->set_end((*p2));
     std::cout << ::tpy::print_bool(line->has_end()) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(line->end).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(line->end).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(line->end, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(line->end, "y").y << "\n" << ::tpy::check_signals;
     result = line->get_end();
     std::cout << ::tpy::print_bool((result != nullptr)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(result).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(result, "x").x << "\n" << ::tpy::check_signals;
     static std::vector<Point> __global_slot_3 = std::vector<Point>();
     pts = &__global_slot_3;
     pts->push_back(Point(5, 50));
@@ -87,16 +87,16 @@ void __tpy_init() {
     line2 = &__global_slot_4;
     line2->end = ::tpy::ptr_to_optional(::tpyapp::main::find_point((*pts), 5));
     std::cout << ::tpy::print_bool((!line2->end.has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(line2->end).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(line2->end, "x").x << "\n" << ::tpy::check_signals;
     line2->end = ::tpy::ptr_to_optional(::tpyapp::main::find_point((*pts), 7));
-    std::cout << ::tpy::deref_optional_check(line2->end).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(line2->end, "y").y << "\n" << ::tpy::check_signals;
     line2->end = ::tpy::ptr_to_optional(::tpyapp::main::find_point((*pts), 99));
     std::cout << ::tpy::print_bool((!line2->end.has_value())) << "\n" << ::tpy::check_signals;
     static Line __global_slot_5 = Line(Point(10, 20));
     line3 = &__global_slot_5;
     line3->end = line->end;
-    std::cout << ::tpy::deref_optional_check(line3->end).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(line3->end).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(line3->end, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(line3->end, "y").y << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

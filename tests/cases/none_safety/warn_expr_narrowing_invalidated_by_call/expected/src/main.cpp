@@ -18,7 +18,7 @@ void opaque(const Box& b) {
 int32_t use_after_call(const Box& b) {
     if ((b.value.has_value())) {
         ::tpyapp::main::opaque(b);
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(b.value), 1));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(b.value, "+", "int"), 1));
     }
     return 0;
 }

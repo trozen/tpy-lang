@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def get_thing(sec: Ptr[SectorT]) -> Ptr[ThingT]:
 //     return unsafe_cast[ThingT](sec.thinglist)
 ::thing_t* get_thing(::sector_t* sec) {
-    return reinterpret_cast<::thing_t*>(::tpy::deref_check(sec).thinglist);
+    return reinterpret_cast<::thing_t*>(::tpy::none_attr(sec, "thinglist").thinglist);
 }
 
 // def main() -> None:
@@ -19,7 +19,7 @@ void main() {
     ::thing_t thing = ::thing_t{42};
     ::sector_t sec = ::sector_t{100, reinterpret_cast<void*>(&thing)};
     ::thing_t* p = ::tpyapp::main::get_thing(&sec);
-    std::cout << ::tpy::deref_check(p).id << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "id").id << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.unsafe import unsafe_cast

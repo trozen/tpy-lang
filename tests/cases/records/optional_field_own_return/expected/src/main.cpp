@@ -31,7 +31,7 @@ void test() {
     Holder h2 = Holder();
     h2.value = ::tpyapp::main::maybe_make(3);
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(h2.value).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(h2.value, "x").x << "\n" << ::tpy::check_signals;
     h2.value = ::tpyapp::main::maybe_make(-1);
     std::cout << ::tpy::print_bool((!h2.value.has_value())) << "\n" << ::tpy::check_signals;
 }
@@ -56,8 +56,8 @@ void __tpy_init() {
     h = &__global_slot_1;
     h->value = ::tpyapp::main::maybe_make(5);
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(h->value).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_optional_check(h->value).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(h->value, "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(h->value, "y").y << "\n" << ::tpy::check_signals;
     h->value = ::tpyapp::main::maybe_make(-1);
     std::cout << ::tpy::print_bool((!h->value.has_value())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test();

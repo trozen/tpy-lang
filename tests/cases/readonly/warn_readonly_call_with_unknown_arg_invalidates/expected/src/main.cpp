@@ -32,7 +32,7 @@ void observe(int32_t _) {
 int32_t use(Box& b) {
     if ((b.value.has_value())) {
         ::tpyapp::main::observe(::tpyapp::main::mutate_and_get(b));
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(b.value), 1));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(b.value, "+", "int"), 1));
     }
     return 0;
 }

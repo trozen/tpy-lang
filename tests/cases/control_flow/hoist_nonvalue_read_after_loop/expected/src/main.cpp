@@ -807,7 +807,7 @@ void sib_ptr() {
     for (int32_t k = 0; k < 2; ++k) {
         std::cout << "sib_ptr" << " " << k << "\n" << ::tpy::check_signals;
     }
-    ::tpy::deref_check(q).bump();
+    ::tpy::none_attr(q, "bump").bump();
     std::cout << "sib_ptr" << " " << q->n << " " << ::tpy::__getitem__(pics, 1).n << "\n" << ::tpy::check_signals;
 }
 

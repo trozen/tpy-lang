@@ -193,9 +193,9 @@ Edge cases handled:
   `::<defining_module>::<Parent>::<X>`.
 - **Optional receiver matches CPython's `AttributeError`-on-`None`**.
   `obj: C | None; obj.X` warns ("Potential None access") and codegen
-  wraps the access in `({ ::tpy::deref_check(obj); <Owner>::<X>; })` so
-  reading through a `None` panics rather than silently succeeding (which
-  would diverge from CPython). Narrowing (`if obj is not None: obj.X`)
+  wraps the access in `({ ::tpy::none_attr(obj, "X"); <Owner>::<X>; })` so
+  reading through a `None` raises `AttributeError` as CPython does, rather
+  than silently succeeding. A null `Ptr[C]` receiver takes the same check. Narrowing (`if obj is not None: obj.X`)
   drops both the warning and the runtime check.
 - **Side effects on `obj`**. When `expr.obj` is a non-name expression
   (e.g. `f().LIMIT`, `lst[i].LIMIT`), codegen wraps the access in a GCC

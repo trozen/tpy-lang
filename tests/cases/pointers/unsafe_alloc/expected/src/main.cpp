@@ -15,7 +15,7 @@ namespace tpyapp::main {
 void test_single() {
     Point* p = static_cast<Point*>(::operator new(sizeof(Point), std::align_val_t(alignof(Point))));
     ::new(static_cast<void*>(p)) Point(Point(10, 20));
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     std::cout << p->y << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);
     ::operator delete(p, std::align_val_t(alignof(Point)));
@@ -33,7 +33,7 @@ void test_single() {
 void test_mutate() {
     Point* p = static_cast<Point*>(::operator new(sizeof(Point), std::align_val_t(alignof(Point))));
     ::new(static_cast<void*>(p)) Point(Point(1, 2));
-    ::tpy::deref_check(p).x = 100;
+    ::tpy::none_attr(p, "x").x = 100;
     p->y = 200;
     std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
     ::tpy::destroy_at(p);

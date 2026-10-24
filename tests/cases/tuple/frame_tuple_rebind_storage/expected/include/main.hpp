@@ -2411,7 +2411,7 @@ inline int32_t Setter::value() const {
 // def value(self, v: int32) -> None:
 //     self.k.save(self.b)
 inline void Setter::set_value(int32_t v) {
-    ::tpy::deref_check(this->k).save(this->b);
+    ::tpy::none_attr(this->k, "save").save(this->b);
 }
 
 // def __init__(self, a: Own[T]) -> None:

@@ -1281,7 +1281,7 @@ void pull_kills() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), v)));
+            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int32"), v)));
         }
     }
     std::cout << "pull" << " " << total << "\n" << ::tpy::check_signals;
@@ -1304,7 +1304,7 @@ void in_pull() {
     __gen_produce g = ::tpyapp::main::produce();
     int32_t r = 0;
     if (((o_glob.has_value()) && ({ auto&& __itr = ::tpy::__iter__(g); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 1) { __found = true; break; } } __found; }))) {
-        r = (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), 1));
+        r = (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int"), 1));
     }
     std::cout << "in" << " " << r << "\n" << ::tpy::check_signals;
 }
@@ -1382,7 +1382,7 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_capture_resume_26_frame<F
         }
         j = ((*__for_i_1))++;
         __state = S_RESUME_0;
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o), j));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(o, "+", "int32"), j));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -1485,7 +1485,7 @@ __genexpr_cond_if_27_frame<F_o> __genexpr_cond_if_27(int32_t __r0, F_o&& o) {
 void cond_if() {
     std::optional<int32_t> o = 5;
     if (((o.has_value()) && ::tpy::builtin_any(::tpyapp::main::__genexpr_cond_if_27(1, o)))) {
-        std::cout << "cond-if" << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "cond-if" << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1553,7 +1553,7 @@ __genexpr_cond_and_28_frame<F_o> __genexpr_cond_and_28(int32_t __r0, F_o&& o) {
 //     print("cond-and", r)
 void cond_and() {
     std::optional<int32_t> o = 5;
-    bool r = (((o.has_value()) && ::tpy::builtin_any(::tpyapp::main::__genexpr_cond_and_28(1, o))) && ((::tpy::add_check<int32_t>(::tpy::deref_optional_check(o), 1)) > 0));
+    bool r = (((o.has_value()) && ::tpy::builtin_any(::tpyapp::main::__genexpr_cond_and_28(1, o))) && ((::tpy::add_check<int32_t>(::tpy::none_operand(o, "+", "int"), 1)) > 0));
     std::cout << "cond-and" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
 }
 
@@ -1640,7 +1640,7 @@ void comp_pull() {
         }
         std::move(__result);
     })) > 0))) {
-        std::cout << "comp-pull" << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(value), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "comp-pull" << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(value, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1663,7 +1663,7 @@ void record_iter() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), v)));
+            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int32"), v)));
         }
     }
     std::cout << "record-iter" << " " << total << "\n" << ::tpy::check_signals;
@@ -1848,7 +1848,7 @@ void zip_pull(const std::vector<int32_t>& xs) {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             auto&& q = ::tpy::unwrap_ref(*__r_2);
-            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), std::get<0>(q))));
+            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int32"), std::get<0>(q))));
         }
     }
     std::cout << "zip" << " " << total << "\n" << ::tpy::check_signals;
@@ -1922,7 +1922,7 @@ void ternary_genexpr(bool flag) {
     std::optional<int32_t> o = 5;
     if ((o.has_value())) {
         bool r = ((flag) ? (::tpy::builtin_any(::tpyapp::main::__genexpr_ternary_genexpr_32(1, o))) : (false));
-        std::cout << "ternary-genexpr" << " " << ::tpy::print_bool(r) << " " << (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o), 1)) << "\n" << ::tpy::check_signals;
+        std::cout << "ternary-genexpr" << " " << ::tpy::print_bool(r) << " " << (::tpy::add_check<int32_t>(::tpy::none_operand(o, "+", "int"), 1)) << "\n" << ::tpy::check_signals;
     }
 }
 
@@ -1949,11 +1949,11 @@ void array_list_pull() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::deref_optional_check(o_glob), v)));
+            total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(::tpy::none_operand(o_glob, "+", "int32"), v)));
         }
     }
     if (((o_glob.has_value()) && al.__contains__(1))) {
-        total = (::tpy::add_check<int32_t>(total, ::tpy::deref_optional_check(o_glob)));
+        total = (::tpy::add_check<int32_t>(total, ::tpy::none_operand("int32", "+", o_glob)));
     }
     std::cout << "array-list" << " " << total << "\n" << ::tpy::check_signals;
 }

@@ -214,7 +214,7 @@ void pack_direct_bump(::tpy::varargs<Holder> hs) {
 //     b.n += 5
 //     print("ptr_root_bump", a, p.rows[0].pair[1].n)
 void ptr_root_bump(Grid* p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(::tpy::deref_check(p).rows, 0).pair);
+    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
@@ -226,7 +226,7 @@ void ptr_root_bump(Grid* p) {
 //     a, b = p.rows[0].pair  # tpyc: ok
 //     print("ptr_root_read", a, b.n)
 void ptr_root_read(Grid* p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(::tpy::deref_check(p).rows, 0).pair);
+    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "ptr_root_read" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -239,7 +239,7 @@ void ptr_root_read(Grid* p) {
 //     a, b = p.rows[0].pair  # tpyc: ok
 //     print("ptr_ro_read", a, b.n)
 void ptr_ro_read(const Grid* p) {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::deref_check(p).rows, 0).pair);
+    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(::tpy::none_attr(p, "rows").rows, 0).pair);
     int32_t a = std::get<0>(__tup_1);
     auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
     std::cout << "ptr_ro_read" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
@@ -253,7 +253,7 @@ void ptr_ro_read(const Grid* p) {
 //         a, b = h.pair  # tpyc: ok
 //         print("ptr_ro_loop", a, b.n)
 void ptr_ro_loop(const Grid* p) {
-    auto& __obj_0 = ::tpy::deref_check(p).rows;
+    auto& __obj_0 = ::tpy::none_attr(p, "rows").rows;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

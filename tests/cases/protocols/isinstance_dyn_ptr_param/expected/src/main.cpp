@@ -12,7 +12,7 @@ int32_t reading(Awaker* p) {
     if (Loud* __p_ptr = dynamic_cast<Loud*>(p); (__p_ptr != nullptr)) {
         return (*__p_ptr).shout();
     }
-    return ::tpy::deref_check(p).mark();
+    return ::tpy::none_attr(p, "mark").mark();
 }
 
 // def main() -> None:

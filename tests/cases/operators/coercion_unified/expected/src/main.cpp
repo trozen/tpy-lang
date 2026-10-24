@@ -14,13 +14,13 @@ int32_t take_int32(int32_t n) {
 // def take_ptr(p: Ptr[Point]) -> None:
 //     p.x = p.x + 1
 void take_ptr(Point* p) {
-    ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, 1));
+    ::tpy::none_attr(p, "x").x = (::tpy::add_check<int32_t>(::tpy::none_attr(p, "x").x, 1));
 }
 
 // def take_const_ptr(p: Ptr[readonly[Point]]) -> int32:
 //     return p.x + p.y
 int32_t take_const_ptr(const Point* p) {
-    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
+    return (::tpy::add_check<int32_t>(::tpy::none_attr(p, "x").x, ::tpy::none_attr(p, "y").y));
 }
 
 // def take_point(p: Point) -> int32:
@@ -205,7 +205,7 @@ void test_ptr_to_record() {
 // def take_const_ptr_val(p: Ptr[readonly[Point]]) -> int32:
 //     return p.x
 int32_t take_const_ptr_val(const Point* p) {
-    return ::tpy::deref_check(p).x;
+    return ::tpy::none_attr(p, "x").x;
 }
 
 // def test_ptr_to_const_ptr() -> None:

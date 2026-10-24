@@ -49,7 +49,7 @@ void __tpy_init() {
     for (int32_t i = 5; i > __stop_0; --i) {
         cur = static_cast<node*>(::operator new(sizeof(node), std::align_val_t(alignof(node))));
         ::new(static_cast<void*>(cur)) node(node());
-        ::tpy::deref_check(cur).value = (::tpy::mul_check<int32_t>(i, i));
+        ::tpy::none_attr(cur, "value").value = (::tpy::mul_check<int32_t>(i, i));
         cur->next = head;
         head = cur;
     }

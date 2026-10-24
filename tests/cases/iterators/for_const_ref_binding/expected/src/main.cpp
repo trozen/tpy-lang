@@ -454,7 +454,7 @@ void alias_write(std::vector<Depot>& ds) {
 //     for p in g.rows[0]:  # tpyc: ok
 //         p.x += 5
 void bump_ptr_root(Shelf* g) {
-    auto& __obj_0 = ::tpy::__getitem__(::tpy::deref_check(g).rows, 0);
+    auto& __obj_0 = ::tpy::__getitem__(::tpy::none_attr(g, "rows").rows, 0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -471,7 +471,7 @@ void bump_ptr_root(Shelf* g) {
 //     return total
 int32_t read_ptr_root(Shelf* g) {
     int32_t total = 0;
-    auto& __obj_0 = ::tpy::__getitem__(::tpy::deref_check(g).rows, 0);
+    auto& __obj_0 = ::tpy::__getitem__(::tpy::none_attr(g, "rows").rows, 0);
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {

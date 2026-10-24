@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def add_pair(a: int32 | None, b: int32 | None) -> int32:
 //     return a + b  # tpyc: warning(/Potential None access/)
 int32_t add_pair(std::optional<int32_t> a, std::optional<int32_t> b) {
-    return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(a), ::tpy::deref_optional_check(b)));
+    return (::tpy::add_check<int32_t>(::tpy::none_operand(a, "+", "int32"), ::tpy::none_operand("int32", "+", b)));
 }
 
 // print(add_pair(1, 2))

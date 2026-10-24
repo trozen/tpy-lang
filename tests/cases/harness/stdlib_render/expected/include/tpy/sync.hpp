@@ -411,14 +411,14 @@ inline Condvar::~Condvar() {
 // def notify_one(self) -> None:
 //     self._cv.notify_one()
 inline void Condvar::notify_one() const {
-    ::tpy::deref_check(this->_cv).notify_one();
+    ::tpy::none_attr(this->_cv, "notify_one").notify_one();
 }
 
 // @readonly
 // def notify_all(self) -> None:
 //     self._cv.notify_all()
 inline void Condvar::notify_all() const {
-    ::tpy::deref_check(this->_cv).notify_all();
+    ::tpy::none_attr(this->_cv, "notify_all").notify_all();
 }
 
 // def __init__(self) -> None:
@@ -535,7 +535,7 @@ inline void _RwLockCell<T>::unlock_shared() {
 template<typename T>
 inline Mutex<T>::Mutex(::tpy::own_param_t<T> value) {
     _MutexCell<T>* cell = ::tpy::heap_take(_MutexCell<T>());
-    ::tpy::deref_check(cell).storage.construct(std::move(value));
+    ::tpy::none_attr(cell, "storage").storage.construct(std::move(value));
     this->_cell = cell;
     this->_payload = cell->storage.ptr();
 }
@@ -589,7 +589,7 @@ inline MutexGuard<T>::MutexGuard(_MutexCell<T>* cell, T* payload)
     : _cell(cell),
       _payload(payload),
       _locked(false),
-      _raw_mu(&::tpy::deref_check(cell)._mu) {}
+      _raw_mu(&::tpy::none_attr(cell, "_mu")._mu) {}
 
 // # Acquire on enter (not at lock()): a guard that is never entered never
 // # blocks, so a stray `g = m.lock()` outside a `with` holds no lock -- and
@@ -600,7 +600,7 @@ inline MutexGuard<T>::MutexGuard(_MutexCell<T>* cell, T* payload)
 //     return self
 template<typename T>
 inline MutexGuard<T>& MutexGuard<T>::__enter__() {
-    ::tpy::deref_check(this->_cell).lock();
+    ::tpy::none_attr(this->_cell, "lock").lock();
     this->_locked = true;
     return (*this);
 }
@@ -611,7 +611,7 @@ inline MutexGuard<T>& MutexGuard<T>::__enter__() {
 template<typename T>
 inline void MutexGuard<T>::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     this->_locked = false;
-    ::tpy::deref_check(this->_cell).unlock();
+    ::tpy::none_attr(this->_cell, "unlock").unlock();
 }
 
 // def __deref__(self) -> T:
@@ -707,7 +707,7 @@ inline auto MutexGuard<T>::operator*() const -> decltype(__deref__()) {
 template<typename T>
 inline RwLock<T>::RwLock(::tpy::own_param_t<T> value) {
     _RwLockCell<T>* cell = ::tpy::heap_take(_RwLockCell<T>());
-    ::tpy::deref_check(cell).storage.construct(std::move(value));
+    ::tpy::none_attr(cell, "storage").storage.construct(std::move(value));
     this->_cell = cell;
     this->_payload = cell->storage.ptr();
 }
@@ -775,7 +775,7 @@ inline ReadGuard<T>::ReadGuard(_RwLockCell<T>* cell, const T* payload)
 //     return self
 template<typename T>
 inline ReadGuard<T>& ReadGuard<T>::__enter__() {
-    ::tpy::deref_check(this->_cell).lock_shared();
+    ::tpy::none_attr(this->_cell, "lock_shared").lock_shared();
     this->_locked = true;
     return (*this);
 }
@@ -786,7 +786,7 @@ inline ReadGuard<T>& ReadGuard<T>::__enter__() {
 template<typename T>
 inline void ReadGuard<T>::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     this->_locked = false;
-    ::tpy::deref_check(this->_cell).unlock_shared();
+    ::tpy::none_attr(this->_cell, "unlock_shared").unlock_shared();
 }
 
 // def __deref__(self) -> readonly[T]:
@@ -829,7 +829,7 @@ inline WriteGuard<T>::WriteGuard(_RwLockCell<T>* cell, T* payload)
 //     return self
 template<typename T>
 inline WriteGuard<T>& WriteGuard<T>::__enter__() {
-    ::tpy::deref_check(this->_cell).lock();
+    ::tpy::none_attr(this->_cell, "lock").lock();
     this->_locked = true;
     return (*this);
 }
@@ -840,7 +840,7 @@ inline WriteGuard<T>& WriteGuard<T>::__enter__() {
 template<typename T>
 inline void WriteGuard<T>::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     this->_locked = false;
-    ::tpy::deref_check(this->_cell).unlock();
+    ::tpy::none_attr(this->_cell, "unlock").unlock();
 }
 
 // def __deref__(self) -> T:
@@ -919,7 +919,7 @@ inline auto WriteGuard<T>::operator*() const -> decltype(__deref__()) {
 //     self._cv.wait(lock._raw_mutex())
 template<::tpystd::tpy::sync::_CondvarLock T_lock>
 inline void Condvar::wait(const T_lock& lock) const {
-    ::tpy::deref_check(this->_cv).wait(lock._raw_mutex());
+    ::tpy::none_attr(this->_cv, "wait").wait(lock._raw_mutex());
 }
 
 void __tpy_init();

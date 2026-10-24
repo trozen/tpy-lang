@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     b = p.bump(2)  # tpyc: non_null(p)
 //     return a + b
 int32_t read_twice(Cell* p) {
-    int32_t a = ::tpy::deref_check(p).val();
+    int32_t a = ::tpy::none_attr(p, "val").val();
     int32_t b = p->bump(2);
     return (::tpy::add_check<int32_t>(a, b));
 }

@@ -210,8 +210,8 @@ its fatal-error paths; see BUGS.md.)
    - `# tpyc: error(/regex/)` -- line should produce an error matching the regex
    - `# tpyc: warning(/regex/)` -- line should produce a warning matching the regex
    - `# tpyc: type(TypeName)` -- assert inferred type (e.g. `s = "hello"  # tpyc: type(StrView)`). Supports regex with `/pattern/` syntax. Comp-phase only, not validated in update mode.
-   - `# tpyc: non_null(var)` -- assert `var` is proven non-null at this ptr dereference (skips `deref_check`). Comp-phase only.
-   - `# tpyc: nullable(var)` -- assert `var` is NOT proven non-null at this ptr dereference (uses `deref_check`). Comp-phase only.
+   - `# tpyc: non_null(var)` -- assert `var` is proven non-null at this ptr dereference (no None check). Comp-phase only.
+   - `# tpyc: nullable(var)` -- assert `var` is NOT proven non-null at this ptr dereference (takes the `none_attr` check). Comp-phase only.
    - `# tpyc: is_send(yes|no)` / `is_sync(yes|no)` -- assert the declared variable's Send/Sync trait (on a declaration or for-loop line). Comp-phase only.
    - `# tpyc: frame_send(yes|no)` / `frame_sync(yes|no)` -- assert an async/generator function's FrameType traits (on the `def` line). Comp-phase only.
    - `# tpyc: bounds_safe(var)` / `bounds_checked(var)` -- assert the subscript on `var` is proven in range (no bounds check emitted) / not proven (check emitted). Comp-phase only.

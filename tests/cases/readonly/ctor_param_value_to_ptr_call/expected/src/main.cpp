@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def take_mut(p: Ptr[Node]) -> None:
 //     p.x = 1
 void take_mut(Node* p) {
-    ::tpy::deref_check(p).x = ::tpy::BigInt(1);
+    ::tpy::none_attr(p, "x").x = ::tpy::BigInt(1);
 }
 
 // def main() -> None:

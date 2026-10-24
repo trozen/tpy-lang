@@ -154,7 +154,7 @@ void main() {
     ::tpyapp::main::wrap(::tpy::Union<const P*, const Q*>{&__tmp_1});
     P target = P(24);
     R r = R(&target);
-    ::tpy::deref_check(r.p).n = 240;
+    ::tpy::none_attr(r.p, "n").n = 240;
     std::cout << "ptr:" << " " << target.n << "\n" << ::tpy::check_signals;
 }
 

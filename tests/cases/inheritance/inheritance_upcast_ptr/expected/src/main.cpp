@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def read_animal(p: Ptr[readonly[Animal]]) -> None:
 //     print(p.name)
 void read_animal(const Animal* p) {
-    std::cout << ::tpy::deref_check(p).name << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "name").name << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -27,7 +27,7 @@ from ..parse import (
     TpyExpr, TpySubscript,
     is_super_del_call,
 )
-from ..parse.nodes import comp_free_reads, name_path
+from ..parse.nodes import NoneUse, NoneUseKind, comp_free_reads, name_path
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
@@ -833,7 +833,7 @@ class MethodAnalyzer:
                 narrowing_key = f"{narrowing_key}.{expr.method}"
             if narrowing_key is None or narrowing_key not in self.ctx.func.narrowed_types:
                 self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
-                expr.needs_optional_runtime_check = True
+                expr.none_use = NoneUse(NoneUseKind.CALL)
         ret = self.calls.analyze_callable_value_call(
             expr, callable_type, expr.method, f"Callable field '{expr.method}'")
         expr.is_callable_field = True
@@ -852,6 +852,10 @@ class MethodAnalyzer:
         # The step route is this analysis's: none unless the method it
         # resolves is a generic one (`_analyze_instance_method`).
         self.expr.set_step_route(expr, None)
+        # Decided afresh, as the step route is: an overload trial may have
+        # analyzed this call under an Optional receiver the winner does not
+        # have.
+        expr.none_use = None
         try:
             result = self._analyze_method_call_impl(expr)
             # Walks after sema must see only the resolved receiver, never its alternative.
@@ -952,7 +956,7 @@ class MethodAnalyzer:
             if obj_type.inner.is_value_type():
                 raise self.ctx.error(f"Cannot call method '{expr.method}' on type {obj_type}", expr)
             self.ctx.warning(OPTIONAL_NONE_ACCESS_WARNING, expr)
-            expr.needs_optional_runtime_check = True
+            expr.none_use = NoneUse(NoneUseKind.ATTR, attr=expr.method)
             obj_type = obj_type.inner
 
         # List mutation tracking (before deref chain -- applies to direct list types only)
@@ -1047,6 +1051,10 @@ class MethodAnalyzer:
                         # Post-access narrowing: queued for flush at statement
                         # boundary (see pending_non_null_ptr_vars docstring).
                         self.ctx.func.pending_non_null_ptr_vars.add(obj_key)
+                    if not expr.ptr_non_null and expr.none_use is None:
+                        expr.none_use = NoneUse(NoneUseKind.ATTR,
+                                                attr=expr.method,
+                                                through_ptr=True)
                 # Enforce readonly: cannot call non-readonly method on readonly
                 # receiver. Callable fields are exempt: the synthetic fi is
                 # non-readonly to model the CALLBACK's effects on its args,

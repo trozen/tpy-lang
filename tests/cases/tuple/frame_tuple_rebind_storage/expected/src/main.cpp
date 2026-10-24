@@ -1235,7 +1235,7 @@ __gen_gen_retain gen_retain(bool c) {
             std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
             std::get<1>(t) = std::move(std::get<1>(__tup_2));
         }
-        ::tpy::deref_check((*k).p).n = ::tpy::add_check<int32_t>(::tpy::deref_check((*k).p).n, 100);
+        ::tpy::none_attr((*k).p, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr((*k).p, "n").n, 100);
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>((*k).p->n, 1000)), std::get<0>(t)->n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -1287,7 +1287,7 @@ __gen_gen_setter_retain gen_setter_retain(bool c) {
         if (c) {
             s = &*(__ptr_slot_f1 = Setter(10, (*k)));
         }
-        ::tpy::deref_check((*k).p).n = ::tpy::add_check<int32_t>(::tpy::deref_check((*k).p).n, 100);
+        ::tpy::none_attr((*k).p, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr((*k).p, "n").n, 100);
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>((*k).p->n, 1000)), s->b.n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

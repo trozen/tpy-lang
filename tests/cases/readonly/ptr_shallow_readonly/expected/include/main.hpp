@@ -1019,7 +1019,7 @@ inline M::M(A& a, Pair& p, Slot& s, std::span<int32_t> xs)
 //     self._a.bump()
 //     self._a.n += 10
 inline void M::tick() const {
-    ::tpy::deref_check(this->_a).bump();
+    ::tpy::none_attr(this->_a, "bump").bump();
     this->_a->n = ::tpy::add_check<int32_t>(this->_a->n, 10);
 }
 
@@ -1029,7 +1029,7 @@ inline void M::tick() const {
 //     a.bump()
 inline void M::tick_alias() const {
     A* a = this->_a;
-    ::tpy::deref_check(a).bump();
+    ::tpy::none_attr(a, "bump").bump();
 }
 
 // # place_alias: references bound to places behind the Ptr, written
@@ -1043,12 +1043,12 @@ inline void M::tick_alias() const {
 //     for x in q.items:
 //         x.bump()
 inline void M::through_places() const {
-    A& it = ::tpy::deref_check(this->_p).first;
+    A& it = ::tpy::none_attr(this->_p, "first").first;
     it.bump();
     A& y = ::tpy::__getitem__(this->_p->items, 0);
     y.bump();
     Pair* q = this->_p;
-    auto& __obj_0 = ::tpy::deref_check(q).items;
+    auto& __obj_0 = ::tpy::none_attr(q, "items").items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
@@ -1063,7 +1063,7 @@ inline void M::through_places() const {
 //     if o is not None:
 //         o.bump()
 inline void M::poke_opt() const {
-    A* o = ::tpy::optional_to_ptr(::tpy::deref_check(this->_s).x);
+    A* o = ::tpy::optional_to_ptr(::tpy::none_attr(this->_s, "x").x);
     if ((o != nullptr)) {
         o->bump();
     }
@@ -1086,7 +1086,7 @@ inline void M::tick_all() const {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         A* p = *__beg_0;
-        ::tpy::deref_check(p).bump();
+        ::tpy::none_attr(p, "bump").bump();
     }
 }
 
@@ -1146,7 +1146,7 @@ inline const A& M::own_pure() const {
 //     go()
 inline void M::via_closure() const {
     auto go = [this]() {
-        ::tpy::deref_check(this->_a).bump();
+        ::tpy::none_attr(this->_a, "bump").bump();
     };
     go();
 }
@@ -1175,16 +1175,16 @@ inline Fixed::Fixed(A& a) : ro(&a) {}
 //     p = self.ro
 //     p.bump()
 inline void Fixed::poke() const {
-    ::tpy::deref_check(this->ro).n = ::tpy::add_check<int32_t>(::tpy::deref_check(this->ro).n, 1);
+    ::tpy::none_attr(this->ro, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(this->ro, "n").n, 1);
     A* p = this->ro;
-    ::tpy::deref_check(p).bump();
+    ::tpy::none_attr(p, "bump").bump();
 }
 
 // def __init__(self, a: Ptr[A]) -> None:
 //     self._a = a
 //     a.bump()
 inline Starter::Starter(A* a) : _a(a) {
-    ::tpy::deref_check(a).bump();
+    ::tpy::none_attr(a, "bump").bump();
 }
 
 // def __init__(self, p: Ptr[A]) -> None:
@@ -1375,7 +1375,7 @@ inline UH::UH(UPayload& p) : p(&p) {}
 //         case Leaf() as b:
 //             b.m += 1
 inline void UH::bump_match() const {
-    auto& __match_subject_1 = ::tpy::deref_check(this->p).u;
+    auto& __match_subject_1 = ::tpy::none_attr(this->p, "u").u;
     switch (__match_subject_1.index()) {
     case 0: {
         auto& a = std::get<0>(__match_subject_1);
@@ -1395,7 +1395,7 @@ inline void UH::bump_match() const {
 //     if isinstance(u, A):
 //         u.n += 100  # tpyc: ok
 inline void UH::bump_local() const {
-    ::tpy::Union<A*, Leaf*> u = ::tpy::to_ptr_variant(::tpy::deref_check(this->p).u);
+    ::tpy::Union<A*, Leaf*> u = ::tpy::to_ptr_variant(::tpy::none_attr(this->p, "u").u);
     if (std::holds_alternative<A*>(u)) {
         auto& __u = *std::get<A*>(u);
         __u.n = ::tpy::add_check<int32_t>(__u.n, 100);

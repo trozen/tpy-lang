@@ -45,13 +45,13 @@ inline M::M(::mylib::S* s) : s(s) {}
 // def read(self) -> bool:
 //     return self.s.a.q.flag       # tpyc: ok
 inline bool M::read() const {
-    return ::tpy::deref_check(this->s).a.q.flag;
+    return ::tpy::none_attr(this->s, "a").a.q.flag;
 }
 
 // def write(self) -> None:
 //     self.s.a.q.flag = True       # tpyc: ok
 inline void M::write() const {
-    ::tpy::deref_check(this->s).a.q.flag = true;
+    ::tpy::none_attr(this->s, "a").a.q.flag = true;
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -17,6 +17,7 @@
 #include <exception>
 #include <expected>
 #include <format>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <ostream>
@@ -154,6 +155,26 @@ struct ZeroDivisionError : ArithmeticError { using ArithmeticError::ArithmeticEr
 struct OverflowError : ArithmeticError { using ArithmeticError::ArithmeticError; TPY_THROWABLE_VIRTUALS(OverflowError) };
 struct FloatingPointError : ArithmeticError { using ArithmeticError::ArithmeticError; TPY_THROWABLE_VIRTUALS(FloatingPointError) };
 struct TypeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(TypeError) };
+// A failed runtime None check raises CPython's exception for the operation
+// as one of these C++-only subclasses: TPy code catches AttributeError /
+// TypeError, a C++ host catches every None access as `const NoneAccessError&`.
+struct NoneAccessError {
+    virtual ~NoneAccessError() = default;
+    // The message of the exception this marker is part of.
+    const char* what() const noexcept {
+        return dynamic_cast<const std::exception*>(this)->what();
+    }
+};
+struct NoneAttributeError final : AttributeError, NoneAccessError {
+    using AttributeError::AttributeError;
+    using AttributeError::what;
+    TPY_THROWABLE_VIRTUALS(NoneAttributeError)
+};
+struct NoneTypeError final : TypeError, NoneAccessError {
+    using TypeError::TypeError;
+    using TypeError::what;
+    TPY_THROWABLE_VIRTUALS(NoneTypeError)
+};
 struct NotImplementedError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(NotImplementedError) };
 struct RuntimeError : Exception { using Exception::Exception; TPY_THROWABLE_VIRTUALS(RuntimeError) };
 struct RecursionError : RuntimeError { using RuntimeError::RuntimeError; TPY_THROWABLE_VIRTUALS(RecursionError) };
@@ -693,31 +714,198 @@ constexpr bool same_object(const A* a, const B* b) noexcept {
     }
 }
 
-/**
- * Checked optional dereference - panics if optional is empty.
- */
-template <typename T>
-T& deref_optional_check(std::optional<T>& opt) {
-    if (!opt.has_value()) {
-        tpy_panic("null optional dereference");
+// The runtime None checks of an unproven Optional access (sema's *Potential
+// None access* warning): each yields the value and raises CPython's exception
+// for the operation when it is None. The receiver is either representation
+// of an Optional -- a nullable pointer or a `std::optional` -- picked by
+// overload. The message is built from short arguments after the failed test,
+// in one out-of-line function, so the success path is the test alone and a
+// later build-wide failure policy has one place to plug in.
+enum class NoneUseKind : uint8_t { attr, item, operand_left, operand_right, unary, call };
+
+// The None checks are forced inline in every build mode, -O0 included:
+// each site keeps only the test and a cold call, and a debugger's
+// step-into skips them. The throw stays out of line below.
+#define TPY_ALWAYS_INLINE [[gnu::always_inline]] inline
+
+[[noreturn, gnu::noinline, gnu::cold]] inline void raise_none_access(
+        NoneUseKind kind, std::string_view a = {}, std::string_view b = {}) {
+    switch (kind) {
+        case NoneUseKind::attr:
+            throw NoneAttributeError(
+                std::format("'NoneType' object has no attribute '{}'", a));
+        case NoneUseKind::item:
+            throw NoneTypeError("'NoneType' object is not subscriptable");
+        case NoneUseKind::call:
+            throw NoneTypeError("'NoneType' object is not callable");
+        case NoneUseKind::unary:
+            throw NoneTypeError(
+                std::format("bad operand type for unary {}: 'NoneType'", a));
+        case NoneUseKind::operand_left:
+        case NoneUseKind::operand_right: {
+            // `a` is the operator's source spelling, `b` the other operand's
+            // Python type name.
+            const bool left = kind == NoneUseKind::operand_left;
+            std::string_view lhs = left ? std::string_view("NoneType") : b;
+            std::string_view rhs = left ? b : std::string_view("NoneType");
+            if (a == "<" || a == "<=" || a == ">" || a == ">=") {
+                throw NoneTypeError(std::format(
+                    "'{}' not supported between instances of '{}' and '{}'", a, lhs, rhs));
+            }
+            throw NoneTypeError(std::format(
+                "unsupported operand type(s) for {}: '{}' and '{}'",
+                a == "**" ? std::string_view("** or pow()") : a, lhs, rhs));
+        }
     }
-    return *opt;
+    std::unreachable();
 }
 
 template <typename T>
-const T& deref_optional_check(const std::optional<T>& opt) {
-    if (!opt.has_value()) {
-        tpy_panic("null optional dereference");
+TPY_ALWAYS_INLINE T& none_attr(T* p, std::string_view attr) {
+    if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::attr, attr);
+    return *p;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T& none_attr(std::optional<T>& o, std::string_view attr) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::attr, attr);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE const T& none_attr(const std::optional<T>& o, std::string_view attr) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::attr, attr);
+    return *o;
+}
+// An rvalue optional hands its value over: a reference into the temporary
+// would dangle past the full expression when a caller binds it.
+template <typename T>
+TPY_ALWAYS_INLINE T none_attr(std::optional<T>&& o, std::string_view attr) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::attr, attr);
+    return std::move(*o);
+}
+
+template <typename T>
+TPY_ALWAYS_INLINE T& none_item(T* p) {
+    if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::item);
+    return *p;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T& none_item(std::optional<T>& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::item);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE const T& none_item(const std::optional<T>& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::item);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T none_item(std::optional<T>&& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::item);
+    return std::move(*o);
+}
+
+// Operands in source order: `none_operand(n, "+", "int")` checks a left
+// operand, `none_operand("int", "+", n)` a right one, `none_operand("-", n)`
+// a unary one. A `const char*` is never a checked pointer here, so the
+// string-literal arguments cannot select a pointer overload.
+template <typename T>
+    requires (!std::same_as<std::remove_cv_t<T>, char>)
+TPY_ALWAYS_INLINE T& none_operand(T* p, std::string_view op, std::string_view other) {
+    if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::operand_left, op, other);
+    return *p;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T& none_operand(std::optional<T>& o, std::string_view op, std::string_view other) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_left, op, other);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE const T& none_operand(const std::optional<T>& o, std::string_view op, std::string_view other) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_left, op, other);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T none_operand(std::optional<T>&& o, std::string_view op, std::string_view other) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_left, op, other);
+    return std::move(*o);
+}
+template <typename T>
+    requires (!std::same_as<std::remove_cv_t<T>, char>)
+TPY_ALWAYS_INLINE T& none_operand(std::string_view other, std::string_view op, T* p) {
+    if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::operand_right, op, other);
+    return *p;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T& none_operand(std::string_view other, std::string_view op, std::optional<T>& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_right, op, other);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE const T& none_operand(std::string_view other, std::string_view op, const std::optional<T>& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_right, op, other);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T none_operand(std::string_view other, std::string_view op, std::optional<T>&& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::operand_right, op, other);
+    return std::move(*o);
+}
+template <typename T>
+    requires (!std::same_as<std::remove_cv_t<T>, char>)
+TPY_ALWAYS_INLINE T& none_operand(std::string_view op, T* p) {
+    if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::unary, op);
+    return *p;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T& none_operand(std::string_view op, std::optional<T>& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::unary, op);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE const T& none_operand(std::string_view op, const std::optional<T>& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::unary, op);
+    return *o;
+}
+template <typename T>
+TPY_ALWAYS_INLINE T none_operand(std::string_view op, std::optional<T>&& o) {
+    if (!o.has_value()) [[unlikely]] raise_none_access(NoneUseKind::unary, op);
+    return std::move(*o);
+}
+
+// A call through an Optional callable: `none_call(h.cb)(args...)`. The proxy
+// is built before the arguments run (the postfix expression is sequenced
+// first) and records whether the field held a function then: CPython reads
+// the callee first, so an argument that installs one still raises. It keeps
+// a pointer to the field rather than the function, so an argument that clears
+// the field raises instead of calling a destroyed function, and one that
+// replaces it calls the new function (BUGS.md#callable-field-arg-rebinds-callee);
+// copying the selected function would cost a possible allocation per call.
+// `operator()` forwards its arguments, so a by-value parameter costs one move
+// over a direct `(*h.cb)(args...)` call only for a prvalue argument (which
+// a direct call constructs in place); lvalue and xvalue arguments cost
+// nothing extra.
+template <typename F>
+struct NoneCallee;
+template <typename R, typename... A>
+struct NoneCallee<std::function<R(A...)>> {
+    const std::optional<std::function<R(A...)>>* field;
+    bool present;
+    template <typename... U>
+    TPY_ALWAYS_INLINE R operator()(U&&... u) const {
+        if (!present || !field->has_value()) [[unlikely]] raise_none_access(NoneUseKind::call);
+        return (**field)(std::forward<U>(u)...);
     }
-    return *opt;
+};
+template <typename F>
+TPY_ALWAYS_INLINE NoneCallee<F> none_call(const std::optional<F>& f) {
+    return NoneCallee<F>{&f, f.has_value()};
 }
 
 /**
  * Checked TypedDict optional-field access -- throws KeyError if the
  * field is absent. Used by codegen for `td["key"]` on a `total=False`
- * TypedDict. Distinct from deref_optional_check (which says "null optional
- * dereference") so it matches the existing TPy KeyError convention for
- * dict[k] misses, and avoids raw std::optional::value() whose
+ * TypedDict. A KeyError, the TPy convention for a dict[k] miss, not a None
+ * access (`none_item`); and avoids raw std::optional::value() whose
  * bad_optional_access::what() text diverges between libstdc++ and libc++.
  */
 template <typename T>

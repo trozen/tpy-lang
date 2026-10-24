@@ -113,7 +113,7 @@ int32_t fresh(H& h, bool flag) {
         if (flag) {
             h.reset();
         }
-        return ::tpy::deref_optional_check(h.p).x;
+        return ::tpy::none_attr(h.p, "x").x;
     }
     return 0;
 }
@@ -402,7 +402,7 @@ void copy_both(H& a, H& b, const P* o, bool flag) {
 //     return h.p.x  # tpyc: warning(/Potential None access/)
 int32_t written_then_read(H& h) {
     h.p = P(2);
-    return ::tpy::deref_optional_check(h.p).x;
+    return ::tpy::none_attr(h.p, "x").x;
 }
 
 // # kept refusal: the narrowed member is copied as its whole Optional, a field form MIR does not take; the read warns (BUGS.md#optional-field-write-not-narrowing)
@@ -414,7 +414,7 @@ int32_t written_then_read(H& h) {
 int32_t copied_then_read(H& a, const H& b) {
     if ((b.p.has_value())) {
         a.p = b.p;
-        return ::tpy::deref_optional_check(a.p).x;
+        return ::tpy::none_attr(a.p, "x").x;
     }
     return 0;
 }

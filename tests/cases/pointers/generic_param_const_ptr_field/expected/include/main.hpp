@@ -105,7 +105,7 @@ inline RWView<W>::RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 //     return self._src.value()
 template<Reads W>
 inline int32_t RWView<W>::read() const {
-    return ::tpy::deref_check(this->_src).value();
+    return ::tpy::none_attr(this->_src, "value").value();
 }
 
 // def __init__(self, src: readonly[W]) -> None:
@@ -117,7 +117,7 @@ inline ROView<W>::ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
 //     return self._src.value()
 template<Reads W>
 inline int32_t ROView<W>::read() const {
-    return ::tpy::deref_check(this->_src).value();
+    return ::tpy::none_attr(this->_src, "value").value();
 }
 
 void __tpy_init();

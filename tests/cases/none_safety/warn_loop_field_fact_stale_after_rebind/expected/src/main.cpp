@@ -17,7 +17,7 @@ int32_t stale_after_rebind(Box& b, Box& other) {
     while ((local->value.has_value())) {
         local = &(other);
         if ((0 == 1)) {
-            return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(local->value), 1));
+            return (::tpy::add_check<int32_t>(::tpy::none_operand(local->value, "+", "int"), 1));
         }
         break;
     }

@@ -22,6 +22,7 @@ from typing import TYPE_CHECKING, ClassVar, NamedTuple
 from ..identity_map import IdentityMap, IdentitySet
 from ..temp_schedule import banks_in_region
 from ..parse import ResultForm, RebindStorage, SourceLocation, TryTier
+from ..parse.nodes import NoneUse
 from ..coercions import coercion_rule
 from ..type_def_registry import ParamPassing
 from ..typesys import (
@@ -515,10 +516,6 @@ class THIRName(THIRExpr):
     optional_read: THIROptionalRead | None = field(default=None, kw_only=True)
     union_read: THIRUnionLayout | None = field(default=None, kw_only=True)
     deref: bool = False
-    # An UNPROVEN value-repr Optional[scalar] read consumed as its inner scalar:
-    # renders `::tpy::deref_optional_check(name)` -- the runtime-checked
-    # unwrap. Mutually exclusive with `deref` (the proven `(*name)` unwrap).
-    opt_deref_check: bool = False
     cpp: str | None = None
 
     @property
@@ -546,7 +543,7 @@ class THIRName(THIRExpr):
 
     @property
     def reads_binding(self) -> bool:
-        return (not self.deref and not self.opt_deref_check
+        return (not self.deref
                 and self.cpp is None
                 and (self.optional_read is None
                      or not self.optional_read.extract))
@@ -1502,41 +1499,34 @@ class THIRMethodCall(THIRExpr):
     (`p->get()`), like THIRFieldAccess; container receivers are never
     pointer-locals. A `Ptr[T]` VALUE receiver's Deref call rides the same two
     arms, picked by sema's `ptr_non_null` fact: proven non-null -> `is_arrow`
-    (`p->m(args)`), unproven -> `deref_check`. `deref_check` wraps an UNPROVEN
-    pointer receiver (pointer-repr Optional borrow, or that Ptr value) in the
-    runtime null check (`::tpy::deref_check(p).method(args)`) -- like
-    THIRFieldAccess it is
-    mutually exclusive with `is_arrow` (the checked deref yields a reference,
-    read with `.`). An owned-str result (`xs.pop()`, S5) is STORAGE form,
-    landing bare in owned sinks."""
+    (`p->m(args)`), unproven -> a `THIRNoneCheck` receiver. An UNPROVEN
+    receiver (pointer-repr Optional borrow, or that Ptr value) is a
+    `THIRNoneCheck` (`::tpy::none_attr(p, "method").method(args)`), read with
+    `.` (the check yields a reference). An owned-str result (`xs.pop()`, S5)
+    is STORAGE form, landing bare in owned sinks."""
     receiver: THIRExpr
     method_cpp: str
     args: tuple[THIRExpr, ...]
     native_function_name: str | None = None
     cpp_template: str | None = None
     is_arrow: bool = False
-    deref_check: bool = False
     # A generic method call's explicit template args
     # (`b.transform<::tpy::BigInt>(42)`), spelled
-    # at lowering via render_type over the inferred args. Composes with
-    # `deref_check` (`::tpy::deref_check(p).conv<int32_t>(3)`).
+    # at lowering via render_type over the inferred args. Composes with a
+    # checked receiver (`::tpy::none_attr(p, "conv").conv<int32_t>(3)`).
     method_targs_cpp: tuple[str, ...] | None = None
     # A USER Deref-wrapper method call: N `.__deref__()` calls between the
     # receiver and the member call (`r.sum()` -> `r.__deref__().sum()`),
     # for a non-pointer receiver. A
     # pointer-local receiver joins the FIRST hop with `->`
-    # (`g->__deref__().push_back(3)`, is_arrow); still exclusive with
-    # deref_check (the checked deref yields a reference).
+    # (`g->__deref__().push_back(3)`, is_arrow); still exclusive with a
+    # checked receiver (the check yields a reference).
     deref_chain: int = 0
     # A consuming method's receiver move (`std::move(b1).take()` --
     # the is_consuming wrap). Lowering admits a bare
     # non-narrowed NAME receiver; a pointer-local one moves its deref
     # (`std::move(*w).take()` -- the emit folds is_arrow into the deref).
     move_receiver: bool = False
-    # An Optional[Callable] FIELD invocation's `.value()` unwrap between
-    # the member and the call (`(*this).on_event.value()(msg)`): the
-    # unwrap is unconditional and narrowing-blind.
-    callable_value_unwrap: bool = False
     # The declared facts of a native builtin type's method stub (the
     # receiver is parameter 0); None for any other callee. Analysis only:
     # no render reads it.
@@ -1556,18 +1546,19 @@ class THIRMethodCall(THIRExpr):
     full_expression_storage: THIROwnedRecord | None = None
 
     def __post_init__(self) -> None:
-        assert not (self.deref_check and self.is_arrow)
-        assert not (self.deref_chain and self.deref_check)
+        checked = isinstance(self.receiver, THIRNoneCheck)
+        assert not (checked and self.is_arrow)
+        assert not (self.deref_chain and checked)
         # The template and free-function renders interpolate the receiver
-        # as a value, so neither spells a deref hop or check.
+        # as a value, so neither spells a deref hop.
         assert not ((self.cpp_template is not None
                      or self.native_function_name is not None)
-                    and (self.deref_check or self.deref_chain))
+                    and self.deref_chain)
         # move_receiver composes with is_arrow (a pointer-local receiver
         # moves its deref: `std::move(*w).take()`), never with the checked
         # or user-Deref chains.
         assert not (self.move_receiver
-                    and (self.deref_check or self.deref_chain))
+                    and (checked or self.deref_chain))
 
     @property
     def receiver_through_pointer(self) -> bool:
@@ -1589,10 +1580,11 @@ class THIRMethodCall(THIRExpr):
     def renders_plain_member_call(self) -> bool:
         """Whether the call renders `receiver.method_cpp(args)` and nothing
         else: no template, native symbol, explicit template arguments,
-        deref chain or check, receiver move or callable unwrap."""
+        deref chain or None check, or receiver move."""
         return not (self.cpp_template is not None or self.native_function_name is not None
-                    or self.method_targs_cpp is not None or self.deref_chain or self.deref_check
-                    or self.move_receiver or self.callable_value_unwrap)
+                    or self.method_targs_cpp is not None or self.deref_chain
+                    or isinstance(self.receiver, THIRNoneCheck)
+                    or self.move_receiver)
 
 
 def record_rvalue_storage(expr: THIRExpr) -> THIROwnedRecord | None:
@@ -1997,10 +1989,11 @@ class THIRClassConstant(THIRExpr):
     is the full spelling composed at lowering (native rename, generic
     instantiation, cross-module qualification).
     An effectful / runtime-checked INSTANCE
-    receiver carries `recv_eval` + `recv_wrap` (the statement-expression
-    wrapper: `({ <wrap(recv)>; C::LIMIT; })`, wrap `::tpy::deref_check({0})`
-    for the unproven-Optional check or `static_cast<void>({0})` for the
-    effect discard -- the receiver_eval split). `form`
+    receiver carries `recv_eval` (the statement-expression wrapper:
+    `({ <recv>; C::LIMIT; })`): a `THIRNoneCheck` for the unproven-Optional
+    check, rendered as it is, or an effectful receiver with `recv_wrap`
+    `static_cast<void>({0})`, the effect discard -- the receiver_eval
+    split). `form`
     follows the constant's type like a name read: a `StrView` constant is a
     view (BORROW -- owned-str sinks copy it)."""
     cpp: str
@@ -2008,7 +2001,9 @@ class THIRClassConstant(THIRExpr):
     recv_wrap: 'str | None' = None
 
     def __post_init__(self) -> None:
-        assert (self.recv_eval is None) == (self.recv_wrap is None)
+        assert (self.recv_wrap is not None
+                or self.recv_eval is None
+                or isinstance(self.recv_eval, THIRNoneCheck))
 
 
 @dataclass(frozen=True)
@@ -2055,12 +2050,10 @@ class THIRFieldAccess(THIRExpr):
     `THIRFormConvert`, the F1 `optional_to_ptr` read being the first); the
     str/bytes view axis for a view-family member; `VALUE` for a value scalar.
 
-    `deref_check` wraps the receiver in a runtime null check for an unproven
-    `Optional` member access (`::tpy::deref_check(receiver).field`, the
-    `needs_optional_runtime_check` path). The receiver is already a `T*` (a borrow
-    subscript element, or a storage element lifted via `optional_to_ptr`), so the
-    access after the checked deref is always `.` -- `deref_check` and `is_arrow` are
-    mutually exclusive.
+    An unproven `Optional` (or `Ptr`) receiver is a `THIRNoneCheck`
+    (`::tpy::none_attr(receiver, "field").field`): the check yields a
+    reference, so the access after it is always `.` -- a checked receiver and
+    `is_arrow` are mutually exclusive.
 
     `narrowed_deref` wraps the WHOLE access in `(*...)`: a sema-NARROWED
     `Optional` field read (declared `std::optional<T>` storage, analyzed
@@ -2078,28 +2071,16 @@ class THIRFieldAccess(THIRExpr):
     field_cpp: str
     field_identity: THIRFieldIdentity | None = field(default=None, kw_only=True)
     is_arrow: bool = False
-    deref_check: bool = False
     narrowed_deref: bool = False
     deref_chain: int = 0
-    # An unproven access whose receiver is a WHOLE value-repr Optional
-    # lvalue (an Optional[record] field read, `h.opt.x`): wraps the receiver
-    # in `::tpy::deref_optional_check(...)` -- the optional-lvalue sibling
-    # of `deref_check` (whose receiver is already a `T*`).
-    opt_deref_check: bool = False
 
     def __post_init__(self) -> None:
-        # Enforce the deref_check/is_arrow mutual exclusivity the docstring documents.
-        assert not (self.deref_check and self.is_arrow)
-        # A narrowed field is proven non-None; the runtime check never coexists.
-        assert not (self.deref_check and self.narrowed_deref)
-        # The user-Deref chain never coexists with the runtime check (a
-        # checked receiver takes deref_check); `is_arrow` MAY join it (the
-        # indirect first hop).
-        assert not (self.deref_chain and self.deref_check)
-        # The optional-lvalue check is its own exclusive receiver wrap.
-        assert not (self.opt_deref_check
-                    and (self.deref_check or self.is_arrow
-                         or self.narrowed_deref or self.deref_chain))
+        checked = isinstance(self.receiver, THIRNoneCheck)
+        # The check yields a reference, read with `.`.
+        assert not (checked and self.is_arrow)
+        # The user-Deref chain never coexists with the runtime check;
+        # `is_arrow` MAY join it (the indirect first hop).
+        assert not (self.deref_chain and checked)
         self._restamp_reads()
 
     @property
@@ -2111,9 +2092,8 @@ class THIRFieldAccess(THIRExpr):
         """Whether emit reaches the member THROUGH the receiver pointer
         (`recv->field`, or the first hop of a user-Deref chain), so a
         receiver that dereferences itself would compose into the ill-formed
-        `(*recv)->field`. The two runtime-check wraps consume the receiver
-        as an argument instead and are already exclusive with `is_arrow`."""
-        return self.is_arrow and not (self.deref_check or self.opt_deref_check)
+        `(*recv)->field`. A checked receiver is exclusive with `is_arrow`."""
+        return self.is_arrow
 
 
 @dataclass(frozen=True)
@@ -2130,7 +2110,7 @@ class THIRSubscript(THIRExpr):
     the field access decides) or an `Optional` element off a borrow tuple param (a
     nullable `T*`), and `STORAGE` for an `Optional` element off a storage-tuple alias
     (a `std::optional<T>` lifted to a borrow via `THIRFormConvert`/`optional_to_ptr`
-    at the consuming `deref_check`).
+    at the consuming `THIRNoneCheck`).
 
     Container (list / dict), str-family (`s[i]` -> char), or bytes-family
     (`b[i]` -> uint8) -- a runtime
@@ -2180,11 +2160,6 @@ class THIRSubscript(THIRExpr):
     # The unchecked twin that contract names: rendered instead of
     # `bound_getitem` when `bounds_safe` proves the index in range.
     unchecked_getitem: THIRBoundCall | None = None
-    # An UNPROVEN value-repr Optional[scalar] ELEMENT read consumed as its
-    # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
-    # runtime-checked unwrap), the subscript twin of THIRName's flag.
-    opt_deref_check: bool = False
-
     # A borrow-form tuple's pointer-repr element consumed as its REFERENT
     # (`std::get<N>` yields the element `T*`; a `T&` alias bind needs
     # `(*std::get<N>(t))`) -- the deref twin of THIRName's flag.
@@ -2210,34 +2185,29 @@ class THIRSubscript(THIRExpr):
         record dunder, Optional unwrap or generic element reference."""
         return (self.tuple_index is None and not self.record_getitem
                 and self.element_access and not self.elem_ref
-                and not self.opt_deref_check and not self.deref
+                and not self.deref
                 and certified_primitive_subscript(self.receiver.result_type, self.index.result_type,
                                                   self.result_type))
 
 
-class OptionalCheckSpelling(Enum):
-    """How a runtime-checked Optional unwrap is spelled, picked from the
-    receiver's representation: `PTR` for a pointer-repr binding (the `T*`
-    itself is the None encoding), `OPTIONAL` for a storage `std::optional<T>`
-    lvalue."""
-    PTR = auto()
-    OPTIONAL = auto()
-
-
 @dataclass(frozen=True)
-class THIROptionalRecvCheck(THIRExpr):
-    """The runtime-checked unwrap of an Optional container RECEIVER that sema
-    could not prove non-None (`TpySubscript.needs_optional_runtime_check`):
-    `::tpy::deref_check(value)` (PTR) or `::tpy::deref_optional_check(value)`
-    (OPTIONAL), both panicking on None and yielding the container lvalue.
+class THIRNoneCheck(THIRExpr):
+    """The one runtime None check: `value` -- a receiver, an operand or a
+    callee sema could not prove non-None -- yields its referent, or raises
+    CPython's exception for the operation `use` names (sema's `NoneUse`,
+    decided where it warns *Potential None access*):
+    `::tpy::none_attr(p, "x")`, `::tpy::none_item(xs)`,
+    `::tpy::none_operand(n, "+", "int")` / `("int", "+", n)` / `("-", n)`,
+    `::tpy::none_call(h.cb)`.
 
-    `value` is the raw receiver -- the bare `T*` or the whole storage
-    optional, never an already-dereffed read. `result_type` is the PEELED
-    container type (qualifiers kept), so the subscript's family dispatch and
-    every consumer of the receiver type see the container, not the
-    Optional."""
+    `value` is the raw Optional -- a nullable `T*` or a whole
+    `std::optional<T>` (either picks its runtime overload), never an
+    already-dereffed read. `result_type` is the PEELED type (qualifiers
+    kept), so every consumer sees the value, not the Optional; a CALL
+    check's result is the callee's proxy, called by the enclosing
+    `THIRCall`."""
     value: THIRExpr
-    spelling: OptionalCheckSpelling
+    use: NoneUse
 
 
 @dataclass(frozen=True)
@@ -2774,9 +2744,9 @@ class THIRAssign(THIRStmt):
 
     A class-constant write (`C.X = v` / `obj.X += v`) uses a THIRClassConstant
     target (the bare qualified lvalue) and, when the receiver has observable
-    cost, carries `recv_eval` + `recv_wrap` (`static_cast<void>({0})` /
-    `::tpy::deref_check({0})`): the receiver eval emits as a leading
-    statement so the qualified name stays a real
+    cost, carries `recv_eval` (a `THIRNoneCheck`, or an effectful receiver
+    with `recv_wrap` `static_cast<void>({0})`): the receiver eval emits as
+    a leading statement so the qualified name stays a real
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
     # A name target's record (`stamp_bindings`): a rebind slot the assign

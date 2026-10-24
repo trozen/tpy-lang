@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def first_n(t: tuple[int32, Leaf | None]) -> int32:
 //     return t[1].n  # tpyc: warning(/Potential None access/)
 int32_t first_n(const std::tuple<int32_t, const Leaf*>& t) {
-    return ::tpy::deref_check(std::get<1>(t)).n;
+    return ::tpy::none_attr(std::get<1>(t), "n").n;
 }
 
 // def main() -> None:

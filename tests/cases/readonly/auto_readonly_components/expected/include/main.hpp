@@ -267,7 +267,7 @@ inline Handle::Handle(Payload& p) : p(&p) {}
 //     it = self.p.item
 //     return it
 inline Item& Handle::get() {
-    Item& it = ::tpy::deref_check(this->p).item;
+    Item& it = ::tpy::none_attr(this->p, "item").item;
     return it;
 }
 
@@ -277,7 +277,7 @@ inline Item& Handle::get() {
 //     it = self.p.item
 //     return it
 inline const Item& Handle::get() const {
-    Item& it = ::tpy::deref_check(this->p).item;
+    Item& it = ::tpy::none_attr(this->p, "item").item;
     return it;
 }
 
@@ -335,7 +335,7 @@ inline const Handle& Handle::me() const {
 //     xs = self.p.items
 //     return xs
 inline std::vector<Item>& Handle::all() {
-    std::vector<Item>& xs = ::tpy::deref_check(this->p).items;
+    std::vector<Item>& xs = ::tpy::none_attr(this->p, "items").items;
     return xs;
 }
 
@@ -345,7 +345,7 @@ inline std::vector<Item>& Handle::all() {
 //     xs = self.p.items
 //     return xs
 inline const std::vector<Item>& Handle::all() const {
-    std::vector<Item>& xs = ::tpy::deref_check(this->p).items;
+    std::vector<Item>& xs = ::tpy::none_attr(this->p, "items").items;
     return xs;
 }
 
@@ -401,7 +401,7 @@ inline Owner::Owner(Item* it) : rows(Rows(it)) {}
 //     q.n += 1
 inline void Owner::bump_sub() {
     Item* q = this->rows[0];
-    ::tpy::deref_check(q).n = ::tpy::add_check<int32_t>(::tpy::deref_check(q).n, 1);
+    ::tpy::none_attr(q, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(q, "n").n, 1);
 }
 
 // def bump_at(self) -> None:
@@ -409,7 +409,7 @@ inline void Owner::bump_sub() {
 //     q.n += 10
 inline void Owner::bump_at() {
     Item* q = this->rows.at(0);
-    ::tpy::deref_check(q).n = ::tpy::add_check<int32_t>(::tpy::deref_check(q).n, 10);
+    ::tpy::none_attr(q, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(q, "n").n, 10);
 }
 void __tpy_init();
 } // namespace tpyapp::main

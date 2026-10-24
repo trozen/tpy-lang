@@ -634,9 +634,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_ptr_local::__n
     }
     case S_RESUME_0: {  // after: yield "gen_ptr_local sep"
         n = ::tpyapp::main::churn();
-        ::tpy::deref_check(p).v = 82;
+        ::tpy::none_attr(p, "v").v = 82;
         __state = S_RESUME_1;
-        return std::format("gen_ptr_local {} {}", ::tpy::deref_check(q).v, n);
+        return std::format("gen_ptr_local {} {}", ::tpy::none_attr(q, "v").v, n);
     }
     case S_RESUME_1: {  // after: yield f"gen_ptr_local {q.v} {n}"
         __state = S_DONE;
@@ -682,9 +682,9 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_ptr_field::__n
     }
     case S_RESUME_0: {  // after: yield "gen_ptr_field sep"
         n = ::tpyapp::main::churn();
-        ::tpy::deref_check((*h).c).v = 81;
+        ::tpy::none_attr((*h).c, "v").v = 81;
         __state = S_RESUME_1;
-        return std::format("gen_ptr_field {} {}", ::tpy::deref_check((*g).c).v, n);
+        return std::format("gen_ptr_field {} {}", ::tpy::none_attr((*g).c, "v").v, n);
     }
     case S_RESUME_1: {  // after: yield f"gen_ptr_field {g.c.v} {n}"
         __state = S_DONE;

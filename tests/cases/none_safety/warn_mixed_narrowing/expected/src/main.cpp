@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     return a + b  # tpyc: warning(/Potential None access/)
 int32_t f(std::optional<int32_t> a, std::optional<int32_t> b) {
     if (!((a.has_value()))) ::tpy::raise_assertion_error();
-    return (::tpy::add_check<int32_t>((*a), ::tpy::deref_optional_check(b)));
+    return (::tpy::add_check<int32_t>((*a), ::tpy::none_operand("int32", "+", b)));
 }
 
 void __tpy_init() {

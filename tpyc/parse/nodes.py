@@ -283,6 +283,45 @@ def op_spelling(op: str) -> str:
     return _OP_SPELLINGS.get(op, op)
 
 
+class NoneUseKind(Enum):
+    """The operation a runtime None check guards, which picks CPython's
+    exception and message for a None value."""
+    ATTR = "attr"          # AttributeError: attribute read / write / method lookup
+    SUBSCRIPT = "item"     # TypeError: not subscriptable
+    OPERAND = "operand"    # TypeError: an operator's operand (binary or unary)
+    CALL = "call"          # TypeError: not callable
+
+
+@dataclass(frozen=True)
+class NoneUse:
+    """A None check sema could not prove away, decided where sema warns
+    *Potential None access*: the operation and the short parts of its
+    message -- the attribute name, or the operator's source spelling and
+    the other operand's Python type name (`other` None for a unary operator,
+    `none_left` the side the checked operand is on). The runtime composes
+    the message from these.
+
+    `through_ptr` marks a `Ptr` auto-deref check: a pointer is not an
+    Optional, so the Optional-access gates (`needs_optional_runtime_check`)
+    do not see it, but its check renders the same."""
+    kind: NoneUseKind
+    attr: str | None = None
+    op: str | None = None
+    other: str | None = None
+    none_left: bool = True
+    through_ptr: bool = False
+
+
+class NoneChecked:
+    """A node whose access sema may guard with a None check (`none_use`)."""
+    none_use: NoneUse | None
+
+    @property
+    def needs_optional_runtime_check(self) -> bool:
+        """The access is an unproven Optional one (a `Ptr` deref aside)."""
+        return self.none_use is not None and not self.none_use.through_ptr
+
+
 @dataclass
 class TpyBinOp(TpyExpr):
     """Binary operation."""
@@ -308,6 +347,10 @@ class TpyBinOp(TpyExpr):
     # the right operand runs only if the preceding compare passed, while the
     # left is the previous pair's right and has already evaluated.
     cond_right: bool = False
+    # Set by sema on every analysis: the None check each operand takes, an
+    # unproven value Optional consumed as its inner value.
+    none_left: NoneUse | None = None
+    none_right: NoneUse | None = None
 
     def children(self) -> list[TpyExpr]:
         return [self.left, self.right]
@@ -332,6 +375,8 @@ class TpyUnaryOp(TpyExpr):
     op: str  # '-', 'not'
     operand: TpyExpr
     resolved_unaryop: 'ResolvedUnaryop | None' = None  # Set by sema for builtin ops
+    # Set by sema on every analysis: the operand's None check (see TpyBinOp).
+    none_operand: NoneUse | None = None
 
     def children(self) -> list[TpyExpr]:
         return [self.operand]
@@ -540,7 +585,7 @@ class TpyCall(TpyCallLike):
 
 
 @dataclass
-class TpyMethodCall(TpyCallLike):
+class TpyMethodCall(TpyCallLike, NoneChecked):
     """Method call on an object."""
     obj: TpyExpr
     method: str
@@ -571,7 +616,9 @@ class TpyMethodCall(TpyCallLike):
     base_init_direct_base: Optional[TpyType] = None
     user_module_call: Optional[str] = None  # Set by sema for module.func() calls to user modules
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
-    needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
+    # Set by sema on every analysis: the receiver's None check, or a callable
+    # field's callee check (`is_callable_field`).
+    none_use: NoneUse | None = None
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
     # Set by sema: the receiver passes const so C++ runs the readonly variant
     # sema ranked (`pins_const_receiver`).
@@ -609,11 +656,11 @@ class TpyMethodCall(TpyCallLike):
 
 
 @dataclass
-class TpyFieldAccess(TpyExpr):
+class TpyFieldAccess(TpyExpr, NoneChecked):
     """Field access on a value or pointer."""
     obj: TpyExpr
     field: str
-    needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
+    none_use: NoneUse | None = None  # Set by sema on every analysis: the receiver's None check
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
     # Set by sema to the narrowed subclass when this field access resolves
     # through a deref-view narrowing; codegen casts the deref payload pointer.
@@ -756,7 +803,7 @@ def become_method_call(node: TpyFieldAccess, *, method: str,
     call.deref_depth = node.deref_depth
     call.deref_narrowed_to = node.deref_narrowed_to
     call.ptr_non_null = node.ptr_non_null
-    call.needs_optional_runtime_check = node.needs_optional_runtime_check
+    call.none_use = node.none_use
     node.__dict__.clear()
     node.__dict__.update(call.__dict__)
     node.__class__ = TpyMethodCall
@@ -989,11 +1036,11 @@ class SubscriptDunders:
 
 
 @dataclass
-class TpySubscript(TpyExpr):
+class TpySubscript(TpyExpr, NoneChecked):
     """Subscript indexing: obj[index]"""
     obj: TpyExpr
     index: TpyExpr  # TpySlice for slicing, other TpyExpr for single-index
-    needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
+    none_use: NoneUse | None = None  # Set by sema on every analysis: the receiver's None check
     enum_from_name: 'NominalType | None' = None    # Set by sema for Color["Red"] name lookup
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
@@ -1035,7 +1082,7 @@ class TpySubscript(TpyExpr):
         written."""
         if self.written_index is not None:
             self.index = self.written_index
-        self.needs_optional_runtime_check = False
+        self.none_use = None
         self.dunders = SubscriptDunders()
         self.written_index = self.setitem_index = None
         self.const_dunders = frozenset()
@@ -1637,9 +1684,11 @@ class TpyWithItem:
     manager_borrowed: bool = False
     # Set by sema where it resolves `__exit__`: whether the exit step runs
     # TPy code (None: not decided yet), and then the hidden call on the
-    # manager every call-recognizer reads, as `TpyBinOp.contains_call`.
+    # manager every call-recognizer reads, as `TpyBinOp.contains_call`;
+    # `enter_call` is the same for `__enter__`.
     exit_runs_code: bool | None = None
     exit_call: 'TpyMethodCall | None' = None
+    enter_call: 'TpyMethodCall | None' = None
     # Set by sema: False iff `__enter__` demonstrably lends storage that is NOT
     # the manager's own (a global, a parameter) -- then a target aliasing it does
     # not force the manager to outlive the statement, and forcing that anyway

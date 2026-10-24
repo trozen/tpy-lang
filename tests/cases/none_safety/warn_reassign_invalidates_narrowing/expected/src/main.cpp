@@ -11,7 +11,7 @@ namespace tpyapp::main {
 int32_t bad(std::optional<int32_t> x) {
     if (!((x.has_value()))) ::tpy::raise_assertion_error();
     x = std::nullopt;
-    return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
+    return (::tpy::add_check<int32_t>(::tpy::none_operand(x, "+", "int"), 1));
 }
 
 void __tpy_init() {

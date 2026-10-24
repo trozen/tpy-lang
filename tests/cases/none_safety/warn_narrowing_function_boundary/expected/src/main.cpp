@@ -14,7 +14,7 @@ void prove() {
 // def use() -> int32:
 //     return x + 1  # tpyc: warning(/Potential None access/)
 int32_t use() {
-    return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(x), 1));
+    return (::tpy::add_check<int32_t>(::tpy::none_operand(x, "+", "int"), 1));
 }
 
 // x: int32 | None = None

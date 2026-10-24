@@ -16,7 +16,7 @@ int32_t stale_after_write(std::vector<std::optional<int32_t>>& items, int32_t i)
     while ((::tpy::__getitem__(items, i).has_value())) {
         ::tpy::__setitem__(items, i, ::tpy::__getitem__(items, i));
         if ((i < 0)) {
-            return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(::tpy::__getitem__(items, i)), 1));
+            return (::tpy::add_check<int32_t>(::tpy::none_operand(::tpy::__getitem__(items, i), "+", "int"), 1));
         }
         break;
     }

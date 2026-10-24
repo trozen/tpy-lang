@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def add_offset(x: float | None) -> float:
 //     return x + 1.0  # tpyc: warning(/Potential None access/)
 double add_offset(std::optional<double> x) {
-    return ((::tpy::deref_optional_check(x)) + (1.0));
+    return ((::tpy::none_operand(x, "+", "float")) + (1.0));
 }
 
 // print(add_offset(1.5))

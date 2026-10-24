@@ -3430,8 +3430,8 @@ inline void _PrimitiveWait<P>::cancel() {
     if ((this->_ticket == 0)) {
         return;
     }
-    if (((!(::tpy::deref_check(this->_queue).remove(this->_ticket))) && ::tpy::deref_check(this->_owner)._ready(this->_kind))) {
-        ::tpy::deref_check(this->_queue).wake_one();
+    if (((!(::tpy::none_attr(this->_queue, "remove").remove(this->_ticket))) && ::tpy::none_attr(this->_owner, "_ready")._ready(this->_kind))) {
+        ::tpy::none_attr(this->_queue, "wake_one").wake_one();
     }
     this->_ticket = 0;
 }
@@ -3454,16 +3454,16 @@ inline ::tpystd::tpy::Poll<std::monostate> _PrimitiveWait<P>::__poll__(::tpystd:
         throw ::tpy::CancelledError("");
     }
     if ((this->_ticket != 0)) {
-        if (::tpy::deref_check(this->_queue).parked(this->_ticket)) {
+        if (::tpy::none_attr(this->_queue, "parked").parked(this->_ticket)) {
             return ::tpystd::coro::poll_pending<std::monostate>();
         }
         this->_ticket = 0;
     }
-    if (::tpy::deref_check(this->_owner)._ready(this->_kind)) {
-        ::tpy::deref_check(this->_owner)._take(this->_kind);
+    if (::tpy::none_attr(this->_owner, "_ready")._ready(this->_kind)) {
+        ::tpy::none_attr(this->_owner, "_take")._take(this->_kind);
         return ::tpystd::coro::poll_ready_none();
     }
-    this->_ticket = ::tpy::deref_check(this->_queue).park(waker);
+    this->_ticket = ::tpy::none_attr(this->_queue, "park").park(waker);
     return ::tpystd::coro::poll_pending<std::monostate>();
 }
 

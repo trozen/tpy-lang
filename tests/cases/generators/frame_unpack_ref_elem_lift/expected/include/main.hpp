@@ -572,7 +572,7 @@ struct __gen_gen_loop_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ro, int3
 struct __gen_gen_loop_ptr_ro : public ::tpy::next_iter_mixin<__gen_gen_loop_ptr_ro, int32_t> {
     ::tpy::frame_state __state;
     const Grid* p;
-    using __for_src_0_t = decltype((::tpy::deref_check(p).rows));
+    using __for_src_0_t = decltype((::tpy::none_attr(p, "rows").rows));
     ::tpy::begin_elem_t<__for_src_0_t>* h = nullptr;
     int32_t a;
     const Box* b = nullptr;

@@ -60,8 +60,8 @@ void __tpy_init() {
     std::cout << ::tpyapp::main::describe(result) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(nullptr) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe(::tpyapp::main::find((*points), 99)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).x << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::deref_check(::tpyapp::main::find((*points), 5)).mag() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(::tpyapp::main::find((*points), 5), "x").x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(::tpyapp::main::find((*points), 5), "mag").mag() << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

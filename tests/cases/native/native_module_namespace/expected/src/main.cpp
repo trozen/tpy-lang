@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def use_vec(v: Ptr[Vec2]) -> int32:
 //     return v.x
 int32_t use_vec(::mypkg::Vec2* v) {
-    return ::tpy::deref_check(v).x;
+    return ::tpy::none_attr(v, "x").x;
 }
 
 // def use_add(a: Vec2, b: Vec2) -> Own[Vec2]:

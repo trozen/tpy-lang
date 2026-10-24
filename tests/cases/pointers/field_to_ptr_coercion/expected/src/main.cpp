@@ -7,13 +7,13 @@ namespace tpyapp::main {
 // def modify_inner(p: Ptr[Inner]) -> None:
 //     p.x = 999
 void modify_inner(Inner* p) {
-    ::tpy::deref_check(p).x = 999;
+    ::tpy::none_attr(p, "x").x = 999;
 }
 
 // def read_inner(p: Ptr[readonly[Inner]]) -> int32:
 //     return p.x
 int32_t read_inner(const Inner* p) {
-    return ::tpy::deref_check(p).x;
+    return ::tpy::none_attr(p, "x").x;
 }
 
 // def test_field_to_ptr() -> None:

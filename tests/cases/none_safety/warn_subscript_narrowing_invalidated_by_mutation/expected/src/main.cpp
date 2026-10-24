@@ -13,7 +13,7 @@ std::vector<std::optional<int32_t>>* vals{};
 int32_t use_after_write(std::vector<std::optional<int32_t>>& items, int32_t i) {
     if ((::tpy::__getitem__(items, i).has_value())) {
         ::tpy::__setitem__(items, i, ::tpy::__getitem__(items, 0));
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(::tpy::__getitem__(items, i)), 1));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(::tpy::__getitem__(items, i), "+", "int"), 1));
     }
     return 0;
 }

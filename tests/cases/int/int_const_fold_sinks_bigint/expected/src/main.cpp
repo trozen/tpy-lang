@@ -199,7 +199,7 @@ void unsigned_() {
 //     # An unproven Optional side compares through its checked inner read.
 //     print("unproven", q < 2**63, 2**63 > q, p > -1, -1 < p)  # tpyc: warning(/Potential None access/)
 void unproven(std::optional<int64_t> q, std::optional<uint64_t> p) {
-    std::cout << "unproven" << " " << ::tpy::print_bool(::std::cmp_less(::tpy::deref_optional_check(q), static_cast<uint64_t>(9223372036854775808ull))) << " " << ::tpy::print_bool(::std::cmp_greater(static_cast<uint64_t>(9223372036854775808ull), ::tpy::deref_optional_check(q))) << " " << ::tpy::print_bool(::std::cmp_greater(::tpy::deref_optional_check(p), -1)) << " " << ::tpy::print_bool(::std::cmp_less(-1, ::tpy::deref_optional_check(p))) << "\n" << ::tpy::check_signals;
+    std::cout << "unproven" << " " << ::tpy::print_bool(::std::cmp_less(::tpy::none_operand(q, "<", "int"), static_cast<uint64_t>(9223372036854775808ull))) << " " << ::tpy::print_bool(::std::cmp_greater(static_cast<uint64_t>(9223372036854775808ull), ::tpy::none_operand("int", ">", q))) << " " << ::tpy::print_bool(::std::cmp_greater(::tpy::none_operand(p, ">", "int"), -1)) << " " << ::tpy::print_bool(::std::cmp_less(-1, ::tpy::none_operand("int", "<", p))) << "\n" << ::tpy::check_signals;
 }
 
 // def union_narrowed(x: int64 | str, y: uint64 | str) -> None:

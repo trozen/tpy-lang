@@ -791,8 +791,6 @@ def _check_node(owner: str, node: THIRNode) -> None:
         if not isinstance(read, THIROptionalRead) or type(read.extract) is not bool:
             _fail(owner, node, "invalid optional read")
         _check_optional(owner, node, read.layout)
-        if node.opt_deref_check:
-            _fail(owner, node, "checked optional read cannot claim plain extraction")
     if isinstance(node, THIRVarDecl) and node.tuple_storage_alias is not None:
         fact = node.tuple_storage_alias
         if (not isinstance(fact, THIRTupleStorageAlias) or not fact.source

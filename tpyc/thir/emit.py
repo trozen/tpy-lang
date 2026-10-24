@@ -18,7 +18,7 @@ from dataclasses import dataclass, field, fields as dc_fields, is_dataclass
 from typing import Callable, ContextManager, Iterator, Mapping, TextIO
 
 from ..temp_schedule import TempQueue
-from ..parse.nodes import ResultForm, TryTier
+from ..parse.nodes import NoneUseKind, ResultForm, TryTier
 from ..codegen_cpp.context import (
     INDENT, CondRegion,
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
@@ -109,8 +109,7 @@ from .nodes import (
     THIRMethodCall,
     THIRModuleVar,
     THIRDecayCopy,
-    THIROptionalRecvCheck,
-    OptionalCheckSpelling,
+    THIRNoneCheck,
     THIRMove,
     THIRName,
     THIRDynNarrowAlias,
@@ -795,7 +794,14 @@ def _emit_call(e: THIRCall, state: _EmitState) -> str:
     if e.callee_expr is not None:
         # A computed callable: the callee renders parenthesized ahead of the
         # arg list (`(make_adder(10))(5)`, `(::tpy::__getitem__(fns, 0))(100)`).
-        return f"({_emit_expr(e.callee_expr, state)})({args})"
+        # A checked callee is already a postfix call (`::tpy::none_call(h.cb)`)
+        # and a narrowed field read its own `(*h.cb)`.
+        callee = _emit_expr(e.callee_expr, state)
+        if (isinstance(e.callee_expr, THIRNoneCheck)
+                or (isinstance(e.callee_expr, THIRFieldAccess)
+                    and e.callee_expr.narrowed_deref)):
+            return f"{callee}({args})"
+        return f"({callee})({args})"
     if e.native_name is not None:
         # A @native free-function builtin (e.g. `len(c)` -> `::tpy::__len__(c)`):
         # dispatch on the resolved symbol.
@@ -877,11 +883,6 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
               if e.method_targs_cpp else "")
     if e.cpp_template is not None or e.native_function_name is not None:
         return _emit_bound_call(bound, recv, args, ret=e.result_type)
-    if e.deref_check:
-        # Unproven pointer-repr Optional receiver: null-check the (already
-        # `T*`) receiver before the `.` member call.
-        return _emit_bound_call(bound, f"::tpy::deref_check({recv})", args,
-                                mtargs=mtargs)
     if e.deref_chain:
         # User Deref-wrapper method call: N `.__deref__()` calls between the
         # bare receiver and the member call (`r.__deref__().sum()`); a
@@ -891,10 +892,6 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         chain = (f"{first}__deref__()"
                  + ".__deref__()" * (e.deref_chain - 1))
         return _emit_bound_call(bound, f"{recv}{chain}", args)
-    if e.callable_value_unwrap:
-        # Optional[Callable] field invoke: the `.value()` unwrap between
-        # the member and the call.
-        return f"{recv}.{e.method_cpp}.value()({', '.join(args)})"
     return _emit_bound_call(bound, recv, args, arrow=arrow, mtargs=mtargs)
 
 
@@ -1179,16 +1176,32 @@ def _emit_list_repeat(e: THIRListRepeat, state: _EmitState) -> str:
     return f"::tpy::from_range<{e.result_cpp}>({range_expr})"
 
 
+def _emit_none_check(e: THIRNoneCheck, state: _EmitState) -> str:
+    """`::tpy::none_attr(p, "x")` / `none_item(xs)` / `none_operand(...)` /
+    `none_call(h.cb)`: the runtime builds CPython's message from the short
+    arguments sema recorded."""
+    value = _emit_expr(e.value, state)
+    use = e.use
+    if use.kind is NoneUseKind.ATTR:
+        return f"::tpy::none_attr({value}, {_cpp_str(use.attr)})"
+    if use.kind is NoneUseKind.SUBSCRIPT:
+        return f"::tpy::none_item({value})"
+    if use.kind is NoneUseKind.CALL:
+        return f"::tpy::none_call({value})"
+    op = _cpp_str(use.op)
+    if use.other is None:
+        return f"::tpy::none_operand({op}, {value})"
+    other = _cpp_str(use.other)
+    if use.none_left:
+        return f"::tpy::none_operand({value}, {op}, {other})"
+    return f"::tpy::none_operand({other}, {op}, {value})"
+
+
+def _cpp_str(text: 'str | None') -> str:
+    return f'"{escape_cpp_string(text or "")}"'
+
+
 def _emit_field_access(e: THIRFieldAccess, state: _EmitState) -> str:
-    if e.deref_check:
-        # Unproven Optional member access: null-check the (already `T*`)
-        # receiver before the `.` member read.
-        return f"::tpy::deref_check({_emit_expr(e.receiver, state)}).{e.field_cpp}"
-    if e.opt_deref_check:
-        # Unproven access off a WHOLE value-repr Optional lvalue receiver
-        # (`h.opt.x` -> `::tpy::deref_optional_check(h.opt).x`).
-        return (f"::tpy::deref_optional_check({_emit_expr(e.receiver, state)})"
-                f".{e.field_cpp}")
     if e.deref_chain:
         # User Deref-wrapper field access: N `__deref__()` calls between the
         # bare receiver and the field (`r.__deref__().x`); a pointer-local
@@ -1559,8 +1572,6 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # renders verbatim -- `qualify_native_name` / `imported_variable_cpp`
         # output is already spelled, never escaped.
         name = e.cpp if e.cpp is not None else escape_cpp_name(e.name)
-        if e.opt_deref_check:
-            return f"::tpy::deref_optional_check({name})"
         if (e.deref and state.frame_shadow_probe is not None
                 and state.frame_shadow_probe(e.name)):
             return name
@@ -1652,13 +1663,9 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
     if isinstance(e, THIRFieldAccess):
         return _emit_field_access(e, state)
     if isinstance(e, THIRSubscript):
-        sub = _emit_subscript(e, state)
-        return (f"::tpy::deref_optional_check({sub})"
-                if e.opt_deref_check else sub)
-    if isinstance(e, THIROptionalRecvCheck):
-        check = ("deref_check" if e.spelling is OptionalCheckSpelling.PTR
-                 else "deref_optional_check")
-        return f"::tpy::{check}({_emit_expr(e.value, state)})"
+        return _emit_subscript(e, state)
+    if isinstance(e, THIRNoneCheck):
+        return _emit_none_check(e, state)
     if isinstance(e, THIRStrSlice):
         return _emit_str_slice(e, state)
     if isinstance(e, THIRFormConvert):
@@ -1915,8 +1922,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.recv_eval is not None:
             # Effectful / runtime-checked instance receiver: evaluate it,
             # discard, yield the static (`({ static_cast<void>(recv);
-            # C::LIMIT; })` / the deref_check variant).
-            recv = e.recv_wrap.format(_emit_expr(e.recv_eval, state))
+            # C::LIMIT; })` / `({ ::tpy::none_attr(c, "LIMIT"); C::LIMIT; })`).
+            recv = _emit_expr(e.recv_eval, state)
+            if e.recv_wrap is not None:
+                recv = e.recv_wrap.format(recv)
             return f"({{ {recv}; {e.cpp}; }})"
         return e.cpp
     if isinstance(e, THIRConceptTest):
@@ -4241,7 +4250,9 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             if recv_cpp is not None:
-                out.write(f"{indent}{stmt.recv_wrap.format(recv_cpp)};\n")
+                if stmt.recv_wrap is not None:
+                    recv_cpp = stmt.recv_wrap.format(recv_cpp)
+                out.write(f"{indent}{recv_cpp};\n")
             out.write(f"{indent}{target_cpp} = {value_cpp};\n")
     elif isinstance(stmt, THIRSetItem):
         # The subscript write (and the aug-assign subscript form, whose

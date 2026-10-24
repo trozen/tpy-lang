@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     Dog d = Dog(11);
     Animal* pa = ::tpyapp::main::as_animal<Dog>(&d);
-    std::cout << ::tpy::deref_check(pa).base_code() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(pa, "base_code").base_code() << "\n" << ::tpy::check_signals;
 }
 
 // main()

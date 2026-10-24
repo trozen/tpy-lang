@@ -45,14 +45,14 @@ void __tpy_init() {
     cptr = &(*pt);
     static PtrHolder<Point> __global_slot_2 = PtrHolder<Point>(ptr);
     holder = &__global_slot_2;
-    ::tpy::deref_check(holder->ptr).x = 100;
+    ::tpy::none_attr(holder->ptr, "x").x = 100;
     std::cout << pt->x << "\n" << ::tpy::check_signals;
     static ReadOnlyPtrHolder<Point> __global_slot_3 = ReadOnlyPtrHolder<Point>(cptr);
     const_holder = &__global_slot_3;
-    std::cout << ::tpy::deref_check(const_holder->ptr).y << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(const_holder->ptr, "y").y << "\n" << ::tpy::check_signals;
     static ReadOnlyPtrHolder<Point> __global_slot_4 = ReadOnlyPtrHolder<Point>(ptr);
     const_holder2 = &__global_slot_4;
-    std::cout << ::tpy::deref_check(const_holder2->ptr).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(const_holder2->ptr, "x").x << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

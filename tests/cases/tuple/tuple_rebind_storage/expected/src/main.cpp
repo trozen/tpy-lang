@@ -3074,7 +3074,7 @@ void retain_binding(bool c) {
         std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(t) = std::move(std::get<1>(__tup_2));
     }
-    ::tpy::deref_check(k.p).n = ::tpy::add_check<int32_t>(::tpy::deref_check(k.p).n, 100);
+    ::tpy::none_attr(k.p, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(k.p, "n").n, 100);
     std::cout << "retain-binding" << " " << n << " " << k.p->n << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
 }
 
@@ -3100,7 +3100,7 @@ void retain_statement(bool c) {
         std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(t) = std::move(std::get<1>(__tup_2));
     }
-    ::tpy::deref_check(k.p).n = ::tpy::add_check<int32_t>(::tpy::deref_check(k.p).n, 100);
+    ::tpy::none_attr(k.p, "n").n = ::tpy::add_check<int32_t>(::tpy::none_attr(k.p, "n").n, 100);
     std::cout << "retain-statement" << " " << k.p->n << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
 }
 

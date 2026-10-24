@@ -16,7 +16,7 @@ int32_t pick(bool flag, std::optional<int32_t> a, std::optional<int32_t> b) {
     } else {
         if (!((b.has_value()))) ::tpy::raise_assertion_error();
     }
-    return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(a), 1));
+    return (::tpy::add_check<int32_t>(::tpy::none_operand(a, "+", "int"), 1));
 }
 
 void __tpy_init() {

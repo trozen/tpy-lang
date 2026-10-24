@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(p.y)  # tpyc: non_null(p)
 //     print(p.x + p.y)  # tpyc: non_null(p)
 void cross_statement(A* p) {
-    std::cout << ::tpy::deref_check(p).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(p, "x").x << "\n" << ::tpy::check_signals;
     std::cout << p->y << "\n" << ::tpy::check_signals;
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n" << ::tpy::check_signals;
 }
@@ -22,7 +22,7 @@ void cross_statement(A* p) {
 //     # Now p is proven non-null; subsequent accesses elide.
 //     print(p.x + p.y)  # tpyc: non_null(p)
 void within_expression(A* p) {
-    std::cout << (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y)) << "\n" << ::tpy::check_signals;
+    std::cout << (::tpy::add_check<int32_t>(::tpy::none_attr(p, "x").x, ::tpy::none_attr(p, "y").y)) << "\n" << ::tpy::check_signals;
     std::cout << (::tpy::add_check<int32_t>(p->x, p->y)) << "\n" << ::tpy::check_signals;
 }
 
@@ -32,7 +32,7 @@ void within_expression(A* p) {
 //     p.x = p.y + 1  # tpyc: nullable(p)
 //     p.x = p.y + 2  # tpyc: non_null(p)
 void assign_first(A* p) {
-    ::tpy::deref_check(p).x = (::tpy::add_check<int32_t>(::tpy::deref_check(p).y, 1));
+    ::tpy::none_attr(p, "x").x = (::tpy::add_check<int32_t>(::tpy::none_attr(p, "y").y, 1));
     p->x = (::tpy::add_check<int32_t>(p->y, 2));
 }
 

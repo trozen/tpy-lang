@@ -21,7 +21,7 @@ int32_t merged(::nb::Bag& b, ::nb::Bag& o) {
 // def via_ptr(p: Ptr[Root], h: Holder) -> int32:
 //     return p.pick(1) + h.root.Top.n  # tpyc: ok nullable(p)
 int32_t via_ptr(::nb::Root* p, const Holder& h) {
-    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).pick(1), ::tpy::deref_check(h.root).top().n));
+    return (::tpy::add_check<int32_t>(::tpy::none_attr(p, "pick").pick(1), ::tpy::none_attr(h.root, "Top").top().n));
 }
 
 // # --- through a Ptr proven non-null: the arrow spelling

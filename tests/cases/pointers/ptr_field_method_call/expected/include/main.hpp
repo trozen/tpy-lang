@@ -45,7 +45,7 @@ inline Wrapper<T>::Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(stor
 //     return self._storage.load(index)
 template<typename T>
 inline ::tpy::val_or_ref_t<T> Wrapper<T>::load_at(uint32_t index) const {
-    return ::tpy::deref_check(this->_storage).load(index);
+    return ::tpy::none_attr(this->_storage, "load").load(index);
 }
 
 void __tpy_init();

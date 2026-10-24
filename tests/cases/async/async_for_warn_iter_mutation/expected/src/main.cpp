@@ -705,7 +705,7 @@ void main() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if ((__self.cur >= ::tpy::deref_check(__self.p).lim)) {
+        if ((__self.cur >= ::tpy::none_attr(__self.p, "lim").lim)) {
             throw ::tpy::StopAsyncIteration("");
         }
         v = __self.cur;

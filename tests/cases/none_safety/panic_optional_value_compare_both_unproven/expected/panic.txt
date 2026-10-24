@@ -1,1 +1,1 @@
-TurboPython panic: null optional dereference
+TurboPython panic: uncaught tpy::NoneTypeError: '>' not supported between instances of 'NoneType' and 'int32'

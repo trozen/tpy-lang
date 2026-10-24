@@ -44,7 +44,7 @@ void main() {
     Pod* p = ::tpyapp::main::take(t);
     if (!((p != nullptr))) ::tpy::raise_assertion_error();
     p->x = ::tpy::BigInt(7);
-    std::cout << ::tpy::deref_optional_check(t.o).x << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::none_attr(t.o, "x").x << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -145,7 +145,7 @@ inline int32_t Container::call_if_present() const {
 // def read_without_check(self) -> int32:
 //     return self.node.value  # tpyc: nullable(self.node)
 inline int32_t Container::read_without_check() const {
-    return ::tpy::deref_check(this->node).value;
+    return ::tpy::none_attr(this->node, "value").value;
 }
 
 // def read_after_merge(self) -> int32:
@@ -155,7 +155,7 @@ inline int32_t Container::read_without_check() const {
 inline int32_t Container::read_after_merge() const {
     if ((this->node != nullptr)) {
     }
-    return ::tpy::deref_check(this->node).value;
+    return ::tpy::none_attr(this->node, "value").value;
 }
 
 // def mutate(self) -> None:
@@ -172,7 +172,7 @@ inline void Container::mutate() const {
 inline int32_t Container::read_after_method_call() const {
     if ((this->node != nullptr)) {
         this->mutate();
-        return ::tpy::deref_check(this->node).value;
+        return ::tpy::none_attr(this->node, "value").value;
     }
     return -1;
 }
@@ -186,7 +186,7 @@ inline int32_t Container::read_after_method_call() const {
 inline int32_t Container::read_after_reassign(Node* other) {
     if ((this->node != nullptr)) {
         this->node = other;
-        return ::tpy::deref_check(this->node).value;
+        return ::tpy::none_attr(this->node, "value").value;
     }
     return -1;
 }
@@ -204,7 +204,7 @@ inline Wrapper::Wrapper(const Container& inner) : inner(inner) {}
 inline int32_t Wrapper::read_after_inner_mutate() const {
     if ((this->inner.node != nullptr)) {
         this->inner.mutate();
-        return ::tpy::deref_check(this->inner.node).value;
+        return ::tpy::none_attr(this->inner.node, "value").value;
     }
     return -1;
 }

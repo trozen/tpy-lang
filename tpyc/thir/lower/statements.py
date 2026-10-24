@@ -1395,7 +1395,7 @@ def _for_each_container_route(
                 # A container member reached THROUGH a Ptr binding
                 # (`for seg in subsector.segs:` on `subsector:
                 # Ptr[SubSector]`): the field's own pointer arm renders the
-                # `deref_check(subsector).segs` hop, and the lvalue capture
+                # `none_attr(subsector, "segs").segs` hop, and the lvalue capture
                 # binds to it exactly as to a plain member read.
                 or _ptr_value_field_recv_ok(it, declared, analyzer)
                 # ... or a rooted lvalue CHAIN receiver (`self.inner.xs`,
@@ -3070,7 +3070,7 @@ def _hoist_pointer(h: _Hoist, name: str, raw: TpyType, rec: BindingRepr,
     """The pointer local (`T* name;`) of a reassigned or borrow-only hoist,
     `const T*` for a const one; a pointer-repr Optional is the same
     nullable pointer over its inner, `declared` keeping the Optional so
-    reads narrow on it (unproven reads draw `deref_check`). An rvalue
+    reads narrow on it (unproven reads draw their None check). An rvalue
     reseat of one with a rebind slot (an if chain's or a match's
     rvalue-reassigned pointer) fills that slot; the others allocate one at
     function top (BRANCH_RVALUE). A match's borrow-only pointer re-seats

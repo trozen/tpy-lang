@@ -65,7 +65,7 @@ from .nodes import (
     THIRCopy,
     THIRSlotEmplace,
     THIRDecayCopy,
-    THIROptionalRecvCheck,
+    THIRNoneCheck,
     THIRMove,
     THIRName,
     THIRNarrowAlias,
@@ -255,9 +255,6 @@ def _expr(e: THIRExpr) -> str:
             how = f"template {e.cpp_template!r}"
         elif e.native_function_name is not None:
             how = f"native {e.native_function_name}"
-        elif e.deref_check:
-            # An unproven Optional-ptr receiver's runtime-checked call.
-            how = f"deref_check.{e.method_cpp}"
         else:
             # `->member` surfaces a pointer-local receiver's arrow access.
             # NB pre-fold display: a move_receiver+is_arrow call PRINTS
@@ -308,8 +305,6 @@ def _expr(e: THIRExpr) -> str:
         return f"coerce({_expr(e.expr)} -> {_ty(e.result_type)})"
     if isinstance(e, THIRFieldAccess):
         tag = "" if e.form is Form.VALUE else f" [{e.form.name.lower()}]"
-        if e.deref_check:
-            return f"deref_check({_expr(e.receiver)}).{e.field_cpp}{tag}"
         op = "->" if e.is_arrow else "."
         return f"{_expr(e.receiver)}{op}{e.field_cpp}{_declaring_owner(e)}{tag}"
     if isinstance(e, THIRSubscript):
@@ -323,8 +318,13 @@ def _expr(e: THIRExpr) -> str:
             name = b.cpp_template or b.native_function_name or b.method_cpp
             flags += f" bound({name})"
         return f"{_expr(e.receiver)}[{idx}]{tag}{flags}"
-    if isinstance(e, THIROptionalRecvCheck):
-        return f"opt_recv_check[{e.spelling.name.lower()}]({_expr(e.value)})"
+    if isinstance(e, THIRNoneCheck):
+        u = e.use
+        parts = [p for p in (u.attr, u.op, u.other) if p is not None]
+        if u.other is not None and not u.none_left:
+            parts.append("right")
+        detail = f" {' '.join(parts)}" if parts else ""
+        return f"none_check[{u.kind.value}{detail}]({_expr(e.value)})"
     if isinstance(e, THIRStrSlice):
         if e.index is not None:
             return f"{_expr(e.receiver)}[{_expr(e.index)}]"

@@ -58,7 +58,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_for_else_assert_gen::_
         }
         __after_else_0:;
         __state = S_RESUME_0;
-        return ::tpy::deref_check(p).x;
+        return ::tpy::none_attr(p, "x").x;
     }
     case S_RESUME_0: {  // after: yield p.x  # tpyc: warning(/Potential None access/)
         __state = S_DONE;

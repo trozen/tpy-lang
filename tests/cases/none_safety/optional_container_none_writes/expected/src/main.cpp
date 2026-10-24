@@ -17,7 +17,7 @@ int32_t write_none(std::vector<std::optional<int32_t>>& items) {
     items.push_back(std::nullopt);
     ::tpy::list_insert(items, 0, std::nullopt);
     if ((::tpy::__getitem__(items, 1).has_value())) {
-        return (::tpy::add_check<int32_t>(::tpy::deref_optional_check(::tpy::__getitem__(items, 1)), 1));
+        return (::tpy::add_check<int32_t>(::tpy::none_operand(::tpy::__getitem__(items, 1), "+", "int"), 1));
     }
     return 0;
 }

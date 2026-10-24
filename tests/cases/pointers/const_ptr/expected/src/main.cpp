@@ -8,14 +8,14 @@ namespace tpyapp::main {
 //     """Read from a const pointer - should work."""
 //     return p.x + p.y
 int32_t read_point(const Point* p) {
-    return (::tpy::add_check<int32_t>(::tpy::deref_check(p).x, ::tpy::deref_check(p).y));
+    return (::tpy::add_check<int32_t>(::tpy::none_attr(p, "x").x, ::tpy::none_attr(p, "y").y));
 }
 
 // def modify_via_ptr(p: Ptr[Point], new_x: int32) -> None:
 //     """Modify via mutable pointer."""
 //     p.x = new_x
 void modify_via_ptr(Point* p, int32_t new_x) {
-    ::tpy::deref_check(p).x = new_x;
+    ::tpy::none_attr(p, "x").x = new_x;
 }
 
 // def test_ptr_to_const_ptr() -> None:
