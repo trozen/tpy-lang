@@ -21,6 +21,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <tuple>
@@ -45,6 +46,11 @@ template<typename X>
 inline constexpr bool is_std_tuple = false;
 template<typename... Ts>
 inline constexpr bool is_std_tuple<std::tuple<Ts...>> = true;
+
+template<typename X>
+inline constexpr bool is_std_optional = false;
+template<typename X>
+inline constexpr bool is_std_optional<std::optional<X>> = true;
 
 }  // namespace detail
 
@@ -74,7 +80,19 @@ concept std_integer =
 // spelled in a different C++ type.
 template<typename T, typename U>
 constexpr bool key_eq(const T& stored, const U& key) {
-    if constexpr (std_integer<T> && std_integer<U>) {
+    // An Optional compares its payload by this same rule: std::optional's
+    // own `==` would compare the payloads with the usual conversions. A
+    // `std::nullopt` side is no payload and keeps std::optional's `==`.
+    if constexpr (detail::is_std_optional<T> && detail::is_std_optional<U>) {
+        return stored.has_value() == key.has_value()
+               && (!stored.has_value() || key_eq(*stored, *key));
+    } else if constexpr (detail::is_std_optional<T>
+                         && !std::same_as<U, std::nullopt_t>) {
+        return stored.has_value() && key_eq(*stored, key);
+    } else if constexpr (detail::is_std_optional<U>
+                         && !std::same_as<T, std::nullopt_t>) {
+        return key.has_value() && key_eq(stored, *key);
+    } else if constexpr (std_integer<T> && std_integer<U>) {
         // By value: `==`'s usual arithmetic conversions would make
         // uint32_t(4294967295) equal int32_t(-1).
         return std::cmp_equal(stored, key);

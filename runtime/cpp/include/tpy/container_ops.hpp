@@ -534,13 +534,23 @@ constexpr bool seq_contains(Range&& haystack, const Needle& needle) {
             if (&e == needle || e == *needle) return true;
         }
         return false;
-    } else if constexpr (std_integer<Elem> && std_integer<Needle>) {
+    } else if constexpr (requires(const Elem& e, const Needle& n) {
+                             { e == n } -> std::convertible_to<bool>;
+                         }) {
+        // key_eq, not std::ranges::contains: integers compare by value, and a
+        // needle needs only an `==` with the element, not the stricter
+        // equality_comparable_with the standard algorithm demands.
         for (auto&& e : haystack) {
             if (key_eq(e, needle)) return true;
         }
         return false;
     } else {
-        return std::ranges::contains(haystack, needle);
+        // A needle that only converts is converted once, not per element.
+        const Elem converted(needle);
+        for (auto&& e : haystack) {
+            if (key_eq(e, converted)) return true;
+        }
+        return false;
     }
 }
 

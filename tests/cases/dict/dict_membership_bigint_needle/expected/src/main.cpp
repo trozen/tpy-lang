@@ -4,6 +4,12 @@
 namespace tpyapp::main {
 
 
+// def in_readonly_values(d: readonly[dict[str, uint32]], n: int32) -> bool:
+//     return n in d.values()  # the readonly view compares by value as well
+bool in_readonly_values(const ::tpy::ordered_map<std::string, uint32_t>& d, int32_t n) {
+    return (::tpy::dict_values(d).contains(n));
+}
+
 // def main():
 //     d: dict[int32, str] = {1: "a", 2: "b"}
 //     k: int = 2
@@ -35,6 +41,15 @@ namespace tpyapp::main {
 //     ucounts: dict[str, uint32] = {"a": 7}
 //     print(seven in ucounts.values())
 //     print(neg in ucounts.values())
+//     umax: dict[str, uint32] = {"a": 4294967295}
+//     n32 = -1
+//     print(n32 in umax.values())  # by value: -1 is not 4294967295
+//     print(in_readonly_values(umax, n32))
+//     uopt: dict[str, uint32 | None] = {"a": 4294967295}
+//     print(n32 in uopt.values())  # an Optional value compares its payload by value
+//     sopt: dict[str, uint32 | None] = {"a": None, "b": 7}
+//     s32 = 7
+//     print(s32 in sopt.values())  # ... and finds an equal payload
 //     xs: list[int32] = [1, 2]
 //     print(big in xs)
 //     print(k in xs)
@@ -69,6 +84,15 @@ void main() {
     ::tpy::ordered_map<std::string, uint32_t> ucounts = ::tpy::ordered_map<std::string, uint32_t>({{"a", 7}});
     std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(seven))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((::tpy::dict_values(ucounts).contains(neg))) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, uint32_t> umax = ::tpy::ordered_map<std::string, uint32_t>({{"a", static_cast<uint32_t>(4294967295)}});
+    int32_t n32 = -1;
+    std::cout << ::tpy::print_bool((::tpy::dict_values(umax).contains(n32))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpyapp::main::in_readonly_values(umax, n32)) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, std::optional<uint32_t>> uopt = ::tpy::ordered_map<std::string, std::optional<uint32_t>>({{"a", static_cast<int64_t>(4294967295)}});
+    std::cout << ::tpy::print_bool((::tpy::dict_values(uopt).contains(n32))) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, std::optional<uint32_t>> sopt = ::tpy::ordered_map<std::string, std::optional<uint32_t>>({{"a", std::nullopt}, {"b", 7}});
+    int32_t s32 = 7;
+    std::cout << ::tpy::print_bool((::tpy::dict_values(sopt).contains(s32))) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2};
     std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, big)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(::tpy::seq_contains(xs, k)) << "\n" << ::tpy::check_signals;

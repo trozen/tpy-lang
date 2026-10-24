@@ -23,6 +23,7 @@
 #include <type_traits>
 #include <utility>
 
+#include "container_ops.hpp"
 #include "core.hpp"
 #include "next_iter.hpp"
 #include "ordered_map.hpp"
@@ -269,13 +270,13 @@ struct dict_values_view {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
-    // Generic key: heterogeneous == (a BigInt key against fixed-int
-    // values compares by value; out-of-range is simply absent).
+    // Python's `in` over a sequence (seq_contains): by value across integer
+    // types, never `==`'s usual arithmetic conversions.
     template<typename ValArg>
         requires requires(const V& v, const ValArg& a) {
             { v == a } -> std::convertible_to<bool>;
         }
-    bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
+    bool contains(const ValArg& value) const { return seq_contains(*this, value); }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};
@@ -288,13 +289,13 @@ struct dict_values_view<K, const V> {
     auto begin() const { return map_->values_begin(); }
     auto end() const { return map_->values_end(); }
     int32_t size() const { return map_->size(); }
-    // Generic key: heterogeneous == (a BigInt key against fixed-int
-    // values compares by value; out-of-range is simply absent).
+    // Python's `in` over a sequence (seq_contains): by value across integer
+    // types, never `==`'s usual arithmetic conversions.
     template<typename ValArg>
         requires requires(const V& v, const ValArg& a) {
             { v == a } -> std::convertible_to<bool>;
         }
-    bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
+    bool contains(const ValArg& value) const { return seq_contains(*this, value); }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};

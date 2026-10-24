@@ -1,8 +1,14 @@
 # A BigInt membership needle against a fixed-int-keyed dict answers by
 # VALUE: an out-of-declared-width needle is simply absent (False, like
 # CPython) -- never a range panic. Sequences compare by equality and were
-# already correct (inverse guard).
-from tpy import int32, int64, uint32
+# already correct (inverse guard). A fixed-width needle in `d.values()`,
+# a plain or an Optional value, a mutable or a readonly view, compares by
+# value too, not by C++'s arithmetic conversions.
+from tpy import int32, int64, uint32, readonly
+
+
+def in_readonly_values(d: readonly[dict[str, uint32]], n: int32) -> bool:
+    return n in d.values()  # the readonly view compares by value as well
 
 
 def main():
@@ -36,6 +42,15 @@ def main():
     ucounts: dict[str, uint32] = {"a": 7}
     print(seven in ucounts.values())
     print(neg in ucounts.values())
+    umax: dict[str, uint32] = {"a": 4294967295}
+    n32 = -1
+    print(n32 in umax.values())  # by value: -1 is not 4294967295
+    print(in_readonly_values(umax, n32))
+    uopt: dict[str, uint32 | None] = {"a": 4294967295}
+    print(n32 in uopt.values())  # an Optional value compares its payload by value
+    sopt: dict[str, uint32 | None] = {"a": None, "b": 7}
+    s32 = 7
+    print(s32 in sopt.values())  # ... and finds an equal payload
     xs: list[int32] = [1, 2]
     print(big in xs)
     print(k in xs)

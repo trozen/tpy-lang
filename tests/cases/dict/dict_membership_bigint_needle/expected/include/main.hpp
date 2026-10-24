@@ -9,6 +9,8 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def in_readonly_values(d: readonly[dict[str, uint32]], n: int32) -> bool:
+bool in_readonly_values(const ::tpy::ordered_map<std::string, uint32_t>& d, int32_t n);
 // def main():
 void main();
 
