@@ -631,7 +631,7 @@ class Fragment:
     def storage_steps(self, place: MIRPlace) -> tuple[Projection, ...]:
         """The dereference from a place to the storage its value points at:
         none for storage held in place."""
-        return object_prefix(place_shape(place, self.root.records, self.root.layouts()), payload=False)
+        return object_prefix(place_shape(place, self.root.records, self.root.layouts()))
 
     # --- write modes and temporaries ---------------------------------------------
 

@@ -22,7 +22,10 @@ from ..thir.scalar_leaves import MIRClass
 from .value import MIRShape, MIRValidationError
 from .liveness import MIRPoint
 from .storage_evidence import MIRStorageVerdict, analyze_return_escapes
-from ..mir_diagnostics import argument_aliases
+from ..mir_diagnostics import _member_argument, _steps_spelling, argument_aliases
+from ..parse.nodes import TpyFieldAccess, TpyIntLiteral, TpyName, TpyTupleLiteral
+from ..thir import nodes as th
+from .shapes import MIRTupleIndex, MIRUnionPayload
 
 BODY = MIRBodyId("main", "f")
 LEAF = MIRShape(INT32, MIRClass.LEAF)
@@ -309,3 +312,23 @@ def test_an_operation_pending_at_a_splice_names_the_spliced_head() -> None:
     block, = fn.blocks
     assert body.borrow_operations["waiting"] == (MIRPoint(block.id, 0),)
     assert block.statements[0].value == MIRConstant(7)
+
+
+# --- spelling a wrapper member ---------------------------------------------------------
+
+
+def test_a_wrapper_member_is_spelled_as_the_callers_place() -> None:
+    # A tuple literal's element is the member's own expression; a named
+    # tuple's member takes its index; a sum's payload has no Python token.
+    element = TpyFieldAccess(TpyName("h"), "q")
+    literal = _member_argument(TpyTupleLiteral([element, TpyIntLiteral(1)]), (MIRTupleIndex(0),))
+    assert (literal.expr, literal.spelled, literal.named) == (element, "h.q", None)
+    named = _member_argument(TpyName("t"), (MIRTupleIndex(0),))
+    assert (named.spelled, named.named) == ("t[0]", "t")
+    union = _member_argument(TpyName("u"), (MIRUnionPayload(1),))
+    assert (union.spelled, union.named) == ("u", "u")
+    assert _member_argument(TpyName("p"), ()).spelled == "p"
+    # A temporary's written storage: the written argument's member, then the path past it.
+    field = th.THIRFieldIdentity("main", "q", None)
+    assert _steps_spelling((MIRTupleIndex(0), field)) == "[0].q"
+    assert _steps_spelling((MIRUnionPayload(1), field)) == ".q"

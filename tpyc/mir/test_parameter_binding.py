@@ -16,13 +16,15 @@ from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OwnType, ReadonlyType, Representation, passing_representation
 from .call_contract import (
     CONSTRUCTOR, MIRParameterBinding, MIRProtocolParameter, MIRReturnOrigin, MIRSummaryState,
-    param_type, parameter_binding, parameter_contract_problem, signature_params, summary_problem,
+    derived_binding, param_type, parameter_binding, parameter_contract_problem, signature_params, summary_problem,
 )
 from . import value as value_module
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRFunction, MIRSlotKind
+from .nodes import MIRBodyId, MIRFunction, MIRPlace, MIRSlotKind, MIRStorageDuration
+from .shapes import MIRTupleIndex, MIRUnionPayload, distinct_lent_objects
+from .reach import origin, parameter_objects
 from .summaries import summarize_function
 from .testutil import no_layouts, reaccess, prepared
 from .value import Declared, Local, MIRHolding, MIRRole, Passing, loan_access, shape_problem, thir_member, value_shape
@@ -177,6 +179,34 @@ def maybe_write(p: P | None) -> None:
 
 def clear_readonly(xs: list[readonly[int32]]) -> None:
     xs.clear()
+
+
+def mixed(t: tuple[readonly[P], P]) -> None:
+    t[1].x = t[0].x
+
+
+def keep_while_writing(b: Box, t: tuple[P, int32]) -> int32:
+    b.p = P(5)
+    return t[0].x
+
+
+class Holder:
+    def __init__(self, p: P) -> None:
+        self.p = p
+
+
+def two_members(t: tuple[Holder, P]) -> int32:
+    b = t[0]
+    b.p = P(5)
+    return t[1].x
+
+
+def two_alternatives(u: Holder | P) -> int32:
+    if isinstance(u, Holder):
+        u.p = P(5)
+    if isinstance(u, P):
+        return u.x
+    return 0
 
 
 @readonly
@@ -384,10 +414,59 @@ def test_a_stub_container_without_a_fact_binds_at_its_declared_access(active: _P
     assert (owned.cls, owned.storage, owned.readonly, owned.private_owned) == (MIRClass.CONTAINER, True, False, True)
 
 
+def test_a_wrapper_passed_off_its_types_passing_is_refused(active: _Program) -> None:
+    # No Optional-only holding rule: the type's passing refuses a pointer
+    # payload passed by value, and a contract check of a forged binding.
+    binding = _binding(active, "maybe")
+    assert binding.passing is ParamPassing.POINTER
+    assert derived_binding(binding.declared, ParamPassing.VALUE, binding.value) == (
+        "call parameter passing differs from its type")
+    assert parameter_contract_problem(replace(binding, passing=ParamPassing.VALUE)) is not None
+
+
+def test_a_tuple_parameter_lends_one_object_per_pointer_member_at_its_own_access(active: _Program) -> None:
+    binding = _binding(active, "mixed")
+    (first, read), (second, written) = binding.lent_members
+    assert (first, second) == (MIRTupleIndex(0), MIRTupleIndex(1))
+    assert read.readonly and not written.readonly and not binding.readonly
+    assert binding.lent_object((second, th.THIRFieldIdentity(written.type, "x", INT32))) == written
+    # Each member is its own origin outside the body.
+    slot, = (s for s in _body(active, "mixed").slots if s.kind is MIRSlotKind.PARAMETER)
+    assert [prefix for prefix, _ in parameter_objects(slot)] == [(first,), (second,)]
+    slots = {slot.id: slot}
+    assert origin(MIRPlace(slot.id, (first,)), slots).place != origin(MIRPlace(slot.id, (second,)), slots).place
+    # The write is published through the member it goes through.
+    write, = _summary(active, "mixed").writes
+    assert write.path[0] == second
+
+
+def test_a_wrapper_members_use_against_another_parameters_write_is_a_published_obligation(active: _Program) -> None:
+    obligation, = _summary(active, "keep_while_writing").obligations
+    assert (obligation.parameter, obligation.path[0], obligation.written.parameter) == (1, MIRTupleIndex(0), 0)
+
+
+def test_two_members_of_one_tuple_parameter_publish_an_obligation_between_them(active: _Program) -> None:
+    # They are two objects the caller lends at once; a union's two alternatives never are.
+    obligation, = _summary(active, "two_members").obligations
+    assert (obligation.parameter, obligation.written.parameter) == (0, 0)
+    assert (obligation.path[0], obligation.written.path[0]) == (MIRTupleIndex(1), MIRTupleIndex(0))
+    assert not _summary(active, "two_alternatives").obligations
+    tuple_value, union_value = _binding(active, "two_members").value, _binding(active, "two_alternatives").value
+    assert distinct_lent_objects(tuple_value, (MIRTupleIndex(0),), (MIRTupleIndex(1),))
+    assert not distinct_lent_objects(tuple_value, (MIRTupleIndex(1),), (MIRTupleIndex(1),))
+    assert not distinct_lent_objects(union_value, (MIRUnionPayload(0),), (MIRUnionPayload(1),))
+
+
+def test_a_scalar_tuple_parameter_by_reference_is_caller_storage(active: _Program) -> None:
+    slot, = (s for s in _body(active, "pair").slots if s.kind is MIRSlotKind.PARAMETER)
+    assert slot.shape.scalar_members and not slot.shape.scalar_wrapper
+    assert slot.storage_duration is MIRStorageDuration.CALLER
+
+
 def test_an_optional_record_slot_is_mutable_while_its_payload_loan_is_readonly(active: _Program) -> None:
     binding = _binding(active, "maybe")
-    assert binding.readonly and binding.lent_record == value_shape(binding.type.inner, MIRClass.RECORD, access=True,
-                                                                   role=MIRRole.LOAN)
+    assert binding.readonly and binding.lent_object((MIRUnionPayload(1),)) == value_shape(
+        binding.type.inner, MIRClass.RECORD, access=True, role=MIRRole.LOAN)
     slot, = (s for s in _body(active, "maybe").slots if s.kind is MIRSlotKind.PARAMETER)
     assert slot.shape.cls is MIRClass.OPTIONAL and not slot.readonly
     assert _summary(active, "maybe").parameters[0].readonly

@@ -21,12 +21,14 @@ from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dependencies import MIRUnseededLoan, apply_transfers
 from .dump import dump_function
+from .shapes import MIRUnionPayload
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
-    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRPresentCall, MIRRead, MIRSlotKind, present_effects,
+    MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRPresentCall, MIRRead, MIRSlotKind, present_effects,
     statement_call,
 )
 from .lower import lower_function
+from .presence import present_call
 from .value import MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .region_flow import outgoing_edges
@@ -185,6 +187,27 @@ def infeasible_call(xs: list[int32]) -> int32:
     flag: int32 | None = None
     if flag is not None:
         grow(xs)
+    return 0
+
+class Other:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
+
+def union_write(u: Cell | Other | None) -> None:
+    if isinstance(u, Cell):
+        u.value = 7
+
+def union_other(other: Other) -> int32:
+    union_write(other)
+    return other.value
+
+def union_cell(cell: Cell) -> int32:
+    union_write(cell)
+    return cell.value
+
+def union_passed(u: Cell | Other | None) -> int32:
+    union_write(u)
     return 0
 '''
 
@@ -485,6 +508,33 @@ def test_a_call_presence_never_reaches_keeps_its_own_block_facts(artifacts: Arti
     assert called.effects == called.call.summary and len(called.writes) == 1
 
 
+def test_a_union_argument_presence_excludes_drops_the_writes_through_that_alternative(artifacts: Artifacts) -> None:
+    _, workspace, _, _, _ = artifacts
+    # The callee writes through its `Cell` alternative only.
+    write, = workspace.summaries[th.THIRFunctionIdentity("main", "union_write")].summary.writes
+    assert isinstance(write.path[0], MIRUnionPayload)
+    # An `Other` argument excludes the `Cell` alternative: the write reaches nothing.
+    called = _present_call(body_named(workspace, "union_other"))
+    assert called.call.summary.writes and not called.effects.writes and called.writes == ()
+    # A `Cell` argument keeps it; a union parameter passed on has no presence fact and keeps it too.
+    for name in ("union_cell", "union_passed"):
+        called = _present_call(body_named(workspace, name))
+        assert called.effects == called.call.summary and len(called.writes) == 1, name
+
+
+def test_an_empty_or_missing_presence_fact_never_drops_an_effect(artifacts: Artifacts) -> None:
+    _, workspace, _, _, _ = artifacts
+    body = body_named(workspace, "union_cell")
+    slots = {s.id: s for s in body.slots}
+    _, _, call = _call_statement(body)
+    assert present_call(call, frozenset(), slots).effects == call.summary
+    assert present_call(call, frozenset({(MIRPlace(call.arguments[0]), frozenset())}), slots).effects == call.summary
+    cell = next(iter(call.summary.writes)).path[0].alternative
+    others = frozenset(range(len(slots[call.arguments[0]].shape.members))) - {cell}
+    excluded = present_call(call, frozenset({(MIRPlace(call.arguments[0]), others)}), slots)
+    assert not excluded.effects.writes and excluded.writes == ()
+
+
 def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artifacts) -> None:
     _, workspace, _, _, _ = artifacts
     body = body_named(workspace, "absent_write")
@@ -492,10 +542,10 @@ def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artif
     records = body.record_layouts
     _, _, call = _call_statement(body)
     value = th.THIRFieldIdentity("main", "value", call.summary.parameters[0].type)
-    into_absent = MIRLoanTransfer(0, (value,), MIR_STATIC)
-    from_absent = MIRLoanTransfer(MIR_RESULT, (value,), 0)
+    into_absent = MIRLoanTransfer(0, (MIRUnionPayload(1), value), MIR_STATIC)
+    from_absent = MIRLoanTransfer(MIR_RESULT, (value,), 0, (MIRUnionPayload(1), value))
     forged = replace(call, summary=replace(call.summary, transfers=frozenset({into_absent, from_absent})))
-    absent = MIRPresentCall(forged, present_effects(forged.summary, frozenset({0})), ())
+    absent = MIRPresentCall(forged, present_effects(forged.summary, {0: frozenset({1})}), ())
     assert absent.effects.transfers == frozenset()
     state: dict = {}
     apply_transfers(absent, state, slots, records)

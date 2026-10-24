@@ -11,7 +11,8 @@ from .nodes import MIRFunction, MIRNotCovered, MIRPlace, MIRPresentCall, MIRSlot
 from .value import MIRRecords, MIRValidationError
 from .prepare import MIRPrepared, validated_presence
 from .presence import MIREngagement
-from .reach import DistinctExternal, _origin, reaches, replacement_events, storage_exclusions
+from .reach import DistinctExternal, _origin, parameter_object, reaches, replacement_events, storage_exclusions
+from .shapes import distinct_lent_objects
 from .validate import reachable_blocks
 
 
@@ -153,23 +154,26 @@ def alias_obligation(conflict: MIRRetentionConflict, parameters: Mapping[MIRSlot
                      slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRAliasObligation | None:
     """The one classification of a retention conflict as a no-alias
     obligation: one whose written and retained referents are both the
-    caller's storage, reached from two different parameters, exists only
-    when the caller passes arguments that overlap, so each call decides it.
-    A conflict under one parameter, a stored loan (`held`, whose storage
-    has no known place), a global or the body's own storage stays a
-    replacement. A published obligation is still a conflict of the body,
-    of its own kind (`classify_retention`): only callers MIR analyzes
-    check it."""
+    caller's storage, in two objects the parameters lend (two parameters,
+    or two members of one tuple parameter), exists only when the caller
+    passes arguments that overlap, so each call decides it. A conflict
+    inside one lent object, a stored loan (`held`, whose storage has no
+    known place), a global or the body's own storage stays a replacement.
+    A published obligation is still a conflict of the body, of its own
+    kind (`classify_retention`): only callers MIR analyzes check it."""
     written, retained = conflict.affected, conflict.retained
     if not (written.external and retained.external) or written.held or retained.held:
         return None
     if written.static or retained.static:
         return None
-    write_origin, retained_origin = _origin(written.place), _origin(retained.place)
-    if write_origin.projections or retained_origin.projections:
+    j, i = parameters.get(written.place.root), parameters.get(retained.place.root)
+    if i is None or j is None:
         return None
-    j, i = parameters.get(write_origin.root), parameters.get(retained_origin.root)
-    if i is None or j is None or i == j:
+    write_object, retained_object = parameter_object(written.place, slots), parameter_object(retained.place, slots)
+    if write_object is None or retained_object is None:
+        return None
+    if i == j and not (write_object and retained_object and distinct_lent_objects(
+            slots[written.place.root].shape, write_object, retained_object)):
         return None
     retained_path = whole_wrapper_field(retained.place, slots, records).projections
     written_path = whole_wrapper_field(written.place, slots, records).projections

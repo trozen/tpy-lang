@@ -10335,6 +10335,27 @@ The wording follows how the argument the callee still uses relates to the storag
 
 A function passing two of its own parameters (`def f(xs, ys): return bound(xs, 1, ys[0])`) does not decide the question: the obligation becomes its own, checked at its callers (`f(xs, xs)` warns). The check runs only where MIR covers both the callee's summary and the calling body; a call MIR does not analyze is not warned -- a call in a generator, an `async def`, a constructor or at module level among them. An element write warns like any other write: element identity is not tracked, so with `def set_first(xs: list[str], v: str) -> int: xs[0] = "x"; return len(v)` both `set_first(ys, ys[0])` (the same element, a real alias) and `set_first(ys, ys[1])` (another element, valid) warn -- the second is a false positive of the constant-index kind field writes also have. The warning does not change the generated C++: the program still reads the replaced storage at run time (`BUGS.md#borrowed-arg-into-mutated-storage`). The remedy it names follows the argument's type: a value-type argument (`int`, `str`, a view) is copied by binding it to a local first (`v = xs[0]`, then `bound(xs, 1, v)`); a list or a record by `copy()`. For an Optional argument (`clear_read(h.p, h)` with `p: Q | None`) the named `copy(h.p)` does not compile yet (`BUGS.md#optional-member-own-copy-no-render`), so restructure the call instead. The callee's MIR verdict keeps each published precondition as an `alias_obligation` conflict: a caller MIR does not analyze is never checked.
 
+A union, Optional or tuple parameter lends one object per record member, and the check runs per member, so a wrapper argument warns where its scalar twin `scal(h, h.q)` does. The warning names the member's place in the caller:
+
+```python
+def tup(h: H, t: tuple[Q, int32]) -> int32:
+    h.q = Q(5)
+    return t[0].v
+
+tup(h, (h.q, 1))      # warning: argument 'h.q' is what 'tup' modifies through parameter 'h' while it
+                      # still uses 't'; pass a copy bound to a local ('v = copy(h.q)') or ...
+t = (h.q, 1)
+tup(h, t)             # warning: argument 't[0]' is what 'tup' modifies ...; pass a copy bound to a
+                      # local ('v = copy(t[0])', then '(v, t[1])') or ...
+heldunion(u, u)       # u: H | P -- warning: argument 'u' contains 'u.q', which 'heldunion' modifies through
+                      # parameter 'b' while it still uses 'a'; pass a copy bound to a local ('v = copy(u)') or ...
+two((h, h.q))         # def two(t: tuple[H, Q]) writes t[0].q, reads t[1] -- warning: argument 'h.q' is what
+                      # 'two' modifies through parameter 't[0]' while it still uses 't[1]'; pass a copy
+                      # bound to a local ('v = copy(h.q)') or ...
+```
+
+A tuple literal's element is spelled as written (`h.q`), a named tuple's member by its index (`t[0]`), a union's payload as the union name itself (`u`, `u.q`), and two members of one tuple parameter by their indices (`t[0]`, `t[1]`). Two alternatives of one union parameter are never both present, so they never warn against each other. The remedy is judged by the type of the member the callee still uses, not the wrapper's (a tuple is a value type even when it lends a record): a record member takes `copy()`. A tuple or union argument takes no `copy()` call in place -- a tuple element lent out of a temporary and a `copy()` written as a union argument do not compile yet (`BUGS.md#record-field-to-wrapper-parameter-rejects`) -- so the copy is bound to a local first and passed: `v = copy(h.q)`, then `tup(h, (v, 1))`; a named tuple is rebuilt around it (`v = copy(t[0])`, then `(v, t[1])`); a union argument passes it whole (`v = copy(u)`, then `heldunion(v, u)`). An Optional keeps the `copy(o)` spelling above, which does not compile yet in either form (`BUGS.md#optional-member-own-copy-no-render`).
+
 ## Open Questions
 
 1. **Allocation control ergonomics**: `@noalloc` vs `@alloc` vs module-level vs compiler flag?

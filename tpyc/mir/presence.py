@@ -50,14 +50,19 @@ class MIRPresenceIssue:
 
 
 def present_call(call: MIRCall, present: 'Facts', slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPresentCall:
-    """`call` under the selections `present` proves before it: an Optional
-    argument whose only possible alternative is 0 is absent, so its effects
-    are the summary's less what it reaches (`present_effects`), and its
-    writes are those effects' places, resolved once (`call_write_places`)."""
+    """`call` under the selections `present` proves before it: a sum
+    argument's alternatives outside its possible ones (an absent
+    Optional's payload, a narrowed union's other members) lend nothing, so
+    its effects are the summary's less what they reach (`present_effects`),
+    and its writes are those effects' places, resolved once
+    (`call_write_places`). No fact, or an empty one, excludes nothing."""
     facts = dict(present)
-    absent = frozenset(i for i, arg in enumerate(call.arguments)
-                       if slots[arg].shape.cls is MIRClass.OPTIONAL and facts.get(MIRPlace(arg)) == frozenset({0}))
-    effects = present_effects(call.summary, absent)
+    excluded: dict[int, frozenset[int]] = {}
+    for i, arg in enumerate(call.arguments):
+        possible = facts.get(MIRPlace(arg))
+        if slots[arg].shape.cls in SUM_CLASSES and possible:
+            excluded[i] = frozenset(range(len(slots[arg].shape.members))) - possible
+    effects = present_effects(call.summary, excluded)
     return MIRPresentCall(call, effects, call_write_places(call, effects, slots))
 
 
@@ -221,7 +226,7 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
         # A wrapper field written whole selects what its value selects.
         if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRWrap, MIRCopy))
                 and slots is not None
-                and place_shape(place, slots, layouts).cls is MIRClass.OPTIONAL):
+                and place_shape(place, slots, layouts).cls in SUM_CLASSES):
             known = (frozenset({stmt.value.alternative}) if isinstance(stmt.value, MIRWrap)
                      else dict(state.present).get(stmt.value.source))
             if known is not None:

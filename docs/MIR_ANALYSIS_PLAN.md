@@ -3563,7 +3563,8 @@ and setter and `getter_through_field`; `mir/method_calls`
   at its access, and the call binds at the member's own record
   (`via_member`: an inherited method called on a `Sub` member). Reseats,
   aliases and wrapper captures keep needing a name (`reference_name`).
-- **Parameter paths** (`call_contract.py`). A `MIRParameterPath` is one or
+- **Parameter paths** (`call_contract.py`). A `MIRParameterPath` is (under a
+  wrapper parameter, after its member selector: "Wrapper parameters" below) one or
   more fields through inline record members, then at most one container
   projection. `path_walk` walks its fields with the one place walk
   (`shapes.walk`, from the object `path_projections` names): hop 0 reads
@@ -4326,21 +4327,12 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   shape, its payload member the record it borrows at the access THIR
   published; `parameter_contract_problem` checks the value's form, so the
   payload is never more mutable than declared.
-- **Origin.** The payload record an Optional parameter lends names the
-  parameter itself outside the body (`reach.origin`, keyed
-  like a borrowed record parameter's in `object_keys`), so writes under the
-  payload, stored loans (`_transfers`) and alias obligations read it like a
-  borrowed record parameter; the object it names is the payload record
-  (the same `origin`), so retention types it as that record. A
-  store under any other non-owned root keeps the summary opaque ("summary
-  store under an unmodeled holder").
-- **Summary paths** carry no payload step: a path under an Optional
-  parameter is the path under its payload record, and `nodes.call_place`
-  adds the payload record prefix (`object_prefix(..., payload=True)`)
-  back at each call, for a pointer payload only (a scalar payload has no
-  place under it). Presence
-  tests, Optional copies and constructs on the parameter's holder slot are
-  accepted where the field forms are (`summaries._optional_place`).
+- **Origin and summary paths.** An Optional parameter is the one-member
+  case of the wrapper rule (next section): its payload record is the one
+  object it lends, its own origin at the payload selector, and a summary
+  path under it starts with that selector (`[payload]`, dumped
+  `.alternative[1]`). A store under any other non-owned root keeps the
+  summary opaque ("summary store under an unmodeled holder").
 - **Callers.** Free-function, method and constructor calls bind the argument
   through the one `_Lowering.optional_operand`: null, `&name`, `optional_to_ptr(field)`, an argument
   temporary, an Optional holder, a narrowed name (a narrowed Optional name is
@@ -4361,6 +4353,73 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   modeled (`str | None`, containers, `Own[P | None]`, BigInt `int | None`);
   payloads holding a loan ("wrapper holds a borrow"). TODO.md MIR entry,
   "Left by the Optional-parameters unit".
+
+#### Wrapper parameters: one object per pointer member
+
+Optional, union and tuple parameters follow one rule: a parameter lends
+one object per pointer member of its value shape, and a summary path names
+the member it goes through. Analysis only: generated C++ is unchanged.
+Pinned by `tests/cases/mir/wrapper_summaries`.
+
+```python
+def write_uni(u: P | Q) -> None:          # summary KNOWN: writes p0.alternative[0].P::v
+    if isinstance(u, P):
+        u.v = 5
+def write_tup(t: tuple[P, int32]) -> None:  # summary KNOWN: writes p0[0].P::v
+    t[0].v = 7
+def tup(h: H, t: tuple[Q, int32]) -> int32:  # conflict: alias_obligation
+    h.q = Q(5)
+    return t[0].v
+tup(h, (h.q, 1))   # warning: argument 'h.q' is what 'tup' modifies through parameter 'h'
+                   # while it still uses 't'; pass a copy bound to a local ('v = copy(h.q)') or ...
+```
+
+- **Summary-path grammar.** A path under a wrapper parameter starts with
+  the member selector (`MIRUnionPayload(k)` -- an Optional's payload is
+  `k = 1` --, `MIRTupleIndex(i)`), then the fields and at most one
+  container projection of the record path grammar above. A selector alone
+  names the whole object behind that member, as `()` names a record
+  parameter's object. Paths and resolved referents carry no dereference:
+  `shapes.object_path` (read through `call_contract.path_projections`,
+  inverted by `summary_path`) is the one translation to a body place,
+  inserting a dereference after the root and after each selector that
+  reaches a pointer member -- never after a field hop.
+- **Per-member objects.** `shapes.lent_members` (over the one member
+  enumeration `wrapper_members`, which the dependency leaves also read)
+  lists the pointer members; each is its own origin outside the body
+  (`reach.parameter_objects`, keyed per member in `object_keys` and the
+  storage oracle), so writes, stored loans, return origins and no-alias
+  obligations name the member. `MIRParameterBinding.lent_members` carries
+  each member's access (a `tuple[readonly[Cell], Cell]` lends one readonly
+  and one mutable object); `binding.readonly` is "every lent member
+  readonly". Two members of one tuple parameter are two objects lent at
+  once (`shapes.distinct_lent_objects`): a conflict between them is a
+  published obligation like one between two parameters; two alternatives
+  of one sum never coexist, so a conflict between them stays the body's.
+  `reach.parameter_object` and `MIRParameterBinding.object_selector` are
+  the one answer to "which lent object does this place / path start in".
+- **Obligations.** `retention.alias_obligation` publishes for a member
+  origin, so a call whose wrapper argument's member overlaps what another
+  parameter writes warns exactly where its scalar twin does. The warning
+  spells the member's caller place: a tuple literal's element (`h.q`), a
+  named tuple's element (`t[0]`), a union name (`u`; a sum payload has no
+  Python token), two members of one tuple by their indices (`t[0]`,
+  `t[1]`), and judges the remedy by the lent member's type (a tuple is a
+  value type even when it lends a record: a copy, never "bind it to a
+  local"); a tuple or union argument takes no `copy()` call in place, so
+  the copy is bound to a local first (`v = copy(h.q)`), and a named tuple
+  is rebuilt around it (`(v, t[1])`).
+- **Callers.** A union argument goes through `union_source` against the
+  parameter's value shape (`None`, a record source in place through
+  `aggregate_source` -- a name, `self`, a member, a borrowed call result --,
+  a union name), a tuple argument through `tuple_expr`, into the call
+  temporary `optional_operand` shares (`argument_holder`). Presence drops an
+  effect whose first selector names an alternative it excludes
+  (`presence.present_call`): an absent Optional and a narrowed union alike.
+- **Kept.** Wrapper fields and returns, temporary-bearing union lifts
+  (`read(P(1))`), scalar union literal arguments, tuple call-result
+  arguments, owned tuple temporaries, `Own[...]` and owned-leaf members:
+  TODO.md "[MIR] FIRST", the unit-4 filed list.
 
 #### Argument-alias obligations: the first MIR diagnostic
 
@@ -4507,7 +4566,7 @@ answered once:
 | may a published return end there | `return_endpoint_problem`, read by the summary and by each caller (`dependencies.call_return_problem`): no region, never at or under an Optional record field's payload, a view of a leaf or a place of exactly the result's type |
 | does a write at this end replace storage | `shapes.replacement_reach` (storage, retention, line facts, the write endpoint) |
 | what a call writes | `MIRPresentCall` per call point (`presence.present_call`): effects less what an argument proven absent reaches, and their places resolved once |
-| what a parameter lends | `reach.origin`: the place (a Span's elements region; an Optional record parameter's payload named by the parameter) and the shape its paths step from |
+| what a parameter lends | `reach.origin`: the place (a Span's elements region; a wrapper parameter's pointer member at its selector, one object each) and the shape its paths step from |
 | does replacing this storage reach that storage | `reach.reaches` on referents (retention, scope_lifetime, the presence field kill), across distinct external origins each pass's oracle beside the other in reach.py (`storage_exclusions`, `declared_containment`) |
 
 So `bump_all(ps: list[P])` writing `p.x` in `for p in ps` publishes

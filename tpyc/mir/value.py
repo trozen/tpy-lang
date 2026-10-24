@@ -205,12 +205,24 @@ class MIRShape:
     @property
     def record_payload(self) -> bool:
         """An Optional whose payload is a pointer at a record."""
-        return self.cls is MIRClass.OPTIONAL and lent_record(self) is not None
+        return self.cls is MIRClass.OPTIONAL and self.payload is not None and self.payload.borrowed_record
 
     @property
     def scalar_wrapper(self) -> bool:
-        """An Optional or a union whose every payload is an inert leaf by value."""
-        return self.cls in SUM_CLASSES and all(m is None or m.scalar_by_value for m in self.members)
+        """An Optional or a union whose every payload is an inert leaf by
+        value (`scalar_members`): its payload is written in place, an
+        activation scope lifetime tracks, so a holder of one is scoped storage.
+        A scalar tuple is built whole (`MIRTupleConstruct`) and has no such
+        event."""
+        return self.cls in SUM_CLASSES and self.scalar_members
+
+    @property
+    def scalar_members(self) -> bool:
+        """A wrapper whose every member is an inert leaf by value, or absent:
+        passed by reference, the caller's storage for the call
+        (`caller_storage`) -- which a temporary of the call's full expression
+        is, scoped or not."""
+        return self.cls in WRAPPER_CLASSES and all(m is None or m.scalar_by_value for m in self.members)
 
     @property
     def form(self) -> Form:
@@ -226,11 +238,9 @@ class MIRShape:
 
 def lent_record(shape: MIRShape) -> MIRShape | None:
     """The pointer at the record a holder of `shape` lends: a record
-    pointer itself, an Optional's pointer payload; else None (an inline
-    payload is its holder's own storage, a scalar lends nothing)."""
-    if shape.cls is MIRClass.OPTIONAL:
-        shape = shape.payload
-    return shape if shape is not None and shape.borrowed_record else None
+    pointer itself; else None (a wrapper lends one object per pointer
+    member, `shapes.lent_members`; a scalar lends nothing)."""
+    return shape if shape.borrowed_record else None
 
 
 _STORAGE_CLASSES = frozenset({MIRClass.OWNED_LEAF, MIRClass.RECORD, MIRClass.CONTAINER})
@@ -770,6 +780,28 @@ def member_compatible(source: MIRShape, target: MIRShape) -> bool:
     the same way, never gaining access."""
     return (source.type == target.type and source.cls is target.cls and source.holding is target.holding
             and source.members == target.members and (not source.readonly or target.readonly))
+
+
+def caller_storage(shape: MIRShape, representation: Representation) -> bool:
+    """Whether a parameter of `shape` at `representation` is the caller's
+    storage, living for the call: a scalar wrapper passed by reference."""
+    return shape.scalar_members and representation is Representation.REFERENCE
+
+
+def member_binds(source: MIRShape, target: MIRShape) -> bool:
+    """Whether a wrapper member of shape `source` binds a holder member of
+    shape `target` (`member_compatible`): a holder takes the source's loan,
+    or lends an inline source member at the access of the place it lies in."""
+    return member_compatible(holder_form(source) if source.is_storage else source, target)
+
+
+def wrapper_compatible(source: MIRShape, target: MIRShape) -> bool:
+    """Whether a wrapper of shape `source` binds one of shape `target` with
+    no storage member of its own (a call's argument): the same class, the
+    same absent alternatives, each other member bound (`member_binds`)."""
+    return (source.cls is target.cls and source.cls in WRAPPER_CLASSES and len(source.members) == len(target.members)
+            and all(s is d if s is None or d is None else not d.is_storage and member_binds(s, d)
+                    for s, d in zip(source.members, target.members)))
 
 
 def shape_problem(shape: MIRShape, declared: TpyType, position: MIRPosition = MIRPosition.SLOT,

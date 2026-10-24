@@ -742,7 +742,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 if member.loc is None:
                     continue
                 lines.add(member.loc.line)
-                spelled = _spell(MIRPlace(receiver.id, (*object_prefix(receiver.shape, payload=False), field)), named)
+                spelled = _spell(MIRPlace(receiver.id, (*object_prefix(receiver.shape), field)), named)
                 kind = (MIRWriteKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR
                         else MIRWriteKind.BORROWED if member.mode is MIRMemberInitMode.BORROW
                         else MIRWriteKind.OWNED)
@@ -766,7 +766,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                     leaves.setdefault(_spell(leaf, named), []).append(leaf)
             if slot.shape.borrowed_aggregate:
                 for member in view_members(layouts.get(slot.type)):
-                    place = MIRPlace(slot.id, (*object_prefix(slot.shape, payload=False), member))
+                    place = MIRPlace(slot.id, (*object_prefix(slot.shape), member))
                     members[_spell(place, named)] = place
         for (line, block_id), index in last.items():
             state = dependencies.referents.get(MIRPoint(block_id, index + 1))

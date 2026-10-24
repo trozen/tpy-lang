@@ -774,14 +774,19 @@ def test_an_optional_record_parameter_returns_inside_its_payload(program: _Progr
     assert result.state is MIRSummaryState.KNOWN, result.reason
     box = fn.params[0].optional_layout.payload.type
     inner = th.THIRFieldIdentity(box, "inner", unwrap_ref_type(fn.params[1].type))
-    assert result.summary.returns == {MIRReturnOrigin(0, (inner,)), MIRReturnOrigin(1)}
+    # The path names the payload it lies in.
+    assert result.summary.returns == {MIRReturnOrigin(0, (MIRUnionPayload(1), inner)), MIRReturnOrigin(1)}
     parameters, borrowed = result.summary.parameters, call_result(fn.resolved_callee, False)
     layouts = program.definitions.layouts
-    assert return_origin_problem(MIRReturnOrigin(0, (inner,)), borrowed, parameters, layouts) is None
-    # The empty path is the payload record itself: an `Inner` result never reaches it.
-    assert return_origin_problem(MIRReturnOrigin(0), borrowed, parameters, layouts) == (
+    assert return_origin_problem(MIRReturnOrigin(0, (MIRUnionPayload(1), inner)), borrowed, parameters,
+                                 layouts) is None
+    # The selector alone is the payload record itself: an `Inner` result never reaches it.
+    whole = MIRReturnOrigin(0, (MIRUnionPayload(1),))
+    assert return_origin_problem(whole, borrowed, parameters, layouts) == "unsupported return origin type or access"
+    assert return_origin_problem(whole, th.THIRBorrowedRecord(box, True), parameters, layouts) is None
+    # The empty path is the wrapper, which lends nothing itself.
+    assert return_origin_problem(MIRReturnOrigin(0), th.THIRBorrowedRecord(box, True), parameters, layouts) == (
         "unsupported return origin type or access")
-    assert return_origin_problem(MIRReturnOrigin(0), th.THIRBorrowedRecord(box, True), parameters, layouts) is None
     # A field outside the payload's layout keeps the summary opaque.
     body, declaration = program.workspace.definitions[fn.resolved_callee.identity]
     lowered = workspace_functions(program.workspace)[body]

@@ -28,11 +28,11 @@ from .value import (
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
-    walk, object_prefix, optional_payload,
+    object_prefix, optional_payload, wrapper_members,
 )
 from .validate import successors
 from .presence import MIRPresence
-from .reach import MIRReferent, _parameter_lent_record, origin
+from .reach import MIRReferent, origin, parameter_objects, referent_walk
 from .region_flow import MIRRegionFlow, outgoing_edges
 
 
@@ -114,15 +114,10 @@ def wrapper_leaves(place: MIRPlace, shape: MIRShape) -> tuple[MIRPlace, ...]:
     """The dependency leaves of a wrapper at `place`: its members that are
     holders themselves (a pointer at a record); an inert leaf or inline
     storage holds no loan."""
-    def under(projection: MIRTupleIndex | MIRUnionPayload) -> MIRPlace:
-        return MIRPlace(place.root, (*place.projections, projection))
-    match shape.cls:
-        case MIRClass.TUPLE:
-            return tuple(under(MIRTupleIndex(i)) for i, m in enumerate(shape.elements) if m.is_holder)
-        case MIRClass.OPTIONAL | MIRClass.UNION:
-            return tuple(under(MIRUnionPayload(i)) for i, m in enumerate(shape.alternatives)
-                         if m is not None and m.is_holder)
-    raise MIRValidationError("unknown wrapper layout")
+    if shape.cls not in WRAPPER_CLASSES:
+        raise MIRValidationError("unknown wrapper layout")
+    return tuple(MIRPlace(place.root, (*place.projections, selector))
+                 for selector, m in wrapper_members(shape) if m.is_holder)
 
 
 def _leaves(slot: MIRSlot, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
@@ -150,14 +145,10 @@ def object_keys(slot: MIRSlot, layouts: Mapping[TpyType, MIRRecordLayout]) -> tu
     (the caller's object), one per view member, keyed at the member place --
     through inline record members, whose layouts come with the record's."""
     if slot.shape.is_storage and slot.shape.cls is MIRClass.RECORD:
-        record = slot.type
-    elif (lent := _parameter_lent_record(slot)) is not None:
-        # An Optional parameter's payload record is keyed at the parameter,
-        # as a borrowed record parameter's is (`origin`).
-        record = lent.type
-    else:
-        return ()
-    return _member_keys(MIRPlace(slot.id), layouts.get(record), layouts)
+        return _member_keys(MIRPlace(slot.id), layouts.get(slot.type), layouts)
+    # Each object a parameter lends is keyed at its origin (`origin`).
+    return tuple(key for prefix, lent in parameter_objects(slot)
+                 for key in _member_keys(MIRPlace(slot.id, prefix), layouts.get(lent.type), layouts))
 
 
 def _member_keys(place: MIRPlace, layout: MIRRecordLayout | None,
@@ -293,14 +284,21 @@ def _project(refs: frozenset[MIRReferent],
 
 def whole_wrapper_field(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRPlace:
     """An external referent's place under an Optional record field's
-    payload, published as the whole field: summary paths have no payload
-    selector, and replacing the field reaches everything a payload write
-    does."""
+    payload, published as the whole field: a summary path selects no
+    inline field payload, and replacing the field reaches everything a
+    payload write does. A wrapper member's selector after the root is the
+    object the parameter lends, kept."""
     if not any(isinstance(projection, MIRUnionPayload) for projection in place.projections):
         return place
-    for index, hop in enumerate(walk(origin(MIRPlace(place.root), slots).shape, place.projections, records).hops):
-        if optional_payload(hop.holder.cls, hop.projection):
+    index = 0
+    previous: object = None
+    for hop in referent_walk(place, slots, records).hops:
+        if isinstance(hop.projection, MIRDeref):
+            continue
+        if isinstance(previous, MIRField) and optional_payload(hop.holder.cls, hop.projection):
             return MIRPlace(place.root, place.projections[:index])
+        previous = hop.projection
+        index += 1
     return place
 
 
@@ -425,7 +423,7 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
             filled = {}
             for key, path in keys.items():
                 operand, rest = operands[path[0]], path[1:]
-                through = object_prefix(slots[operand].shape, payload=False) if rest else ()
+                through = object_prefix(slots[operand].shape) if rest else ()
                 filled[key] = (resolve_referents(MIRPlace(operand, (*through, *rest)), state, slots, layouts) if rest
                                else state.get(MIRPlace(operand), empty))
             return filled

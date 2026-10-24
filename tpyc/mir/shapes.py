@@ -180,16 +180,108 @@ def walk(shape: MIRShape, projections: tuple[Projection, ...], records: MIRRecor
     return MIRWalk(shape, tuple(hops))
 
 
-def object_prefix(shape: MIRShape, *, payload: bool) -> tuple[Projection, ...]:
+def object_prefix(shape: MIRShape) -> tuple[Projection, ...]:
     """The projections from a value of `shape` to the object it holds: the
-    dereference of a pointer; with `payload`, the record an Optional
-    record's payload points at; nothing for storage or a value held in
-    place."""
+    dereference of a pointer; nothing for storage or a value held in
+    place (a wrapper's members are its own: `lent_prefix`)."""
     if shape.is_pointer:
         return (MIRDeref(),)
-    if payload and shape.record_payload:
-        return (OPTIONAL_PAYLOAD, MIRDeref())
     return ()
+
+
+# The steps that select a wrapper's member: a tuple's element, a sum's alternative.
+SELECTORS = (MIRTupleIndex, MIRUnionPayload)
+
+
+def wrapper_members(shape: MIRShape) -> tuple[tuple[MIRTupleIndex | MIRUnionPayload, MIRShape], ...]:
+    """The present members of a wrapper, each with the selector reaching
+    it (a tuple's element, a sum's alternative); nothing for any other
+    value or an absent alternative."""
+    match shape.cls:
+        case MIRClass.TUPLE:
+            selector: type[MIRTupleIndex] | type[MIRUnionPayload] = MIRTupleIndex
+        case MIRClass.OPTIONAL | MIRClass.UNION:
+            selector = MIRUnionPayload
+        case _:
+            return ()
+    return tuple((selector(i), m) for i, m in enumerate(shape.members) if m is not None)
+
+
+def lent_members(shape: MIRShape) -> tuple[tuple[MIRTupleIndex | MIRUnionPayload, MIRShape], ...]:
+    """The pointer members of a wrapper, each with the selector reaching it:
+    the objects a holder of `shape` lends, one per member (an Optional
+    record's is its payload). Nothing for any other value."""
+    return tuple((s, m) for s, m in wrapper_members(shape) if m.is_pointer)
+
+
+def lent_member(shape: MIRShape, selector: object) -> MIRShape | None:
+    """The pointer member `selector` reaches in a wrapper of `shape`, else None."""
+    return dict(lent_members(shape)).get(selector)
+
+
+def object_selector(shape: MIRShape, steps: tuple[object, ...]) -> tuple[object, ...] | None:
+    """The leading step of a path under a holder of `shape` (a summary
+    path, or a referent's place past its root; neither carries a
+    dereference) that names the object the path lies in: a lent member's
+    selector for a wrapper lending members, nothing for any other holder
+    (its own object). None for a path under such a wrapper that enters no
+    lent member."""
+    if not lent_members(shape):
+        return ()
+    return steps[:1] if steps and lent_member(shape, steps[0]) is not None else None
+
+
+def distinct_lent_objects(shape: MIRShape, first: tuple[object, ...], second: tuple[object, ...]) -> bool:
+    """Whether two paths under a holder of `shape` start in two objects it
+    lends at once: two pointer members of a tuple. A sum's alternatives are
+    never present together, and any other holder lends one object."""
+    return (shape.cls is MIRClass.TUPLE and bool(first) and bool(second) and first[0] != second[0]
+            and lent_member(shape, first[0]) is not None and lent_member(shape, second[0]) is not None)
+
+
+def lent_prefix(shape: MIRShape, projections: tuple[Projection, ...]) -> tuple[Projection, ...] | None:
+    """The leading projections of a place rooted at a value of `shape` that
+    reach the object the value lends: a pointer's dereference, or a
+    wrapper's selector of a pointer member and its dereference. None when
+    the place does not reach through one."""
+    prefix = object_prefix(shape)
+    if not prefix and projections and lent_member(shape, projections[0]) is not None:
+        prefix = (projections[0], MIRDeref())
+    return prefix if prefix and projections[:len(prefix)] == prefix else None
+
+
+def sole_object(shape: MIRShape) -> tuple[Projection, ...]:
+    """The projections to the one object a holder of `shape` lends (a
+    pointer's pointee, a wrapper's only pointer member's, `object_path`),
+    nothing when it lends none or several."""
+    members = lent_members(shape)
+    if shape.is_pointer or len(members) != 1:
+        return object_prefix(shape)
+    return object_path(shape, (members[0][0],))
+
+
+def object_path(shape: MIRShape, path: tuple[Projection, ...]) -> tuple[Projection, ...]:
+    """A summary path's projections as a body place under a value of
+    `shape` -- the one translation between the two: a dereference after
+    the root and after each selector that reaches a pointer member, never
+    after a field (an inline member is its holder's storage; a view member
+    is read whole). Summary paths and referents carry no dereference
+    (`summary_path` drops them)."""
+    out: list[Projection] = []
+    current: MIRShape | None = shape
+    if shape.is_pointer:
+        out.append(MIRDeref())
+        current = replace(shape, holding=MIRHolding.VALUE)
+    for projection in path:
+        out.append(projection)
+        if current is not None and isinstance(projection, SELECTORS):
+            current = step(current, projection, {})
+            if current.is_pointer:
+                out.append(MIRDeref())
+                current = replace(current, holding=MIRHolding.VALUE)
+        else:
+            current = None
+    return tuple(out)
 
 
 def store_problem(walked: MIRWalk) -> str | None:

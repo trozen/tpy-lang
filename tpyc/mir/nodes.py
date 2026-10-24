@@ -8,11 +8,10 @@ from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
-from ..thir.scalar_leaves import MIRClass
 from ..typesys import Representation, TpyType
 from .call_contract import MIRCallSummary, MIRGlobalId, MIRParameterBinding, path_projections
 from .shapes import (
-    MIRWalk, Projection, object_prefix, walk, walk_to,
+    MIRUnionPayload, MIRWalk, Projection, lent_prefix, walk, walk_to,
 )
 from .value import (
     NO_FIELDS, MIRField, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError, RecordFields, loan_field,
@@ -146,15 +145,12 @@ def view_member(place: MIRPlace) -> MIRField | None:
     return last if isinstance(last, MIRField) and loan_field(last.type) else None
 
 
-def under_object(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], *,
-                 payload: bool) -> tuple[Projection, ...] | None:
-    """The projections of `place` under the object its root slot holds
-    behind a pointer or an Optional record's payload (`object_prefix`), or
+def under_object(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[Projection, ...] | None:
+    """The projections of `place` under the object its root slot lends --
+    behind a pointer or a wrapper's pointer member (`lent_prefix`) -- or
     None when the place does not reach through one."""
-    prefix = object_prefix(slots[place.root].shape, payload=payload)
-    if prefix and place.projections[:len(prefix)] == prefix:
-        return place.projections[len(prefix):]
-    return None
+    prefix = lent_prefix(slots[place.root].shape, place.projections)
+    return None if prefix is None else place.projections[len(prefix):]
 
 
 @dataclass(frozen=True)
@@ -192,32 +188,35 @@ class MIRPresentCall:
     writes: tuple['MIRPlace', ...]
 
 
-def present_effects(summary: MIRCallSummary, absent: frozenset[int]) -> MIRCallSummary:
-    """A call's summary as the caller sees it: an argument presence proves
-    an empty Optional (`absent`, `presence.present_call`) reaches no caller
-    storage, so no write, stored loan, return origin or no-alias obligation
-    through it names any."""
-    if not absent:
+def present_effects(summary: MIRCallSummary, excluded: Mapping[int, frozenset[int]]) -> MIRCallSummary:
+    """A call's summary as the caller sees it: a sum argument's alternative
+    presence proves unselected (`excluded`, by parameter,
+    `presence.present_call`) lends no caller object, so no write, stored
+    loan, return origin or no-alias obligation through it -- a path whose
+    first selector names it -- names any."""
+    if not excluded:
         return summary
+
+    def live(parameter: object, path: tuple[object, ...]) -> bool:
+        return not (path and isinstance(path[0], MIRUnionPayload)
+                    and path[0].alternative in excluded.get(parameter, frozenset()))
     return replace(
         summary,
-        writes=frozenset(w for w in summary.writes if w.parameter not in absent),
-        returns=frozenset(o for o in summary.returns if o.parameter not in absent),
-        transfers=frozenset(t for t in summary.transfers if t.holder not in absent and t.source not in absent),
+        writes=frozenset(w for w in summary.writes if live(w.parameter, w.path)),
+        returns=frozenset(o for o in summary.returns if live(o.parameter, o.path)),
+        transfers=frozenset(t for t in summary.transfers
+                            if live(t.holder, t.path) and live(t.source, t.source_path)),
         obligations=frozenset(o for o in summary.obligations
-                              if o.parameter not in absent and o.written.parameter not in absent))
+                              if live(o.parameter, o.path) and live(o.written.parameter, o.written.path)))
 
 
 def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
                slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
     """The caller's place a summary's parameter path names: under the
-    record a borrowed record argument points at, or directly under a
-    container argument (owned, borrowed, or a view)."""
+    record a borrowed record argument points at, under the member a
+    wrapper argument's path selects, or directly under a container argument
+    (owned, borrowed, or a view)."""
     argument = slots[call.arguments[parameter]]
-    # An Optional argument lends the record its payload points at; a
-    # scalar payload is the callee's own copy, under which no path lies.
-    if argument.shape.cls is MIRClass.OPTIONAL and not argument.shape.record_payload:
-        raise MIRValidationError("call path under an Optional argument with no borrowed payload")
     return MIRPlace(argument.id, path_projections(argument.shape, path))
 
 

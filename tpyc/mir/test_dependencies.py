@@ -375,7 +375,7 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
         bad = bind_parameters(replace(bodies["record_union"], slots=tuple(
             replace(s, storage_duration=MIRStorageDuration.CALLER) if s.id == parameter.id else s
             for s in bodies["record_union"].slots)))
-        with pytest.raises(MIRValidationError, match="caller duration requires borrowed scalar"):
+        with pytest.raises(MIRValidationError, match="invalid storage duration fact"):
             validate_function(bad)
         assert all(s.storage_duration is None for fn in bodies.values() for s in fn.slots
                    if s.shape.holding is MIRHolding.POINTER)

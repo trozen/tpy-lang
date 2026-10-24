@@ -150,7 +150,7 @@ int32_t call_none(std::vector<int32_t>& xs) {
 
 // # caller: the result borrows the present payload's list or the fallback; with None, only the fallback
 // def call_items(o: P | None, xs: list[int32]) -> int32:  # tpyc: mir(covered)
-//     r = items_or(o, xs)  # tpyc: mir_borrows(r, o.items|xs)
+//     r = items_or(o, xs)  # tpyc: mir_borrows(r, o[payload].items|xs)
 //     s = items_or(None, xs)  # tpyc: mir_borrows(s, xs)
 //     return len(r) * 10 + len(s)
 int32_t call_items(P* o, std::vector<int32_t>& xs) {

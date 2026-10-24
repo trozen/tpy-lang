@@ -15,7 +15,7 @@ from .call_contract import (
 )
 from .call_effects import resolve_call_writes
 from .shapes import (
-    REGION_STEPS, MIRDeref, MIRContainerElements, object_prefix, optional_payload,
+    REGION_STEPS, SELECTORS, MIRDeref, MIRContainerElements, object_prefix,
 )
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
@@ -24,16 +24,17 @@ from .dependencies import (
 )
 from .prepare import MIRPrepared, validated_presence
 from .retention import alias_obligation, analyze_retention, parameter_indices
+from .reach import parameter_objects
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
     MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
     MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
     MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk, under_object, view_member, MIRWrap, MIRIsAlternative,
-    place_shape,
+    place_shape, MIRTupleConstruct, MIRUnionExtract,
 )
 from .value import (
-    AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRRecords, MIRShape, MIRValidationError, lent_record,
-    WRAPPER_CLASSES,
+    AGGREGATE_CLASSES, CONTAINER_CLASSES, SUM_CLASSES, MIRField, MIRHolding, MIRRecords, MIRShape,
+    MIRValidationError, lent_record, WRAPPER_CLASSES,
 )
 from .validate import owned_leaf_place_type, statement_reads
 
@@ -90,7 +91,7 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
                     elif stmt.target.root in records:
                         foreign.add(stmt.target.root)
                 # A sum's or a tuple's copy is no use of its own (the summary
-                # admits only an Optional's, under `_optional_place`).
+                # admits a whole wrapper's, under `_wrapper_place`).
                 wrapper_copy = (isinstance(stmt.value, MIRCopy)
                                 and place_shape(stmt.target, slots, body.record_layouts).cls in WRAPPER_CLASSES)
                 match stmt.value:
@@ -139,6 +140,26 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     return frozenset((handed_over - excluded) | (records - handed_over - foreign))
 
 
+def _member_records(shape: MIRShape) -> tuple[TpyType, ...] | None:
+    """The records whose definitions a summary of a body holding a value
+    of `shape` (a slot's, or a wrapper's member) needs verified; None for
+    a value no summary admits. A scalar, a view of owned-leaf storage and
+    an owned leaf's storage (private to the body) hold none; a holder of a
+    record its record; whatever holds a container (a pointer at it, a view,
+    a cursor) its record elements, destroyed and copied by the container
+    itself. Inline aggregate storage is admitted by its slot
+    (`_private_records`), not here."""
+    if shape.is_scalar or shape.cls is MIRClass.LEAF and shape.holding is MIRHolding.ALIAS:
+        return ()
+    if shape.cls in CONTAINER_CLASSES:
+        return tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
+    if shape.view_holder or shape.leaf_storage:
+        return ()
+    if shape.is_pointer:
+        return (shape.type,)
+    return None
+
+
 def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
                   records: MIRRecords) -> MIRShape | None:
     """What `source` reaches under storage the summary accounts for -- past
@@ -147,7 +168,7 @@ def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: fr
     `shapes.step` takes (a payload selection is the presence proof's), or
     None when it lies under neither or ends at a container's structure.
     The end is the caller's to classify."""
-    steps = under_object(source, slots, payload=True)
+    steps = under_object(source, slots)
     if steps is None and source.root in private:
         steps = source.projections
     if not steps:
@@ -172,10 +193,9 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
         holder: int | MIRResultHolder
         if store.result:
             holder = MIR_RESULT
-        elif (lent_record(slots[store.key.root].shape) is not None
-              or slots[store.key.root].shape.cls is MIRClass.OPTIONAL):
-            # A lent record parameter's object, or the payload record an
-            # Optional parameter lends (`object_keys`).
+        elif parameter_objects(slots[store.key.root]):
+            # An object a parameter lends: a borrowed record's, or a
+            # wrapper member's (`object_keys`).
             holder = parameters[store.key.root]
         elif not slots[store.key.root].shape.is_storage:
             return "summary store under an unmodeled holder"
@@ -215,15 +235,15 @@ def _aggregate_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private:
     return end is not None and end.cls in AGGREGATE_CLASSES
 
 
-def _optional_place(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
-                    records: MIRRecords) -> bool:
-    """Whether `place` is a whole Optional: a holder slot, or an Optional
-    record field of storage the summary accounts for (`_member_chain`):
+def _wrapper_place(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId],
+                   records: MIRRecords, classes: frozenset[MIRClass] = WRAPPER_CLASSES) -> bool:
+    """Whether `place` is a whole wrapper of one of `classes`: a slot, or
+    a wrapper field of storage the summary accounts for (`_member_chain`):
     replaced, tested or copied."""
     if not place.projections:
-        return slots[place.root].shape.cls is MIRClass.OPTIONAL
+        return slots[place.root].shape.cls in classes
     end = _member_chain(place, slots, private, records)
-    return end is not None and end.cls is MIRClass.OPTIONAL
+    return end is not None and end.cls in classes
 
 
 def _container_access(source: MIRPlace, target: MIRSlot, slots: dict[MIRSlotId, MIRSlot],
@@ -313,11 +333,8 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
         if slot.kind is MIRSlotKind.GLOBAL:
             # A handle the body only reads; a write refuses at its statement.
             global_reads.add(slot.global_id)
-        records: tuple[TpyType, ...] = ()
         shape = slot.shape
-        if slot.shape.is_scalar:
-            pass
-        elif shape.is_storage and shape.cls in AGGREGATE_CLASSES:
+        if shape.is_storage and shape.cls in AGGREGATE_CLASSES:
             if slot.id not in private_records():
                 return MIRSummaryResult.opaque("summary storage or value shape")
             # Storage private to the body (`_private_records`): whoever
@@ -325,26 +342,14 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
             # to, or the caller it is returned to -- runs no hook, so its
             # definition (a container's: its record elements') must be
             # hook-free.
-            records = (slot.type,)
-        elif shape.cls in CONTAINER_CLASSES:
-            # Whatever else holds a container (a pointer at it, a
-            # view, a cursor): a record element is destroyed and copied by
-            # the container itself.
-            records = tuple(m.type for m in shape.members if m.cls is MIRClass.RECORD)
-        elif slot.shape.view_holder:
-            # A view holds a loan on owned-leaf storage.
-            pass
-        elif shape.is_pointer:
-            records = (slot.type,)
-        elif slot.shape.leaf_storage:
-            # An owned leaf's storage is private to the body: nothing of the caller's.
-            pass
-        elif shape.cls is MIRClass.OPTIONAL and shape.payload.scalar_by_value:
-            pass
-        elif slot.shape.record_payload:
-            # A holder of a record: the record a borrowed holder points at.
-            records = (lent_record(shape).type,)
+            records: tuple[TpyType, ...] | None = (slot.type,)
+        elif shape.cls in WRAPPER_CLASSES:
+            # A wrapper holds what its members hold, each admitted alike.
+            members = [_member_records(m) for m in shape.members if m is not None]
+            records = None if None in members else tuple(r for m in members for r in m)
         else:
+            records = _member_records(shape)
+        if records is None:
             return MIRSummaryResult.opaque("summary storage or value shape")
         verified.update(dict.fromkeys(records))
     for consumed in body.call_summaries:
@@ -440,14 +445,14 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
             origins = (resolve_referents(stmt.target, state, slots, record_layouts) if stmt.target.projections
                        else frozenset())
             # A whole record replaced through a holder of the body's private storage (a reseat).
-            private_target = (stmt.target.projections == object_prefix(target.shape, payload=False) and bool(origins)
+            private_target = (stmt.target.projections == object_prefix(target.shape) and bool(origins)
                               and all(not o.external and not o.place.projections
                                       and o.place.root in private_records() for o in origins))
             # An inline record member replaced whole: published as a write of
             # the member under a parameter, nothing under private storage.
             member = _aggregate_member(stmt.target, slots, private_records(), record_layouts)
             # An Optional record field replaced whole: published like a member.
-            wrapper = _optional_place(stmt.target, slots, private_records(), record_layouts)
+            wrapper = _wrapper_place(stmt.target, slots, private_records(), record_layouts)
             # A write event's target is admitted where its origin is: the
             # body's own storage, or a caller place the write endpoint rule
             # admits (`include_writes`). A whole caller object replaced
@@ -469,9 +474,19 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     # A record holder of the body's private storage.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
-                                                  and slots[source.root].shape.record_payload
-                                                  and under_object(source, slots, payload=True) == ()):
-                    # A record holder of what an Optional holder's payload points at.
+                                                  and slots[source.root].shape.cls in WRAPPER_CLASSES
+                                                  and under_object(source, slots) == ()):
+                    # A record holder of what a wrapper's pointer member points at.
+                    pass
+                case MIRUnionExtract(source=source) if (
+                        len(source.projections) == 1 and slots[source.root].shape.cls in SUM_CLASSES
+                        and (target.shape.is_pointer or target.shape.holding is MIRHolding.ALIAS)):
+                    # A holder of a sum's selected record, or an alias of its
+                    # scalar payload: the dependency pass tracks either.
+                    pass
+                case MIRTupleConstruct(elements=elements) if (
+                        not stmt.target.projections and all(isinstance(e, MIRSlotId) for e in elements)):
+                    # A tuple value built from the body's own slots.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
                                                   and _aggregate_member(source, slots, private_records(),
@@ -482,15 +497,15 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     # one meets the return rule.
                     pass
                 case MIRCopy(source=source) if place_shape(stmt.target, slots, record_layouts).cls in WRAPPER_CLASSES:
-                    # Another Optional's payload copied in, or a holder
-                    # rebound; a union's or a tuple's copy has no summary form.
-                    if not (wrapper and _optional_place(source, slots, private_records(), record_layouts)):
+                    # Another wrapper's members copied in (`validate_wrapper_copy`),
+                    # or a holder rebound.
+                    if not (wrapper and _wrapper_place(source, slots, private_records(), record_layouts)):
                         return MIRSummaryResult.opaque("summary unsupported operation")
                 case MIRCopy() if (own_storage and stmt.target.root in private_records()) or private_target:
                     # A record copied into the body's private storage.
                     pass
                 case MIRCopy(source=source) if member and (
-                        source.projections in ((), object_prefix(slots[source.root].shape, payload=False))
+                        source.projections in ((), object_prefix(slots[source.root].shape))
                         or _aggregate_member(source, slots, private_records(), record_layouts)
                         or _container_access(source, target, slots, private_records(), record_layouts)):
                     # A record copied into a member: a read of the body's own
@@ -513,9 +528,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     # record storage; wrapper extraction and other projections
                     # need more proof.
                     path = source.projections
-                    if len(path) == 1 and optional_payload(slots[source.root].shape.cls, path[0]) and (
-                            slots[source.root].shape.payload.scalar_by_value):
-                        # A scalar Optional's payload, under its presence proof.
+                    if len(path) == 1 and isinstance(path[0], SELECTORS) and place_shape(
+                            source, slots, record_layouts).scalar_by_value:
+                        # A wrapper's scalar member (a sum's under its presence proof).
                         pass
                     elif path:
                         end = _member_chain(source, slots, private_records(), record_layouts)
@@ -537,8 +552,8 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     # A holder rebound, or a field emptied or engaged with a
                     # temporary moved into the payload.
                     pass
-                case MIRIsAlternative(source=source) if _optional_place(source, slots, private_records(),
-                                                                    record_layouts):
+                case MIRIsAlternative(source=source) if _wrapper_place(source, slots, private_records(),
+                                                                   record_layouts, SUM_CLASSES):
                     pass
                 case _:
                     return MIRSummaryResult.opaque("summary unsupported operation")

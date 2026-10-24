@@ -25,7 +25,7 @@ from ..type_def_registry import ParamPassing, int_traits_of, zero_value_of
 from ..typesys import (
     BOOL, INT32, NominalType, TpyType,
     NoneType, OptionalType, ReadonlyType, Representation, TupleType, VoidType,
-    certified_primitive_comparison, holds_borrowing_view,
+    certified_primitive_comparison, holds_borrowing_view, passing_representation,
     return_representation, through_view, unwrap_own, unwrap_readonly, view_family_of, view_owned_leaf,
 )
 from .nodes import (
@@ -40,7 +40,7 @@ from .value import (
     AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords,
     MIRRole, MIRShape, MIRValidationError, admission_problem, lent_shape_problem, container_members, fact_shape,
     holder_form, layout_fact, loan_access, member_compatible, member_types, position_problem, shape_problem,
-    subject_class, thir_member, value_shape,
+    subject_class, thir_member, value_shape, caller_storage,
 )
 from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require
 from .definitions import (
@@ -54,7 +54,7 @@ from .emit import (
 )
 from .shapes import (
     inline_payload_holder, step, OPTIONAL_PAYLOAD, MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload,
-    MIRWalk, Projection, object_prefix, store_problem, walk,
+    MIRWalk, Projection, object_prefix, sole_object, store_problem, walk,
 )
 from .call_contract import (
     BORROWING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRPathWalks, MIRSummaryResult, MIRSummaryState, binds_at,
@@ -803,6 +803,8 @@ class _Lowering:
         match binding.cls, binding.storage:
             case MIRClass.OPTIONAL, _:
                 return self.optional_operand(arg, binding.value)
+            case MIRClass.UNION | MIRClass.TUPLE, _:
+                return self.wrapper_argument(arg, binding.value)
             case MIRClass.OWNED_LEAF, _:
                 return self.owned_argument(arg, binding.type, binding.passing)
             case MIRClass.VIEW, _:
@@ -1201,10 +1203,11 @@ class _Lowering:
                 self.scope[p.name] = _Bound(holder, storage)
                 names[p.name] = storage
                 continue
-            # Owned storage lives for the body; a scalar union's payload is the caller's.
+            # Owned storage lives for the body; a scalar wrapper lent by reference is the caller's.
             sid = mir.adopt(mir.record(shape, MIRSlotKind.PARAMETER, p.name),
                             MIRStorageDuration.BODY if shape.is_storage
-                            else MIRStorageDuration.CALLER if shape.cls is MIRClass.UNION and shape.scalar_wrapper
+                            else MIRStorageDuration.CALLER
+                            if caller_storage(shape, passing_representation(binding.passing))
                             else None)
             self.bound_parameter(sid, binding)
             self.scope[p.name] = _Bound(sid)
@@ -1356,7 +1359,7 @@ class _Lowering:
             f.write(slot, self.record_backing(f, backing, value, MIRStorageWrite(MIRStorageWriteMode.OWN_SITE),
                                               MIRStorageDuration.BODY), loc)
         elif in_place:
-            f.write(MIRPlace(slot, object_prefix(self.mir.records[slot].shape, payload=True)), f.splice(value), loc,
+            f.write(MIRPlace(slot, sole_object(self.mir.records[slot].shape)), f.splice(value), loc,
                     MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
         else:
             f.write(slot, f.splice(value), loc, f.payload_write(inline_payload, MIRStorageWriteMode.IN_PLACE))
@@ -1393,7 +1396,7 @@ class _Lowering:
                 f.write(backing, written, loc, MIRStorageWrite(MIRStorageWriteMode.OWN_SITE))
                 f.write(slot, MIRBorrow(MIRPlace(backing)), loc)
             else:
-                f.write(MIRPlace(slot, object_prefix(self.mir.records[slot].shape, payload=True)), written, loc,
+                f.write(MIRPlace(slot, sole_object(self.mir.records[slot].shape)), written, loc,
                         MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
         return f
 
@@ -1588,7 +1591,7 @@ class _Lowering:
             _require(stmt, stmt.form is (th.Form.VALUE if scalar else th.Form.BORROW)
                      and (not scalar or stmt.cpp_local_representation is None),
                      "union declaration representation mismatch")
-            value = self.union_source(stmt.init, stmt.union_layout, stmt.union_literal)
+            value = self.union_source(stmt.init, shape, stmt.union_literal, stmt.union_layout)
             bound = self.bind(stmt.name, shape, loc=stmt.loc)
             return self.put_union_declare(stmt.loc, bound.slot, value, self.placement(stmt) if scalar else None,
                                  self.missing_placement(stmt, scalar))
@@ -2456,17 +2459,8 @@ class _Lowering:
         if not shape.record_payload:
             value = self.optional_source(arg, shape)
             self.writes.setdefault(arg, False)
-            # The holder the payload is built into is a temporary of the full
-            # expression, so a loop condition initializes it once per pass.
-            _require(arg, self.mir.active_temporaries is not None, "temporary needs full-expression boundary")
-            self.mir.active_temporaries.append(arg)
-            # A scalar payload lives in the region the call runs in, like a scalar Optional local's.
             f = self.fragment()
-            dest = f.slot(shape, storage_duration=f.scoped_duration())
-            f.write(dest, f.splice(value), arg.loc,
-                    f.payload_write(shape.scalar_wrapper, MIRStorageWriteMode.INITIALIZE))
-            f.value = MIRValue(dest, loc=arg.loc)
-            return f
+            return self.argument_holder(f, arg, shape, f.splice(value), scoped=True)
         f = self.fragment()
         match arg:
             case th.THIRArgTemp():
@@ -2498,13 +2492,44 @@ class _Lowering:
                 raise MIRUnsupported(arg, "unsupported optional argument")
         _require(arg, arg.form is th.Form.BORROW, "unsupported optional argument")
         self.writes[arg] = False
-        dest = f.slot(shape)
-        if value is None:
-            f.write(dest, MIRWrap(0), arg.loc)
+        return self.argument_holder(f, arg, shape, MIRWrap(0) if value is None else value, scoped=False)
+
+    def argument_holder(self, f: Fragment, arg: th.THIRExpr, shape: MIRShape, value: object, *,
+                        scoped: bool) -> Fragment:
+        """The temporary of the call a wrapper argument of `shape` is written
+        into, as `f`'s value. A `scoped` one (a scalar payload) lives in the
+        region the call runs in, like a scalar local's."""
+        if scoped:
+            # A temporary of the full expression, so a loop condition initializes it once per pass.
+            _require(arg, self.mir.active_temporaries is not None, "temporary needs full-expression boundary")
+            self.mir.active_temporaries.append(arg)
+            dest = f.slot(shape, storage_duration=f.scoped_duration())
+            f.write(dest, value, arg.loc, f.payload_write(shape.scalar_wrapper, MIRStorageWriteMode.INITIALIZE))
         else:
+            dest = f.slot(shape)
             f.write(dest, value, arg.loc)
         f.value = MIRValue(dest, loc=arg.loc)
         return f
+
+    def wrapper_argument(self, arg: th.THIRExpr, shape: MIRShape) -> Fragment:
+        """A union or tuple argument a parameter whose value is `shape`
+        binds: the value a declaration of it takes (`union_source`,
+        `tuple_expr`) in a temporary of the call -- a union lift's member
+        (`None`, a member-typed name, a union name into a readonly
+        parameter), a union name, a tuple literal or name. A lift of a
+        hoisted constructor temporary has no placement THIR plans."""
+        expr: th.THIRExpr | None = arg
+        if isinstance(arg, th.THIRUnionArgLift):
+            _plain(arg, {"variant_cpp", "value", "deref", "const_wrap", "temp_cpp"})
+            _require(arg, arg.temp_cpp is None, "unsupported union argument temporary")
+            expr = arg.value
+        f = self.fragment()
+        if shape.cls is MIRClass.UNION:
+            value = self.union_source(expr, shape, at=arg)
+        else:
+            value = self.tuple_expr(expr)
+        self.writes[arg] = False
+        return self.argument_holder(f, arg, value.shape_of(), f.splice(value), scoped=shape.scalar_wrapper)
 
     def aggregate_operand(self, arg: th.THIRExpr, typ: NominalType) -> Fragment:
         """A record or container argument built into storage of its full
@@ -3058,15 +3083,18 @@ class _Lowering:
                  "union read type or form mismatch")
         return fact
 
-    def union_source(self, expr: th.THIRExpr, target: th.THIRUnionLayout,
-                     literal: th.THIRUnionLiteral | None = None) -> Fragment:
-        """What a union binding takes, engaging the alternative it chooses."""
-        node = expr
+    def union_source(self, expr: th.THIRExpr | None, shape: MIRShape, literal: th.THIRUnionLiteral | None = None,
+                     layout: th.THIRUnionLayout | None = None, *, at: th.THIRExpr | None = None) -> Fragment:
+        """What a union of `shape` takes -- a declaration's, an assignment's
+        (its layout fact `layout` beside a literal fact), a parameter's --
+        engaging the alternative it chooses; no expression (a `None` lift
+        `at` an argument) is the absence."""
+        node = expr if expr is not None else at
         f = self.fragment()
-        shape = value_shape(target.type, facts=target)
+        members = shape.members
         if literal is not None:
-            _require(expr, isinstance(literal, th.THIRUnionLiteral) and literal.layout == target
-                     and type(literal.alternative) is int and 0 <= literal.alternative < len(target.elements),
+            _require(expr, isinstance(literal, th.THIRUnionLiteral) and literal.layout == layout
+                     and type(literal.alternative) is int and 0 <= literal.alternative < len(members),
                      "invalid union literal fact")
             if isinstance(expr, th.THIRCoerce):
                 _plain(expr, {"expr", "coercion_name"})
@@ -3074,42 +3102,45 @@ class _Lowering:
                 expr = expr.expr
             _require(expr, isinstance(expr, th.THIRLiteral), "union literal fact needs literal source")
             _plain(expr, {"value", "int_cpp", "none_cpp"})
-            member = target.elements[literal.alternative]
+            member = members[literal.alternative]
             _require(expr, type(expr.value) is type(literal.value) and expr.value == literal.value
                      and (member is None and literal.value is None
-                          or not isinstance(member, th.THIRBorrowedRecord) and leaf_constant(member, literal.value)),
+                          or member is not None and member.is_scalar and leaf_constant(member.type, literal.value)),
                      "union literal payload mismatch")
-            source = None if member is None else MIRPlace(f.leaf(member, MIRConstant(literal.value), node.loc))
+            source = None if member is None else MIRPlace(f.leaf(member.type, MIRConstant(literal.value), node.loc))
             f.value = MIRValue(MIRWrap(literal.alternative, source), shape, node.loc)
             return f
         if isinstance(expr, th.THIRName) and self.wraps(expr.name, MIRClass.UNION):
             source = self.union_name(expr)
-            _require(expr, source.type == target.type, "union copy type mismatch")
-            for src, dst in zip(source.elements, target.elements):
+            found = value_shape(source.type, facts=source)
+            _require(expr, found.type == shape.type, "union copy type mismatch")
+            for src, dst in zip(found.members, members):
                 if src is None or dst is None:
                     _require(expr, src is dst, "union copy absence mismatch")
                 else:
-                    self.payload_compatible(expr, thir_member(src), thir_member(dst))
+                    self.payload_compatible(expr, src, dst)
             f.value = MIRValue(self.wrapper_copy(MIRPlace(self.slot_of(expr.name)), shape), shape, node.loc)
             return f
-        if isinstance(expr, th.THIRLiteral) and expr.value is None:
-            _plain(expr, {"value", "none_cpp"})
-            _require(expr, None in target.elements, "union has no absence alternative")
-            f.value = MIRValue(MIRWrap(target.elements.index(None)), shape, node.loc)
+        if expr is None or isinstance(expr, th.THIRLiteral) and expr.value is None:
+            if expr is not None:
+                _plain(expr, {"value", "none_cpp"})
+            _require(node, None in members, "union has no absence alternative")
+            f.value = MIRValue(MIRWrap(members.index(None)), shape, node.loc)
             return f
-        if isinstance(expr, th.THIRName) and self.holder(expr.name) is not None:
-            name = self.reference_name(expr)
-            source = self.holder(name)
-            matches = [i for i, m in enumerate(target.elements)
-                       if isinstance(m, th.THIRBorrowedRecord) and m.type == source.type]
+        if self.named_aggregate(expr) is MIRClass.RECORD:
+            # A record source named in place, lent as an Optional argument's payload is (`aggregate_source`).
+            place = self.aggregate_source(expr, MIRClass.RECORD)
+            source = place.holder_shape_of()
+            matches = [i for i, m in enumerate(members) if m is not None and m.borrowed_record and m.type == source.type]
             _require(expr, len(matches) == 1, "union has no matching record alternative")
-            self.payload_compatible(expr, source, thir_member(target.elements[matches[0]]))
-            f.value = MIRValue(MIRWrap(matches[0], MIRPlace(self.slot_of(name))), shape, node.loc)
+            self.payload_compatible(expr, source, members[matches[0]])
+            f.value = MIRValue(MIRWrap(matches[0], MIRPlace(f.lend(place))), shape, node.loc)
             return f
         plan = self.expr(expr)
         typ = plan.shape_of().type
-        _require(expr, typ in target.elements and not self.writes[expr], "unsupported union member construction")
-        f.value = MIRValue(MIRWrap(target.elements.index(typ), MIRPlace(f.splice(plan))), shape, node.loc)
+        scalars = [m.type if m is not None and m.is_scalar else None for m in members]
+        _require(expr, typ in scalars and not self.writes[expr], "unsupported union member construction")
+        f.value = MIRValue(MIRWrap(scalars.index(typ), MIRPlace(f.splice(plan))), shape, node.loc)
         return f
 
     def union_extraction(self, node: object, fact: th.THIRUnionExtraction | None) -> TpyType | th.THIRBorrowedRecord:
@@ -3279,11 +3310,18 @@ class _Lowering:
                     elements.append(t.splice(self.aggregate_value(element, member.type)))
                 elif isinstance(member, th.THIRBorrowedRecord):
                     _require(expr, isinstance(expr, th.THIRBorrowTupleLiteral), "value tuple borrows record")
-                    name = self.reference_name(element)
-                    source = self.holder(name)
-                    _require(element, source is not None and member_compatible(source, thir_member(member)),
-                             "tuple capture type or access mismatch")
-                    elements.append(self.slot_of(name))
+                    if isinstance(element, (th.THIRName, th.THIRSelf)):
+                        name = self.reference_name(element)
+                        source = self.holder(name)
+                        _require(element, source is not None and member_compatible(source, thir_member(member)),
+                                 "tuple capture type or access mismatch")
+                        elements.append(self.slot_of(name))
+                    else:
+                        # A member or a borrowed call result, lent where it lies (`aggregate_source`).
+                        place = self.aggregate_source(element, MIRClass.RECORD)
+                        _require(element, member_compatible(place.holder_shape_of(), thir_member(member)),
+                                 "tuple capture type or access mismatch")
+                        elements.append(t.lend(place))
                 else:
                     plan = self.expr(element, member)
                     _require(element, plan.shape_of().type == member and not self.writes[element],
@@ -3371,7 +3409,7 @@ class _Lowering:
         _require(expr, position_problem(fact.type, MIRPosition.FIELD) is None, "unsupported field type or form")
         member_field = MIRField(MIRFieldId(fact.owner, fact.name), fact.type)
         holder = base.shape_of()
-        walked = self.walked(expr, holder, (*object_prefix(holder, payload=False), member_field),
+        walked = self.walked(expr, holder, (*object_prefix(holder), member_field),
                              "field owner mismatch")
         shape = walked.end
         readonly = shape.readonly
@@ -3808,7 +3846,8 @@ class _Lowering:
                 _require(stmt, name not in self.parameters and self.union_is(name, stmt.union_layout),
                          "union destination mismatch")
                 return self.put_union_assign(stmt.loc, self.slot_of(name),
-                                    self.union_source(stmt.value, stmt.union_layout, stmt.union_literal),
+                                    self.union_source(stmt.value, self.bound(name), stmt.union_literal,
+                                                      stmt.union_layout),
                                     self.bound(name).scalar_wrapper)
             case th.THIRAssign() if self.replaces(stmt):
                 return self.replacement(stmt)

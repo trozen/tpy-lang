@@ -15,8 +15,8 @@ from .nodes import (
     MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRTupleConstruct, place_shape,
 )
 from .shapes import (
-    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, OPTIONAL_PAYLOAD,
-    object_prefix, replacement_reach, walk_to,
+    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRWalk, Projection,
+    lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
 from .value import (
     AGGREGATE_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, lent_record,
@@ -46,26 +46,34 @@ class MIROrigin:
     shape: MIRShape
 
 
-def _parameter_lent_record(slot: MIRSlot) -> MIRShape | None:
-    """The caller's record a parameter lends (`lent_record`), an origin
-    outside the body; a local holder's record is found through its loans."""
-    return lent_record(slot.shape) if slot.kind is MIRSlotKind.PARAMETER else None
+def parameter_objects(slot: MIRSlot) -> tuple[tuple[tuple[Projection, ...], MIRShape], ...]:
+    """The caller's objects a parameter lends, an origin outside the body
+    each: a borrowed record's, at the parameter itself, or one per pointer
+    member of a wrapper, at its selector (`lent_members`); a local
+    holder's record is found through its loans."""
+    if slot.kind is not MIRSlotKind.PARAMETER:
+        return ()
+    if (record := lent_record(slot.shape)) is not None:
+        return (((), record),)
+    return tuple(((selector,), member) for selector, member in lent_members(slot.shape))
+
+
+def referent_walk(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRWalk:
+    """A referent's place stepped from its root slot, through the
+    dereferences its path implies (`object_path`)."""
+    shape = slots[place.root].shape
+    return walk(shape, object_path(shape, place.projections), records)
 
 
 def origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIROrigin:
-    """The one origin of a leaf: its own identity (each tuple member its
-    own), from the object its slot holds (a holder's pointee) -- except that a container view (a Span)
-    names the elements region it views, so an element read or a write
-    through it lands there, and an Optional record parameter's payload
-    names the parameter itself, from the payload record it lends, as a
-    borrowed record parameter's does."""
+    """The one origin of a leaf: its own identity (each wrapper member its
+    own), from the object its slot holds (a holder's pointee, a wrapper
+    member's) -- except that a container view (a Span) names the elements
+    region it views, so an element read or a write through it lands there."""
     slot = slots[leaf.root]
-    lent = _parameter_lent_record(slot) is not None
-    shape = walk_to(slot.shape, object_prefix(slot.shape, payload=lent), {})
+    shape = walk_to(slot.shape, object_path(slot.shape, leaf.projections), {})
     if not leaf.projections and slot.shape.container_view_holder:
         return MIROrigin(MIRPlace(leaf.root, (MIRContainerElements(),)), shape)
-    if leaf.projections == (OPTIONAL_PAYLOAD,) and lent:
-        return MIROrigin(MIRPlace(leaf.root), shape)
     return MIROrigin(leaf, shape)
 
 
@@ -76,6 +84,21 @@ def _origin(place: MIRPlace) -> MIRPlace:
         if isinstance(projection, (MIRField, *REGION_STEPS)):
             return MIRPlace(place.root, place.projections[:index])
     return place
+
+
+def fields_past_origin(place: MIRPlace) -> tuple[MIRField, ...] | None:
+    """The fields a referent's path takes past its origin (`_origin`), None
+    when any other step follows it."""
+    rest = place.projections[len(_origin(place).projections):]
+    return rest if all(isinstance(projection, MIRField) for projection in rest) else None
+
+
+def parameter_object(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[Projection, ...] | None:
+    """The prefix of a place rooted at a parameter that names the caller's
+    object it lies in (`shapes.object_selector` of the parameter's value);
+    nothing for a root the body does not describe."""
+    slot = slots.get(place.root)
+    return () if slot is None else object_selector(slot.shape, place.projections)
 
 
 # Whether storage under one external origin may lie in storage under
@@ -130,11 +153,11 @@ def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bo
 
 def _referent_shape(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot],
                     records: Mapping[TpyType, MIRRecordLayout]) -> MIRShape | None:
-    """The object a referent names, when its path is fields only: stepped
-    from its origin's object."""
-    if not all(isinstance(projection, MIRField) for projection in ref.place.projections):
+    """The object a referent names, when its path past its origin is
+    fields only: stepped from its root (`referent_walk`)."""
+    if fields_past_origin(ref.place) is None:
         return None
-    return walk_to(origin(MIRPlace(ref.place.root), slots).shape, ref.place.projections, records)
+    return referent_walk(ref.place, slots, records).end
 
 
 def storage_exclusions(slots: Mapping[MIRSlotId, MIRSlot],

@@ -21,7 +21,10 @@ from ..typesys import (
 )
 from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRHop, MIRTupleIndex, MIRUnionPayload, MIRWalk, Projection,
-    REGION_STEPS, object_prefix, replacement_reach, store_problem, walk,
+    REGION_STEPS, MIRDeref, distinct_lent_objects, lent_member, lent_members, lent_prefix, object_path,
+    object_selector,
+    replacement_reach,
+    store_problem, walk,
 )
 from .value import (
     AGGREGATE_CLASSES, WRAPPER_CLASSES, Declared, MIRField, MIRFieldId, MIRHolding,
@@ -195,15 +198,42 @@ class MIRParameterBinding:
 
     @property
     def lent_record(self) -> MIRShape | None:
+        """The record a record binding lends (a receiver's); a wrapper's
+        lent objects are its members (`lent_members`)."""
         return None if self.protocol else lent_record(self.value)
+
+    @property
+    def lent_members(self) -> tuple[tuple[MIRTupleIndex | MIRUnionPayload, MIRShape], ...]:
+        """The objects a wrapper binding lends, one per pointer member."""
+        return () if self.protocol else lent_members(self.value)
+
+    def object_selector(self, path: tuple[object, ...]) -> tuple[object, ...] | None:
+        """The leading step of a summary path under this binding that names
+        the object it starts in (`shapes.object_selector`); nothing for a
+        protocol binding."""
+        return () if self.protocol else object_selector(self.value, path)
+
+    def lent_object(self, path: tuple[object, ...]) -> MIRShape | None:
+        """The pointer at the object a summary path under this binding
+        starts in: the record a record binding lends, or the wrapper member
+        the path's first selector names (`object_selector`)."""
+        if self.protocol:
+            return None
+        if self.lent_record is not None:
+            return self.lent_record
+        selector = self.object_selector(path)
+        return lent_member(self.value, selector[0]) if selector else None
 
     @property
     def readonly(self) -> bool:
         """Whether the caller's storage is lent readonly: the lent record's
-        access, else the value's; False for the callee's own storage."""
+        access, every lent member's for a wrapper, else the value's; False
+        for the callee's own storage."""
         if self.storage:
             return False
         record = self.lent_record
+        if record is None and (members := self.lent_members):
+            return all(m.readonly for _, m in members)
         return (record if record is not None else self.value).readonly
 
     @property
@@ -328,10 +358,9 @@ def _holding_problem(cls: MIRClass | None, typ: TpyType, passing: ParamPassing, 
                      laid: MIRShape | None) -> str | None:
     """How each class is held beyond its type's passing (`_passing_problem`),
     `laid` its laid-out value: a scalar leaf by value, or handed over (to a
-    container); a record or container lent, or handed over; an Optional at
-    its payload's passing (`P | None` a pointer at the caller's record, a
-    scalar Optional by value); a leaf view or a region view (`region_view`),
-    never declared handed over."""
+    container); a record or container lent, or handed over; a leaf view or
+    a region view (`region_view`), never declared handed over. A wrapper is
+    held as its type's passing and its members say (`shape_problem`)."""
     match cls:
         case MIRClass.LEAF:
             if not (handed or storage and passing is ParamPassing.VALUE and typ == native_container_subject(typ)):
@@ -339,9 +368,6 @@ def _holding_problem(cls: MIRClass | None, typ: TpyType, passing: ParamPassing, 
         case _ if cls in AGGREGATE_CLASSES:
             if not handed and storage:
                 return "unsupported reference parameter passing"
-        case MIRClass.OPTIONAL:
-            if passing is not (ParamPassing.POINTER if lent_record(laid) is not None else ParamPassing.VALUE):
-                return "unsupported optional parameter passing"
         case MIRClass.VIEW | MIRClass.CONTAINER_VIEW:
             if handed_type(typ):
                 return "unsupported parameter type"
@@ -736,16 +762,17 @@ def path_step(item: object) -> Projection:
 def summary_path(projections: tuple[Projection, ...]) -> MIRParameterPath:
     """A place's projections under a parameter, spelled as a summary path
     (`path_step` reads it back): each field by its THIR identity, any
-    other step as it is (the walk refuses what no step admits)."""
+    other step as it is (the walk refuses what no step admits); a
+    dereference is implied (`object_path`, the inverse)."""
     return tuple(THIRFieldIdentity(p.id.owner, p.id.name, p.type) if isinstance(p, MIRField) else p
-                 for p in projections)
+                 for p in projections if not isinstance(p, MIRDeref))
 
 
 def path_projections(shape: MIRShape, path: tuple[object, ...]) -> tuple[Projection, ...]:
-    """The projections a summary path names under a value of `shape`: the
-    object it holds (`object_prefix`, an Optional record's payload record
-    included), then each step of the path (`path_step`)."""
-    return object_prefix(shape, payload=True) + tuple(map(path_step, path))
+    """The projections a summary path names under a value of `shape`
+    (`object_path`: each step of the path, `path_step`, with the
+    dereferences of the pointers it reaches)."""
+    return object_path(shape, tuple(map(path_step, path)))
 
 
 # The walks a summary's checks made, by the end (a parameter index or the
@@ -781,9 +808,14 @@ def path_walk(root: MIRShape, path: tuple[object, ...], layouts: MIRRecords) -> 
     return _path_walk(None, path, root, layouts, None)
 
 
-def path_hops(binding: MIRParameterBinding, walked: MIRWalk) -> tuple[MIRHop, ...]:
-    """The hops of a parameter walk past the object prefix: the path's own."""
-    return walked.hops[len(object_prefix(binding.value, payload=True)):]
+def path_hops(binding: MIRParameterBinding, walked: MIRWalk) -> tuple[MIRHop, ...] | None:
+    """The hops of a parameter walk inside the object the parameter lends
+    (`lent_prefix`): the path's own. None when the walk enters no lent
+    object -- a container view's region is its own object, so all its hops."""
+    if binding.value.container_view_holder:
+        return walked.hops
+    prefix = lent_prefix(binding.value, tuple(hop.projection for hop in walked.hops))
+    return None if prefix is None else walked.hops[len(prefix):]
 
 
 def resolve_path(parameter: object, path: object, parameters: tuple[MIRParameterBinding, ...],
@@ -854,9 +886,12 @@ def endpoint_admitted(binding: MIRParameterBinding, walked: MIRWalk,
     lends; the parameter itself is a record result of its own type, or for
     a container an element or view of its elements or itself."""
     steps = path_hops(binding, walked)
-    if (steps or result is None) and not (object_prefix(binding.value, payload=True)
-                                          or binding.value.container_view_holder):
-        return False
+    if steps is None:
+        # Nothing lent: only the parameter itself is a result, of a binding
+        # the cases below check.
+        if result is None or walked.hops:
+            return False
+        steps = ()
     projections = tuple(hop.projection for hop in steps)
     if result is None:
         if not steps or store_problem(walked) is not None:
@@ -873,7 +908,7 @@ def endpoint_admitted(binding: MIRParameterBinding, walked: MIRWalk,
         return ((view_compatible(result.type, binding.type) if container_view(result.type)
                  else result.type in binding.type.type_args or result.type == binding.type)
                 and (result.readonly or not binding.readonly))
-    source = binding.lent_record
+    source = binding.lent_object(summary_path(tuple(hop.projection for hop in walked.hops)))
     return not (source is None or source.type != result.type or source.readonly and not result.readonly)
 
 
@@ -940,7 +975,7 @@ def _end_walk(end: object, path: object, parameters: tuple[MIRParameterBinding, 
         storage = None if owned is None else value_shape(owned)
     elif type(end) is int and 0 <= end < len(parameters):
         binding = parameters[end]
-        if binding.lent_record is not None:
+        if binding.lent_record is not None or binding.lent_members:
             storage = binding.value
         else:
             storage = binding.value if binding.cls in AGGREGATE_CLASSES and binding.storage and not lent_only else None
@@ -1014,13 +1049,15 @@ def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary, 
                        walks: MIRPathWalks | None = None) -> str | None:
     """Check one published no-alias obligation: its written place is one of
     the summary's writes, and the place it retains is a path of the grammar
-    (`resolve_path`) under another parameter."""
+    (`resolve_path`) under another parameter, or in another object one
+    parameter lends (`shapes.distinct_lent_objects`)."""
     if not isinstance(obligation, MIRAliasObligation) or obligation.written not in summary.writes:
         return "invalid alias obligation write"
-    if obligation.parameter == obligation.written.parameter:
-        return "invalid alias obligation parameter"
     resolved = resolve_path(obligation.parameter, obligation.path, summary.parameters, layouts, walks)
     if resolved is None:
+        return "invalid alias obligation parameter"
+    if obligation.parameter == obligation.written.parameter and not distinct_lent_objects(
+            summary.parameters[obligation.parameter].value, obligation.path, obligation.written.path):
         return "invalid alias obligation parameter"
     return resolved if isinstance(resolved, str) else None
 

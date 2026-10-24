@@ -11,19 +11,21 @@ from .diagnostics import Diagnostic, DiagnosticLevel
 from .identity_map import IdentityMap
 from .parse import SourceLocation, TpyModule
 from .parse.nodes import (
-    TpyCall, TpyExpr, TpyMethodCall, TpyStarUnpack, TpySubscript, walk_body_stmts, walk_expr_tree,
+    TpyCall, TpyExpr, TpyMethodCall, TpyStarUnpack, TpySubscript, TpyTupleLiteral, walk_body_stmts,
+    walk_expr_tree,
 )
 from .sema.analyzer import SemanticAnalyzer
 from .sema.type_join import expression_spelling
 from .thir import nodes as th
+from .thir.scalar_leaves import MIRClass
 from .value_category import peel_coerce
 from .thir.lower import iter_module_callables, iter_module_constructors
-from .mir.call_contract import MIRCallSummary, MIRSummaryState
+from .mir.call_contract import MIRAliasObligation, MIRCallSummary, MIRSummaryState
 from .mir.collect import MIRAnalyses, MIRBodySource, enumerate_body_sources, lower_and_analyze
-from .mir.shapes import REGION_STEPS
+from .mir.shapes import REGION_STEPS, MIRTupleIndex, MIRUnionPayload
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import MIRCall, MIRFunction, MIRPlace, MIRSlotKind, source_order, statement_call, call_place
-from .mir.value import MIRField
+from .mir.value import MIRField, MIRValidationError
 from .mir_workspace import MIRProgram, resolved_calls
 
 
@@ -38,10 +40,16 @@ class MIRArgumentAlias:
     written: int
     # The written storage in the caller's source spelling; None for storage
     # no source name reaches (a temporary), which is spelled by the argument
-    # for `written` and the fields `written_fields` the callee writes under it.
+    # for `written` and the path `written_path` the callee writes under it.
     storage: str | None
-    written_fields: tuple[str, ...]
+    written_path: tuple[object, ...]
     relation: 'MIRAliasRelation'
+    # The wrapper member of the retained parameter the callee still uses
+    # (`object_selector` of the obligation's path): what the argument is
+    # spelled by.
+    member: tuple[object, ...] = ()
+    # The member of the written parameter the write goes through.
+    written_member: tuple[object, ...] = ()
 
 
 class MIRAliasRelation(Enum):
@@ -62,20 +70,32 @@ def _object(place: MIRPlace) -> MIRPlace:
     return MIRPlace(place.root, projections)
 
 
-def _relation(call: MIRCall, retained: int, written: int, written_place: MIRPlace, fn: MIRFunction,
+def _selector(call: MIRCall, parameter: int, path: tuple[object, ...]) -> tuple[object, ...]:
+    """The wrapper member a summary path under a call's parameter starts in
+    (`MIRParameterBinding.object_selector`); a published path always enters
+    one under a wrapper."""
+    selector = call.summary.parameters[parameter].object_selector(path)
+    if selector is None:
+        raise MIRValidationError("published path enters no lent member")
+    return selector
+
+
+def _relation(call: MIRCall, obligation: MIRAliasObligation, written_place: MIRPlace, fn: MIRFunction,
               state: MIRReferents) -> MIRAliasRelation:
-    """The relation of the argument for `retained` to the written storage:
-    each argument's own place (its referent with the written one's root)
+    """The relation of the argument for the retained parameter to the
+    written storage: each argument's own object (its referent with the
+    written one's root; a wrapper argument's member the path selects)
     against the object the write reaches."""
     slots = {slot.id: slot for slot in fn.slots}
     records = fn.record_layouts
     target = _object(written_place)
 
-    def argument(index: int) -> MIRPlace | None:
-        refs = resolve_referents(call_place(call, index, (), slots), state, slots, records)
+    def argument(index: int, path: tuple[object, ...]) -> MIRPlace | None:
+        refs = resolve_referents(call_place(call, index, _selector(call, index, path), slots), state, slots, records)
         return next((r.place for r in refs if r.place.root == target.root), None)
 
-    held, passed = argument(retained), argument(written)
+    held = argument(obligation.parameter, obligation.path)
+    passed = argument(obligation.written.parameter, obligation.written.path)
     if held == target:
         return MIRAliasRelation.BOTH if passed == target else MIRAliasRelation.IS
     if held is not None and target.projections[:len(held.projections)] == held.projections:
@@ -96,30 +116,61 @@ def obligation_calls(body: th.THIRFunction | th.THIRConstructor,
     return sum(call.resolved_callee.identity in callees for call in resolved_calls(body))
 
 
+def _steps_spelling(steps: Iterable[object]) -> str:
+    """Place or summary-path steps as Python spells them after their root,
+    up to the first step it has no spelling for: a field `.name`, a tuple
+    index `[i]`; a sum's payload has no token (`o.items`, `u.items`). A
+    write in or under a container region is spelled by the container."""
+    text = ""
+    for step in steps:
+        match step:
+            case MIRField():
+                text += f".{step.id.name}"
+            case th.THIRFieldIdentity():
+                text += f".{step.name}"
+            case MIRTupleIndex():
+                text += f"[{step.index}]"
+            case MIRUnionPayload():
+                pass
+            case _:
+                break
+    return text
+
+
 def _place_spelling(fn: MIRFunction, place: MIRPlace) -> str | None:
     """A caller place as the user names it: its slot's source name, then
-    each field up to the first other step; a write in or under a container
-    region is spelled by the container itself."""
+    its steps (`_steps_spelling`)."""
     slot = next(s for s in fn.slots if s.id == place.root)
     name = slot.global_id.name if slot.kind is MIRSlotKind.GLOBAL and slot.global_id is not None else slot.name
     if not name or name.startswith("__") or slot.kind is MIRSlotKind.TEMPORARY:
         return None
-    for projection in place.projections:
-        if not isinstance(projection, MIRField):
-            break
-        name += f".{projection.id.name}"
-    return name
+    return name + _steps_spelling(place.projections)
 
 
-def _leading_fields(path: tuple[object, ...]) -> tuple[str, ...]:
-    """The fields a summary path names before its first other step: under
-    an element the written storage is spelled by its container."""
-    fields: list[str] = []
-    for step in path:
-        if not isinstance(step, th.THIRFieldIdentity):
-            break
-        fields.append(step.name)
-    return tuple(fields)
+@dataclass(frozen=True)
+class _MemberArgument:
+    """How a call's argument passes the wrapper member the callee uses:
+    the expression it is passed as (a tuple literal's element, else the
+    argument), its spelling, and whether that expression is the wrapper
+    itself rather than the member (a named tuple, a union name)."""
+    expr: TpyExpr | None
+    spelled: str | None
+    named: str | None = None
+
+
+def _member_argument(expr: TpyExpr | None, member: tuple[object, ...]) -> _MemberArgument:
+    """The argument a wrapper member is passed as: a tuple literal's element
+    (`h.q` of `(h.q, 1)`), else the argument followed by the member's
+    selectors (`t[0]`, a union's `u`)."""
+    if member and expr is not None:
+        literal = peel_coerce(expr)
+        selector = member[0]
+        if (isinstance(selector, MIRTupleIndex) and isinstance(literal, TpyTupleLiteral)
+                and selector.index < len(literal.elements)):
+            element = literal.elements[selector.index]
+            return _MemberArgument(element, _spelled(element))
+    spelled = _spelled(expr)
+    return _MemberArgument(expr, spelled and spelled + _steps_spelling(member), spelled if member else None)
 
 
 def argument_aliases(fn: MIRFunction, analyses: MIRAnalyses) -> tuple[MIRArgumentAlias, ...]:
@@ -129,20 +180,22 @@ def argument_aliases(fn: MIRFunction, analyses: MIRAnalyses) -> tuple[MIRArgumen
     if classes is None:
         return ()
     blocks = {block.id: block for block in fn.blocks}
-    found: dict[tuple[object, int, int], list[MIRArgumentAlias]] = {}
+    found: dict[tuple[object, ...], list[MIRArgumentAlias]] = {}
     for conflict in classes.argument_aliases:
         obligation = conflict.call
         assert obligation is not None
-        key = (conflict.point, obligation.parameter, obligation.written.parameter)
         stmt = blocks[conflict.point.block].statements[conflict.point.index]
         call = statement_call(stmt)
         assert call is not None
-        fields = _leading_fields(obligation.written.path)
-        relation = _relation(call, obligation.parameter, obligation.written.parameter, conflict.affected.place,
+        member = _selector(call, obligation.parameter, tuple(obligation.path))
+        written_member = _selector(call, obligation.written.parameter, tuple(obligation.written.path))
+        key = (conflict.point, obligation.parameter, member, obligation.written.parameter, written_member)
+        relation = _relation(call, obligation, conflict.affected.place,
                              fn, analyses.dependencies.referents[conflict.point])
         found.setdefault(key, []).append(MIRArgumentAlias(
             call, call.site or stmt.loc, obligation.parameter, obligation.written.parameter,
-            _place_spelling(fn, conflict.affected.place), fields, relation))
+            _place_spelling(fn, conflict.affected.place), tuple(obligation.written.path), relation,
+            member, written_member))
     # The retention conflicts come in slot-number order: the one a call
     # reports, and the order of a line's reports, follow the source instead.
     return tuple(sorted((min(aliases, key=_alias_order) for aliases in found.values()), key=_alias_order))
@@ -150,7 +203,8 @@ def argument_aliases(fn: MIRFunction, analyses: MIRAnalyses) -> tuple[MIRArgumen
 
 def _alias_order(alias: MIRArgumentAlias) -> tuple[object, ...]:
     return (source_order(alias.loc), alias.retained, alias.written, alias.storage is None, alias.storage or "",
-            alias.written_fields, alias.relation.name)
+            _steps_spelling(alias.written_path), alias.relation.name, _steps_spelling(alias.member),
+            _steps_spelling(alias.written_member))
 
 
 def alias_check_bodies(modules: Iterable[tuple[TpyModule, SemanticAnalyzer, CodeGenContext, str]],
@@ -251,11 +305,31 @@ def _parameter_names(program: MIRProgram, identity: th.THIRFunctionIdentity) -> 
     return None if definition is None else tuple(p.name for p in th.effective_params(definition[1]))
 
 
-def _remedy(summary: MIRCallSummary, index: int, argument: str | None) -> str:
+def _remedy(summary: MIRCallSummary, index: int, member: tuple[object, ...], passed: _MemberArgument) -> str:
     """A value-type argument is copied by a local binding of it; a reference
-    type's object only by `copy()`."""
-    if summary.parameters[index].type.is_value_type():
+    type's object only by `copy()`. A wrapper argument is judged by the
+    member the callee still uses (a tuple is a value type even when it lends
+    a record), and its copy is bound to a local first: neither a union nor a
+    tuple argument takes a `copy()` call in place
+    (BUGS.md#record-field-to-wrapper-parameter-rejects; a tuple element lent
+    out of a temporary is refused), and a named tuple is rebuilt around the
+    bound copy. An Optional keeps `copy(o)`: no copy of one compiles yet in
+    any form (BUGS.md#optional-member-own-copy-no-render)."""
+    binding = summary.parameters[index]
+    lent = binding.lent_object(member) if member else None
+    argument = passed.spelled
+    if (lent.type if lent is not None else binding.type).is_value_type():
         return f"bind it to a local first ('v = {argument}')" if argument else "bind it to a local first"
+    if argument and binding.cls is MIRClass.TUPLE and member:
+        bound = f"pass a copy bound to a local ('v = copy({argument})'"
+        if passed.named is None:
+            return bound + ")"
+        elements = ["v" if k == member[0].index else f"{passed.named}[{k}]"
+                    for k in range(len(binding.value.members))]
+        # A one-element tuple needs its trailing comma.
+        return bound + f", then '({', '.join(elements)}{',' if len(elements) == 1 else ''})')"
+    if passed.named is not None and binding.cls is MIRClass.UNION:
+        return f"pass a copy bound to a local ('v = copy({passed.named})')"
     return f"pass a copy ('copy({argument})')" if argument else "pass a copy"
 
 
@@ -266,14 +340,21 @@ def alias_warning(alias: MIRArgumentAlias, program: MIRProgram, sites: CallSites
         return None
     owner = identity.owner.rsplit(".", 1)[-1] if identity.owner is not None else None
     callee = f"{owner}.{identity.name}" if owner is not None else identity.name
-    analyzed = sites.argument(alias.call, alias.retained, names[alias.retained])
-    argument = _spelled(analyzed)
+    retained = sites.argument(alias.call, alias.retained, names[alias.retained])
+    passed = _member_argument(retained, alias.member)
+    analyzed, argument = passed.expr, passed.spelled
     storage = alias.storage
     if storage is None:
-        written = _spelled(sites.argument(alias.call, alias.written, names[alias.written]))
-        storage = written and written + "".join(f".{field}" for field in alias.written_fields)
+        member = alias.written_member
+        written = _member_argument(sites.argument(alias.call, alias.written, names[alias.written]), member).spelled
+        storage = written and written + _steps_spelling(alias.written_path[len(member):])
     held, writer = names[alias.retained], names[alias.written]
-    remedy = f"{_remedy(alias.call.summary, alias.retained, argument)} or restructure so the call does not hand over both"
+    if alias.retained == alias.written:
+        # Two members of one tuple parameter: each is named by its member.
+        held += _steps_spelling(alias.member)
+        writer += _steps_spelling(alias.written_member)
+    remedy = (f"{_remedy(alias.call.summary, alias.retained, alias.member, passed)} "
+              "or restructure so the call does not hand over both")
     if alias.relation is MIRAliasRelation.BOTH:
         both = argument or storage
         subject = f"'{both}' is passed" if both else "one object is passed"

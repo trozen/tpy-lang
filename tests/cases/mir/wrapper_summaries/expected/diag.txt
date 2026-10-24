@@ -1,0 +1,11 @@
+main.py:28: warning: copies Q into field; use copy() to make this explicit
+main.py:107: warning: argument 'h.q' is what 'scal' modifies through parameter 'h' while it still uses 'q'; pass a copy ('copy(h.q)') or restructure so the call does not hand over both
+main.py:112: warning: argument 'h.q' is what 'tup' modifies through parameter 'h' while it still uses 't'; pass a copy bound to a local ('v = copy(h.q)') or restructure so the call does not hand over both
+main.py:118: warning: argument 't[0]' is what 'tup' modifies through parameter 'h' while it still uses 't'; pass a copy bound to a local ('v = copy(t[0])', then '(v, t[1])') or restructure so the call does not hand over both
+main.py:124: warning: argument 'q' is what 'uni' modifies through parameter 'h' while it still uses 'u'; pass a copy bound to a local ('v = copy(q)') or restructure so the call does not hand over both
+main.py:129: warning: argument 'h.q' is what 'wuni' modifies through parameter 'u' while it still uses 'q'; pass a copy ('copy(h.q)') or restructure so the call does not hand over both
+main.py:141: warning: argument 'h.q' is what 'two' modifies through parameter 't[0]' while it still uses 't[1]'; pass a copy bound to a local ('v = copy(h.q)') or restructure so the call does not hand over both
+main.py:170: warning: argument 'h' contains 'h.q', which 'heldscalar' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(h)') or restructure so the call does not hand over both
+main.py:175: warning: argument 'u' contains 'u.q', which 'heldunion' modifies through parameter 'b' while it still uses 'a'; pass a copy bound to a local ('v = copy(u)') or restructure so the call does not hand over both
+main.py:180: warning: argument 't[0]' contains 't[0].q', which 'heldtuple' modifies through parameter 'b' while it still uses 'a'; pass a copy bound to a local ('v = copy(t[0])', then '(v, t[1])') or restructure so the call does not hand over both
+main.py:258: warning: argument 't[0]' is what 'tup1' modifies through parameter 'h' while it still uses 't'; pass a copy bound to a local ('v = copy(t[0])', then '(v,)') or restructure so the call does not hand over both

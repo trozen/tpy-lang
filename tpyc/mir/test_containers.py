@@ -1017,7 +1017,7 @@ def test_an_element_of_a_container_a_call_returns_is_read_through_its_holder(cal
                 if isinstance(s, MIRAssign) and isinstance(s.value, MIRRead) and _elements(s.value.source))
     holder = next(s for s in fn.slots if s.id == read.source.root)
     assert holder.shape.whole_container and holder.shape.is_pointer and holder.kind is not MIRSlotKind.PARAMETER
-    assert read.source.projections == (*object_prefix(holder.shape, payload=False), MIRContainerElements())
+    assert read.source.projections == (*object_prefix(holder.shape), MIRContainerElements())
 
 
 def _with_summary(fn: MIRFunction, old: MIRCallSummary, new: MIRCallSummary) -> MIRFunction:

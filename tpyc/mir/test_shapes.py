@@ -30,9 +30,10 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, MIRWalk, field_member, step,
-    store_problem, walk, object_prefix,
+    store_problem, walk, lent_members, lent_prefix, object_path, object_prefix, object_selector, sole_object,
 )
 from .prepare import validate_function
+from .call_contract import path_projections, summary_path
 
 
 def origin_shape(slot: MIRSlot) -> MIRShape:
@@ -247,12 +248,14 @@ def test_an_optional_record_payload_is_a_pointer_at_a_parameter_and_inline_at_a_
         value_shape(ReadonlyType(INT32), position=MIRPosition.FIELD, layouts=program.records)
 
 
-def test_the_lent_record_is_a_record_pointer_or_an_optional_pointer_payload(program: _Program) -> None:
+def test_the_lent_record_is_a_record_pointer_an_optional_lends_its_payload(program: _Program) -> None:
     p = program.types["P"]
     pointer = value_shape(p, access=True, role=MIRRole.LOAN)
     assert lent_record(pointer) is pointer
     maybe = value_shape(OptionalType(p), facts=th.THIROptionalLayout(th.THIRBorrowedRecord(p, True)))
-    assert lent_record(maybe) == pointer and maybe.record_payload
+    # A wrapper lends its pointer members, an Optional its payload.
+    assert lent_record(maybe) is None and lent_members(maybe) == ((MIRUnionPayload(1), pointer),)
+    assert maybe.record_payload
     # A field's inline payload is the holder's own storage: it lends nothing.
     inline = value_shape(program.fields["H.p"], position=MIRPosition.FIELD, layouts=program.records)
     assert lent_record(inline) is None and not inline.record_payload
@@ -271,9 +274,12 @@ def test_a_parameters_lent_record_is_read_from_its_slot_shape(program: _Program)
     pointer = _slot(0, value_shape(h, role=MIRRole.LOAN))
     maybe = _slot(0, value_shape(OptionalType(h), facts=th.THIROptionalLayout(th.THIRBorrowedRecord(h, False))))
     keys = object_keys(pointer, program.records)
-    assert keys and object_keys(maybe, program.records) == keys
+    # The Optional's payload object is keyed under its selector.
+    assert keys and object_keys(maybe, program.records) == tuple(
+        MIRPlace(k.root, (MIRUnionPayload(1), *k.projections)) for k in keys)
     assert object_keys(replace(maybe, kind=MIRSlotKind.LOCAL), program.records) == ()
-    assert origin_shape(maybe) == origin_shape(pointer) == value_shape(h)
+    payload = origin(MIRPlace(maybe.id, (MIRUnionPayload(1),)), {maybe.id: maybe}).shape
+    assert payload == origin_shape(pointer) == value_shape(h)
     local = replace(maybe, kind=MIRSlotKind.LOCAL)
     assert origin_shape(local) == local.shape
 
@@ -554,19 +560,69 @@ def test_a_field_is_a_member_of_its_holders_declared_fields(program: _Program) -
 
 
 def test_the_object_prefix_follows_the_holding(program: _Program) -> None:
-    # A pointer's object is behind its dereference; an Optional record's
-    # is behind its payload's only when asked; storage is its own object.
+    # A pointer's object is behind its dereference; a wrapper lends one
+    # object per pointer member, behind its selector and a dereference;
+    # storage is its own object.
     p = program.types["P"]
     pointer = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER)
+    leaf = MIRShape(INT32, MIRClass.LEAF)
     optional = MIRShape(OptionalType(p), MIRClass.OPTIONAL, members=(None, pointer))
+    union = MIRShape(UnionType((p, NONE)), MIRClass.UNION, members=(pointer, None))
+    pair = MIRShape(TupleType((p, INT32)), MIRClass.TUPLE, members=(pointer, leaf))
     storage = MIRShape(p, MIRClass.RECORD, MIRHolding.VALUE)
-    assert object_prefix(pointer, payload=False) == object_prefix(pointer, payload=True) == (MIRDeref(),)
-    assert object_prefix(optional, payload=True) == (MIRUnionPayload(1), MIRDeref())
-    assert object_prefix(optional, payload=False) == ()
-    assert object_prefix(storage, payload=False) == object_prefix(storage, payload=True) == ()
-    # An Optional of a scalar lends no record.
-    scalar = MIRShape(OptionalType(INT32), MIRClass.OPTIONAL, members=(None, MIRShape(INT32, MIRClass.LEAF)))
-    assert object_prefix(scalar, payload=True) == ()
+    assert object_prefix(pointer) == (MIRDeref(),)
+    assert object_prefix(optional) == object_prefix(storage) == ()
+    assert lent_members(optional) == ((MIRUnionPayload(1), pointer),)
+    assert lent_members(pair) == ((MIRTupleIndex(0), pointer),)
+    assert lent_members(storage) == ()
+    field = MIRField(MIRFieldId(p, "x"), INT32)
+    # The translation: a dereference after the root and after a selector
+    # reaching a pointer member, never after a field or a scalar member.
+    assert object_path(pointer, (field,)) == (MIRDeref(), field)
+    assert object_path(optional, (MIRUnionPayload(1), field)) == (MIRUnionPayload(1), MIRDeref(), field)
+    assert object_path(union, (MIRUnionPayload(0),)) == (MIRUnionPayload(0), MIRDeref())
+    assert object_path(pair, (MIRTupleIndex(1),)) == (MIRTupleIndex(1),)
+    assert object_path(storage, (field,)) == (field,)
+    assert lent_prefix(pair, (MIRTupleIndex(0), MIRDeref(), field)) == (MIRTupleIndex(0), MIRDeref())
+    assert lent_prefix(pair, (MIRTupleIndex(1),)) is None
+    assert sole_object(optional) == (MIRUnionPayload(1), MIRDeref())
+    # An Optional of a scalar lends nothing.
+    scalar = MIRShape(OptionalType(INT32), MIRClass.OPTIONAL, members=(None, leaf))
+    assert lent_members(scalar) == () and sole_object(scalar) == ()
+
+
+def test_one_translation_maps_each_wrappers_summary_paths_to_body_places(program: _Program) -> None:
+    # Optional, union and tuple alike: a dereference after the selector of
+    # a pointer member, none after a field hop (an inline record member is
+    # its holder's storage), and a selector alone names the whole object.
+    h, p = program.types["H"], program.types["P"]
+    pointer = MIRShape(h, MIRClass.RECORD, MIRHolding.POINTER)
+    other = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER)
+    leaf = MIRShape(INT32, MIRClass.LEAF)
+    inner, x = _field(program, "H.inner"), _field(program, "P.x")
+    wrappers = {
+        MIRUnionPayload(1): MIRShape(OptionalType(h), MIRClass.OPTIONAL, members=(None, pointer)),
+        MIRUnionPayload(0): MIRShape(UnionType((h, p)), MIRClass.UNION, members=(pointer, other)),
+        MIRTupleIndex(0): MIRShape(TupleType((h, INT32)), MIRClass.TUPLE, members=(pointer, leaf)),
+    }
+    for selector, wrapper in wrappers.items():
+        assert object_path(wrapper, (selector,)) == (selector, MIRDeref())
+        through = object_path(wrapper, (selector, inner, x))
+        assert through == (selector, MIRDeref(), inner, x)
+        assert summary_path(through) == (selector, *(th.THIRFieldIdentity(f.id.owner, f.id.name, f.type)
+                                                      for f in (inner, x)))
+        assert path_projections(wrapper, summary_path(through)) == through
+        assert walk(wrapper, through, program.records).end.type == INT32
+        assert lent_prefix(wrapper, through) == (selector, MIRDeref())
+        # The one answer to which lent object a path starts in; a path entering none has none.
+        assert object_selector(wrapper, (selector, inner)) == (selector,)
+        assert object_selector(wrapper, (inner,)) is None
+    assert object_selector(pointer, (inner,)) == ()
+    # A union's other pointer member is its own object; a tuple's scalar member lends none.
+    union = wrappers[MIRUnionPayload(0)]
+    assert object_path(union, (MIRUnionPayload(1), x)) == (MIRUnionPayload(1), MIRDeref(), x)
+    assert sole_object(union) == ()
+    assert object_path(wrappers[MIRTupleIndex(0)], (MIRTupleIndex(1),)) == (MIRTupleIndex(1),)
 
 
 # --- the walk: each hop's holder and what it reaches, and the end -------------------------
@@ -779,16 +835,16 @@ def test_one_origin_names_a_leafs_place_and_the_shape_its_paths_step_from(progra
     span = _slot(0, value_shape(program.span, access=True, role=MIRRole.LOAN))
     assert origin(MIRPlace(span.id), {span.id: span}) == MIROrigin(
         MIRPlace(span.id, (MIRContainerElements(),)), span.shape)
-    # An Optional record parameter's payload names the parameter, from the record it lends.
+    # An Optional record parameter's payload is its own origin, from the record it lends.
     maybe = _slot(0, value_shape(OptionalType(h), facts=th.THIROptionalLayout(th.THIRBorrowedRecord(h, False))))
     assert origin(MIRPlace(maybe.id, (MIRUnionPayload(1),)), {maybe.id: maybe}) == MIROrigin(
-        MIRPlace(maybe.id), value_shape(h))
+        MIRPlace(maybe.id, (MIRUnionPayload(1),)), value_shape(h))
     # Each borrowed member of a tuple parameter is its own origin.
     lent = th.THIRBorrowedRecord(p, False)
     pair = _slot(0, value_shape(TupleType((p, p)), role=MIRRole.LOAN, facts=th.THIRTupleLayout((lent, lent))))
     first, second = (origin(MIRPlace(pair.id, (MIRTupleIndex(i),)), {pair.id: pair}) for i in (0, 1))
     assert (first.place, second.place) == (MIRPlace(pair.id, (MIRTupleIndex(0),)), MIRPlace(pair.id, (MIRTupleIndex(1),)))
-    assert first.shape == second.shape == pair.shape
+    assert first.shape == second.shape == value_shape(p)
 
 
 def test_a_view_never_changes_its_containers_shape(program: _Program) -> None:

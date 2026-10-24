@@ -39,13 +39,13 @@ from .nodes import (
     MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, source_order,
 )
 from .shapes import MIRUnionPayload
-from .value import MIRField, MIRValidationError
+from .value import MIRValidationError
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, _scope_conflicts, _scope_ends
 from .storage import analyze_storage
 from .prepare import MIRPrepared
-from .reach import MATERIALIZES, storage_events
+from .reach import MATERIALIZES, fields_past_origin, storage_events
 
 
 class MIRStorageVerdict(Enum):
@@ -295,7 +295,8 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
                                  key=_place_key):
                 for ref in state[holder]:
                     prefix = ref.place.projections
-                    if ref.place.root not in slots or not all(isinstance(p, MIRField) for p in prefix):
+                    # Fields inside the object the referent's origin names (a wrapper member's included).
+                    if ref.place.root not in slots or fields_past_origin(ref.place) is None:
                         continue
                     for key in dependencies.objects[ref.place.root]:
                         if key.projections[:len(prefix)] == prefix and not state.get(key):
