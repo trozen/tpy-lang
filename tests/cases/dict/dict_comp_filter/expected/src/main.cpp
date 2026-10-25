@@ -40,9 +40,8 @@ void main() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             const auto& __for_tup_0 = *__beg_2;
-            const auto& __tup_1 = __for_tup_0;
-            std::string k = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
+            std::string k = std::get<0>(__for_tup_0);
+            int32_t v = std::get<1>(__for_tup_0);
             if ((v > 3)) {
                 __result.insert_or_assign(k, v);
             }

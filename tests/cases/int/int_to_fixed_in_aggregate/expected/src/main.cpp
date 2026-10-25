@@ -54,7 +54,7 @@ void main() {
     int32_t p = std::get<1>(__tup_1);
     std::cout << p << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<std::string, int32_t>> addrs = {std::tuple<std::string, int32_t>{"a", (::tpyapp::main::port()).to_fixed_check<int32_t>()}};
-    auto __tup_2 = ::tpy::__getitem__(addrs, 0);
+    auto&& __tup_2 = ::tpy::__getitem__(addrs, 0);
     int32_t np = std::get<1>(__tup_2);
     std::cout << np << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> ports_set = ::tpy::ordered_set<int32_t>({(::tpyapp::main::port()).to_fixed_check<int32_t>(), (((::tpyapp::main::port()) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()});

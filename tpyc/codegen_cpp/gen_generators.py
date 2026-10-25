@@ -483,19 +483,24 @@ class GeneratorCodegen:
     def _unpack_alias_members(stmt: TpyForEach,
                               elem_bare: 'TpyType | None') -> dict[int, str]:
         """The members a tuple-unpack head ALIASES, by tuple index -> target
-        name: the plain reference members. A value or `readonly` member is
-        copied, and an Optional member takes its own pointer-repr path
-        (`T* = nullptr`, `optional_to_ptr`). Empty for a non-unpack loop."""
+        name: the plain reference members, and the ones the head owns
+        (`is_owned`: the step hands them over and holds them until the next
+        advance, as the sync head's reference into the step). A value or
+        `readonly` member is copied, and an Optional member takes its own
+        pointer-repr path (`T* = nullptr`, `optional_to_ptr`). Empty for a
+        non-unpack loop."""
         if not (stmt.is_tuple_unpack and isinstance(elem_bare, TupleType)
                 and stmt.body and isinstance(stmt.body[0], TpyTupleUnpack)):
             return {}
+        head = stmt.body[0]
         return {
             i: tname
             for i, (tname, etype) in enumerate(zip(
-                stmt.body[0].targets, elem_bare.element_types))
+                head.targets, elem_bare.element_types))
             if tname is not None
-            and not unwrap_ref_type(etype).is_value_type()
-            and not isinstance(unwrap_ref_type(etype),
+            and (not unwrap_ref_type(etype).is_value_type()
+                 or head.owns_target(i))
+            and not isinstance(unwrap_own(unwrap_ref_type(etype)),
                                (ReadonlyType, OptionalType))}
 
     def _step_unpack_payloads(self, stmt: TpyForEach,

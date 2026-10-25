@@ -15,8 +15,9 @@ There are three acquisitions, each read where its fact lives:
   copied iteration step (`copies_var`, `target_copies`), a value `with`
   target or by-value `match` capture: body facts;
 * transferred from an iteration -- a consuming or `OwnIter` loop, an `Own`
-  element, an owned loop-head target (`is_owned`), a clause that owns its
-  elements (`owns_elements`): the loop's settled mode.
+  element, an owned loop-head or clause-head target (`is_owned`), a clause
+  its iteration hands elements to (`step_handover`): the loop's settled
+  mode.
 
 A LOCAL is one Python variable across its function, so its entry reads the
 function-wide rebinding fact (`NonOwningBind`). A binding site's entry is
@@ -42,26 +43,33 @@ the tables live on the module's `SemanticContext` (`body_ownership`,
 from __future__ import annotations
 
 from collections.abc import Iterable, Set as AbstractSet
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from typing import TYPE_CHECKING, Collection, Mapping
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse.nodes import (ResultForm, TpyCall, TpyDictComprehension,
-                           TpyExpr, TpyForEach,
-                           TpyFunction, TpyGeneratorExpression,
-                           TpyListComprehension,
-                           TpyMatch, TpyMethodCall, TpyNestedDef,
+                           TpyExpr, TpyFieldAccess, TpyForEach,
+                           TpyFunction, TpyGeneratorExpression, TpyIfExpr,
+                           TpyListComprehension, TpyMatch, TpyMethodCall,
+                           TpyName, TpyNamedExpr, TpyNestedDef,
                            TpySetComprehension, TpyStmt, TpyTry,
                            TpyTupleUnpack, TpyVarDecl, TpyWith,
                            iter_capture_bindings, walk_body_stmts,
                            walk_expr_tree, written_names)
-from ..type_def_registry import is_own_iter
-from ..typesys import (OptionalType, OwnType, ReadonlyType, TpyType,
-                       TypeParamRef, param_takes_ownership, unwrap_readonly,
+from .. import modules as builtin_modules
+from ..type_def_registry import is_copy_iter, is_own_iter
+from ..typesys import (FunctionInfo, NominalType, OptionalType, OwnType,
+                       ReadonlyType, TpyType, TypeParamRef, is_protocol_type,
+                       param_takes_ownership,
+                       substitute_type_params_structural, unwrap_own,
+                       unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
-from .alias_rebind import ElemPath, leaf_paths, owned_leaf_paths
+from ..value_category import peel_coerce
+from .alias_rebind import (ElemPath, bare_tuple, leaf_paths,
+                           owned_leaf_paths, tuple_name_bindings)
+from .iter_loans import IterElementSource, iter_element_source
 from .context import NonOwningBind, fold_nonowning
 from .call_lends import callee_lend_fact
 from .decl_types import declared_bound_type
@@ -168,6 +176,163 @@ def param_ownership(func: TpyFunction, name: str,
     if opt is not None and view_family_for_type(opt.inner) is None:
         return BindingOwnership(Acquired.COPIED_PARAM)
     return NOT_OWNED
+
+
+def step_handover_paths(ctx: 'SemanticContext', iterable: TpyExpr,
+                        step: TpyType | None, *,
+                        declared: TpyType | None = None
+                        ) -> frozenset[ElemPath]:
+    """THE leaf paths (`leaf_paths`) of a step of iterating `iterable` -- of
+    type `step` -- that the iteration hands over, read only off what a
+    signature writes: an `own_iter` every leaf; the `Own` markers of a
+    callee's declared return under the type arguments the call writes (a
+    generator's frame, a native binding's contract), a user iterator class's `__next__`, a `__anext__` result
+    (`declared`, when the caller read it), an unreassigned parameter's or a
+    field's annotation, a whole `Own` every leaf under it; a select what
+    both arms hand over, a generator expression's source what its clause
+    does. A container's iteration and a `copy_iter`'s hand
+    over nothing, and so does an `Own` that reaches a step by substitution
+    (`iter(xs)` over a lent `list[tuple[Own[A], int32]]`): any other name
+    hands over a whole `Own` step only. Pure, decided before the loop's
+    body."""
+    it_t = ctx.get_expr_type(iterable)
+    if it_t is None or step is None:
+        return frozenset()
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(it_t))))
+    if is_own_iter(bare):
+        return leaf_paths(step)
+    if is_copy_iter(bare) or iter_element_source(
+            bare, ctx.registry) is IterElementSource.CONTAINER:
+        return frozenset()
+    if declared is None:
+        e = peel_coerce(iterable)
+        if isinstance(e, TpyIfExpr):
+            return (step_handover_paths(ctx, e.then_expr, step)
+                    & step_handover_paths(ctx, e.else_expr, step))
+        if isinstance(e, TpyNamedExpr):
+            return step_handover_paths(ctx, e.value, step)
+        func = ctx.func.current_function
+        if (isinstance(e, TpyName) and isinstance(func, TpyFunction)
+                and func.is_genexpr and func.params
+                and func.params[0][0] == e.name):
+            return func.genexpr_step_handover
+        decl = _declared_iterator(ctx, e, bare)
+        declared = (builtin_modules.get_iterable_element_type(
+            decl, registry=ctx.registry) if decl is not None else None)
+        if declared is None:
+            # A local's type may carry an `Own` its producer never wrote;
+            # only a whole `Own` step is the iterator's to hand over.
+            return (leaf_paths(step) if isinstance(e, TpyName)
+                    and isinstance(unwrap_readonly(step), OwnType)
+                    else frozenset())
+    d = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared)))
+    leaves = leaf_paths(step)
+    if bare_tuple(d) is None:
+        return leaves if isinstance(d, OwnType) else frozenset()
+    owned = owned_leaf_paths(d)
+    return frozenset(p for p in leaves
+                     if any(p[:len(o)] == o for o in owned))
+
+
+def _declared_iterator(ctx: 'SemanticContext', e: TpyExpr, bare: TpyType
+                       ) -> TpyType | None:
+    """The iterator `e` evaluates to as a signature declares it, type
+    parameters unsubstituted but those a call writes: a callee's return, a
+    record's class, an
+    unreassigned parameter's or a field's annotation; None for a local."""
+    if isinstance(e, (TpyCall, TpyMethodCall)):
+        fi = e.resolved_function_info
+        if (fi is not None and not fi.is_constructor
+                and fi.root.return_type is not None):
+            return _with_written_type_args(e, fi.root)
+    if isinstance(bare, NominalType) and not is_protocol_type(bare):
+        record = ctx.registry.get_record_for_type(bare)
+        if record is not None:
+            # The class's own declaration: its type parameters unsubstituted.
+            return (replace(bare, type_args=tuple(
+                TypeParamRef(p) for p in record.type_params))
+                if record.type_params else bare)
+    if isinstance(e, TpyName):
+        return bare if _unreassigned_param(ctx, e.name) else None
+    if isinstance(e, TpyFieldAccess):
+        recv = ctx.get_expr_type(e.obj)
+        recv = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            unwrap_own(recv)))) if recv is not None else None)
+        record = (ctx.registry.get_record_for_type(recv)
+                  if isinstance(recv, NominalType) else None)
+        found = (ctx.registry.declaring_record(record, e.field)
+                 if record is not None else None)
+        return found[1].type if found is not None else None
+    if isinstance(bare, NominalType):
+        return bare
+    return None
+
+
+def _with_written_type_args(e: TpyCall | TpyMethodCall,
+                            fi: FunctionInfo) -> TpyType | None:
+    """`fi`'s declared return with the type arguments the call writes
+    (`gen[Own[A]](ys)`) substituted: those are as written as the
+    signature. An inferred one is not -- it may carry an `Own` the lent
+    argument never handed over. A method's explicit arguments bind what
+    sema recorded (`written_type_params`): its own type parameters, never
+    its class's."""
+    ret = fi.return_type
+    if not e.type_args or ret is None:
+        return ret
+    names: tuple[str | None, ...] | list[str]
+    if isinstance(e, TpyMethodCall) and e.written_type_params is not None:
+        names = e.written_type_params
+    elif fi.is_method or (isinstance(e, TpyMethodCall) and e.is_static_call):
+        return ret
+    else:
+        names = fi.type_params
+    subst = {tp: ta for tp, ta in zip(names, e.type_args)
+             if tp is not None and isinstance(ta, TpyType)}
+    return substitute_type_params_structural(ret, subst) if subst else ret
+
+
+def _unreassigned_param(ctx: 'SemanticContext', name: str) -> bool:
+    """Whether `name` reads a parameter -- of the body being analyzed, or of
+    the one a nested def captures it from -- that no binding of that body
+    reassigns: nothing substitutes into a parameter inside its own body.
+    A generator expression's parameters are no signature: each takes the
+    type of what its clause evaluates, substitutions included."""
+    for func in (ctx.func.current_function, ctx.enclosing_function()):
+        if not isinstance(func, TpyFunction) or func.is_genexpr:
+            return False
+        bindings = tuple_name_bindings(ctx, func, name)
+        if any(n == name for n, _t in func.params):
+            return bindings == []
+        if bindings != []:
+            return False
+    return False
+
+
+def owned_head_targets(head: TpyTupleUnpack) -> frozenset[str]:
+    """The names a loop head or comprehension clause head binds to an
+    element the step hands over (`is_owned`); of `x, x` the last target
+    is the one bound."""
+    last = dict(head_target_acquisitions(head))
+    return frozenset(n for n, acq in last.items()
+                     if acq is Acquired.OWN_ELEMENT)
+
+
+def head_target_acquisitions(head: TpyTupleUnpack
+                             ) -> list[tuple[str, Acquired | None]]:
+    """How each target of a loop head or comprehension clause head acquires
+    its element, by the one per-target record the head carries: an element
+    the step hands over (`is_owned`) is the target's own, a copied one
+    (`target_copies`) its copy, any other refers into the step."""
+    out: list[tuple[str, Acquired | None]] = []
+    for i, n in enumerate(head.targets):
+        if n is None:
+            continue
+        out.append((n, Acquired.OWN_ELEMENT
+                    if head.owns_target(i)
+                    else Acquired.COPIED_STEP
+                    if i < len(head.target_copies) and head.target_copies[i]
+                    else None))
+    return out
 
 
 def by_value_optional(ptype: TpyType | None) -> OptionalType | None:
@@ -439,9 +604,11 @@ class _BodyWalk:
         self.loops: tuple[TpyForEach, ...] = ()
         self.within: IdentityMap = IdentityMap()
         # The iteration sites, resolved once the whole body is read: the
-        # site node, the name, its acquisition, its loop, and whether the
-        # loop binds the name itself (a frame field only loops bind).
+        # site node, the name, its acquisition at its paths, its loop, and
+        # whether the loop binds the name itself (a frame field only loops
+        # bind).
         self.pending: list[tuple[object, str, Acquired | None,
+                                 frozenset[ElemPath] | None,
                                  TpyForEach, bool]] = []
 
     def stmts(self, stmts: list[TpyStmt]) -> None:
@@ -464,19 +631,13 @@ class _BodyWalk:
         bound = written_names(s)
         if isinstance(s, TpyForEach):
             bound.discard(s.var)
-            self.pending.append((s, s.var, self._loop(s), s,
+            acq, paths = self._loop(s)
+            self.pending.append((s, s.var, acq, paths, s,
                                  not s.is_tuple_unpack))
         elif isinstance(s, TpyTupleUnpack) and s.is_loop_head:
-            for i, n in enumerate(s.targets):
-                if n is None:
-                    continue
+            for n, acq in head_target_acquisitions(s):
                 bound.discard(n)
-                acq = (Acquired.OWN_ELEMENT
-                       if i < len(s.is_owned) and s.is_owned[i]
-                       else Acquired.COPIED_STEP
-                       if i < len(s.target_copies) and s.target_copies[i]
-                       else None)
-                self.pending.append((s, n, acq, self.loops[-1], True))
+                self.pending.append((s, n, acq, None, self.loops[-1], True))
         elif isinstance(s, TpyWith):
             # A value enter result's `auto` copy is the target's own; any
             # other target refers to the manager's storage.
@@ -519,17 +680,19 @@ class _BodyWalk:
         name outside the loop is another binding's). Returns the entries
         of the names each loop binds itself, by name."""
         loop_bound: dict[str, list[BindingOwnership]] = {}
-        for node, name, acq, loop, binds in self.pending:
+        for node, name, acq, paths, loop, binds in self.pending:
             own = (NOT_OWNED if acq is None or self._module(name)
-                   else self._less_inside(name, acq, loop))
+                   else self._less_inside(name, acq, paths, loop))
             self.sites.setdefault(node, {})[name] = own
             if binds:
                 loop_bound.setdefault(name, []).append(own)
         return loop_bound
 
     def _less_inside(self, name: str, acq: Acquired,
+                     paths: frozenset[ElemPath] | None,
                      loop: TpyForEach) -> BindingOwnership:
-        """The site's entry: `acq`, less what the bindings of `name` inside
+        """The site's entry: `acq` at `paths` (None: every leaf), less what
+        the bindings of `name` inside
         `loop` borrow (a binding borrowing it whole owns nothing), with the
         line of the first of them."""
         inside: NonOwningBind | None = None
@@ -539,24 +702,28 @@ class _BodyWalk:
             if any(loop is lp for lp in within):
                 inside = fold_nonowning(inside, at, elems)
         if inside is None:
-            return BindingOwnership(acq)
+            return BindingOwnership(acq, paths)
         if inside.elems is None:
             return BindingOwnership(None, None, frozenset({()}),
                                     inside.line)
-        return BindingOwnership(acq, None, inside.elems, inside.line)
+        return BindingOwnership(acq, paths, inside.elems, inside.line)
 
-    def _loop(self, s: TpyForEach) -> Acquired | None:
+    def _loop(self, s: TpyForEach
+              ) -> tuple[Acquired | None, frozenset[ElemPath] | None]:
+        """How loop variable `s.var` acquires its step, at which paths
+        (None: every leaf): an `Own` element at the paths the iteration
+        hands over (`step_handover_paths`)."""
         it_t = self.ctx.get_expr_type(s.iterable)
         if s.consuming_iter_fi is not None:
-            return Acquired.CONSUMING_LOOP
+            return Acquired.CONSUMING_LOOP, None
         if isinstance(it_t, TpyType) and is_own_iter(unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(it_t)))):
-            return Acquired.OWN_ITER_LOOP
-        if isinstance(s.elem_type, OwnType):
-            return Acquired.OWN_ELEMENT
+            return Acquired.OWN_ITER_LOOP, None
+        if s.step_handover:
+            return Acquired.OWN_ELEMENT, s.step_handover
         if s.copies_var:
-            return Acquired.COPIED_STEP
-        return None
+            return Acquired.COPIED_STEP, None
+        return None, None
 
     def expr(self, e: TpyExpr) -> bool:
         self.within[e] = self.loops
@@ -567,18 +734,25 @@ class _BodyWalk:
             return False
         if isinstance(e, _COMPS):
             for gen in e.generators:
-                if self._module(gen.var, comprehension=True):
+                module = self._module(gen.var, comprehension=True)
+                if module:
                     own = NOT_OWNED
-                elif gen.owns_elements:
-                    own = BindingOwnership(Acquired.OWNING_CLAUSE)
+                elif gen.step_handover:
+                    own = BindingOwnership(Acquired.OWNING_CLAUSE,
+                                           gen.step_handover)
                 elif gen.copies_var:
                     own = BindingOwnership(Acquired.COPIED_STEP)
                 else:
                     own = NOT_OWNED
                 out = {gen.var: own}
-                for n in gen.unpack_vars or ():
-                    if n is not None:
-                        out[n] = NOT_OWNED
+                if gen.head is not None:
+                    # The head's targets, keyed by the clause (what its
+                    # reads resolve to) and by the head (its planner site).
+                    heads = {n: NOT_OWNED if module or acq is None
+                             else BindingOwnership(acq)
+                             for n, acq in head_target_acquisitions(gen.head)}
+                    out.update(heads)
+                    self.sites[gen.head] = heads
                 self.sites[gen] = out
         return True
 

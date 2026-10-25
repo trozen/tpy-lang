@@ -219,7 +219,7 @@ inline void Pet::rename(std::string_view name) {
 
 // def __init__(self, d: Dog) -> None:
 //     self.p = d  # tpyc: warning(/copies Dog into field/) warning(/upcast narrows/)
-inline Holder::Holder(const Dog& d) : p(d) {}
+inline Holder::Holder(const Dog& d) : p(static_cast<const Pet&>(d)) {}
 
 // def __init__(self, name: str) -> None:
 //     super().__init__(name)

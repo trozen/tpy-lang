@@ -33,9 +33,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return std::move(i);
         }
         __for_tup_4 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_4;
-        i = std::get<0>(__tup_1);
-        j = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_4);
+        j = std::get<1>(__for_tup_4);
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(i, j));
     }

@@ -9,9 +9,8 @@ namespace tpyapp::main {
 //     print(a.x)
 //     print(b.x)
 void show(const std::tuple<const T*, const T*>& p) {
-    auto& __tup_1 = p;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    const T& a = (*std::get<0>(p));
+    const T& b = (*std::get<1>(p));
     std::cout << a.x << "\n" << ::tpy::check_signals;
     std::cout << b.x << "\n" << ::tpy::check_signals;
 }

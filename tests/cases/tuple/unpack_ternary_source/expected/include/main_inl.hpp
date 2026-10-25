@@ -15,7 +15,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        const auto& __tup_1 = ((c) ? (t1) : (t2));
+        auto&& __tup_1 = ((c) ? (t1) : (t2));
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __state = S_RESUME_0;
@@ -50,7 +50,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_view::__next__
         __state = S_DONE;  // until a yield sets where to resume
         t1 = std::tuple<std::string, int32_t>{"aa", 1};
         t2 = std::tuple<std::string, int32_t>{"zz", 9};
-        const auto& __tup_1 = ((c) ? (t1) : (t2));
+        auto&& __tup_1 = ((c) ? (t1) : (t2));
         s = std::get<0>(__tup_1);
         n = std::get<1>(__tup_1);
         __state = S_RESUME_0;

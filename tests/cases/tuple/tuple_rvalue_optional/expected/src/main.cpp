@@ -12,9 +12,8 @@ namespace tpyapp::main {
 //         print("none")
 //     print(n)
 void show(const std::tuple<const Point*, int32_t>& p) {
-    auto& __tup_1 = p;
-    const Point* a = std::get<0>(__tup_1);
-    int32_t n = std::get<1>(__tup_1);
+    const Point* a = std::get<0>(p);
+    int32_t n = std::get<1>(p);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {
@@ -34,9 +33,8 @@ void show(const std::tuple<const Point*, int32_t>& p) {
 //     else:
 //         print("none")
 void show2(const std::tuple<const Point*, const Point*>& p) {
-    auto& __tup_1 = p;
-    const Point* a = std::get<0>(__tup_1);
-    const Point* b = std::get<1>(__tup_1);
+    const Point* a = std::get<0>(p);
+    const Point* b = std::get<1>(p);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {

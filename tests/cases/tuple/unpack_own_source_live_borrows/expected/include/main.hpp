@@ -131,9 +131,8 @@ inline H::H() {
 //     print("live_in_method", t[0].n, k)
 inline void H::live_in_method() const {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     x.n = 9;
     std::cout << "live_in_method" << " " << std::get<0>(t).n << " " << k << "\n" << ::tpy::check_signals;
 }

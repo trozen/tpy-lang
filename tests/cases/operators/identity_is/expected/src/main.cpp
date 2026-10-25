@@ -650,9 +650,8 @@ void positions_fn(const ::tpy::BigInt& tag) {
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
     auto t = std::tuple<A*, A*>{&(a), &(b)};
-    auto& __tup_1 = t;
-    auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    A& p = (*std::get<0>(t));
+    A& q = (*std::get<1>(t));
     std::cout << "unpack" << " " << ::tpy::print_bool(::tpy::same_object(&(p), &(a))) << " " << ::tpy::print_bool(::tpy::same_object(&(q), &(a))) << "\n" << ::tpy::check_signals;
     auto inner = [&a, &b, &c]() -> bool {
         return (::tpy::same_object(&(a), &(c)) && (!::tpy::same_object(&(a), &(b))));

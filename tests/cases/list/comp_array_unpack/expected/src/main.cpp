@@ -39,9 +39,9 @@ void sum_pairs(const std::array<std::tuple<int32_t, int32_t>, 3>& ps) {
     std::array<int32_t, 3> sums = ({
         auto& __obj_0 = ps;
         ::tpy::array_from_index<int32_t, 3>([&](std::size_t __i_0) -> int32_t {
-            auto& __tup_1 = __obj_0[__i_0];
-            int32_t a = std::get<0>(__tup_1);
-            int32_t b = std::get<1>(__tup_1);
+            auto& __for_tup_0 = __obj_0[__i_0];
+            int32_t a = std::get<0>(__for_tup_0);
+            int32_t b = std::get<1>(__for_tup_0);
             return (::tpy::add_check<int32_t>(a, b));
         });
     });

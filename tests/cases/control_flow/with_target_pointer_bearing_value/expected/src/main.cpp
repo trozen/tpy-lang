@@ -39,9 +39,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        auto& __tup_1 = p;
-        item = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        tag = std::get<1>(__tup_1);
+        item = std::get<0>(p);
+        tag = std::get<1>(p);
         item->v = ::tpy::add_check<int32_t>(item->v, 1);
         __state = S_RESUME_1;
         return item->v;

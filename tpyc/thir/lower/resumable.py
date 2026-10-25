@@ -138,6 +138,7 @@ from ...typesys import polymorphic_source_inner
 from .callables import body_passings, definition_signature
 from .predicates import (
     _owning_fi,
+    structural_protocol,
     _eligible_ptr_value,
     _value_record_slot,
     _narrow_alias_name,
@@ -413,8 +414,7 @@ def _res_param_ok(t: 'TpyType | None', analyzer, gen_frame: bool) -> bool:
     # sub-future, which re-deduces off the bare name and keeps its own reject
     # (BUGS.md#own-static-protocol-frame-capture-borrows).
     if (isinstance(unwrapped, OwnType)
-            and is_protocol_type(unwrapped.wrapped)
-            and not is_dyn_protocol(unwrapped.wrapped)):
+            and structural_protocol(unwrapped.wrapped) is not None):
         return True
     # An `Own[@dynamic P]` param captures as a bare `unique_ptr<P>` frame
     # field (the ctor's `p(std::move(p_))` is skeleton), and its leaf reads
@@ -828,6 +828,11 @@ def _loop_var_bind_ok(elem_type: 'TpyType | None', name: str, analyzer,
         # address-takeable sibling is a pointer-form loop var instead.
         _witness("res.loop_value_tuple_bind")
         return True
+    if classes.get(name) is FrameLocalClass.OWNING_TUPLE_SLOT:
+        # A step holding elements its iteration hands over (an awaited
+        # `__anext__` result): the bind emplaces it into the frame's slot
+        # and the head reads its elements off the slot.
+        return True
     return False
 
 
@@ -1098,8 +1103,7 @@ def _payload_reject(payload: 'rcfg.SuspensionPayload', analyzer) -> str | None:
             # without the copy temp the enum payload needs.
             return "res.await_param_type"
         if (isinstance(pt_u, OwnType)
-                and is_protocol_type(pt_u.wrapped)
-                and not is_dyn_protocol(pt_u.wrapped)):
+                and structural_protocol(pt_u.wrapped) is not None):
             # An `Own[static P]` slot clears the frame-PARAM families, but the
             # AWAIT position captures differently: the sub-future field is
             # spelled `__coro_inner<await_arg_capture_t<decltype((s))>>` and
@@ -1330,7 +1334,10 @@ def frame_local_class(lname: str, ltype, kind, analyzer,
         # slot; their write admission is the emplace value's own result
         # gate. Element reads key VALUE-form off the binding (the slot
         # stores the storage tuple), not the pointer-repr type.
-        if isinstance(lt, TupleType) and not lname.startswith("__for_tup_"):
+        # A loop's step holder owning elements its iteration hands over
+        # (an `async for` step, awaited by value) is the same slot: the
+        # advance emplaces it, its head reads the elements off the slot.
+        if isinstance(lt, TupleType):
             return C.OWNING_TUPLE_SLOT
         return None
     if kind is K.BORROW_TUPLE:

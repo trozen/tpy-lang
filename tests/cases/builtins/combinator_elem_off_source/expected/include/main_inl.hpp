@@ -54,9 +54,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_ro::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_8 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_8);
-        i = std::get<0>(__tup_1);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        i = std::get<0>((*__for_tup_8));
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_8)))));
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(c->v, i));
     }
@@ -84,9 +83,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_mut::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_9 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_9);
-        i = std::get<0>(__tup_1);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        i = std::get<0>((*__for_tup_9));
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_9)))));
         __state = S_RESUME_0;
         return c->bump((::tpy::add_check<int32_t>(i, 10)));
     }
@@ -114,9 +112,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_zip_mut::__next__(
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_10 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_10);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        w = std::get<1>(__tup_1);
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_10)))));
+        w = std::get<1>((*__for_tup_10));
         __state = S_RESUME_0;
         return c->bump(w);
     }

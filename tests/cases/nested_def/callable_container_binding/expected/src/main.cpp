@@ -91,7 +91,7 @@ void free_bindings() {
     std::vector<std::tuple<std::function<int32_t(int32_t)>, int32_t>> pairs = std::vector<std::tuple<std::function<int32_t(int32_t)>, int32_t>>{};
     pairs.push_back(std::tuple<std::function<int32_t(int32_t)>, int32_t>{[](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 8)); }, 9});
     ::tpy::__setitem__(pairs, 0, std::tuple<std::function<int32_t(int32_t)>, int32_t>{[](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 10)); }, 11});
-    auto __tup_1 = ::tpy::__getitem__(pairs, 0);
+    auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
     std::function<int32_t(int32_t)> cb = std::get<0>(__tup_1);
     int32_t number = std::get<1>(__tup_1);
     std::cout << "tuple" << " " << cb(number) << "\n" << ::tpy::check_signals;

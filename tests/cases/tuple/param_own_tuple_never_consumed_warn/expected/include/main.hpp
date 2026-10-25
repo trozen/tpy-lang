@@ -146,9 +146,8 @@ inline H::H() : k(0) {}
 //     self.k += 1
 //     return a.n + self.k
 inline int32_t H::drop_first(std::tuple<A, A>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     ::tpyapp::main::keep(std::move(b), into);
     this->k = ::tpy::add_check<int32_t>(this->k, 1);
     return (::tpy::add_check<int32_t>(a.n, this->k));
@@ -176,9 +175,8 @@ inline void Holder::store_through_local(A&& x) {
 //     self.slot = a
 //     self.other = b
 inline void Holder::store_unpacked(std::tuple<A, A>&& p) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     this->slot = std::move(a);
     this->other = std::move(b);
 }

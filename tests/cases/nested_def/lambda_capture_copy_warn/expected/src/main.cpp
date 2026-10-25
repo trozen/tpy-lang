@@ -460,9 +460,8 @@ void while_unpack(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        int32_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        int32_t a = std::get<0>(__for_tup_0);
+        int32_t b = std::get<1>(__for_tup_0);
         fs.push_back([a, b]() -> int32_t { return (::tpy::add_check<int32_t>(a, b)); });
     }
     std::cout << "while_unpack:" << " " << (::tpy::__getitem__(fs, 0))() << " " << (::tpy::__getitem__(fs, 1))() << " " << (::tpy::__getitem__(fs, 2))() << " " << (::tpy::__getitem__(fs, 3))() << "\n" << ::tpy::check_signals;

@@ -24,9 +24,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
-        int32_t n = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_0);
+        int32_t n = std::get<1>(__for_tup_0);
         std::cout << k << " " << n << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<int32_t, std::string>> ns = {std::tuple<int32_t, std::string>{1, "c"}, std::tuple<int32_t, std::string>{2, "a"}, std::tuple<int32_t, std::string>{3, "b"}};
@@ -35,18 +34,17 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_1 = *__beg_1;
-        const auto& __tup_2 = __for_tup_1;
-        int32_t nm = std::get<0>(__tup_2);
-        std::string_view s = std::get<1>(__tup_2);
+        int32_t nm = std::get<0>(__for_tup_1);
+        std::string_view s = std::get<1>(__for_tup_1);
         std::cout << nm << " " << s << "\n" << ::tpy::check_signals;
     }
-    auto __tup_3 = ::tpyapp::main::smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
-    std::string sk = std::move(std::get<0>(__tup_3));
-    int32_t sn = std::get<1>(__tup_3);
+    auto __tup_1 = ::tpyapp::main::smaller<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
+    std::string sk = std::move(std::get<0>(__tup_1));
+    int32_t sn = std::get<1>(__tup_1);
     std::cout << "min:" << " " << sk << " " << sn << "\n" << ::tpy::check_signals;
-    auto __tup_4 = ::tpyapp::main::larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
-    std::string lk = std::move(std::get<0>(__tup_4));
-    int32_t ln = std::get<1>(__tup_4);
+    auto __tup_2 = ::tpyapp::main::larger<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1});
+    std::string lk = std::move(std::get<0>(__tup_2));
+    int32_t ln = std::get<1>(__tup_2);
     std::cout << "max:" << " " << lk << " " << ln << "\n" << ::tpy::check_signals;
     std::cout << "rebound:" << " " << ::tpyapp::main::rebound<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, true) << " " << ::tpyapp::main::rebound<std::string>(std::tuple<std::string, int32_t>{"a", 3}, std::tuple<std::string, int32_t>{"b", 1}, false) << "\n" << ::tpy::check_signals;
 }

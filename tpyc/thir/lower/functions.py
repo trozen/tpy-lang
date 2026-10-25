@@ -1961,13 +1961,6 @@ def _rejects_global_slot(node) -> bool:
                                  PtrSlotKind.GLOBAL_HOIST_RVALUE)
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
-    if isinstance(node, THIRTupleUnpack):
-        # A rebound target's element lands in a `__slot_N` of its own, the
-        # unpack twin of the REBIND_SLOT decl below; a hoisted one rides
-        # the hoist lines like RECORD_HOISTED.
-        return any((rec := node.target_slot(i)) is not None
-                   and not rec.storage_hoisted
-                   for i in range(len(node.targets)))
     if isinstance(node, THIRVarDecl):
         # The F2d rvalue pointer-local allocates its init slot; it carries no
         # `slot_cpp`, so the tail below cannot see it.

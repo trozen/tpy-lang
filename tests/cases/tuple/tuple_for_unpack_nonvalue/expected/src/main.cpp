@@ -26,9 +26,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<std::string_view, Point*>{std::get<0>(__for_tup_0), &(std::get<1>(__for_tup_0))};
-        std::string_view name = std::get<0>(__tup_1);
-        auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        std::string_view name = std::get<0>(__for_tup_0);
+        auto& pt = std::get<1>(__for_tup_0);
         std::cout << name << " " << pt << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<::tpy::BigInt, Point>> pairs = {std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(1), Point(10, 20)}, std::tuple<::tpy::BigInt, Point>{::tpy::BigInt(2), Point(30, 40)}};
@@ -37,9 +36,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_1 = *__beg_1;
-        auto __tup_2 = std::tuple<::tpy::BigInt, Point*>{std::get<0>(__for_tup_1), &(std::get<1>(__for_tup_1))};
-        const ::tpy::BigInt& n = std::get<0>(__tup_2);
-        auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+        const auto& n = std::get<0>(__for_tup_1);
+        auto& pt = std::get<1>(__for_tup_1);
         std::cout << n << " " << pt << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<Point, Point>> segments = {std::tuple<Point, Point>{Point(0, 0), Point(1, 1)}, std::tuple<Point, Point>{Point(2, 2), Point(3, 3)}};
@@ -48,9 +46,8 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_2 = *__beg_2;
-        auto __tup_3 = std::tuple<Point*, Point*>{&(std::get<0>(__for_tup_2)), &(std::get<1>(__for_tup_2))};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+        auto& a = std::get<0>(__for_tup_2);
+        auto& b = std::get<1>(__for_tup_2);
         std::cout << a << " " << b << "\n" << ::tpy::check_signals;
     }
 }

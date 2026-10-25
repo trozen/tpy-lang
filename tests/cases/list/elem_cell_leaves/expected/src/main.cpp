@@ -156,9 +156,8 @@ void comp_pos() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& __tup_1 = __for_tup_0;
-            int64_t a = std::get<0>(__tup_1);
-            int32_t b = std::get<1>(__tup_1);
+            int64_t a = std::get<0>(__for_tup_0);
+            int32_t b = std::get<1>(__for_tup_0);
             __result.push_back((::tpy::add_check<int64_t>(a, 1)));
         }
         std::move(__result);
@@ -316,7 +315,7 @@ void reads_pos() {
     int64_t early = std::get<0>(::tpy::__getitem__(xs, 0));
     xs.push_back(std::tuple<int64_t, int32_t>{::tpyapp::main::wide(), 3});
     int64_t n = std::get<0>(::tpy::__getitem__(xs, 1));
-    auto __tup_1 = ::tpy::__getitem__(xs, 1);
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 1);
     int64_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     std::cout << "reads:" << " " << early << " " << n << " " << a << " " << b << "\n" << ::tpy::check_signals;
@@ -341,9 +340,8 @@ void loop_pos() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        const auto& __tup_1 = __for_tup_1;
-        int64_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        int64_t a = std::get<0>(__for_tup_1);
+        int32_t b = std::get<1>(__for_tup_1);
         std::cout << "loop:" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
     std::array<std::vector<int64_t>, 2> g = {{{1}, {2, 3}}};

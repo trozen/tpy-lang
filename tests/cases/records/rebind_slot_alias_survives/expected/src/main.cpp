@@ -670,7 +670,7 @@ void block_unpack_borrow(Counter& b, bool c) {
     std::optional<Counter> __slot_2;
     if (c) {
         auto __tup_1 = ::tpyapp::main::lend_counter(b);
-        auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        Counter* x = std::get<0>(__tup_1);
         int32_t k = std::get<1>(__tup_1);
         x = &*(__slot_2 = Counter(5));
         keep = x;
@@ -893,7 +893,7 @@ void block_unpack_own(bool c) {
     std::optional<Tagged> __slot_2;
     if (c) {
         auto __tup_1 = ::tpyapp::main::make_tagged_pair(1);
-        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        Tagged* p = &(std::get<0>(__tup_1));
         int32_t k = std::get<1>(__tup_1);
         p = &*(__slot_2 = Tagged(2));
         out = p;
@@ -1030,7 +1030,7 @@ std::tuple<Src, Src> make_srcs(int32_t n) {
 //     print("slot-drop-unpack-plain", w.v, len(p.s), q.s)
 void slot_drop_unpack_plain() {
     auto __tup_1 = ::tpyapp::main::make_srcs(7);
-    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Src* p = &(std::get<0>(__tup_1));
     auto&& q = std::move(std::get<1>(__tup_1));
     Viewer __slot_1 = Viewer(p->s);
     Viewer* w = &__slot_1;
@@ -1102,7 +1102,7 @@ std::tuple<Viewer*, int32_t> lend_viewer(Viewer& w) {
 void slot_drop_borrow_unpack(Viewer& w0) {
     Src a = Src(1);
     auto __tup_1 = ::tpyapp::main::lend_viewer(w0);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Viewer* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     std::optional<Viewer> __slot_1;
     x = &*(__slot_1 = Viewer(a.s));

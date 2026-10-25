@@ -298,9 +298,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        int32_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        int32_t a = std::get<0>(__for_tup_0);
+        int32_t b = std::get<1>(__for_tup_0);
         ::tpyapp::main::operators(::tpy::BigInt(a), ::tpy::BigInt(b));
     }
     auto __obj_1 = {std::tuple<::tpy::BigInt, ::tpy::BigInt>{low, -(one)}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{high, one}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{low, high}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{high, low}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{((high) + (::tpy::BigInt(1))), high}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{((low) - (::tpy::BigInt(1))), low}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{high, ((high) + (::tpy::BigInt(1)))}, std::tuple<::tpy::BigInt, ::tpy::BigInt>{low, ((low) - (::tpy::BigInt(1)))}};
@@ -308,9 +307,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_1 = *__beg_1;
-        const auto& __tup_2 = __for_tup_1;
-        ::tpy::BigInt a = std::get<0>(__tup_2);
-        ::tpy::BigInt b = std::get<1>(__tup_2);
+        ::tpy::BigInt a = std::get<0>(__for_tup_1);
+        ::tpy::BigInt b = std::get<1>(__for_tup_1);
         ::tpyapp::main::operators(a, b);
     }
     auto __obj_2 = {0, 1, 61, 62, 63, 64, 200};

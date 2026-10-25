@@ -133,9 +133,8 @@ std::vector<Box> borrowed(std::vector<Box>& ws) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            auto& b = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            auto& b = std::get<1>(__for_tup_0);
             __result.insert_or_assign(i, Box(b).finish());
         }
         std::move(__result);
@@ -453,9 +452,9 @@ void main() {
     std::cout << "nested_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*d))) << " " << ::tpy::ListPrinter(::tpyapp::main::dict_heads((*d))) << "\n" << ::tpy::check_signals;
     auto __tmp_6 = std::array<Box, 1>{Box(1)};
     std::vector<std::tuple<Box, Box>> pairs = ::tpyapp::main::double_(::tpy::own_iter(std::move(__tmp_6)));
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box*, Box*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
-    auto&& one = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& two = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
+    Box& one = std::get<0>(__tup_1);
+    Box& two = std::get<1>(__tup_1);
     std::cout << "double" << " " << ::tpy::__getitem__(one.xs, 0) << " " << ::tpy::__getitem__(two.xs, 0) << "\n" << ::tpy::check_signals;
     std::vector<Box> __tmp_7 = {Box(1)};
     ::tpyapp::main::shadow_local(__tmp_7);

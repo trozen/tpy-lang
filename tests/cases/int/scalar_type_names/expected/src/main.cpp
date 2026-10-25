@@ -79,9 +79,8 @@ std::string shadowed_local(std::string_view s) {
 //     int64, other = p  # tpyc: warning(/'int64' shadows the tpy type 'int64'/)
 //     return int64 + other
 int32_t shadowed_unpack(const std::tuple<int32_t, int32_t>& p) {
-    const auto& __tup_1 = p;
-    int32_t int64 = std::get<0>(__tup_1);
-    int32_t other = std::get<1>(__tup_1);
+    int32_t int64 = std::get<0>(p);
+    int32_t other = std::get<1>(p);
     return (::tpy::add_check<int32_t>(int64, other));
 }
 

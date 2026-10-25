@@ -22,9 +22,8 @@ void show(std::string_view tag, const std::vector<std::tuple<P, P>>& ys) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<const P*, const P*>{&(std::get<0>(__for_tup_0)), &(std::get<1>(__for_tup_0))};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        const auto& a = std::get<0>(__for_tup_0);
+        const auto& b = std::get<1>(__for_tup_0);
         std::cout << tag << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(b.xs) << "\n" << ::tpy::check_signals;
     }
 }
@@ -378,14 +377,13 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = std::tuple<P*, int32_t>{&(std::get<0>(__for_tup_2)), std::get<1>(__for_tup_2)};
-        auto&& b4 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        int32_t n4 = std::get<1>(__tup_1);
+        auto& b4 = std::get<0>(__for_tup_2);
+        int32_t n4 = std::get<1>(__for_tup_2);
         std::cout << "scalar_mix" << " " << ::tpy::__len__(b4.xs) << " " << n4 << "\n" << ::tpy::check_signals;
     }
-    auto __tup_2 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, P*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(y5, 1));
-    auto&& b5 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    auto&& c5 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    auto&& __tup_1 = ::tpy::__getitem__(y5, 1);
+    P& b5 = std::get<0>(__tup_1);
+    P& c5 = std::get<1>(__tup_1);
     std::cout << "dict_value" << " " << ::tpy::__len__(b5.xs) << " " << ::tpy::__len__(c5.xs) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("return_list", y6);
     ::tpyapp::main::show("comp_elem", y15);

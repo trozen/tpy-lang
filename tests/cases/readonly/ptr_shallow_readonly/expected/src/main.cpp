@@ -207,9 +207,8 @@ int32_t value_total(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        const auto& __tup_1 = __for_tup_0;
-        int32_t k = std::get<0>(__tup_1);
-        int32_t w = std::get<1>(__tup_1);
+        int32_t k = std::get<0>(__for_tup_0);
+        int32_t w = std::get<1>(__for_tup_0);
         t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>(k, w)));
     }
     return t;

@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     a, b = pairs[0]  # tpyc: ok
 //     return a + b.n
 int32_t read_only(const std::vector<std::tuple<int32_t, Box>>& pairs) {
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
+    auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    const Box& b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(a, b.n));
 }
 
@@ -23,9 +23,9 @@ int32_t read_only(const std::vector<std::tuple<int32_t, Box>>& pairs) {
 //     b.n += 10
 //     return a + b.n
 int32_t mutating(std::vector<std::tuple<int32_t, Box>>& pairs) {
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
+    auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& b = std::get<1>(__tup_1);
     b.n = ::tpy::add_check<int32_t>(b.n, 10);
     return (::tpy::add_check<int32_t>(a, b.n));
 }
@@ -35,9 +35,8 @@ int32_t mutating(std::vector<std::tuple<int32_t, Box>>& pairs) {
 //     a, b = h.pair  # tpyc: ok
 //     return a + b.n
 int32_t field_read(const Holder& h) {
-    auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(h.pair), &(std::get<1>(h.pair))};
-    int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    int32_t a = std::get<0>(h.pair);
+    const Box& b = std::get<1>(h.pair);
     return (::tpy::add_check<int32_t>(a, b.n));
 }
 

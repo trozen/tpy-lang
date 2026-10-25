@@ -1051,11 +1051,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # None-test / truthiness / arg renders).
     "foreach.hoist_ptr_null",       # hoisted container unpack target ->
                                     # `T* v = nullptr;` predecl
-    "foreach.hoist_ptr_target",     # its per-iteration re-point (the
-                                    # frame_ptr_elem render, sync twin)
-    # An unpack target already bound in an enclosing scope: the per-iteration
-    # assign into that slot, not a fresh decl.
-    "foreach.unpack_reused_target",
     "foreach.value_opt_elem",
     # A ptr-repr Optional[F1-record] element loop var (`for v in d.values():`
     # over `dict[str, P | None]`): the STORAGE-form binding registers in the
@@ -2183,8 +2178,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "ptr_tuple.owning_call_holder", # ... of an owning tuple call
     "move.own_tuple_ptr_lift",      # its last use at an owning slot, element
                                     # by element: S{std::move(*std::get<0>(t)), ..}
-    "stmt.tuple_unpack.ptr_tuple_pointee_move",  # ... consumed by an unpack:
-                                    # `T a = std::move(*std::get<i>(..))`
     "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
     "if.hoist_const_ptr",           # const borrow-decl -> const T* name;
                                     # (the with/try const_pointer rung)
@@ -2344,90 +2337,11 @@ THIR_FACES: frozenset[str] = frozenset({
     # (`<< ::tpy::__getitem__(d, k)`) -- the subscript sibling of
     # print.record_field.
     "print.record_subscript",
-    # Standalone `a, b = <name>` unpack of a value-scalar tuple (lowering):
-    # `const auto& __tup_N = name;` + per-target scalar decls.
+    # A statement unpack (lowering): each target written as its scalar
+    # binding is, off the source place or the statement's holder.
     "stmt.tuple_unpack",
-    # A non-name unpack source (lowering): a value-tuple-returning call or a
-    # value-tuple field read -> `auto __tup_N = <expr>;` (value capture).
-    "stmt.tuple_unpack.rvalue_source",
-    # A select over two same-typed tuple NAMES (`a, b = t1 if c else t2`): the
-    # conditional is a C++ lvalue, so the holder const-ref-binds it
-    # (`const auto& __tup_N = ((c) ? (t1) : (t2));`) instead of deep-copying.
-    "stmt.tuple_unpack.lvalue_select_source",
-    # A value-repr Optional[value tuple] NAME read under its None narrow: the
-    # holder const-ref-binds the name arm's deref read
-    # (`const auto& __tup_N = (*r);`).
-    "stmt.tuple_unpack.narrowed_value_opt_source",
-    # An Own[F1-record] unpack element moved out of a call-rvalue source
-    # (lowering): `Rec a = std::move(std::get<i>(__tup_N));`.
-    "stmt.tuple_unpack.own_target",
-    # An owned str/bytes target off a holder the unpack owns (an rvalue
-    # capture, or a name at its last use), moved rather than copied
-    # (lowering): `std::string a = std::move(std::get<i>(__tup_N));`, and
-    # the reused-target twin `a = std::move(std::get<i>(__tup_N));`.
-    "stmt.tuple_unpack.owned_buffer_move",
-    "stmt.tuple_unpack.owned_buffer_move_assign",
-    # The for-head twin over a STORAGE (own-element) gen-call yield tuple:
-    # the owned local moves out of the mutable copy-head.
-    "foreach.own_unpack_move",
-    "foreach.ptr_unpack_target",
-    # An expensive-copy value target bound zero-copy (lowering, sema's
-    # is_const_ref): `const T& a = std::get<i>(__tup_N);`.
-    "stmt.tuple_unpack.cref_target",
-    # A borrow (is_ref) F1-record target aliasing a storage-form tuple element
-    # via the source's per-element lend + unwrap_ref/tuple_elem_ref bind.
-    "stmt.tuple_unpack.ref_target",
-    # For-head ref unpack over an ITER-PROTO source (`for i, p in
-    # enumerate(ps):`): the element is already a borrow-form tuple, so the
-    # head binds `auto& __tup_N` (no lift) and ref targets alias via
-    # unwrap_ref/tuple_elem_ref (statement lowering).
-    "stmt.tuple_unpack.ref_target_iter",
-    # Standalone `a, b = p` where `p` is an already-borrow-form tuple PARAM
-    # (`tuple[T, ...]` passes as `const std::tuple<T*, ...>&`): the source binds
-    # `auto& __tup_N = p` (NAME_REF, no per-element lend) and ref targets
-    # alias via unwrap_ref/tuple_elem_ref.
-    "stmt.tuple_unpack.ref_param_source",
-    "stmt.tuple_unpack.subscript_wrap_source",  # `a0, b0 = pairs[0]` -- the
-                                    # whole storage element is lent per
-                                    # element off __getitem__
-    "stmt.tuple_unpack.field_wrap_source",  # `a, b = h.pair` -- the member
-                                    # is lent element by element
-    "stmt.tuple_unpack.call_borrow_source",  # `a, b = both(t1, t2)` -- the
-                                    # borrow-form call result captures via
-                                    # the plain RVALUE bind, no lift
-    "stmt.tuple_unpack.call_storage_source",  # `o, k = mko(1)` -- a
-                                    # storage-form call result, the same
-                                    # RVALUE bind; an opt_ptr target reads
-                                    # `optional_to_ptr(std::get<i>(..))`
-    # `ref, owned = split(p)` -- a MIXED borrow+Own call result. Admission is
-    # the only distinguishing site: the same RVALUE capture serves both slot
-    # shapes, so the ref/move target renders are the shared ones.
-    "stmt.tuple_unpack.own_ref_mix_source",
-    # A pointer-repr Optional[F1-record] unpack target off a borrow-form tuple
-    # param: a plain nullable-pointer local `const T* a = std::get<i>(__tup_N);`
-    # (const tracks the source param), registered as a pointer-optional local so
-    # its None-test / narrowed reads ride the `T | None` param machinery.
-    "stmt.tuple_unpack.opt_ptr_target",
-    # A REASSIGNED borrow F1-record target: `auto* a = &(unwrap_ref(
-    # tuple_elem_ref(std::get<i>(__tup_N))));`, a pointer local, so a later
-    # rebind re-points the name instead of writing through the alias. The
-    # for-each head's twin is foreach.ptr_unpack_target.
-    "stmt.tuple_unpack.ptr_target",
-    # An `Own[P] | None` STORAGE element target: the plain
-    # `std::optional<P> a = std::get<i>(__tup_N);` value copy, registered
-    # RECORD-kind so has_value / `(*a)` reads ride the value-opt arms.
-    "stmt.tuple_unpack.value_opt_record_target",
-    # ... and the owned-inner `Optional[str/bytes]` element target: the
-    # same value copy, registered VIEW-kind.
-    "stmt.tuple_unpack.value_opt_view_target",
-    # Own[A | B] element target: `::tpy::Union<A*, B*> p =
-    # ::tpy::to_ptr_variant(std::get<i>(__tup));` -- the per-element lift.
-    "stmt.tuple_unpack.ptr_variant_target",
-    # A recursive-wrapper element target: `Tree<int32_t>& a =
-    # ::tpy::unwrap_ref(std::get<i>(__tup_N));` -- a reference alias.
-    "stmt.tuple_unpack.unwrap_ref_target",
-    # A reused plain scalar/str target (lowering): `a = std::get<i>(__tup_N);`
-    # -- the declared-name assign tail, no decl.
+    # A reused plain scalar/str target (lowering): `a = std::get<i>(...);`
+    # -- the declared-name assign, no decl.
     "stmt.tuple_unpack.assign_target",
     # An Own[F1-record] element landing in a module-level POINTER-SLOT global:
     # `static T __global_slot_N = std::move(std::get<i>(__tup_N));` +
@@ -2865,14 +2779,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.leaf_match_sync",          # non-suspending leaf match (sync tiers)
     "res.decl_no_init",             # annotation-only frame-field decl, no code
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
-    "res.unpack_union_elem",        # value-tuple call source with a value-
-                                    # union element at the frame unpack
     "res.unpack_rebind_ptr",        # REBIND_PTR unpack target off an
                                     # owned element, into the site's field
-    "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
-    "res.unpack_storage_wrap",      # alias frame targets off a storage-form
-                                    # lvalue: per-element lend off the lvalue
-                                    # (never a by-value holder copy)
     "res.unpack_oneshot",           # await-lift one-shot unpack (auto&& move-out)
     "res.frame_tuple_literal",      # value-tuple literal at a bare frame field
     "res.frame_own_tuple_literal",  # literal at a fully-owned frame slot
@@ -2942,10 +2850,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "foreach.native_proto_param",
     "foreach.native_bound_field",   # open-T field with a NativeIterable/
                                     # Spannable bound: begin/end member loop
-    # Tuple-unpack head over the universal loop (`for a, b in zip(..)` /
-    # a tuple-yield generator call -- the same head decls as the container
-    # tuple-unpack, THIRForIterProto instead of begin/end).
-    "foreach.tuple_unpack_iter",
     # Class-constant read -> the bare qualified static (lowering;
     # `C::LIMIT`, `::tpyapp::m::Limits::MAX`, `C<int32_t>::X` -- the
     # receiver_eval-None shapes of _class_constant_access_parts).

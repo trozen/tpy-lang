@@ -16,9 +16,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         t = ::tpyapp::main::mk(::tpy::BigInt(1));
-        const auto& __tup_1 = t;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::move(std::get<0>(t));
+        b = std::move(std::get<1>(t));
         t = ::tpyapp::main::mk(::tpy::BigInt(2));
         __state = S_RESUME_0;
         return a;

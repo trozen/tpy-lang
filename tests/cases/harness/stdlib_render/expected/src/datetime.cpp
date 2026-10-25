@@ -22,8 +22,8 @@ timezone UTC{};
 //     return q
 ::tpy::BigInt _divide_and_round(const ::tpy::BigInt& a, const ::tpy::BigInt& b) {
     auto __tup_1 = ::tpy::divmod_bigint(a, b);
-    ::tpy::BigInt q = std::get<0>(__tup_1);
-    ::tpy::BigInt r = std::get<1>(__tup_1);
+    ::tpy::BigInt q = std::move(std::get<0>(__tup_1));
+    ::tpy::BigInt r = std::move(std::get<1>(__tup_1));
     r = ((r) * (::tpy::BigInt(2)));
     bool greater_than_half;
     if ((b > 0)) {
@@ -216,11 +216,11 @@ timedelta::timedelta(const ::tpy::BigInt& days, const ::tpy::BigInt& seconds, co
     ::tpy::BigInt us = ((microseconds) + (((milliseconds) * (::tpy::BigInt(1000)))));
     auto __tup_1 = ::tpy::divmod_bigint(us, ::tpy::BigInt(1000000));
     const ::tpy::BigInt& carry_s = std::get<0>(__tup_1);
-    us = std::get<1>(__tup_1);
+    us = std::move(std::get<1>(__tup_1));
     s = ((s) + (carry_s));
     auto __tup_2 = ::tpy::divmod_bigint(s, ::tpy::BigInt(86400));
     const ::tpy::BigInt& carry_d = std::get<0>(__tup_2);
-    s = std::get<1>(__tup_2);
+    s = std::move(std::get<1>(__tup_2));
     d = ((d) + (carry_d));
     if (((d < ::tpy::BigInt(::tpy::neg_check<int32_t>(_MAXORDINAL_DAYS))) || (d > _MAXORDINAL_DAYS))) {
         throw ::tpy::OverflowError("timedelta # of days is too large");
@@ -329,11 +329,11 @@ time time::fromisoformat(std::string_view time_string) {
     {
         try {
             auto __tup_1 = ::tpystd::_datetime_parse::_parse_iso_time(s);
-            hh = std::get<0>(__tup_1);
-            mm = std::get<1>(__tup_1);
-            ss = std::get<2>(__tup_1);
-            us = std::get<3>(__tup_1);
-            off = std::get<4>(__tup_1);
+            hh = std::move(std::get<0>(__tup_1));
+            mm = std::move(std::get<1>(__tup_1));
+            ss = std::move(std::get<2>(__tup_1));
+            us = std::move(std::get<3>(__tup_1));
+            off = std::move(std::get<4>(__tup_1));
             has_tz = std::get<5>(__tup_1);
         } catch (const ::tpy::ValueError&) {
             throw ::tpy::ValueError(std::format("Invalid isoformat string: '{}'", time_string));
@@ -637,9 +637,9 @@ std::optional<std::string> datetime::tzname() const {
         try {
             sep_loc = ::tpystd::_datetime_parse::_find_iso_datetime_separator(date_string);
             auto __tup_1 = ::tpystd::_datetime_parse::_parse_iso_date(::tpy::str_slice(date_string, ::tpy::BasicSlice{0, sep_loc.to_fixed_check<int32_t>()}));
-            y = std::get<0>(__tup_1);
-            mo = std::get<1>(__tup_1);
-            d = std::get<2>(__tup_1);
+            y = std::move(std::get<0>(__tup_1));
+            mo = std::move(std::get<1>(__tup_1));
+            d = std::move(std::get<2>(__tup_1));
         } catch (const ::tpy::ValueError&) {
             throw ::tpy::ValueError(std::format("Invalid isoformat string: '{}'", date_string));
         }
@@ -656,11 +656,11 @@ std::optional<std::string> datetime::tzname() const {
         {
             try {
                 auto __tup_2 = ::tpystd::_datetime_parse::_parse_iso_time(tstr);
-                hh = std::get<0>(__tup_2);
-                mm = std::get<1>(__tup_2);
-                ss = std::get<2>(__tup_2);
-                us = std::get<3>(__tup_2);
-                off = std::get<4>(__tup_2);
+                hh = std::move(std::get<0>(__tup_2));
+                mm = std::move(std::get<1>(__tup_2));
+                ss = std::move(std::get<2>(__tup_2));
+                us = std::move(std::get<3>(__tup_2));
+                off = std::move(std::get<4>(__tup_2));
                 has_tz = std::get<5>(__tup_2);
                 if (has_tz) {
                     tz = ::tpystd::datetime::timezone(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), off));
@@ -738,8 +738,8 @@ std::optional<std::string> datetime::tzname() const {
         throw ::tpy::OverflowError("timestamp out of range");
     }
     auto __tup_1 = ::tpy::divmod_bigint(us, ::tpy::BigInt(static_cast<int64_t>(86400000000LL)));
-    ::tpy::BigInt days = std::get<0>(__tup_1);
-    ::tpy::BigInt rem = std::get<1>(__tup_1);
+    ::tpy::BigInt days = std::move(std::get<0>(__tup_1));
+    ::tpy::BigInt rem = std::move(std::get<1>(__tup_1));
     ::tpy::BigInt o = ((days) + (_EPOCH_ORDINAL));
     if (((o < 1) || (o > ::tpystd::_datetime_cal::_MAXORDINAL))) {
         throw ::tpy::ValueError("year is out of range");
@@ -761,8 +761,8 @@ std::optional<std::string> datetime::tzname() const {
     if ((off != 0)) {
         us = ((us) + (off));
         auto __tup_2 = ::tpy::divmod_bigint(us, ::tpy::BigInt(static_cast<int64_t>(86400000000LL)));
-        days = std::get<0>(__tup_2);
-        rem = std::get<1>(__tup_2);
+        days = std::move(std::get<0>(__tup_2));
+        rem = std::move(std::get<1>(__tup_2));
         o = ((days) + (_EPOCH_ORDINAL));
         if (((o < 1) || (o > ::tpystd::_datetime_cal::_MAXORDINAL))) {
             throw ::tpy::ValueError("year is out of range");

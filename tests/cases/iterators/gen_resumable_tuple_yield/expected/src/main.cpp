@@ -23,9 +23,8 @@ __gen_pairs pairs(std::vector<P>& items) {
 //         print("b=none")
 //     print("---")
 void show(const std::tuple<const P*, const P*>& pair) {
-    auto& __tup_1 = pair;
-    const P* a = std::get<0>(__tup_1);
-    const P* b = std::get<1>(__tup_1);
+    const P* a = std::get<0>(pair);
+    const P* b = std::get<1>(pair);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {

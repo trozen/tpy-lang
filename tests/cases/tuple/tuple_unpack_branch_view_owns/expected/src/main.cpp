@@ -33,14 +33,12 @@ void main() {
     std::string b;
     if (flag) {
         std::tuple<std::string, std::string> t1 = ::tpyapp::main::make("X");
-        const auto& __tup_1 = t1;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(t1);
+        b = std::get<1>(t1);
     } else {
         std::tuple<std::string, std::string> t2 = ::tpyapp::main::make("Y");
-        const auto& __tup_2 = t2;
-        a = std::get<0>(__tup_2);
-        b = std::get<1>(__tup_2);
+        a = std::get<0>(t2);
+        b = std::get<1>(t2);
     }
     std::cout << a << "\n" << ::tpy::check_signals;
     std::cout << b << "\n" << ::tpy::check_signals;

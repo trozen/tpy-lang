@@ -103,9 +103,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame<T___src>::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return a;
     }
     __builtin_unreachable();
@@ -174,9 +173,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame<T___src>::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return b;
     }
     __builtin_unreachable();
@@ -228,9 +226,8 @@ struct __genexpr_main_4_frame : public ::tpy::next_iter_mixin<__genexpr_main_4_f
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_4_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         __for_tup_gx = &(*((*__for_it_0))++);
-        auto& __tup_1 = (*__for_tup_gx);
-        p = &(std::get<0>(__tup_1));
-        n = std::get<1>(__tup_1);
+        p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_gx)))));
+        n = std::get<1>((*__for_tup_gx));
         return p->bump();
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -367,9 +364,8 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_3 = *__beg_0;
-            auto& __tup_1 = __for_tup_3;
-            auto& p = std::get<0>(__tup_1);
-            int32_t n = std::get<1>(__tup_1);
+            auto& p = std::get<0>(__for_tup_3);
+            int32_t n = std::get<1>(__for_tup_3);
             __result.push_back(p.x);
         }
         std::move(__result);

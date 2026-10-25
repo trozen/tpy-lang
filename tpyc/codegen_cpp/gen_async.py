@@ -4632,7 +4632,7 @@ class AsyncCoroCodegen:
             # targets reserved here, moving each out of the holder.
             for i, name in enumerate(stmt.targets):
                 if (name not in rebind_names
-                        or not (i < len(stmt.is_owned) and stmt.is_owned[i])):
+                        or not stmt.owns_target(i)):
                     continue
                 pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     unwrap_own(stmt.target_types[i]))))

@@ -47,8 +47,8 @@ void to_name() {
     Cell p = Cell(1);
     Cell q = Cell(8);
     auto __tup_1 = ::tpyapp::main::both(p, q);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Cell* x = std::get<0>(__tup_1);
+    Cell& y = (*std::get<1>(__tup_1));
     x = &(q);
     x->n = 80;
     std::cout << "to_name" << " " << p.n << " " << q.n << " " << y.n << "\n" << ::tpy::check_signals;
@@ -64,7 +64,7 @@ void to_name() {
 void to_fresh() {
     Cell b = Cell(1);
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     std::optional<Cell> __slot_1;
     x = &*(__slot_1 = Cell(5));
@@ -84,7 +84,7 @@ void mixed() {
     Cell p = Cell(1);
     Cell q = Cell(8);
     auto __tup_1 = ::tpyapp::main::split(p);
-    auto* ref = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* ref = std::get<0>(__tup_1);
     auto&& owned = std::move(std::get<1>(__tup_1));
     ref = &(q);
     ref->n = 80;
@@ -100,9 +100,8 @@ void mixed() {
 //     x.n = 80
 //     print("param_src", t[0].n, q.n, k)
 void param_src(const std::tuple<Cell*, int32_t>& t, Cell& q) {
-    auto& __tup_1 = t;
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    int32_t k = std::get<1>(__tup_1);
+    Cell* x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     x->n = 70;
     x = &(q);
     x->n = 80;
@@ -118,7 +117,7 @@ void param_src(const std::tuple<Cell*, int32_t>& t, Cell& q) {
 //     print("branch", b.n, q.n)
 void branch(Cell& b, Cell& q, bool c) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     if (c) {
         x = &(q);
@@ -138,7 +137,7 @@ void branch(Cell& b, Cell& q, bool c) {
 //     print("loop", b.n, q.n)
 void loop(Cell& b, Cell& q) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     int32_t i = 0;
     while ((i < 2)) {
@@ -161,7 +160,7 @@ void loop(Cell& b, Cell& q) {
 //     print("closure", b.n, show())
 void closure(Cell& b, Cell& q) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     auto show = [&x]() -> int32_t {
@@ -189,9 +188,8 @@ void zip_head(Cell& q) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            int32_t n = std::get<1>(__tup_1);
+            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_0))));
+            int32_t n = std::get<1>(__for_tup_0);
             c = &(q);
             c->n = n;
         }
@@ -218,9 +216,8 @@ void gen_head(Cell& q) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_1;
-            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            int32_t n = std::get<1>(__tup_1);
+            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_1))));
+            int32_t n = std::get<1>(__for_tup_1);
             c->n = 5;
             c = &(q);
             c->n = n;
@@ -239,7 +236,7 @@ void gen_head(Cell& q) {
 //     return k
 std::expected<int32_t, Stop> er_body(Cell& b, Cell& q) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     x->n = 87;
@@ -262,7 +259,7 @@ void match_arm(Cell& b, Cell& q, int32_t tag) {
     switch (__match_subject_1) {
     case 1: {
         auto __tup_1 = ::tpyapp::main::one(b);
-        auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        Cell* x = std::get<0>(__tup_1);
         int32_t k = std::get<1>(__tup_1);
         x = &(q);
         x->n = 88;
@@ -288,7 +285,7 @@ void try_except(Cell& b, Cell& q) {
     {
         try {
             auto __tup_1 = ::tpyapp::main::one(b);
-            auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+            Cell* x = std::get<0>(__tup_1);
             int32_t k = std::get<1>(__tup_1);
             x = &(q);
             x->n = 89;
@@ -317,9 +314,8 @@ void two_loops() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_2;
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-            int32_t n = std::get<1>(__tup_1);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_2)));
+            int32_t n = std::get<1>(__for_tup_2);
             c.n = 5;
         }
     }
@@ -331,9 +327,8 @@ void two_loops() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_3);
-            auto& __tup_2 = __for_tup_3;
-            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
-            int32_t n = std::get<1>(__tup_2);
+            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_3))));
+            int32_t n = std::get<1>(__for_tup_3);
             c = &*(__slot_1 = Cell(9));
             c->n = 6;
         }
@@ -349,9 +344,8 @@ void two_loops() {
 //     x.n = 81
 //     print("unwritten_param", t[0].n, q.n)
 void unwritten_param(const std::tuple<Cell*, int32_t>& t, Cell& q) {
-    auto& __tup_1 = t;
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    int32_t k = std::get<1>(__tup_1);
+    Cell* x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     x = &(q);
     x->n = 81;
     std::cout << "unwritten_param" << " " << std::get<0>(t)->n << " " << q.n << "\n" << ::tpy::check_signals;
@@ -372,9 +366,8 @@ void unwritten_zip(std::vector<Cell>& cs, const std::vector<Cell>& ds, Cell& q) 
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_4;
-            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            auto&& d = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_4))));
+            auto& d = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_4)));
             c = &(q);
             c->n = 82;
         }
@@ -390,7 +383,7 @@ void unwritten_zip(std::vector<Cell>& cs, const std::vector<Cell>& ds, Cell& q) 
 //     print("with_as", b.n, ctx.c.n)
 void with_as(Cell& b, Ctx& ctx) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     auto& __ctx_1 = ctx;
     x = &(__ctx_1.__enter__());
@@ -417,8 +410,8 @@ void with_as(Cell& b, Ctx& ctx) {
 //     print("swap", p.n, q.n, y.n)
 void swap(Cell& p, Cell& q) {
     auto __tup_1 = ::tpyapp::main::both(p, q);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    auto* y = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
+    Cell* y = std::get<1>(__tup_1);
     Cell& __unpack_0_0 = (*y);
     Cell& __unpack_0_1 = (*x);
     x = &(__unpack_0_0);
@@ -443,9 +436,8 @@ void enum_head(Cell& q) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_5;
-            int32_t i = std::get<0>(__tup_1);
-            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+            int32_t i = std::get<0>(__for_tup_5);
+            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_5))));
             c = &(q);
             c->n = (::tpy::add_check<int32_t>(50, i));
         }
@@ -466,9 +458,8 @@ void items_head(Cell& q) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_6 = *__beg_0;
-        auto __tup_1 = std::tuple<std::string_view, Cell*>{std::get<0>(__for_tup_6), &(std::get<1>(__for_tup_6))};
-        std::string_view key = std::get<0>(__tup_1);
-        auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        std::string_view key = std::get<0>(__for_tup_6);
+        auto* c = &(std::get<1>(__for_tup_6));
         c = &(q);
         c->n = 50;
     }
@@ -488,9 +479,8 @@ void list_tuple_head(Cell& q) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_7 = *__beg_0;
-        auto __tup_1 = std::tuple<Cell*, int32_t>{&(std::get<0>(__for_tup_7)), std::get<1>(__for_tup_7)};
-        auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        int32_t k = std::get<1>(__tup_1);
+        auto* c = &(std::get<0>(__for_tup_7));
+        int32_t k = std::get<1>(__for_tup_7);
         c = &(q);
         c->n = 50;
     }
@@ -515,9 +505,8 @@ void cond_head(Cell& q) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_8 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_8;
-            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            int32_t n = std::get<1>(__tup_1);
+            auto* c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_8))));
+            int32_t n = std::get<1>(__for_tup_8);
             c->n = (::tpy::add_check<int32_t>(10, n));
             if ((n == 1)) {
                 c = &(q);
@@ -540,7 +529,7 @@ void cond_head(Cell& q) {
 //     print("late_closure", b.n, show())
 void late_closure(Cell& b, Cell& q) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     auto show = [&x]() -> int32_t {
         return x->n;
@@ -562,7 +551,7 @@ void nocopy_target() {
     Tok a = Tok(1);
     Tok other = Tok(2);
     auto __tup_1 = ::tpyapp::main::tok_pair(a);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Tok* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     x = &(other);
     x->n = 9;
@@ -578,7 +567,7 @@ void nocopy_target() {
 void not_rebound() {
     Cell b = Cell(1);
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    Cell& x = (*std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     x.n = 42;
     std::cout << "not_rebound" << " " << b.n << " " << k << "\n" << ::tpy::check_signals;

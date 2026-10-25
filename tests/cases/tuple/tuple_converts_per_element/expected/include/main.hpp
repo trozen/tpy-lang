@@ -1239,7 +1239,7 @@ inline HV::HV(Loud& b) : r(::tpyapp::main::loud_mixed([] TPY_ALWAYS_INLINE_ATTR 
 // def __init__(self, a: A) -> None:
 //     # ctor member-init: a nested literal beside an rvalue element
 //     self.n = read_nest(((a, 2), A(3)))  # tpyc: ok
-inline NestCtor::NestCtor(const A& a) : n(::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(3)}))) {}
+inline NestCtor::NestCtor(const A& a) : n(::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(3)}))) {}
 
 // def __init__(self, n: int32) -> None:
 //     self.t = (A(n), 1)

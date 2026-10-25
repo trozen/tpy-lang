@@ -23,8 +23,8 @@ std::tuple<Box*, Box*> first_two(std::vector<Box>& items) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::first_two(items);
-        a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        a = std::get<0>(__tup_1);
+        b = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

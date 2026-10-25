@@ -883,6 +883,88 @@ def subject(a: A, h: H, t: tuple[A, int32]) -> None:
     assert bool(local_ownership(ctx, body, target)) is owned
 
 
+_ANY_SOURCE = """\
+import asyncio
+class Store:
+    k: int32
+    def __init__(self) -> None:
+        self.k = 1
+    def __getitem__(self, i: int32) -> Own[tuple[A, int32]]:
+        raise ValueError("signature only")
+async def a_owning(a: A) -> Own[tuple[A, A]]:
+    raise ValueError("signature only")
+async def a_mixed(a: A) -> tuple[Own[A], int32]:
+    raise ValueError("signature only")
+def subject(a: A, h: H, s: Store, xs: list[tuple[Own[A], int32]]) -> None:
+    w0, w1 = (w := owning(a))
+    s0, s1 = s[0]
+    f0, f1 = h.p
+    x0, x1 = xs[0]
+    print(w0.x, w1.x, w[0].x, s0.x, s1, f0.x, f1, x0.x, x1)
+async def asubject(a: A) -> int32:
+    q0, q1 = await a_owning(a)
+    r0, r1 = await a_mixed(a)
+    t = asyncio.create_task(a_owning(a))
+    u0, u1 = await t
+    fut: asyncio.Future[tuple[A, int32]] = asyncio.Future()
+    fut.set_result((A(5), 6))
+    v0, v1 = await fut
+    return q0.x + q1.x + r0.x + r1 + u0.x + u1.x + v0.x + v1
+"""
+
+
+@pytest.mark.parametrize("target, owned", [
+    # A walrus is the name it binds: its elements stay the name's.
+    ("w0", False),
+    # A `__getitem__` returning by value hands over what it declares.
+    ("s0", True),
+    # A field and a container's element lend every reference element,
+    # whatever `Own` the element type spells.
+    ("f0", False),
+    ("x0", False),
+    # An await hands over its awaited result's `Own` markers.
+    ("q0", True),
+    ("q1", True),
+    ("r0", True),
+    # A `Task` / `Future` payload hands over what the payload type's
+    # markers own, as analyzed.
+    ("u0", False),
+    ("v0", False),
+])
+def test_unpack_target_owns_what_any_source_hands_over(
+        target: str, owned: bool) -> None:
+    # Every non-name source takes the one rule a call source does: the
+    # target owns the element its source hands over (`tuple_borrowed_paths`).
+    _compiler, modules = _compile_program(PRELUDE + _ANY_SOURCE)
+    entry = _entry(modules)
+    body = next(f for f in entry.ast.functions
+                if f.name == ("asubject" if target[0] in "qruv" else "subject"))
+    unpack = next(s for s in body.body
+                  if isinstance(s, TpyTupleUnpack) and target in s.targets)
+    i = unpack.targets.index(target)
+    assert unpack.is_owned[i] is owned
+    assert unpack.is_ref[i] is not owned
+
+
+@pytest.mark.parametrize("name, expected", [
+    # A walrus lends what the name it binds does: every reference path.
+    ("walrus", {(0,), (1,)}),
+    # A `__getitem__` returning by value lends as its declared return.
+    ("getitem", set()),
+])
+def test_borrowed_paths_of_walrus_and_getitem(name: str,
+                                              expected: set[tuple[int, ...]]
+                                              ) -> None:
+    _compiler, modules = _compile_program(PRELUDE + _ANY_SOURCE)
+    entry = _entry(modules)
+    body = next(f for f in entry.ast.functions if f.name == "subject")
+    unpack = next(s for s in body.body if isinstance(s, TpyTupleUnpack)
+                  and s.targets[0] == ("w0" if name == "walrus" else "s0"))
+    expr = unpack.value
+    slot = entry.analyzer.get_expr_type(expr)
+    assert tuple_borrowed_paths(entry.analyzer.ctx, expr, slot) == expected
+
+
 @pytest.mark.parametrize("name, expected", [
     # A literal lends each member it does not capture by value.
     ("lit", {(0,), (1,)}),

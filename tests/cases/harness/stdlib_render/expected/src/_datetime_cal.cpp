@@ -73,17 +73,17 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _ord2ymd(const ::tpy::Bi
     n = ((n) - (::tpy::BigInt(1)));
     auto __tup_1 = ::tpy::divmod_bigint(n, ::tpy::BigInt(146097));
     const ::tpy::BigInt& n400 = std::get<0>(__tup_1);
-    n = std::get<1>(__tup_1);
+    n = std::move(std::get<1>(__tup_1));
     ::tpy::BigInt year = ((((n400) * (::tpy::BigInt(400)))) + (::tpy::BigInt(1)));
     auto __tup_2 = ::tpy::divmod_bigint(n, ::tpy::BigInt(36524));
     const ::tpy::BigInt& n100 = std::get<0>(__tup_2);
-    n = std::get<1>(__tup_2);
+    n = std::move(std::get<1>(__tup_2));
     auto __tup_3 = ::tpy::divmod_bigint(n, ::tpy::BigInt(1461));
     const ::tpy::BigInt& n4 = std::get<0>(__tup_3);
-    n = std::get<1>(__tup_3);
+    n = std::move(std::get<1>(__tup_3));
     auto __tup_4 = ::tpy::divmod_bigint(n, ::tpy::BigInt(365));
     const ::tpy::BigInt& n1 = std::get<0>(__tup_4);
-    n = std::get<1>(__tup_4);
+    n = std::move(std::get<1>(__tup_4));
     year = ((((((year) + (((n100) * (::tpy::BigInt(100)))))) + (((n4) * (::tpy::BigInt(4)))))) + (n1));
     if (((n1 == 4) || (n100 == 4))) {
         return std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt>{((year) - (::tpy::BigInt(1))), ::tpy::BigInt(12), ::tpy::BigInt(31)};
@@ -136,14 +136,14 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt> _iso_calendar(const ::tp
     ::tpy::BigInt week1monday = ::tpystd::_datetime_cal::_isoweek1monday(y);
     ::tpy::BigInt today = ::tpystd::_datetime_cal::_ymd2ord(y, mo, d);
     auto __tup_1 = ::tpy::divmod_bigint(((today) - (week1monday)), ::tpy::BigInt(7));
-    ::tpy::BigInt week = std::get<0>(__tup_1);
-    ::tpy::BigInt day = std::get<1>(__tup_1);
+    ::tpy::BigInt week = std::move(std::get<0>(__tup_1));
+    ::tpy::BigInt day = std::move(std::get<1>(__tup_1));
     if ((week < 0)) {
         y = ((y) - (::tpy::BigInt(1)));
         week1monday = ::tpystd::_datetime_cal::_isoweek1monday(y);
         auto __tup_2 = ::tpy::divmod_bigint(((today) - (week1monday)), ::tpy::BigInt(7));
-        week = std::get<0>(__tup_2);
-        day = std::get<1>(__tup_2);
+        week = std::move(std::get<0>(__tup_2));
+        day = std::move(std::get<1>(__tup_2));
     } else if (((week >= 52) && (today >= ::tpystd::_datetime_cal::_isoweek1monday(((y) + (::tpy::BigInt(1))))))) {
         y = ((y) + (::tpy::BigInt(1)));
         week = ::tpy::BigInt(0);

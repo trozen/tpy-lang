@@ -15,3 +15,6 @@ set of lent duplicates
 copy 4
 copy 4
 dups 1 2
+explicit type arg 1 99
+explicit method type arg 1 77
+explicit generic record method type arg 1 55

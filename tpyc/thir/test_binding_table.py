@@ -292,10 +292,12 @@ def lens(xs: list[int], names: list[str], qs: list[tuple[str, Q]]) -> int:
         assert route is not None, decl.name
         # The record's type is the one the clause's body declares the name
         # at -- the same producer, so a str element is the resolved view
-        # or owned str and an unpack target its element's type.
+        # or owned str and an unpack target its element's type. An unpack
+        # clause's head declares its targets, as a for head does.
+        site = gen.head if gen.unpack_vars is not None else gen
         for name, t in _clause_bindings(gen, route):
             rec = table.visible(gen, name)
-            assert rec is not None and rec.site is gen
+            assert rec is not None and rec.site is site
             assert rec.type == t
 
 
@@ -2074,15 +2076,15 @@ def comps(pairs: list[tuple[P, int]], opts: list[tuple[P | None, int]]
     # A record target aliases its element, const off an unmutated tuple;
     # an Optional one is the element pointer, const the same way; value
     # elements copy (an expensive one is a `const T&`).
-    ("unpacks", {"a": (("unpack", F.REFERENCE, C.REF), True),
-                 "n": (("unpack", F.REFERENCE, C.CREF), False),
-                 "b": (("unpack", F.POINTER, C.OPT_PTR), True),
-                 "c": (("unpack", F.REFERENCE, C.CREF), False)}),
+    ("unpacks", {"a": (("unpack", F.REFERENCE, None), True),
+                 "n": (("unpack", F.REFERENCE, None), False),
+                 "b": (("unpack", F.POINTER, None), True),
+                 "c": (("unpack", F.REFERENCE, None), False)}),
     # A for head's Optional target is const as the iteration source; a
     # head target naming a visible local writes it (no record of its own).
-    ("heads", {"b": (("unpack", F.POINTER, C.OPT_PTR), True),
-               "y": (("unpack", F.REFERENCE, C.CREF), False),
-               "q": (("unpack", F.REFERENCE, C.REF), True)}),
+    ("heads", {"b": (("unpack", F.POINTER, None), True),
+               "y": (("unpack", F.REFERENCE, None), False),
+               "q": (("unpack", F.REFERENCE, None), True)}),
     # A record bound once is the reference, a reassigned one the pointer
     # the second `with` re-points; an owned enter result has no form here
     # (no program in the corpus reaches it).
@@ -2228,11 +2230,11 @@ def captures(o: P | None, n: int32) -> int:
     # pointer, an `Own[A | B]` element's pointer variant, a written value
     # copied, a recursive wrapper's live reference; a `with` over a value
     # enter result copies.
-    ("binds", {"a": (("unpack", F.VALUE, C.MOVE), False),
-               "b": (("unpack", F.POINTER, C.PTR), False),
-               "c": (("unpack", F.POINTER_UNION, C.PTR_VARIANT), False),
-               "d": (("unpack", F.VALUE, C.VALUE), False),
-               "e": (("unpack", F.REFERENCE, C.UNWRAP_REF), False),
+    ("binds", {"a": (("unpack", F.VALUE, None), False),
+               "b": (("unpack", F.POINTER, None), False),
+               "c": (("unpack", F.POINTER_UNION, None), False),
+               "d": (("unpack", F.VALUE, None), False),
+               "e": (("unpack", F.REFERENCE, None), False),
                "x": (("with", F.VALUE, None), False)}),
     # A match capture of a whole pointer subject copies the pointer (const
     # as the subject), a guarded scalar capture its value.

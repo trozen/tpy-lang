@@ -1107,9 +1107,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_27_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -1178,9 +1177,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_28_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -1249,9 +1247,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_29_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -2428,9 +2425,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_53_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -3012,9 +3008,8 @@ struct __genexpr_main_65_frame : public ::tpy::next_iter_mixin<__genexpr_main_65
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_65_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         __for_tup_gx = &(*((*__for_it_0))++);
-        auto& __tup_1 = (*__for_tup_gx);
-        p = &(std::get<0>(__tup_1));
-        q = std::get<1>(__tup_1);
+        p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_gx)))));
+        q = std::get<1>((*__for_tup_gx));
         return p->bump();
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -3078,9 +3073,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_66_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_gx);
-        p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        q = std::get<1>(__tup_1);
+        p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_gx)))));
+        q = std::get<1>((*__for_tup_gx));
         return q;
     }
     __builtin_unreachable();
@@ -3149,9 +3143,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_67_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_gx);
-        p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        q = std::get<1>(__tup_1);
+        p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_gx)))));
+        q = std::get<1>((*__for_tup_gx));
         return p->bump();
     }
     __builtin_unreachable();
@@ -3220,9 +3213,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_68_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_gx);
-        i = std::get<0>(__tup_1);
-        z = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        i = std::get<0>((*__for_tup_gx));
+        z = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_gx)))));
         return z->bump();
     }
     __builtin_unreachable();
@@ -3291,9 +3283,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_69_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_gx);
-        key = std::get<0>(__tup_1);
-        z = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        key = std::get<0>((*__for_tup_gx));
+        z = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_gx)))));
         return z->bump();
     }
     __builtin_unreachable();
@@ -3362,9 +3353,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_70_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        key = std::get<0>(__tup_1);
-        val = std::get<1>(__tup_1);
+        key = std::get<0>(__for_tup_gx);
+        val = std::get<1>(__for_tup_gx);
         return (::tpy::add_check<int32_t>(::tpy::__len__(key), val));
     }
     __builtin_unreachable();
@@ -3616,9 +3606,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_74_frame<T___src>::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_gx);
-        i = std::get<0>(__tup_1);
-        n = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        i = std::get<0>((*__for_tup_gx));
+        n = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_gx)))));
         return (::tpy::add_check<int32_t>(i, n->bump()));
     }
     __builtin_unreachable();
@@ -3882,9 +3871,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_78_frame<T___src1>::
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        __src = std::get<0>(__tup_1);
-        y = std::get<1>(__tup_1);
+        __src = std::get<0>(__for_tup_gx);
+        y = std::get<1>(__for_tup_gx);
         return y;
     }
     __builtin_unreachable();
@@ -4289,9 +4277,8 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_4);
-            const auto& __tup_1 = __for_tup_4;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_4);
+            int32_t v = std::get<1>(__for_tup_4);
             std::cout << "owning_enumerate" << " " << i << " " << v << "\n" << ::tpy::check_signals;
         }
     }
@@ -4302,9 +4289,8 @@ void main() {
             auto __r_6 = __itr_5.__next__();
             if (!__r_6.has_value()) break;
             auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_6);
-            const auto& __tup_2 = __for_tup_5;
-            int32_t a = std::get<0>(__tup_2);
-            int32_t b = std::get<1>(__tup_2);
+            int32_t a = std::get<0>(__for_tup_5);
+            int32_t b = std::get<1>(__for_tup_5);
             std::cout << "zip_two" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -4420,9 +4406,8 @@ void main() {
         auto __end_18 = __obj_18.end();
         for (; __beg_18 != __end_18; ++__beg_18) {
             auto&& __for_tup_8 = *__beg_18;
-            auto& __tup_3 = __for_tup_8;
-            auto& p = std::get<0>(__tup_3);
-            int32_t q = std::get<1>(__tup_3);
+            auto& p = std::get<0>(__for_tup_8);
+            int32_t q = std::get<1>(__for_tup_8);
             __result.push_back(p.v);
         }
         std::move(__result);
@@ -4830,9 +4815,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_module_1_frame<T___src>::
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(a, b));
     }
     __builtin_unreachable();

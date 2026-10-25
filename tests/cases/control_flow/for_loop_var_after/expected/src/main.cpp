@@ -147,9 +147,8 @@ void test_tuple_unpack() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        i = std::get<0>(__tup_1);
-        s = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_0);
+        s = std::get<1>(__for_tup_0);
     }
     std::cout << i << "\n" << ::tpy::check_signals;
     std::cout << s << "\n" << ::tpy::check_signals;
@@ -169,9 +168,8 @@ void test_tuple_unpack_partial() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_1 = *__beg_0;
-        const auto& __tup_1 = __for_tup_1;
-        i = std::get<0>(__tup_1);
-        std::string_view s = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_1);
+        std::string_view s = std::get<1>(__for_tup_1);
     }
     std::cout << i << "\n" << ::tpy::check_signals;
 }
@@ -192,9 +190,8 @@ void test_tuple_unpack_second_func() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_2 = *__beg_0;
-        const auto& __tup_1 = __for_tup_2;
-        i = std::get<0>(__tup_1);
-        s = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_2);
+        s = std::get<1>(__for_tup_2);
     }
     std::cout << i << "\n" << ::tpy::check_signals;
     std::cout << s << "\n" << ::tpy::check_signals;

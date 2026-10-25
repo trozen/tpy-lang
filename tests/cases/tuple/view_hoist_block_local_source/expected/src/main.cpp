@@ -65,9 +65,8 @@ void loop_local_unpack() {
     ::tpy::BigInt b;
     for (int32_t i = 0; i < 3; ++i) {
         std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(i));
-        const auto& __tup_1 = t;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(t);
+        b = std::get<1>(t);
     }
     std::cout << "loop_local_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
@@ -1050,9 +1049,8 @@ void leaked_head() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_0);
+        b = std::get<1>(__for_tup_0);
     }
     std::cout << "leaked_head" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }

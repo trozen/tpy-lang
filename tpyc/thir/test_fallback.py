@@ -829,8 +829,9 @@ def test_for_each_container_returning_call_stays_container_route():
 
 
 def test_for_each_tuple_unpack_over_gen_call_routes():
-    # `for a, b in gen():` -- the tuple-unpack head rides the universal
-    # __iter__/__next__ loop (THIRForIterProto) for scalar targets.
+    # `for a, b in gen():` -- the loop rides the universal __iter__/__next__
+    # loop (THIRForIterProto) as its scalar twin does, and the head binds
+    # each target off the step as a statement unpack does.
     compiler, entry, f = _fn_body(
         "from tpy import int32\n"
         "from typing import Iterator\n"
@@ -847,13 +848,14 @@ def test_for_each_tuple_unpack_over_gen_call_routes():
         begin_attempt()
         fn = lower_function(f, entry.analyzer, self_type=None)
     assert fn is not None
-    assert compiler._thir_face_witnesses.get("foreach.tuple_unpack_iter") == 1
+    assert compiler._thir_face_witnesses.get("foreach.iter_proto") == 1
+    assert compiler._thir_face_witnesses.get("stmt.tuple_unpack") == 1
 
 
 def test_for_each_tuple_unpack_over_gen_record_target_routes():
     # A record unpack target over a generator call ROUTES: the iter-proto
-    # element is already a borrow-form tuple, so the ref target aliases via
-    # unwrap_ref/tuple_elem_ref off the mutable `auto& __tup_N` head
+    # step is already a borrow-form tuple, so the ref target refers to the
+    # element through tuple_elem_ref off the step
     # (corpus witness: iterators/gen_resumable_mixed_tuple_yield).
     compiler, entry, f = _fn_body(
         "from tpy import int32\n"
@@ -877,8 +879,7 @@ def test_for_each_tuple_unpack_over_gen_record_target_routes():
         if fn is None:
             _record_reject("body")
     assert fn is not None
-    assert compiler._thir_face_witnesses.get(
-        "stmt.tuple_unpack.ref_target_iter", 0) >= 1
+    assert compiler._thir_face_witnesses.get("stmt.tuple_unpack", 0) >= 1
 
 
 def test_for_each_tuple_unpack_ref_target_routes():

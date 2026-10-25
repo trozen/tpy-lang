@@ -679,9 +679,8 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         const auto& __kv_37 = *__beg_4;
-        const auto& __tup_1 = __kv_37;
-        std::string __dk = std::get<0>(__tup_1);
-        int32_t __dv = std::get<1>(__tup_1);
+        std::string __dk = std::get<0>(__kv_37);
+        int32_t __dv = std::get<1>(__kv_37);
         __writer.key(__dk);
         __writer.write_int32(__dv);
     }
@@ -693,9 +692,8 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     auto __end_5 = __obj_5.end();
     for (; __beg_5 != __end_5; ++__beg_5) {
         auto&& __kv_38 = *__beg_5;
-        auto __tup_2 = std::tuple<std::string_view, const std::vector<int32_t>*>{std::get<0>(__kv_38), &(std::get<1>(__kv_38))};
-        std::string_view __dk = std::get<0>(__tup_2);
-        auto&& __dv = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+        std::string_view __dk = std::get<0>(__kv_38);
+        const auto& __dv = std::get<1>(__kv_38);
         __writer.key(__dk);
         __writer.array_start();
         auto& __obj_6 = __dv;

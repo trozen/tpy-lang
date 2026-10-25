@@ -45,7 +45,8 @@ from ...typesys import (
     ReturnPassing,
     return_representation,
 )
-from ..source import UNBOUND, BindingRepr, NameFacts, TraitAbi, slot_key
+from ..source import (UNBOUND, BindingForm, BindingRepr, NameFacts, TraitAbi,
+                      slot_key)
 from ..nodes import (THIRAssign, THIRCallableSignature, THIRErrorReturnBind, THIRFormConvert,
                      THIRLambda, THIRNarrowedRead, THIRNestedDef, THIRNode,
                      THIRPtrLocalRebind, THIRRebindSlot,
@@ -668,10 +669,12 @@ class SlotPosition(Enum):
     a STORE (a field, a container or tuple element, an owning argument)
     holds the type's own storage; a RETURN hands it back as the body's
     signature publishes it; a PARAM holds it as the callee's signature
-    passes it (a tuple each element in its passing form)."""
+    passes it (a tuple each element in its passing form); a LOCAL holds it
+    in the form its binding takes (`BindingForm`)."""
     STORE = auto()
     RETURN = auto()
     PARAM = auto()
+    LOCAL = auto()
 
 
 @dataclass(frozen=True, slots=True)
@@ -907,14 +910,22 @@ def _parts_classified(t: TpyType, analyzer) -> bool:
 
 def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
                 rep: 'Representation | None', construct: SlotConstruct,
-                getter: bool, analyzer) -> SlotHolds:
+                getter: bool, analyzer, *,
+                position: 'SlotPosition | None' = None,
+                form: 'BindingForm | None' = None,
+                element: bool = False, stored: bool = False) -> SlotHolds:
     """What a slot holds, from its class and how the position represents
     the value: a reference or a pointer into storage held elsewhere, an
     open `T` the instantiation decides, or the type's own storage -- or,
     for a property getter of a pointer-repr shape, the field's storage by
-    reference (`storage_reference_result`)."""
+    reference (`storage_reference_result`). A local's binding form
+    (`form`) that holds a pointer holds one whatever the type. A tuple
+    `element` holds a reference as its pointer in the tuple's borrow form,
+    and an open `T` inline where the tuple is `stored`."""
     if getter:
         return SlotHolds.BORROWS
+    if form in (BindingForm.POINTER, BindingForm.POINTER_UNION):
+        return SlotHolds.POINTER
     bare = unwrap_readonly(unwrap_send_sync(declared))
     if rep is Representation.TRAIT:
         return (SlotHolds.OWNS if isinstance(bare, OwnType)
@@ -922,23 +933,52 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
     if rep is Representation.REFERENCE:
         u = unwrap_ref_type(bare)
         return (SlotHolds.POINTER
-                if isinstance(u, (OptionalType, UnionType))
-                and u.uses_pointer_repr() else SlotHolds.BORROWS)
+                if (element and not stored)
+                or (isinstance(u, (OptionalType, UnionType))
+                    and u.uses_pointer_repr()) else SlotHolds.BORROWS)
     if rep is Representation.VIEW:
         return SlotHolds.VALUE
     if cls is SlotClass.UNCLASSIFIED:
-        if construct in (SlotConstruct.RETURN, SlotConstruct.PASS) and (
-                not st.is_value_type() or _parts_classified(st, analyzer)):
-            # A result or a parameter is built by its own
-            # copy-initialization whatever the type: a value type's (a
-            # tuple or an Optional whose parts each have a class) takes the
-            # source as it renders.
+        if position is SlotPosition.LOCAL or (
+                construct in (SlotConstruct.RETURN, SlotConstruct.PASS)
+                and (not st.is_value_type()
+                     or _parts_classified(st, analyzer))):
+            # A result, a parameter or a local is built by its own
+            # copy-initialization (a local reseated by its own assignment)
+            # whatever the type: a value type's -- a result's or a
+            # parameter's tuple or Optional whose parts each have a class,
+            # any local's -- takes the source as it renders.
             return SlotHolds.VALUE if st.is_value_type() else SlotHolds.OWNS
+        if element and stored and isinstance(unwrap_readonly(st),
+                                             TypeParamRef):
+            # A tuple holds an open `T` element inline, as its own storage.
+            return SlotHolds.OWNS
         # No conversion is known: only an owned value relocated whole
         # reaches the slot (BUGS.md#field-view-escape-needs-place keeps the
         # view-family receivers out of the families that would).
         return SlotHolds.RELOCATE
     return _STORED_HOLDS[cls]
+
+
+# The local forms holding a tuple as a result hands it back: each element
+# in its borrow form, a reference as its pointer.
+_BORROW_TUPLE_FORMS = frozenset({BindingForm.BORROW_TUPLE,
+                                 BindingForm.OPT_BORROW_TUPLE})
+
+# How a local of each form represents its value; a tuple in borrow form
+# as a parameter of its type holds it.
+_LOCAL_REPRESENTATION = {
+    BindingForm.VALUE: Representation.STORAGE,
+    BindingForm.VALUE_OPT: Representation.STORAGE,
+    BindingForm.OWNED_SLOT: Representation.STORAGE,
+    BindingForm.STORAGE_TUPLE: Representation.STORAGE,
+    BindingForm.REFERENCE: Representation.REFERENCE,
+    BindingForm.POINTER: Representation.REFERENCE,
+    BindingForm.POINTER_UNION: Representation.REFERENCE,
+    # The storage Optional itself, which the local refers to in place (a
+    # comprehension clause's pointer-repr Optional element).
+    BindingForm.STORAGE_OPT: Representation.STORAGE,
+}
 
 
 def _built_slot(declared: TpyType, st: TpyType,
@@ -948,11 +988,14 @@ def _built_slot(declared: TpyType, st: TpyType,
                 const: bool = False, getter: bool = False,
                 element: bool = False, stored: bool = False,
                 implicit_move: bool = False,
-                trait: 'TraitAbi | None' = None) -> Slot:
+                trait: 'TraitAbi | None' = None,
+                form: 'BindingForm | None' = None) -> Slot:
     # `stored`: an element of a tuple the result holds as its own storage
     # (an owned result's, at any depth), not handed back as a result.
     cls = _slot_class(st, analyzer)
-    holds = _slot_holds(declared, st, cls, rep, construct, getter, analyzer)
+    holds = _slot_holds(declared, st, cls, rep, construct, getter, analyzer,
+                        position=position, form=form, element=element,
+                        stored=stored)
     tup = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared)))
     owned = isinstance(tup, OwnType)
     if owned:
@@ -966,15 +1009,19 @@ def _built_slot(declared: TpyType, st: TpyType,
         # A result tuple hands each element back as that element's own
         # result would (a reference as a pointer); an owned or stored one
         # holds every element's storage.
-        by_result = (position in (SlotPosition.RETURN, SlotPosition.PARAM)
+        by_result = ((position in (SlotPosition.RETURN, SlotPosition.PARAM)
+                      or form in _BORROW_TUPLE_FORMS)
                      and not owned and not stored)
-        # An element of a const tuple is const.
+        # An element of a const tuple is const, and the borrow form holds a
+        # union element as the const pointer variant whatever the tuple's.
         elems = tuple(
-            _built_slot(e, storage_type(e) if by_result else e,
+            _built_slot(e, storage_type(e),
                         return_representation(e) if by_result
                         else Representation.STORAGE,
                         position, construct, analyzer, placement=placement,
-                        const=const, element=True, stored=not by_result)
+                        const=const or (by_result and _ptr_variant(e)),
+                        element=True, stored=not by_result,
+                        form=form if by_result else None)
             for e in tup.element_types)
     # A tuple element holds its open `T` by value or by pointer.
     if holds is not SlotHolds.TRAIT:
@@ -990,6 +1037,11 @@ def _built_slot(declared: TpyType, st: TpyType,
                 cls=cls, representation=rep or Representation.STORAGE,
                 declared=declared, elems=elems, trait=trait,
                 implicit_move=implicit_move, elements_by_result=by_result)
+
+
+def _ptr_variant(t: TpyType) -> bool:
+    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(storage_type(t))))
+    return isinstance(u, UnionType) and u.uses_pointer_repr()
 
 
 def _lends_result(holds: SlotHolds, elems: 'tuple[Slot, ...] | None'
@@ -1015,7 +1067,8 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
              placement: SlotPlacement = SlotPlacement.STATEMENT,
              result_const: bool = False,
              implicit_move: bool = False,
-             result: 'ResultRepresentation | None' = None) -> 'Slot | None':
+             result: 'ResultRepresentation | None' = None,
+             form: 'BindingForm | None' = None) -> 'Slot | None':
     """THE slot builder: the complete contract of the place a value of
     declared type `t` lands in at `position` -- what it holds, how the
     position represents it, how it is constructed, what it obliges its
@@ -1024,7 +1077,9 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
     and representation are its body's `signature`'s (None for a body with
     no result), or -- for a result position the signature does not
     describe, a generator's yield -- `t` held as its classified `result`;
-    a STORE slot holds `t`'s own storage. None for no type."""
+    a STORE slot holds `t`'s own storage; a LOCAL slot holds it in its
+    binding's `form` (`result_const`: the binding is const). None for no
+    type."""
     if position is SlotPosition.RETURN and result is not None:
         if t is None:
             return None
@@ -1048,6 +1103,17 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
             implicit_move=implicit_move)
     if t is None:
         return None
+    if position is SlotPosition.LOCAL:
+        # A local holds its value in its binding's form: by value, by
+        # reference, by pointer, or a tuple in its storage or borrow form.
+        assert form is not None and construct is not None, (
+            "a local slot names its binding form and its construction")
+        rep = (return_representation(t) if form in _BORROW_TUPLE_FORMS
+               else _LOCAL_REPRESENTATION[form])
+        return _built_slot(t, storage_type(t), rep, position, construct,
+                           analyzer, placement=placement,
+                           const=result_const or is_readonly_result_type(t),
+                           form=form)
     if position is SlotPosition.PARAM:
         # Bound for the call's duration; a tuple holds each element as the
         # signature passes it (`TupleType._param_spelling`), an
@@ -1057,8 +1123,8 @@ def slot_for(t: 'TpyType | None', position: SlotPosition, analyzer, *,
                            placement=placement,
                            const=result_const or is_readonly_result_type(t))
     assert construct is not None, "a stored slot names its construction"
-    return _built_slot(t, t, Representation.STORAGE, position, construct,
-                       analyzer, placement=placement)
+    return _built_slot(t, storage_type(t), Representation.STORAGE, position,
+                       construct, analyzer, placement=placement)
 
 
 def _result_layout(result: 'ResultRepresentation', t: TpyType

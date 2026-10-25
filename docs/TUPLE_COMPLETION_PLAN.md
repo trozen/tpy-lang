@@ -136,7 +136,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     `x__unpack_live_own__T` differs -> same. Also closed the owned-tuple
     PARAM's silent copy at a non-last-use unpack (unfiled; same cause) and
     turned the `@nocopy` live unpack from an error into the alias the scalar
-    twin takes. Sibling filed: `BUGS.md#for-head-owned-yield-copies-before-move`.
+    twin takes. Its sibling (a `for` head copying an owned step before the
+    move) closed with the per-target for head.
   - [x] the relayed owned-call unpack (was HIGH, entry removed) -- STALE on
     re-probe: direct and relayed renders are identical, a `@nocopy` element
     compiles and matches CPython; the dual-emit-era "correct" AST render it
@@ -319,14 +320,15 @@ per shape; the mixed tuple global (D2) waits on that entry.
   - [ ] an element alias off a tuple local: `a = t[0]` [`decl.slot_type`],
     and `a = p[0]; a = q` off a borrow-tuple param [`decl.slot_type`] where
     the scalar `a = p; a = q` compiles (found 2026-09-22)
-  - [ ] a tuple-unpack for head over pre-bound names: `k, v = ...` then
-    `for k, v in make_pairs()` [`tuple.reused_target`]
-  - [ ] an ENUM element beside a reference element: `return (b, c)` into
+  - [x] a tuple-unpack for head over pre-bound names: `k, v = ...` then
+    `for k, v in make_pairs()` -- compiles since the per-target for head
+    (S3, 2026-10-25): each target is the scalar write `k = <element 0>`
+  - [x] an ENUM element beside a reference element: `return (b, c)` into
     `-> tuple[Box, Color]` -- DONE in U5 step 3 (`_f1_tuple_element_ok`
     admits an enum like a scalar; `tests/cases/tuple/optional_tuple_return`
     section `enum`); `b, c = mk(Color.Blue)` off `-> tuple[Own[Box], Color]`
-    still rejects [`stmt.tuple_unpack`] (the unpack ladder's own element
-    lists -- step 4), where the `int32` twin compiles (found 2026-09-23)
+    compiles since the per-target statement unpack (S3, 2026-10-25), which
+    deleted the unpack ladder's own element lists
   - [x] an owning tuple off a METHOD: `t = h.meth()` for
     `-> tuple[Own[Box], int32]` -- compiles (verified 2026-10-08)
 - [ ] **U3 -- policy decisions, then the flips.** Each is small once decided;
@@ -690,7 +692,9 @@ per shape; the mixed tuple global (D2) waits on that entry.
       at the yield, ternary, print, walrus and unpack positions
       (`tests/cases/generators/frame_rebind_arms`), and a frame unpack of an
       `Own[tuple[...]]` call result into a reference target is refused
-      (A', `BUGS.md#frame-own-tuple-unpack-dangles`).
+      (A'; lifted by the per-target statement unpack, S3 C2, which moves
+      each owned element into the target's frame storage --
+      `tests/cases/tuple/unpack_hands_over`).
     - [x] 5.4 (554f59acd7) -- an owning sink over an element owned on some paths and
       borrowed on others takes the scalar's warned copy instead of the
       located reject: `p = (w, v); if c: p = mk(1, v)` then `take(p[0])`

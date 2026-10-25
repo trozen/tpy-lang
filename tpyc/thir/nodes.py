@@ -1826,8 +1826,9 @@ class THIRArrayComprehension(THIRExpr):
         default=None, kw_only=True, compare=False, repr=False)
     iterable: 'THIRExpr | None' = None
     iterable_lvalue: bool = True
-    unpack_targets: tuple = ()            # ('a', None, 'b') -- None = discard
-    unpack_target_cpps: tuple = ()
+    # An unpack clause's head (a per-target `THIRTupleUnpack`), binding its
+    # targets off `var`, which the lambda binds to the indexed element.
+    head: 'THIRStmt | None' = None
 
 
 @dataclass(frozen=True)
@@ -2182,6 +2183,10 @@ class THIRSubscript(THIRExpr):
     # read is built. A BORROW-form record element of a tuple holding it by
     # value yields `T&` and is no pointer.
     elem_pointer: bool = False
+    # An iterator step's lent element read as its object: the step holds it
+    # as a pointer, a reference or a `val_or_ref<T>`, which
+    # `unwrap_ref(tuple_elem_ref(...))` reads alike.
+    step_elem: bool = False
 
     @property
     def reads_raw_pointer(self) -> bool:
@@ -2381,6 +2386,12 @@ class THIRFormConvert(THIRExpr):
     # address-of or the value (`::tpy::to_val_or_ptr`). None: the bare
     # address-of of a reference read.
     trait: 'TraitAbi | None' = None
+    # A STORAGE construction of the record `result_type` from an object of
+    # a subclass: it takes the base part -- copied (`static_cast<const
+    # B&>(x)`), or with `move` moved out of an rvalue (`static_cast<B&&>(..)`)
+    # -- since building the base from the subclass itself picks a user
+    # constructor taking the subclass over the copy or the move.
+    base_copy: bool = False
 
     def __post_init__(self) -> None:
         if isinstance(unwrap_qualifiers(self.result_type), TupleType):
@@ -3412,39 +3423,12 @@ class THIRForRange(THIRStmt):
 
 
 class TupleSourceBind(Enum):
-    """How a THIRTupleUnpack's source binds to the `__tup_N` holder -- one
-    typed discriminator replacing the accreted per-form booleans (each value
-    documents its render; the payload fields each form consumes are
-    validated in __post_init__):
+    """How a tuple-target THIRTupleUnpack's source binds to the `__tup_N`
+    holder:
 
-        NAME_CREF     -> const auto& __tup_N = <src>;      (src: source /
-                         source_cpp spelling override, or source_expr --
-                         a narrowed value-opt tuple name's deref read)
-        RVALUE        -> auto __tup_N = <source_expr>;
-        ONESHOT_DEREF -> auto&& __tup_N = (*<source>);     (consumable
-                         one-shot `__await_lift_*` frame_slot; owned
-                         elements move out)
-        NAME_REF      -> auto& __tup_N = <src>;            (borrow-tuple
-                         name with ref/alias elements -- the is_ref rule
-                         drops the const; source_cpp carries the deref'd
-                         spelling for a pointer loop holder)
-        STORAGE_WRAP  -> auto __tup_N = <source_expr>;      (a storage-form
-                         source lent element by element, so `std::get<i>`
-                         yields the `T*` each ref/alias target uses)
-        NAME_MOVE     -> auto&& __tup_N = std::move(<src>); (an Own-element
-                         tuple NAME at its last use -- owned elements move
-                         out of the moved-from holder)
-        NAME_COPY     -> auto __tup_N = <src>;             (a `for` head's
-                         const-ref loop element with an owned member: the
-                         holder copies, the member moves out of the copy)
+        RVALUE -> auto __tup_N = <source_expr>;
     """
-    NAME_CREF = auto()
     RVALUE = auto()
-    ONESHOT_DEREF = auto()
-    NAME_REF = auto()
-    STORAGE_WRAP = auto()
-    NAME_MOVE = auto()
-    NAME_COPY = auto()
 
 
 class TupleElemBind(Enum):
@@ -3464,64 +3448,6 @@ class TupleElemBind(Enum):
     OWNED = auto()
     BORROW = auto()
     VALUE = auto()
-
-
-class UnpackBind(Enum):
-    """How one target of a `THIRTupleUnpack` binds its element
-    (`std::get<i>(tup)`, `<get>` below):
-
-        VALUE        -> T name = <get>;
-        CREF         -> const T& name = <get>;          // is_const_ref
-        MOVE         -> T name = std::move(<get>);      // Own element
-        MOVE_POINTEE -> T name = std::move(*<get>);     // the same off a
-                                                        // pointer element
-        REF          -> auto&& name = unwrap_ref(tuple_elem_ref(<get>));
-        PTR          -> auto* name = &(unwrap_ref(tuple_elem_ref(<get>)));
-        OPT_PTR      -> T* name = <get>;    // pointer-repr Optional element;
-                        // the "optional_to_ptr" wrap lifts a storage element
-        PTR_VARIANT  -> ::tpy::Union<A*, B*> name = to_ptr_variant(<get>);
-                        // Own[A | B] element off the value-variant capture
-        UNWRAP_REF   -> T& name = unwrap_ref(<get>);
-                        // recursive-wrapper element (a live `X&` slot)
-        ASSIGN       -> name = <get>;        // reused target, no decl
-        GLOBAL_SLOT  -> static T __global_slot_N = std::move(<get>);
-                        name = &__global_slot_N;   // pointer-slot global
-        GLOBAL_PTR   -> name = <get>;        // the same global, a borrowed
-                        // element: the capture yields its pointer
-
-    A fresh target's bind is its record's construction
-    (`bindings.unpack_tag`); a target that writes a binding in scope, and
-    every resumable-frame target, takes the bind its arm decides. The
-    RESUMABLE-frame binds (targets are frame fields -- assigned, never
-    re-declared; the `wraps` slot carries the per-element std::move):
-
-        FRAME_ASSIGN   -> name = <wrapped get>;
-        FRAME_EMPLACE  -> name.emplace(<wrapped get>);   // frame_slot<T>
-        FRAME_OPT_PTR  -> name = optional_to_ptr(<get>);
-        FRAME_PTR_ADDR -> name = &(<get>);
-        FRAME_PTR_ELEM -> name = &(unwrap_ref(tuple_elem_ref(<get>)));
-        FRAME_REBIND_PTR -> name = &*(<slot> = <wrapped get>);
-                            // REBIND_PTR target off an owned element; the
-                            // slot is the target's `slot_fields` entry
-    """
-    VALUE = auto()
-    CREF = auto()
-    MOVE = auto()
-    MOVE_POINTEE = auto()
-    REF = auto()
-    PTR = auto()
-    OPT_PTR = auto()
-    PTR_VARIANT = auto()
-    UNWRAP_REF = auto()
-    ASSIGN = auto()
-    GLOBAL_SLOT = auto()
-    GLOBAL_PTR = auto()
-    FRAME_ASSIGN = auto()
-    FRAME_EMPLACE = auto()
-    FRAME_OPT_PTR = auto()
-    FRAME_PTR_ADDR = auto()
-    FRAME_PTR_ELEM = auto()
-    FRAME_REBIND_PTR = auto()
 
 
 @dataclass(frozen=True)
@@ -3557,37 +3483,16 @@ class THIRTupleElemTarget:
 
 @dataclass(frozen=True)
 class THIRTupleUnpack(THIRStmt):
-    """A standalone `a, b = <source>` (or the `a, b = __for_tup_M` head of a
-    tuple-unpack for loop) over a value-scalar tuple (all-new plain
-    value-scalar targets, no ref/owned/const-ref elements). The SOURCE bind
-    splits on whether the value is a bare name:
+    """A tuple unpack `a, b = <source>` -- a statement's, a for head's, a
+    comprehension clause's -- in one of two modes.
 
-        const auto& __tup_N = <name>;   // a bare name / loop-shadow source
-        auto __tup_N = <expr>;          // a call / field rvalue source
-
-    followed by a per-target scalar decl:
-
-        int32_t a = std::get<0>(__tup_N);
-        int32_t b = std::get<1>(__tup_N);
-
-    `source_expr` carries the non-name rvalue (a value-tuple-returning call, a
-    value-tuple field read); when it is None the `source` name takes the
-    ref-binding form. `N` reproduces `ctx.unpack_counter` (per-function,
-    pre-incremented). The counter's other consumers (expression-position
-    `__tup_`/`__dk_` temps) are all gate-rejected, so a per-body emit counter
-    suffices. A None target is the `_` discard -- its slot emits
-    nothing. `target_cpps` carries the rendered decl types (render_type at
-    lowering), None at discard slots.
-
-    `binds` (parallel to `targets`; empty = all VALUE) picks each target's
-    arm (`UnpackBind`, each render documented there); None at discard
-    slots.
-
-    `source_cpp` overrides the name-bound source's spelling (a spelled
-    imported/native global -- `const auto& __tup_N = ::tpystd::m::name;` --
-    or the NAME_REF pointer-holder deref); None renders the escaped bare
-    `source`. The source HOLDER form is `source_bind` (TupleSourceBind --
-    each value's render documented there).
+    PER-TARGET mode (`per_target`): each target is the write the scalar
+    binding `x = <element i>` takes (`writes`, one per non-discard target,
+    its value the element read converted at the target's slot), reading
+    the elements off the source place itself or off the statement's
+    holder: `holder` evaluated once into `auto&& __tup_N` (`holder_ref`,
+    an lvalue) or `auto __tup_N` (a value), which the element reads name
+    by `holder_read` (`THIRTempRead`). A None target is the `_` discard.
 
     TUPLE-TARGET mode (`tuple_target` set, `targets` empty): the binding
     `t = <rvalue>` of a rebound tuple local held as the pointer tuple. The
@@ -3605,76 +3510,44 @@ class THIRTupleUnpack(THIRStmt):
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
     source_expr: 'THIRExpr | None' = None
-    binds: 'tuple[UnpackBind | None, ...]' = ()
-    source_cpp: str | None = None
-    # Per-element pre-write wrap for the frame modes and the ASSIGN arm:
-    # "" / "move" (ref elements reject at lowering today); an OPT_PTR
-    # target's "optional_to_ptr" marks a storage-form element
-    # (`T* a = ::tpy::optional_to_ptr(std::get<i>(tup));`).
-    wraps: tuple[str, ...] = ()
-    # Per-target frame field of a FRAME_REBIND_PTR bind, None elsewhere
-    # (empty: no such bind).
-    slot_fields: tuple[str | None, ...] = ()
-    source_bind: TupleSourceBind = TupleSourceBind.NAME_CREF
-    # An RVALUE source that is the one-shot holder `source` (`(*source)`)
-    # lent, in place of `source_expr`.
-    source_lent: 'THIRLent | None' = None
+    source_bind: TupleSourceBind = TupleSourceBind.RVALUE
     tuple_target: 'THIRName | None' = None
     elem_targets: tuple[THIRTupleElemTarget, ...] = ()
     tuple_decl_cpp: str | None = None
-
-    def target_slot(self, i: int) -> 'BindingRepr | None':
-        """The record of target `i` when its element lands in a slot of its
-        own, which the target points at (a rebound target taking over an
-        owned element; `storage_hoisted` says the slot stands at the body's
-        top), else None."""
-        rec = self.bindings[i] if i < len(self.bindings) else None
-        if (rec is not None and rec.rebind_slot and i < len(self.binds)
-                and self.binds[i] in (UnpackBind.MOVE,
-                                      UnpackBind.MOVE_POINTEE)):
-            return rec
-        return None
+    # PER-TARGET mode (the class docstring).
+    per_target: bool = False
+    holder: 'THIRExpr | None' = None
+    holder_ref: bool = False
+    holder_read: int | None = None
+    writes: tuple[THIRStmt, ...] = ()
 
     def __post_init__(self) -> None:
-        # The payload/discriminator pairings the old boolean pile left
-        # unchecked: each source form consumes exactly its own payload.
-        # NAME_CREF takes either a NAME source or an expression source (a
-        # narrowed value-opt tuple name const-ref-binds its deref).
-        if self.source_lent is not None and (
-                self.source_expr is not None
-                or self.source_bind is not TupleSourceBind.RVALUE):
-            raise ValueError("source_lent is an RVALUE source's only payload")
-        if self.source_bind in (TupleSourceBind.RVALUE,
-                                TupleSourceBind.STORAGE_WRAP):
-            if self.source_expr is None and self.source_lent is None:
-                raise ValueError(
-                    f"{self.source_bind.name} requires source_expr")
-        elif (self.source_expr is not None
-              and self.source_bind is not TupleSourceBind.NAME_CREF):
+        if self.per_target:
+            if self.source_expr is not None or self.tuple_target is not None:
+                raise ValueError("a per-target unpack carries its holder and "
+                                 "its target writes only")
+            if (self.holder is None) != (self.holder_read is None):
+                raise ValueError("a holder is read by its read id")
+            return
+        if self.holder is not None or self.writes:
+            raise ValueError("holder and writes belong to a per-target unpack")
+        if self.source_expr is None or self.tuple_target is None:
+            raise ValueError("an unpack is per-target, or binds a tuple "
+                             "target off its RVALUE holder")
+        if (self.source_bind is not TupleSourceBind.RVALUE
+                or self.targets or not self.elem_targets):
             raise ValueError(
-                "source_expr belongs to RVALUE / STORAGE_WRAP / NAME_CREF "
-                "sources only")
-        bad = [b for b in self.binds
-               if b is not None and not isinstance(b, UnpackBind)]
-        if bad:
-            raise ValueError(f"unknown bind(s): {bad}")
-        if self.tuple_target is not None:
-            if (self.source_bind is not TupleSourceBind.RVALUE
-                    or self.targets or not self.elem_targets):
+                "a tuple target takes the RVALUE holder and element "
+                "targets only")
+        for t in self.elem_targets:
+            if t.bind is not TupleElemBind.OWNED:
+                continue
+            if t.slot_cpp is None:
+                raise ValueError("an owned element needs its slot type")
+            if self.tuple_decl_cpp is not None and t.storage is not None:
                 raise ValueError(
-                    "a tuple target takes the RVALUE holder and element "
-                    "targets only")
-            for t in self.elem_targets:
-                if t.bind is not TupleElemBind.OWNED:
-                    continue
-                if t.slot_cpp is None:
-                    raise ValueError("an owned element needs its slot type")
-                if self.tuple_decl_cpp is not None and t.storage is not None:
-                    raise ValueError(
-                        "a first declaration's owned element takes its own "
-                        "slot, never a reseat verdict")
-        elif self.elem_targets or self.tuple_decl_cpp is not None:
-            raise ValueError("element targets belong to a tuple target")
+                    "a first declaration's owned element takes its own "
+                    "slot, never a reseat verdict")
 
 
 @dataclass(frozen=True)

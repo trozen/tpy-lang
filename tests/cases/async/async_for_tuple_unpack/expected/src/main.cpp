@@ -50,9 +50,8 @@ namespace tpyapp::main {
         }
     }
     case S_JOIN_1: {
-        const auto& __tup_1 = __for_tup_0;
-        k = std::get<0>(__tup_1);
-        sq = std::get<1>(__tup_1);
+        k = std::get<0>(__for_tup_0);
+        sq = std::get<1>(__for_tup_0);
         total = (total) + (sq);
         __state = S_JOIN_0;
         continue;

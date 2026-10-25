@@ -569,9 +569,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_zip_names_src::__next_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_1 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_1;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_1);
+        b = std::get<1>(__for_tup_1);
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
     }
@@ -614,9 +613,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_enumerate_cells_sr
             return (::tpy::str_concat("enumerate total ", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(::tpy::__getitem__((*cells), 0).v, ::tpy::__getitem__((*cells), 1).v)))));
         }
         __for_tup_2 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_2);
-        i = std::get<0>(__tup_1);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        i = std::get<0>((*__for_tup_2));
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_2)))));
         c->v = ::tpy::add_check<int32_t>(c->v, 100);
         __state = S_RESUME_0;
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("enumerate ", ::tpy::fixed_to_str<int32_t>(i))), " ")), ::tpy::fixed_to_str<int32_t>(c->v)));
@@ -1003,9 +1001,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_nested_combinator_src:
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_3 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_3;
-        i = std::get<0>(__tup_1);
-        v = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_3);
+        v = std::get<1>(__for_tup_3);
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), v));
     }
@@ -1041,9 +1038,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_combinator_temp_src::_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_4 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_4;
-        i = std::get<0>(__tup_1);
-        v = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_4);
+        v = std::get<1>(__for_tup_4);
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(i, v));
     }
@@ -1143,9 +1139,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_next_unpack_src::__nex
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_5 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_5);
-        i = std::get<0>(__tup_1);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        i = std::get<0>((*__for_tup_5));
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_5)))));
         c->v = ::tpy::add_check<int32_t>(c->v, 10);
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(i, c->v));
@@ -1312,9 +1307,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Bag_pairs::__next_
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = &(::tpy::unwrap_ref(*(*__for_r_0)));
-        auto& __tup_1 = (*__for_tup_0);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-        y = std::get<1>(__tup_1);
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>((*__for_tup_0)))));
+        y = std::get<1>((*__for_tup_0));
         c->v = ::tpy::add_check<int32_t>(c->v, y);
         __state = S_RESUME_0;
         return (::tpy::str_concat("method_zip ", ::tpy::fixed_to_str<int32_t>(c->v)));

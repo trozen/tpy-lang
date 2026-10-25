@@ -82,9 +82,8 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& __tup_1 = __for_tup_0;
-            int32_t a = std::get<0>(__tup_1);
-            int32_t b = std::get<1>(__tup_1);
+            int32_t a = std::get<0>(__for_tup_0);
+            int32_t b = std::get<1>(__for_tup_0);
             __result.push_back((::tpy::add_check<int32_t>(a, b)));
         }
         std::move(__result);
@@ -96,9 +95,8 @@ void main() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_1 = *__beg_1;
-            auto& __tup_2 = __for_tup_1;
-            int32_t i = std::get<0>(__tup_2);
-            int32_t v = std::get<1>(__tup_2);
+            int32_t i = std::get<0>(__for_tup_1);
+            int32_t v = std::get<1>(__for_tup_1);
             __result.push_back((::tpy::mul_check<int32_t>(i, v)));
         }
         std::move(__result);
@@ -165,9 +163,8 @@ void main() {
         auto __end_7 = __obj_7.end();
         for (; __beg_7 != __end_7; ++__beg_7) {
             auto&& __for_tup_2 = *__beg_7;
-            auto& __tup_3 = __for_tup_2;
-            int32_t a = std::get<0>(__tup_3);
-            int32_t b = std::get<1>(__tup_3);
+            int32_t a = std::get<0>(__for_tup_2);
+            int32_t b = std::get<1>(__for_tup_2);
             __result.insert((::tpy::mul_check<int32_t>(a, b)));
         }
         std::move(__result);
@@ -179,9 +176,8 @@ void main() {
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
             auto&& __for_tup_3 = *__beg_8;
-            auto& __tup_4 = __for_tup_3;
-            int32_t k = std::get<0>(__tup_4);
-            int32_t v = std::get<1>(__tup_4);
+            int32_t k = std::get<0>(__for_tup_3);
+            int32_t v = std::get<1>(__for_tup_3);
             __result.insert_or_assign(k, v);
         }
         std::move(__result);
@@ -208,9 +204,8 @@ void main() {
         auto __end_10 = __obj_10.end();
         for (; __beg_10 != __end_10; ++__beg_10) {
             auto&& __for_tup_4 = *__beg_10;
-            auto& __tup_5 = __for_tup_4;
-            auto& p = std::get<0>(__tup_5);
-            auto& q = std::get<1>(__tup_5);
+            auto& p = std::get<0>(__for_tup_4);
+            auto& q = std::get<1>(__for_tup_4);
             __result.push_back(p.bump(q.v));
         }
         std::move(__result);
@@ -246,9 +241,8 @@ void main() {
         auto __end_13 = __obj_13.end();
         for (; __beg_13 != __end_13; ++__beg_13) {
             auto&& __for_tup_5 = *__beg_13;
-            auto& __tup_6 = __for_tup_5;
-            int32_t i = std::get<0>(__tup_6);
-            auto& r = std::get<1>(__tup_6);
+            int32_t i = std::get<0>(__for_tup_5);
+            auto& r = std::get<1>(__for_tup_5);
             __result.push_back(r.bump(i));
         }
         std::move(__result);
@@ -296,9 +290,8 @@ void main() {
         auto __end_17 = __obj_17.end();
         for (; __beg_17 != __end_17; ++__beg_17) {
             auto&& __for_tup_6 = *__beg_17;
-            auto& __tup_7 = __for_tup_6;
-            int32_t i = std::get<0>(__tup_7);
-            auto& n = std::get<1>(__tup_7);
+            int32_t i = std::get<0>(__for_tup_6);
+            auto& n = std::get<1>(__for_tup_6);
             __result.push_back(n.bump(i));
         }
         std::move(__result);
@@ -312,9 +305,8 @@ void main() {
         auto __end_18 = __obj_18.end();
         for (; __beg_18 != __end_18; ++__beg_18) {
             auto&& __for_tup_7 = *__beg_18;
-            auto& __tup_8 = __for_tup_7;
-            auto& u = std::get<0>(__tup_8);
-            int32_t y = std::get<1>(__tup_8);
+            auto& u = std::get<0>(__for_tup_7);
+            int32_t y = std::get<1>(__for_tup_7);
             __result.push_back(u.bump(y));
         }
         std::move(__result);

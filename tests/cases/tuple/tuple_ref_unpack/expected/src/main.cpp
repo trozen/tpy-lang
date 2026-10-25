@@ -21,7 +21,7 @@ std::tuple<Point*, bool> find(Point& p) {
 void main() {
     Point p = Point(10, 20);
     auto __tup_1 = ::tpyapp::main::find(p);
-    auto&& pt = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    Point& pt = (*std::get<0>(__tup_1));
     bool found = std::get<1>(__tup_1);
     std::cout << pt << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(found) << "\n" << ::tpy::check_signals;

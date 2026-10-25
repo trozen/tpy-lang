@@ -33,8 +33,7 @@ void bump_opt(T* t) {
 //         return peek(a)
 //     return 0
 int32_t read_first(const std::tuple<const T*, const T*>& p) {
-    auto& __tup_1 = p;
-    const T* a = std::get<0>(__tup_1);
+    const T* a = std::get<0>(p);
     if ((a != nullptr)) {
         return ::tpyapp::main::peek((*a));
     }
@@ -48,9 +47,8 @@ int32_t read_first(const std::tuple<const T*, const T*>& p) {
 //         bump(a)
 //     bump_opt(b)
 void apply(const std::tuple<T*, T*>& p) {
-    auto& __tup_1 = p;
-    T* a = std::get<0>(__tup_1);
-    T* b = std::get<1>(__tup_1);
+    T* a = std::get<0>(p);
+    T* b = std::get<1>(p);
     if ((a != nullptr)) {
         ::tpyapp::main::bump((*a));
     }

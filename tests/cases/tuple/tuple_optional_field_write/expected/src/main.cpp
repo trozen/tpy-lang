@@ -43,9 +43,8 @@ void main() {
     T t2 = T(2);
     Holder h = Holder();
     h.update(std::tuple<const T*, const T*>{&(t1), &(t2)});
-    auto __tup_1 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(h.pair)), ::tpy::optional_to_ptr(std::get<1>(h.pair))};
-    T* a = std::get<0>(__tup_1);
-    T* b = std::get<1>(__tup_1);
+    T* a = ::tpy::optional_to_ptr(std::get<0>(h.pair));
+    T* b = ::tpy::optional_to_ptr(std::get<1>(h.pair));
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     }
@@ -54,27 +53,23 @@ void main() {
     }
     std::vector<std::tuple<std::optional<T>, std::optional<T>>> items = ::tpy::make_vector<std::tuple<std::optional<T>, std::optional<T>>>(std::tuple<std::optional<T>, std::optional<T>>{std::move(t1), std::nullopt});
     h.copy_from_subscript(items);
-    auto __tup_2 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(h.pair)), ::tpy::optional_to_ptr(std::get<1>(h.pair))};
-    T* a2 = std::get<0>(__tup_2);
+    T* a2 = ::tpy::optional_to_ptr(std::get<0>(h.pair));
     if ((a2 != nullptr)) {
         std::cout << a2->x << "\n" << ::tpy::check_signals;
     }
     Holder h2 = Holder();
     h2.copy_from_field(h);
-    auto __tup_3 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(h2.pair)), ::tpy::optional_to_ptr(std::get<1>(h2.pair))};
-    T* a3 = std::get<0>(__tup_3);
+    T* a3 = ::tpy::optional_to_ptr(std::get<0>(h2.pair));
     if ((a3 != nullptr)) {
         std::cout << a3->x << "\n" << ::tpy::check_signals;
     }
     GlobalCopier gc = GlobalCopier();
-    auto __tup_4 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(gc.pair)), ::tpy::optional_to_ptr(std::get<1>(gc.pair))};
-    T* a4 = std::get<0>(__tup_4);
+    T* a4 = ::tpy::optional_to_ptr(std::get<0>(gc.pair));
     if ((a4 != nullptr)) {
         std::cout << a4->x << "\n" << ::tpy::check_signals;
     }
     SubscriptCtor sc = SubscriptCtor(items);
-    auto __tup_5 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(sc.pair)), ::tpy::optional_to_ptr(std::get<1>(sc.pair))};
-    T* a5 = std::get<0>(__tup_5);
+    T* a5 = ::tpy::optional_to_ptr(std::get<0>(sc.pair));
     if ((a5 != nullptr)) {
         std::cout << a5->x << "\n" << ::tpy::check_signals;
     }

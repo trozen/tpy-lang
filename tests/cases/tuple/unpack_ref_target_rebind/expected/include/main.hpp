@@ -232,7 +232,7 @@ inline Holder::Holder() : k(0) {}
 //     print("method", b.n, q.n)
 inline void Holder::rebind(Cell& b, Cell& q) const {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     x->n = 86;
@@ -262,7 +262,7 @@ inline void Ctx::__exit__(std::monostate kind, const ::tpy::BaseException* value
 //     self.m = b.n
 inline Built::Built(Cell& b, Cell& q) {
     auto __tup_1 = ::tpyapp::main::one(b);
-    auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Cell* x = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     x = &(q);
     x->n = 80;

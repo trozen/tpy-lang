@@ -4,3 +4,5 @@ write through it never reaches the caller's element; CPython passes the
 same object and the write shows up in the source.
 Also: storing an element in a set runs its __copy__ hook once (the set
 keeps a second copy as its hash key), which CPython never calls.
+Also: CPython cannot subscript a generic function, so the explicit
+type argument call `each[Own[Item]](items)` raises TypeError there.

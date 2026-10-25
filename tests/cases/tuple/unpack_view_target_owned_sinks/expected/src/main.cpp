@@ -14,9 +14,8 @@ namespace tpyapp::main {
 //     x, y = src
 //     return x
 std::string first_of(const std::tuple<std::string, std::string>& src) {
-    const auto& __tup_1 = src;
-    std::string_view x = std::get<0>(__tup_1);
-    std::string_view y = std::get<1>(__tup_1);
+    std::string_view x = std::get<0>(src);
+    std::string_view y = std::get<1>(src);
     return std::string(x);
 }
 
@@ -24,9 +23,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 //     x, y = src
 //     return x
 ::tpy::Bytes first_bytes(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
-    const auto& __tup_1 = src;
-    ::tpy::BytesView x = std::get<0>(__tup_1);
-    ::tpy::BytesView y = std::get<1>(__tup_1);
+    ::tpy::BytesView x = std::get<0>(src);
+    ::tpy::BytesView y = std::get<1>(src);
     return ::tpy::Bytes(x);
 }
 
@@ -42,9 +40,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 //     xs.append(x)
 //     return len(xs) + take_bytes(y)
 ::tpy::BigInt bytes_elements(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& src) {
-    const auto& __tup_1 = src;
-    ::tpy::BytesView x = std::get<0>(__tup_1);
-    ::tpy::BytesView y = std::get<1>(__tup_1);
+    ::tpy::BytesView x = std::get<0>(src);
+    ::tpy::BytesView y = std::get<1>(src);
     std::vector<::tpy::Bytes> xs = {::tpy::Bytes(x), ::tpy::Bytes(y)};
     xs.push_back(::tpy::Bytes(x));
     return ((::tpy::BigInt(::tpy::__len__(xs))) + (::tpyapp::main::take_bytes(::tpy::Bytes(y))));
@@ -56,9 +53,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 //     out = out + b
 //     return out
 ::tpy::Bytes bytes_accumulate(const std::tuple<::tpy::Bytes, ::tpy::Bytes>& t) {
-    const auto& __tup_1 = t;
-    ::tpy::BytesView a = std::get<0>(__tup_1);
-    ::tpy::BytesView b = std::get<1>(__tup_1);
+    ::tpy::BytesView a = std::get<0>(t);
+    ::tpy::BytesView b = std::get<1>(t);
     ::tpy::Bytes out = ::tpy::Bytes(a);
     out = (::tpy::bytes_concat(out, b));
     return out;
@@ -72,9 +68,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 //     print(xs[0], xs[1])
 //     return len(xs)
 ::tpy::BigInt elements(const std::tuple<std::string, std::string>& src) {
-    const auto& __tup_1 = src;
-    std::string_view x = std::get<0>(__tup_1);
-    std::string_view y = std::get<1>(__tup_1);
+    std::string_view x = std::get<0>(src);
+    std::string_view y = std::get<1>(src);
     std::vector<std::string> xs = {std::string(x), std::string(y)};
     std::cout << ::tpy::__getitem__(xs, 0) << " " << ::tpy::__getitem__(xs, 1) << "\n" << ::tpy::check_signals;
     return ::tpy::BigInt(::tpy::__len__(xs));
@@ -84,9 +79,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 //     x, y = src
 //     return take(x)
 ::tpy::BigInt own_arg(const std::tuple<std::string, std::string>& src) {
-    const auto& __tup_1 = src;
-    std::string_view x = std::get<0>(__tup_1);
-    std::string_view y = std::get<1>(__tup_1);
+    std::string_view x = std::get<0>(src);
+    std::string_view y = std::get<1>(src);
     return ::tpyapp::main::take(std::string(x));
 }
 
@@ -96,9 +90,8 @@ std::string first_of(const std::tuple<std::string, std::string>& src) {
 //     out = out + b
 //     return out
 std::string accumulate(const std::tuple<std::string, std::string>& t) {
-    const auto& __tup_1 = t;
-    std::string_view a = std::get<0>(__tup_1);
-    std::string_view b = std::get<1>(__tup_1);
+    std::string_view a = std::get<0>(t);
+    std::string_view b = std::get<1>(t);
     std::string out = std::string(a);
     out += b;
     return out;
@@ -117,9 +110,8 @@ std::string accumulate(const std::tuple<std::string, std::string>& t) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view name = std::get<0>(__tup_1);
-        const ::tpy::BigInt& num = std::get<1>(__tup_1);
+        std::string_view name = std::get<0>(__for_tup_0);
+        const auto& num = std::get<1>(__for_tup_0);
         seen.push_back(std::string(name));
     }
     std::cout << ::tpy::__getitem__(seen, 0) << " " << ::tpy::__getitem__(seen, 1) << "\n" << ::tpy::check_signals;

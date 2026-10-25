@@ -251,10 +251,9 @@ void unary_policy() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view name = std::get<0>(__tup_1);
-        double x = std::get<1>(__tup_1);
-        std::string_view expected = std::get<2>(__tup_1);
+        std::string_view name = std::get<0>(__for_tup_0);
+        double x = std::get<1>(__for_tup_0);
+        std::string_view expected = std::get<2>(__for_tup_0);
         ::tpyapp::main::check_unary(name, x, expected);
     }
     std::cout << "free function: unary domains, overflow, infinities, signed zero" << "\n" << ::tpy::check_signals;
@@ -387,11 +386,10 @@ void binary_policy() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_1 = *__beg_0;
-        const auto& __tup_1 = __for_tup_1;
-        std::string_view name = std::get<0>(__tup_1);
-        double x = std::get<1>(__tup_1);
-        double y = std::get<2>(__tup_1);
-        std::string_view expected = std::get<3>(__tup_1);
+        std::string_view name = std::get<0>(__for_tup_1);
+        double x = std::get<1>(__for_tup_1);
+        double y = std::get<2>(__for_tup_1);
+        std::string_view expected = std::get<3>(__for_tup_1);
         actual = "missing";
         {
             try {
@@ -423,10 +421,9 @@ void binary_policy() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_2 = *__beg_1;
-        const auto& __tup_2 = __for_tup_2;
-        double x = std::get<0>(__tup_2);
-        int32_t exponent = std::get<1>(__tup_2);
-        std::string_view expected = std::get<2>(__tup_2);
+        double x = std::get<0>(__for_tup_2);
+        int32_t exponent = std::get<1>(__for_tup_2);
+        std::string_view expected = std::get<2>(__for_tup_2);
         actual = "missing";
         {
             try {

@@ -1082,7 +1082,7 @@ void main() {
     std::vector<std::tuple<A, A>> mys = ::tpy::make_vector<std::tuple<A, A>>(std::tuple<A, A>{A(3), A(4)});
     auto __tup_16 = ::tpyapp::main::elem_mixed_result(mys);
     auto&& mo = std::move(std::get<0>(__tup_16));
-    auto&& mb = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_16)));
+    A& mb = (*std::get<1>(__tup_16));
     mb.x = 40;
     std::cout << "elem_mixed_result" << " " << mo.x << " " << std::get<1>(::tpy::__getitem__(mys, 0)).x << "\n" << ::tpy::check_signals;
 }

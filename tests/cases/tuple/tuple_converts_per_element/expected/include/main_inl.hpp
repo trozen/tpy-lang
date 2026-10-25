@@ -232,7 +232,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_nest_gen::__next__() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(4)}));
+        return ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(4)}));
     }
     case S_RESUME_0: {  // after: yield read_nest(((a, 2), A(4)))  # tpyc: ok
         __state = S_DONE;

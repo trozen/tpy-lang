@@ -105,9 +105,8 @@ void for_unpack(std::vector<std::tuple<::tpy::BigInt, std::string>>& a) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        ::tpy::BigInt x = std::get<0>(__tup_1);
-        std::string s = std::get<1>(__tup_1);
+        ::tpy::BigInt x = std::get<0>(__for_tup_0);
+        std::string s = std::get<1>(__for_tup_0);
         ::tpy::__setitem__(a, 0, std::tuple<::tpy::BigInt, std::string>{::tpy::BigInt(50), LONG_B});
         std::cout << "for_unpack:" << " " << x << " " << s << "\n" << ::tpy::check_signals;
     }
@@ -123,9 +122,8 @@ void dict_items(::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_1 = *__beg_0;
-        const auto& __tup_1 = __for_tup_1;
-        std::string k = std::get<0>(__tup_1);
-        ::tpy::BigInt v = std::get<1>(__tup_1);
+        std::string k = std::get<0>(__for_tup_1);
+        ::tpy::BigInt v = std::get<1>(__for_tup_1);
         ::tpy::__setitem__(d, "a", ::tpy::BigInt(50));
         std::cout << "dict_items:" << " " << k << " " << v << "\n" << ::tpy::check_signals;
     }
@@ -440,9 +438,8 @@ void keep_enumerate(std::vector<::tpy::BigInt>& a) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_2;
-            int32_t i = std::get<0>(__tup_1);
-            const ::tpy::BigInt& y = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_2);
+            const auto& y = std::get<1>(__for_tup_2);
             ::tpy::__setitem__(a, 0, ::tpy::BigInt(50));
             std::cout << "keep_enumerate:" << " " << i << " " << y << "\n" << ::tpy::check_signals;
         }
@@ -1322,9 +1319,8 @@ void post_loop_unpack() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_3 = *__beg_0;
-        const auto& __tup_1 = __for_tup_3;
-        n = std::get<0>(__tup_1);
-        s = std::get<1>(__tup_1);
+        n = std::get<0>(__for_tup_3);
+        s = std::get<1>(__for_tup_3);
     }
     ::tpy::__setitem__(a, -1, std::tuple<int32_t, std::string>{50, LONG_B});
     std::cout << "post_loop_unpack:" << " " << n << " " << s << "\n" << ::tpy::check_signals;
@@ -1580,9 +1576,8 @@ void head_move(std::vector<std::tuple<std::string, std::string>>& xs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_4 = *__beg_0;
-        const auto& __tup_1 = __for_tup_4;
-        std::string a = std::get<0>(__tup_1);
-        std::string b = std::get<1>(__tup_1);
+        std::string a = std::get<0>(__for_tup_4);
+        std::string b = std::get<1>(__for_tup_4);
         ::tpy::__setitem__(xs, 0, std::tuple<std::string, std::string>{LONG_B, b});
         out.push_back(std::move(a));
     }

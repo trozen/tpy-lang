@@ -61,11 +61,11 @@ from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
     OwnType, ReadonlyType, TpyType, TupleType, TypeParamRef,
-    unwrap_own, unwrap_readonly,
+    make_readonly, unwrap_own, unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
 )
 from ..value_category import (binds_owned_value, call_operands,
-                              peel_coerce)
+                              getitem_call_of, peel_coerce)
 from .call_lends import (
     ContractLend, MayLend, borrowing_ctor_arg, frame_operand_keys,
     leaves_hold_no_pointer, may_hold_pointer,
@@ -296,7 +296,9 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
     when the slot is no tuple. A call lends per its declared return
     (`declared_call_paths`), or as `incoming` answers where the caller
     asks the incoming question -- of an element read off a call
-    (`call(...)[0]`) too, projected to its subtree; a select lends what
+    (`call(...)[0]`) too, projected to its subtree; an `await` and a
+    by-value `__getitem__` lend as their declared result does, a walrus as
+    the name it binds; a select lends what
     either arm does (C++ copies the chosen one); an element the read moves
     out (`element_moves_out`, asked of an incoming source) and a consuming
     method's field move lend nothing;
@@ -348,6 +350,26 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
         if incoming is not None:
             return incoming.call_lent_paths(init, bare, prefix)
         return declared_call_paths(init, bare, prefix)
+    if isinstance(init, TpyNamedExpr):
+        # A walrus denotes the name it binds, never the value it was given.
+        return reference_paths(bare, prefix)
+    if isinstance(init, TpyAwait):
+        # The awaited result hands over what its `Own` markers own, unless
+        # the coroutine lends its result: a coroutine's as its declaration
+        # writes it (the awaited type drops a whole `Own`), a handle's or a
+        # `Task` / `Future` / `__poll__` payload's as analyzed.
+        fi = getattr(peel_coerce(init.value), "resolved_function_info", None)
+        awaited = (fi.async_inner_return
+                   if fi is not None and fi.async_inner_return is not None
+                   else ctx.get_expr_type(init))
+        if init.await_result_is_borrow or awaited is None:
+            return reference_paths(bare, prefix)
+        return _declared_borrowed(awaited, bare, prefix)
+    getitem = getitem_call_of(init)
+    if getitem is not None and getitem.return_type is not None:
+        # A `__getitem__` returning by value lends what its declared return
+        # does, as the call it is.
+        return _declared_borrowed(getitem.return_type, bare, prefix)
     if ((incoming is not None and incoming.element_moves_out(init))
             or (isinstance(init, TpyFieldAccess) and init.consuming_move)):
         return frozenset()
@@ -436,6 +458,66 @@ def tuple_source_elem_owned(ctx: 'SemanticContext', expr: TpyExpr | None,
     every, lends = top_level(reference_paths(bare)), top_level(lent)
     return tuple(i in every and i not in lends
                  for i in range(len(bare.element_types)))
+
+
+@dataclass(frozen=True)
+class UnpackTarget:
+    """What one unpack target binds: the element as an object of its own
+    (`owned`, moved in), a reference to the source's element (`ref`), or
+    else a value -- and the type it binds at, `Own` peeled."""
+    owned: bool
+    ref: bool
+    type: TpyType
+
+
+def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
+                          source: TupleType, *, readonly: bool,
+                          consumed: bool, borrowed: 'frozenset[int]',
+                          step: 'frozenset[ElemPath] | None' = None
+                          ) -> list[UnpackTarget]:
+    """THE per-target record of an unpack of `value` (a tuple of type
+    `source`, `readonly` when the whole is): a target owns the element its
+    source hands over. A non-name source hands over what it lends none of
+    (`tuple_source_elem_owned`), as the scalar `x = <source>[i]` would own
+    it; a loop head's step (`step`, the leaf paths its iteration hands
+    over, `step_handover_paths`) every element whose leaves it hands over;
+    a name its declared `Own` elements where the read consumes it
+    (`consumed`), less those a binding of it borrows (`borrowed`)."""
+    if step is not None:
+        leaves = leaf_paths(source)
+        handed: 'list[bool] | None' = []
+        for i in range(len(source.element_types)):
+            under = [p for p in leaves if p[:1] == (i,)]
+            handed.append(bool(under) and all(p in step for p in under)
+                          and i not in borrowed)
+    elif not isinstance(value, TpyName):
+        handed = tuple_source_elem_owned(ctx, value, source)
+    else:
+        handed = None
+    out: list[UnpackTarget] = []
+    for i, elem_type in enumerate(source.element_types):
+        if handed is not None:
+            bare = unwrap_readonly(unwrap_own(elem_type))
+            # A nested value tuple holding a reference is handed over too,
+            # but binds as a value; an open T is one body for every
+            # instantiation, a value one included, so it neither aliases
+            # nor owns.
+            owned = (handed[i] and not bare.is_value_type()
+                     and not isinstance(bare, TypeParamRef))
+        else:
+            owned = (isinstance(elem_type, OwnType) and consumed
+                     and i not in borrowed)
+        if readonly:
+            # Asked before the Own is peeled: readonly over an owned element
+            # protects nothing (the target owns the moved-in object), as
+            # over a scalar `readonly[Own[T]]` parameter.
+            elem_type = make_readonly(elem_type)
+        if isinstance(elem_type, OwnType):
+            elem_type = elem_type.wrapped
+        ref = (not owned and not elem_type.is_value_type()
+               and not isinstance(elem_type, TypeParamRef))
+        out.append(UnpackTarget(owned, ref, elem_type))
+    return out
 
 
 def tuple_elem_owned(ctx: 'SemanticContext', value: TpyExpr | None,
@@ -1420,7 +1502,7 @@ class _Replay:
             src = peel_coerce(s.value)
             for i, name in enumerate(s.targets):
                 if name is not None:
-                    takes = i < len(s.is_owned) and s.is_owned[i]
+                    takes = s.owns_target(i)
                     # A target that does not take the element over aliases
                     # the source's element, whether or not the tracker
                     # filed the loan (a module-level target is a global).

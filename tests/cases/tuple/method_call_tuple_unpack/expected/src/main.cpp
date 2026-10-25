@@ -103,23 +103,20 @@ void bound() {
     auto __tup_1 = ::tpy::pop_back(stack);
     std::vector<std::string> __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<std::vector<std::string>*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
-    auto& __tup_2 = t;
-    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
-    int32_t b = std::get<1>(__tup_2);
+    std::vector<std::string>* a = std::get<0>(t);
+    int32_t b = std::get<1>(t);
     a->push_back("y");
-    auto& __tup_3 = t;
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
-    int32_t d = std::get<1>(__tup_3);
+    std::vector<std::string>& c = (*std::get<0>(t));
+    int32_t d = std::get<1>(t);
     std::cout << "bound" << " " << ::tpy::ListPrinter((*a)) << " " << b << " " << ::tpy::ListPrinter(c) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<std::string>> __slot_2;
-    auto __tup_4 = ::tpy::pop_back(stack);
-    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_4)));
-    std::get<1>(t) = std::move(std::get<1>(__tup_4));
+    auto __tup_2 = ::tpy::pop_back(stack);
+    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+    std::get<1>(t) = std::move(std::get<1>(__tup_2));
     std::optional<std::vector<std::string>> __slot_3;
     a = &*(__slot_3 = std::vector<std::string>{"q"});
-    auto& __tup_5 = t;
-    auto&& e = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_5)));
-    int32_t f = std::get<1>(__tup_5);
+    std::vector<std::string>& e = (*std::get<0>(t));
+    int32_t f = std::get<1>(t);
     std::cout << "bound" << " " << ::tpy::ListPrinter((*a)) << " " << ::tpy::ListPrinter(e) << " " << f << " " << ::tpy::ListPrinter(stack) << "\n" << ::tpy::check_signals;
 }
 
@@ -148,9 +145,8 @@ void literal_stack() {
 void literal_stack_bound() {
     std::vector<std::tuple<std::vector<std::string>, int32_t>> stack = ::tpy::make_vector<std::tuple<std::vector<std::string>, int32_t>>(std::tuple<std::vector<std::string>, int32_t>{{"x"}, 1});
     auto t = ::tpy::pop_back(stack);
-    auto __tup_1 = std::tuple<std::vector<std::string>*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t b = std::get<1>(__tup_1);
+    std::vector<std::string>& a = std::get<0>(t);
+    int32_t b = std::get<1>(t);
     a.push_back("y");
     std::cout << "literal_stack_bound" << " " << ::tpy::ListPrinter(a) << " " << b << " " << ::tpy::TuplePrinter(t) << " " << ::tpy::ListPrinter(stack) << "\n" << ::tpy::check_signals;
 }
@@ -165,9 +161,8 @@ void literal_stack_bound() {
 void literal_local_tuple() {
     std::vector<std::string> inner = {"x"};
     auto t = std::tuple<std::vector<std::string>*, int32_t>{&(inner), 1};
-    auto& __tup_1 = t;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t b = std::get<1>(__tup_1);
+    std::vector<std::string>& a = (*std::get<0>(t));
+    int32_t b = std::get<1>(t);
     a.push_back("y");
     std::cout << "literal_local_tuple" << " " << ::tpy::ListPrinter(a) << " " << b << " " << ::tpy::ListPrinter(inner) << "\n" << ::tpy::check_signals;
 }
@@ -186,9 +181,8 @@ void for_head() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<std::vector<std::string>*, int32_t>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        int32_t b = std::get<1>(__tup_1);
+        auto& a = std::get<0>(__for_tup_0);
+        int32_t b = std::get<1>(__for_tup_0);
         a.push_back("y");
         std::cout << "for_head" << " " << ::tpy::ListPrinter(a) << " " << b << "\n" << ::tpy::check_signals;
     }
@@ -208,9 +202,8 @@ void dict_items_literal() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        auto __tup_1 = std::tuple<std::string_view, std::vector<int32_t>*>{std::get<0>(__for_tup_1), &(std::get<1>(__for_tup_1))};
-        std::string_view k = std::get<0>(__tup_1);
-        auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        std::string_view k = std::get<0>(__for_tup_1);
+        auto& v = std::get<1>(__for_tup_1);
         v.push_back(9);
     }
     std::cout << "dict_items_literal" << " " << ::tpy::DictPrinter(d) << "\n" << ::tpy::check_signals;

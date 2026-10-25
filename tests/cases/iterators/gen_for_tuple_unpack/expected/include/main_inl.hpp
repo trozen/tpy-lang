@@ -30,9 +30,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_sums::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_0;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_0);
+        b = std::get<1>(__for_tup_0);
         __state = S_RESUME_1;
         return (::tpy::add_check<int32_t>(a, b));
     }
@@ -61,8 +60,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_firsts::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_1 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_1;
-        x = std::get<0>(__tup_1);
+        x = std::get<0>(__for_tup_1);
         __state = S_RESUME_0;
         return x;
     }

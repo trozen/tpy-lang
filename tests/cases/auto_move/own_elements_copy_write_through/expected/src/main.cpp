@@ -31,6 +31,71 @@ __gen_fresh_hs fresh_hs() {
     return __gen_fresh_hs();
 }
 
+// # A type argument the call writes (`each[Own[Item]]`, free function, method
+// # and a generic record's method) counts as written: the loop variable owns the step and moves on,
+// # no copy. The step itself is an unwarned copy of the lent element
+// # (BUGS.md#lent-list-at-own-iterable-param-copies).
+// def explicit_type_arg(items: list[Own[Item]]) -> None:
+//     keep: list[Item] = []
+//     for x in each[Own[Item]](items):
+//         keep.append(x)  # tpyc: ok
+//     keep[0].value = 99
+//     print("explicit type arg", items[0].value, keep[0].value)
+//     mkeep: list[Item] = []
+//     for y in Each().each[Own[Item]](items):
+//         mkeep.append(y)  # tpyc: ok
+//     mkeep[0].value = 77
+//     print("explicit method type arg", items[0].value, mkeep[0].value)
+//     gkeep: list[Item] = []
+//     for z in GEach[int32]().each[Own[Item]](items):
+//         gkeep.append(z)  # tpyc: ok
+//     gkeep[0].value = 55
+//     print("explicit generic record method type arg", items[0].value,
+//           gkeep[0].value)
+void explicit_type_arg(std::vector<Item>& items) {
+    std::vector<Item> keep = std::vector<Item>{};
+    {
+        auto __src_0 = ::tpyapp::main::each<Item>(items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& x = ::tpy::own_bind(*__r_1);
+            keep.push_back(std::move(x));
+        }
+    }
+    ::tpy::__getitem__(keep, 0).value = 99;
+    std::cout << "explicit type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(keep, 0).value << "\n" << ::tpy::check_signals;
+    std::vector<Item> mkeep = std::vector<Item>{};
+    {
+        Each __tmp_1 = Each();
+        auto __src_2 = __tmp_1.each<Item>(items);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& y = ::tpy::own_bind(*__r_3);
+            mkeep.push_back(std::move(y));
+        }
+    }
+    ::tpy::__getitem__(mkeep, 0).value = 77;
+    std::cout << "explicit method type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(mkeep, 0).value << "\n" << ::tpy::check_signals;
+    std::vector<Item> gkeep = std::vector<Item>{};
+    {
+        GEach<int32_t> __tmp_2 = GEach<int32_t>();
+        auto __src_4 = __tmp_2.each<Item>(items);
+        auto&& __itr_4 = ::tpy::__iter__(__src_4);
+        for (;;) {
+            auto __r_5 = __itr_4.__next__();
+            if (!__r_5.has_value()) break;
+            auto&& z = ::tpy::own_bind(*__r_5);
+            gkeep.push_back(std::move(z));
+        }
+    }
+    ::tpy::__getitem__(gkeep, 0).value = 55;
+    std::cout << "explicit generic record method type arg" << " " << ::tpy::__getitem__(items, 0).value << " " << ::tpy::__getitem__(gkeep, 0).value << "\n" << ::tpy::check_signals;
+}
+
 // # The callback writes and returns a field, never the `Own` object itself.
 // def bump(k: int32, x: Own[Item]) -> int32:  # tpyc: warning(/Own\[Item\] param 'x' is never consumed/)
 //     x.value += k  # writes the callback parameter's own copy
@@ -70,6 +135,7 @@ int32_t bump(int32_t k, Item&& x) {
 //     print("set of lent duplicates")
 //     hs3 = set(dup)  # tpyc: warning(/copies H elements/)
 //     print("dups", len(hs3), len(dup))
+//     explicit_type_arg(items)
 void main() {
     std::vector<Item> items = {Item(1)};
     std::vector<Item> out = ::tpyapp::main::bump_all(items);
@@ -104,6 +170,7 @@ void main() {
     std::cout << "set of lent duplicates" << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<H> hs3 = ::tpy::set_construct<H>(dup);
     std::cout << "dups" << " " << ::tpy::__len__(hs3) << " " << ::tpy::__len__(dup) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::explicit_type_arg(items);
 }
 
 // main()

@@ -86,8 +86,9 @@ from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
-from .alias_rebind import bind_kind_of, note_tuple_elem_borrows, tuple_elem_owned
-from .binding_ownership import resolve_read
+from .alias_rebind import (bind_kind_of, note_tuple_elem_borrows,
+                           tuple_elem_owned, unpack_target_records)
+from .binding_ownership import resolve_read, step_handover_paths
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .flow_facts import Branch, FlowFacts
@@ -5655,12 +5656,15 @@ class ExpressionAnalyzer:
         expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension | TpyGeneratorExpression,
         k: int, elem_type: TpyType,
     ) -> None:
-        """Stamp clause `k`'s source facts. Only the innermost clause's
-        element can be handed to the sink; an outer clause's owned element
-        stays in its iterator's step slot while the inner clauses borrow it."""
+        """Stamp clause `k`'s source facts before its body: what each step
+        hands over (`step_handover_paths`, as a `for` stamps it). Only the
+        innermost clause's element can be handed to the sink; an outer
+        clause's owned element stays in its iterator's step slot while the
+        inner clauses borrow it."""
         gen = expr.generators[k]
-        gen.owns_elements = isinstance(elem_type, OwnType)
-        if (gen.owns_elements and isinstance(expr, TpyGeneratorExpression)
+        gen.step_handover = step_handover_paths(
+            self.ctx, gen.iterable, unwrap_ref_type(elem_type))
+        if (gen.step_handover and isinstance(expr, TpyGeneratorExpression)
                 and len(expr.generators) > 1):
             # No generator-expression frame takes over its source's elements;
             # the single-clause form keeps its lowering refusal.
@@ -5802,6 +5806,7 @@ class ExpressionAnalyzer:
             is_generator=True, is_genexpr=True, loc=loc)
         func.genexpr_container_by_protocol = by_protocol
         func.genexpr_owner = owner if outer is not None else None
+        func.genexpr_step_handover = gen.step_handover
         self.ctx.genexpr_roots[func] = self.ctx.func.body_root
         # Every type param in scope where the expression is written is one of
         # the function's own: the enclosing record's, then the enclosing
@@ -6395,19 +6400,10 @@ class ExpressionAnalyzer:
                         if k == 0 else [])
             self._register_comp_iter_loans(gen, names, excluded)
         if gen.unpack_vars is not None:
-            if (isinstance(elem_type, ReadonlyType)
-                    and isinstance(elem_type.wrapped, TupleType)):
-                # As the tuple-unpack statement reads it.
-                elem_type = TupleType(tuple(
-                    make_readonly(e) for e in elem_type.wrapped.element_types))
-            if not isinstance(elem_type, TupleType):
-                raise self.ctx.error(
-                    f"Cannot unpack non-tuple type {elem_type}", expr)
-            if len(gen.unpack_vars) != len(elem_type.element_types):
-                raise self.ctx.error(
-                    f"Cannot unpack tuple of {len(elem_type.element_types)} "
-                    f"elements into {len(gen.unpack_vars)} targets", expr)
-            bindings = [(u, t) for u, t in zip(gen.unpack_vars, elem_type.element_types)
+            if not step:
+                gen.head = self._comp_clause_head(expr, gen, elem_type)
+            bindings = [(u, t) for u, t in zip(gen.unpack_vars,
+                                               gen.head.target_types)
                         if u is not None]
         else:
             bindings = [(gen.var, elem_type)]
@@ -6430,14 +6426,56 @@ class ExpressionAnalyzer:
         if step:
             return result
         # Whether the targets bind const-ref is decided once every write
-        # through them is known (`resolve_loop_bindings`). An owned-yielding
-        # source binds the element non-const (`auto&&`) so a last-use sink
-        # can move it -- mirrors the consuming for-loop, which excludes
-        # consumed vars from the const-ref binding.
+        # through them is known (`resolve_loop_bindings`). A source handing
+        # any of its step over binds the element non-const (`auto&&`) so a
+        # last-use sink can move it -- mirrors the consuming for-loop, which
+        # excludes consumed vars from the const-ref binding.
         self.ctx.loop_binders.append(
-            (gen, worth_const_ref and not gen.owns_elements))
+            (gen, worth_const_ref and not gen.step_handover))
         self._decide_comp_copies_var(expr, k, elem_type)
         return result
+
+    def _comp_clause_head(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        gen: TpyComprehensionGenerator, elem_type: TpyType,
+    ) -> TpyTupleUnpack:
+        """The head of unpack clause `gen`: the for head's unpack of the
+        clause variable (each step, of type `elem_type`, an `Own[tuple]`
+        one taken apart), its targets stamped by the one per-target record
+        (`unpack_target_records`) at what the step hands over."""
+        step_t = unwrap_own(unwrap_ref_type(elem_type))
+        # As the tuple-unpack statement reads a readonly tuple.
+        readonly = isinstance(step_t, ReadonlyType)
+        tup = unwrap_readonly(step_t)
+        if not isinstance(tup, TupleType):
+            raise self.ctx.error(
+                f"Cannot unpack non-tuple type {elem_type}", expr)
+        if len(gen.unpack_vars) != len(tup.element_types):
+            raise self.ctx.error(
+                f"Cannot unpack tuple of {len(tup.element_types)} "
+                f"elements into {len(gen.unpack_vars)} targets", expr)
+        value = TpyName(gen.var, loc=gen.iterable.loc)
+        self.ctx.set_expr_type(value, elem_type)
+        head = TpyTupleUnpack(targets=list(gen.unpack_vars), value=value,
+                              is_loop_head=True, loc=gen.iterable.loc)
+        head.step_handover = gen.step_handover
+        for rec in unpack_target_records(
+                self.ctx, value, tup, readonly=readonly, consumed=True,
+                borrowed=frozenset(), step=gen.step_handover):
+            head.target_types.append(rec.type)
+            head.is_owned.append(rec.owned)
+            head.is_ref.append(rec.ref)
+            head.is_new.append(True)
+            # A clause's value targets copy out of the step.
+            head.is_const_ref.append(False)
+            head.is_rebound.append(False)
+        # A list-literal source's element is still pending here; its
+        # targets follow the resolved cells, as the unpack statement's do.
+        if any(contains_pending_leaf(t) for t in head.target_types):
+            self.ctx.func.pending_elem_type_fields.append(
+                (head, "target_types"))
+        return head
 
     def _decide_comp_copies_var(
         self,
@@ -6450,7 +6488,7 @@ class ExpressionAnalyzer:
         element(s)."""
         gen = expr.generators[k]
         iterable_type = self.ctx.get_expr_type(gen.iterable)
-        if (gen.owns_elements or iterable_type is None
+        if (gen.step_handover or iterable_type is None
                 or iteration_yields_copies(self.ctx, iterable_type)):
             return
         live = _comp_clause_body(expr, k)

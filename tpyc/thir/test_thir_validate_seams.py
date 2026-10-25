@@ -17,18 +17,14 @@ from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
 from ..typesys import (BOOL, INT32, NominalType, TupleType, UnionType, VoidType,
                        unwrap_readonly, unwrap_ref_type)
-from .nodes import (
-    Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp, THIRCall,
-    THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRConstructor,
-    THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
-    THIRMilInit,
-    THIRFieldAccess, THIRFieldIdentity, THIRFormConvert, THIRFunction, THIRFunctionLayout,
-    THIRIf, THIRIfExpr, THIRLiteral,
-    THIRLent, THIRMethodCall, THIRName, THIRRaise, THIRResumableBody,
-    THIRReturn, THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
-    THIRTupleUnpack, TupleSourceBind,
-    THIRUnionArgLift,
-)
+from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
+    THIRCall, THIRCoerce, THIRComprehensionBlock, THIRCompInsert,
+    THIRConstructor, THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
+    THIRMilInit, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
+    THIRFunction, THIRFunctionLayout, THIRIf, THIRIfExpr, THIRLiteral,
+    THIRMethodCall, THIRName, THIRRaise, THIRResumableBody, THIRReturn,
+    THIRSelf, THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleLiteral,
+    THIRTupleUnpack, THIRUnionArgLift)
 from . import validate as _validate
 from .source import UNBOUND
 from .lower import iter_module_callables, iter_module_constructors, lower_constructor, lower_function
@@ -657,9 +653,9 @@ class TestValidator:
             validate_function(self._fn_of(THIRExprStmt(
                 expr=self._held_tuple(elements=(temp, temp)))))
 
-    def test_unpack_walks_its_lent_source(self):
-        # A source an unpack lends element by element (`source_lent`) is
-        # walked like any expression: a malformed lend there raises.
+    def test_unpack_walks_its_holder(self):
+        # The source an unpack holds once (`holder`) is walked like any
+        # expression: a malformed conversion there raises.
         pair = TupleType((INT32, INT32))
         bad = THIRFormConvert(result_type=INT32,
                               value=THIRLiteral(result_type=INT32, value=1,
@@ -668,10 +664,10 @@ class TestValidator:
 
         def unpack(elem: THIRExpr) -> THIRTupleUnpack:
             return THIRTupleUnpack(
-                source="", targets=(), target_cpps=(),
-                source_bind=TupleSourceBind.RVALUE,
-                source_lent=THIRLent(1, THIRTupleLiteral(
-                    result_type=pair, elements=(elem, elem))))
+                source="", targets=(), target_cpps=(), per_target=True,
+                holder=THIRTupleLiteral(result_type=pair,
+                                        elements=(elem, elem)),
+                holder_read=1)
         validate_function(self._fn_of(unpack(THIRLiteral(
             result_type=INT32, value=1))))
         with pytest.raises(THIRValidationError, match="no-op form convert"):

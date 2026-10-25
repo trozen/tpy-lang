@@ -36,9 +36,8 @@ std::optional<std::tuple<std::string, ::tpy::BigInt>> find(const ::tpy::BigInt& 
 //     print("plain", a, b, t[1])
 void plain() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    std::string a = std::get<0>(__tup_1);
-    ::tpy::BigInt b = std::get<1>(__tup_1);
+    std::string a = std::get<0>(t);
+    ::tpy::BigInt b = std::get<1>(t);
     t = ::tpyapp::main::mk(::tpy::BigInt(2));
     std::cout << "plain" << " " << a << " " << b << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }
@@ -58,17 +57,15 @@ void plain() {
 void narrowed() {
     std::optional<std::tuple<std::string, ::tpy::BigInt>> r = ::tpyapp::main::find(::tpy::BigInt(1));
     if ((r.has_value())) {
-        const auto& __tup_1 = (*r);
-        std::string a = std::get<0>(__tup_1);
-        ::tpy::BigInt b = std::get<1>(__tup_1);
+        std::string a = std::get<0>((*r));
+        ::tpy::BigInt b = std::get<1>((*r));
         r = ::tpyapp::main::find(::tpy::BigInt(2));
         std::cout << "narrowed" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
     std::optional<std::tuple<std::string, ::tpy::BigInt>> r2 = ::tpyapp::main::find(::tpy::BigInt(3));
     if ((r2.has_value())) {
-        const auto& __tup_2 = (*r2);
-        std::string c = std::get<0>(__tup_2);
-        ::tpy::BigInt d = std::get<1>(__tup_2);
+        std::string c = std::get<0>((*r2));
+        ::tpy::BigInt d = std::get<1>((*r2));
         r2 = std::nullopt;
         std::cout << "narrowed_none" << " " << c << " " << d << "\n" << ::tpy::check_signals;
     }
@@ -82,9 +79,8 @@ void narrowed() {
 //     print("bytes_elem", a, b)
 void bytes_elem() {
     std::tuple<::tpy::Bytes, ::tpy::BigInt> t = ::tpyapp::main::mkb(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    ::tpy::Bytes a = std::get<0>(__tup_1);
-    ::tpy::BigInt b = std::get<1>(__tup_1);
+    ::tpy::Bytes a = std::get<0>(t);
+    ::tpy::BigInt b = std::get<1>(t);
     t = ::tpyapp::main::mkb(::tpy::BigInt(2));
     std::cout << "bytes_elem" << " " << ::tpy::BytesPrinter(a) << " " << b << "\n" << ::tpy::check_signals;
 }
@@ -99,9 +95,8 @@ void bytes_elem() {
 void loop_reseat() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(0));
     for (int32_t i = 0; i < 3; ++i) {
-        const auto& __tup_1 = t;
-        std::string a = std::get<0>(__tup_1);
-        ::tpy::BigInt b = std::get<1>(__tup_1);
+        std::string a = std::get<0>(t);
+        ::tpy::BigInt b = std::get<1>(t);
         t = ::tpyapp::main::mk(::tpy::BigInt((::tpy::add_check<int32_t>(i, 10))));
         std::cout << "loop_reseat" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
@@ -121,9 +116,8 @@ void loop_reseat() {
 //     print("closure_reseat", a, b)
 void closure_reseat() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    std::string a = std::get<0>(__tup_1);
-    ::tpy::BigInt b = std::get<1>(__tup_1);
+    std::string a = std::get<0>(t);
+    ::tpy::BigInt b = std::get<1>(t);
     auto reseat = [&t]() {
         t = ::tpyapp::main::mk(::tpy::BigInt(2));
     };
@@ -169,9 +163,8 @@ void closure_subscript() {
 //     print("del_field", f)
 void del_source() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    std::string a = std::get<0>(__tup_1);
-    ::tpy::BigInt b = std::get<1>(__tup_1);
+    std::string a = std::get<0>(t);
+    ::tpy::BigInt b = std::get<1>(t);
     { auto __del_sink = std::move(t); }
     std::cout << "del_unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     std::tuple<std::string, ::tpy::BigInt> u = ::tpyapp::main::mk(::tpy::BigInt(2));
@@ -197,9 +190,8 @@ void del_source() {
 //     print("nested_del", a, b)
 void nested_del() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    std::string a = std::get<0>(__tup_1);
-    ::tpy::BigInt b = std::get<1>(__tup_1);
+    std::string a = std::get<0>(t);
+    ::tpy::BigInt b = std::get<1>(t);
     auto drop = [&t]() {
         { auto __del_sink = std::move(t); }
     };
@@ -227,9 +219,8 @@ void sibling_closure() {
         t = ::tpyapp::main::mk(::tpy::BigInt(2));
     };
     auto read = [&reseat, &t]() {
-        const auto& __tup_1 = t;
-        std::string a = std::get<0>(__tup_1);
-        ::tpy::BigInt b = std::get<1>(__tup_1);
+        std::string a = std::get<0>(t);
+        ::tpy::BigInt b = std::get<1>(t);
         reseat();
         std::cout << "sibling_closure" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     };
@@ -250,9 +241,8 @@ void closure_reads() {
     auto peek = [&t]() -> ::tpy::BigInt {
         return std::get<1>(t);
     };
-    const auto& __tup_1 = t;
-    std::string_view a = std::get<0>(__tup_1);
-    const ::tpy::BigInt& b = std::get<1>(__tup_1);
+    std::string_view a = std::get<0>(t);
+    const ::tpy::BigInt& b = std::get<1>(t);
     std::cout << "closure_reads" << " " << a << " " << b << " " << peek() << "\n" << ::tpy::check_signals;
 }
 
@@ -292,9 +282,8 @@ void del_method_view(bool flag) {
 //     print("no_reseat", a, b)
 void no_reseat() {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    std::string_view a = std::get<0>(__tup_1);
-    const ::tpy::BigInt& b = std::get<1>(__tup_1);
+    std::string_view a = std::get<0>(t);
+    const ::tpy::BigInt& b = std::get<1>(t);
     std::cout << "no_reseat" << " " << a << " " << b << "\n" << ::tpy::check_signals;
 }
 

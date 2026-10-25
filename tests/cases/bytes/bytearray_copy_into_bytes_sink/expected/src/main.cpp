@@ -15,9 +15,8 @@ namespace tpyapp::main {
 //     b, n = t
 //     return len(b) + n
 ::tpy::BigInt tuple_arg(const std::tuple<::tpy::Bytes, ::tpy::BigInt>& t) {
-    const auto& __tup_1 = t;
-    ::tpy::BytesView b = std::get<0>(__tup_1);
-    const ::tpy::BigInt& n = std::get<1>(__tup_1);
+    ::tpy::BytesView b = std::get<0>(t);
+    const ::tpy::BigInt& n = std::get<1>(t);
     return ((::tpy::BigInt(::tpy::__len__(b))) + (n));
 }
 

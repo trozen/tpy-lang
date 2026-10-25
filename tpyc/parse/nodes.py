@@ -598,6 +598,10 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     type_args_parse_error: str | None = None  # Set if subscript had args that couldn't be parsed as types
     subscript_callee: 'TpyExpr | None' = None  # Indexed field alternative to an explicit generic method call
     is_static_call: bool = False  # Set by sema for ClassName.staticmethod() calls
+    # Set by sema on a generic method call with explicit type arguments: per
+    # written argument, the method's own type parameter it binds, None for a
+    # class type parameter or a `_` wildcard.
+    written_type_params: tuple[str | None, ...] | None = None
     # Set by sema alongside is_static_call: the resolved owning record. Codegen
     # needs it when the receiver's spelling names no record itself (`cls`).
     static_call_owner: Optional['RecordInfo'] = None
@@ -859,9 +863,13 @@ class TpyComprehensionGenerator:
     # clause may write its source while it is live
     # (`loop_frames.stamp_copy_verdicts`, read by the binding planner).
     copies_var: bool = False
-    # Set by sema when the iterable yields Own[T]: codegen moves a bare last-use
-    # element into the result instead of copying (the consuming for-append move).
-    owns_elements: bool = False
+    # Set by sema before the clause's body: the leaf paths of each step the
+    # iteration hands over (`step_handover_paths`), as `TpyForEach` stamps
+    # them; a sink moves a bare last-use target that owns its element.
+    step_handover: frozenset[tuple[int, ...]] = frozenset()
+    # Set by sema on an unpack clause: its head, the per-target unpack of
+    # the clause variable (the step), stamped as a for head's is.
+    head: 'TpyTupleUnpack | None' = None
 
     @property
     def targets(self) -> list[str]:
@@ -1298,6 +1306,8 @@ class TpyTupleUnpack(TpyStmt):
     is_loop_head: bool = False
     # Set by sema at a loop head: its loop's `TpyForEach.loop_body_rebinds`.
     loop_body_rebinds: frozenset[str] = frozenset()
+    # Set by sema at a loop head: its loop's `TpyForEach.step_handover`.
+    step_handover: frozenset[tuple[int, ...]] = frozenset()
     # Set by sema:
     target_types: list[TpyType] = field(default_factory=list)
     is_new: list[bool] = field(default_factory=list)
@@ -1316,6 +1326,11 @@ class TpyTupleUnpack(TpyStmt):
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value]
+
+    def owns_target(self, i: int) -> bool:
+        """Whether target `i` takes its element over (`is_owned`; a head
+        sema has not stamped owns none)."""
+        return i < len(self.is_owned) and self.is_owned[i]
 
 
 @dataclass
@@ -1528,6 +1543,9 @@ class TpyForEach(TpyStmt):
     # Codegen refuses such a loop rather than hand out unguarded references.
     iter_borrow_unplaceable: bool = False
     consuming_iter_fi: 'FunctionInfo | None' = None  # set by sema: consuming __iter__ overload at last use
+    # Set by sema before the body: the leaf paths of each step the iteration
+    # hands over (`step_handover_paths`), stamped on the head unpack too.
+    step_handover: frozenset[tuple[int, ...]] = frozenset()
     is_async: bool = False  # Set by parser: `async for` (lowers to __aiter__/await __anext__ inside async def)
     async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: the DEFINING record of __anext__ (an ancestor of the iterator when inherited), used by codegen to name the __anext__ coro struct
     # Set by parser: the iterable as the program spells it, the loop's name
@@ -2147,6 +2165,11 @@ class TpyFunction:
     # The function the genexpr is written in (None at module level): what a
     # diagnostic about the body names, since the user never wrote this one.
     genexpr_owner: str | None = None
+    # Set by sema on a genexpr's function: what each step of its source
+    # hands over, as its first clause reads the source where it is written
+    # (`step_handover_paths`) -- the source param's type is the clause's
+    # element type, substitutions included, so it is no declaration.
+    genexpr_step_handover: 'frozenset[tuple[int, ...]]' = frozenset()
     # Set by sema on a genexpr's function: the loans its INNER `for` clauses
     # hold on storage reached through a capture, keyed in the frame's names
     # (a capture param is named as the variable it binds). Such a capture is

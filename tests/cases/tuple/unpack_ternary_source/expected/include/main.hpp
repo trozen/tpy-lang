@@ -173,7 +173,7 @@ inline Picker::Picker(int32_t lo) : lo(lo) {}
 //     x, y = t1 if c else t2  # tpyc: ok
 //     return self.lo + x + y
 inline int32_t Picker::sum(bool c, const std::tuple<int32_t, int32_t>& t1, const std::tuple<int32_t, int32_t>& t2) const {
-    const auto& __tup_1 = ((c) ? (t1) : (t2));
+    auto&& __tup_1 = ((c) ? (t1) : (t2));
     int32_t x = std::get<0>(__tup_1);
     int32_t y = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->lo, x)), y));

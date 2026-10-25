@@ -268,9 +268,8 @@ inline Keeper::Keeper(int32_t n) : o(Outer(n)) {}
 //     b.n += 5
 //     print("self_chain", a, self.o.h.pair[1].n)
 inline void Keeper::bump() {
-    auto __tup_1 = std::tuple<int32_t, Box*>{std::get<0>(this->o.h.pair), &(std::get<1>(this->o.h.pair))};
-    int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    int32_t a = std::get<0>(this->o.h.pair);
+    Box& b = std::get<1>(this->o.h.pair);
     b.n = ::tpy::add_check<int32_t>(b.n, 5);
     std::cout << "self_chain" << " " << a << " " << std::get<1>(this->o.h.pair).n << "\n" << ::tpy::check_signals;
 }
@@ -283,9 +282,8 @@ inline void Keeper::bump() {
 //     a, b = self.o.h.pair  # tpyc: ok
 //     print("self_chain_readonly", a, b.n)
 inline void Keeper::peek() const {
-    auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(this->o.h.pair), &(std::get<1>(this->o.h.pair))};
-    int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    int32_t a = std::get<0>(this->o.h.pair);
+    const Box& b = std::get<1>(this->o.h.pair);
     std::cout << "self_chain_readonly" << " " << a << " " << b.n << "\n" << ::tpy::check_signals;
 }
 void __tpy_init();

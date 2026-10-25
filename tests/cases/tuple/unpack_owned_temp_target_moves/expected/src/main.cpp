@@ -168,7 +168,7 @@ void nocopy_elem() {
 //     print("rebound_sink_first", p.v, r.v)
 void rebound_sink_first() {
     auto __tup_1 = ::tpyapp::main::mk();
-    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    A* p = &(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     A r = ::tpyapp::main::sinka("rebound_sink_first", std::move((*p)));
     std::optional<A> __slot_1;
@@ -189,7 +189,7 @@ void rebound_sink_first() {
 //     print("rebound_rebind_first", r.v, k)
 void rebound_rebind_first() {
     auto __tup_1 = ::tpyapp::main::mk();
-    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    A* p = &(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     p->v = ::tpy::add_check<int32_t>(p->v, 50);
     std::cout << "rebound_rebind_first" << " " << p->v << "\n" << ::tpy::check_signals;
@@ -251,7 +251,7 @@ void loop_rebound() {
     std::optional<A> __slot_1;
     while ((::tpy::__len__(ps) != 0)) {
         auto __tup_1 = ::tpy::pop_back(ps);
-        auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        A* a = &(std::get<0>(__tup_1));
         int32_t n = std::get<1>(__tup_1);
         A r = ::tpyapp::main::sinka("loop_rebound", std::move((*a)));
         a = &*(__slot_1 = A(0));
@@ -311,9 +311,8 @@ void read_only() {
 //     print("inv_name", n)
 void inv_name() {
     auto t = ::tpyapp::main::mk();
-    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t n = std::get<1>(__tup_1);
+    A& a = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     A __tmp_1 = a;
     A r = ::tpyapp::main::sinka("inv_name", std::move(__tmp_1));
     std::cout << "inv_name" << " " << n << "\n" << ::tpy::check_signals;
@@ -328,7 +327,7 @@ void inv_name() {
 void inv_lend() {
     Holder h = Holder();
     auto __tup_1 = ::tpyapp::main::lend(h);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    A& a = (*std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     a.v = 42;
     std::cout << "inv_lend" << " " << h.item.v << " " << n << "\n" << ::tpy::check_signals;
@@ -344,9 +343,8 @@ void inv_lend() {
 void inv_elem_borrow() {
     auto t = ::tpyapp::main::mk();
     A& b = std::get<0>(t);
-    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t n = std::get<1>(__tup_1);
+    A& a = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     a.v = 5;
     std::cout << "inv_elem_borrow" << " " << b.v << " " << n << "\n" << ::tpy::check_signals;
 }
@@ -361,9 +359,8 @@ void inv_elem_borrow() {
 void inv_rebind() {
     auto t = ::tpyapp::main::mk();
     auto&& t2 = t;
-    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t n = std::get<1>(__tup_1);
+    A& a = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     a.v = 6;
     std::cout << "inv_rebind" << " " << std::get<0>(t2).v << " " << n << "\n" << ::tpy::check_signals;
 }

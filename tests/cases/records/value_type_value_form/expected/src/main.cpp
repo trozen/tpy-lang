@@ -617,9 +617,8 @@ std::tuple<Coord, int32_t> paired(Coord c) {
 //     print("tuple rebind", use(u[0]), u[1])
 void tuples() {
     std::tuple<Coord, int32_t> t = ::tpyapp::main::paired(Coord(1, 2));
-    const auto& __tup_1 = t;
-    Coord c = std::get<0>(__tup_1);
-    int32_t n = std::get<1>(__tup_1);
+    Coord c = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     std::cout << "tuple unpack" << " " << ::tpyapp::main::use(c) << " " << n << "\n" << ::tpy::check_signals;
     std::tuple<Coord, int32_t> u = std::tuple<Coord, int32_t>{Coord(3, 4), 1};
     u = std::tuple<Coord, int32_t>{Coord(5, 6), 2};
@@ -641,9 +640,8 @@ void dict_items() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string k = std::get<0>(__tup_1);
-        Coord v = std::get<1>(__tup_1);
+        std::string k = std::get<0>(__for_tup_0);
+        Coord v = std::get<1>(__for_tup_0);
         total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::use(v));
     }
     std::cout << "dict items" << " " << total << "\n" << ::tpy::check_signals;

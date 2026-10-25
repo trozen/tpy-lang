@@ -124,14 +124,12 @@ class BindingForm(Enum):
 
 
 class BindingConstruct(Enum):
-    """How a first declaration's, a walrus's first binding's or a fresh
-    unpack target's initializer becomes its `BindingForm`, where one form
-    has several constructions: read only by the arms that build the
-    declaration from it (the first declaration builders,
-    `bindings.decl_shape`, the walrus arm, the unpack binds). A walrus
-    takes `POINTER`, `OPT_PTR` and `BTUPLE_REBOUND`; a fresh unpack target
-    the unpack members below, `OPT_PTR` and `PTR_VARIANT`, each rendered
-    by its `UnpackBind` (`bindings.unpack_tag`)."""
+    """How a first declaration's or a walrus's first binding's initializer
+    becomes its `BindingForm`, where one form has several constructions:
+    read only by the arms that build the declaration from it (the first
+    declaration builders, `bindings.decl_shape`, the walrus arm). A walrus
+    takes `POINTER`, `OPT_PTR` and `BTUPLE_REBOUND`. A fresh unpack target
+    has none: it is written as its scalar binding is, by its form."""
     # First declarations.
     NO_INIT_OPT_PTR = "no_init_opt_ptr"
     NO_INIT_VALUE = "no_init_value"
@@ -176,16 +174,6 @@ class BindingConstruct(Enum):
     VALUE_OPT = "value_opt"
     OPT_VALUE_RECORD = "opt_value_record"
     OWNED = "owned"
-    # Fresh unpack targets: the `unwrap_ref` alias of a recursive
-    # wrapper's live `X&`, the `auto&&` alias through an element pointer,
-    # the `const T&` of a value element, the rebound `auto*`, the owned
-    # element moved out of the holder, the copy.
-    UNWRAP_REF = "unwrap_ref"
-    REF = "ref"
-    CREF = "cref"
-    PTR = "ptr"
-    MOVE = "move"
-    VALUE = "value"
 
 
 class BindingRefinement(Enum):
@@ -735,9 +723,16 @@ def tuple_elems(whole: Source, src_t: 'TupleType', *,
         whole.binding is not None and whole.binding.is_param
         and not isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             param))) if param is not None else None, OwnType))
+    # A borrow tuple binding holding some element inline (a literal's fresh
+    # member) holds it as its storage, whatever its type's borrow form.
+    inline = (whole.binding.inline_elems if whole.binding is not None
+              else None)
     out: list[Source] = []
     for i, et in enumerate(src_t.element_types):
-        if borrow and TupleType._element_is_pointer_repr(et):
+        if inline is not None and i < len(inline) and inline[i]:
+            out.append(element_source(whole, i, held=Held.STORAGE,
+                                      movable=dead or whole.movable))
+        elif borrow and TupleType._element_is_pointer_repr(et):
             out.append(element_source(whole, i, held=Held.BORROWED,
                                       pointer=True, const=whole.const,
                                       pointee_owned=False))

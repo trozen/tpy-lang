@@ -96,9 +96,8 @@ __coro_body body(std::tuple<::tpy::Bytes, int32_t> t) {
 //     print("global unpack local", x, k)
 void read_global() {
     std::cout << "global unpack" << " " << ::tpy::BytesPrinter(gx) << " " << gk << " " << ::tpy::__len__(gx) << "\n" << ::tpy::check_signals;
-    const auto& __tup_1 = G;
-    ::tpy::BytesView x = std::get<0>(__tup_1);
-    int32_t k = std::get<1>(__tup_1);
+    ::tpy::BytesView x = std::get<0>(G);
+    int32_t k = std::get<1>(G);
     std::cout << "global unpack local" << " " << ::tpy::BytesPrinter(x) << " " << k << "\n" << ::tpy::check_signals;
 }
 
@@ -291,9 +290,8 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     G = std::tuple<::tpy::Bytes, int32_t>{::tpy::bytes_literal_owned("glob", 4), 1};
-    const auto& __tup_1 = G;
-    gx = std::get<0>(__tup_1);
-    gk = std::get<1>(__tup_1);
+    gx = std::get<0>(G);
+    gk = std::get<1>(G);
     ::tpyapp::main::main();
 }
 

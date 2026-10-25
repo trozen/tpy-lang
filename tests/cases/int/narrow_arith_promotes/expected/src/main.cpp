@@ -457,9 +457,8 @@ void targets(::tpy::BytesView d, const std::tuple<uint8_t, uint8_t>& p, int8_t v
         c = (::tpy::add_check<int32_t>(c, 1));
         std::cout << "targets loop assign" << " " << c << "\n" << ::tpy::check_signals;
     }
-    const auto& __tup_1 = p;
-    int32_t a = std::get<0>(__tup_1);
-    uint8_t b = std::get<1>(__tup_1);
+    int32_t a = std::get<0>(p);
+    uint8_t b = std::get<1>(p);
     a = ::tpy::add_check<int32_t>(a, 1);
     std::cout << "targets unpack" << " " << a << " " << static_cast<int>(b) << "\n" << ::tpy::check_signals;
     int32_t m;
@@ -558,12 +557,10 @@ __coro_targets_async targets_async(::tpy::BytesView d) {
 //         total += k
 //     print("targets loop int", total + k)
 void targets_rebound(const std::tuple<int8_t, int8_t>& p, const std::tuple<int64_t, int64_t>& q, ::tpy::BytesView d, int32_t v32, const ::tpy::BigInt& end) {
-    const auto& __tup_1 = p;
-    int64_t a = std::get<0>(__tup_1);
-    int64_t b = std::get<1>(__tup_1);
-    const auto& __tup_2 = q;
-    a = std::get<0>(__tup_2);
-    b = std::get<1>(__tup_2);
+    int64_t a = std::get<0>(p);
+    int64_t b = std::get<1>(p);
+    a = std::get<0>(q);
+    b = std::get<1>(q);
     std::cout << "targets reunpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     int32_t c = static_cast<int32_t>(::tpy::bytes_getitem(d, 0));
     auto& __obj_0 = d;

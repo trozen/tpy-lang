@@ -92,10 +92,9 @@ int32_t fail() {
 //     return a
 Tok sink(std::tuple<Tok, Box*, std::string>&& p) {
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
-    auto& __tup_1 = p;
-    Tok a = std::move(std::get<0>(__tup_1));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    std::string_view s = std::get<2>(__tup_1);
+    Tok a = std::move(std::get<0>(p));
+    Box& b = (*std::get<1>(p));
+    std::string_view s = std::get<2>(p);
     a.n = ::tpy::add_check<int32_t>(a.n, ::tpy::__len__(s));
     return a;
 }
@@ -545,9 +544,8 @@ void consuming(Box& b) {
     auto __tup_2 = ::tpyapp::main::make_tok(9, b);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    auto& __tup_3 = p;
-    Tok a = std::move(*std::get<0>(__tup_3));
-    auto&& z = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+    Tok a = std::move((*std::get<0>(p)));
+    Box& z = (*std::get<1>(p));
     a.n = ::tpy::add_check<int32_t>(a.n, 100);
     z.n = ::tpy::add_check<int32_t>(z.n, 1);
     std::cout << "consuming" << " " << a.n << " " << z.n << " " << b.n << "\n" << ::tpy::check_signals;
@@ -911,14 +909,13 @@ void unpack_alias(Box& b) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, b);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
-    auto& __tup_2 = p;
-    auto&& a0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    auto&& a1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    Box& a0 = (*std::get<0>(p));
+    Box& a1 = (*std::get<1>(p));
     Box& o = (*std::get<0>(p));
     std::optional<Box> __slot_2;
-    auto __tup_3 = ::tpyapp::main::make_mixed(9, b);
-    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
-    std::get<1>(p) = std::get<1>(__tup_3);
+    auto __tup_2 = ::tpyapp::main::make_mixed(9, b);
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+    std::get<1>(p) = std::get<1>(__tup_2);
     a0.n = ::tpy::add_check<int32_t>(a0.n, 100);
     std::cout << "unpack-alias" << " " << o.n << " " << a1.n << " " << std::get<0>(p)->n << "\n" << ::tpy::check_signals;
 }
@@ -1386,13 +1383,12 @@ void swap_names(Box& v) {
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
-    auto& __tup_3 = p;
-    Box x = std::move(*std::get<0>(__tup_3));
-    auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+    Box x = std::move((*std::get<0>(p)));
+    Box& y = (*std::get<1>(p));
     std::optional<Box> __slot_3;
-    auto __tup_4 = std::tuple<Box, Box*>{y, &(x)};
-    std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_4)));
-    std::get<1>(p) = std::get<1>(__tup_4);
+    auto __tup_3 = std::tuple<Box, Box*>{y, &(x)};
+    std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
+    std::get<1>(p) = std::get<1>(__tup_3);
     x.n = ::tpy::add_check<int32_t>(x.n, 100);
     std::cout << "swap-names" << " " << std::get<0>(p)->n << " " << std::get<1>(p)->n << " " << x.n << " " << v.n << "\n" << ::tpy::check_signals;
 }
@@ -2947,14 +2943,13 @@ void untracked_for_unpack(bool c) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_2 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_2);
-            auto&& saved = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+            int32_t i = std::get<0>(__for_tup_0);
+            auto& saved = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             if ((i == 1)) {
                 if (c) {
-                    auto __tup_3 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
-                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
-                    std::get<1>(t) = std::move(std::get<1>(__tup_3));
+                    auto __tup_2 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+                    std::get<1>(t) = std::move(std::get<1>(__tup_2));
                 }
                 saved.n = ::tpy::add_check<int32_t>(saved.n, 100);
                 std::cout << "untracked-for-unpack" << " " << saved.n << " " << ::tpy::__getitem__(std::get<0>(t)->xs, 1).n << "\n" << ::tpy::check_signals;
@@ -3040,7 +3035,7 @@ void untracked_call_unpack(bool c) {
     TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
     auto __tup_2 = ::tpyapp::main::pick_box(::tpy::__getitem__(std::get<0>(t)->xs, 1));
-    auto&& saved = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+    Box& saved = (*std::get<0>(__tup_2));
     int32_t k = std::get<1>(__tup_2);
     std::optional<TwoHop> __slot_2;
     if (c) {
@@ -3672,57 +3667,53 @@ void __tpy_init() {
     static Box __global_slot_3 = std::move(std::get<0>(__tup_1));
     std::get<0>(M) = &__global_slot_3;
     std::get<1>(M) = std::get<1>(__tup_1);
-    auto& __tup_2 = M;
-    saved = std::get<0>(__tup_2);
-    auto& __tup_3 = M;
-    saved2 = std::get<0>(__tup_3);
+    saved = std::get<0>(M);
+    saved2 = std::get<0>(M);
     static std::optional<Box> __global_slot_4;
     for (int32_t i = 0; i < 2; ++i) {
-        auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(10, i)), (*V));
-        std::get<0>(M) = &*(__global_slot_4 = std::move(std::get<0>(__tup_4)));
-        std::get<1>(M) = std::get<1>(__tup_4);
+        auto __tup_2 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(10, i)), (*V));
+        std::get<0>(M) = &*(__global_slot_4 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(M) = std::get<1>(__tup_2);
         std::get<0>(M)->n = ::tpy::add_check<int32_t>(std::get<0>(M)->n, 1);
     }
     saved->n = ::tpy::add_check<int32_t>(saved->n, 100);
     std::cout << "module-loop" << " " << saved2->n << " " << std::get<0>(M)->n << "\n" << ::tpy::check_signals;
-    auto __tup_5 = std::tuple<Box, Box*>{Box(7), W};
-    static Box __global_slot_5 = std::move(std::get<0>(__tup_5));
+    auto __tup_3 = std::tuple<Box, Box*>{Box(7), W};
+    static Box __global_slot_5 = std::move(std::get<0>(__tup_3));
     std::get<0>(L) = &__global_slot_5;
-    std::get<1>(L) = std::get<1>(__tup_5);
-    auto __tup_6 = std::tuple<Box, Box*>{Box(8), W};
-    static Box __global_slot_6 = std::move(std::get<0>(__tup_6));
+    std::get<1>(L) = std::get<1>(__tup_3);
+    auto __tup_4 = std::tuple<Box, Box*>{Box(8), W};
+    static Box __global_slot_6 = std::move(std::get<0>(__tup_4));
     std::get<0>(L) = &__global_slot_6;
-    std::get<1>(L) = std::get<1>(__tup_6);
+    std::get<1>(L) = std::get<1>(__tup_4);
     std::get<1>(L)->n = ::tpy::add_check<int32_t>(std::get<1>(L)->n, 1);
     std::cout << "module-literal" << " " << std::get<0>(L)->n << " " << std::get<1>(L)->n << " " << W->n << "\n" << ::tpy::check_signals;
-    auto __tup_7 = ::tpyapp::main::pair(20);
-    static Box __global_slot_7 = std::move(std::get<0>(__tup_7));
+    auto __tup_5 = ::tpyapp::main::pair(20);
+    static Box __global_slot_7 = std::move(std::get<0>(__tup_5));
     std::get<0>(C) = &__global_slot_7;
-    static Box __global_slot_8 = std::move(std::get<1>(__tup_7));
+    static Box __global_slot_8 = std::move(std::get<1>(__tup_5));
     std::get<1>(C) = &__global_slot_8;
-    auto& __tup_8 = C;
-    c0 = std::get<0>(__tup_8);
-    c1 = std::get<1>(__tup_8);
-    auto& __tup_9 = C;
-    c0b = std::get<0>(__tup_9);
-    c1b = std::get<1>(__tup_9);
-    auto __tup_10 = ::tpyapp::main::pair(30);
-    static Box __global_slot_9 = std::move(std::get<0>(__tup_10));
+    c0 = std::get<0>(C);
+    c1 = std::get<1>(C);
+    c0b = std::get<0>(C);
+    c1b = std::get<1>(C);
+    auto __tup_6 = ::tpyapp::main::pair(30);
+    static Box __global_slot_9 = std::move(std::get<0>(__tup_6));
     std::get<0>(C) = &__global_slot_9;
-    static Box __global_slot_10 = std::move(std::get<1>(__tup_10));
+    static Box __global_slot_10 = std::move(std::get<1>(__tup_6));
     std::get<1>(C) = &__global_slot_10;
     c0->n = ::tpy::add_check<int32_t>(c0->n, 100);
     std::cout << "module-call" << " " << c0b->n << " " << c1b->n << " " << std::get<0>(C)->n << " " << std::get<1>(C)->n << "\n" << ::tpy::check_signals;
-    auto __tup_11 = ::tpyapp::main::make_mixed(1, (*V));
-    static Box __global_slot_11 = std::move(std::get<0>(__tup_11));
+    auto __tup_7 = ::tpyapp::main::make_mixed(1, (*V));
+    static Box __global_slot_11 = std::move(std::get<0>(__tup_7));
     std::get<0>(P) = &__global_slot_11;
-    std::get<1>(P) = std::get<1>(__tup_11);
+    std::get<1>(P) = std::get<1>(__tup_7);
     S = ::tpyapp::main::grab();
     S2 = ::tpyapp::main::grab();
-    auto __tup_12 = ::tpyapp::main::make_mixed(9, (*V));
-    static Box __global_slot_12 = std::move(std::get<0>(__tup_12));
+    auto __tup_8 = ::tpyapp::main::make_mixed(9, (*V));
+    static Box __global_slot_12 = std::move(std::get<0>(__tup_8));
     std::get<0>(P) = &__global_slot_12;
-    std::get<1>(P) = std::get<1>(__tup_12);
+    std::get<1>(P) = std::get<1>(__tup_8);
     std::get<0>(S)->n = ::tpy::add_check<int32_t>(std::get<0>(S)->n, 100);
     std::cout << "module-call-alias" << " " << std::get<0>(S2)->n << " " << std::get<0>(P)->n << "\n" << ::tpy::check_signals;
     static Box __global_slot_13 = Box(10);

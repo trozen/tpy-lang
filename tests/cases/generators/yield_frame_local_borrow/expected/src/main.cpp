@@ -55,10 +55,9 @@ void walk_prune() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            std::string_view name = std::get<0>(__tup_1);
-            auto&& dirs = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            auto&& files = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            std::string_view name = std::get<0>(__for_tup_0);
+            auto& dirs = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
+            auto& files = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_0)));
             std::vector<std::string> kept = std::vector<std::string>{};
             auto& __obj_2 = dirs;
             auto __beg_2 = __obj_2.begin();

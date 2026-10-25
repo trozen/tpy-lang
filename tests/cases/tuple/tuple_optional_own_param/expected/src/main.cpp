@@ -12,9 +12,8 @@ namespace tpyapp::main {
 //         return a.x
 //     return int32(0)
 int32_t take(std::tuple<std::optional<P>, std::optional<P>> t) {
-    auto __tup_1 = std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(t)), ::tpy::optional_to_ptr(std::get<1>(t))};
-    P* a = std::get<0>(__tup_1);
-    P* b = std::get<1>(__tup_1);
+    P* a = ::tpy::optional_to_ptr(std::get<0>(t));
+    P* b = ::tpy::optional_to_ptr(std::get<1>(t));
     if (((a != nullptr) && (b != nullptr))) {
         return (::tpy::add_check<int32_t>(a->x, b->x));
     }

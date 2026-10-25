@@ -744,7 +744,8 @@ def loop_var_binding(
 
     owned_slot: an OWNED variable the body rebinds is a pointer over the
     step, named so (`auto&& __own_N = <owned step>; T* x = &__own_N;`):
-    a rebind re-points it and an alias keeps the step's object.
+    a rebind re-points it and an alias keeps the step's object. A
+    REFERENCE one points at the element (`auto* x = &(*it);`).
     """
     if kind in (LoopBinding.OWNED, LoopBinding.OWNED_STORAGE):
         assert owned_step_expr is not None, "an Own loop variable needs the owned step"
@@ -757,6 +758,11 @@ def loop_var_binding(
         return [owned_storage_binding(elem_type, cpp_var, owned_step_expr)]
     if isinstance(elem_type, OwnType):
         elem_type = elem_type.wrapped
+    if owned_slot is not None and kind in (LoopBinding.REFERENCE,
+                                           LoopBinding.CONST_REFERENCE):
+        # `auto*` deduces a const source's const, as `auto&&` does.
+        const = "const " if kind is LoopBinding.CONST_REFERENCE else ""
+        return [f"{const}auto* {cpp_var} = &({deref_expr});"]
     match kind:
         case LoopBinding.ASSIGN:
             return [f"{cpp_var} = {deref_expr};"]

@@ -595,9 +595,8 @@ __gen_own_param_iter_src own_param_iter_src(Holder h) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_6 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_6;
-        i = std::get<0>(__tup_1);
-        v = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_6);
+        v = std::get<1>(__for_tup_6);
         total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(i, v)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
@@ -646,9 +645,8 @@ __coro_async_combinator_temp async_combinator_temp() {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_7 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_7;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_7);
+        b = std::get<1>(__for_tup_7);
         total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(a, b)));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;

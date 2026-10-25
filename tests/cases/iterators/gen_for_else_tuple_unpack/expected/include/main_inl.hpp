@@ -29,9 +29,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return -1;
         }
         __for_tup_0 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_0;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_0);
+        b = std::get<1>(__for_tup_0);
         if (((::tpy::add_check<int32_t>(a, b)) >= limit)) {
             __state = S_JOIN_1;
             continue;

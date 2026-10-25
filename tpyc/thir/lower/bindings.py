@@ -81,7 +81,7 @@ from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         view_family_for_type)
 from ...value_category import (call_hands_back_value, call_returns_cpp_ref,
                                is_rvalue_source)
-from ..nodes import Form, UnpackBind as UB
+from ..nodes import Form
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..source import UNBOUND, BindingRepr, Held, SlotKey, slot_key
 from ..source import BindingConstruct as BC
@@ -718,8 +718,10 @@ class _Site:
     # Facts the walk computed for the site: a comprehension clause's route
     # (`_clause_route`), a match arm's capture facts (`_match_captures`).
     route: object | None = None
-    # A comprehension clause's comprehension.
+    # A comprehension clause's comprehension, and (a clause head's target)
+    # the clause.
     comp: TpyExpr | None = None
+    clause: TpyComprehensionGenerator | None = None
     # A for head's unpack: its for statement, and the records visible at
     # it (the iteration source's scope).
     loop: TpyForEach | None = None
@@ -1065,8 +1067,10 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
     if (name in ff.loops.ptr_loop_vars or name in ff.loops.unpack_ptr_targets
             or cls in (C.OPT_PTR, C.REBIND_PTR, C.ALIAS_PTR)):
         f["pointer"] = True
-    if (cls is C.OWNING_TUPLE_SLOT
+    if (cls in (C.OWNING_TUPLE_SLOT, C.OPT_TUPLE_HOLDER)
             or name in ff.loops.ptr_storage_tuple_loop_vars):
+        # The field holds the storage tuple itself: its Optional elements
+        # are storage optionals.
         f["storage_tuple"] = True
     if cls is C.VALUE_OPT_RECORD:
         f["value_opt"] = ValueOptKind.RECORD
@@ -2262,7 +2266,10 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
 
 
 def _ptr_null_hoist(stmt, name, vt, inp: 'PlanInputs', ctx) -> bool:
-    """A hoisted container ref-target of a sync for head's unpack."""
+    """A hoisted container ref-target of a sync for head's unpack: a
+    pointer into the element of a container the loop iterates, which
+    outlives the loop (an iterator's step does not) -- the loop's own
+    route says which."""
     from . import statements as _st
     if (not isinstance(stmt, TpyForEach) or not stmt.is_tuple_unpack
             or ctx.resumable_leaf_mode or not stmt.body
@@ -2275,9 +2282,14 @@ def _ptr_null_hoist(stmt, name, vt, inp: 'PlanInputs', ctx) -> bool:
     i = up.targets.index(name)
     if i >= len(up.is_ref) or not up.is_ref[i]:
         return False
-    route = _st._for_tuple_unpack_route(stmt, inp.analyzer,
-                                        ctx.declared_view, frozenset())
-    return route is not None and not route.iter_proto
+    try:
+        route = _st._select_for_each_route(stmt, inp.analyzer,
+                                           ctx.declared_view, frozenset(),
+                                           ctx.names_with("pointer"))
+    except ThirUnsupported:
+        return False
+    return (route.route == "container"
+            and route.consuming_native_name is None)
 
 
 def capture_const(subject, ctx) -> bool:
@@ -2396,6 +2408,10 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
                  is not None)
     elem = (stmt.enum_iterable if stmt.enum_iterable is not None
             else _st._resolved_loop_elem_type(stmt, an))
+    if isinstance(elem, OwnType) and not stmt.step_handover:
+        # An `Own` element the iteration does not hand over (a lent
+        # container's) is the container's: the variable refers to it.
+        elem = elem.wrapped
     if elem is not None:
         kind = loop_binding_kind(elem, stmt.const_loop_var,
                                  hoisted=stmt.hoist_loop_var,
@@ -2439,8 +2455,8 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         f["is_param"] = True
         f["param_type"] = outer.param_type
     if stmt.is_tuple_unpack:
-        # The head's holder: its targets take what the loop owns.
-        f["move_exception"] = M.PASS_SLOT
+        # The head's step: its targets take, element by element, what the
+        # loop owns.
         return _mk(site, name, typ, _loop_form(f.get("loop_binding")), None,
                    **_inherit_outer(f, outer))
     if _p._foreach_value_opt_elem(et) is not None:
@@ -2463,14 +2479,22 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     elif (acq is Acquired.COPIED_STEP
           and not (elem is not None and elem.is_expensive_copy())):
         f["move_exception"] = _value_exception(elem)
+    elif (acq is Acquired.OWN_ELEMENT and elem is not None
+          and _unwrap_own(elem).is_value_type()
+          and not _unwrap_own(elem).is_expensive_copy()):
+        # A handed-over scalar moves as it copies.
+        f["move_exception"] = M.TRIVIAL_VALUE
     form = _loop_form(f.get("loop_binding"))
     if isinstance(et, OwnType) and site.storage.pointer:
         # A rebound variable that owns its step points at it: a rebind
         # re-points it and an alias keeps the step's object (sema checked
         # the rebind against the pointee on the same verdict). Whether a use
         # may move out of what it points at is sema's verdict, as for the
-        # declaration twin's pointer.
-        if f.get("loop_binding") is not LoopBinding.OWNED:
+        # declaration twin's pointer. One that refers to its element points
+        # at the element.
+        if f.get("loop_binding") not in (LoopBinding.OWNED,
+                                         LoopBinding.REFERENCE,
+                                         LoopBinding.CONST_REFERENCE):
             raise ThirUnsupported(
                 stmt_reject_reason(stmt, "loop.rebound_own_form"),
                 loc=getattr(stmt, "loc", None))
@@ -2633,67 +2657,41 @@ def head_target_writes_outer(stmt: TpyTupleUnpack, i: int, typ,
     tt = unwrap_ref_type(typ) if isinstance(typ, TpyType) else None
     if _p._optional_ptr_borrow(tt, analyzer) is not None:
         return False
-    return not (i < len(stmt.is_owned) and stmt.is_owned[i])
+    return not stmt.owns_target(i)
 
 
 def _unpack_row(site, name, typ, inp: 'PlanInputs', visible):
-    """A fresh tuple-unpack target (`_lower_stmt_dispatch`'s TpyTupleUnpack
-    arm, the for-each arm's head): its form, and its facts over those of
-    the same-named outer binding a loop head's fresh target shadows
-    (`_inherit_outer`); the const of a head pointer or reference is the
-    iteration's, never the outer name's."""
-    rec, bind = _unpack_target(site, name, typ, inp, visible)
+    """A fresh tuple-unpack target (a statement's, a for head's): its form,
+    and its facts over those of the same-named outer binding a loop head's
+    fresh target shadows (`_inherit_outer`); the const of a head pointer or
+    reference is the iteration's, never the outer name's."""
+    rec, shape = _unpack_target(site, name, typ, inp, visible)
     outer = visible(name)
     if not site.node.is_loop_head or outer is None:
         return rec
     own = {fld: getattr(rec, fld) for fld in REPR_FIELDS}
     scrubbed = (_HEAD_TARGET_SCRUBBED | {"const"}
-                if bind in (BC.OPT_PTR, BC.REF)
+                if shape.elem_pointer and not rec.rebind_slot
                 else _HEAD_TARGET_SCRUBBED)
     return replace(rec, **_inherit_outer(dict(own), outer, scrubbed))
 
 
-class _UnpackBind(NamedTuple):
+class _TargetShape(NamedTuple):
+    """How a fresh unpack target holds its element: its form, and whether
+    it refers through the element's pointer (const as the unpack's source),
+    takes an owned element's object, or copies a value element."""
     form: F
-    tag: UB
+    elem_pointer: bool = False
+    owned: bool = False
+    copies: bool = False
 
 
-# A fresh unpack target's bind is its record's construction
-# (`statements.unpack_bind`), each with its form and the `THIRTupleUnpack`
-# bind that renders it (`unpack_tag`): the `unwrap_ref` alias of a
-# recursive wrapper element, the `auto&&` alias through an element
-# pointer, the `const T&` of a value element, the rebound `auto*`, the
-# nullable `T*` of a pointer-repr Optional element, the pointer union
-# lifted per element, the owned element moved out of the holder, the copy.
-# A target with no bind has no form (the unpack rejects).
-UNPACK_BINDS: 'dict[BC, _UnpackBind]' = {
-    BC.UNWRAP_REF: _UnpackBind(F.REFERENCE, UB.UNWRAP_REF),
-    BC.REF: _UnpackBind(F.REFERENCE, UB.REF),
-    BC.CREF: _UnpackBind(F.REFERENCE, UB.CREF),
-    BC.PTR: _UnpackBind(F.POINTER, UB.PTR),
-    BC.OPT_PTR: _UnpackBind(F.POINTER, UB.OPT_PTR),
-    BC.PTR_VARIANT: _UnpackBind(F.POINTER_UNION, UB.PTR_VARIANT),
-    BC.MOVE: _UnpackBind(F.VALUE, UB.MOVE),
-    BC.VALUE: _UnpackBind(F.VALUE, UB.VALUE),
-}
-
-
-def unpack_tag(bind: BC) -> UB:
-    """The `THIRTupleUnpack` bind that renders a fresh unpack target's
-    construction."""
-    return UNPACK_BINDS[bind].tag
-
-
-# The binds through an element pointer of a per-element lend
-# (`auto&&`, `auto*`, `T*`): const as the unpack's source, which the wrap
-# spells (`statements.unpack_wrap_const`).
-ELEM_POINTER_BINDS = frozenset({BC.REF, BC.PTR, BC.OPT_PTR})
+_NO_SHAPE = _TargetShape(F.NONE)
 
 
 def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
-                   ) -> 'tuple[BindingRepr, BC | None]':
-    """A fresh tuple-unpack target's record, by the bind the unpack's
-    target loop tries first, and the bind."""
+                   ) -> 'tuple[BindingRepr, _TargetShape]':
+    """A fresh tuple-unpack target's record and its shape."""
     an = inp.analyzer
     stmt = site.node
     i = stmt.targets.index(name)
@@ -2701,37 +2699,42 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     is_ref = flag(stmt.is_ref)
     tt = unwrap_ref_type(typ) if isinstance(typ, TpyType) else None
     storage = site.storage
-    bind = (_head_unpack_bind if stmt.is_loop_head
-            else _standalone_unpack_bind)(stmt, i, tt, an,
-                                          rebound=storage.pointer)
-    # The statement's rvalue holder is an owned target's first storage; a
-    # module's names are module storage, which no init temporary is.
-    in_holder = (bind is BC.MOVE and unpack_holder_is_rvalue(stmt)
+    shape = _unpack_target_shape(stmt, i, tt, an)
+    # The statement's rvalue holder, or a loop head's step, is an owned
+    # target's first storage; a module's names are module storage, which no
+    # init temporary is.
+    in_holder = (shape.owned
+                 and (stmt.is_loop_head or unpack_holder_is_rvalue(stmt))
                  and not (inp.top_level
                           and (site.func or inp.func) is inp.func))
+    f: dict = {}
     if in_holder and storage.pointer and not storage.hoisted:
         # Storage standing before a loop outlives the holder, so a hoisted
-        # target keeps its slot.
-        bind = BC.PTR
-    f: dict = {}
+        # target keeps its slot: it points at the element in place.
+        shape = _TargetShape(F.POINTER, elem_pointer=True)
+        f.update(pointer=True, rebind_slot=True)
+    elif shape.elem_pointer and shape.form is F.REFERENCE and storage.pointer:
+        # A reassigned name rebinds: an alias would write the new value
+        # through into the element's referent.
+        shape = shape._replace(form=F.POINTER)
+        f.update(pointer=True, rebind_slot=True)
     acq = site.ownership.acquired
     if (stmt.is_loop_head and acq is not None
             and acq is not Acquired.OWN_ELEMENT
-            and bind is BC.VALUE and not (
+            and shape.copies and not (
                 isinstance(tt, TpyType)
                 and (_p._resolve_pending_view(tt, an)
                      or tt).is_expensive_copy())):
         # A head target that takes its own copy each pass moves at its last
         # use in the pass where the copy allocates.
         f["move_exception"] = _value_exception(tt)
-    if bind is BC.OPT_PTR:
+    if f.get("rebind_slot"):
+        pass
+    elif shape.form is F.POINTER:
         f["pointer"] = True
-    elif bind is BC.PTR_VARIANT:
+    elif shape.form is F.POINTER_UNION:
         f["ptr_variant"] = True
-    elif bind is BC.PTR:
-        f["pointer"] = True
-        f["rebind_slot"] = storage.pointer
-    elif bind is BC.MOVE and storage.pointer:
+    elif shape.owned and storage.pointer:
         # A rebound target keeps the element it takes over in a slot of its
         # own, which the pointer re-points away from at a rebind.
         f.update(pointer=True, rebind_slot=True,
@@ -2746,87 +2749,68 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
             f["value_opt"] = vo
         elif not stmt.is_loop_head and _own_opt_storage_binding(tt):
             f["value_opt"] = ValueOptKind.RECORD
-    if bind in ELEM_POINTER_BINDS:
+    if shape.elem_pointer:
         f["const"] = _unpack_source_const(site, i, inp, visible)
     form = (F.POINTER if f.get("rebind_slot")
             else _loop_form(f["loop_binding"]) if "loop_binding" in f
-            else UNPACK_BINDS[bind].form if bind in UNPACK_BINDS else F.NONE)
-    return _mk(site, name, typ, form, bind, **f), bind
+            else shape.form)
+    return _mk(site, name, typ, form, None, **f), shape
 
 
 def unpack_holder_is_rvalue(stmt: TpyTupleUnpack) -> bool:
     """Whether a standalone unpack may bind its source to the by-value
-    `auto __tup_N = <expr>;` holder (`TupleSourceBind.RVALUE`): any source
-    but a name. An over-approximation -- the lowering renders some other
-    sources through `STORAGE_WRAP` or `NAME_CREF` -- that the lowering's
-    refusal of a disagreeing holder (`unpack_holder_agrees`) keeps sound."""
+    `auto __tup_N = <expr>;` holder: any source but a name. An
+    over-approximation -- the lowering reads a place in place and holds an
+    lvalue by reference -- that the lowering's refusal of an owned target
+    off any other holder keeps sound."""
     return not stmt.is_loop_head and not isinstance(stmt.value, TpyName)
 
 
-def _standalone_unpack_bind(stmt: TpyTupleUnpack, i: int, tt, an, *,
-                            rebound: bool) -> 'BC | None':
-    """The bind a standalone unpack's fresh target `i` takes
-    (`_lower_stmt_dispatch`'s TpyTupleUnpack arm); `rebound` is the
-    storage policy's pointer verdict."""
-    from . import statements as _st
+def _unpack_target_shape(stmt: TpyTupleUnpack, i: int, tt, an
+                         ) -> _TargetShape:
+    """How fresh unpack target `i` holds its element: a recursive wrapper
+    element by reference to its live `X&`; a reference element by
+    reference into it (a pointer-repr Optional element as its nullable
+    pointer); an owned element by taking its object (an `Own[P | None]`
+    as the pointer into the holder's storage optional, an `Own[A | B]` as
+    the pointer variant); a value element by copy, or by const reference
+    where sema says the target never takes its own copy. No shape: the
+    unpack refuses the target."""
     flag = (lambda xs: bool(xs[i]) if i < len(xs) else False)
     is_ref, is_owned, is_new = (flag(stmt.is_ref), flag(stmt.is_owned),
                                 flag(stmt.is_new))
     if not is_owned and is_new and _p._wrapper_union_like(tt, an) is not None:
-        # A recursive wrapper element's capture slot is a live `X&`.
-        return BC.UNWRAP_REF
-    if is_ref:
-        if not is_new:
-            return None
-        if _p.record_like(tt, an):
-            # A reassigned name rebinds: an alias would write the new value
-            # through into the element's referent.
-            return BC.PTR if rebound else BC.REF
-        if _p._optional_ptr_borrow(tt, an) is not None:
-            return BC.OPT_PTR
-        return None
+        return _TargetShape(F.REFERENCE)
     if not is_new:
-        return None
-    if is_owned:
-        # The capture holds an `Own[P | None]` element as the storage
-        # optional and an `Own[A | B]` one as the value variant; the target
-        # borrows from the holder through a per-element lift. A record, a
-        # recursive wrapper or a container moves out of the holder.
+        return _NO_SHAPE
+    if is_ref:
+        if _p.record_like(tt, an):
+            return _TargetShape(F.REFERENCE, elem_pointer=True)
         if _p._optional_ptr_borrow(tt, an) is not None:
-            return BC.OPT_PTR
+            return _TargetShape(F.POINTER, elem_pointer=True)
+        return _NO_SHAPE
+    if is_owned:
+        if _p._optional_ptr_borrow(tt, an) is not None:
+            return _TargetShape(F.POINTER, elem_pointer=True)
         if _p._eligible_ptr_union(tt, an) is not None:
-            return BC.PTR_VARIANT
+            return _TargetShape(F.POINTER_UNION)
         if (_p.record_like(tt, an)
                 or isinstance(unwrap_readonly(tt), RecursiveAliasInstanceType)
                 or _p._owned_container_slot(tt)):
-            return BC.MOVE
-        return None
+            return _TargetShape(F.VALUE, owned=True)
+        return _NO_SHAPE
     # A nested value tuple and an `Own[P] | None` element (storage form)
-    # copy like a scalar.
-    if not (_st._scalar_or_str_unpack_elem(tt, an)
+    # copy like a scalar; any value element of a loop's step does, as the
+    # step's own element.
+    from . import statements as _st
+    if not (stmt.is_loop_head or _st._scalar_or_str_unpack_elem(tt, an)
             or _p._value_tuple_global(tt, an) is not None
             or _own_opt_storage_binding(tt)):
-        return None
-    return BC.CREF if flag(stmt.is_const_ref) else BC.VALUE
-
-
-def _head_unpack_bind(stmt: TpyTupleUnpack, i: int, tt, an, *,
-                      rebound: bool) -> 'BC | None':
-    """The bind a for head's fresh unpack target `i` takes (the for-each
-    arm's head; a target writing the outer binding keys no record,
-    `head_target_writes_outer`). A target sema stamps as taking its own
-    copy (`target_copies`) copies instead of a const reference into the
-    holder."""
-    flag = (lambda xs: bool(xs[i]) if i < len(xs) else False)
-    if _p._optional_ptr_borrow(tt, an) is not None:
-        return BC.OPT_PTR
-    if flag(stmt.is_owned):
-        return BC.MOVE
-    if flag(stmt.is_ref):
-        return BC.PTR if rebound else BC.REF
+        return _NO_SHAPE
+    # A target sema stamps as taking its own copy copies.
     if flag(stmt.is_const_ref) and not flag(stmt.target_copies):
-        return BC.CREF
-    return BC.VALUE
+        return _TargetShape(F.REFERENCE)
+    return _TargetShape(F.VALUE, copies=True)
 
 
 def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
@@ -2876,32 +2860,46 @@ def _comp_row(site, name, typ, inp: 'PlanInputs', visible):
 
 def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
     """The facts a comprehension clause decides for its variable, from the
-    clause's route (`_clause_route`)."""
+    clause's route (`_clause_route`), and for its head's targets from the
+    head's per-target record."""
     from . import statements as _st
     an = inp.analyzer
-    gen, route = site.node, site.route
+    gen, route = site.clause or site.node, site.route
     if route is None:
         return None
-    # The clause's loop binds its variable (an unpack clause, its holder)
-    # as the for statement's loop binds an element of the same type.
-    loop = (loop_binding_kind(route.et, bool(gen.const_loop_var),
-                              copies=gen.copies_var)
-            if route.et is not None else None)
-    if route.unpack_types is not None and name == gen.var:
-        return _mk(site, name, typ, _loop_form(loop), None,
-                   loop_binding=loop)
-    if route.unpack_types is not None:
-        # A record element and a pointer-repr Optional element (its
-        # storage optional) bind a reference into the element, const as
-        # the clause's loop variable; any other element its value.
-        tt = route.unpack_types[gen.unpack_vars.index(name)]
+    if route.unpack_types is not None and name != gen.var:
+        # A target the step hands its element to holds it in place in the
+        # step, as an owned head target does; a record element and a
+        # pointer-repr Optional element (its storage optional) bind a
+        # reference into the element, const as the clause's loop variable;
+        # any other element its value.
+        # `x, x`: the last target of a name is the one bound.
+        i = len(gen.unpack_vars) - 1 - gen.unpack_vars[::-1].index(name)
+        tt = route.unpack_types[i]
         const = bool(gen.const_loop_var)
+        if gen.head.is_owned[i]:
+            # An owned pointer-repr Optional holds the storage optional, as
+            # the clause variable of an owned Optional step does.
+            return _mk(site, name, typ, _loop_form(LoopBinding.OWNED), None,
+                       loop_binding=LoopBinding.OWNED,
+                       storage_opt=_p._optional_ptr_borrow(tt, an)
+                       is not None)
         if _p._optional_ptr_borrow(tt, an) is not None:
             return _mk(site, name, typ, F.STORAGE_OPT, None, storage_opt=True,
                        const=const)
         if _p.record_like(unwrap_readonly(unwrap_send_sync(tt)), an):
             return _mk(site, name, typ, F.REFERENCE, None, const=const)
         return _mk(site, name, typ, F.VALUE, None)
+    # The clause's loop binds its variable (an unpack clause, its holder)
+    # as the for statement's loop binds an element of the same type; an
+    # `Own` element the iteration does not hand over (a lent container's)
+    # is the container's, which the variable refers to.
+    et = route.et
+    if isinstance(et, OwnType) and not gen.step_handover:
+        et = et.wrapped
+    loop = (loop_binding_kind(et, bool(gen.const_loop_var),
+                              copies=gen.copies_var)
+            if et is not None else None)
     # A container's element is its stored tuple; a generator's step is the
     # form it is yielded in.
     it_t = route.it_type
@@ -2930,7 +2928,11 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
                    const_storage_opt=_st._iteration_yields_const(src, ctx,
                                                                  an),
                    loop_binding=loop)
-    return _mk(site, name, typ, F.NONE, None, loop_binding=loop)
+    # An unpack clause's variable is the step its head reads, in the form
+    # its loop binds it.
+    return _mk(site, name, typ,
+               _loop_form(loop) if route.unpack_types is not None else F.NONE,
+               None, loop_binding=loop)
 
 
 @dataclass(frozen=True)
@@ -3544,10 +3546,19 @@ class _Planner:
                 route = self._clause_route(e, gen, cur)
                 site = replace(self._site("comp", gen), route=route,
                                comp=e)
-                recs = {n: self._record(site, n, t, cur)
-                        for n, t in _clause_types(e, gen, route, self.analyzer)}
+                recs: dict[str, BindingRepr] = {}
+                tsite = site
                 if route is not None and route.unpack_types is not None:
                     recs[gen.var] = self._record(site, gen.var, route.et, cur)
+                    # The head binds the targets off the clause variable,
+                    # the step, as a for head binds them off its loop's.
+                    assert gen.head is not None
+                    self.table.scope_at[gen.head] = cur.child(dict(recs))
+                    tsite = replace(site, node=gen.head, clause=gen)
+                # `x, x`: the last target of a name binds it.
+                for n, t in dict(_clause_types(e, gen, route,
+                                               self.analyzer)).items():
+                    recs[n] = self._record(tsite, n, t, cur)
                 cur = cur.child(recs)
                 self.table.scope_at[gen] = cur
                 for c in gen.conditions:

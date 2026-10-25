@@ -837,6 +837,18 @@ def _protocol_auto_slot(t: 'TpyType | None') -> bool:
             or isinstance(t, SelfType))
 
 
+def structural_protocol(u: TpyType) -> 'NominalType | None':
+    """The structural (non-@dynamic) protocol a binding's type names, an
+    `Own[...]` around it peeled: inside the body an `Own[protocol]`
+    parameter is the same plain lvalue as a bare protocol one."""
+    if isinstance(u, OwnType):
+        u = unwrap_readonly(u.wrapped)
+    if (isinstance(u, NominalType) and u.is_protocol
+            and not is_dyn_protocol(u)):
+        return u
+    return None
+
+
 def _select_node(e: 'TpyExpr | None') -> bool:
     """A ternary or a Python `and` / `or` -- the two select spellings."""
     return (isinstance(e, TpyIfExpr)
@@ -3279,7 +3291,6 @@ def _storage_family_ok(t: TpyType | None, analyzer) -> bool:
     return _storage_call_ret(t, analyzer) is not None
 
 
-
 def _record_class_binding(t: 'TpyType | None') -> bool:
     """Whether a pointer-bound name's pointee renders as a RECORD -- the one
     class whose bare-name reads stay bare at value positions (field/method
@@ -4527,15 +4538,6 @@ def _narrowed_value_opt_tuple_read(
         return None
     return _value_opt_tuple_inner(vot, analyzer)
 
-def _narrowed_value_opt_tuple_name(
-        e: TpyExpr, declared: dict[str, TpyType],
-        analyzer) -> 'TupleType | None':
-    """`_narrowed_value_opt_tuple_read` keyed on a bare NAME's declared type
-    and sema's read type."""
-    if not (isinstance(e, TpyName) and e.name in declared):
-        return None
-    return _narrowed_value_opt_tuple_read(
-        declared[e.name], analyzer.get_expr_type(e), analyzer)
 
 def _none_value_opt_arg(a: TpyExpr, ptype: 'TpyType | None',
                         analyzer) -> 'OptionalType | None':
@@ -5124,33 +5126,6 @@ def _storage_copy_value(t: TpyType | None, analyzer) -> bool:
             or _value_tuple(t, analyzer) is not None
             or _nested_storage_tuple(t, analyzer) is not None)
 
-def _opt_owned_view_elem_tuple(t: TpyType | None,
-                               analyzer) -> 'TupleType | None':
-    """A storage tuple carrying at least one value-repr `Optional[str]` /
-    `Optional[bytes]` element beside plain value-tuple elements
-    (`tuple[bytes | None, str | None]` -> `std::tuple<std::optional<
-    std::vector<uint8_t>>, std::optional<std::string>>`), or None.
-
-    Such an element is OWNED inside the tuple's storage, so the whole
-    optional copies by value like a scalar and the tuple has no borrow form
-    to resolve -- but `_value_tuple` still declines it, because a bare str
-    element there is an owned lvalue while a view-INNER optional would not
-    be. Kept separate rather than widening that family, whose callers reach
-    param and return slots this element has not been verified at.
-    """
-    if t is None:
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if not isinstance(t, TupleType) or t.has_pointer_repr_element():
-        return None
-    any_opt = False
-    for e in t.element_types:
-        if _value_opt_owned_view(e, analyzer) is not None:
-            any_opt = True
-            continue
-        if not _value_tuple_element_ok(e, analyzer):
-            return None
-    return t if any_opt else None
 
 def _value_tuple_owned_viewfam_elem(e: 'TpyExpr', analyzer) -> bool:
     """An OWNED str/bytes element read out of a value tuple (`pair[1]` on
@@ -5216,16 +5191,6 @@ def _open_t_tuple_storage_decl(t: TpyType | None, rec, analyzer) -> bool:
     (`BindingRepr.open_t_storage_copy`)."""
     return (_value_bounded_tuple_slot(t, analyzer) is not None
             or (rec is not None and rec.open_t_storage_copy))
-
-def _tuple_has_own_element(t: 'TupleType') -> bool:
-    """Any `Own[...]` element at any depth through nested tuples."""
-    for e in t.element_types:
-        eu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
-        if isinstance(eu, OwnType):
-            return True
-        if isinstance(eu, TupleType) and _tuple_has_own_element(eu):
-            return True
-    return False
 
 
 def _own_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
@@ -9408,45 +9373,6 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                       analyzer) is not None):
             return None
     return t
-
-
-def _own_ref_mix_call_ret(ret: TpyType | None,
-                          analyzer) -> 'TupleType | None':
-    """A call-result tuple mixing an `Own[F1-record]` element with a BORROWED
-    F1-record one (`split(p) -> tuple[Point, Own[Point]]`, returned as
-    `std::tuple<Point*, Point>`) -- `_owned_tuple_call_ret`'s sibling for the
-    case where a non-Own element is a REFERENCE type rather than a value
-    scalar. One plain `auto __tup_N = f(..);` capture serves both slot shapes
-    with no lift: the borrowed element is already the `T*` a ref target
-    aliases, the Own element the by-value slot a move target drains.
-
-    The borrow row keys on the SOURCE element's `is_borrow_ref` fact --
-    `value_form()` plus pointer-repr, exactly as the unpack spells it
-    -- because that is what picks the `auto&& a = unwrap_ref(
-    tuple_elem_ref(..))` arm; the target type answers a different question and
-    the two can disagree. Admitted only where the sink takes the tuple WHOLE
-    (`SinkForm.TUPLE_SOURCE`): a whole-tuple DECL of this shape is an
-    unrouted slot.
-    """
-    if ret is None:
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
-    if not isinstance(t, TupleType):
-        return None
-    saw_own = False
-    saw_borrow = False
-    for e in t.element_types:
-        if isinstance(e, OwnType):
-            if not _f1_record(e.wrapped, analyzer):
-                return None
-            saw_own = True
-        elif (e.value_form() is ValueForm.BORROW_REF
-              and TupleType._element_is_pointer_repr(e)
-              and _f1_record(e, analyzer)):
-            saw_borrow = True
-        elif not _capture_value_elem(e, analyzer):
-            return None
-    return t if (saw_own and saw_borrow) else None
 
 
 def _nested_owned_tuple_call_ret(ret: TpyType | None,

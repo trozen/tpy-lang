@@ -228,7 +228,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     p = ((p) + (::tpy::BigInt(1)));
     auto __tup_1 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(2));
     const ::tpy::BigInt& hh = std::get<0>(__tup_1);
-    ::tpy::BigInt p2 = std::get<1>(__tup_1);
+    ::tpy::BigInt p2 = std::move(std::get<1>(__tup_1));
     if ((hh < 0)) {
         ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
@@ -239,7 +239,7 @@ void _parse_fail(std::string_view data, std::string_view fmt) {
     }
     auto __tup_2 = ::tpystd::_datetime_parse::_take_exact_num(data, p, ::tpy::BigInt(2));
     const ::tpy::BigInt& mm = std::get<0>(__tup_2);
-    p2 = std::get<1>(__tup_2);
+    p2 = std::move(std::get<1>(__tup_2));
     if (((mm < 0) || (mm > 59))) {
         ::tpystd::_datetime_parse::_parse_fail(data, fmt);
     }
@@ -947,9 +947,9 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
             has_julian = true;
         } else if ((st.has_iso_year && st.has_iso_week)) {
             auto __tup_1 = ::tpystd::_datetime_cal::_isoweek_to_gregorian(st.iso_year, st.iso_week, ((st.weekday) + (::tpy::BigInt(1))));
-            year = std::get<0>(__tup_1);
-            month = std::get<1>(__tup_1);
-            day = std::get<2>(__tup_1);
+            year = std::move(std::get<0>(__tup_1));
+            month = std::move(std::get<1>(__tup_1));
+            day = std::move(std::get<2>(__tup_1));
         }
         if ((has_julian && (julian <= 0))) {
             year = ((year) - (::tpy::BigInt(1)));
@@ -962,9 +962,9 @@ std::tuple<::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::BigInt, ::tpy::Bi
             throw ::tpy::ValueError("day of year out of range");
         }
         auto __tup_2 = ::tpystd::_datetime_cal::_ord2ymd(o);
-        year = std::get<0>(__tup_2);
-        month = std::get<1>(__tup_2);
-        day = std::get<2>(__tup_2);
+        year = std::move(std::get<0>(__tup_2));
+        month = std::move(std::get<1>(__tup_2));
+        day = std::move(std::get<2>(__tup_2));
     }
     ::tpy::BigInt hour = st.hour;
     if (st.has_hour12) {

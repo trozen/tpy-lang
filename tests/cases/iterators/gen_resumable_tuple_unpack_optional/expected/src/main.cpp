@@ -29,9 +29,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = *((*__for_it_0))++;
-        auto& __tup_1 = __for_tup_0;
-        a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
-        b = ::tpy::optional_to_ptr(std::get<1>(__tup_1));
+        a = ::tpy::optional_to_ptr(std::get<0>(__for_tup_0));
+        b = ::tpy::optional_to_ptr(std::get<1>(__for_tup_0));
         if ((a != nullptr)) {
             __state = S_RESUME_0;
             return a->x;

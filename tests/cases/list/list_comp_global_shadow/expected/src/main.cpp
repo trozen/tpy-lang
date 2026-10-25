@@ -201,9 +201,8 @@ void unpack_head(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            const auto& __tup_1 = __for_tup_0;
-            std::string k = std::get<0>(__tup_1);
-            ::tpy::BigInt ys = std::get<1>(__tup_1);
+            std::string k = std::get<0>(__for_tup_0);
+            ::tpy::BigInt ys = std::get<1>(__for_tup_0);
             __result.insert_or_assign(k, ((ys) * (::tpy::BigInt(2))));
         }
         std::move(__result);

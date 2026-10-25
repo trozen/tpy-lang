@@ -204,9 +204,8 @@ void comprehensions() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            const auto& __tup_1 = __for_tup_0;
-            std::string k = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
+            std::string k = std::get<0>(__for_tup_0);
+            int32_t v = std::get<1>(__for_tup_0);
             __result.push_back(k);
         }
         std::move(__result);
@@ -219,9 +218,8 @@ void comprehensions() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& __for_tup_1 = *__beg_1;
-            const auto& __tup_2 = __for_tup_1;
-            ::tpy::Bytes k = std::get<0>(__tup_2);
-            int32_t v = std::get<1>(__tup_2);
+            ::tpy::Bytes k = std::get<0>(__for_tup_1);
+            int32_t v = std::get<1>(__for_tup_1);
             __result.push_back(k);
         }
         std::move(__result);
@@ -236,9 +234,8 @@ void comprehensions() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             const auto& __for_tup_2 = *__beg_2;
-            const auto& __tup_3 = __for_tup_2;
-            std::string k = std::get<0>(__tup_3);
-            std::string v = std::get<1>(__tup_3);
+            std::string k = std::get<0>(__for_tup_2);
+            std::string v = std::get<1>(__for_tup_2);
             __result.push_back(v);
         }
         std::move(__result);
@@ -251,9 +248,8 @@ void comprehensions() {
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
             const auto& __for_tup_3 = *__beg_3;
-            const auto& __tup_4 = __for_tup_3;
-            ::tpy::Bytes k = std::get<0>(__tup_4);
-            ::tpy::Bytes v = std::get<1>(__tup_4);
+            ::tpy::Bytes k = std::get<0>(__for_tup_3);
+            ::tpy::Bytes v = std::get<1>(__for_tup_3);
             __result.push_back(v);
         }
         std::move(__result);
@@ -299,9 +295,8 @@ void items_loop() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_4 = *__beg_0;
-        const auto& __tup_1 = __for_tup_4;
-        std::string_view k = std::get<0>(__tup_1);
-        std::string_view v = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_4);
+        std::string_view v = std::get<1>(__for_tup_4);
         std::cout << "items_loop:" << " " << k << " " << v << "\n" << ::tpy::check_signals;
     }
     auto __obj_1 = ::tpy::dict_items(db);
@@ -309,9 +304,8 @@ void items_loop() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_5 = *__beg_1;
-        const auto& __tup_2 = __for_tup_5;
-        ::tpy::BytesView k = std::get<0>(__tup_2);
-        ::tpy::BytesView v = std::get<1>(__tup_2);
+        ::tpy::BytesView k = std::get<0>(__for_tup_5);
+        ::tpy::BytesView v = std::get<1>(__for_tup_5);
         std::cout << "items_loop:" << " " << ::tpy::BytesPrinter(k) << " " << ::tpy::BytesPrinter(v) << "\n" << ::tpy::check_signals;
     }
 }

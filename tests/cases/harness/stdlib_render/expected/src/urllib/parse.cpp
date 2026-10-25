@@ -654,12 +654,11 @@ ParseResult urlparse(std::string_view url) {
 //         url = url + "#" + fragment
 //     return url
 std::string urlunsplit(const std::tuple<std::string, std::string, std::string, std::string, std::string>& components) {
-    const auto& __tup_1 = components;
-    std::string_view scheme = std::get<0>(__tup_1);
-    std::string_view netloc = std::get<1>(__tup_1);
-    std::string_view path = std::get<2>(__tup_1);
-    std::string_view query = std::get<3>(__tup_1);
-    std::string_view fragment = std::get<4>(__tup_1);
+    std::string_view scheme = std::get<0>(components);
+    std::string_view netloc = std::get<1>(components);
+    std::string_view path = std::get<2>(components);
+    std::string_view query = std::get<3>(components);
+    std::string_view fragment = std::get<4>(components);
     std::string url = std::string(path);
     if (((::tpy::__len__(netloc) > 0) || (((::tpy::__len__(scheme) > 0) && ::tpystd::urllib::parse::_scheme_uses_netloc(scheme)) && (!(::tpy::str_startswith(path, "//")))))) {
         if (((::tpy::__len__(url) > 0) && (!(::tpy::str_startswith(url, "/"))))) {
@@ -686,13 +685,12 @@ std::string urlunsplit(const std::tuple<std::string, std::string, std::string, s
 //                            fragment))
 //     return urlunsplit((scheme, netloc, path, query, fragment))
 std::string urlunparse(const std::tuple<std::string, std::string, std::string, std::string, std::string, std::string>& components) {
-    const auto& __tup_1 = components;
-    std::string_view scheme = std::get<0>(__tup_1);
-    std::string_view netloc = std::get<1>(__tup_1);
-    std::string_view path = std::get<2>(__tup_1);
-    std::string_view params = std::get<3>(__tup_1);
-    std::string_view query = std::get<4>(__tup_1);
-    std::string_view fragment = std::get<5>(__tup_1);
+    std::string_view scheme = std::get<0>(components);
+    std::string_view netloc = std::get<1>(components);
+    std::string_view path = std::get<2>(components);
+    std::string_view params = std::get<3>(components);
+    std::string_view query = std::get<4>(components);
+    std::string_view fragment = std::get<5>(components);
     if ((::tpy::__len__(params) > 0)) {
         return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{std::string(scheme), std::string(netloc), (::tpy::str_concat((::tpy::str_concat(path, ";")), params)), std::string(query), std::string(fragment)});
     }

@@ -15,9 +15,8 @@ namespace tpyapp::main {
 //     else:
 //         print("none")
 void show(const std::tuple<const P*, const P*>& p) {
-    auto& __tup_1 = p;
-    const P* a = std::get<0>(__tup_1);
-    const P* b = std::get<1>(__tup_1);
+    const P* a = std::get<0>(p);
+    const P* b = std::get<1>(p);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {

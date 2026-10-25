@@ -91,9 +91,8 @@ void main() {
     int32_t q2 = 200;
     std::cout << ::tpy::fixed_to_str<int32_t>(p) << " " << ::tpy::fixed_to_str<int32_t>(q) << " " << ::tpy::fixed_to_str<int32_t>(p2) << " " << ::tpy::fixed_to_str<int32_t>(q2) << "\n" << ::tpy::check_signals;
     std::tuple<int32_t, int32_t> t = std::tuple<int32_t, int32_t>{6, 7};
-    const auto& __tup_1 = t;
-    int32_t r = std::get<0>(__tup_1);
-    int32_t s = std::get<1>(__tup_1);
+    int32_t r = std::get<0>(t);
+    int32_t s = std::get<1>(t);
     std::cout << ::tpy::fixed_to_str<int32_t>(r) << " " << ::tpy::fixed_to_str<int32_t>(s) << "\n" << ::tpy::check_signals;
     std::array<std::tuple<int32_t, int32_t>, 2> pairs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
     auto& __obj_1 = pairs;
@@ -101,9 +100,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        const auto& __tup_2 = __for_tup_0;
-        int32_t u = std::get<0>(__tup_2);
-        int32_t v = std::get<1>(__tup_2);
+        int32_t u = std::get<0>(__for_tup_0);
+        int32_t v = std::get<1>(__for_tup_0);
         std::cout << ::tpy::fixed_to_str<int32_t>(u) << " " << ::tpy::fixed_to_str<int32_t>(v) << "\n" << ::tpy::check_signals;
     }
     std::cout << ::tpy::fixed_to_str<int32_t>(a) << " " << ::tpy::fixed_to_str<int32_t>(b) << "\n" << ::tpy::check_signals;

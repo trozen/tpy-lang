@@ -700,9 +700,8 @@ int32_t unpack_pairs(T_source&& source) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         std::tuple<int32_t, std::vector<int32_t>> t(::tpy::own_bind(*__r_1));
-        auto& __tup_1 = t;
-        int32_t k = std::get<0>(__tup_1);
-        auto&& xs = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        int32_t k = std::get<0>(t);
+        std::vector<int32_t>& xs = std::get<1>(t);
         out.push_back(std::tuple<int32_t, std::vector<int32_t>>{k, std::vector<int32_t>(xs)});
     }
     return ::tpy::__len__(out);

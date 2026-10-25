@@ -114,9 +114,8 @@ inline K::K(std::optional<std::tuple<double, int32_t>> tup) : tup(tup) {}
 //         print("method", a, b)
 inline void K::use(std::optional<std::tuple<double, int32_t>> r) const {
     if ((r.has_value())) {
-        const auto& __tup_1 = (*r);
-        double a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        double a = std::get<0>((*r));
+        int32_t b = std::get<1>((*r));
         std::cout << "method" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     }
 }
@@ -130,9 +129,8 @@ inline void K::use(std::optional<std::tuple<double, int32_t>> r) const {
 //         print("field none")
 inline void K::show() const {
     if ((this->tup.has_value())) {
-        auto __tup_1 = (*this->tup);
-        double a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        double a = std::get<0>((*this->tup));
+        int32_t b = std::get<1>((*this->tup));
         std::cout << "field" << " " << ::tpy::print_float(a) << " " << b << "\n" << ::tpy::check_signals;
     } else {
         std::cout << "field none" << "\n" << ::tpy::check_signals;

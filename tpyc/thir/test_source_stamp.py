@@ -572,8 +572,13 @@ def _declaring_nodes(body):
                         (node.binding,), line))
         elif isinstance(node, th.THIRTupleUnpack):
             out.append((node, node.targets, node.bindings, line))
+            # A per-target unpack's writes are its targets' declarations,
+            # carrying the records the unpack lists.
+            for w in node.writes:
+                assert w.binding is node.bindings[
+                    node.targets.index(w.bound_name)], type(w).__name__
         for f in dataclasses.fields(node):
-            if f.name not in ("binding", "bindings", "source"):
+            if f.name not in ("binding", "bindings", "source", "writes"):
                 walk(getattr(node, f.name), line)
     walk(body.body if isinstance(body, th.THIRFunction) else body, None)
     return out

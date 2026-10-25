@@ -38,139 +38,37 @@ from ..typesys import (NoneType, substitute_cpp_ret, OptionalType, TpyType, Tupl
                        TypeParamRef, UnionType, VoidType, unwrap_qualifiers,
                        view_family_for_type)
 from .source import TraitAbi
-from .nodes import (
-    THIRRebindSlot,
-    THIRStoragePlacement,
-    Form,
-    PrintForm,
-    PtrSlotKind,
-    TruthinessMode,
-    THIRArgTemp,
-    THIRTempRead,
-    BOUND_SOURCE_READ,
-    THIRLent,
-    THIRAssert,
-    THIRAssign,
-    THIRBinOp,
-    THIRChainedCompareStmtExpr,
-    THIRBreak,
-    THIRBytesLiteral,
-    THIRCall,
-    THIRCharLiteral,
-    THIRWalrus,
-    THIRArrayComprehension,
-    THIRComprehensionBlock,
-    THIRCompInsert,
-    THIRGenExpr,
-    THIRClassConstant,
-    THIRCoerce,
-    THIRConstructor,
-    THIRContainerLiteral,
-    THIRListRepeat,
-    THIRContinue,
-    THIRCloseLocal,
-    THIRDelVar,
-    THIRDelItem,
-    THIRCtorCall,
-    THIRConceptTest,
-    THIREnumMember,
-    THIREnumWrap,
-    THIRErrorReturnBind,
-    THIRErrorReturnDiscard,
-    THIRErrorReturnUnwrap,
-    THIRExpr,
-    THIRExprStmt,
-    THIRFieldAccess,
-    THIRConsumingIter,
-    THIRCopy,
-    THIRForEach,
-    THIRNode,
-    THIRForIterProto,
-    THIRForRange,
-    THIRFormConvert,
-    THIRFString,
-    THIRFunction,
-    THIRIf,
-    THIRIdentity,
-    THIRIfExpr,
-    THIRIsNone,
-    THIRSlotEmplace,
-    THIRValueSelect,
-    THIRMembership,
-    THIRStrMembership,
-    THIRTupleMembership,
-    THIRIsinstance,
-    THIRAnyIsinstance,
-    THIRDynIsinstance,
-    THIRDynIsinstanceMulti,
-    THIRDefaultConstruct,
-    THIRLiteral,
-    THIRMatch,
-    THIRMatchArmEntry,
-    THIRMatchBinding,
-    THIRLambda,
-    THIRMethodCall,
-    THIRModuleVar,
-    THIRDecayCopy,
-    THIRNoneCheck,
-    THIRMove,
-    THIRName,
-    THIRDynNarrowAlias,
-    THIRNarrowAlias,
-    THIRAnyNarrowAlias,
-    THIRNestedDef,
-    THIRNarrowedRead,
-    THIRFrameNestedDef,
-    THIRImportInit,
-    THIRNoOpStmt,
-    THIRFoldedBlock,
-    THIRFoldedIfChain,
-    THIRMatchFoldBind,
-    THIROptionalPtrArg,
-    THIROverloadDefault,
-    THIRParamCopy,
-    THIRPrint,
-    THIRPrintChain,
-    THIRPrintArg,
-    THIRPtrLocalDecl,
-    THIRPtrLocalRebind,
-    THIRRaise,
-    THIRResumableReturn,
-    THIRReturn,
-    THIRFinallyDeferredReturn, DeferredPartKind,
-    THIRStmtSeq,
-    THIRSetItem,
-    THIRSelf,
-    THIRSliceAssign,
-    THIRInplaceContainerOp,
-    THIRStmt,
-    THIRCoroHandleMove,
-    THIRFrameSlotWrite,
-    THIRStrAppend,
-    THIRStrLiteral,
-    THIRStrSlice,
-    THIRSubscript,
-    THIRBoundCall,
-    THIRTry,
-    THIRRecordCopy,
-    THIRBorrowTupleLiteral,
-    THIRTupleLiteral,
-    THIRTupleUnpack,
-    TupleElemBind,
-    UnpackBind,
-    TupleSourceBind,
-    THIRTruthy,
-    THIROptViewArg,
-    THIROwnOptRebuild,
-    THIRUnaryNot,
-    THIRUnaryArith,
-    THIRUnionArgLift,
-    THIRVarDecl,
-    THIRVarargPack,
-    THIRWhile,
-    THIRWith,
-    WithTargetArm,
-)
+from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
+    PtrSlotKind, TruthinessMode, THIRArgTemp, THIRTempRead, BOUND_SOURCE_READ,
+    THIRLent, THIRAssert, THIRAssign, THIRBinOp, THIRChainedCompareStmtExpr,
+    THIRBreak, THIRBytesLiteral, THIRCall, THIRCharLiteral, THIRWalrus,
+    THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
+    THIRGenExpr, THIRClassConstant, THIRCoerce, THIRConstructor,
+    THIRContainerLiteral, THIRListRepeat, THIRContinue, THIRCloseLocal,
+    THIRDelVar, THIRDelItem, THIRCtorCall, THIRConceptTest, THIREnumMember,
+    THIREnumWrap, THIRErrorReturnBind, THIRErrorReturnDiscard,
+    THIRErrorReturnUnwrap, THIRExpr, THIRExprStmt, THIRFieldAccess,
+    THIRConsumingIter, THIRCopy, THIRForEach, THIRNode, THIRForIterProto,
+    THIRForRange, THIRFormConvert, THIRFString, THIRFunction, THIRIf,
+    THIRIdentity, THIRIfExpr, THIRIsNone, THIRSlotEmplace, THIRValueSelect,
+    THIRMembership, THIRStrMembership, THIRTupleMembership, THIRIsinstance,
+    THIRAnyIsinstance, THIRDynIsinstance, THIRDynIsinstanceMulti,
+    THIRDefaultConstruct, THIRLiteral, THIRMatch, THIRMatchArmEntry,
+    THIRMatchBinding, THIRLambda, THIRMethodCall, THIRModuleVar, THIRDecayCopy,
+    THIRNoneCheck, THIRMove, THIRName, THIRDynNarrowAlias, THIRNarrowAlias,
+    THIRAnyNarrowAlias, THIRNestedDef, THIRNarrowedRead, THIRFrameNestedDef,
+    THIRImportInit, THIRNoOpStmt, THIRFoldedBlock, THIRFoldedIfChain,
+    THIRMatchFoldBind, THIROptionalPtrArg, THIROverloadDefault, THIRParamCopy,
+    THIRPrint, THIRPrintChain, THIRPrintArg, THIRPtrLocalDecl,
+    THIRPtrLocalRebind, THIRRaise, THIRResumableReturn, THIRReturn,
+    THIRFinallyDeferredReturn, DeferredPartKind, THIRStmtSeq, THIRSetItem,
+    THIRSelf, THIRSliceAssign, THIRInplaceContainerOp, THIRStmt,
+    THIRCoroHandleMove, THIRFrameSlotWrite, THIRStrAppend, THIRStrLiteral,
+    THIRStrSlice, THIRSubscript, THIRBoundCall, THIRTry, THIRRecordCopy,
+    THIRBorrowTupleLiteral, THIRTupleLiteral, THIRTupleUnpack, TupleElemBind,
+    THIRTruthy, THIROptViewArg, THIROwnOptRebuild, THIRUnaryNot,
+    THIRUnaryArith, THIRUnionArgLift, THIRVarDecl, THIRVarargPack, THIRWhile,
+    THIRWith, WithTargetArm)
 from .faces import witness as _witness
 from .temp_plan import THIRTempPlan, THIRTempPlacement, if_chain, validate_plan
 
@@ -982,17 +880,15 @@ def _emit_array_comprehension(e: 'THIRArrayComprehension',
     buf.write(f"{ind1}::tpy::array_from_index<{e.array_elem_cpp}, "
               f"{e.array_size_cpp}>("
               f"[&](std::size_t __i_{n}) -> {e.array_elem_cpp} {{\n")
-    if e.unpack_targets:
-        # Unpack heads over the indexed element: `auto& __tup_N =
-        # __obj_N[__i_N];` + per-var `std::get` decls.
-        un = state.next_unpack()
-        tmp = f"__tup_{un}"
-        buf.write(f"{ind2}auto& {tmp} = {obj}[__i_{n}];\n")
-        for i, name in enumerate(e.unpack_targets):
-            if name is None:
-                continue
-            buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
-                      f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
+    if e.head is not None:
+        # The clause variable is the indexed element, which the clause's
+        # head unpacks as a for head unpacks its step.
+        buf.write(f"{ind2}auto& {cpp_var} = {obj}[__i_{n}];\n")
+        level = state.stmt_indent_level
+        try:
+            _emit_stmts(buf, (e.head,), level + 2, state)
+        finally:
+            state.stmt_indent_level = level
     else:
         elem = f"{obj}[__i_{n}]"
         loop_binding = e.binding.loop_binding
@@ -1245,6 +1141,8 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
         if e.elem_ref:
             # Generic val_or_ptr slot: read as a usable value/reference.
             get = f"::tpy::tuple_elem_ref({get})"
+        if e.step_elem:
+            get = f"::tpy::unwrap_ref({get})"
         return f"(*{get})" if e.deref else get
     # Container index/key lookup, rendered by the stamped variant: its
     # unchecked twin for an index proven in range, else its own binding. A
@@ -1355,6 +1253,11 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if is_plain_nonvalue(t):
             return f"&({inner})"
     elif e.form is Form.STORAGE:
+        if e.base_copy:
+            # `move`: the value is an rvalue the base part moves out of.
+            ref = "&&" if e.move else "&"
+            const = "" if e.move else "const "
+            return f"static_cast<{const}{t.to_cpp()}{ref}>({inner})"
         # borrow `T*` -> storage `std::optional<T>` (write/return direction). An
         # owned source at last use moves (`ptr_to_optional_move`, F2e); a
         # non-owning borrow copies (`ptr_to_optional`, F2b/F2c). `move` is set
@@ -4443,166 +4346,26 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
             out.write(f"{indent}(void)({expr_cpp});\n")
         else:
             out.write(f"{indent}{expr_cpp};\n")
-    elif isinstance(stmt, THIRTupleUnpack):
-        # Each non-discard target declares a fresh value-scalar local. The
-        # source bind splits on shape -- a bare-name / loop-shadow source is
-        # ref-bound (`const auto&`, no owned/ref elements), a call / field
-        # rvalue is materialized by value (`auto`; its arg temps flush before
-        # the bind line, exactly like a bare expr statement).
-        tmp = f"__tup_{state.next_unpack()}"
-        # One holder line per TupleSourceBind form (renders documented on
-        # the enum); the name forms share the source_cpp spelling override.
-        sb = stmt.source_bind
-        src = (stmt.source_cpp if stmt.source_cpp is not None
-               else escape_cpp_name(stmt.source))
-
-        def expr_src() -> str:
-            # An expression source renders like a bare expr statement: its
-            # arg temps flush before the holder line.
-            cpp = (_emit_lent(stmt.source_lent, escape_cpp_name(stmt.source),
-                              state)
-                   if stmt.source_lent is not None
-                   else _emit_expr(stmt.source_expr, state))
+    elif isinstance(stmt, THIRTupleUnpack) and stmt.per_target:
+        # The holder line, then each target's own write, its element read
+        # naming the holder or the source place.
+        if stmt.holder is not None:
+            tmp = f"__tup_{state.next_unpack()}"
+            src = _emit_expr(stmt.holder, state)
             state.temps.flush(out, indent)
-            return cpp
-
-        if sb in (TupleSourceBind.STORAGE_WRAP, TupleSourceBind.RVALUE):
-            out.write(f"{indent}auto {tmp} = {expr_src()};\n")
-        elif sb is TupleSourceBind.ONESHOT_DEREF:
-            out.write(f"{indent}auto&& {tmp} = "
-                      f"(*{escape_cpp_name(stmt.source)});\n")
-        elif sb is TupleSourceBind.NAME_REF:
-            out.write(f"{indent}auto& {tmp} = {src};\n")
-        elif sb is TupleSourceBind.NAME_MOVE:
-            out.write(f"{indent}auto&& {tmp} = std::move({src});\n")
-        elif sb is TupleSourceBind.NAME_COPY:
-            out.write(f"{indent}auto {tmp} = {src};\n")
-        else:
-            if stmt.source_expr is not None:
-                # A narrowed value-opt tuple name: the holder const-ref-binds
-                # the name arm's deref read (`(*r)`) -- no copy.
-                src = expr_src()
-            out.write(f"{indent}const auto& {tmp} = {src};\n")
-        if stmt.tuple_target is not None:
-            _emit_tuple_target(out, indent, stmt, tmp, state)
-        for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
-            if name is None:
-                continue
-            get = f"std::get<{i}>({tmp})"
-            bind = stmt.binds[i] if stmt.binds else UnpackBind.VALUE
-            if bind is UnpackBind.FRAME_PTR_ADDR:
-                # Loop-head alias target: the element is a live value
-                # lvalue inside the container's storage tuple.
-                out.write(f"{indent}{escape_cpp_name(name)} = "
-                          f"&({get});\n")
-            elif bind is UnpackBind.FRAME_PTR_ELEM:
-                # Pointer-alias target: alias the LIVE element --
-                # tuple_elem_ref normalizes a `T*` borrow element (deref)
-                # or a value element (forward) to the live `T&`, and the
-                # address-of re-points the `T*` alias field.
-                out.write(f"{indent}{escape_cpp_name(name)} = "
-                          f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
-                          f"({get})));\n")
-            elif bind is UnpackBind.FRAME_OPT_PTR:
-                # Ptr-repr Optional frame target off a STORAGE optional
-                # element: nullptr doubles as None.
-                out.write(f"{indent}{escape_cpp_name(name)} = "
-                          f"::tpy::optional_to_ptr({get});\n")
-            elif bind is UnpackBind.FRAME_REBIND_PTR:
-                # A rebound reference local's binding: the element's object
-                # moves into this site's frame field, which the pointer
-                # re-points at.
-                _rvalue_reseat(out, indent, escape_cpp_name(name),
-                               f"std::move({get})", state, rebuild=False,
-                               frame_slot=stmt.slot_fields[i])
-            elif bind in (UnpackBind.FRAME_ASSIGN, UnpackBind.FRAME_EMPLACE):
-                # Resumable frame targets: assigned, never re-declared. The
-                # wrap is the per-element is_owned move (ref elements
-                # reject at lowering -- they would need an unwrap_ref wrap);
-                # an emplace's typed_brace_init is identity for a get-expr.
-                wrap = stmt.wraps[i] if stmt.wraps else ""
-                if wrap == "move":
-                    get = f"std::move({get})"
-                if bind is UnpackBind.FRAME_EMPLACE:
-                    out.write(f"{indent}{escape_cpp_name(name)}"
-                              f".emplace({get});\n")
-                else:
-                    out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
-            elif bind is UnpackBind.ASSIGN:
-                # Reused target: an already-declared name, so no decl. The
-                # wrap moves an owned element out of a holder the statement
-                # owns.
-                if stmt.wraps and stmt.wraps[i] == "move":
-                    get = f"std::move({get})"
-                out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
-            elif bind is UnpackBind.GLOBAL_SLOT:
-                # Pointer-slot global at module init: the moved-out element
-                # needs storage that outlives `__tpy_init`, so it lands in a
-                # `static` slot the pre-declared global points at. Lowering
-                # admits owned elements only, hence the unconditional move.
-                slot = state.global_slot()
-                out.write(f"{indent}{state.slot_static}{cpp} {slot} = "
-                          f"std::move({get});\n")
-                out.write(f"{indent}{escape_cpp_name(name)} = &{slot};\n")
-            elif bind is UnpackBind.GLOBAL_PTR:
-                # The borrowed element's pointer, off the pointer-lifted
-                # capture: the source is a tuple global, static storage.
-                out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
-            elif bind is UnpackBind.UNWRAP_REF:
-                # Wrapper-reference element: the capture's slot is a live
-                # `X&`; unwrap_ref hands back that reference to alias.
-                out.write(f"{indent}{cpp}& {escape_cpp_name(name)} = "
-                          f"::tpy::unwrap_ref({get});\n")
-            elif bind is UnpackBind.PTR_VARIANT:
-                # Own[A | B] element: the capture holds the VALUE variant,
-                # so the target lifts per element into the pointer variant.
-                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
-                          f"::tpy::to_ptr_variant({get});\n")
-            elif bind is UnpackBind.OPT_PTR:
-                # A storage-form element (`std::optional<T>` in an owning
-                # call's capture) lifts to the pointer the target borrows;
-                # a borrow-form element is that pointer already.
-                if stmt.wraps and stmt.wraps[i] == "optional_to_ptr":
-                    get = f"::tpy::optional_to_ptr({get})"
-                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
-                          f"{get};\n")
-            elif bind in (UnpackBind.MOVE, UnpackBind.MOVE_POINTEE):
-                moved = (f"std::move({get})" if bind is UnpackBind.MOVE
-                         else f"std::move(*{get})")
-                rec = stmt.target_slot(i)
-                own = stmt.bindings[i] if i < len(stmt.bindings) else None
-                if rec is not None:
-                    # A rebound target: the element lands in its own slot.
-                    _emit_slot_pointer(out, indent, cpp, escape_cpp_name(name),
-                                       moved, state,
-                                       hoisted=rec.storage_hoisted)
-                elif (own is not None
-                      and own.loop_binding is LoopBinding.OWNED):
-                    _write_lines(out, indent, loop_var_binding(
-                        LoopBinding.OWNED, own.type, escape_cpp_name(name),
-                        get, owned_step_expr=moved))
-                else:
-                    out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
-                              f"{moved};\n")
-            elif bind is UnpackBind.CREF:
-                out.write(f"{indent}const {cpp}& {escape_cpp_name(name)} = "
-                          f"{get};\n")
-            elif bind is UnpackBind.PTR:
-                # The reseatable twin of REF: `auto*` keeps the element's
-                # const-ness exactly as the `auto&&` alias does.
-                out.write(f"{indent}auto* {escape_cpp_name(name)} = "
-                          f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
-                          f"({get})));\n")
-            elif bind is UnpackBind.REF:
-                # Borrow-tuple element: `std::get<i>(__tup)` is a `T*` (or
-                # val_or_ref); one `auto&&` reference aliases the live element
-                # in every form -- tuple_elem_ref derefs the pointer, unwrap_ref
-                # the val_or_ref -- so `.` access is plain, non-nullable.
-                out.write(f"{indent}auto&& {escape_cpp_name(name)} = "
-                          f"::tpy::unwrap_ref(::tpy::tuple_elem_ref({get}));\n")
-            else:
-                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
-                          f"{get};\n")
+            decl = "auto&&" if stmt.holder_ref else "auto"
+            out.write(f"{indent}{decl} {tmp} = {src};\n")
+            state.temps.name_read(stmt.holder_read, tmp)
+        for write in stmt.writes:
+            _emit_stmt_line(out, write, indent_level, state)
+    elif isinstance(stmt, THIRTupleUnpack):
+        # A tuple target: the right-hand side held once, then each element
+        # lands in the pointer tuple the local is.
+        tmp = f"__tup_{state.next_unpack()}"
+        src = _emit_expr(stmt.source_expr, state)
+        state.temps.flush(out, indent)
+        out.write(f"{indent}auto {tmp} = {src};\n")
+        _emit_tuple_target(out, indent, stmt, tmp, state)
     elif isinstance(stmt, THIRBreak):
         _emit_loop_exit(out, indent, state, is_break=True)
     elif isinstance(stmt, THIRContinue):

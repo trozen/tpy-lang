@@ -41,9 +41,8 @@ struct __genexpr_main_1_frame : public ::tpy::next_iter_mixin<__genexpr_main_1_f
 std::expected<std::tuple<std::string, int32_t>, ::tpy::StopIteration> __genexpr_main_1_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         __for_tup_gx = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_gx;
-        k = std::get<0>(__tup_1);
-        v = std::get<1>(__tup_1);
+        k = std::get<0>(__for_tup_gx);
+        v = std::get<1>(__for_tup_gx);
         return std::tuple<std::string, int32_t>{k, v};
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});

@@ -48,7 +48,7 @@ std::tuple<Tree<int32_t>&, int32_t> pair(Tree<int32_t>& t) {
 void main() {
     Tree<int32_t> seed = std::vector<Tree<int32_t>>{1, std::vector<Tree<int32_t>>{2, 3}};
     auto __tup_1 = ::tpyapp::main::pair(seed);
-    Tree<int32_t>& a = ::tpy::unwrap_ref(std::get<0>(__tup_1));
+    Tree<int32_t>& a = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     std::cout << (::tpy::add_check<int32_t>(::tpyapp::main::count(a), n)) << "\n" << ::tpy::check_signals;
 }

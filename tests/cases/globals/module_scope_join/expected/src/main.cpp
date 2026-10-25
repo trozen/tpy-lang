@@ -140,9 +140,8 @@ void literal_seed_fn(const std::tuple<int64_t, uint8_t>& q) {
     });
     std::cout << "literal_seed_fn walrus_comprehension:" << " " << ::tpy::ListPrinter(lcs) << " " << lc << "\n" << ::tpy::check_signals;
     int64_t lu = 0;
-    const auto& __tup_1 = q;
-    lu = std::get<0>(__tup_1);
-    uint8_t lu2 = std::get<1>(__tup_1);
+    lu = std::get<0>(q);
+    uint8_t lu2 = std::get<1>(q);
     std::cout << "literal_seed_fn unpack:" << " " << lu << " " << static_cast<int>(lu2) << "\n" << ::tpy::check_signals;
     int64_t lf = 0;
     auto __obj_1 = {static_cast<int64_t>(5000000000)};
@@ -1393,9 +1392,8 @@ void __tpy_init() {
     std::cout << "unpack_literal:" << " " << u1 << " " << u2 << "\n" << ::tpy::check_signals;
     p = std::tuple<int64_t, uint8_t>{static_cast<int64_t>(5000000000), 7};
     v1 = static_cast<int64_t>(0);
-    const auto& __tup_1 = p;
-    v1 = std::get<0>(__tup_1);
-    v2 = std::get<1>(__tup_1);
+    v1 = std::get<0>(p);
+    v2 = std::get<1>(p);
     std::cout << "unpack_value:" << " " << v1 << " " << static_cast<int>(v2) << "\n" << ::tpy::check_signals;
     w = static_cast<int32_t>(1);
     std::cout << "walrus:" << " " << (w = (::tpy::add_check<int32_t>(w, 300))) << "\n" << ::tpy::check_signals;
@@ -1510,9 +1508,8 @@ void __tpy_init() {
     lcs = &__global_slot_11;
     std::cout << "literal_seed walrus_comprehension:" << " " << ::tpy::ListPrinter((*lcs)) << " " << lc << "\n" << ::tpy::check_signals;
     lu = 0;
-    const auto& __tup_2 = p;
-    lu = std::get<0>(__tup_2);
-    lu2 = std::get<1>(__tup_2);
+    lu = std::get<0>(p);
+    lu2 = std::get<1>(p);
     std::cout << "literal_seed unpack:" << " " << lu << " " << static_cast<int>(lu2) << "\n" << ::tpy::check_signals;
     lf = 0;
     auto __obj_7 = {static_cast<int64_t>(5000000000)};
@@ -1578,9 +1575,8 @@ void __tpy_init() {
     auto __end_11 = __obj_11.end();
     for (; __beg_11 != __end_11; ++__beg_11) {
         const auto& __for_tup_0 = *__beg_11;
-        const auto& __tup_3 = __for_tup_0;
-        lpa = std::get<0>(__tup_3);
-        lpn = std::get<1>(__tup_3);
+        lpa = std::get<0>(__for_tup_0);
+        lpn = std::get<1>(__for_tup_0);
     }
     lpairs->clear();
     std::cout << "loop_target_view:" << " " << lt << " " << lk << " " << ::tpy::BytesPrinter(lb) << " " << lpa << " " << lpn << "\n" << ::tpy::check_signals;
@@ -1697,9 +1693,8 @@ void __tpy_init() {
     std::cout << "loop_rebind_temp_bytes:" << " " << ::tpy::BytesPrinter(tbv) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_loop_rebind_temp_bytes();
     pt = std::tuple<std::string, int32_t>{(::tpy::str_repeat("k", 30)), 4};
-    const auto& __tup_4 = pt;
-    us = std::get<0>(__tup_4);
-    un = std::get<1>(__tup_4);
+    us = std::get<0>(pt);
+    un = std::get<1>(pt);
     pt = std::tuple<std::string, int32_t>{(::tpy::str_repeat("w", 30)), 5};
     std::cout << "unpack_name_str:" << " " << us << " " << un << " " << std::get<1>(pt) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_unpack_name_str();

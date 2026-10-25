@@ -1425,9 +1425,8 @@ template <typename F_big, typename F_ps>
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_src_unpack_34_frame<F_big, F_ps>::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         __for_tup_gx = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         if ((big && ::tpyapp::main::grow_pairs(ps))) {
             return (::tpy::add_check<int32_t>(a, b));
         }

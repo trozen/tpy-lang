@@ -32,9 +32,8 @@ namespace tpyapp::main {
 //     print(y)
 //     return n
 ::tpy::BigInt view_reads(const std::tuple<std::string, std::string>& src) {
-    const auto& __tup_1 = src;
-    std::string_view x = std::get<0>(__tup_1);
-    std::string_view y = std::get<1>(__tup_1);
+    std::string_view x = std::get<0>(src);
+    std::string_view y = std::get<1>(src);
     int32_t n = 0;
     if ((x == "ab")) {
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(x)));

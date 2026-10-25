@@ -326,9 +326,8 @@ std::expected<std::string, ::tpy::StopIteration> __genexpr_free_8_frame<F_tagged
             continue;
         }
         __for_tup_gx = *((*__for_it_1))++;
-        const auto& __tup_1 = __for_tup_gx;
-        n = std::get<0>(__tup_1);
-        s = std::get<1>(__tup_1);
+        n = std::get<0>(__for_tup_gx);
+        s = std::get<1>(__for_tup_gx);
         if ((n >= k)) {
             __state = S_RESUME_0;
             return std::format("{}{}", s, (((n) * (::tpy::BigInt(k)))).to_string());
@@ -1758,9 +1757,8 @@ void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vec
             auto __end_7 = __obj_7.end();
             for (; __beg_7 != __end_7; ++__beg_7) {
                 const auto& __for_tup_1 = *__beg_7;
-                const auto& __tup_1 = __for_tup_1;
-                ::tpy::BigInt n = std::get<0>(__tup_1);
-                std::string s = std::get<1>(__tup_1);
+                ::tpy::BigInt n = std::get<0>(__for_tup_1);
+                std::string s = std::get<1>(__for_tup_1);
                 if ((n >= k)) {
                     __result.insert_or_assign(s, ((n) * (::tpy::BigInt(k))));
                 }
@@ -1838,17 +1836,15 @@ void lc_free(const std::vector<std::vector<::tpy::BigInt>>& grid, const std::vec
         auto __end_18 = __obj_18.end();
         for (; __beg_18 != __end_18; ++__beg_18) {
             const auto& __for_tup_2 = *__beg_18;
-            const auto& __tup_2 = __for_tup_2;
-            ::tpy::BigInt a = std::get<0>(__tup_2);
-            ::tpy::BigInt b = std::get<1>(__tup_2);
+            ::tpy::BigInt a = std::get<0>(__for_tup_2);
+            ::tpy::BigInt b = std::get<1>(__for_tup_2);
             auto& __obj_19 = ps;
             auto __beg_19 = __obj_19.begin();
             auto __end_19 = __obj_19.end();
             for (; __beg_19 != __end_19; ++__beg_19) {
                 const auto& __for_tup_3 = *__beg_19;
-                const auto& __tup_3 = __for_tup_3;
-                ::tpy::BigInt p = std::get<0>(__tup_3);
-                ::tpy::BigInt q = std::get<1>(__tup_3);
+                ::tpy::BigInt p = std::get<0>(__for_tup_3);
+                ::tpy::BigInt q = std::get<1>(__for_tup_3);
                 if ((a != p)) {
                     __result.push_back(((((a) * (b))) + (((p) * (q)))));
                 }
@@ -2054,9 +2050,8 @@ void lc_holder_names(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_4 = *__beg_0;
-            const auto& __tup_1 = __for_tup_4;
-            ::tpy::BigInt a = std::get<0>(__tup_1);
-            ::tpy::BigInt b = std::get<1>(__tup_1);
+            ::tpy::BigInt a = std::get<0>(__for_tup_4);
+            ::tpy::BigInt b = std::get<1>(__for_tup_4);
             __result.push_back(((::tpy::BigInt(std::get<0>(__comp_tup))) + (a)));
         }
         std::move(__result);
@@ -2068,17 +2063,15 @@ void lc_holder_names(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& __for_tup_5 = *__beg_1;
-            const auto& __tup_2 = __for_tup_5;
-            ::tpy::BigInt a = std::get<0>(__tup_2);
-            ::tpy::BigInt b = std::get<1>(__tup_2);
+            ::tpy::BigInt a = std::get<0>(__for_tup_5);
+            ::tpy::BigInt b = std::get<1>(__for_tup_5);
             auto& __obj_2 = pairs;
             auto __beg_2 = __obj_2.begin();
             auto __end_2 = __obj_2.end();
             for (; __beg_2 != __end_2; ++__beg_2) {
                 const auto& __for_tup_6 = *__beg_2;
-                const auto& __tup_3 = __for_tup_6;
-                ::tpy::BigInt p = std::get<0>(__tup_3);
-                ::tpy::BigInt q = std::get<1>(__tup_3);
+                ::tpy::BigInt p = std::get<0>(__for_tup_6);
+                ::tpy::BigInt q = std::get<1>(__for_tup_6);
                 __result.push_back(((::tpy::BigInt((::tpy::add_check<int32_t>(std::get<1>(__comp_tup), std::get<0>(__comp_tup_1))))) + (((a) * (p)))));
             }
         }
@@ -2091,17 +2084,15 @@ void lc_holder_names(const std::vector<std::tuple<::tpy::BigInt, ::tpy::BigInt>>
         auto __end_3 = __obj_3.end();
         for (; __beg_3 != __end_3; ++__beg_3) {
             const auto& __for_tup_7 = *__beg_3;
-            const auto& __tup_4 = __for_tup_7;
-            ::tpy::BigInt a = std::get<0>(__tup_4);
-            ::tpy::BigInt b = std::get<1>(__tup_4);
+            ::tpy::BigInt a = std::get<0>(__for_tup_7);
+            ::tpy::BigInt b = std::get<1>(__for_tup_7);
             auto& __obj_4 = pairs;
             auto __beg_4 = __obj_4.begin();
             auto __end_4 = __obj_4.end();
             for (; __beg_4 != __end_4; ++__beg_4) {
                 const auto& __for_tup_8 = *__beg_4;
-                const auto& __tup_5 = __for_tup_8;
-                ::tpy::BigInt p = std::get<0>(__tup_5);
-                ::tpy::BigInt q = std::get<1>(__tup_5);
+                ::tpy::BigInt p = std::get<0>(__for_tup_8);
+                ::tpy::BigInt q = std::get<1>(__for_tup_8);
                 __result.insert_or_assign(a, ((::tpy::BigInt(std::get<1>(__comp_tup_1))) + (q)));
             }
         }
@@ -2148,9 +2139,8 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
             auto __end_3 = __obj_3.end();
             for (; __beg_3 != __end_3; ++__beg_3) {
                 const auto& __for_tup_9 = *__beg_3;
-                const auto& __tup_1 = __for_tup_9;
-                std::string k = std::get<0>(__tup_1);
-                ::tpy::BigInt v = std::get<1>(__tup_1);
+                std::string k = std::get<0>(__for_tup_9);
+                ::tpy::BigInt v = std::get<1>(__for_tup_9);
                 __result.push_back((::tpy::str_concat(k, (v).to_string())));
             }
         }
@@ -2202,9 +2192,8 @@ void lc_sources(const std::vector<std::tuple<C, ::tpy::BigInt>>& pairs, const st
             auto __end_9 = __obj_9.end();
             for (; __beg_9 != __end_9; ++__beg_9) {
                 const auto& __for_tup_10 = *__beg_9;
-                const auto& __tup_2 = __for_tup_10;
-                ::tpy::BigInt x = std::get<0>(__tup_2);
-                ::tpy::BigInt y = std::get<1>(__tup_2);
+                ::tpy::BigInt x = std::get<0>(__for_tup_10);
+                ::tpy::BigInt y = std::get<1>(__for_tup_10);
                 __result.push_back(((x) * (y)));
             }
         }

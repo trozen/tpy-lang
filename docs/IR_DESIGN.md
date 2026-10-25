@@ -2849,6 +2849,7 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    first-class IR fact.) The lowering decides which form each site needs and, where
    a tuple source's form differs from its slot's, converts it element by element
    in `convert()` (`per_element`): a `THIRTupleLiteral` over the element reads,
+   each element converted by `convert()` itself at the element's slot --
    a reference element lent (`&(std::get<i>(t))`) or its pointee copied
    (`(*std::get<i>(t))`), an owned element moved
    (`std::move(std::get<i>(__t))`), an Optional through
@@ -2869,7 +2870,7 @@ or eliminating the C++ compiler dependency), the MIR is ready.
    (`std::tuple<int32_t, A>{x, A(2)}`) and lent from its parameter. Nothing
    else decides a tuple source's lifetime. An Optional or union element of
    any temporary is lent from the parameter likewise; a record element lent out of any other temporary
-   (`read(make().t)`) is refused at the one lend row (`convert._lends`,
+   (`read(make().t)`) is refused by the element read's lifetime fact (`convert.ElemRead`,
    `tuple.lend_from_temporary`): whether the borrowing result is done by the end of the full expression
    is MIR's loan analysis (BUGS.md#tuple-lend-from-temporary-refused). The unification fixed the silent-copy
    bug class (a param-/local-/call-rooted reference-member tuple now ALIASES at

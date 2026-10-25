@@ -355,9 +355,8 @@ void main() {
                 auto __r_4 = __itr_3.__next__();
                 if (!__r_4.has_value()) break;
                 const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_4);
-                const auto& __tup_1 = __for_tup_0;
-                int32_t i = std::get<0>(__tup_1);
-                std::string_view line = std::get<1>(__tup_1);
+                int32_t i = std::get<0>(__for_tup_0);
+                std::string_view line = std::get<1>(__for_tup_0);
                 std::cout << "enumerate:" << " " << i << " " << ::tpy::repr_of(line) << "\n" << ::tpy::check_signals;
             }
         }
@@ -399,9 +398,8 @@ void main() {
                 auto __end_5 = __obj_5.end();
                 for (; __beg_5 != __end_5; ++__beg_5) {
                     const auto& __for_tup_1 = *__beg_5;
-                    const auto& __tup_2 = __for_tup_1;
-                    std::string a = std::get<0>(__tup_2);
-                    std::string b = std::get<1>(__tup_2);
+                    std::string a = std::get<0>(__for_tup_1);
+                    std::string b = std::get<1>(__for_tup_1);
                     __result.push_back((a == b));
                 }
                 std::move(__result);
@@ -436,9 +434,8 @@ void main() {
                 auto __r_7 = __itr_6.__next__();
                 if (!__r_7.has_value()) break;
                 const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_7);
-                const auto& __tup_3 = __for_tup_2;
-                int32_t i = std::get<0>(__tup_3);
-                std::string_view line = std::get<1>(__tup_3);
+                int32_t i = std::get<0>(__for_tup_2);
+                std::string_view line = std::get<1>(__for_tup_2);
                 if ((i == 0)) {
                     break;
                 }
@@ -465,9 +462,8 @@ void main() {
             auto __end_8 = __obj_8.end();
             for (; __beg_8 != __end_8; ++__beg_8) {
                 const auto& __for_tup_3 = *__beg_8;
-                const auto& __tup_4 = __for_tup_3;
-                std::string a = std::get<0>(__tup_4);
-                std::string b = std::get<1>(__tup_4);
+                std::string a = std::get<0>(__for_tup_3);
+                std::string b = std::get<1>(__for_tup_3);
                 __result.push_back((::tpy::str_concat(a, b)));
             }
             std::move(__result);

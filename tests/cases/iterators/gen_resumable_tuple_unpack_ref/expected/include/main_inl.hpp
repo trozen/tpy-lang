@@ -31,9 +31,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_process::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = &(*((*__for_it_0))++);
-        auto& __tup_1 = (*__for_tup_0);
-        idx = std::get<0>(__tup_1);
-        it = &(std::get<1>(__tup_1));
+        idx = std::get<0>((*__for_tup_0));
+        it = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_0)))));
         it->n = (::tpy::mul_check<int32_t>(idx, 100));
         __state = S_RESUME_0;
         return idx;

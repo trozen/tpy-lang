@@ -19,14 +19,17 @@ from ...parse.nodes import (
     TpySetComprehension,
     collect_name_refs,
 )
-from ...sema.binding_ownership import CompMove
+from ...sema.alias_rebind import leaf_paths
+from ...sema.binding_ownership import CompMove, owned_head_targets
 from ...typesys import (
     IntLiteralType, body_function_info,
     NominalType,
     OptionalType,
     OwnType,
+    ReadonlyType,
     TpyType,
     TupleType,
+    make_readonly,
     resolve_int_literals,
     unwrap_readonly,
     unwrap_ref_type,
@@ -46,13 +49,10 @@ from ...codegen_cpp.context import (
     contains_named_expr, free_callee_cpp, is_lvalue_iterable)
 from ...codegen_cpp.types import resolve_pending_container
 from ..reject import ThirUnsupported
-from ..source import BindingForm
 from ..faces import witness as _witness
-from ..nodes import (
-    THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
-    THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf,
-    THIRMove, THIRName,
-    THIRStmt, THIRTupleUnpack, TupleSourceBind)
+from ..nodes import (THIRArrayComprehension, THIRComprehensionBlock,
+    THIRCompInsert, THIRContainerLiteral, THIRExpr, THIRGenExpr, THIRIf,
+    THIRMove, THIRName, THIRStmt)
 from .checks import (_combinator_pins_source, _container_storage_call_rvalue,
                      _user_iterator_iterable,
                      _native_iter_combinator,
@@ -85,6 +85,7 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
+    _LowerScope,
     BindingTableError,
     _ExprResultUse,
     _ExprUse,
@@ -121,7 +122,9 @@ class _CompRoute:
     iterable_lvalue: bool
     sized_reserve: bool
     unpack_types: 'tuple | None'
-    owns_elements: bool = False      # source yields Own[T]: sinks move
+    # The leaf paths of each step the iteration hands over (the clause's
+    # `step_handover`): a sink moves what a binding owns of them.
+    handover: 'frozenset[tuple[int, ...]]' = frozenset()
     gen_factory: bool = False        # value-yielding generator-call source
     native_combinator: bool = False  # zip/map/filter/... rvalue source
     iter_protocol: bool = False      # driven by __iter__/__next__
@@ -144,7 +147,9 @@ class _SourceRoute:
     it_type: 'TpyType | None'        # begin_end iterable type
     et: 'TpyType | None'             # element type (int literals resolved)
     iterable_lvalue: bool
-    owns_elements: bool = False      # source yields Own[T]
+    # The leaf paths of each step the iteration hands over (the clause's
+    # `step_handover`).
+    handover: 'frozenset[tuple[int, ...]]' = frozenset()
     gen_factory: bool = False        # value-yielding generator-call source
     native_combinator: bool = False  # zip/map/filter/... rvalue source
     # A source with no begin()/end() of its own -- a user iterable, an
@@ -205,9 +210,9 @@ def _user_iterable_source(gen, declared: dict[str, TpyType], analyzer,
     of its own (a native iterable, a record with synthesized begin()/end())."""
     it = gen.iterable
     # An unpack head over this family is rejected by the for statement too
-    # (BUGS.md#unpack-over-user-iterable); an owned element has no move sink
-    # on this loop.
-    if gen.unpack_vars is not None or gen.owns_elements:
+    # (BUGS.md#unpack-over-user-iterable); a whole owned element has no move
+    # sink on this loop (an `Own` element type is refused below).
+    if gen.unpack_vars is not None:
         return None
     if isinstance(it, TpyName):
         if it.name == "self":
@@ -284,11 +289,13 @@ def _source_route(gen, declared: dict[str, TpyType],
     admit, `d.values()`/`d.keys()` dict views (`d.items()` for the
     tuple-unpack form), native iterator combinators, container-returning and
     generator-factory calls, container literals, and Own[T]-yielding
-    generator calls (`owns_elements`). A NARROWED name is in the slice: the
+    generator calls (`step_handover`). A NARROWED name is in the slice: the
     branch retyped `declared`, and the reads the route feeds rename to the
     extraction alias like any other. Subscript iterables are outside it:
     None, and the caller rejects."""
-    owns = gen.owns_elements
+    # A source handing any of its steps over is iterated as its own
+    # rvalue: its sinks move what the clause's bindings own of it.
+    owns = bool(gen.step_handover)
     it = gen.iterable
     genfac = False
     if _is_range_call(it):
@@ -468,10 +475,16 @@ def _source_route(gen, declared: dict[str, TpyType],
         # `is_lvalue_iterable` (a protocol/generator return is a by-value rvalue
         # -> owning `auto __obj_N =` capture).
         ret = analyzer.get_expr_type(it)
-        if ret is None or gen.unpack_vars is not None:
+        if ret is None:
             return None
         it_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
         if _resolved_str_value(it_type, analyzer) is not None:
+            return None
+        rec = analyzer.registry.get_record_for_type(it_type)
+        if (rec is not None and not rec.is_native
+                and not _comp_synth_begin_end(it_type, analyzer)):
+            # A user iterator has no begin()/end() of its own; its
+            # `__iter__`/`__next__` family hands nothing to a sink here.
             return None
         lvalue = is_lvalue_iterable(it, analyzer.registry.get_record,
                                     analyzer.get_expr_type)
@@ -505,15 +518,16 @@ def _source_route(gen, declared: dict[str, TpyType],
     et = resolve_int_literals(
         unwrap_ref_type(et), analyzer.ctx.default_int_for_literal)
     return _SourceRoute(loop="begin_end", counter_type=None, it_type=it_type,
-                        et=et, iterable_lvalue=lvalue, owns_elements=owns,
+                        et=et, iterable_lvalue=lvalue,
+                        handover=gen.step_handover,
                         gen_factory=genfac, native_combinator=combinator)
 
 
 def _clause_bindings(gen, route: _CompRoute) -> list[tuple[str, TpyType]]:
     """The names one `for` clause binds, with the types its body reads them
-    at. A name is a borrow of its element whatever the source hands over:
-    `Own` stays the source's fact (`owns_elements`), as on a `for`
-    statement's loop variable."""
+    at: a head target its record's (`Own` peeled), the variable its element
+    borrowed whatever the source hands over -- `Own` stays the source's
+    fact (`step_handover`), as on a `for` statement's loop variable."""
     if route.unpack_types is not None:
         return [(name, tt) for name, tt in zip(gen.unpack_vars,
                                                route.unpack_types)
@@ -551,19 +565,25 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
     it_type = src.it_type
     et = src.et
     lvalue = src.iterable_lvalue
-    owns = src.owns_elements
     genfac = src.gen_factory
     combinator = src.native_combinator
     sized = kind == "list" and _comp_sized_iterable(it_type)
     if gen.unpack_vars is not None:
-        elem = unwrap_readonly(et)
+        # An `Own[tuple]` step is taken apart, as the head reads it.
+        elem = unwrap_readonly(_unwrap_own(unwrap_readonly(et)))
         if not isinstance(elem, TupleType):
             return None
         if len(elem.element_types) != len(gen.unpack_vars):
             return None  # defensive: sema errors on arity mismatch
         types: list = []
-        for name, ett in zip(gen.unpack_vars, elem.element_types):
-            tt = unwrap_ref_type(ett)
+        for name, ett, rec_t in zip(gen.unpack_vars, elem.element_types,
+                                    gen.head.target_types):
+            # The step's resolved element: the record was stamped while a
+            # list-literal source's cells were still undecided. The record
+            # adds only the whole step's readonly.
+            tt = unwrap_ref_type(_unwrap_own(ett))
+            if isinstance(rec_t, ReadonlyType):
+                tt = make_readonly(tt)
             if name is None:
                 types.append(None)
                 continue
@@ -589,7 +609,7 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
         return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                           it_type=it_type, et=et, iterable_lvalue=lvalue,
                           sized_reserve=sized, unpack_types=tuple(types),
-                          owns_elements=owns,
+                          handover=src.handover,
                           native_combinator=combinator)
     str_et = _resolved_str_value(et, analyzer)
     if str_et is not None:
@@ -608,7 +628,7 @@ def _clause_route(kind: str, gen, declared: dict[str, TpyType],
     return _CompRoute(kind=kind, loop="begin_end", counter_type=None,
                       it_type=it_type, et=et, iterable_lvalue=lvalue,
                       sized_reserve=sized, unpack_types=None,
-                      owns_elements=owns, gen_factory=genfac,
+                      handover=src.handover, gen_factory=genfac,
                       iter_protocol=src.iter_protocol,
                       native_combinator=combinator)
 
@@ -681,29 +701,6 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
     return is_list(su) or is_array(su) or is_dict(su)
 
 
-def _unpack_target_cpps(gen, unpack_types, lc: '_LowerCtx') -> tuple:
-    """The per-target decl spellings of a comp unpack head, by each
-    target's record: None for `_` discards, the reference (`const auto&` /
-    `auto&`, as the record's const) of a record or storage-form Optional
-    element, the rendered type otherwise. Shared by the begin_end and
-    array_source arms."""
-    out = []
-    for name, tt in zip(gen.unpack_vars, unpack_types):
-        if tt is None or name is None:
-            out.append(None)
-            continue
-        rec = lc.table.declared_by(gen, name)
-        if rec is None:
-            raise BindingTableError(
-                f"comprehension target {name!r} has no record in "
-                f"{lc.func.name}")
-        if rec.form in (BindingForm.REFERENCE, BindingForm.STORAGE_OPT):
-            out.append("const auto&" if rec.const else "auto&")
-        else:
-            out.append(lc.render_type(tt))
-    return tuple(out)
-
-
 def _comp_result_slots_ok(
         init, t: TpyType, pointers: AbstractSet[str],
         rebind_slots: AbstractSet[str],
@@ -717,7 +714,8 @@ def _comp_result_slots_ok(
     kind = _COMP_KINDS.get(type(init))
     if kind is None:
         return False
-    owns = init.generators[-1].owns_elements
+    # Any element the innermost clause's step hands over may reach a sink.
+    owns = bool(init.generators[-1].step_handover)
     args = getattr(t, "type_args", None)
     if not args:
         return False
@@ -825,7 +823,7 @@ def _comp_array_route(
     if not isinstance(init, TpyListComprehension) or len(init.generators) != 1:
         return None
     gen = init.generators[0]
-    if gen.owns_elements or gen.conditions:
+    if gen.step_handover or gen.conditions:
         return None
     args_t = getattr(t, "type_args", None)
     if not args_t or not (
@@ -944,15 +942,16 @@ def _lower_array_source_comprehension(
     _witness("comp.array_source")
     elem_t = _comp_result_type(init.result_elem_type, analyzer)
     body_declared = dict(declared)
-    unpack_targets: tuple = ()
-    unpack_cpps: tuple = ()
+    head: 'THIRStmt | None' = None
     if route.unpack_types is not None:
+        # The clause's head over the indexed element, as a for head over
+        # its step.
         _witness("comp.unpack")
-        for name, tt in zip(gen.unpack_vars, route.unpack_types):
-            if name is not None:
-                body_declared[name] = tt
-        unpack_targets = tuple(gen.unpack_vars)
-        unpack_cpps = _unpack_target_cpps(gen, route.unpack_types, lc)
+        body_declared[gen.var] = route.et
+        with bindings.at(lc, gen.head), \
+                lc.placement_scope(SlotPlacement.STATEMENT):
+            head = _statements._lower_unpack_stmt(
+                gen.head, _LowerScope(lc, body_declared, in_branch=True))
         binding = None
     else:
         body_declared[gen.var] = route.et
@@ -980,8 +979,7 @@ def _lower_array_source_comprehension(
         array_size_cpp=str(result_type.type_args[1]),
         iterable=iterable,
         iterable_lvalue=route.iterable_lvalue,
-        unpack_targets=unpack_targets,
-        unpack_target_cpps=unpack_cpps,
+        head=head,
         element=element,
         loc=getattr(init, "loc", None),
     )
@@ -1101,13 +1099,17 @@ def _lower_owned_comp_sink(e, slot: 'TpyType | None', lc: '_LowerCtx',
                            body_declared: dict[str, TpyType], gen
                            ) -> 'THIRExpr':
     """Lower one sink (list/set element, dict key or value) of an
-    owned-move comprehension. The move set is restricted to THIS comp's loop
-    var (the loop var is rebound each iteration, so moving it is sound; an
-    outer movable would multi-move). The bare-loop-var LAST sink moves
-    UNCONDITIONALLY (structurally the last use, sequenced after any earlier
-    read), as sema's clause decided it (`comp_moves`); an earlier/derived
-    sink defers to the ordinary last-use move gate."""
-    with lc.moves_only({gen.var}):
+    owned-move comprehension. The move set is restricted to THIS clause's
+    bindings that own their element -- its variable, or the head targets
+    the step hands theirs to (each is rebound every iteration, so moving it
+    is sound; an outer movable would multi-move). The bare-binding LAST
+    sink moves UNCONDITIONALLY (structurally the last use, sequenced after
+    any earlier read), as sema's clause decided it (`comp_moves`); an
+    earlier/derived sink defers to the ordinary last-use move gate."""
+    # Sema's clause verdict (`_clause_owns`) names the same bindings.
+    owners = (owned_head_targets(gen.head) if gen.head is not None
+              else {gen.var})
+    with lc.moves_only(owners):
         lowered = _lower_container_elem(e, slot, lc, body_declared)
     inner = e
     while isinstance(inner, TpyCoerce):
@@ -1240,7 +1242,7 @@ def _build_comprehension_body(init, result_type, lc, declared,
         element = key = value = None
         if kind == "dict":
             with lc.placement_scope(outer_placement):
-                if innermost.owns_elements:
+                if innermost.step_handover:
                     # The value is the last sink (a bare owned loop var
                     # moves unconditionally); the key is earlier, so it
                     # moves only when it is itself the last use (the
@@ -1257,7 +1259,7 @@ def _build_comprehension_body(init, result_type, lc, declared,
                     value = _lower_comp_container_elem(
                         init.value_expr, vt, lc, body_declared,
                         typed_brace=True)
-        elif innermost.owns_elements:
+        elif innermost.step_handover:
             element = _lower_owned_comp_sink(
                 init.element_expr, elem_t, lc, body_declared, innermost)
         else:
@@ -1284,7 +1286,18 @@ def _build_comprehension_body(init, result_type, lc, declared,
         if len(gens) == 1 and route.sized_reserve:
             _witness("comp.reserve")
         body_declared = dict(clause_declared)
-        body_declared.update(_clause_bindings(gen, route))
+        head: 'THIRStmt | None' = None
+        if route.unpack_types is not None:
+            # The clause's head, as a for head: each target binds as
+            # `x = <element i>` of the step would.
+            _witness("comp.unpack")
+            body_declared[gen.var] = route.et
+            with bindings.at(lc, gen.head), \
+                    lc.placement_scope(SlotPlacement.STATEMENT):
+                head = _statements._lower_unpack_stmt(
+                    gen.head, _LowerScope(lc, body_declared, in_branch=True))
+        else:
+            body_declared.update(_clause_bindings(gen, route))
         with bindings.at(lc, gen):
             _clause_witnesses(gen, route, lc)
             pre = set(body_declared)
@@ -1308,19 +1321,8 @@ def _build_comprehension_body(init, result_type, lc, declared,
             for cond in reversed(conditions):
                 inner = THIRIf(condition=cond, then_body=(inner,), loc=loc)
             body: tuple[THIRStmt, ...] = (inner,)
-            if route.unpack_types is not None:
-                # The for statement's unpack head: the loop var binds the
-                # whole element and the per-target decls read it through
-                # `__tup_N`.
-                _witness("comp.unpack")
-                body = (THIRTupleUnpack(
-                    source=gen.var, targets=tuple(gen.unpack_vars),
-                    target_cpps=_unpack_target_cpps(gen, route.unpack_types,
-                                                    lc),
-                    source_bind=(TupleSourceBind.NAME_CREF
-                                 if gen.const_loop_var
-                                 else TupleSourceBind.NAME_REF),
-                    loc=loc),) + body
+            if head is not None:
+                body = (head,) + body
             if k == 0:
                 loop = _comprehension_loop(
                     route, gen, lc, declared, body,
@@ -1430,12 +1432,14 @@ def _lower_genexpr_impl(expr: TpyGeneratorExpression, lc: '_LowerCtx',
     route = _source_route(gen, declared, analyzer, lc)
     if route is None:
         raise ThirUnsupported("genexpr.iterable_shape")
-    if route.owns_elements:
-        # An `Iterator[Own[T]]` source hands each element over by value into
-        # the source iterator's own slot, which the next advance overwrites;
-        # a genexpr yields a reference element through the `val_or_ref<T>`
-        # slot, so the consumer would hold a borrow of that slot. The
-        # comprehension's owned-move sinks have no yield twin yet.
+    if route.handover and route.handover == leaf_paths(
+            _unwrap_own(unwrap_readonly(route.et))):
+        # A source handing its whole step over (an `Iterator[Own[T]]`) hands
+        # each element over by value into the source iterator's own slot,
+        # which the next advance overwrites; a genexpr yields a reference
+        # element through the `val_or_ref<T>` slot, so the consumer would
+        # hold a borrow of that slot. The comprehension's owned-move sinks
+        # have no yield twin yet (BUGS.md#genexpr-owned-source-rejects).
         raise ThirUnsupported("genexpr.owned_source", loc=loc)
     if route.iter_protocol:
         # The `__iter__`/`__next__` family is a comprehension source only: a

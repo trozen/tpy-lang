@@ -50,9 +50,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            std::string_view name = std::get<0>(__tup_1);
-            int32_t age = std::get<1>(__tup_1);
+            std::string_view name = std::get<0>(__for_tup_0);
+            int32_t age = std::get<1>(__for_tup_0);
             std::cout << name << " " << age << "\n" << ::tpy::check_signals;
         }
     }
@@ -65,9 +64,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-            const auto& __tup_2 = __for_tup_1;
-            int32_t n = std::get<0>(__tup_2);
-            std::string_view s = std::get<1>(__tup_2);
+            int32_t n = std::get<0>(__for_tup_1);
+            std::string_view s = std::get<1>(__for_tup_1);
             std::cout << n << " " << s << "\n" << ::tpy::check_signals;
         }
     }
@@ -80,9 +78,8 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             const auto& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-            const auto& __tup_3 = __for_tup_2;
-            std::string_view s = std::get<0>(__tup_3);
-            int32_t n = std::get<1>(__tup_3);
+            std::string_view s = std::get<0>(__for_tup_2);
+            int32_t n = std::get<1>(__for_tup_2);
             std::cout << s << " " << n << "\n" << ::tpy::check_signals;
         }
     }
@@ -96,10 +93,9 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             const auto& __for_tup_3 = ::tpy::unwrap_ref(*__r_7);
-            const auto& __tup_4 = __for_tup_3;
-            int32_t x = std::get<0>(__tup_4);
-            std::string_view y = std::get<1>(__tup_4);
-            bool z = std::get<2>(__tup_4);
+            int32_t x = std::get<0>(__for_tup_3);
+            std::string_view y = std::get<1>(__for_tup_3);
+            bool z = std::get<2>(__for_tup_3);
             std::cout << x << " " << y << " " << ::tpy::print_bool(z) << "\n" << ::tpy::check_signals;
         }
     }
@@ -111,11 +107,10 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             const auto& __for_tup_4 = ::tpy::unwrap_ref(*__r_9);
-            const auto& __tup_5 = __for_tup_4;
-            int32_t x = std::get<0>(__tup_5);
-            std::string_view y = std::get<1>(__tup_5);
-            bool z = std::get<2>(__tup_5);
-            double w = std::get<3>(__tup_5);
+            int32_t x = std::get<0>(__for_tup_4);
+            std::string_view y = std::get<1>(__for_tup_4);
+            bool z = std::get<2>(__for_tup_4);
+            double w = std::get<3>(__for_tup_4);
             std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << "\n" << ::tpy::check_signals;
         }
     }
@@ -127,12 +122,11 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             const auto& __for_tup_5 = ::tpy::unwrap_ref(*__r_11);
-            const auto& __tup_6 = __for_tup_5;
-            int32_t x = std::get<0>(__tup_6);
-            std::string_view y = std::get<1>(__tup_6);
-            bool z = std::get<2>(__tup_6);
-            double w = std::get<3>(__tup_6);
-            std::string_view v = std::get<4>(__tup_6);
+            int32_t x = std::get<0>(__for_tup_5);
+            std::string_view y = std::get<1>(__for_tup_5);
+            bool z = std::get<2>(__for_tup_5);
+            double w = std::get<3>(__for_tup_5);
+            std::string_view v = std::get<4>(__for_tup_5);
             std::cout << x << " " << y << " " << ::tpy::print_bool(z) << " " << ::tpy::print_float(w) << " " << v << "\n" << ::tpy::check_signals;
         }
     }

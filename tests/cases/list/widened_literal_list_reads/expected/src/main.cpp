@@ -72,9 +72,8 @@ void grow(::tpy::varargs<std::vector<int64_t>> xs) {
 //     a.append(b)
 //     return b + a[0]
 int64_t pair_sum(const std::tuple<std::vector<int64_t>*, int64_t>& t) {
-    auto& __tup_1 = t;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int64_t b = std::get<1>(__tup_1);
+    std::vector<int64_t>& a = (*std::get<0>(t));
+    int64_t b = std::get<1>(t);
     a.push_back(b);
     return (::tpy::add_check<int64_t>(b, ::tpy::__getitem__(a, 0)));
 }
@@ -160,9 +159,8 @@ void param_widens() {
             auto __r_2 = __itr_1.__next__();
             if (!__r_2.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_2);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            int64_t v = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            int64_t v = std::get<1>(__for_tup_0);
             std::cout << "fn.enumerate" << " " << i << " " << v << "\n" << ::tpy::check_signals;
         }
     }
@@ -358,9 +356,8 @@ void typed_slots() {
     std::vector<int64_t> xs = {1, 2};
     xs.push_back(::tpyapp::main::w64());
     auto t = std::tuple<std::vector<int64_t>, int32_t>{std::move(xs), 1};
-    auto __tup_1 = std::tuple<std::vector<int64_t>*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    std::vector<int64_t>& a = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     std::cout << "fn.tuple" << " " << ::tpy::builtin_sum<int64_t>(a) << " " << k << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int64_t>> outer = std::vector<std::vector<int64_t>>{};
     std::vector<int64_t> ws = {1, 2};

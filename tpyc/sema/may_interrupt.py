@@ -377,7 +377,7 @@ class InertWalk:
             # element are the children.
             self.require(self.admits_nested)
             for gen in e.generators:
-                self.require(not gen.owns_elements and is_inert_type(
+                self.require(not gen.step_handover and is_inert_type(
                     self.ctx.get_expr_type(gen.iterable)))
             self.typed(e)
             return True

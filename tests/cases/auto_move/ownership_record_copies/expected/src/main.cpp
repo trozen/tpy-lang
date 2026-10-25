@@ -384,9 +384,9 @@ void mixed_literal(A& b) {
     A a = A(15);
     std::vector<std::tuple<A, A>> xs = ::tpy::make_vector<std::tuple<A, A>>(std::tuple<A, A>{std::move(a), b});
     b.items.push_back(9);
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, A*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
-    auto&& x0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& x1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
+    A& x0 = std::get<0>(__tup_1);
+    A& x1 = std::get<1>(__tup_1);
     std::cout << "mixed_literal" << " " << ::tpy::__len__(x0.items) << " " << ::tpy::__len__(x1.items) << " " << ::tpy::__len__(b.items) << "\n" << ::tpy::check_signals;
 }
 
@@ -630,9 +630,8 @@ void main() {
     A a = A(5);
     ::tpyapp::main::joined_swapped(h, a, true);
     a.items.push_back(9);
-    auto __tup_1 = std::tuple<A*, A*>{&(std::get<0>(h.t)), &(std::get<1>(h.t))};
-    auto&& t0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& t1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    A& t0 = std::get<0>(h.t);
+    A& t1 = std::get<1>(h.t);
     std::cout << "joined_swapped" << " " << ::tpy::__len__(t0.items) << " " << ::tpy::__len__(t1.items) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::borrowed_arm(h, 200);
     h.q.items.push_back(9);
@@ -664,9 +663,8 @@ void main() {
     A d = A(5);
     h.put(std::tuple<A, const A*>{A(6), &(d)});
     d.items.push_back(9);
-    auto __tup_2 = std::tuple<A*, A*>{&(std::get<0>(h.t)), &(std::get<1>(h.t))};
-    auto&& u0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    auto&& u1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    A& u0 = std::get<0>(h.t);
+    A& u1 = std::get<1>(h.t);
     std::cout << "put" << " " << ::tpy::__len__(u0.items) << " " << ::tpy::__len__(u1.items) << "\n" << ::tpy::check_signals;
     A e = A(7);
     A r1 = ::tpyapp::main::lam_value(e);

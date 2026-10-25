@@ -59,9 +59,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            int32_t v = std::get<1>(__for_tup_0);
             if ((i == 2)) {
                 std::cout << v << "\n" << ::tpy::check_signals;
             }
@@ -86,9 +85,8 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_5);
-            const auto& __tup_2 = __for_tup_1;
-            int32_t i = std::get<0>(__tup_2);
-            int32_t v = std::get<1>(__tup_2);
+            int32_t i = std::get<0>(__for_tup_1);
+            int32_t v = std::get<1>(__for_tup_1);
             total = (::tpy::add_check<int32_t>(total, v));
         }
     }
@@ -110,9 +108,8 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_9);
-            const auto& __tup_3 = __for_tup_2;
-            int32_t i = std::get<0>(__tup_3);
-            int32_t v = std::get<1>(__tup_3);
+            int32_t i = std::get<0>(__for_tup_2);
+            int32_t v = std::get<1>(__for_tup_2);
             if ((i == 1)) {
                 std::cout << v << "\n" << ::tpy::check_signals;
             }

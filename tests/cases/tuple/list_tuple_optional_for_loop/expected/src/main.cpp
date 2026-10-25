@@ -10,9 +10,8 @@ namespace tpyapp::main {
 //         return int32(0)
 //     return a.x + b.x
 int32_t f(const std::tuple<const T*, const T*>& t) {
-    auto& __tup_1 = t;
-    const T* a = std::get<0>(__tup_1);
-    const T* b = std::get<1>(__tup_1);
+    const T* a = std::get<0>(t);
+    const T* b = std::get<1>(t);
     if (((a == nullptr) || (b == nullptr))) {
         return 0;
     }

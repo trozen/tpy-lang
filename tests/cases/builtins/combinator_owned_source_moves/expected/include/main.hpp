@@ -497,9 +497,8 @@ inline int32_t Holder::total(const std::vector<int32_t>& xs) const {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t a = std::get<0>(__tup_1);
-            int32_t b = std::get<1>(__tup_1);
+            int32_t a = std::get<0>(__for_tup_0);
+            int32_t b = std::get<1>(__for_tup_0);
             t = ::tpy::add_check<int32_t>(t, (::tpy::mul_check<int32_t>(a, b)));
         }
     }

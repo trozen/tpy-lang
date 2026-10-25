@@ -1,4 +1,0 @@
-main.py:15: warning: 'Child.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Base' part instead
-main.py:21: warning: upcast narrows 'Child' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
-main.py:21: warning: copies Base into owned storage (tuple element 0); use copy() to make this explicit
-main.py:21: error: in function 'widen': copying a 'Child' object into a 'Base' tuple element is not supported

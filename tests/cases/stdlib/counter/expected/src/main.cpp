@@ -57,9 +57,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
-        const ::tpy::BigInt& n = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_0);
+        const auto& n = std::get<1>(__for_tup_0);
         std::cout << k << " " << n << "\n" << ::tpy::check_signals;
     }
     std::cout << ::tpy::__len__(c.most_common(0)) << "\n" << ::tpy::check_signals;
@@ -85,9 +84,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_1 = *__beg_1;
-        const auto& __tup_2 = __for_tup_1;
-        std::string_view key = std::get<0>(__tup_2);
-        const ::tpy::BigInt& cnt = std::get<1>(__tup_2);
+        std::string_view key = std::get<0>(__for_tup_1);
+        const auto& cnt = std::get<1>(__for_tup_1);
         std::cout << "cut" << " " << key << " " << cnt << "\n" << ::tpy::check_signals;
     }
     std::cout << "negative" << " " << ::tpy::__len__(m.most_common(-1)) << "\n" << ::tpy::check_signals;
@@ -103,9 +101,8 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const auto& __for_tup_2 = *__beg_3;
-        const auto& __tup_3 = __for_tup_2;
-        int32_t num = std::get<0>(__tup_3);
-        const ::tpy::BigInt& times = std::get<1>(__tup_3);
+        int32_t num = std::get<0>(__for_tup_2);
+        const auto& times = std::get<1>(__for_tup_2);
         std::cout << "int" << " " << num << " " << times << "\n" << ::tpy::check_signals;
     }
 }

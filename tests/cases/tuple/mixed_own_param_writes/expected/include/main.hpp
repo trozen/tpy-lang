@@ -420,9 +420,8 @@ inline H::H() : k(0) {}
 //     c.n = 22
 //     return take(a) + self.k
 inline int32_t H::unpack(std::tuple<Tok, Box*>&& p) const {
-    auto& __tup_1 = p;
-    Tok a = std::move(std::get<0>(__tup_1));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Tok a = std::move(std::get<0>(p));
+    Box& c = (*std::get<1>(p));
     c.n = 22;
     return (::tpy::add_check<int32_t>(::tpyapp::main::take(std::move(a)), this->k));
 }
@@ -433,9 +432,8 @@ inline int32_t H::unpack(std::tuple<Tok, Box*>&& p) const {
 //     self.own = a
 //     c.n = 33
 inline Keeper::Keeper(std::tuple<Tok, Box*>&& p) {
-    auto& __tup_1 = p;
-    Tok a = std::move(std::get<0>(__tup_1));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Tok a = std::move(std::get<0>(p));
+    Box& c = (*std::get<1>(p));
     this->own = std::move(a);
     c.n = 33;
 }
@@ -448,9 +446,8 @@ inline Adder::Adder(int32_t k) : k(k) {}
 //     a, c = o
 //     return self.k + take(a) + c.n
 inline int32_t Adder::__add__(std::tuple<Tok, const Box*>&& o) const {
-    auto& __tup_1 = o;
-    Tok a = std::move(std::get<0>(__tup_1));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Tok a = std::move(std::get<0>(o));
+    const Box& c = (*std::get<1>(o));
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->k, ::tpyapp::main::take(std::move(a)))), c.n));
 }
 
@@ -468,9 +465,8 @@ inline TakerImpl::TakerImpl(int32_t k) : k(k) {}
 //     a, c = p
 //     return self.k + take(a) + take(c)
 inline int32_t TakerImpl::pair(std::tuple<Tok, Tok>&& p) const {
-    auto&& __tup_1 = std::move(p);
-    Tok a = std::move(std::get<0>(__tup_1));
-    Tok c = std::move(std::get<1>(__tup_1));
+    Tok a = std::move(std::get<0>(p));
+    Tok c = std::move(std::get<1>(p));
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->k, ::tpyapp::main::take(std::move(a)))), ::tpyapp::main::take(std::move(c))));
 }
 
@@ -484,9 +480,8 @@ inline int32_t TakerImpl::one(Tok&& t) const {
 //     a, c = p
 //     self.first = a
 inline TokPair::TokPair(std::tuple<Tok, Tok>&& p) {
-    auto&& __tup_1 = std::move(p);
-    Tok a = std::move(std::get<0>(__tup_1));
-    Tok c = std::move(std::get<1>(__tup_1));
+    Tok a = std::move(std::get<0>(p));
+    Tok c = std::move(std::get<1>(p));
     this->first = std::move(a);
 }
 
@@ -494,9 +489,8 @@ inline TokPair::TokPair(std::tuple<Tok, Tok>&& p) {
 //     a, c = p
 //     return take(a) + take(c) + self.first.n
 inline int32_t TokPair::sum(std::tuple<Tok, Tok>&& p) const {
-    auto&& __tup_1 = std::move(p);
-    Tok a = std::move(std::get<0>(__tup_1));
-    Tok c = std::move(std::get<1>(__tup_1));
+    Tok a = std::move(std::get<0>(p));
+    Tok c = std::move(std::get<1>(p));
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(::tpyapp::main::take(std::move(a)), ::tpyapp::main::take(std::move(c)))), this->first.n));
 }
 

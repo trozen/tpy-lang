@@ -26,8 +26,8 @@ void show(std::string_view label, const Holder& h) {
 //     show("free", h)
 void free_position() {
     Holder h = Holder();
-    h.plain = Dog("f-plain");
-    h.opt = Dog("f-opt");
+    h.plain = static_cast<Pet&&>(Dog("f-plain"));
+    h.opt = static_cast<Pet&&>(Dog("f-opt"));
     h.plain.rename("f-renamed");
     ::tpyapp::main::show("free", h);
 }
@@ -69,7 +69,7 @@ __gen_gen gen(Holder& h) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        h.plain = Dog("a-plain");
+        h.plain = static_cast<Pet&&>(Dog("a-plain"));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -79,7 +79,7 @@ __gen_gen gen(Holder& h) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        h.opt = Dog("a-opt");
+        h.opt = static_cast<Pet&&>(Dog("a-opt"));
         __state = S_DONE;
         ::tpy::BigInt __tpy_async_ret = 3;
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));

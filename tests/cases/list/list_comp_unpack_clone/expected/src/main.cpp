@@ -29,8 +29,7 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& __tup_1 = __for_tup_0;
-            auto& r = std::get<1>(__tup_1);
+            auto& r = std::get<1>(__for_tup_0);
             __result.push_back(r.clone());
         }
         std::move(__result);

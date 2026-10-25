@@ -23,7 +23,7 @@ Counter make_one() {
 //     print(b.n)
 void main() {
     auto __tup_1 = ::tpyapp::main::make_pair();
-    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Counter* a = &(std::get<0>(__tup_1));
     auto&& b = std::move(std::get<1>(__tup_1));
     std::optional<Counter> __slot_1;
     a = &*(__slot_1 = ::tpyapp::main::make_one());

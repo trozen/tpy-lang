@@ -639,7 +639,7 @@ int32_t take_f(F&& f) {
 //     total = 0
 //     for i, b in own_pairs(k):
 //         # a for-unpack `Own` target moves into the `Own` parameter (`F`:
-//         # the head copies the step, BUGS.md#for-head-owned-yield-copies-before-move)
+//         # the target refers to its element in the step, which the move takes)
 //         total += take_f(b)  # tpyc: ok
 //     return total
 int32_t head_own(int32_t k) {
@@ -651,9 +651,8 @@ int32_t head_own(int32_t k) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            F b = std::move(std::get<1>(__tup_1));
+            int32_t i = std::get<0>(__for_tup_0);
+            auto&& b = std::move(std::get<1>(__for_tup_0));
             total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::take_f(std::move(b)));
         }
     }
@@ -686,9 +685,8 @@ std::tuple<A, int32_t> mk_pair(int32_t k) {
 //     print("live_unpack", len(t[0].items), len(a.items), n)
 void live_unpack(int32_t k) {
     std::tuple<A, int32_t> t = ::tpyapp::main::mk_pair(k);
-    auto __tup_1 = std::tuple<A*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t n = std::get<1>(__tup_1);
+    A& a = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     a.items.push_back(9);
     std::cout << "live_unpack" << " " << ::tpy::__len__(std::get<0>(t).items) << " " << ::tpy::__len__(a.items) << " " << n << "\n" << ::tpy::check_signals;
 }
@@ -924,16 +922,14 @@ void main() {
     ::tpyapp::main::loop_rebind(__tmp_2, __tmp_3, ys);
     ::tpyapp::main::show("loop_rebind", ::tpy::__getitem__(ys, -1));
     ::tpyapp::main::joined_fresh(h, true);
-    auto __tup_1 = std::tuple<A*, A*>{&(std::get<0>(h.m)), &(std::get<1>(h.m))};
-    auto&& m0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& m1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    A& m0 = std::get<0>(h.m);
+    A& m1 = std::get<1>(h.m);
     ::tpyapp::main::show("joined_fresh 0", m0);
     ::tpyapp::main::show("joined_fresh 1", m1);
     Q q = Q(12);
     ::tpyapp::main::hoisted_mixed(h, q, 13);
-    auto __tup_2 = std::tuple<A*, Q*>{&(std::get<0>(h.q)), &(std::get<1>(h.q))};
-    auto&& q0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    auto&& q1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    A& q0 = std::get<0>(h.q);
+    Q& q1 = std::get<1>(h.q);
     ::tpyapp::main::show("hoisted_mixed 0", q0);
     std::cout << "hoisted_mixed 1" << " " << q1.v << "\n" << ::tpy::check_signals;
     A __tmp_4 = ::tpyapp::main::hoisted_finally(14);
@@ -949,9 +945,9 @@ void main() {
     pairs.push_back(std::tuple<A, A>{A(16), A(17)});
     auto __tmp_6 = ::tpy::own_iter(std::move(pairs));
     std::vector<std::tuple<A, A>> moved = ::tpyapp::main::comp_clause(__tmp_6);
-    auto __tup_3 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, A*>{&(std::get<0>(__t)), &(std::get<1>(__t))}; }(::tpy::__getitem__(moved, 0));
-    auto&& c0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
-    auto&& c1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+    auto&& __tup_1 = ::tpy::__getitem__(moved, 0);
+    A& c0 = std::get<0>(__tup_1);
+    A& c1 = std::get<1>(__tup_1);
     ::tpyapp::main::show("comp_clause 0", c0);
     ::tpyapp::main::show("comp_clause 1", c1);
     ::tpyapp::main::union_field(h, false);
@@ -975,16 +971,15 @@ void main() {
     std::cout << "try_finally_nocopy" << " " << h.n.v << "\n" << ::tpy::check_signals;
     Q q23 = Q(23);
     h.put_mixed(std::tuple<A, const Q*>{A(22), &(q23)});
-    auto __tup_4 = std::tuple<A*, Q*>{&(std::get<0>(h.q)), &(std::get<1>(h.q))};
-    auto&& p0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
-    auto&& p1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_4)));
+    A& p0 = std::get<0>(h.q);
+    Q& p1 = std::get<1>(h.q);
     p0.items.push_back(9);
     ::tpyapp::main::show("put_mixed", p0);
     std::vector<std::tuple<int32_t, N>> ns = std::vector<std::tuple<int32_t, N>>{};
     ::tpyapp::main::nocopy_member(ns);
-    auto __tup_5 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, N*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(ns, 0));
-    int32_t nk = std::get<0>(__tup_5);
-    auto&& nn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
+    auto&& __tup_2 = ::tpy::__getitem__(ns, 0);
+    int32_t nk = std::get<0>(__tup_2);
+    N& nn = std::get<1>(__tup_2);
     std::cout << "nocopy_member" << " " << nk << " " << nn.v << "\n" << ::tpy::check_signals;
     {
         auto __src_8 = ::tpyapp::main::walrus_gen(h, 25);

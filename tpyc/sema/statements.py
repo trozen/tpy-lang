@@ -6,6 +6,7 @@ Statement analysis including variable declarations, assignments, and control flo
 
 from __future__ import annotations
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import IterHolder
@@ -118,6 +119,7 @@ from .receiver_calls import (
 )
 from .aug_hold import aug_hold_parts
 from .loop_frames import for_live_region, note_source_writes
+from .binding_ownership import step_handover_paths
 from .iter_loans import (
     IterElementSource, iter_element_source, record_iteration_pull,
     iteration_yields_copies,
@@ -146,7 +148,7 @@ from .capture_copies import warn_closure_captures
 from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, stamp_bind_kind,
-                           stamp_unpack_rebinds, tuple_source_elem_owned)
+                           stamp_unpack_rebinds, unpack_target_records)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import (expression_spelling, operand_spelling,
@@ -2703,6 +2705,8 @@ class StatementAnalyzer:
                     resolved_for_iter
                     if is_protocol_type(resolved_for_iter)
                     else inner_iterable_type, self.ctx.registry)
+                self._stamp_step_handover(stmt,
+                                          unwrap_ref_type(stmt.elem_type))
                 # Each step, the first one before the body included, is a
                 # call when it runs TPy code.
                 pulls_run_code = record_iteration_pull(
@@ -3945,6 +3949,10 @@ class StatementAnalyzer:
         self._note_loop_var_iteration(stmt.var, elem_type, False,
                                       placeable=False)
         stmt.elem_type = make_ref(elem_type)
+        # What each step hands over is what `__anext__`'s declaration writes.
+        anext_decl = anext_overloads[0]
+        self._stamp_step_handover(stmt, elem_type,
+                                  declared=anext_decl.async_inner_return)
         self._check_loop_var_rebind(stmt, elem_type)
         cid_floor = self.ctx.pending_num_counter
         var_type, declared = self._loop_var_cell_type(stmt, elem_type)
@@ -4862,6 +4870,16 @@ class StatementAnalyzer:
             return False
         anchor = self.expr._pending_decl_anchor(pending.first_stack)
         return name in self.ctx.if_branch_decls.get(anchor, {})
+
+    def _stamp_step_handover(self, stmt: TpyForEach, step: TpyType, *,
+                             declared: TpyType | None = None) -> None:
+        """Stamp what each step hands over (`step_handover_paths`) on the
+        loop and its unpack head, before the body."""
+        stmt.step_handover = step_handover_paths(
+            self.ctx, stmt.iterable, step, declared=declared)
+        head = stmt.head_unpack()
+        if head is not None:
+            head.step_handover = stmt.step_handover
 
     def _check_loop_var_rebind(self, stmt: TpyForEach, elem_type: TpyType) -> None:
         """A for-loop over an existing assigned local REBINDS it in CPython
@@ -7113,39 +7131,15 @@ class StatementAnalyzer:
                 self.compat.retract_hidden_borrowed_last_use(stmt.value)
         # Per-element expressions for narrowing (range facts, etc.)
         has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
-        # A call source hands over each reference element its declared
-        # return lends none of -- an `Own[tuple]` result, an `Own` element
-        # marker -- as the scalar `x = call()` binds the result its own:
-        # the target owns what it is handed. Other non-name sources keep the
-        # declared-`Own` rule (BUGS.md#await-unpack-source-hands-over-unknown).
-        handed = (tuple_source_elem_owned(self.ctx, stmt.value, rhs_type)
-                  if not stmt.is_loop_head
-                  and isinstance(stmt.value, (TpyCall, TpyMethodCall))
-                  else None)
+        records = unpack_target_records(
+            self.ctx, stmt.value, rhs_type, readonly=rhs_readonly,
+            consumed=source_consumed, borrowed=borrowed_elems,
+            step=stmt.step_handover if stmt.is_loop_head else None)
         for i, name in enumerate(stmt.targets):
-            elem_type = rhs_type.element_types[i]
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
-            if handed is not None:
-                bare_elem = unwrap_readonly(unwrap_own(elem_type))
-                # A nested value tuple holding a reference is handed over
-                # too, but binds as a value; an open T is one body for
-                # every instantiation, a value one included, so like
-                # `is_ref` below it neither aliases nor owns.
-                owned = (handed[i] and not bare_elem.is_value_type()
-                         and not isinstance(bare_elem, TypeParamRef))
-            else:
-                owned = (isinstance(elem_type, OwnType) and source_consumed
-                         and i not in borrowed_elems)
+            rec = records[i]
+            owned, is_ref, elem_type = rec.owned, rec.ref, rec.type
             stmt.is_owned.append(owned)
-            if rhs_readonly:
-                # Asked before the Own is peeled: readonly over an owned
-                # element protects nothing (the target owns the moved-in
-                # object), as over a scalar `readonly[Own[T]]` parameter.
-                elem_type = make_readonly(elem_type)
-            if isinstance(elem_type, OwnType):
-                elem_type = elem_type.wrapped
-            is_ref = (not owned and not elem_type.is_value_type()
-                      and not isinstance(elem_type, TypeParamRef))
             stmt.is_ref.append(is_ref)
             if (is_ref and name is not None
                     and not isinstance(stmt.value, TpyTupleLiteral)):
@@ -7429,13 +7423,15 @@ class StatementAnalyzer:
                     stmt.value)
 
         # Determine const-ref eligibility per element for expensive value types.
-        # Safe because tuples are immutable -- no in-place mutation possible.
+        # Safe because tuples are immutable -- no in-place mutation possible
+        # -- where nothing replaces the tuple under the reference: a name no
+        # write reseats (a reseat of it is followed), or the statement's own
+        # value. A field or an element of a container is replaced unseen.
         if not self.ctx.is_top_level:
-            source_is_lvalue = isinstance(stmt.value, TpyName)
-            source_safe = True
-            if source_is_lvalue:
-                source_name = stmt.value.name
-                source_safe = not self.ctx.is_reseated(source_name)
+            if isinstance(stmt.value, TpyName):
+                source_safe = not self.ctx.is_reseated(stmt.value.name)
+            else:
+                source_safe = is_rvalue_source(self.ctx, stmt.value)
             for i, name in enumerate(stmt.targets):
                 if name is None:
                     stmt.is_const_ref.append(False)

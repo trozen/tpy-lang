@@ -8,9 +8,8 @@ namespace tpyapp::main {
 //     a, b = t
 //     return a.x + b.x
 int32_t take(std::tuple<P, P>&& t) {
-    auto&& __tup_1 = std::move(t);
-    P a = std::move(std::get<0>(__tup_1));
-    P b = std::move(std::get<1>(__tup_1));
+    P a = std::move(std::get<0>(t));
+    P b = std::move(std::get<1>(t));
     return (::tpy::add_check<int32_t>(a.x, b.x));
 }
 
@@ -22,9 +21,8 @@ int32_t take(std::tuple<P, P>&& t) {
 //         return a.x
 //     return int32(0)
 int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t) {
-    const auto& __tup_1 = t;
-    std::optional<P> a = std::get<0>(__tup_1);
-    std::optional<P> b = std::get<1>(__tup_1);
+    std::optional<P> a = std::get<0>(t);
+    std::optional<P> b = std::get<1>(t);
     if (((a.has_value()) && (b.has_value()))) {
         return (::tpy::add_check<int32_t>((*a).x, (*b).x));
     }

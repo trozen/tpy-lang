@@ -317,7 +317,7 @@ int32_t nested_elem(const std::vector<std::vector<int32_t>>* d) {
 //     a, b = d[0].pair  # tpyc: warning(/Potential None access/)
 //     return a + b
 int32_t unpack_source(const std::vector<P>* d) {
-    auto __tup_1 = ::tpy::__getitem__(::tpy::none_item(d), 0).pair;
+    auto&& __tup_1 = ::tpy::__getitem__(::tpy::none_item(d), 0).pair;
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(a, b));

@@ -294,9 +294,8 @@ void tuple_elems() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& __tup_1 = __for_tup_0;
-            int32_t a = std::get<0>(__tup_1);
-            int32_t b = std::get<1>(__tup_1);
+            int32_t a = std::get<0>(__for_tup_0);
+            int32_t b = std::get<1>(__for_tup_0);
             __result.push_back(std::tuple<int32_t, int32_t>{(::tpy::add_check<int32_t>(a, 1)), b});
         }
         std::move(__result);

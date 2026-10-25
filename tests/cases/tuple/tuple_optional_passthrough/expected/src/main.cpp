@@ -19,9 +19,8 @@ std::tuple<T*, T*> make_pair(T& a, T& b) {
 //         total = total + b.x
 //     return total
 int32_t consume(const std::tuple<const T*, const T*>& p) {
-    auto& __tup_1 = p;
-    const T* a = std::get<0>(__tup_1);
-    const T* b = std::get<1>(__tup_1);
+    const T* a = std::get<0>(p);
+    const T* b = std::get<1>(p);
     int32_t total = 0;
     if ((a != nullptr)) {
         total = (::tpy::add_check<int32_t>(total, a->x));

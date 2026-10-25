@@ -42,9 +42,8 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& __for_tup_0 = *__beg_2;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
-        const ::tpy::BigInt& v = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_0);
+        const auto& v = std::get<1>(__for_tup_0);
         std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
 }

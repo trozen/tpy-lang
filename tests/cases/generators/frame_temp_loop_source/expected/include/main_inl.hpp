@@ -75,7 +75,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_unpack::__next
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& x = *__beg_1;
             auto __tup_1 = ::tpyapp::main::pair_of(x);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+            r = std::get<0>(__tup_1);
             k = std::get<1>(__tup_1);
             alias = &(x);
             goto __after_else_0;
@@ -529,9 +529,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_combinator::__
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-                const auto& __tup_1 = __for_tup_0;
-                int32_t i = std::get<0>(__tup_1);
-                int32_t v = std::get<1>(__tup_1);
+                int32_t i = std::get<0>(__for_tup_0);
+                int32_t v = std::get<1>(__for_tup_0);
                 t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 100)), v)));
             }
         }

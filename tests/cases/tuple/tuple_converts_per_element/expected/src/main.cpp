@@ -511,10 +511,10 @@ C2 take_mixed(std::tuple<C2, B*>&& p) {
 void keyed(const K& k) {
     ::tpy::ordered_map<K, std::tuple<int32_t, A, A>> d = ::tpy::ordered_map<K, std::tuple<int32_t, A, A>>({{k, std::tuple<int32_t, A, A>{3, A(4), A(5)}}});
     int32_t before = ::tpy::__len__((*hashes));
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, A*, A*>{std::get<0>(__t), &(std::get<1>(__t)), &(std::get<2>(__t))}; }(::tpy::__getitem__(d, k));
+    auto&& __tup_1 = ::tpy::__getitem__(d, k);
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+    A& b = std::get<1>(__tup_1);
+    A& c = std::get<2>(__tup_1);
     std::cout << "keyed hashes" << " " << (::tpy::sub_check<int32_t>(::tpy::__len__((*hashes)), before)) << "\n" << ::tpy::check_signals;
     b.v = ::tpy::add_check<int32_t>(b.v, 10);
     int32_t back = std::get<1>(::tpy::__getitem__(d, k)).v;
@@ -836,7 +836,7 @@ __gen_nest_gen nest_gen(const A& a) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         __state = S_DONE;
-        int32_t __tpy_async_ret = ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(5)}));
+        int32_t __tpy_async_ret = ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(5)}));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -866,7 +866,7 @@ __coro_nest_async nest_async(const A& a) {
 //     print("nest.lambda", fn(a))
 void nest_literal() {
     A a = A(1);
-    std::cout << "nest.free" << " " << ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(3)})) << "\n" << ::tpy::check_signals;
+    std::cout << "nest.free" << " " << ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(3)})) << "\n" << ::tpy::check_signals;
     std::cout << "nest.ctor" << " " << NestCtor(a).n << "\n" << ::tpy::check_signals;
     {
         auto __src_0 = ::tpyapp::main::nest_gen(a);
@@ -881,9 +881,9 @@ void nest_literal() {
     std::cout << "nest.async" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::nest_async(a))) << "\n" << ::tpy::check_signals;
     std::cout << "nest.comp" << " " << ::tpy::ListPrinter(::tpy::array_from_index<int32_t, 2>([&](std::size_t __i_2) -> int32_t {
         int32_t i = 1 + int32_t(__i_2);
-        return ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(i)}));
+        return ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(a), 2}, A(i)}));
     })) << "\n" << ::tpy::check_signals;
-    std::function<int32_t(A&)> fn = [](A& x) -> int32_t { return ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::move(std::get<0>(__t)), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(x), 2}, A(6)})); };
+    std::function<int32_t(A&)> fn = [](A& x) -> int32_t { return ::tpyapp::main::read_nest([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<std::tuple<const A*, int32_t>, const A*>{std::get<0>(__t), &(std::get<1>(__t))}; }(std::tuple<std::tuple<const A*, int32_t>, A>{std::tuple<const A*, int32_t>{&(x), 2}, A(6)})); };
     std::cout << "nest.lambda" << " " << fn(a) << "\n" << ::tpy::check_signals;
 }
 
@@ -979,9 +979,8 @@ HT make_ht(int32_t n) {
 //         return a.v + n
 //     return n
 int32_t read_opt_first(const std::tuple<const A*, int32_t>& t) {
-    auto& __tup_1 = t;
-    const A* a = std::get<0>(__tup_1);
-    int32_t n = std::get<1>(__tup_1);
+    const A* a = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     if ((a != nullptr)) {
         return (::tpy::add_check<int32_t>(a->v, n));
     }

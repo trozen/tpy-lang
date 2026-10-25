@@ -70,9 +70,8 @@ inline Holder::Holder(const Box& b) : pair(std::tuple<int32_t, Box>{1, Box(b)}) 
 //     a, b = self.pair  # tpyc: ok
 //     return a + b.n
 inline int32_t Holder::total() const {
-    auto __tup_1 = std::tuple<int32_t, const Box*>{std::get<0>(this->pair), &(std::get<1>(this->pair))};
-    int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    int32_t a = std::get<0>(this->pair);
+    const Box& b = std::get<1>(this->pair);
     return (::tpy::add_check<int32_t>(a, b.n));
 }
 void __tpy_init();

@@ -25,9 +25,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view name = std::get<0>(__tup_1);
-        int32_t n = std::get<1>(__tup_1);
+        std::string_view name = std::get<0>(__for_tup_0);
+        int32_t n = std::get<1>(__for_tup_0);
         std::cout << name << " " << n << "\n" << ::tpy::check_signals;
         total = ::tpy::add_check<int32_t>(total, n);
     }
@@ -45,9 +44,8 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_1 = *__beg_2;
-        const auto& __tup_2 = __for_tup_1;
-        int32_t a = std::get<0>(__tup_2);
-        int32_t b = std::get<1>(__tup_2);
+        int32_t a = std::get<0>(__for_tup_1);
+        int32_t b = std::get<1>(__for_tup_1);
         acc = ::tpy::add_check<int32_t>(acc, (::tpy::mul_check<int32_t>(a, b)));
     }
     std::cout << acc << "\n" << ::tpy::check_signals;

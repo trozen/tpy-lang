@@ -113,7 +113,7 @@ __coro_client_role client_role(int32_t port) {
         __sub_0.reset();
         auto&& __tup_1 = (*__await_lift_0);
         conn.emplace(std::move(std::get<0>(__tup_1)));
-        addr = std::get<1>(__tup_1);
+        addr = std::move(std::get<1>(__tup_1));
         __sub_1.emplace(std::move((*loop).sock_sendall((*conn), ::tpy::bytes_literal("abc", 3))));
         __state = S_RESUME_1;
         continue;

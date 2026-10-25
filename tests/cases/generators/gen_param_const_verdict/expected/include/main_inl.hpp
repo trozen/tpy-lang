@@ -269,9 +269,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_items_ro::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_0 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_0;
-        k = std::get<0>(__tup_1);
-        v = std::get<1>(__tup_1);
+        k = std::get<0>(__for_tup_0);
+        v = std::get<1>(__for_tup_0);
         __state = S_RESUME_0;
         return k;
     }

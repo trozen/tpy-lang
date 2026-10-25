@@ -17,9 +17,8 @@ namespace tpyapp::main {
     {
         v = __match_subject_1.lives;
         std::tuple<::tpy::BigInt, ::tpy::BigInt> xs = std::tuple<::tpy::BigInt, ::tpy::BigInt>{::tpy::BigInt(5), ::tpy::BigInt(6)};
-        const auto& __tup_1 = xs;
-        v = std::get<0>(__tup_1);
-        const ::tpy::BigInt& w = std::get<1>(__tup_1);
+        v = std::get<0>(xs);
+        const ::tpy::BigInt& w = std::get<1>(xs);
         return ((v) + (w));
     }
     ::std::unreachable();

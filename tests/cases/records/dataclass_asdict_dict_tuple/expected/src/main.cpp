@@ -33,9 +33,8 @@ void main() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __macro_3 = *__beg_0;
-            const auto& __tup_1 = __macro_3;
-            std::string __macro_1 = std::get<0>(__tup_1);
-            const auto& __macro_2 = std::get<1>(__tup_1);
+            std::string __macro_1 = std::get<0>(__macro_3);
+            const auto& __macro_2 = std::get<1>(__macro_3);
             __result.insert_or_assign(__macro_1, ::tpy::ordered_map<std::string, int32_t>({{"x", __macro_2.x}, {"y", __macro_2.y}}));
         }
         std::move(__result);
@@ -52,9 +51,8 @@ void main() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             const auto& __macro_3 = *__beg_1;
-            const auto& __tup_2 = __macro_3;
-            std::string __macro_1 = std::get<0>(__tup_2);
-            const auto& __macro_2 = std::get<1>(__tup_2);
+            std::string __macro_1 = std::get<0>(__macro_3);
+            const auto& __macro_2 = std::get<1>(__macro_3);
             __result.insert_or_assign(__macro_1, std::tuple<int32_t, int32_t>{__macro_2.x, __macro_2.y});
         }
         std::move(__result);

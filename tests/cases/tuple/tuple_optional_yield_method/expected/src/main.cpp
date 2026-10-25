@@ -21,9 +21,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            P* a = std::get<0>(__tup_1);
-            P* b = std::get<1>(__tup_1);
+            P* a = std::get<0>(__for_tup_0);
+            P* b = std::get<1>(__for_tup_0);
             if ((a != nullptr)) {
                 std::cout << a->x << "\n" << ::tpy::check_signals;
             }

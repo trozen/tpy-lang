@@ -232,9 +232,8 @@ int32_t in_zip(std::vector<int32_t>& xs, const std::vector<int32_t>& ys, bool bi
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t a = std::get<0>(__tup_1);
-            int32_t b = std::get<1>(__tup_1);
+            int32_t a = std::get<0>(__for_tup_0);
+            int32_t b = std::get<1>(__for_tup_0);
             if (big) {
                 xs.push_back(a);
             }
@@ -281,9 +280,8 @@ struct __genexpr_unpack_6_frame : public ::tpy::next_iter_mixin<__genexpr_unpack
 std::expected<int32_t, ::tpy::StopIteration> __genexpr_unpack_6_frame::__next__() {
     while (!((*__for_it_0) == (*__for_end_0))) {
         __for_tup_gx = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::add_check<int32_t>(a, b));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});

@@ -42,9 +42,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
             continue;
         }
         __for_tup_2 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_2;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_2);
+        b = std::get<1>(__for_tup_2);
         __state = S_RESUME_0;
         return (::tpy::add_check<int32_t>(a, b));
     }
@@ -55,9 +54,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_multi::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_3 = *((*__for_it_1))++;
-        const auto& __tup_2 = __for_tup_3;
-        c = std::get<0>(__tup_2);
-        d = std::get<1>(__tup_2);
+        c = std::get<0>(__for_tup_3);
+        d = std::get<1>(__for_tup_3);
         __state = S_RESUME_1;
         return (::tpy::mul_check<int32_t>(c, d));
     }

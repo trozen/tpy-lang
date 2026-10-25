@@ -134,9 +134,8 @@ inline Holder::Holder() : n(::tpy::BigInt(0)) {}
 //     print("method", a, b, t[1])
 inline void Holder::reseat() const {
     std::tuple<std::string, ::tpy::BigInt> t = ::tpyapp::main::mk(::tpy::BigInt(1));
-    const auto& __tup_1 = t;
-    std::string a = std::get<0>(__tup_1);
-    ::tpy::BigInt b = std::get<1>(__tup_1);
+    std::string a = std::get<0>(t);
+    ::tpy::BigInt b = std::get<1>(t);
     t = ::tpyapp::main::mk(::tpy::BigInt(2));
     std::cout << "method" << " " << a << " " << b << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
 }

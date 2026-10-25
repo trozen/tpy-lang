@@ -22,9 +22,8 @@ std::tuple<Point*, Point> split(Point& p) {
 void main() {
     Point p = Point(1);
     auto t = ::tpyapp::main::split(p);
-    auto& __tup_1 = t;
-    auto&& ref = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    Point owned = std::move(std::get<1>(__tup_1));
+    Point& ref = (*std::get<0>(t));
+    Point owned = std::move(std::get<1>(t));
     ref.x = 5;
     owned.x = 7;
     std::cout << p.x << " " << ref.x << " " << owned.x << "\n" << ::tpy::check_signals;

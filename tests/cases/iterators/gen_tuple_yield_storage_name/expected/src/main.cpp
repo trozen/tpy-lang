@@ -41,9 +41,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            int32_t n = std::get<0>(__tup_1);
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            int32_t n = std::get<0>(__for_tup_0);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             c.v = ::tpy::add_check<int32_t>(c.v, (::tpy::mul_check<int32_t>(n, 10)));
         }
     }
@@ -55,9 +54,8 @@ void main() {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             auto&& __for_tup_1 = *__beg_2;
-            auto& __tup_2 = __for_tup_1;
-            int32_t n = std::get<0>(__tup_2);
-            auto& c = std::get<1>(__tup_2);
+            int32_t n = std::get<0>(__for_tup_1);
+            auto& c = std::get<1>(__for_tup_1);
             __result.push_back(c.v);
         }
         std::move(__result);
@@ -69,9 +67,8 @@ void main() {
             auto __r_4 = __itr_3.__next__();
             if (!__r_4.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_4);
-            auto& __tup_3 = __for_tup_2;
-            int32_t n = std::get<0>(__tup_3);
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+            int32_t n = std::get<0>(__for_tup_2);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_2)));
             c.v = ::tpy::add_check<int32_t>(c.v, n);
         }
     }
@@ -83,9 +80,8 @@ void main() {
         auto __end_5 = __obj_5.end();
         for (; __beg_5 != __end_5; ++__beg_5) {
             auto&& __for_tup_3 = *__beg_5;
-            auto& __tup_4 = __for_tup_3;
-            int32_t n = std::get<0>(__tup_4);
-            auto& c = std::get<1>(__tup_4);
+            int32_t n = std::get<0>(__for_tup_3);
+            auto& c = std::get<1>(__for_tup_3);
             __result.push_back(c.v);
         }
         std::move(__result);
@@ -98,9 +94,8 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_7);
-            auto& __tup_5 = __for_tup_4;
-            int32_t n = std::get<0>(__tup_5);
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_5)));
+            int32_t n = std::get<0>(__for_tup_4);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_4)));
             c.v = ::tpy::add_check<int32_t>(c.v, n);
         }
     }
@@ -112,9 +107,8 @@ void main() {
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
             auto&& __for_tup_5 = *__beg_8;
-            auto& __tup_6 = __for_tup_5;
-            int32_t n = std::get<0>(__tup_6);
-            auto& c = std::get<1>(__tup_6);
+            int32_t n = std::get<0>(__for_tup_5);
+            auto& c = std::get<1>(__for_tup_5);
             __result.push_back(c.v);
         }
         std::move(__result);

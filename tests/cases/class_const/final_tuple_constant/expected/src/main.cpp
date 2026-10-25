@@ -40,14 +40,14 @@ void nested() {
 //     nested()
 //     Reader("r").show()
 void main() {
-    auto __tup_1 = Version::SEMVER;
+    auto&& __tup_1 = Version::SEMVER;
     int32_t major = std::get<0>(__tup_1);
     int32_t minor = std::get<1>(__tup_1);
     int32_t patch = std::get<2>(__tup_1);
     std::cout << major << "\n" << ::tpy::check_signals;
     std::cout << minor << "\n" << ::tpy::check_signals;
     std::cout << patch << "\n" << ::tpy::check_signals;
-    auto __tup_2 = Version::LABEL;
+    auto&& __tup_2 = Version::LABEL;
     std::string_view name = std::get<0>(__tup_2);
     bool stable = std::get<1>(__tup_2);
     std::cout << name << "\n" << ::tpy::check_signals;

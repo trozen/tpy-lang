@@ -1202,9 +1202,8 @@ void main() {
             auto __r_60 = __itr_59.__next__();
             if (!__r_60.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_60);
-            auto& __tup_1 = __for_tup_0;
-            int32_t n2 = std::get<0>(__tup_1);
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            int32_t n2 = std::get<0>(__for_tup_0);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             c.v = ::tpy::add_check<int32_t>(c.v, 1);
         }
     }

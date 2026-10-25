@@ -42,9 +42,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        auto __tup_1 = std::tuple<int32_t, std::vector<int32_t>*>{std::get<0>(__for_tup_0), &(std::get<1>(__for_tup_0))};
-        n = std::get<0>(__tup_1);
-        xs = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        n = std::get<0>(__for_tup_0);
+        xs = &(std::get<1>(__for_tup_0));
     }
     xs->push_back(30);
     std::cout << n << " " << ::tpy::ListPrinter(std::get<1>(::tpy::__getitem__(pairs, 1))) << "\n" << ::tpy::check_signals;

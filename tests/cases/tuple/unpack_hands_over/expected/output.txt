@@ -1,0 +1,87 @@
+fn_param 5 5 2
+fn_param after 5
+fn_local 9 9 1
+fn_field 11 1
+fn_subscript 12 1
+fn_subscript after 12
+fn_index_written 7 8
+fn_root_written 102 7 102
+fn_call 4 7 4 16
+fn_select 1 x
+fn_select 2 y
+fn_next 1 one
+fn_walrus 60 60 6
+fn_optional 2
+fn_optional after 3
+fn_buffers str-owned 5
+fn_twice 2
+method 12 12
+method const 13
+ctor 108 105
+try_body 1 s
+try_body finally
+branch_ref 1 27 2
+er_body 4 22
+match_body 23
+with_body 2 w
+nested 25 1
+gen_body [2, 26] 26
+async_body 31 31 33 32
+async 31
+gen_own 1 1 3
+gen_own [1, 1]
+gen_own_rebind [1, 105]
+async_own_rebind 105
+fn_own_str abab! 2
+fn_own_str_literal xy 1
+head_whole 11 22
+head_elem 11 22
+head_lent 19 29
+scalar_lent 4 5
+scalar_lent_rebind 5 6
+scalar_lent after 5
+head_own_iter 11 22
+head_user_next 11 22
+head_copy_iter 1
+head_combinators 6 9 2
+head_optional 5 4
+head_literal a 11
+head_literal b 12
+head_literal 3 3
+head_literal 2 5
+head_nested 18
+gen_head_elem [1, 11, 2, 22]
+gen_head_own_iter [1, 11, 2, 22]
+gen_head_lent [10, 20] 11
+gen_head_enumerate [0, 1] 106
+async_head_elem 33
+async_for_head 33
+async_head_user_next 33
+genexpr_heads 33 63 21
+comp_whole 101 2
+comp_whole 11 22
+comp_elem 3 2
+comp_lent 11 11 22
+comp_scalar_lent 2 2 3
+comp_twice 2 4
+comp_dict 1 2 1 2
+comp_nested 2 4 2
+comp_own_iter 1 2
+comp_combinators 110 116 3 116 3
+comp_optional 9 -1 9
+comp_values p! q!!
+comp_array 2 4 2
+comp_array after 4
+comp_literal_local [3, 4, 5] 3 [1, 0, 0] 3 4
+head_call_iter [1, 0, 5] [2, 1, 6] [1, 10] [2, 20]
+head_call_iter_sink [1] [1]
+gen_head_param [1] 11
+scalar_select 111 12
+comp_owned_optional [4] [4, -1] [4]
+walrus_ptr 40 40 2
+open_t 4
+wrapper_elem 3 True
+combinators_owning 48
+gen_head_cells [1, 4, 9, 5, 10] 101 1
+genexpr_cells 102 12 102
+comp_twice_ref [3] 3 1

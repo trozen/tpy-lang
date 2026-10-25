@@ -15,9 +15,8 @@ void keep(A&& x, std::vector<A>& into) {
 //     into.append(a)
 //     into.append(b)
 void keep_both(std::tuple<A, A>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     into.push_back(std::move(a));
     into.push_back(std::move(b));
 }
@@ -46,9 +45,8 @@ int32_t read_nocopy(std::tuple<B, B>&& p) {
 //     keep(a, into)
 //     return b.n
 int32_t drop_one(std::tuple<A, A>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     ::tpyapp::main::keep(std::move(a), into);
     return b.n;
 }
@@ -60,9 +58,8 @@ int32_t drop_one(std::tuple<A, A>&& p, std::vector<A>& into) {
 //     if c:
 //         keep(b, into)
 void drop_on_branch(std::tuple<A, A>&& p, bool c, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     ::tpyapp::main::keep(std::move(a), into);
     if (c) {
         ::tpyapp::main::keep(std::move(b), into);
@@ -92,9 +89,8 @@ void through_local(A&& x, std::vector<A>& into) {
 //     keep(a, into)
 //     keep(b, into)
 void consume_all(std::tuple<A, A>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     ::tpyapp::main::keep(std::move(a), into);
     ::tpyapp::main::keep(std::move(b), into);
 }
@@ -105,9 +101,8 @@ void consume_all(std::tuple<A, A>&& p, std::vector<A>& into) {
 //     keep(a, into)
 //     return b.m
 int32_t drop_nocopy(std::tuple<A, B>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    B b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    B b = std::move(std::get<1>(p));
     ::tpyapp::main::keep(std::move(a), into);
     return b.m;
 }
@@ -118,9 +113,8 @@ int32_t drop_nocopy(std::tuple<A, B>&& p, std::vector<A>& into) {
 //     keep(a, into)
 //     return k
 int32_t drop_value(std::tuple<A, int32_t>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    int32_t k = std::get<1>(__tup_1);
+    A a = std::move(std::get<0>(p));
+    int32_t k = std::get<1>(p);
     ::tpyapp::main::keep(std::move(a), into);
     return k;
 }
@@ -147,9 +141,8 @@ A return_through_local(A&& x) {
 //     keep(a, into)
 //     return b
 A return_unpacked(std::tuple<A, A>&& p, std::vector<A>& into) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     ::tpyapp::main::keep(std::move(a), into);
     return b;
 }

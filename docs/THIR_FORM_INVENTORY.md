@@ -79,7 +79,7 @@ here because the form fact subsumes the split (Open Q 11 "scope extension").
 **Tuple**: no conversion helper. A tuple whose source form differs from its
 slot's is built element by element (`per_element` in `tpyc/thir/lower/convert.py`:
 a `THIRTupleLiteral` over `THIRSubscript` element reads), each element converted
-as its scalar is at that element's slot -- a reference lent (`&(std::get<i>(t))`)
+by `convert` itself, as its scalar is, at that element's slot -- a reference lent (`&(std::get<i>(t))`)
 or its pointee copied (`(*std::get<i>(t))`), an owned element moved, an Optional
 or union element through the helpers above, an open `T` through
 `param_to_storage<T>(tuple_elem_ref(...))` / `to_val_or_ptr`. A source that is

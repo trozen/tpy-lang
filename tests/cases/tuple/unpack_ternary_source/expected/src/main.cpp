@@ -17,7 +17,7 @@ int32_t mn{};
 //     a, b = t1 if c else t2  # tpyc: ok
 //     return a + b
 int32_t values(bool c, const std::tuple<int32_t, int32_t>& t1, const std::tuple<int32_t, int32_t>& t2) {
-    const auto& __tup_1 = ((c) ? (t1) : (t2));
+    auto&& __tup_1 = ((c) ? (t1) : (t2));
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(a, b));
@@ -49,7 +49,7 @@ int32_t prvalue_arm(bool c, const std::tuple<int32_t, int32_t>& t1) {
 int32_t local_arms(bool c) {
     std::tuple<int32_t, int32_t> t1 = std::tuple<int32_t, int32_t>{1, 2};
     std::tuple<int32_t, int32_t> t2 = std::tuple<int32_t, int32_t>{30, 40};
-    const auto& __tup_1 = ((c) ? (t1) : (t2));
+    auto&& __tup_1 = ((c) ? (t1) : (t2));
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>(a, b));
@@ -60,8 +60,8 @@ int32_t local_arms(bool c) {
 //     s, n = t1 if c else t2  # tpyc: ok
 //     return s + str(n)
 std::string strings(bool c, const std::tuple<std::string, int32_t>& t1, const std::tuple<std::string, int32_t>& t2) {
-    auto __tup_1 = ((c) ? (t1) : (t2));
-    std::string s = std::move(std::get<0>(__tup_1));
+    auto&& __tup_1 = ((c) ? (t1) : (t2));
+    std::string s = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     return (::tpy::str_concat(s, ::tpy::fixed_to_str<int32_t>(n)));
 }
@@ -82,7 +82,7 @@ __gen_gen gen(bool c, std::tuple<int32_t, int32_t> t1, std::tuple<int32_t, int32
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        const auto& __tup_1 = ((c) ? (t1) : (t2));
+        auto&& __tup_1 = ((c) ? (t1) : (t2));
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
@@ -120,8 +120,8 @@ __coro_coro coro(bool c, std::tuple<int32_t, int32_t> t1, std::tuple<int32_t, in
 void reseat_view(bool c) {
     std::tuple<std::string, int32_t> t1 = std::tuple<std::string, int32_t>{"aa", 1};
     std::tuple<std::string, int32_t> t2 = std::tuple<std::string, int32_t>{"zz", 9};
-    auto __tup_1 = ((c) ? (t1) : (t2));
-    std::string s = std::move(std::get<0>(__tup_1));
+    auto&& __tup_1 = ((c) ? (t1) : (t2));
+    std::string s = std::get<0>(__tup_1);
     int32_t n = std::get<1>(__tup_1);
     t1 = std::tuple<std::string, int32_t>{"qq", 5};
     std::cout << "reseat_view" << " " << s << " " << n << " " << std::get<0>(t1) << "\n" << ::tpy::check_signals;
@@ -137,7 +137,7 @@ void reseat_view(bool c) {
 void reseat_value(bool c) {
     std::tuple<int32_t, int32_t> t1 = std::tuple<int32_t, int32_t>{1, 2};
     std::tuple<int32_t, int32_t> t2 = std::tuple<int32_t, int32_t>{30, 40};
-    const auto& __tup_1 = ((c) ? (t1) : (t2));
+    auto&& __tup_1 = ((c) ? (t1) : (t2));
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     t1 = std::tuple<int32_t, int32_t>{7, 8};
@@ -248,7 +248,7 @@ void __tpy_init() {
     mc = true;
     mt1 = std::tuple<std::string, int32_t>{"aa", 1};
     mt2 = std::tuple<std::string, int32_t>{"zz", 9};
-    const auto& __tup_1 = ((mc) ? (mt1) : (mt2));
+    auto&& __tup_1 = ((mc) ? (mt1) : (mt2));
     ms = std::get<0>(__tup_1);
     mn = std::get<1>(__tup_1);
     mt1 = std::tuple<std::string, int32_t>{"qq", 5};

@@ -1,0 +1,5 @@
+main.py:623: warning: copies A into owned storage; use copy() to make this explicit
+main.py:631: warning: copies A into owned storage; use copy() to make this explicit
+main.py:729: warning: copies A into owned storage; use copy() to make this explicit
+main.py:769: warning: copies B into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 768)
+main.py:828: warning: may copy T into owned storage if not a value type; use copy() to make this explicit

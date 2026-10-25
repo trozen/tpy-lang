@@ -16,9 +16,8 @@ int32_t sum_items(const ::tpy::ordered_map<int32_t, int32_t>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        int32_t k = std::get<0>(__tup_1);
-        int32_t v = std::get<1>(__tup_1);
+        int32_t k = std::get<0>(__for_tup_0);
+        int32_t v = std::get<1>(__for_tup_0);
         s = (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(s, k)), v));
     }
     return s;
@@ -36,9 +35,8 @@ int32_t sum_pairs(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        const auto& __tup_1 = __for_tup_1;
-        int32_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        int32_t a = std::get<0>(__for_tup_1);
+        int32_t b = std::get<1>(__for_tup_1);
         s = (::tpy::add_check<int32_t>(s, (::tpy::mul_check<int32_t>(a, b))));
     }
     return s;
@@ -56,8 +54,7 @@ int32_t discard_snd(const std::vector<std::tuple<int32_t, int32_t>>& ps) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        const auto& __tup_1 = __for_tup_2;
-        int32_t a = std::get<0>(__tup_1);
+        int32_t a = std::get<0>(__for_tup_2);
         s = (::tpy::add_check<int32_t>(s, a));
     }
     return s;

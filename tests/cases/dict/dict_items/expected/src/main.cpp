@@ -19,9 +19,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
-        int32_t v = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_0);
+        int32_t v = std::get<1>(__for_tup_0);
         std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
     std::cout << ::tpy::__len__(::tpy::dict_items(d)) << "\n" << ::tpy::check_signals;

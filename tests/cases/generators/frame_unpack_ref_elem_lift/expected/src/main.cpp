@@ -70,9 +70,9 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_try::__next__() {
         [[fallthrough]];
     case S_JOIN_1: {
         try {
-            auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
+            auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
             a = std::get<0>(__tup_1);
-            b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+            b = &(std::get<1>(__tup_1));
             __state = S_RESUME_0;
             return a;
         } catch (...) {
@@ -180,9 +180,9 @@ __gen_gen_loop_root gen_loop_root(std::vector<Holder>& hs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(hs, 0).pair);
+        auto&& __tup_1 = ::tpy::__getitem__(hs, 0).pair;
         a = std::get<0>(__tup_1);
-        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        b = &(std::get<1>(__tup_1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -218,9 +218,9 @@ __coro_coro_chain coro_chain(std::vector<Holder>& hs) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
+        auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
         a = std::get<0>(__tup_1);
-        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        b = &(std::get<1>(__tup_1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

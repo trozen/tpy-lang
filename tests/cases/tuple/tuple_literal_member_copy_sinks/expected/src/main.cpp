@@ -18,9 +18,8 @@ std::tuple<int32_t, C> mk(int32_t i) {
 //     if a is not None:
 //         print(tag, a.v)
 void show(std::string_view tag, const std::tuple<const C*, int32_t>& p) {
-    auto& __tup_1 = p;
-    const C* a = std::get<0>(__tup_1);
-    int32_t k = std::get<1>(__tup_1);
+    const C* a = std::get<0>(p);
+    int32_t k = std::get<1>(p);
     if ((a != nullptr)) {
         std::cout << tag << " " << a->v << "\n" << ::tpy::check_signals;
     }

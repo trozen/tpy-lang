@@ -61,9 +61,8 @@ void collect_pairs(T_items& items) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         const auto& pair = ::tpy::unwrap_ref(*__r_1);
-        const auto& __tup_1 = pair;
-        std::string_view k = std::get<0>(__tup_1);
-        int32_t v = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(pair);
+        int32_t v = std::get<1>(pair);
         std::cout << k << " " << v << "\n" << ::tpy::check_signals;
     }
 }

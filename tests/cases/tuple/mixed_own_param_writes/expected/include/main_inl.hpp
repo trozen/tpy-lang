@@ -28,9 +28,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_write::__next__() 
         return std::get<0>(p).n;
     }
     case S_RESUME_0: {  // after: yield p[0].n
-        auto& __tup_1 = p;
-        a.emplace(std::move(std::get<0>(__tup_1)));
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        a.emplace(std::move(std::get<0>(p)));
+        c = std::get<1>(p);
         c->n = ::tpy::add_check<int32_t>(c->n, 1);
         __state = S_RESUME_1;
         return ::tpyapp::main::take(std::move((*a)));

@@ -31,14 +31,12 @@ void main() {
     ::tpy::Bytes b;
     if (flag) {
         std::tuple<::tpy::Bytes, ::tpy::Bytes> t1 = ::tpyapp::main::make(::tpy::bytes_literal("X", 1));
-        const auto& __tup_1 = t1;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(t1);
+        b = std::get<1>(t1);
     } else {
         std::tuple<::tpy::Bytes, ::tpy::Bytes> t2 = ::tpyapp::main::make(::tpy::bytes_literal("Y", 1));
-        const auto& __tup_2 = t2;
-        a = std::get<0>(__tup_2);
-        b = std::get<1>(__tup_2);
+        a = std::get<0>(t2);
+        b = std::get<1>(t2);
     }
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;

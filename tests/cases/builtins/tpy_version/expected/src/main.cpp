@@ -31,12 +31,11 @@ namespace tpyapp::main {
 void main() {
     if (!((::tpy::__len__(::tpystd::tpy::version::__version__) > 0))) ::tpy::raise_assertion_error();
     if (!(((::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) >= '0') && (::tpy::__getitem__(::tpystd::tpy::version::__version__, 0) <= '9')))) ::tpy::raise_assertion_error();
-    const auto& __tup_1 = ::tpystd::tpy::version::version_info;
-    int32_t major = std::get<0>(__tup_1);
-    int32_t minor = std::get<1>(__tup_1);
-    int32_t micro = std::get<2>(__tup_1);
-    std::string_view level = std::get<3>(__tup_1);
-    int32_t serial = std::get<4>(__tup_1);
+    int32_t major = std::get<0>(::tpystd::tpy::version::version_info);
+    int32_t minor = std::get<1>(::tpystd::tpy::version::version_info);
+    int32_t micro = std::get<2>(::tpystd::tpy::version::version_info);
+    std::string_view level = std::get<3>(::tpystd::tpy::version::version_info);
+    int32_t serial = std::get<4>(::tpystd::tpy::version::version_info);
     if (!((major >= 0))) ::tpy::raise_assertion_error();
     if (!((minor >= 0))) ::tpy::raise_assertion_error();
     if (!((micro >= 0))) ::tpy::raise_assertion_error();

@@ -547,9 +547,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_framegen_8_frame<T___src>
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::add_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -685,9 +684,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_aio_10_frame<T___src>::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        i = std::get<0>(__tup_1);
-        x = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_gx);
+        x = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(i, x));
     }
     __builtin_unreachable();

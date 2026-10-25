@@ -323,9 +323,9 @@ class PairBox:
 
 
 # generator: an owned element yielded (the name and call forms are pinned by
-# generators/payload_slot_declared_copies); the consuming `for` head copies
-# the yielded tuple once more before moving element 0 out
-# (BUGS.md#for-head-owned-yield-copies-before-move)
+# generators/payload_slot_declared_copies); the consuming `for` head binds
+# element 0 off the step, which the loop's iteration hands over: no copy of
+# the yielded tuple
 def gen_own(p: P) -> Iterator[tuple[Own[P], int32]]:
     yield (p, 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
 

@@ -43,9 +43,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            int32_t i = std::get<0>(__for_tup_0);
+            auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             std::cout << i << " " << p << "\n" << ::tpy::check_signals;
         }
     }
@@ -56,9 +55,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-            const auto& __tup_2 = __for_tup_1;
-            int32_t j = std::get<0>(__tup_2);
-            int32_t v = std::get<1>(__tup_2);
+            int32_t j = std::get<0>(__for_tup_1);
+            int32_t v = std::get<1>(__for_tup_1);
             std::cout << j << " " << v << "\n" << ::tpy::check_signals;
         }
     }
@@ -69,9 +67,8 @@ void main() {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_5);
-            auto& __tup_3 = __for_tup_2;
-            int32_t k = std::get<0>(__tup_3);
-            auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+            int32_t k = std::get<0>(__for_tup_2);
+            auto& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_2)));
             q.x = ::tpy::add_check<int32_t>(q.x, 100);
         }
     }

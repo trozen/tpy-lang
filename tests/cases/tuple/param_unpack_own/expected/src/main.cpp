@@ -10,9 +10,8 @@ namespace tpyapp::main {
 //     b.n += 20
 //     return a.n + b.n
 int32_t consume(std::tuple<A, A>&& p) {
-    auto&& __tup_1 = std::move(p);
-    A a = std::move(std::get<0>(__tup_1));
-    A b = std::move(std::get<1>(__tup_1));
+    A a = std::move(std::get<0>(p));
+    A b = std::move(std::get<1>(p));
     a.n = ::tpy::add_check<int32_t>(a.n, 10);
     b.n = ::tpy::add_check<int32_t>(b.n, 20);
     return (::tpy::add_check<int32_t>(a.n, b.n));

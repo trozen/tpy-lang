@@ -97,9 +97,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        auto __tup_1 = std::tuple<Tag*, int32_t>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
-        auto&& held = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        int32_t width = std::get<1>(__tup_1);
+        auto& held = std::get<0>(__for_tup_0);
+        int32_t width = std::get<1>(__for_tup_0);
         std::cout << ::tpy::__len__(pairs) << " " << held.ident << " " << width << "\n" << ::tpy::check_signals;
     }
 }

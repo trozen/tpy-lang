@@ -853,7 +853,7 @@ void main() {
     Box p = Box(10);
     auto __tup_3 = ::tpyapp::main::mixed(p);
     auto&& m = std::move(std::get<0>(__tup_3));
-    auto&& mp = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+    Box& mp = (*std::get<1>(__tup_3));
     mp.n = ::tpy::add_check<int32_t>(mp.n, 100);
     std::cout << "mixed" << " " << m.n << " " << mp.n << " " << p.n << "\n" << ::tpy::check_signals;
     auto __tup_4 = ::tpyapp::main::call_member();

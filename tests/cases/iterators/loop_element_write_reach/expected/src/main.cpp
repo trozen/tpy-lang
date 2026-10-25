@@ -421,9 +421,8 @@ std::vector<int32_t> list_comp(std::vector<P>& ps) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            auto& p = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            auto& p = std::get<1>(__for_tup_0);
             __result.insert_or_assign(i, ::tpyapp::main::bumped(p));
         }
         std::move(__result);
@@ -479,9 +478,8 @@ std::vector<int32_t> comp_zip(std::vector<P>& ps, const std::vector<P>& qs) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_1 = *__beg_0;
-            auto& __tup_1 = __for_tup_1;
-            auto& p = std::get<0>(__tup_1);
-            auto& q = std::get<1>(__tup_1);
+            auto& p = std::get<0>(__for_tup_1);
+            auto& q = std::get<1>(__for_tup_1);
             __result.push_back(::tpyapp::main::bumped(p));
         }
         std::move(__result);
@@ -537,9 +535,8 @@ void dict_items(::tpy::ordered_map<std::string, P>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = std::tuple<std::string_view, P*>{std::get<0>(__for_tup_2), &(std::get<1>(__for_tup_2))};
-        std::string_view k = std::get<0>(__tup_1);
-        auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        std::string_view k = std::get<0>(__for_tup_2);
+        auto& p = std::get<1>(__for_tup_2);
         ::tpyapp::main::bump(p);
     }
 }
@@ -553,9 +550,8 @@ void tuple_target(std::vector<std::tuple<P, P>>& pairs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_3 = *__beg_0;
-        auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(__for_tup_3)), &(std::get<1>(__for_tup_3))};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        auto& a = std::get<0>(__for_tup_3);
+        auto& b = std::get<1>(__for_tup_3);
         ::tpyapp::main::bump(a);
     }
 }
@@ -572,9 +568,8 @@ void zip_slot(std::vector<P>& ps, const std::vector<P>& qs) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_4;
-            auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-            auto&& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_4)));
+            auto& q = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_4)));
             ::tpyapp::main::bump(p);
         }
     }
@@ -591,9 +586,8 @@ void enumerated(std::vector<P>& ps) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_5;
-            int32_t i = std::get<0>(__tup_1);
-            auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            int32_t i = std::get<0>(__for_tup_5);
+            auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_5)));
             ::tpyapp::main::bump(p);
         }
     }
@@ -744,9 +738,8 @@ void enumerate_in_loop(std::vector<std::vector<P>>& rows) {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 auto&& __for_tup_6 = ::tpy::unwrap_ref(*__r_2);
-                auto& __tup_1 = __for_tup_6;
-                int32_t i = std::get<0>(__tup_1);
-                auto&& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+                int32_t i = std::get<0>(__for_tup_6);
+                auto& p = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_6)));
                 ::tpyapp::main::bump(p);
             }
         }
@@ -1352,9 +1345,8 @@ void aug_iadd_zip(std::vector<IAcc>& xs, const std::vector<int32_t>& ks) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_7 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_7;
-            auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-            int32_t k = std::get<1>(__tup_1);
+            auto& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_7)));
+            int32_t k = std::get<1>(__for_tup_7);
             x.__iadd__(k);
         }
     }
@@ -1374,9 +1366,8 @@ void rebind_zip(std::vector<Acc>& vs, const std::vector<int32_t>& ks) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_8 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_8;
-            auto* v = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            int32_t k = std::get<1>(__tup_1);
+            auto* v = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__for_tup_8))));
+            int32_t k = std::get<1>(__for_tup_8);
             v = &*(__slot_1 = (((*v)) + (k)));
             std::cout << "rebind_zip: v" << " " << v->n << "\n" << ::tpy::check_signals;
         }

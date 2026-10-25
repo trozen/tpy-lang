@@ -17,16 +17,16 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
         __state = S_DONE;  // until a yield sets where to resume
         M __tmp_1 = M();
         auto __tup_1 = ::tpyapp::main::f(__tmp_1);
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::move(std::get<0>(__tup_1));
+        b = std::move(std::get<1>(__tup_1));
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {  // after: yield a
         ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("hi", 2);
         auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
-        c = std::get<0>(__tup_2);
-        d = std::get<1>(__tup_2);
+        c = std::move(std::get<0>(__tup_2));
+        d = std::move(std::get<1>(__tup_2));
         __state = S_RESUME_1;
         return ((((b) + (c))) + (d));
     }

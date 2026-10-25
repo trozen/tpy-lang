@@ -18,9 +18,8 @@ std::tuple<P*, int32_t> mk(P& p) {
 //     a.xs.append(100)
 //     return len(a.xs)
 int32_t take(std::tuple<P, P> t) {
-    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    P& a = std::get<0>(t);
+    P& b = std::get<1>(t);
     a.xs.push_back(100);
     return ::tpy::__len__(a.xs);
 }
@@ -30,9 +29,8 @@ int32_t take(std::tuple<P, P> t) {
 //     a.xs.append(100)
 //     return len(a.xs) * 10 + len(b.xs)
 int32_t take_both(std::tuple<P, P> t) {
-    auto __tup_1 = std::tuple<P*, P*>{&(std::get<0>(t)), &(std::get<1>(t))};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    P& a = std::get<0>(t);
+    P& b = std::get<1>(t);
     a.xs.push_back(100);
     return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(::tpy::__len__(a.xs), 10)), ::tpy::__len__(b.xs)));
 }
@@ -44,9 +42,8 @@ int32_t take_both(std::tuple<P, P> t) {
 //         return len(a.xs)
 //     return 0
 int32_t take_opt(std::tuple<std::optional<P>, std::optional<P>> t) {
-    auto __tup_1 = std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(t)), ::tpy::optional_to_ptr(std::get<1>(t))};
-    P* a = std::get<0>(__tup_1);
-    P* b = std::get<1>(__tup_1);
+    P* a = ::tpy::optional_to_ptr(std::get<0>(t));
+    P* b = ::tpy::optional_to_ptr(std::get<1>(t));
     if ((a != nullptr)) {
         a->xs.push_back(100);
         return ::tpy::__len__(a->xs);
@@ -59,9 +56,8 @@ int32_t take_opt(std::tuple<std::optional<P>, std::optional<P>> t) {
 //     a.xs.append(100)
 //     return len(a.xs)
 int32_t take_each(std::tuple<P, P>&& t) {
-    auto&& __tup_1 = std::move(t);
-    P a = std::move(std::get<0>(__tup_1));
-    P b = std::move(std::get<1>(__tup_1));
+    P a = std::move(std::get<0>(t));
+    P b = std::move(std::get<1>(t));
     a.xs.push_back(100);
     return ::tpy::__len__(a.xs);
 }
@@ -71,9 +67,8 @@ int32_t take_each(std::tuple<P, P>&& t) {
 //     a.xs.append(100)
 //     return len(a.xs)
 int32_t sink(std::tuple<P, int32_t>&& t) {
-    auto&& __tup_1 = std::move(t);
-    P a = std::move(std::get<0>(__tup_1));
-    int32_t n = std::get<1>(__tup_1);
+    P a = std::move(std::get<0>(t));
+    int32_t n = std::get<1>(t);
     a.xs.push_back(100);
     return ::tpy::__len__(a.xs);
 }
@@ -472,9 +467,8 @@ int32_t arg_with(const P& p) {
 //     a.xs.append(100)
 //     return len(a.xs)
 int32_t take_call(std::tuple<P, int32_t> t) {
-    auto __tup_1 = std::tuple<P*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t n = std::get<1>(__tup_1);
+    P& a = std::get<0>(t);
+    int32_t n = std::get<1>(t);
     a.xs.push_back(100);
     return ::tpy::__len__(a.xs);
 }
@@ -533,15 +527,13 @@ void call_sinks() {
     std::vector<std::tuple<P, int32_t>> cs = std::vector<std::tuple<P, int32_t>>{};
     cs.push_back([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P, int32_t>{(*std::get<0>(__t)), std::get<1>(__t)}; }(::tpyapp::main::mk(c)));
     c.xs.push_back(7);
-    auto __tup_1 = std::tuple<P*, int32_t>{&(std::get<0>(hc.pair)), std::get<1>(hc.pair)};
-    auto&& hc0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    P& hc0 = std::get<0>(hc.pair);
     auto& __obj_0 = cs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_2 = std::tuple<P*, int32_t>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
-        auto&& cs0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+        auto& cs0 = std::get<0>(__for_tup_0);
         std::cout << "call_elem" << " " << ::tpy::__len__(ce.xs) << " " << "call_field" << " " << ::tpy::__len__(hc0.xs) << " " << "call_append" << " " << ::tpy::__len__(cs0.xs) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
     }
     std::cout << "arg_field_elem" << " " << ::tpyapp::main::arg_field_elem(hc) << " " << ::tpy::__len__(hc0.xs) << "\n" << ::tpy::check_signals;
@@ -552,8 +544,7 @@ void call_sinks() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_1 = *__beg_1;
-        auto __tup_3 = std::tuple<P*, int32_t>{&(std::get<0>(__for_tup_1)), std::get<1>(__for_tup_1)};
-        auto&& ps0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
+        auto& ps0 = std::get<0>(__for_tup_1);
         std::cout << "arg_subscript_elem" << " " << n << " " << ::tpy::__len__(ps0.xs) << "\n" << ::tpy::check_signals;
     }
     {
@@ -563,8 +554,7 @@ void call_sinks() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_3);
-            auto __tup_4 = __for_tup_2;
-            P g0 = std::move(std::get<0>(__tup_4));
+            auto&& g0 = std::move(std::get<0>(__for_tup_2));
             c.xs.push_back(8);
             std::cout << "gen_own" << " " << ::tpy::__len__(g0.xs) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
         }
@@ -734,7 +724,7 @@ void main() {
     P a = P(1);
     P b = P(2);
     auto __tup_1 = ::tpyapp::main::ret_literal(a);
-    auto&& s0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    P& s0 = (*std::get<0>(__tup_1));
     auto&& s1 = std::move(std::get<1>(__tup_1));
     s1.xs.push_back(5);
     std::cout << "ret_literal" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(s0.xs) << " " << ::tpy::__len__(s1.xs) << "\n" << ::tpy::check_signals;
@@ -776,27 +766,26 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_3 = *__beg_0;
-        auto __tup_9 = std::tuple<P*, int32_t>{&(std::get<0>(__for_tup_3)), std::get<1>(__for_tup_3)};
-        auto&& st0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_9)));
+        auto& st0 = std::get<0>(__for_tup_3);
         std::cout << "ret_loop_var" << " " << ::tpy::__len__(st0.xs) << " " << ::tpy::__len__(lv0.xs) << "\n" << ::tpy::check_signals;
     }
-    auto __tup_10 = ::tpyapp::main::ret_branch(a, b, true);
-    auto&& r2 = std::move(std::get<0>(__tup_10));
+    auto __tup_9 = ::tpyapp::main::ret_branch(a, b, true);
+    auto&& r2 = std::move(std::get<0>(__tup_9));
     r2.xs.push_back(5);
     std::cout << "ret_branch" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(r2.xs) << "\n" << ::tpy::check_signals;
-    auto __tup_11 = ::tpyapp::main::ret_twice();
-    auto&& t0 = std::move(std::get<0>(__tup_11));
-    auto&& t1 = std::move(std::get<1>(__tup_11));
+    auto __tup_10 = ::tpyapp::main::ret_twice();
+    auto&& t0 = std::move(std::get<0>(__tup_10));
+    auto&& t1 = std::move(std::get<1>(__tup_10));
     t0.xs.push_back(5);
     std::cout << "ret_twice" << " " << ::tpy::__len__(t0.xs) << " " << ::tpy::__len__(t1.xs) << "\n" << ::tpy::check_signals;
-    auto __tup_12 = ::tpyapp::main::ret_finally();
-    auto&& y0 = std::move(std::get<0>(__tup_12));
-    auto&& y1 = std::move(std::get<1>(__tup_12));
+    auto __tup_11 = ::tpyapp::main::ret_finally();
+    auto&& y0 = std::move(std::get<0>(__tup_11));
+    auto&& y1 = std::move(std::get<1>(__tup_11));
     y0.push_back(9);
     std::cout << "ret_finally" << " " << ::tpy::__len__(y0) << " " << ::tpy::__len__(y1) << "\n" << ::tpy::check_signals;
     std::cout << "ret_closure" << " " << ::tpyapp::main::ret_closure(a) << "\n" << ::tpy::check_signals;
-    auto __tup_13 = ::tpyapp::main::ret_match(a, 1);
-    auto&& m0 = std::move(std::get<0>(__tup_13));
+    auto __tup_12 = ::tpyapp::main::ret_match(a, 1);
+    auto&& m0 = std::move(std::get<0>(__tup_12));
     m0.xs.push_back(5);
     std::cout << "ret_match" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(m0.xs) << "\n" << ::tpy::check_signals;
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::async_main()));
@@ -807,8 +796,8 @@ void main() {
     Holder hd = Holder(a, b);
     std::cout << "arg_fields" << " " << ::tpyapp::main::arg_fields(hd) << " " << ::tpy::__len__(hd.a.xs) << "\n" << ::tpy::check_signals;
     std::cout << "arg_call" << " " << ::tpyapp::main::arg_call(hd) << " " << ::tpy::__len__(hd.a.xs) << "\n" << ::tpy::check_signals;
-    auto __tup_14 = ::tpyapp::main::ret_call(hd);
-    auto&& c0 = std::move(std::get<0>(__tup_14));
+    auto __tup_13 = ::tpyapp::main::ret_call(hd);
+    auto&& c0 = std::move(std::get<0>(__tup_13));
     c0.xs.push_back(5);
     std::cout << "ret_call" << " " << ::tpy::__len__(hd.a.xs) << " " << ::tpy::__len__(c0.xs) << "\n" << ::tpy::check_signals;
     std::vector<P> zs = {P(5), P(6)};
@@ -841,8 +830,7 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         auto&& __for_tup_4 = *__beg_3;
-        auto __tup_15 = std::tuple<P*, P*>{&(std::get<0>(__for_tup_4)), &(std::get<1>(__for_tup_4))};
-        auto&& i0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_15)));
+        auto& i0 = std::get<0>(__for_tup_4);
         std::cout << "insert" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(i0.xs) << "\n" << ::tpy::check_signals;
     }
     Sink sk = Sink();

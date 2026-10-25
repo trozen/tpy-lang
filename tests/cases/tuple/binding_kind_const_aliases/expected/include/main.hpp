@@ -170,9 +170,9 @@ inline Pairs::Pairs(const ::tpy::BigInt& v) : items(::tpy::make_vector<std::tupl
 //     first, n = self.items[0]
 //     first.v += 10
 inline void Pairs::bump() {
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box*, ::tpy::BigInt>{&(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(this->items, 0));
-    auto&& first = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    const ::tpy::BigInt& n = std::get<1>(__tup_1);
+    auto&& __tup_1 = ::tpy::__getitem__(this->items, 0);
+    Box& first = std::get<0>(__tup_1);
+    ::tpy::BigInt n = std::get<1>(__tup_1);
     first.v = (first.v) + (::tpy::BigInt(10));
 }
 

@@ -650,17 +650,16 @@ void sync_enumerate_ints(bool c) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_2 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_2);
-            int32_t x = std::get<1>(__tup_2);
+            int32_t i = std::get<0>(__for_tup_0);
+            int32_t x = std::get<1>(__for_tup_0);
             total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, (::tpy::add_check<int32_t>(i, 1)))));
         }
     }
     std::optional<N> __slot_2;
     if (c) {
-        auto __tup_3 = std::tuple<N, int32_t>{N(10), 6};
-        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
-        std::get<1>(t) = std::move(std::get<1>(__tup_3));
+        auto __tup_2 = std::tuple<N, int32_t>{N(10), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
     }
     std::cout << "sync_enumerate_ints" << " " << total << " " << ::tpy::__getitem__(std::get<0>(t)->ns, 0) << "\n" << ::tpy::check_signals;
 }
@@ -695,13 +694,12 @@ void sync_enumerate_rebind_in_loop(bool c) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_2 = __for_tup_2;
-            int32_t i = std::get<0>(__tup_2);
-            int32_t x = std::get<1>(__tup_2);
+            int32_t i = std::get<0>(__for_tup_2);
+            int32_t x = std::get<1>(__for_tup_2);
             if (c) {
-                auto __tup_3 = std::tuple<N, int32_t>{N(10), 6};
-                std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
-                std::get<1>(t) = std::move(std::get<1>(__tup_3));
+                auto __tup_2 = std::tuple<N, int32_t>{N(10), 6};
+                std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+                std::get<1>(t) = std::move(std::get<1>(__tup_2));
             }
             total = ::tpy::add_check<int32_t>(total, (::tpy::mul_check<int32_t>(x, (::tpy::add_check<int32_t>(i, 1)))));
         }
@@ -893,14 +891,13 @@ void sync_rebind_then_break(bool c) {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_2);
-                const auto& __tup_2 = __for_tup_4;
-                int32_t _i = std::get<0>(__tup_2);
-                int32_t x = std::get<1>(__tup_2);
+                int32_t _i = std::get<0>(__for_tup_4);
+                int32_t x = std::get<1>(__for_tup_4);
                 out.push_back(x);
                 if (c) {
-                    auto __tup_3 = std::tuple<N, int32_t>{N((::tpy::mul_check<int32_t>(10, (::tpy::add_check<int32_t>(k, 1))))), 6};
-                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
-                    std::get<1>(t) = std::move(std::get<1>(__tup_3));
+                    auto __tup_2 = std::tuple<N, int32_t>{N((::tpy::mul_check<int32_t>(10, (::tpy::add_check<int32_t>(k, 1))))), 6};
+                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+                    std::get<1>(t) = std::move(std::get<1>(__tup_2));
                     break;
                 }
             }
@@ -964,9 +961,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_rebind_then_break::__next
             continue;
         }
         __for_tup_5 = ::tpy::unwrap_ref(*(*__for_r_1));
-        const auto& __tup_3 = __for_tup_5;
-        _i = std::get<0>(__tup_3);
-        x = std::get<1>(__tup_3);
+        _i = std::get<0>(__for_tup_5);
+        x = std::get<1>(__for_tup_5);
         __state = S_RESUME_0;
         return x;
     }

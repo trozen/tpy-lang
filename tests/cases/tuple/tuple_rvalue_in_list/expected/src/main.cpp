@@ -17,9 +17,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& it = *__beg_0;
-        auto __tup_1 = std::tuple<T*, T*>{&(std::get<0>(it)), &(std::get<1>(it))};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        T& a = std::get<0>(it);
+        T& b = std::get<1>(it);
         std::cout << a.x << "\n" << ::tpy::check_signals;
         std::cout << b.x << "\n" << ::tpy::check_signals;
     }

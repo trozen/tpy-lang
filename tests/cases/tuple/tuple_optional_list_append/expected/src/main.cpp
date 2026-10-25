@@ -59,18 +59,18 @@ void main() {
     pairs2.push_back(::tpy::__getitem__(pairs, 0));
     pairs2.push_back(::tpy::__getitem__(pairs, 1));
     std::cout << ::tpy::__len__(pairs2) << "\n" << ::tpy::check_signals;
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 0));
-    P* a0 = std::get<0>(__tup_1);
-    P* b0 = std::get<1>(__tup_1);
+    auto&& __tup_1 = ::tpy::__getitem__(pairs, 0);
+    P* a0 = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
+    P* b0 = ::tpy::optional_to_ptr(std::get<1>(__tup_1));
     if ((a0 != nullptr)) {
         std::cout << a0->x << "\n" << ::tpy::check_signals;
     }
     if ((b0 != nullptr)) {
         std::cout << b0->x << "\n" << ::tpy::check_signals;
     }
-    auto __tup_2 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(pairs, 1));
-    P* a1 = std::get<0>(__tup_2);
-    P* b1 = std::get<1>(__tup_2);
+    auto&& __tup_2 = ::tpy::__getitem__(pairs, 1);
+    P* a1 = ::tpy::optional_to_ptr(std::get<0>(__tup_2));
+    P* b1 = ::tpy::optional_to_ptr(std::get<1>(__tup_2));
     if ((a1 != nullptr)) {
         std::cout << a1->x << "\n" << ::tpy::check_signals;
     }

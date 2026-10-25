@@ -124,9 +124,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_pairs_gen::__next__() 
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            const auto& __tup_1 = __for_tup_0;
-            std::string name = std::get<0>(__tup_1);
-            int32_t n = std::get<1>(__tup_1);
+            std::string name = std::get<0>(__for_tup_0);
+            int32_t n = std::get<1>(__for_tup_0);
             std::cout << name << " " << n << "\n" << ::tpy::check_signals;
         }
         i = ::tpy::add_check<int32_t>(i, 1);

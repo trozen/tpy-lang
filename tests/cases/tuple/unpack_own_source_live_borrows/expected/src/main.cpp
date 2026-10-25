@@ -41,9 +41,8 @@ NBox nsink(NBox&& x) {
 //     print("live_local", t[0].n, k)
 void live_local() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     x.n = 9;
     std::cout << "live_local" << " " << std::get<0>(t).n << " " << k << "\n" << ::tpy::check_signals;
 }
@@ -55,9 +54,8 @@ void live_local() {
 //     print("last_use_moves", sink(x).n + k)
 void last_use_moves() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto&& __tup_1 = std::move(t);
-    Box x = std::move(std::get<0>(__tup_1));
-    int32_t k = std::get<1>(__tup_1);
+    Box x = std::move(std::get<0>(t));
+    int32_t k = std::get<1>(t);
     std::cout << "last_use_moves" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::sink(std::move(x)).n, k)) << "\n" << ::tpy::check_signals;
 }
 
@@ -70,9 +68,8 @@ void last_use_moves() {
 //     print("nocopy_live", t[0].n, k)
 void nocopy_live() {
     std::tuple<NBox, int32_t> t = ::tpyapp::main::nmk();
-    auto __tup_1 = std::tuple<NBox*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    NBox& x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     x.n = 9;
     std::cout << "nocopy_live" << " " << std::get<0>(t).n << " " << k << "\n" << ::tpy::check_signals;
 }
@@ -84,9 +81,8 @@ void nocopy_live() {
 //     print("nocopy_last_use", nsink(x).n + k)
 void nocopy_last_use() {
     std::tuple<NBox, int32_t> t = ::tpyapp::main::nmk();
-    auto&& __tup_1 = std::move(t);
-    NBox x = std::move(std::get<0>(__tup_1));
-    int32_t k = std::get<1>(__tup_1);
+    NBox x = std::move(std::get<0>(t));
+    int32_t k = std::get<1>(t);
     std::cout << "nocopy_last_use" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::nsink(std::move(x)).n, k)) << "\n" << ::tpy::check_signals;
 }
 
@@ -99,12 +95,10 @@ void nocopy_last_use() {
 //     print("two_unpacks", y.n, t[0].n, k + j)
 void two_unpacks() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
-    auto __tup_2 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    int32_t j = std::get<1>(__tup_2);
+    Box& x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
+    Box& y = std::get<0>(t);
+    int32_t j = std::get<1>(t);
     x.n = 9;
     std::cout << "two_unpacks" << " " << y.n << " " << std::get<0>(t).n << " " << (::tpy::add_check<int32_t>(k, j)) << "\n" << ::tpy::check_signals;
 }
@@ -117,9 +111,8 @@ void two_unpacks() {
 //     x.n = 9
 //     return p[0].n + k
 int32_t param_live(std::tuple<Box, int32_t>&& p) {
-    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(p)), std::get<1>(p)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = std::get<0>(p);
+    int32_t k = std::get<1>(p);
     x.n = 9;
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, k));
 }
@@ -131,9 +124,8 @@ int32_t param_live(std::tuple<Box, int32_t>&& p) {
 //     x.n = 9
 //     return p[0].n + k
 int32_t nocopy_param_live(std::tuple<NBox, int32_t>&& p) {
-    auto __tup_1 = std::tuple<NBox*, int32_t>{&(std::get<0>(p)), std::get<1>(p)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    NBox& x = std::get<0>(p);
+    int32_t k = std::get<1>(p);
     x.n = 9;
     return (::tpy::add_check<int32_t>(std::get<0>(p).n, k));
 }
@@ -149,9 +141,8 @@ int32_t nocopy_param_live(std::tuple<NBox, int32_t>&& p) {
 //     print("sink_off_live", y.n, k, t[1])
 void sink_off_live() {
     std::tuple<Box, int32_t> t = ::tpyapp::main::mk();
-    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     Box __tmp_1 = x;
     Box y = ::tpyapp::main::sink(std::move(__tmp_1));
     y.n = 9;
@@ -163,9 +154,8 @@ void sink_off_live() {
 //     x, k = p  # tpyc: ok
 //     return sink(x).n + k
 int32_t param_consumed(std::tuple<Box, int32_t>&& p) {
-    auto&& __tup_1 = std::move(p);
-    Box x = std::move(std::get<0>(__tup_1));
-    int32_t k = std::get<1>(__tup_1);
+    Box x = std::move(std::get<0>(p));
+    int32_t k = std::get<1>(p);
     return (::tpy::add_check<int32_t>(::tpyapp::main::sink(std::move(x)).n, k));
 }
 
@@ -200,9 +190,8 @@ void relayed_call() {
 //     a.n = 9
 //     print("unpack_borrow_global", V.n, b)
 void unpack_borrow_global() {
-    auto& __tup_1 = pair_g;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t b = std::get<1>(__tup_1);
+    Box& a = (*std::get<0>(pair_g));
+    int32_t b = std::get<1>(pair_g);
     a.n = 9;
     std::cout << "unpack_borrow_global" << " " << V->n << " " << b << "\n" << ::tpy::check_signals;
 }
@@ -256,9 +245,8 @@ void __tpy_init() {
     static Box __global_slot_1 = std::move(std::get<0>(__tup_1));
     std::get<0>(tg) = &__global_slot_1;
     std::get<1>(tg) = std::move(std::get<1>(__tup_1));
-    auto& __tup_2 = tg;
-    gx = std::get<0>(__tup_2);
-    gk = std::get<1>(__tup_2);
+    gx = std::get<0>(tg);
+    gk = std::get<1>(tg);
     gx->n = 9;
     static Box __global_slot_2 = Box(5);
     V = &__global_slot_2;

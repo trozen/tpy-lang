@@ -126,9 +126,8 @@ void aug_local() {
 //     print("unpack global:", first, cnt)
 void unpack_local() {
     auto inner = []() {
-        const auto& __tup_1 = pair;
-        int32_t first = std::get<0>(__tup_1);
-        int32_t cnt = std::get<1>(__tup_1);
+        int32_t first = std::get<0>(pair);
+        int32_t cnt = std::get<1>(pair);
         std::cout << "unpack:" << " " << first << " " << cnt << "\n" << ::tpy::check_signals;
     };
     inner();

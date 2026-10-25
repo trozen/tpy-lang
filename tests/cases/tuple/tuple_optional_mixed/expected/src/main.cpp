@@ -18,10 +18,9 @@ std::tuple<T*, int32_t, T*> f(T& a, T& b) {
 //     if b is not None:
 //         print(b.x)
 void show(const std::tuple<const T*, int32_t, const T*>& p) {
-    auto& __tup_1 = p;
-    const T* a = std::get<0>(__tup_1);
-    int32_t n = std::get<1>(__tup_1);
-    const T* b = std::get<2>(__tup_1);
+    const T* a = std::get<0>(p);
+    int32_t n = std::get<1>(p);
+    const T* b = std::get<2>(p);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     }

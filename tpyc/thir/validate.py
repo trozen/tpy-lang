@@ -71,35 +71,33 @@ from .scalar_leaves import (
     modeled_ancestors, native_container_subject, native_container_type, optional_record_field, owned_leaf,
     plain_record_element, readonly_elements, storage_leaf,
 )
-from .nodes import (
-    FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
-    THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
-    THIRCtorCall, THIRDelItem, THIRErrorReturnBind, THIRErrorReturnDiscard,
-    THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
-    THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
-    THIRIfExpr, THIRMethodCall, declared_param_type, effective_params,
-    THIRNode, THIRName, THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
-    THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
-    THIRFinallyDeferredReturn, DeferredPartKind,
-    THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack, THIRCoroHandleMove, THIRMatch,
-    THIRMatchBinding, THIRMatchFoldBind, THIRWith, THIRWithItem,
-    WithTargetArm,
-    THIRFrameSlotWrite, TupleElemBind, UnpackBind,
-    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
-    THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
-    THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
-    THIROwnedRecord, THIRStoragePlacement, THIRTupleStorageAlias,
-    THIRNativeContainer, THIRNativeIteration, THIRForEach, THIRForRange,
-    THIROptionalLayout, THIROptionalRead,
-    THIRUnionLayout, THIRUnionTest, THIRUnionExtraction, THIRUnionLiteral, THIRWrapperDefault,
-    THIRIsinstance, THIRNarrowAlias, THIRNarrowedRead,
-    THIRResolvedCallee, THIRFunctionIdentity, THIRCallableSignature,
-    THIRStubCallee, THIRStubContract, THIRStubIdentity,
+from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
+    THIRCall, THIRChainedCompareStmtExpr, THIRCoerce, THIRConstructor,
+    THIRCopy, THIRMove, THIRCtorCall, THIRDelItem, THIRErrorReturnBind,
+    THIRErrorReturnDiscard, THIRErrorReturnUnwrap, THIRExprStmt,
+    THIRFieldAccess, THIRFieldIdentity, THIRFormConvert, THIRBinOp, THIRExpr,
+    THIRForIterProto, THIRFunction, THIRIf, THIRIfExpr, THIRMethodCall,
+    declared_param_type, effective_params, THIRNode, THIRName,
+    THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus,
+    THIRGlobalBinding, THIRPrint, THIRRaise, THIRReturn, THIRSetItem,
+    THIRSliceAssign, THIRFinallyDeferredReturn, DeferredPartKind,
+    THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack,
+    THIRCoroHandleMove, THIRMatch, THIRMatchBinding, THIRMatchFoldBind,
+    THIRWith, THIRWithItem, WithTargetArm, THIRFrameSlotWrite, TupleElemBind,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf,
+    PtrSlotKind, THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
+    THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral,
+    THIRTupleLayout, THIROwnedRecord, THIRStoragePlacement,
+    THIRTupleStorageAlias, THIRNativeContainer, THIRNativeIteration,
+    THIRForEach, THIRForRange, THIROptionalLayout, THIROptionalPtrArg,
+    THIROptionalRead, THIRUnionLayout, THIRUnionTest, THIRUnionExtraction,
+    THIRUnionLiteral, THIRWrapperDefault, THIRIsinstance, THIRNarrowAlias,
+    THIRNarrowedRead, THIRResolvedCallee, THIRFunctionIdentity,
+    THIRCallableSignature, THIRStubCallee, THIRStubContract, THIRStubIdentity,
     THIRLambda, THIRNestedDef, THIRClosureIdentity, THIRClosureKind,
     THIRCapture, THIRCaptureSlot, THIRCaptureSourceKind, THIRCaptureRelation,
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
-    hoists_declaration, record_rvalue_storage,
-)
+    hoists_declaration, record_rvalue_storage)
 from .source import UNBOUND
 from .temp_plan import if_chain
 
@@ -477,9 +475,6 @@ _LOWERED: ContextVar[bool] = ContextVar("thir_validate_lowered", default=False)
 _UNION_SLOT_KINDS = frozenset({PtrSlotKind.UNION_NONE, PtrSlotKind.UNION_RVALUE,
                                PtrSlotKind.UNION_INLINE_SLOT,
                                PtrSlotKind.UNION_ADDR})
-_POINTER_UNPACK_BINDS = frozenset({
-    UnpackBind.PTR, UnpackBind.OPT_PTR, UnpackBind.FRAME_PTR_ELEM,
-    UnpackBind.FRAME_OPT_PTR, UnpackBind.FRAME_REBIND_PTR})
 
 
 def _contract_problem(node: object, rec) -> 'str | None':
@@ -601,14 +596,8 @@ def _check_binding_contracts(owner: str, node: object) -> None:
         recs = node.bindings or (None,) * len(node.targets)
         if len(recs) != len(node.targets):
             _contract_fail(owner, node, "one record per unpack target")
-        for i, (n, rec) in enumerate(zip(node.targets, recs)):
+        for n, rec in zip(node.targets, recs):
             _check_contract(owner, node, n, rec)
-            bind = node.binds[i] if i < len(node.binds) else None
-            if rec is not None and n is not None and rec is not UNBOUND:
-                if bind in _POINTER_UNPACK_BINDS and not rec.pointer:
-                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.label}) bound {bind} is no pointer")
-                if bind is UnpackBind.FRAME_EMPLACE and not rec.frame_slot:
-                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.label}) emplaced is no frame slot")
     elif isinstance(node, THIRWith):
         for item in node.items:
             _check_contract(owner, item, item.target, item.binding)
@@ -1296,11 +1285,13 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRTupleUnpack):
         # Every holder form that renders an expression source flushes its
         # temps before the `__tup_N` line, so the source is a flushable
-        # value position.
+        # value position; each per-target write is a statement of its own.
+        if node.holder is not None:
+            _walk(owner, node.holder, return_type, argtemp_ok=True)
+        for write in node.writes:
+            _walk(owner, write, return_type)
         if node.source_expr is not None:
             _walk(owner, node.source_expr, return_type, argtemp_ok=True)
-        if node.source_lent is not None:
-            _walk(owner, node.source_lent.lent, return_type)
         return
     if isinstance(node, (THIRIf, THIRWhile)):
         # Conditions are flushable: _emit_if flushes before the `if (` /
@@ -1610,14 +1601,18 @@ def _loop_sources(node: 'THIRForEach | THIRForIterProto | THIRForRange'
 
 def _own_flush_children(node: THIRNode) -> 'tuple[THIRNode, ...]':
     """The children of `node` that flush their own temps: every statement of
-    a comprehension's body, and an Array range comprehension's element
-    (flushed inside its per-index lambda). A comprehension's first loop
-    source does not: `_check_no_statement_temp` reaches it separately."""
+    a comprehension's body, an Array range comprehension's element (flushed
+    inside its per-index lambda) and an Array source comprehension's
+    head. A comprehension's first loop source does not:
+    `_check_no_statement_temp` reaches it separately."""
     if isinstance(node, THIRComprehensionBlock):
         return node.body
     if (isinstance(node, THIRArrayComprehension) and node.arm == "range"
             and node.element is not None):
         return (node.element,)
+    if isinstance(node, THIRArrayComprehension) and node.head is not None:
+        # The source arm's unpack head is a statement of the lambda body.
+        return (node.head,)
     return ()
 
 
@@ -1634,6 +1629,9 @@ def _check_lambda_bound(owner: str, node: THIRTupleLiteral) -> None:
         elif isinstance(e, THIRSubscript) and e.tuple_index is not None:
             body(e.receiver)
         elif isinstance(e, (THIRFormConvert, THIRMove)):
+            body(e.value)
+        elif isinstance(e, THIROptionalPtrArg) and e.value is not None:
+            # An element addressed into its pointer slot.
             body(e.value)
         elif isinstance(e, THIRTupleLiteral) and e.bound is None:
             for element in e.elements:

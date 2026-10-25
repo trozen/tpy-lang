@@ -25,9 +25,8 @@ int32_t nested_range(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_1 = *__beg_1;
-            const auto& __tup_1 = __for_tup_1;
-            i = std::get<0>(__tup_1);
-            int32_t j = std::get<1>(__tup_1);
+            i = std::get<0>(__for_tup_1);
+            int32_t j = std::get<1>(__for_tup_1);
             total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(i, j)));
         }
         total = ::tpy::add_check<int32_t>(total, i);
@@ -56,9 +55,8 @@ int32_t nested_container(const std::vector<std::tuple<int32_t, int32_t>>& pairs)
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_2 = *__beg_1;
-            const auto& __tup_1 = __for_tup_2;
-            i = std::get<0>(__tup_1);
-            int32_t j = std::get<1>(__tup_1);
+            i = std::get<0>(__for_tup_2);
+            int32_t j = std::get<1>(__for_tup_2);
             total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(i, j)));
         }
         total = ::tpy::add_check<int32_t>(total, i);
@@ -80,9 +78,8 @@ int32_t plain_local(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_3 = *__beg_0;
-        const auto& __tup_1 = __for_tup_3;
-        i = std::get<0>(__tup_1);
-        int32_t j = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_3);
+        int32_t j = std::get<1>(__for_tup_3);
         total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(i, j)));
     }
     return (::tpy::add_check<int32_t>(total, i));
@@ -125,9 +122,8 @@ __gen_gen gen(const std::vector<std::tuple<int32_t, int32_t>>& pairs) {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_5 = *((*__for_it_0))++;
-        const auto& __tup_1 = __for_tup_5;
-        i = std::get<0>(__tup_1);
-        j = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_5);
+        j = std::get<1>(__for_tup_5);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

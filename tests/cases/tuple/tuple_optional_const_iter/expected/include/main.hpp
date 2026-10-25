@@ -88,9 +88,8 @@ inline void Holder::show_all_unpack() const {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__for_tup_0)), ::tpy::optional_to_ptr(std::get<1>(__for_tup_0))};
-        const T* a = std::get<0>(__tup_1);
-        const T* b = std::get<1>(__tup_1);
+        const T* a = ::tpy::optional_to_ptr(std::get<0>(__for_tup_0));
+        const T* b = ::tpy::optional_to_ptr(std::get<1>(__for_tup_0));
         if ((a != nullptr)) {
             std::cout << a->x << "\n" << ::tpy::check_signals;
         }

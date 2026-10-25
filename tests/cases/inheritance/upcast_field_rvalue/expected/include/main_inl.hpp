@@ -15,12 +15,12 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        h.plain = Dog("g-plain");
+        h.plain = static_cast<Pet&&>(Dog("g-plain"));
         __state = S_RESUME_0;
         return ::tpy::BigInt(1);
     }
     case S_RESUME_0: {  // after: yield 1
-        h.opt = Dog("g-opt");
+        h.opt = static_cast<Pet&&>(Dog("g-opt"));
         __state = S_RESUME_1;
         return ::tpy::BigInt(2);
     }

@@ -9,9 +9,8 @@ namespace tpyapp::main {
 //     if a is not None:
 //         a.x = a.x + 100
 void inner(const std::tuple<T*, T*>& p) {
-    auto& __tup_1 = p;
-    T* a = std::get<0>(__tup_1);
-    T* b = std::get<1>(__tup_1);
+    T* a = std::get<0>(p);
+    T* b = std::get<1>(p);
     if ((a != nullptr)) {
         a->x = (::tpy::add_check<int32_t>(a->x, 100));
     }

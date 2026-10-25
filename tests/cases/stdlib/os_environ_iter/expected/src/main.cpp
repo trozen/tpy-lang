@@ -89,9 +89,8 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         const auto& __for_tup_0 = *__beg_3;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
-        std::string_view v = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_0);
+        std::string_view v = std::get<1>(__for_tup_0);
         if (::tpy::str_startswith(k, _PREFIX)) {
             pairs.push_back((::tpy::str_concat((::tpy::str_concat(k, "=")), v)));
         }
@@ -104,9 +103,8 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         const auto& __for_tup_1 = *__beg_4;
-        const auto& __tup_2 = __for_tup_1;
-        std::string_view k = std::get<0>(__tup_2);
-        std::string_view v = std::get<1>(__tup_2);
+        std::string_view k = std::get<0>(__for_tup_1);
+        std::string_view v = std::get<1>(__for_tup_1);
         if (::tpy::str_startswith(k, _PREFIX)) {
             vals.push_back(std::string(v));
         }

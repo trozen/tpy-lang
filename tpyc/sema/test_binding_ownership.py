@@ -6,8 +6,9 @@ site's -- and which binding a name read resolves to (`resolve_read`)."""
 
 from __future__ import annotations
 
-from ..parse.nodes import (TpyForEach, TpyFunction, TpyLambda,
-                           TpyListComprehension, TpyName, TpyVarDecl,
+from ..parse.nodes import (TpyDictComprehension, TpyForEach, TpyFunction,
+                           TpyLambda, TpyListComprehension, TpyName,
+                           TpyVarDecl,
                            TpyNestedDef, TpyTupleUnpack, walk_body_stmts,
                            walk_expr_tree)
 from ..thir.testutil import _compile, _entry
@@ -777,3 +778,327 @@ def return_tier(k: int32) -> int32:
     reads = [n for n in _nodes(f["return_tier"], TpyName) if n.name == "X"]
     assert reads and all(
         ctx.read_bindings[r].kind is ReadKind.MODULE for r in reads)
+
+
+_STEPS = """\
+from typing import Iterable
+from tpy import copy_iter, nocopy
+def whole() -> Iterator[Own[tuple[A, int32]]]:
+    yield (A(1), 1)
+def elem() -> Iterator[tuple[Own[A], int32]]:
+    yield (A(1), 1)
+def lent(xs: list[A]) -> Iterator[tuple[A, int32]]:
+    yield (xs[0], 1)
+def scalar() -> Iterator[Own[A]]:
+    yield A(1)
+class Next:
+    i: int32
+    def __init__(self) -> None:
+        self.i = 0
+    def __iter__(self) -> "Next":
+        return self
+    def __next__(self) -> tuple[Own[A], int32]:
+        self.i += 1
+        if self.i > 1:
+            raise StopIteration
+        return (A(1), 1)
+class ANext:
+    i: int32
+    def __init__(self) -> None:
+        self.i = 0
+    def __aiter__(self) -> "ANext":
+        return self
+    async def __anext__(self) -> tuple[Own[A], int32]:
+        self.i += 1
+        if self.i > 1:
+            raise StopAsyncIteration
+        return (A(1), 1)
+def loops(ps: list[tuple[Own[A], int32]], ys: list[Own[A]],
+          src: Iterable[Own[tuple[A, int32]]], qs: list[tuple[A, int32]],
+          d: dict[str, A]) -> None:
+    for a1, n1 in whole():
+        print(n1)
+    for a2, n2 in elem():
+        print(n2)
+    for a3, n3 in lent([A(1)]):
+        print(n3)
+    for a4 in scalar():
+        print(a4.v)
+    for a5, n5 in Next():
+        print(n5)
+    for a6, n6 in ps:
+        print(n6)
+    for a7 in ys:
+        print(a7.v)
+    for a8, n8 in src:
+        print(n8)
+    zs: list[tuple[A, int32]] = []
+    zs.append((A(1), 1))
+    for a9, n9 in own_iter(zs):
+        print(n9)
+    for a10, n10 in copy_iter(qs):
+        print(n10)
+    for i11, a11 in enumerate(ps):
+        print(i11)
+    for i12, a12 in enumerate(elem()):
+        print(i12)
+    for k13, a13 in d.items():
+        print(k13)
+    for a15, n15 in zip(elem(), qs):
+        print(n15)
+    it16 = iter(ps)
+    for a16 in it16:
+        print(a16[1])
+    it17 = scalar()
+    for a17 in it17:
+        print(a17.v)
+    for a18 in (scalar() if len(ys) > 0 else scalar()):
+        print(a18.v)
+async def aloop() -> None:
+    async for a14, n14 in ANext():
+        print(n14)
+"""
+
+
+def test_step_handover_paths_by_iteration_source() -> None:
+    # What a step hands over is what the iterator's own declaration writes:
+    # a whole `Own` every leaf, an `Own` element marker its subtree, an
+    # `own_iter` every leaf; a container's iteration nothing whatever `Own`
+    # its element spells, a `copy_iter` nothing, and a marker arriving by
+    # substitution (`enumerate` / `zip` over an `Own`-element source, a
+    # name bound to `iter(...)` of one) nothing; a local name only a whole
+    # `Own` step, a select what both arms hand over.
+    _compiler, modules = _compile(_PRELUDE + _STEPS)
+    entry = _entry(modules)
+    fns = {f.name: f for f in entry.ast.functions}
+    loops = (_nodes(fns["loops"], TpyForEach)
+             + _nodes(fns["aloop"], TpyForEach))
+    by_target = {}
+    for s in loops:
+        head = s.head_unpack()
+        name = head.targets[0] if head is not None else s.var
+        by_target[name] = s
+    expected = {
+        "a1": {(0,), (1,)},       # Own[tuple]: every leaf
+        "a2": {(0,)},             # tuple[Own[A], int32]: the marked element
+        "a3": set(),              # a lending generator hands over nothing
+        "a4": {()},               # Iterator[Own[A]]: the scalar's one leaf
+        "a5": {(0,)},             # a user `__next__`'s declared marker
+        "a6": set(),              # a lent container's `Own` element
+        "a7": set(),              # a lent `list[Own[A]]`
+        "a8": {(0,), (1,)},       # an `Iterable[Own[tuple]]` parameter
+        "a9": {(0,), (1,)},       # own_iter: every leaf
+        "a10": set(),             # copy_iter
+        "i11": set(),             # enumerate over a lent container
+        "i12": set(),             # an `Own` arriving by substitution
+        "k13": set(),             # dict items
+        "a14": {(0,)},            # `__anext__`'s declared marker
+        "a15": set(),             # zip over an `Own`-element generator
+        "a16": set(),             # a name bound to `iter(...)` of a lent
+                                  # `Own`-element list, as its call
+        "a17": {()},              # a local over a whole `Own` step
+        "a18": {()},              # a select of two generators: what both
+                                  # arms hand over
+    }
+    for name, paths in expected.items():
+        s = by_target[name]
+        assert set(s.step_handover) == paths, name
+        head = s.head_unpack()
+        if head is not None:
+            assert head.step_handover == s.step_handover, name
+
+
+def test_a_name_hands_over_what_its_signature_writes() -> None:
+    # A name's step hands over only what a parameter's annotation writes: a
+    # local's type may carry an `Own` by substitution (`iter(xs)` over a
+    # lent `Own`-element list) or arrive bound from a call.
+    ctx, fns = _module("""\
+from typing import Iterable
+def elem() -> Iterator[tuple[Own[A], int32]]:
+    yield (A(1), 1)
+def f(xs: list[tuple[Own[A], int32]],
+      src: Iterable[tuple[Own[A], int32]]) -> None:
+    it = iter(xs)
+    for a1, n1 in it:
+        print(n1)
+    for a2, n2 in src:
+        print(n2)
+    g = elem()
+    for a4, n4 in g:
+        print(n4)
+""")
+    handed = {s.head_unpack().targets[0]: set(s.step_handover)
+              for s in _nodes(fns["f"], TpyForEach)}
+    assert handed == {"a1": set(), "a2": {(0,)}, "a4": set()}
+
+
+def test_written_type_arguments_count_as_the_signature() -> None:
+    # A type argument the call writes counts as the declared return does
+    # (`gen[Own[A]]`, a free function or a generic record's method); an
+    # inferred one and one binding a CLASS type parameter substitute
+    # nothing. The inferred row takes the tuple shape: a scalar
+    # `gen(ys)` over `list[Own[A]]` is refused
+    # (BUGS.md#generic-call-own-list-arg-infers-bare).
+    ctx, fns = _module("""\
+class It[U]:
+    xs: list[U]
+    i: int32
+    def __init__(self, xs: list[U]) -> None:
+        self.xs = xs
+        self.i = 0
+    def __iter__(self) -> "It[U]":
+        return self
+    def __next__(self) -> U:
+        if self.i >= len(self.xs):
+            raise StopIteration
+        self.i += 1
+        return self.xs[self.i - 1]
+class G[U]:
+    def __init__(self, u: U) -> None:
+        self.u = u
+    def each[T](self, xs: list[T]) -> Iterator[T]:
+        for x in xs:
+            yield x
+    @staticmethod
+    def wrap(xs: list[U]) -> Own[It[U]]:
+        return It(xs)
+def gen[T](xs: list[T]) -> Iterator[T]:
+    for x in xs:
+        yield x
+def f(ys: list[Own[A]], ps: list[tuple[Own[A], int32]]) -> None:
+    for e1 in gen[Own[A]](ys):
+        print(e1.v)
+    for e2, n2 in gen(ps):
+        print(n2)
+    g = G(1)
+    for e4 in g.each[Own[A]](ys):
+        print(e4.v)
+    for e5 in G.wrap[Own[A]](ys):
+        print(e5.v)
+""")
+    handed = {}
+    for s in _nodes(fns["f"], TpyForEach):
+        head = s.head_unpack()
+        handed[head.targets[0] if head is not None else s.var] = set(
+            s.step_handover)
+    assert handed == {
+        "e1": {()},     # an explicit `Own` type argument: the whole step
+        "e2": set(),    # an inferred `tuple[Own[A], int32]`
+        "e4": {()},     # a generic record's method's own type parameter
+        "e5": set(),    # a class type parameter stays unsubstituted
+    }
+
+
+def test_head_targets_own_what_the_step_hands_over() -> None:
+    # A head target owns the element its step hands over whole; a lent
+    # container's `Own` element is referred to (the loop's site does not
+    # own it either), as is a scalar loop variable over a lent
+    # `list[Own[A]]`.
+    ctx, fns = _module(_STEPS)
+    heads = {h.targets[0]: h for h in _nodes(fns["loops"], TpyTupleUnpack)}
+    assert heads["a1"].is_owned == [True, False]
+    assert heads["a2"].is_owned == [True, False]
+    assert heads["a6"].is_owned == [False, False]
+    assert heads["a6"].is_ref == [True, False]
+    assert heads["a9"].is_owned == [True, False]
+    assert site_ownership(ctx, heads["a2"], "a2").acquired is (
+        Acquired.OWN_ELEMENT)
+    loops = {s.var: s for s in _nodes(fns["loops"], TpyForEach)}
+    assert not site_ownership(ctx, loops["a7"], "a7")
+    own4 = site_ownership(ctx, loops["a4"], "a4")
+    assert own4.acquired is Acquired.OWN_ELEMENT
+
+
+_CLAUSES = """\
+from tpy import nocopy
+def whole() -> Iterator[Own[tuple[A, int32]]]:
+    yield (A(1), 1)
+def elem() -> Iterator[tuple[Own[A], int32]]:
+    yield (A(1), 1)
+def two() -> Iterator[Own[tuple[A, A]]]:
+    yield (A(1), A(2))
+def scalar() -> Iterator[Own[A]]:
+    yield A(1)
+def clauses(ps: list[tuple[Own[A], int32]], ys: list[Own[A]]) -> None:
+    c1 = [a1.v + n1 for a1, n1 in whole()]
+    c2 = [a2 for a2, n2 in elem()]
+    c3 = [a3 for a3, n3 in ps]
+    c4 = [a4 for a4 in ys]
+    c5 = [a5 for a5, a5 in two()]
+    c6 = {a6.v: a6 for a6, n6 in elem()}
+    c7 = [a7 for a7 in scalar()]
+    print(len(c1), len(c2), len(c3), len(c4), len(c5), len(c6), len(c7))
+"""
+
+
+def _comp_reads(comp, name: str) -> list:
+    out: list = []
+
+    def visit(e) -> bool:
+        if isinstance(e, TpyName) and e.name == name:
+            out.append(e)
+        return True
+    for sink in comp.children():
+        walk_expr_tree(sink, visit)
+    return out
+
+
+def test_clause_heads_own_what_the_step_hands_over() -> None:
+    # A comprehension clause stamps what each step hands over, as a for
+    # statement does (`step_handover_paths`), and its unpack head carries
+    # the one per-target record: a target owns the element its step hands
+    # over whole and the last sink moves it; a lent container's `Own`
+    # element is referred to, never moved; `a5, a5` owns its last element;
+    # a dict's key reads its target before the value moves it.
+    ctx, fns = _module(_CLAUSES)
+    comps = {c.generators[0].targets[0]: c
+             for c in _nodes(fns["clauses"], TpyListComprehension)}
+    comps.update({c.generators[0].targets[0]: c
+                  for c in _nodes(fns["clauses"], TpyDictComprehension)})
+    expected = {
+        "a1": {(0,), (1,)},    # Own[tuple]: every leaf, taken apart
+        "a2": {(0,)},          # the marked element
+        "a3": set(),           # a lent container's `Own` element
+        "a4": set(),           # a lent `list[Own[A]]`
+        "a5": {(0,), (1,)},
+        "a6": {(0,)},
+        "a7": {()},            # the scalar's one leaf
+    }
+    for name, paths in expected.items():
+        gen = comps[name].generators[0]
+        assert set(gen.step_handover) == paths, name
+        if gen.head is not None:
+            assert gen.head.step_handover == gen.step_handover, name
+    heads = {n: comps[n].generators[0].head
+             for n in ("a1", "a2", "a3", "a5", "a6")}
+    assert heads["a1"].is_owned == [True, False]
+    assert heads["a2"].is_owned == [True, False]
+    assert heads["a3"].is_owned == [False, False]
+    assert heads["a3"].is_ref == [True, False]
+    assert heads["a5"].is_owned == [True, True]
+    gen2 = comps["a2"].generators[0]
+    for site in (gen2, gen2.head):
+        assert site_ownership(ctx, site, "a2").acquired is (
+            Acquired.OWN_ELEMENT)
+    assert not site_ownership(ctx, comps["a3"].generators[0], "a3")
+    assert not site_ownership(ctx, comps["a4"].generators[0], "a4")
+    assert site_ownership(ctx, comps["a7"].generators[0], "a7").acquired is (
+        Acquired.OWNING_CLAUSE)
+    for name, moves in (("a2", CompMove.LAST_SINK), ("a3", None),
+                        ("a4", None), ("a5", CompMove.LAST_SINK),
+                        ("a7", CompMove.LAST_SINK)):
+        read, = _comp_reads(comps[name], name)
+        assert ctx.comp_moves.get(read) is moves, name
+    key, value = (comps["a6"].key_expr, comps["a6"].value_expr)
+    assert ctx.comp_moves.get(value) is CompMove.LAST_SINK
+    assert not any(ctx.comp_moves.get(r) for r in _comp_reads_expr(key))
+
+
+def _comp_reads_expr(e) -> list:
+    out: list = []
+
+    def visit(x) -> bool:
+        out.append(x)
+        return True
+    walk_expr_tree(e, visit)
+    return out

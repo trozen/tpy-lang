@@ -26,9 +26,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         const auto& __for_tup_0 = *__beg_1;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
-        int32_t n = std::get<1>(__tup_1);
+        std::string_view k = std::get<0>(__for_tup_0);
+        int32_t n = std::get<1>(__for_tup_0);
         std::cout << k << " " << n << "\n" << ::tpy::check_signals;
     }
 }

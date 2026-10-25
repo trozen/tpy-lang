@@ -1382,9 +1382,9 @@ inline date date::fromisoformat(std::string_view date_string) {
     {
         try {
             auto __tup_1 = ::tpystd::_datetime_parse::_parse_iso_date(date_string);
-            y = std::get<0>(__tup_1);
-            mo = std::get<1>(__tup_1);
-            d = std::get<2>(__tup_1);
+            y = std::move(std::get<0>(__tup_1));
+            mo = std::move(std::get<1>(__tup_1));
+            d = std::move(std::get<2>(__tup_1));
             return date(y, mo, d);
         } catch (const ::tpy::ValueError&) {
             throw ::tpy::ValueError(std::format("Invalid isoformat string: '{}'", date_string));

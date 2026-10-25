@@ -1,0 +1,12 @@
+init 7 7 7
+put 8 8 8
+widen 9
+widen_opt 6 0
+widen_owned 3 1
+ret_opt_moved 5
+list 8
+list_opt 1 8 8
+own_init 3
+fresh_write 4
+list_moved 2
+list_fresh 6

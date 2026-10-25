@@ -636,9 +636,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_unpack_after::__ne
         auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
         std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
-        auto& __tup_3 = p;
-        x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3))));
-        y = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3))));
+        x = std::get<0>(p);
+        y = std::get<1>(p);
         x->n = ::tpy::add_check<int32_t>(x->n, 100);
         __state = S_RESUME_0;
         return std::get<0>(p)->n;
@@ -883,17 +882,16 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_unpack_holder::__n
         auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
         std::get<0>(p) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
         std::get<1>(p) = std::get<1>(__tup_1);
-        auto& __tup_2 = p;
-        x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
-        y = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2))));
+        x = std::get<0>(p);
+        y = std::get<1>(p);
         __state = S_RESUME_0;
         return x->n;
     }
     case S_RESUME_0: {  // after: yield x.n
         if (c) {
-            auto __tup_3 = ::tpyapp::main::make_mixed(9, v);
-            std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_3)));
-            std::get<1>(p) = std::get<1>(__tup_3);
+            auto __tup_2 = ::tpyapp::main::make_mixed(9, v);
+            std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(p) = std::get<1>(__tup_2);
         }
         x->n = ::tpy::add_check<int32_t>(x->n, 100);
         __state = S_RESUME_1;
@@ -1210,9 +1208,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_enumerate_ints::__
             return ::tpy::__getitem__(std::get<0>(t)->ns, 0);
         }
         __for_tup_1 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_3 = __for_tup_1;
-        i = std::get<0>(__tup_3);
-        x = std::get<1>(__tup_3);
+        i = std::get<0>(__for_tup_1);
+        x = std::get<1>(__for_tup_1);
         __state = S_RESUME_0;
         return (::tpy::mul_check<int32_t>(x, (::tpy::add_check<int32_t>(i, 1))));
     }
@@ -1251,13 +1248,12 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_enumerate_rebind_i
             return ::tpy::__getitem__(std::get<0>(t)->ns, 0);
         }
         __for_tup_3 = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_2 = __for_tup_3;
-        i = std::get<0>(__tup_2);
-        x = std::get<1>(__tup_2);
+        i = std::get<0>(__for_tup_3);
+        x = std::get<1>(__for_tup_3);
         if (c) {
-            auto __tup_3 = std::tuple<N, int32_t>{N(10), 6};
-            std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_3)));
-            std::get<1>(t) = std::move(std::get<1>(__tup_3));
+            auto __tup_2 = std::tuple<N, int32_t>{N(10), 6};
+            std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
         return (::tpy::mul_check<int32_t>(x, (::tpy::add_check<int32_t>(i, 1))));
@@ -1576,7 +1572,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_unpack_mixed::__ne
         __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
         a.emplace(std::move(std::get<0>(__tup_1)));
-        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        b = std::get<1>(__tup_1);
         __state = S_RESUME_0;
         return (*a).n;
     }
@@ -1658,7 +1654,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_untracked_call_unp
         std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
         std::get<1>(t) = std::move(std::get<1>(__tup_1));
         auto __tup_2 = ::tpyapp::main::pick_box(::tpy::__getitem__(std::get<0>(t)->xs, 1));
-        saved = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
+        saved = std::get<0>(__tup_2);
         k = std::get<1>(__tup_2);
         __state = S_RESUME_0;
         return saved->n;

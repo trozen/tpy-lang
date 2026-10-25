@@ -22,8 +22,8 @@ std::tuple<::tpy::BigInt, Box*> pick(std::vector<Box>& items, const ::tpy::BigIn
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pick(items, ::tpy::BigInt(0));
-        tag = std::get<0>(__tup_1);
-        it = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        tag = std::move(std::get<0>(__tup_1));
+        it = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

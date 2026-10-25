@@ -129,12 +129,10 @@ inline N::N(const ::tpy::ordered_map<int32_t, int32_t>& d) : t(std::tuple<int32_
 //     c, s = b
 //     return c
 inline int32_t N::inner() const {
-    auto __tup_1 = this->t;
-    int32_t a = std::get<0>(__tup_1);
-    const std::tuple<int32_t, std::string>& b = std::get<1>(__tup_1);
-    const auto& __tup_2 = b;
-    int32_t c = std::get<0>(__tup_2);
-    std::string_view s = std::get<1>(__tup_2);
+    int32_t a = std::get<0>(this->t);
+    std::tuple<int32_t, std::string> b = std::get<1>(this->t);
+    int32_t c = std::get<0>(b);
+    std::string_view s = std::get<1>(b);
     return c;
 }
 void __tpy_init();

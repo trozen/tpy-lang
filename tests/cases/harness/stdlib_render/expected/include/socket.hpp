@@ -419,9 +419,8 @@ inline std::optional<double> socket::gettimeout() const {
 //     if posix_socket.bind(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
 //         _raise_errno()
 inline void socket::bind(const std::tuple<std::string, int32_t>& address) const {
-    const auto& __tup_1 = address;
-    std::string_view host = std::get<0>(__tup_1);
-    int32_t port = std::get<1>(__tup_1);
+    std::string_view host = std::get<0>(address);
+    int32_t port = std::get<1>(address);
     ::sockaddr_in addr = ::tpystd::socket::_build_sockaddr_in(host, port);
     if ((::bind(this->fd, &addr, _SOCKADDR_IN_LEN) < 0)) {
         ::tpystd::socket::_raise_errno();
@@ -438,9 +437,8 @@ inline void socket::bind(const std::tuple<std::string, int32_t>& address) const 
 //     elif posix_socket.connect(self.fd, take_ptr(addr), _SOCKADDR_IN_LEN) < int32(0):
 //         self._raise_io()
 inline void socket::connect(const std::tuple<std::string, int32_t>& address) const {
-    const auto& __tup_1 = address;
-    std::string_view host = std::get<0>(__tup_1);
-    int32_t port = std::get<1>(__tup_1);
+    std::string_view host = std::get<0>(address);
+    int32_t port = std::get<1>(address);
     ::sockaddr_in addr = ::tpystd::socket::_build_sockaddr_in(host, port);
     if ((this->_timeout != 0.0)) {
         this->_connect_waiting(&addr);

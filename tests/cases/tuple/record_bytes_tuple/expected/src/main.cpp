@@ -181,7 +181,7 @@ void main() {
     ::tpyapp::main::show(t);
     std::cout << "param_after" << " " << r.n << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpyapp::main::pair(r);
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    Rec& a = (*std::get<0>(__tup_1));
     ::tpy::Bytes s = std::move(std::get<1>(__tup_1));
     a.n = 3;
     std::cout << "unpack" << " " << r.n << " " << ::tpy::BytesPrinter(s) << "\n" << ::tpy::check_signals;
@@ -191,7 +191,7 @@ void main() {
     std::get<0>(lt)->n = 5;
     std::cout << "literal" << " " << r.n << " " << ::tpy::BytesPrinter(std::get<1>(lt)) << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::mix(r);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+    Rec& b = (*std::get<0>(__tup_2));
     auto&& o = std::move(std::get<1>(__tup_2));
     ::tpy::Bytes s3 = std::move(std::get<2>(__tup_2));
     b.n = 6;
@@ -226,9 +226,8 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_0 = *__beg_2;
-        auto __tup_3 = std::tuple<Rec*, ::tpy::BytesView>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
-        auto&& e0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
-        ::tpy::BytesView e1 = std::get<1>(__tup_3);
+        auto& e0 = std::get<0>(__for_tup_0);
+        ::tpy::BytesView e1 = std::get<1>(__for_tup_0);
         std::cout << "container" << " " << e0.n << " " << ::tpy::BytesPrinter(e1) << "\n" << ::tpy::check_signals;
     }
     std::vector<std::tuple<Rec, Rec, ::tpy::Bytes>> ys = std::vector<std::tuple<Rec, Rec, ::tpy::Bytes>>{};
@@ -267,9 +266,9 @@ void main() {
     std::cout << "string" << " " << r.n << " " << std::get<1>(st) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::sshow(st);
     std::cout << "string param_after" << " " << r.n << "\n" << ::tpy::check_signals;
-    auto __tup_4 = ::tpyapp::main::spair(r);
-    auto&& sa = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
-    const ::tpy::String& ss = std::get<1>(__tup_4);
+    auto __tup_3 = ::tpyapp::main::spair(r);
+    Rec& sa = (*std::get<0>(__tup_3));
+    const ::tpy::String& ss = std::get<1>(__tup_3);
     sa.n = 24;
     std::cout << "string unpack" << " " << r.n << " " << ss << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<Rec, ::tpy::String>> zs = std::vector<std::tuple<Rec, ::tpy::String>>{};
@@ -279,9 +278,8 @@ void main() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         auto&& __for_tup_1 = *__beg_4;
-        auto __tup_5 = std::tuple<Rec*, ::tpy::String>{&(std::get<0>(__for_tup_1)), std::get<1>(__for_tup_1)};
-        auto&& z0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_5)));
-        const ::tpy::String& z1 = std::get<1>(__tup_5);
+        auto& z0 = std::get<0>(__for_tup_1);
+        const auto& z1 = std::get<1>(__for_tup_1);
         std::cout << "string container" << " " << z0.n << " " << z1 << "\n" << ::tpy::check_signals;
     }
 }

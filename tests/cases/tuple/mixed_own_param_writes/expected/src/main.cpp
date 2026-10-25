@@ -87,9 +87,8 @@ __gen_gen_write gen_write(std::tuple<Tok, Box*> p) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        auto& __tup_1 = p;
-        a.emplace(std::move(std::get<0>(__tup_1)));
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        a.emplace(std::move(std::get<0>(p)));
+        c = std::get<1>(p);
         c->n = ::tpy::add_check<int32_t>(c->n, 1);
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpyapp::main::take(std::move((*a)));
@@ -183,9 +182,8 @@ void set_seven(Box& b) {
 //     c.n = 80
 //     return take(t)
 int32_t nocopy_unpack(std::tuple<Tok, Box*>&& p) {
-    auto& __tup_1 = p;
-    Tok t = std::move(std::get<0>(__tup_1));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Tok t = std::move(std::get<0>(p));
+    Box& c = (*std::get<1>(p));
     c.n = 80;
     return ::tpyapp::main::take(std::move(t));
 }
@@ -223,8 +221,7 @@ int32_t local_forward(Box& b) {
 //     return mixed_take(u)  # tpyc: ok
 int32_t local_unpack_forward(Box& b) {
     auto u = ::tpyapp::main::mk_tok(b);
-    auto& __tup_1 = u;
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& c = (*std::get<1>(u));
     c.n = ::tpy::add_check<int32_t>(c.n, 10);
     return ::tpyapp::main::mixed_take(std::move(u));
 }
@@ -309,9 +306,8 @@ int32_t closure_unpack(std::tuple<Box, Box*>&& p) {
     auto g = [&p]() -> int32_t {
         return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p)->n));
     };
-    auto& __tup_1 = p;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& a = std::get<0>(p);
+    Box& c = (*std::get<1>(p));
     a.n = 100;
     c.n = 101;
     return g();
@@ -329,9 +325,8 @@ int32_t closure_unpack_owned(std::tuple<Box, Box>&& p) {
     auto g = [&p]() -> int32_t {
         return (::tpy::add_check<int32_t>(std::get<0>(p).n, std::get<1>(p).n));
     };
-    auto __tup_1 = std::tuple<Box*, Box*>{&(std::get<0>(p)), &(std::get<1>(p))};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& a = std::get<0>(p);
+    Box& c = std::get<1>(p);
     a.n = 102;
     c.n = 103;
     return g();
@@ -349,9 +344,8 @@ int32_t closure_unpack_uncalled(std::tuple<Box, Box*>&& p) {
     auto g = [&p]() -> int32_t {
         return std::get<0>(p).n;
     };
-    auto& __tup_1 = p;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& a = std::get<0>(p);
+    Box& c = (*std::get<1>(p));
     a.n = 104;
     return a.n;
 }
@@ -551,9 +545,8 @@ int32_t use_taker(Taker& t) {
 //     a, c = p
 //     return take(a) + take(c)
 int32_t pair_take(std::tuple<Tok, Tok>&& p) {
-    auto&& __tup_1 = std::move(p);
-    Tok a = std::move(std::get<0>(__tup_1));
-    Tok c = std::move(std::get<1>(__tup_1));
+    Tok a = std::move(std::get<0>(p));
+    Tok c = std::move(std::get<1>(p));
     return (::tpy::add_check<int32_t>(::tpyapp::main::take(std::move(a)), ::tpyapp::main::take(std::move(c))));
 }
 

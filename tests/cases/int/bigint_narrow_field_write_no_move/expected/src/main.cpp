@@ -26,12 +26,12 @@ void main() {
 //     self.lo = lo
 Split::Split(const ::tpy::BigInt& total, const ::tpy::BigInt& extra) {
     auto __tup_1 = ::tpy::divmod_bigint(total, ::tpy::BigInt(60));
-    ::tpy::BigInt hi = std::get<0>(__tup_1);
-    ::tpy::BigInt lo = std::get<1>(__tup_1);
+    ::tpy::BigInt hi = std::move(std::get<0>(__tup_1));
+    ::tpy::BigInt lo = std::move(std::get<1>(__tup_1));
     lo = ((lo) + (extra));
     auto __tup_2 = ::tpy::divmod_bigint(lo, ::tpy::BigInt(60));
     const ::tpy::BigInt& carry = std::get<0>(__tup_2);
-    lo = std::get<1>(__tup_2);
+    lo = std::move(std::get<1>(__tup_2));
     hi = ((hi) + (carry));
     if ((hi > 1000)) {
         throw ::tpy::OverflowError("too large");

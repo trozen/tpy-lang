@@ -26,9 +26,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            const ::tpy::BigInt& i = std::get<0>(__tup_1);
-            auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            const auto& i = std::get<0>(__for_tup_0);
+            auto& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
             b.val = ((b.val) + (::tpy::BigInt(100)));
         }
     }

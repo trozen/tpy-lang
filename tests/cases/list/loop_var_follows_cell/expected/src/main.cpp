@@ -98,9 +98,8 @@ void views() {
     auto __end_4 = __obj_4.end();
     for (; __beg_4 != __end_4; ++__beg_4) {
         auto&& __for_tup_0 = *__beg_4;
-        const auto& __tup_1 = __for_tup_0;
-        int64_t k = std::get<0>(__tup_1);
-        int64_t v = std::get<1>(__tup_1);
+        int64_t k = std::get<0>(__for_tup_0);
+        int64_t v = std::get<1>(__for_tup_0);
         std::cout << "items" << " " << k << " " << v << "\n" << ::tpy::check_signals;
     }
     ::tpy::__setitem__(d, ::tpyapp::main::a64(), ::tpyapp::main::a64());
@@ -132,9 +131,8 @@ void nested() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_1 = *__beg_0;
-        const auto& __tup_1 = __for_tup_1;
-        int64_t n = std::get<0>(__tup_1);
-        std::string_view name = std::get<1>(__tup_1);
+        int64_t n = std::get<0>(__for_tup_1);
+        std::string_view name = std::get<1>(__for_tup_1);
         std::cout << "pairs" << " " << n << " " << name << "\n" << ::tpy::check_signals;
     }
     ps.push_back(std::tuple<int64_t, std::string>{::tpyapp::main::a64(), "c"});
@@ -179,9 +177,8 @@ void mixed() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = std::tuple<int64_t, Cnt*>{std::get<0>(__for_tup_2), &(std::get<1>(__for_tup_2))};
-        int64_t n = std::get<0>(__tup_1);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        int64_t n = std::get<0>(__for_tup_2);
+        auto& c = std::get<1>(__for_tup_2);
         c.k = ::tpy::add_check<int64_t>(c.k, 5);
     }
     ps.push_back(std::tuple<int64_t, Cnt>{::tpyapp::main::a64(), Cnt()});
@@ -190,9 +187,8 @@ void mixed() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_3 = *__beg_1;
-        auto __tup_2 = std::tuple<int64_t, Cnt*>{std::get<0>(__for_tup_3), &(std::get<1>(__for_tup_3))};
-        int64_t n = std::get<0>(__tup_2);
-        auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+        int64_t n = std::get<0>(__for_tup_3);
+        auto& c = std::get<1>(__for_tup_3);
         std::cout << "mixed" << " " << n << " " << c.k << "\n" << ::tpy::check_signals;
     }
 }
@@ -432,15 +428,14 @@ void rebinding() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_4 = *__beg_1;
-        const auto& __tup_1 = __for_tup_4;
-        int64_t a = std::get<0>(__tup_1);
-        int32_t b = std::get<1>(__tup_1);
+        int64_t a = std::get<0>(__for_tup_4);
+        int32_t b = std::get<1>(__for_tup_4);
         a = ::tpy::add_check<int64_t>(a, 10);
         std::cout << "unpack" << " " << a << " " << b << "\n" << ::tpy::check_signals;
     }
-    auto __tup_2 = ::tpy::__getitem__(ps, 0);
-    int64_t c = std::get<0>(__tup_2);
-    int32_t d = std::get<1>(__tup_2);
+    auto&& __tup_1 = ::tpy::__getitem__(ps, 0);
+    int64_t c = std::get<0>(__tup_1);
+    int32_t d = std::get<1>(__tup_1);
     c = ::tpy::add_check<int64_t>(c, 20);
     ps.push_back(std::tuple<int64_t, int32_t>{::tpyapp::main::a64(), 3});
     std::cout << "unpack-list" << " " << c << " " << d << " " << ::tpy::ListPrinter(ps) << "\n" << ::tpy::check_signals;

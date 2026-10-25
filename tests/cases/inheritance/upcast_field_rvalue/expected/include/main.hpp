@@ -179,8 +179,8 @@ inline Holder::Holder()
 //     self.plain = Dog("m-plain")  # tpyc: warning(/upcast narrows/)
 //     self.opt = Dog("m-opt")  # tpyc: warning(/upcast narrows/)
 inline void Holder::refill() {
-    this->plain = Dog("m-plain");
-    this->opt = Dog("m-opt");
+    this->plain = static_cast<Pet&&>(Dog("m-plain"));
+    this->opt = static_cast<Pet&&>(Dog("m-opt"));
 }
 
 // # constructor: the subclass rvalue reaches the member-init driver
@@ -188,8 +188,8 @@ inline void Holder::refill() {
 //     self.plain = Dog(tag)  # tpyc: warning(/upcast narrows/)
 //     self.opt = Dog(tag)  # tpyc: warning(/upcast narrows/)
 inline CtorHolder::CtorHolder(std::string_view tag)
-    : plain(Dog(tag)),
-      opt(Dog(tag)) {}
+    : plain(static_cast<Pet&&>(Dog(tag))),
+      opt(static_cast<Pet&&>(Dog(tag))) {}
 
 // def __init__(self, name: str) -> None:
 //     super().__init__(name)

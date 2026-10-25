@@ -27,9 +27,8 @@ std::tuple<Box*, int32_t> make_pair(Box& b) {
 //     u[0].n += 100
 void literal_local(Box& b) {
     auto t = std::tuple<Box*, int32_t>{&(b), 1};
-    auto& __tup_1 = t;
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = (*std::get<0>(t));
+    int32_t k = std::get<1>(t);
     x.n = ::tpy::add_check<int32_t>(x.n, k);
     Box& a = (*std::get<0>(t));
     a.n = ::tpy::add_check<int32_t>(a.n, 10);
@@ -58,9 +57,8 @@ int32_t literal_mixed(Box& b) {
     y.n = ::tpy::add_check<int32_t>(y.n, 20);
     auto& u = t;
     std::get<0>(u).n = ::tpy::add_check<int32_t>(std::get<0>(u).n, 100);
-    auto& __tup_1 = t;
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& z = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& x = std::get<0>(t);
+    Box& z = (*std::get<1>(t));
     z.n = ::tpy::add_check<int32_t>(z.n, 200);
     return (::tpy::add_check<int32_t>(x.n, std::get<0>(t).n));
 }
@@ -84,13 +82,11 @@ int32_t literal_mixed_optional(Box* p) {
     }
     auto t = std::tuple<Box, Box*>{Box(1), p};
     auto& u = t;
-    auto& __tup_1 = u;
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    Box& x = std::get<0>(u);
     x.n = 9;
     Box& a = std::get<0>(t);
     a.n = ::tpy::add_check<int32_t>(a.n, 30);
-    auto& __tup_2 = t;
-    auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+    Box& y = std::get<0>(t);
     return y.n;
 }
 
@@ -116,9 +112,8 @@ int32_t const_alias(const std::vector<std::tuple<Box, int32_t>>& xs) {
 //     return k
 int32_t readonly_optional_unpack(const std::tuple<const Box*, int32_t>& p) {
     auto t = p;
-    auto& __tup_1 = t;
-    const Box* a = std::get<0>(__tup_1);
-    int32_t k = std::get<1>(__tup_1);
+    const Box* a = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     if ((a != nullptr)) {
         return (::tpy::add_check<int32_t>(a->n, k));
     }
@@ -136,11 +131,9 @@ int32_t readonly_optional_unpack(const std::tuple<const Box*, int32_t>& p) {
 int32_t literal_mixed_ternary(Box& b, bool flag) {
     auto t = std::tuple<Box, Box*>{Box(1), &(b)};
     auto& u = ((flag) ? (t) : (t));
-    auto& __tup_1 = u;
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    Box& x = std::get<0>(u);
     x.n = 9;
-    auto& __tup_2 = t;
-    auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+    Box& y = std::get<0>(t);
     return y.n;
 }
 
@@ -211,9 +204,8 @@ int32_t nested_shadow(std::vector<std::tuple<Box, int32_t>>& rows, Box& b) {
 //     a.n += 10
 void call_local(Box& b) {
     auto t = ::tpyapp::main::make_pair(b);
-    auto& __tup_1 = t;
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = (*std::get<0>(t));
+    int32_t k = std::get<1>(t);
     x.n = ::tpy::add_check<int32_t>(x.n, k);
     Box& a = (*std::get<0>(t));
     a.n = ::tpy::add_check<int32_t>(a.n, 10);
@@ -232,9 +224,8 @@ int32_t mixed_local(Box& b) {
     auto t = ::tpyapp::main::make_mixed(b);
     Box& y = (*std::get<1>(t));
     y.n = ::tpy::add_check<int32_t>(y.n, 5);
-    auto& __tup_1 = t;
-    Box o = std::move(std::get<0>(__tup_1));
-    auto&& z = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box o = std::move(std::get<0>(t));
+    Box& z = (*std::get<1>(t));
     z.n = ::tpy::add_check<int32_t>(z.n, 50);
     return o.n;
 }
@@ -250,9 +241,8 @@ void elem_of_param_list(std::vector<std::tuple<Box, int32_t>>& xs) {
     auto&& t = ::tpy::__getitem__(xs, 0);
     Box& a = std::get<0>(t);
     a.n = ::tpy::add_check<int32_t>(a.n, std::get<1>(t));
-    auto __tup_1 = std::tuple<Box*, int32_t>{&(std::get<0>(t)), std::get<1>(t)};
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    int32_t k = std::get<1>(__tup_1);
+    Box& x = std::get<0>(t);
+    int32_t k = std::get<1>(t);
     x.n = ::tpy::add_check<int32_t>(x.n, k);
 }
 
@@ -293,8 +283,8 @@ void loop_var(std::vector<std::tuple<Box, int32_t>>& xs) {
 int32_t readonly_elems(const std::vector<std::tuple<Box, int32_t>>& items) {
     auto&& t = ::tpy::__getitem__(items, 0);
     const Box& a = std::get<0>(t);
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const Box*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(::tpy::__getitem__(items, 0));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto&& __tup_1 = ::tpy::__getitem__(items, 0);
+    const Box& b = std::get<0>(__tup_1);
     int32_t k = std::get<1>(__tup_1);
     return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(a.n, b.n)), k)), std::get<0>(::tpy::__getitem__(items, 0)).n));
 }

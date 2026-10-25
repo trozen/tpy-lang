@@ -90,14 +90,13 @@ void nested_loop_rebind(bool c) {
                 auto __r_2 = __itr_1.__next__();
                 if (!__r_2.has_value()) break;
                 auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_2);
-                const auto& __tup_2 = __for_tup_0;
-                int32_t i = std::get<0>(__tup_2);
-                int32_t x = std::get<1>(__tup_2);
+                int32_t i = std::get<0>(__for_tup_0);
+                int32_t x = std::get<1>(__for_tup_0);
                 out.push_back(x);
                 if ((c && (i == 1))) {
-                    auto __tup_3 = std::tuple<N, int32_t>{N((::tpy::mul_check<int32_t>(10, (::tpy::add_check<int32_t>(k, 1))))), 6};
-                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
-                    std::get<1>(t) = std::move(std::get<1>(__tup_3));
+                    auto __tup_2 = std::tuple<N, int32_t>{N((::tpy::mul_check<int32_t>(10, (::tpy::add_check<int32_t>(k, 1))))), 6};
+                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+                    std::get<1>(t) = std::move(std::get<1>(__tup_2));
                 }
             }
         }
@@ -150,9 +149,8 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_nested_loop_rebind::__nex
             continue;
         }
         __for_tup_1 = ::tpy::unwrap_ref(*(*__for_r_1));
-        const auto& __tup_3 = __for_tup_1;
-        i = std::get<0>(__tup_3);
-        x = std::get<1>(__tup_3);
+        i = std::get<0>(__for_tup_1);
+        x = std::get<1>(__for_tup_1);
         __state = S_RESUME_0;
         return x;
     }
@@ -244,9 +242,8 @@ __coro_pause pause(int32_t n) {
             continue;
         }
         __for_tup_2 = ::tpy::unwrap_ref(*(*__for_r_1));
-        const auto& __tup_3 = __for_tup_2;
-        i = std::get<0>(__tup_3);
-        x = std::get<1>(__tup_3);
+        i = std::get<0>(__for_tup_2);
+        x = std::get<1>(__for_tup_2);
         __sub_0.emplace(x);
         __state = S_RESUME_0;
         continue;

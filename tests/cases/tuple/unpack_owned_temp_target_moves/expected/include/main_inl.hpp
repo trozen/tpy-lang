@@ -6,8 +6,8 @@
 namespace tpyapp::main {
 
 // # generator: a declared-`Own` element off a call keeps the frame's move into
-// # its field (an `Own[tuple]` call source in a frame stays refused,
-// # BUGS.md#frame-own-tuple-unpack-dangles).
+// # its field (an `Own[tuple]` call source moves its elements into frame
+// # storage the same, tests/cases/tuple/unpack_hands_over).
 // def gen() -> Iterator[int32]:
 //     a, n = mk_elem()
 //     yield n                          # -> S_RESUME_0

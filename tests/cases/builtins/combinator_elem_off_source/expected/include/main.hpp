@@ -365,9 +365,8 @@ inline int32_t Bag::total() const {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_19 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_19;
-            int32_t i = std::get<0>(__tup_1);
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            int32_t i = std::get<0>(__for_tup_19);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_19)));
             t = ::tpy::add_check<int32_t>(t, (::tpy::add_check<int32_t>(c.v, i)));
         }
     }
@@ -385,9 +384,8 @@ inline void Bag::bump_all() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_20 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_20;
-            int32_t i = std::get<0>(__tup_1);
-            auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+            int32_t i = std::get<0>(__for_tup_20);
+            auto& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_20)));
             c.bump((::tpy::add_check<int32_t>(i, 5)));
         }
     }
@@ -405,9 +403,8 @@ inline int32_t Bag::comp_total(const std::vector<int32_t>& ws) const {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_21 = *__beg_0;
-            auto& __tup_1 = __for_tup_21;
-            auto& c = std::get<0>(__tup_1);
-            int32_t w = std::get<1>(__tup_1);
+            auto& c = std::get<0>(__for_tup_21);
+            int32_t w = std::get<1>(__for_tup_21);
             __result.push_back((::tpy::mul_check<int32_t>(c.v, w)));
         }
         std::move(__result);

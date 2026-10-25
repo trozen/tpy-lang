@@ -27,9 +27,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             auto&& __for_tup_0 = *__beg_0;
-            const auto& __tup_1 = __for_tup_0;
-            a = std::get<0>(__tup_1);
-            n = std::get<1>(__tup_1);
+            a = std::get<0>(__for_tup_0);
+            n = std::get<1>(__for_tup_0);
             total = ::tpy::add_check<int32_t>(total, (::tpy::add_check<int32_t>(a, n)));
         }
         a = 5;

@@ -48,7 +48,7 @@ from .alias_rebind import (ElemPath, bare_tuple, declared_call_paths,
                            peel_slot, pointer_tuple_names, reference_paths,
                            top_level, tuple_borrowed_paths, tuple_elem_owned,
                            tuple_source_elem_owned)
-from .binding_ownership import (CompMove, ReadKind,
+from .binding_ownership import (CompMove, ReadKind, owned_head_targets,
                                 read_ownership, record_body_ownership,
                                 resolve_read, site_ownership)
 from .source_records import (Leaf as TupleLeaf, LeafPermission,
@@ -3773,8 +3773,7 @@ class TypeCompatibility:
             gens = binding.comp.generators
             reads = [r for sink in comp_sinks(binding.comp)
                      for r in comp_free_reads(sink) if r.name == inner.name]
-            if not (gen.owns_elements
-                    and gen.unpack_vars is None and inner.name == gen.var
+            if not (self._clause_owns(gen, inner, inner.name, ())
                     and binding.clause == len(gens) - 1
                     and self.ctx.func.current_scope is not None
                     and binding.depth == self.ctx.func.current_scope.depth
@@ -3785,22 +3784,36 @@ class TypeCompatibility:
             self.ctx.comp_moves[inner] = CompMove.RECEIVER
             return True
         read = self.element_read(inner, values=True)
-        if (is_last_sink and gen.owns_elements and gen.unpack_vars is None
-                and read is not None and read[0] == gen.var):
+        if (is_last_sink and read is not None
+                and self._clause_owns(gen, inner, read[0], (read[1],))):
             # An element of the variable at the last sink, as a statement's
             # last-use element read: the sink moves it (the read's record
             # moves that element of the variable).
             self.ctx.comp_moves[inner] = CompMove.LAST_SINK
             self.ctx.comp_moves[inner.obj] = CompMove.LAST_SINK
             return True
-        if not (gen.owns_elements
-                and isinstance(inner, TpyName)
-                and inner.name == gen.var
+        if not (isinstance(inner, TpyName)
+                and self._clause_owns(gen, inner, inner.name, ())
                 and (is_last_sink or inner in self.ctx.all_last_uses)):
             return False
         self.ctx.comp_moves[inner] = (CompMove.LAST_SINK if is_last_sink
                                       else CompMove.LAST_USE)
         return True
+
+    def _clause_owns(self, gen: TpyComprehensionGenerator, read: TpyExpr,
+                     name: str, path: ElemPath) -> bool:
+        """Whether binding `name` of clause `gen` owns what `read` reads of
+        it at `path` (`()`: the whole binding): a head target the step
+        hands its element to (`is_owned`, the last target of that name the
+        one bound), or the clause variable every leaf under `path` of which
+        the step hands over (`step_handover`)."""
+        head = gen.head
+        if head is not None:
+            return path == () and name in owned_head_targets(head)
+        if name != gen.var or not gen.step_handover:
+            return False
+        t = self.ctx.get_expr_type(read)
+        return all(p in gen.step_handover for p in leaf_paths(t, path))
 
     def declare_receiver_copy(self, recv: TpyName) -> None:
         """The copy a consuming call (`self: Own[Self]`) makes of a receiver

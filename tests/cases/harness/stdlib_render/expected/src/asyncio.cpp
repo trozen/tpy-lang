@@ -260,7 +260,7 @@ __coro_open_connection open_connection(std::string_view host, int32_t port) {
         __sub_0.reset();
         auto&& __tup_1 = (*__await_lift_0);
         conn.emplace(std::move(std::get<0>(__tup_1)));
-        addr = std::get<1>(__tup_1);
+        addr = std::move(std::get<1>(__tup_1));
         cell.emplace(Rc<::tpystd::socket::socket>::new_<::tpystd::socket::socket>(std::move((*conn))));
         ::tpystd::asyncio::create_task<std::monostate>(cb(StreamReader((*cell).clone()), StreamWriter((*cell).clone())));
         __state = S_JOIN_0;

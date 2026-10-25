@@ -41,9 +41,8 @@ namespace tpyapp::main {
             return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
         }
         __for_tup_0 = &(*((*__for_it_0))++);
-        auto& __tup_1 = (*__for_tup_0);
-        idx = std::get<0>(__tup_1);
-        it = &(std::get<1>(__tup_1));
+        idx = std::get<0>((*__for_tup_0));
+        it = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>((*__for_tup_0)))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;

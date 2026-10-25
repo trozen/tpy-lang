@@ -11,9 +11,8 @@ namespace tpyapp::main {
 //     else:
 //         print("None")
 void consume(const std::tuple<const T*, const T*>& p) {
-    auto& __tup_1 = p;
-    const T* a = std::get<0>(__tup_1);
-    const T* b = std::get<1>(__tup_1);
+    const T* a = std::get<0>(p);
+    const T* b = std::get<1>(p);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {
@@ -59,9 +58,9 @@ void main() {
     ::tpyapp::main::consume([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0)));
     ::tpyapp::main::consume([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 1)));
     ::tpyapp::main::consume([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<const T*, const T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 2)));
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(__t)), ::tpy::optional_to_ptr(std::get<1>(__t))}; }(::tpy::__getitem__(items, 0));
-    T* a = std::get<0>(__tup_1);
-    T* b = std::get<1>(__tup_1);
+    auto&& __tup_1 = ::tpy::__getitem__(items, 0);
+    T* a = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
+    T* b = ::tpy::optional_to_ptr(std::get<1>(__tup_1));
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     }
@@ -79,9 +78,8 @@ void main() {
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
         auto&& __for_tup_0 = *__beg_1;
-        auto __tup_2 = std::tuple<T*, T*>{::tpy::optional_to_ptr(std::get<0>(__for_tup_0)), ::tpy::optional_to_ptr(std::get<1>(__for_tup_0))};
-        T* x = std::get<0>(__tup_2);
-        T* y = std::get<1>(__tup_2);
+        T* x = ::tpy::optional_to_ptr(std::get<0>(__for_tup_0));
+        T* y = ::tpy::optional_to_ptr(std::get<1>(__for_tup_0));
         if ((x != nullptr)) {
             std::cout << x->x << "\n" << ::tpy::check_signals;
         }

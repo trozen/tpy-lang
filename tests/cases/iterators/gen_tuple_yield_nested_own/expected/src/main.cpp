@@ -25,9 +25,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             const auto& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            const ::tpy::BigInt& i = std::get<0>(__tup_1);
-            const std::tuple<::tpy::BigInt, Box>& pair = std::get<1>(__tup_1);
+            const auto& i = std::get<0>(__for_tup_0);
+            const auto& pair = std::get<1>(__for_tup_0);
             total = ((total) + (std::get<1>(pair).val));
         }
     }

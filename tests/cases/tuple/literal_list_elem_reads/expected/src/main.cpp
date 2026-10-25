@@ -26,7 +26,7 @@ void bump(const std::tuple<int32_t, Box*>& t) {
 //     print("fn.unpack_value", a, b)
 void unpack_value() {
     std::array<std::tuple<int32_t, int32_t>, 2> xs = {std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}};
-    auto __tup_1 = ::tpy::__getitem__(xs, 1);
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 1);
     int32_t a = std::get<0>(__tup_1);
     int32_t b = std::get<1>(__tup_1);
     std::cout << "fn.unpack_value" << " " << a << " " << b << "\n" << ::tpy::check_signals;
@@ -41,9 +41,9 @@ void unpack_value() {
 //     print("fn.unpack_record", a, xs[0][1].v)
 void unpack_record() {
     std::array<std::tuple<int32_t, Box>, 1> xs = {std::tuple<int32_t, Box>{1, Box(2)}};
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& b = std::get<1>(__tup_1);
     b.v = 9;
     std::cout << "fn.unpack_record" << " " << a << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
 }
@@ -83,9 +83,9 @@ void local_binding() {
 //     print("fn.float_member", f, xs[0][1].v)
 void float_member() {
     std::array<std::tuple<double, Box>, 1> xs = {std::tuple<double, Box>{1.5, Box(2)}};
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<double, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
     double f = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& b = std::get<1>(__tup_1);
     b.v = 8;
     std::cout << "fn.float_member" << " " << ::tpy::print_float(f) << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
 }
@@ -113,9 +113,9 @@ void nested() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::array<std::tuple<int32_t, Box>, 1>{std::tuple<int32_t, Box>{1, Box(2)}});
-        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__((*xs), 0));
+        auto&& __tup_1 = ::tpy::__getitem__((*xs), 0);
         a = std::get<0>(__tup_1);
-        b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        b = &(std::get<1>(__tup_1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -153,9 +153,9 @@ __coro_co_reads co_reads() {
 void closure_reads() {
     std::array<std::tuple<int32_t, Box>, 1> xs = {std::tuple<int32_t, Box>{1, Box(2)}};
     auto inner = [&xs]() -> int32_t {
-        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
+        auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
         int32_t a = std::get<0>(__tup_1);
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        Box& b = std::get<1>(__tup_1);
         b.v = 6;
         return (::tpy::add_check<int32_t>(a, ::tpyapp::main::total([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0)))));
     };
@@ -180,9 +180,8 @@ void comp_reads() {
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             auto&& __for_tup_0 = *__beg_1;
-            auto& __tup_1 = __for_tup_0;
-            int32_t a = std::get<0>(__tup_1);
-            auto& b = std::get<1>(__tup_1);
+            int32_t a = std::get<0>(__for_tup_0);
+            auto& b = std::get<1>(__for_tup_0);
             __result.push_back(a);
         }
         std::move(__result);
@@ -206,9 +205,9 @@ void match_reads() {
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
-        auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
+        auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
         int32_t a = std::get<0>(__tup_1);
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        Box& b = std::get<1>(__tup_1);
         b.v = 7;
         std::cout << "match.read" << " " << a << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
         break;
@@ -243,9 +242,9 @@ void scalar_read() {
 //     print("fn.dict", a, b.v)
 void dict_read() {
     ::tpy::ordered_map<std::string, std::tuple<int32_t, Box>> d = ::tpy::make_ordered_map<std::string, std::tuple<int32_t, Box>>("k", std::tuple<int32_t, Box>{1, Box(2)});
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(d, "k"));
+    auto&& __tup_1 = ::tpy::__getitem__(d, "k");
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& b = std::get<1>(__tup_1);
     std::cout << "fn.dict" << " " << a << " " << b.v << "\n" << ::tpy::check_signals;
 }
 

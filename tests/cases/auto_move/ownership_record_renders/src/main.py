@@ -397,7 +397,7 @@ def head_own(k: int32) -> int32:
     total = 0
     for i, b in own_pairs(k):
         # a for-unpack `Own` target moves into the `Own` parameter (`F`:
-        # the head copies the step, BUGS.md#for-head-owned-yield-copies-before-move)
+        # the target refers to its element in the step, which the move takes)
         total += take_f(b)  # tpyc: ok
     return total
 

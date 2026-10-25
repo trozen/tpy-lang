@@ -13,9 +13,8 @@ namespace tpyapp::main {
 //         return b.v + n
 //     return n
 ::tpy::BigInt unpack_opt(const std::tuple<const Box*, ::tpy::BigInt>& t, Box& other) {
-    auto& __tup_1 = t;
-    const Box* a = std::get<0>(__tup_1);
-    const ::tpy::BigInt& n = std::get<1>(__tup_1);
+    const Box* a = std::get<0>(t);
+    const ::tpy::BigInt& n = std::get<1>(t);
     const Box* b = a;
     other.v = (other.v) + (::tpy::BigInt(10));
     if ((b != nullptr)) {
@@ -41,9 +40,8 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<const Box*, ::tpy::BigInt>{::tpy::optional_to_ptr(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
-        const Box* a = std::get<0>(__tup_1);
-        const ::tpy::BigInt& n = std::get<1>(__tup_1);
+        const Box* a = ::tpy::optional_to_ptr(std::get<0>(__for_tup_0));
+        const auto& n = std::get<1>(__for_tup_0);
         const Box* b = a;
         if ((b != nullptr)) {
             s = (s) + (((b->v) + (n)));
@@ -59,9 +57,8 @@ namespace tpyapp::main {
 //     other.v += 10
 //     return d.v + n
 ::tpy::BigInt unpack_ref(const std::tuple<const Box*, ::tpy::BigInt>& t, Box& other) {
-    auto& __tup_1 = t;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    const ::tpy::BigInt& n = std::get<1>(__tup_1);
+    const Box& a = (*std::get<0>(t));
+    const ::tpy::BigInt& n = std::get<1>(t);
     const Box& d = a;
     other.v = (other.v) + (::tpy::BigInt(10));
     return ((d.v) + (n));
@@ -162,9 +159,8 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        auto __tup_1 = std::tuple<Box*, ::tpy::BigInt>{&(std::get<0>(__for_tup_1)), std::get<1>(__for_tup_1)};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        const ::tpy::BigInt& n = std::get<1>(__tup_1);
+        auto& a = std::get<0>(__for_tup_1);
+        const auto& n = std::get<1>(__for_tup_1);
         Box* d;
         if (f) {
             d = &(a);
@@ -194,9 +190,8 @@ namespace tpyapp::main {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_2 = *__beg_0;
-        auto __tup_1 = std::tuple<const Box*, ::tpy::BigInt>{&(std::get<0>(__for_tup_2)), std::get<1>(__for_tup_2)};
-        auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        const ::tpy::BigInt& n = std::get<1>(__tup_1);
+        const auto& a = std::get<0>(__for_tup_2);
+        const auto& n = std::get<1>(__for_tup_2);
         const Box& d = a;
         owner.bump();
         s = (s) + (d.v);
@@ -215,12 +210,10 @@ namespace tpyapp::main {
 //     other.v += 10
 //     return s + d.v
 ::tpy::BigInt reseat(const std::tuple<const Box*, ::tpy::BigInt>& t, const std::tuple<const Box*, ::tpy::BigInt>& u, Box& other) {
-    auto& __tup_1 = t;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    const ::tpy::BigInt& n = std::get<1>(__tup_1);
-    auto& __tup_2 = u;
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
-    const ::tpy::BigInt& m = std::get<1>(__tup_2);
+    const Box& a = (*std::get<0>(t));
+    const ::tpy::BigInt& n = std::get<1>(t);
+    const Box& b = (*std::get<0>(u));
+    const ::tpy::BigInt& m = std::get<1>(u);
     const Box* d = &(a);
     ::tpy::BigInt s = d->v;
     d = &(b);
@@ -238,9 +231,8 @@ namespace tpyapp::main {
 //         n += 1
 //     return d.v + n
 ::tpy::BigInt try_alias(const std::tuple<const Box*, ::tpy::BigInt>& t, Box& other) {
-    auto& __tup_1 = t;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    ::tpy::BigInt n = std::get<1>(__tup_1);
+    const Box& a = (*std::get<0>(t));
+    ::tpy::BigInt n = std::get<1>(t);
     const Box* d;
     {
         try {
@@ -325,9 +317,8 @@ namespace tpyapp::main {
 //     other.v += 10
 //     return d5.v + n
 ::tpy::BigInt alias_chain(const std::tuple<const Box*, ::tpy::BigInt>& t, Box& other) {
-    auto& __tup_1 = t;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    ::tpy::BigInt n = std::get<1>(__tup_1);
+    const Box& a = (*std::get<0>(t));
+    ::tpy::BigInt n = std::get<1>(t);
     const Box* d1;
     {
         try {

@@ -22,7 +22,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_body::__ne
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
         return s;
@@ -61,7 +61,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_for_else::__ne
         {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __after_else_0:;
         __state = S_RESUME_0;
@@ -96,7 +96,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_body::__
         while ((i < 2)) {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             i = ::tpy::add_check<int32_t>(i, 1);
         }
         __state = S_RESUME_0;
@@ -135,7 +135,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_while_else::__
         {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __after_else_0:;
         __state = S_RESUME_0;
@@ -169,11 +169,11 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_if_arms::__nex
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         } else {
             auto __tup_2 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_2));
-            k = std::get<1>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
         return s;
@@ -207,11 +207,11 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_try_except::__
             try {
                 auto __tup_1 = ::tpyapp::main::pair();
                 s = std::move(std::get<0>(__tup_1));
-                k = std::get<1>(__tup_1);
+                k = std::move(std::get<1>(__tup_1));
             } catch (const ::tpy::ValueError&) {
                 auto __tup_2 = ::tpyapp::main::fallback();
                 s = std::move(std::get<0>(__tup_2));
-                k = std::get<1>(__tup_2);
+                k = std::move(std::get<1>(__tup_2));
             }
         }
         __state = S_RESUME_0;
@@ -247,12 +247,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_finally::__nex
             } catch (...) {
                 auto __tup_1 = ::tpyapp::main::pair();
                 s = std::move(std::get<0>(__tup_1));
-                k = std::get<1>(__tup_1);
+                k = std::move(std::get<1>(__tup_1));
                 throw;
             }
             auto __tup_2 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_2));
-            k = std::get<1>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
         return s;
@@ -285,7 +285,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_with_body::__n
         try {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -376,13 +376,13 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_match_arm::__n
         case 1: {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             break;
         }
         default: {
             auto __tup_2 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_2));
-            k = std::get<1>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
             break;
         }
         }
@@ -425,7 +425,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_nested_loop::_
                 int32_t j = *__beg_1;
                 auto __tup_1 = ::tpyapp::main::pair();
                 s = std::move(std::get<0>(__tup_1));
-                k = std::get<1>(__tup_1);
+                k = std::move(std::get<1>(__tup_1));
             }
         }
         __state = S_RESUME_0;
@@ -619,8 +619,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record::__next
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            k = std::get<1>(__tup_1);
+            r = std::get<0>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
         return (k).to_string();
@@ -658,7 +658,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_list::__ne
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::own_list_pair();
             xs.emplace(std::move(std::get<0>(__tup_1)));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
         return (k).to_string();
@@ -692,8 +692,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_with::_
         t = __ctx_3.__enter__();
         try {
             auto __tup_1 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            k = std::get<1>(__tup_1);
+            r = std::get<0>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             goto __with_exit_3;
         } catch (::tpy::BaseException& __exc_3) {
             __ctx_3.__exit__({}, &__exc_3, {});
@@ -737,8 +737,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_try::__
         {
             try {
                 auto __tup_1 = ::tpyapp::main::with_cell(c);
-                r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-                k = std::get<1>(__tup_1);
+                r = std::get<0>(__tup_1);
+                k = std::move(std::get<1>(__tup_1));
             } catch (...) {
                 throw;
             }
@@ -775,12 +775,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_if::__n
         __state = S_DONE;  // until a yield sets where to resume
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            k = std::get<1>(__tup_1);
+            r = std::get<0>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         } else {
             auto __tup_2 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
-            k = std::get<1>(__tup_2);
+            r = std::get<0>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
         return (k).to_string();
@@ -817,14 +817,14 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_record_match::
         switch (__match_subject_1) {
         case 1: {
             auto __tup_1 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            k = std::get<1>(__tup_1);
+            r = std::get<0>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             break;
         }
         default: {
             auto __tup_2 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
-            k = std::get<1>(__tup_2);
+            r = std::get<0>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
             break;
         }
         }
@@ -863,7 +863,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_try
             try {
                 auto __tup_1 = ::tpyapp::main::own_cell(::tpy::BigInt(3));
                 r.emplace(std::move(std::get<0>(__tup_1)));
-                k = std::get<1>(__tup_1);
+                k = std::move(std::get<1>(__tup_1));
             } catch (...) {
                 throw;
             }
@@ -904,11 +904,11 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if:
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::own_cell(::tpy::BigInt(4));
             r = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         } else {
             auto __tup_2 = ::tpyapp::main::own_cell(::tpy::BigInt(5));
             r = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
-            k = std::get<1>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
         return (k).to_string();
@@ -948,7 +948,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_loo
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::own_cell(i);
             r.emplace(std::move(std::get<0>(__tup_1)));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
         return (k).to_string();
@@ -1101,7 +1101,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_prebound::__ne
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
         return std::move(s);
@@ -1130,7 +1130,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_toplevel::__ne
         __state = S_DONE;  // until a yield sets where to resume
         auto __tup_1 = ::tpyapp::main::pair();
         s = std::move(std::get<0>(__tup_1));
-        k = std::get<1>(__tup_1);
+        k = std::move(std::get<1>(__tup_1));
         __state = S_RESUME_0;
         return s;
     }
@@ -1165,7 +1165,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Source_pairs::__ne
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;
         return __self.tag;

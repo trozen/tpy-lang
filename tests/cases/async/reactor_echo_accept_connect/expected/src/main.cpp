@@ -107,7 +107,7 @@ __coro_echo_client echo_client(int32_t port) {
         __sub_0.reset();
         auto&& __tup_2 = (*__await_lift_0);
         conn.emplace(std::move(std::get<0>(__tup_2)));
-        addr = std::get<1>(__tup_2);
+        addr = std::move(std::get<1>(__tup_2));
         __sub_1.emplace(std::move((*loop).sock_recv((*conn), 1024)));
         __state = S_RESUME_1;
         continue;

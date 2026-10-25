@@ -184,9 +184,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_1_frame<T___src>::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::add_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -256,9 +255,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_2_frame<T___src>::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        i = std::get<0>(__tup_1);
-        s = std::get<1>(__tup_1);
+        i = std::get<0>(__for_tup_gx);
+        s = std::get<1>(__for_tup_gx);
         return (::tpy::add_check<int32_t>(i, s));
     }
     __builtin_unreachable();
@@ -327,9 +325,8 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_main_3_frame<T___src>::__
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         __for_tup_gx = ::tpy::unwrap_ref(*(*__for_r_0));
-        const auto& __tup_1 = __for_tup_gx;
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::get<0>(__for_tup_gx);
+        b = std::get<1>(__for_tup_gx);
         return (::tpy::mul_check<int32_t>(a, b));
     }
     __builtin_unreachable();
@@ -516,9 +513,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_2;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_2);
+            int32_t v = std::get<1>(__for_tup_2);
             std::cout << "enum_map" << " " << i << " " << v << "\n" << ::tpy::check_signals;
         }
     }
@@ -529,9 +525,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             auto&& __for_tup_3 = ::tpy::unwrap_ref(*__r_3);
-            const auto& __tup_2 = __for_tup_3;
-            int32_t a = std::get<0>(__tup_2);
-            int32_t b = std::get<1>(__tup_2);
+            int32_t a = std::get<0>(__for_tup_3);
+            int32_t b = std::get<1>(__for_tup_3);
             std::cout << "zip_filter_map" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -553,9 +548,8 @@ void main() {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
             auto&& __for_tup_4 = ::tpy::unwrap_ref(*__r_7);
-            const auto& __tup_3 = __for_tup_4;
-            int32_t a = std::get<0>(__tup_3);
-            int32_t b = std::get<1>(__tup_3);
+            int32_t a = std::get<0>(__for_tup_4);
+            int32_t b = std::get<1>(__for_tup_4);
             std::cout << "zip_frames" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -567,9 +561,8 @@ void main() {
             auto __r_9 = __itr_8.__next__();
             if (!__r_9.has_value()) break;
             auto&& __for_tup_5 = ::tpy::unwrap_ref(*__r_9);
-            const auto& __tup_4 = __for_tup_5;
-            int32_t a = std::get<0>(__tup_4);
-            int32_t b = std::get<1>(__tup_4);
+            int32_t a = std::get<0>(__for_tup_5);
+            int32_t b = std::get<1>(__for_tup_5);
             std::cout << "zip_lvalue_gen" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -582,9 +575,8 @@ void main() {
             auto __r_11 = __itr_10.__next__();
             if (!__r_11.has_value()) break;
             auto&& __for_tup_6 = ::tpy::unwrap_ref(*__r_11);
-            const auto& __tup_5 = __for_tup_6;
-            int32_t k = std::get<0>(__tup_5);
-            int32_t x = std::get<1>(__tup_5);
+            int32_t k = std::get<0>(__for_tup_6);
+            int32_t x = std::get<1>(__for_tup_6);
             std::cout << "zip_keys" << " " << k << " " << x << "\n" << ::tpy::check_signals;
         }
     }
@@ -601,9 +593,8 @@ void main() {
             auto __r_13 = __itr_12.__next__();
             if (!__r_13.has_value()) break;
             auto&& __for_tup_9 = ::tpy::unwrap_ref(*__r_13);
-            const auto& __tup_6 = __for_tup_9;
-            int32_t i = std::get<0>(__tup_6);
-            int32_t v = std::get<1>(__tup_6);
+            int32_t i = std::get<0>(__for_tup_9);
+            int32_t v = std::get<1>(__for_tup_9);
             std::cout << "enumerate" << " " << i << " " << v << "\n" << ::tpy::check_signals;
         }
     }
@@ -615,9 +606,8 @@ void main() {
             auto __r_15 = __itr_14.__next__();
             if (!__r_15.has_value()) break;
             auto&& __for_tup_10 = ::tpy::unwrap_ref(*__r_15);
-            const auto& __tup_7 = __for_tup_10;
-            int32_t a = std::get<0>(__tup_7);
-            int32_t b = std::get<1>(__tup_7);
+            int32_t a = std::get<0>(__for_tup_10);
+            int32_t b = std::get<1>(__for_tup_10);
             std::cout << "zip" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -635,9 +625,8 @@ void main() {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
             auto&& __for_tup_11 = ::tpy::unwrap_ref(*__r_17);
-            const auto& __tup_8 = __for_tup_11;
-            int32_t a = std::get<0>(__tup_8);
-            int32_t b = std::get<1>(__tup_8);
+            int32_t a = std::get<0>(__for_tup_11);
+            int32_t b = std::get<1>(__for_tup_11);
             std::cout << "zip_call" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -649,9 +638,8 @@ void main() {
             auto __r_19 = __itr_18.__next__();
             if (!__r_19.has_value()) break;
             auto&& __for_tup_12 = ::tpy::unwrap_ref(*__r_19);
-            const auto& __tup_9 = __for_tup_12;
-            int32_t a = std::get<0>(__tup_9);
-            int32_t b = std::get<1>(__tup_9);
+            int32_t a = std::get<0>(__for_tup_12);
+            int32_t b = std::get<1>(__for_tup_12);
             std::cout << "lvalue" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -663,9 +651,8 @@ void main() {
             auto __r_21 = __itr_20.__next__();
             if (!__r_21.has_value()) break;
             auto&& __for_tup_13 = ::tpy::unwrap_ref(*__r_21);
-            const auto& __tup_10 = __for_tup_13;
-            int32_t a = std::get<0>(__tup_10);
-            int32_t b = std::get<1>(__tup_10);
+            int32_t a = std::get<0>(__for_tup_13);
+            int32_t b = std::get<1>(__for_tup_13);
             std::cout << "lvalue_delegating" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -678,9 +665,8 @@ void main() {
             auto __r_23 = __itr_22.__next__();
             if (!__r_23.has_value()) break;
             auto&& __for_tup_14 = ::tpy::unwrap_ref(*__r_23);
-            const auto& __tup_11 = __for_tup_14;
-            int32_t a = std::get<0>(__tup_11);
-            int32_t b = std::get<1>(__tup_11);
+            int32_t a = std::get<0>(__for_tup_14);
+            int32_t b = std::get<1>(__for_tup_14);
             std::cout << "lvalue_inherited" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -692,9 +678,8 @@ void main() {
             auto __r_25 = __itr_24.__next__();
             if (!__r_25.has_value()) break;
             auto&& __for_tup_15 = ::tpy::unwrap_ref(*__r_25);
-            const auto& __tup_12 = __for_tup_15;
-            int32_t i = std::get<0>(__tup_12);
-            int32_t c = std::get<1>(__tup_12);
+            int32_t i = std::get<0>(__for_tup_15);
+            int32_t c = std::get<1>(__for_tup_15);
             std::cout << "self_iter" << " " << i << " " << c << "\n" << ::tpy::check_signals;
         }
     }
@@ -706,9 +691,8 @@ void main() {
             auto __r_27 = __itr_26.__next__();
             if (!__r_27.has_value()) break;
             auto&& __for_tup_16 = ::tpy::unwrap_ref(*__r_27);
-            const auto& __tup_13 = __for_tup_16;
-            int32_t a = std::get<0>(__tup_13);
-            int32_t b = std::get<1>(__tup_13);
+            int32_t a = std::get<0>(__for_tup_16);
+            int32_t b = std::get<1>(__for_tup_16);
             std::cout << "derived" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -720,9 +704,8 @@ void main() {
             auto __r_29 = __itr_28.__next__();
             if (!__r_29.has_value()) break;
             auto&& __for_tup_17 = ::tpy::unwrap_ref(*__r_29);
-            const auto& __tup_14 = __for_tup_17;
-            int32_t a = std::get<0>(__tup_14);
-            int32_t b = std::get<1>(__tup_14);
+            int32_t a = std::get<0>(__for_tup_17);
+            int32_t b = std::get<1>(__for_tup_17);
             std::cout << "delegating" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -743,9 +726,8 @@ void main() {
             auto __r_31 = __itr_30.__next__();
             if (!__r_31.has_value()) break;
             auto&& __for_tup_18 = ::tpy::unwrap_ref(*__r_31);
-            const auto& __tup_15 = __for_tup_18;
-            int32_t a = std::get<0>(__tup_15);
-            int32_t b = std::get<1>(__tup_15);
+            int32_t a = std::get<0>(__for_tup_18);
+            int32_t b = std::get<1>(__for_tup_18);
             std::cout << "borrow_zip" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -762,9 +744,8 @@ void main() {
             auto __r_33 = __itr_32.__next__();
             if (!__r_33.has_value()) break;
             auto&& __for_tup_19 = ::tpy::unwrap_ref(*__r_33);
-            const auto& __tup_16 = __for_tup_19;
-            int32_t a = std::get<0>(__tup_16);
-            int32_t b = std::get<1>(__tup_16);
+            int32_t a = std::get<0>(__for_tup_19);
+            int32_t b = std::get<1>(__for_tup_19);
             std::cout << "borrow_both" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -777,9 +758,8 @@ void main() {
             auto __r_35 = __itr_34.__next__();
             if (!__r_35.has_value()) break;
             auto&& __for_tup_20 = ::tpy::unwrap_ref(*__r_35);
-            const auto& __tup_17 = __for_tup_20;
-            int32_t a = std::get<0>(__tup_17);
-            int32_t b = std::get<1>(__tup_17);
+            int32_t a = std::get<0>(__for_tup_20);
+            int32_t b = std::get<1>(__for_tup_20);
             std::cout << "fresh_self" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -792,9 +772,8 @@ void main() {
             auto __r_37 = __itr_36.__next__();
             if (!__r_37.has_value()) break;
             auto&& __for_tup_21 = ::tpy::unwrap_ref(*__r_37);
-            const auto& __tup_18 = __for_tup_21;
-            int32_t a = std::get<0>(__tup_18);
-            int32_t b = std::get<1>(__tup_18);
+            int32_t a = std::get<0>(__for_tup_21);
+            int32_t b = std::get<1>(__for_tup_21);
             std::cout << "order" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -806,9 +785,8 @@ void main() {
             auto __r_39 = __itr_38.__next__();
             if (!__r_39.has_value()) break;
             auto&& __for_tup_22 = ::tpy::unwrap_ref(*__r_39);
-            const auto& __tup_19 = __for_tup_22;
-            int32_t a = std::get<0>(__tup_19);
-            int32_t b = std::get<1>(__tup_19);
+            int32_t a = std::get<0>(__for_tup_22);
+            int32_t b = std::get<1>(__for_tup_22);
             std::cout << "order_mixed" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -820,9 +798,8 @@ void main() {
         auto __end_40 = __obj_40.end();
         for (; __beg_40 != __end_40; ++__beg_40) {
             auto&& __for_tup_23 = *__beg_40;
-            auto& __tup_20 = __for_tup_23;
-            int32_t a = std::get<0>(__tup_20);
-            int32_t b = std::get<1>(__tup_20);
+            int32_t a = std::get<0>(__for_tup_23);
+            int32_t b = std::get<1>(__for_tup_23);
             __result.push_back((::tpy::mul_check<int32_t>(a, b)));
         }
         std::move(__result);
@@ -865,9 +842,8 @@ void main() {
             auto __r_42 = __itr_41.__next__();
             if (!__r_42.has_value()) break;
             auto&& __for_tup_25 = ::tpy::unwrap_ref(*__r_42);
-            const auto& __tup_21 = __for_tup_25;
-            int32_t a = std::get<0>(__tup_21);
-            int32_t b = std::get<1>(__tup_21);
+            int32_t a = std::get<0>(__for_tup_25);
+            int32_t b = std::get<1>(__for_tup_25);
             std::cout << "method_source" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -878,9 +854,8 @@ void main() {
             auto __r_44 = __itr_43.__next__();
             if (!__r_44.has_value()) break;
             auto&& __for_tup_26 = ::tpy::unwrap_ref(*__r_44);
-            const auto& __tup_22 = __for_tup_26;
-            int32_t a = std::get<0>(__tup_22);
-            int32_t b = std::get<1>(__tup_22);
+            int32_t a = std::get<0>(__for_tup_26);
+            int32_t b = std::get<1>(__for_tup_26);
             std::cout << "static_source" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }
@@ -891,9 +866,8 @@ void main() {
             auto __r_46 = __itr_45.__next__();
             if (!__r_46.has_value()) break;
             auto&& __for_tup_27 = ::tpy::unwrap_ref(*__r_46);
-            const auto& __tup_23 = __for_tup_27;
-            int32_t a = std::get<0>(__tup_23);
-            int32_t b = std::get<1>(__tup_23);
+            int32_t a = std::get<0>(__for_tup_27);
+            int32_t b = std::get<1>(__for_tup_27);
             std::cout << "field_of_temp" << " " << a << " " << b << "\n" << ::tpy::check_signals;
         }
     }

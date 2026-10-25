@@ -70,8 +70,8 @@ __gen_gen gen() {
         __state = S_DONE;  // until a yield sets where to resume
         M __tmp_1 = M();
         auto __tup_1 = ::tpyapp::main::f(__tmp_1);
-        a = std::get<0>(__tup_1);
-        b = std::get<1>(__tup_1);
+        a = std::move(std::get<0>(__tup_1));
+        b = std::move(std::get<1>(__tup_1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -83,8 +83,8 @@ __gen_gen gen() {
         __sub_0.reset();
         ::tpy::Bytes __tmp_2 = ::tpy::bytes_literal_owned("hey", 3);
         auto __tup_2 = ::tpyapp::main::send(::tpy::Union<std::monostate, const ::tpy::Bytes*, const ::tpy::ordered_map<std::string, std::string>*>{&__tmp_2});
-        c = std::get<0>(__tup_2);
-        d = std::get<1>(__tup_2);
+        c = std::move(std::get<0>(__tup_2));
+        d = std::move(std::get<1>(__tup_2));
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -229,8 +229,8 @@ void main() {
         try {
             M __tmp_4 = M();
             auto __tup_4 = ::tpyapp::main::f(__tmp_4);
-            e = std::get<0>(__tup_4);
-            g = std::get<1>(__tup_4);
+            e = std::move(std::get<0>(__tup_4));
+            g = std::move(std::get<1>(__tup_4));
             std::cout << "try" << " " << e << " " << g << "\n" << ::tpy::check_signals;
         } catch (...) {
             std::cout << "finally" << "\n" << ::tpy::check_signals;
@@ -245,8 +245,8 @@ void main() {
     try {
         M __tmp_5 = M();
         auto __tup_5 = ::tpyapp::main::f(__tmp_5);
-        h = std::get<0>(__tup_5);
-        i = std::get<1>(__tup_5);
+        h = std::move(std::get<0>(__tup_5));
+        i = std::move(std::get<1>(__tup_5));
         std::cout << "with" << " " << w << " " << h << " " << i << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
@@ -300,8 +300,8 @@ void main() {
     std::cout << "str_elem" << " " << s << " " << n << "\n" << ::tpy::check_signals;
     M __tmp_10 = M();
     auto __tup_10 = ::tpyapp::main::pick(__tmp_10);
-    auto&& r1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_10)));
-    auto&& r2 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_10)));
+    M& r1 = (*std::get<0>(__tup_10));
+    M& r2 = (*std::get<1>(__tup_10));
     const ::tpy::BigInt& rn = std::get<2>(__tup_10);
     r1.v = ::tpy::BigInt(9);
     std::cout << "alias" << " " << r2.v << " " << rn << "\n" << ::tpy::check_signals;
@@ -325,8 +325,8 @@ void __tpy_init() {
     ::tpyapp::main::main();
     M __tmp_1 = M();
     auto __tup_1 = ::tpyapp::main::f(__tmp_1);
-    ma = std::get<0>(__tup_1);
-    mb = std::get<1>(__tup_1);
+    ma = std::move(std::get<0>(__tup_1));
+    mb = std::move(std::get<1>(__tup_1));
     std::cout << "module" << " " << ma << " " << mb << "\n" << ::tpy::check_signals;
 }
 

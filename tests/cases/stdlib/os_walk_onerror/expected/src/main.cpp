@@ -32,10 +32,9 @@ int32_t yields(std::string_view top, std::optional<std::function<void(const ::tp
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_0;
-            std::string_view dirpath = std::get<0>(__tup_1);
-            auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            std::string_view dirpath = std::get<0>(__for_tup_0);
+            auto& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0)));
+            auto& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_0)));
             n = ::tpy::add_check<int32_t>(n, 1);
         }
     }
@@ -60,10 +59,9 @@ std::vector<std::string> walk_rows(std::string_view root, std::optional<std::fun
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_1 = ::tpy::unwrap_ref(*__r_1);
-            auto& __tup_1 = __for_tup_1;
-            std::string_view dirpath = std::get<0>(__tup_1);
-            auto&& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-            auto&& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+            std::string_view dirpath = std::get<0>(__for_tup_1);
+            auto& dirnames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_1)));
+            auto& filenames = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_1)));
             std::string rel = std::string(::tpy::str_slice(dirpath, ::tpy::BasicSlice{::tpy::__len__(root), std::nullopt}));
             if ((::tpy::__len__(rel) == 0)) {
                 rel = ".";
@@ -197,10 +195,9 @@ void main() {
                     auto __r_3 = __itr_2.__next__();
                     if (!__r_3.has_value()) break;
                     auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_3);
-                    auto& __tup_1 = __for_tup_2;
-                    std::string_view dp = std::get<0>(__tup_1);
-                    auto&& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-                    auto&& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__tup_1)));
+                    std::string_view dp = std::get<0>(__for_tup_2);
+                    auto& dn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_2)));
+                    auto& fn = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<2>(__for_tup_2)));
                     std::cout << "yielded" << "\n" << ::tpy::check_signals;
                 }
             }

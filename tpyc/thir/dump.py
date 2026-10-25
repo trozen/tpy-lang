@@ -379,8 +379,10 @@ def _expr(e: THIRExpr) -> str:
         return f"borrow_tuple<{e.spelled_cpp}>({elems})"
     if isinstance(e, THIRArrayComprehension):
         src = "" if e.iterable is None else f" over {_expr(e.iterable)}"
+        head = ("" if e.head is None else " { " + "; ".join(
+            line.strip() for line in _stmt_lines(e.head, 0)) + " }")
         return (f"array_comp[{e.arm}]({e.array_elem_cpp}, {e.array_size_cpp}, "
-                f"var %{e.var}){src} -> {_expr(e.element)}")
+                f"var %{e.var}){src}{head} -> {_expr(e.element)}")
     if isinstance(e, THIRComprehensionBlock):
         # The body is ordinary statements; an expression dumps on one line,
         # so they join in braces.
@@ -605,6 +607,16 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 for s in entry.body:
                     lines.extend(_stmt_lines(s, depth + 2))
         return lines
+    if isinstance(stmt, THIRTupleUnpack) and stmt.per_target:
+        tgts = ", ".join(n if n is not None else "_" for n in stmt.targets)
+        lines = [f"{pad}unpack {tgts}"]
+        if stmt.holder is not None:
+            ref = "&&" if stmt.holder_ref else ""
+            lines.append(f"{pad}  hold{ref} %{stmt.holder_read} = "
+                         f"{_expr(stmt.holder)}")
+        for write in stmt.writes:
+            lines.extend(_stmt_lines(write, depth + 1))
+        return lines
     if isinstance(stmt, THIRTupleUnpack):
         tgts = ", ".join(n if n is not None else "_" for n in stmt.targets)
         if stmt.tuple_target is not None:
@@ -612,10 +624,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 f"{stmt.tuple_target.name}[{t.index}]:{t.bind.name.lower()}"
                 + (f":{t.storage.value}" if t.storage is not None else "")
                 for t in stmt.elem_targets)
-        src = (_expr(stmt.source_expr) if stmt.source_expr is not None
-               else _expr(stmt.source_lent.lent)
-               if stmt.source_lent is not None else f"%{stmt.source}")
-        return [f"{pad}{tgts} = {src}"]
+        return [f"{pad}{tgts} = {_expr(stmt.source_expr)}"]
     if isinstance(stmt, THIRBreak):
         return [f"{pad}break"]
     if isinstance(stmt, THIRContinue):

@@ -23,14 +23,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_reads::__next__() 
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         xs.emplace(std::array<std::tuple<int32_t, int32_t>, 2>{std::tuple<int32_t, int32_t>{1, 2}, std::tuple<int32_t, int32_t>{3, 4}});
-        auto __tup_1 = ::tpy::__getitem__((*xs), 0);
+        auto&& __tup_1 = ::tpy::__getitem__((*xs), 0);
         a = std::get<0>(__tup_1);
         b = std::get<1>(__tup_1);
         __state = S_RESUME_0;
         return a;
     }
     case S_RESUME_0: {  // after: yield a
-        auto __tup_2 = ::tpy::__getitem__((*xs), 1);
+        auto&& __tup_2 = ::tpy::__getitem__((*xs), 1);
         c = std::get<0>(__tup_2);
         d = std::get<1>(__tup_2);
         __state = S_RESUME_1;
@@ -38,9 +38,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_reads::__next__() 
     }
     case S_RESUME_1: {  // after: yield b + c + d
         rs.emplace(std::array<std::tuple<int32_t, Box>, 1>{std::tuple<int32_t, Box>{5, Box(6)}});
-        auto __tup_3 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__((*rs), 0));
+        auto&& __tup_3 = ::tpy::__getitem__((*rs), 0);
         e = std::get<0>(__tup_3);
-        r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3))));
+        r = &(std::get<1>(__tup_3));
         __state = S_RESUME_2;
         return e;
     }

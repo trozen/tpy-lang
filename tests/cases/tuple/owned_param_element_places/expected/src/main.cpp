@@ -145,9 +145,8 @@ int32_t alias_readonly(std::tuple<Box, int32_t>&& p) {
 //     return x.get() + k
 int32_t readonly_owned_write(std::tuple<Box, int32_t>&& p) {
     std::get<0>(p).bump();
-    auto&& __tup_1 = std::move(p);
-    Box x = std::move(std::get<0>(__tup_1));
-    int32_t k = std::get<1>(__tup_1);
+    Box x = std::move(std::get<0>(p));
+    int32_t k = std::get<1>(p);
     x.bump();
     return (::tpy::add_check<int32_t>(x.get(), k));
 }
@@ -335,9 +334,8 @@ void unpack_call() {
 //     x.n += 5
 //     print("unpack_borrowed", x.n, c == Color.Red)
 void unpack_borrowed(const std::tuple<Box*, Color>& p) {
-    auto& __tup_1 = p;
-    auto&& x = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    Color c = std::get<1>(__tup_1);
+    Box& x = (*std::get<0>(p));
+    Color c = std::get<1>(p);
     x.n = ::tpy::add_check<int32_t>(x.n, 5);
     std::cout << "unpack_borrowed" << " " << x.n << " " << ::tpy::print_bool((c == Color::Red)) << "\n" << ::tpy::check_signals;
 }

@@ -14,9 +14,8 @@ namespace tpyapp::main {
 //     print(t)
 void main() {
     std::tuple<int32_t, std::string> t = std::tuple<int32_t, std::string>{42, "hello"};
-    const auto& __tup_1 = t;
-    int32_t a = std::get<0>(__tup_1);
-    std::string_view b = std::get<1>(__tup_1);
+    int32_t a = std::get<0>(t);
+    std::string_view b = std::get<1>(t);
     std::cout << a << "\n" << ::tpy::check_signals;
     std::cout << b << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::TuplePrinter(t) << "\n" << ::tpy::check_signals;

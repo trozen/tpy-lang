@@ -10,9 +10,8 @@ namespace tpyapp::main {
 //         return a + b  # the narrowed value-opt deref
 //     return b
 int32_t total(const std::tuple<std::optional<int32_t>, int32_t>& p) {
-    const auto& __tup_1 = p;
-    std::optional<int32_t> a = std::get<0>(__tup_1);
-    int32_t b = std::get<1>(__tup_1);
+    std::optional<int32_t> a = std::get<0>(p);
+    int32_t b = std::get<1>(p);
     if ((a.has_value())) {
         return (::tpy::add_check<int32_t>((*a), b));
     }

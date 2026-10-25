@@ -44,9 +44,8 @@ int32_t sink(std::vector<Box>& keep, Box&& b) {
 //     a, b = t
 //     return (a.x if a is not None else 0) + (b.x if b is not None else 0)
 int32_t take_opt(std::tuple<std::optional<P>, std::optional<P>> t) {
-    auto __tup_1 = std::tuple<P*, P*>{::tpy::optional_to_ptr(std::get<0>(t)), ::tpy::optional_to_ptr(std::get<1>(t))};
-    P* a = std::get<0>(__tup_1);
-    P* b = std::get<1>(__tup_1);
+    P* a = ::tpy::optional_to_ptr(std::get<0>(t));
+    P* b = ::tpy::optional_to_ptr(std::get<1>(t));
     return (::tpy::add_check<int32_t>((((a != nullptr)) ? (a->x) : (0)), (((b != nullptr)) ? (b->x) : (0))));
 }
 

@@ -11,8 +11,7 @@ namespace tpyapp::main {
 //     else:
 //         print("None")
 void consume(const std::tuple<const T*, const T*>& p) {
-    auto& __tup_1 = p;
-    const T* a = std::get<0>(__tup_1);
+    const T* a = std::get<0>(p);
     if ((a != nullptr)) {
         std::cout << a->x << "\n" << ::tpy::check_signals;
     } else {

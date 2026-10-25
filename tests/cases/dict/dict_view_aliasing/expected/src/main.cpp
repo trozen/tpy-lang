@@ -13,9 +13,8 @@ void bump_items(::tpy::ordered_map<std::string, Point>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<std::string_view, Point*>{std::get<0>(__for_tup_0), &(std::get<1>(__for_tup_0))};
-        std::string_view k = std::get<0>(__tup_1);
-        auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        std::string_view k = std::get<0>(__for_tup_0);
+        auto& v = std::get<1>(__for_tup_0);
         v.x = (::tpy::add_check<int32_t>(v.x, 100));
     }
 }
@@ -45,9 +44,8 @@ int32_t total(const ::tpy::ordered_map<std::string, std::vector<int32_t>>& d) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_1 = *__beg_0;
-        auto __tup_1 = std::tuple<std::string_view, const std::vector<int32_t>*>{std::get<0>(__for_tup_1), &(std::get<1>(__for_tup_1))};
-        std::string_view k = std::get<0>(__tup_1);
-        auto&& v = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+        std::string_view k = std::get<0>(__for_tup_1);
+        const auto& v = std::get<1>(__for_tup_1);
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(v)));
     }
     return n;

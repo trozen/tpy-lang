@@ -35,9 +35,8 @@ std::vector<Box>& borrow(std::vector<Box>& w) {
 //     a, b = h.pair
 //     return len(a.xs)
 int32_t head(const Pair& h) {
-    auto __tup_1 = std::tuple<const Box*, const Box*>{&(std::get<0>(h.pair)), &(std::get<1>(h.pair))};
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    const Box& a = std::get<0>(h.pair);
+    const Box& b = std::get<1>(h.pair);
     return ::tpy::__len__(a.xs);
 }
 
@@ -487,9 +486,8 @@ Cell nested_receiver() {
 //         b = Box(2)
 //     return b  # tpyc: warning(/copies Box into owned storage.*'b' is bound to existing storage/)
 Box unpacked(const std::tuple<Box*, int32_t>& p, bool c) {
-    auto& __tup_1 = p;
-    auto* b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-    int32_t k = std::get<1>(__tup_1);
+    Box* b = std::get<0>(p);
+    int32_t k = std::get<1>(p);
     std::optional<Box> __slot_1;
     if (c) {
         b = &*(__slot_1 = Box(2));
@@ -509,9 +507,8 @@ Box for_head(const std::vector<std::tuple<Box, int32_t>>& ps) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        auto __tup_1 = std::tuple<const Box*, int32_t>{&(std::get<0>(__for_tup_0)), std::get<1>(__for_tup_0)};
-        auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-        int32_t k = std::get<1>(__tup_1);
+        const auto& b = std::get<0>(__for_tup_0);
+        int32_t k = std::get<1>(__for_tup_0);
         if ((k == 1)) {
             return b;
         }

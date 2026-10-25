@@ -681,9 +681,8 @@ void main() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         auto&& __for_tup_0 = *__beg_2;
-        const auto& __tup_1 = __for_tup_0;
-        int32_t a = std::get<0>(__tup_1);
-        bool c = std::get<1>(__tup_1);
+        int32_t a = std::get<0>(__for_tup_0);
+        bool c = std::get<1>(__for_tup_0);
         ::tpyapp::main::int_float_select(a, static_cast<int64_t>(5000000000), 1.5, c);
         ::tpyapp::main::int_float_slots(a, c);
         ::tpyapp::main::int_float_optional_slot(a, c);
@@ -693,10 +692,9 @@ void main() {
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
         auto&& __for_tup_1 = *__beg_3;
-        const auto& __tup_2 = __for_tup_1;
-        int32_t a = std::get<0>(__tup_2);
-        double g = std::get<1>(__tup_2);
-        bool c = std::get<2>(__tup_2);
+        int32_t a = std::get<0>(__for_tup_1);
+        double g = std::get<1>(__for_tup_1);
+        bool c = std::get<2>(__for_tup_1);
         ::tpyapp::main::int_float_conditions(a, g, c);
     }
     auto __obj_4 = {true, false};

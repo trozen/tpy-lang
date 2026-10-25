@@ -71,9 +71,8 @@ namespace tpyapp::main {
         if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_2 = std::move(__r2).value();
         __sub_2.reset();
-        const auto& __tup_3 = __await_lift_2;
-        a = std::get<0>(__tup_3);
-        b = std::get<1>(__tup_3);
+        a = std::get<0>(__await_lift_2);
+        b = std::get<1>(__await_lift_2);
         std::cout << a << " " << b << "\n" << ::tpy::check_signals;
         __sub_3.emplace(std::move(_RefPair()));
         __state = S_RESUME_3;
@@ -84,9 +83,9 @@ namespace tpyapp::main {
         if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         __await_lift_3.emplace(std::move(__r3).value());
         __sub_3.reset();
-        auto __tup_4 = std::tuple<std::vector<int32_t>*, int32_t>{&(std::get<0>((*__await_lift_3))), std::get<1>((*__await_lift_3))};
-        lst = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4))));
-        m = std::get<1>(__tup_4);
+        auto&& __tup_3 = (*__await_lift_3);
+        lst = &(std::get<0>(__tup_3));
+        m = std::get<1>(__tup_3);
         lst->push_back(30);
         std::cout << ::tpy::__len__((*lst)) << " " << ::tpy::__getitem__((*lst), 2) << " " << m << "\n" << ::tpy::check_signals;
         __state = S_DONE;

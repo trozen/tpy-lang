@@ -50,9 +50,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t x = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            int32_t x = std::get<1>(__for_tup_0);
             std::cout << i << " " << x << "\n" << ::tpy::check_signals;
         }
     }

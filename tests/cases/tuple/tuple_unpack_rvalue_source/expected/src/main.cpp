@@ -24,9 +24,8 @@ int32_t from_call(int32_t n) {
 //     a, b = h.pair  # tpyc: ok
 //     return a + b
 int32_t from_field(const Holder& h) {
-    auto __tup_1 = h.pair;
-    int32_t a = std::get<0>(__tup_1);
-    int32_t b = std::get<1>(__tup_1);
+    int32_t a = std::get<0>(h.pair);
+    int32_t b = std::get<1>(h.pair);
     return (::tpy::add_check<int32_t>(a, b));
 }
 

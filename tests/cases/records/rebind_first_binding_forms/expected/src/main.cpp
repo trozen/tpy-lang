@@ -73,7 +73,7 @@ std::expected<P, Err> make(int32_t i) {
 //         print(tag, "for_own_lvalue", d.n, c.n)
 void rows(std::string_view tag) {
     auto __tup_1 = ::tpyapp::main::mk(1);
-    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    P* p = &(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     P& q = (*p);
     std::optional<P> __slot_1;
@@ -82,7 +82,7 @@ void rows(std::string_view tag) {
     std::cout << tag << " " << "unpack_rvalue" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
     P other = P(100);
     auto __tup_2 = ::tpyapp::main::mk(5);
-    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
+    P* a = &(std::get<0>(__tup_2));
     int32_t j = std::get<1>(__tup_2);
     P& b = (*a);
     a = &(other);
@@ -146,7 +146,7 @@ void rows(std::string_view tag) {
 //         print("free", "head_unpack", q.n, p.n, k)
 void free_function() {
     ::tpyapp::main::rows("free");
-    std::optional<P> __slot_2;
+    std::optional<P> __slot_1;
     {
         auto __src_0 = ::tpyapp::main::pairs();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -154,12 +154,10 @@ void free_function() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            auto __tup_1 = __for_tup_0;
-            P __slot_1 = std::move(std::get<0>(__tup_1));
-            P* p = &__slot_1;
-            int32_t k = std::get<1>(__tup_1);
+            P* p = &(std::get<0>(__for_tup_0));
+            int32_t k = std::get<1>(__for_tup_0);
             P& q = (*p);
-            p = &*(__slot_2 = P(2));
+            p = &*(__slot_1 = P(2));
             q.n = ::tpy::add_check<int32_t>(q.n, 10);
             std::cout << "free" << " " << "head_unpack" << " " << q.n << " " << p->n << " " << k << "\n" << ::tpy::check_signals;
         }
@@ -269,7 +267,7 @@ void while_head_alias_across_passes() {
 void nested() {
     auto inner = []() {
         auto __tup_1 = ::tpyapp::main::mk(1);
-        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        P* p = &(std::get<0>(__tup_1));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
         std::optional<P> __slot_1;
@@ -323,7 +321,7 @@ void in_try() {
     {
         try {
             auto __tup_1 = ::tpyapp::main::mk(1);
-            auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+            P* p = &(std::get<0>(__tup_1));
             int32_t k = std::get<1>(__tup_1);
             P& q = (*p);
             p = &*(__slot_1 = P(2));
@@ -380,7 +378,7 @@ void in_match(int32_t v) {
     switch (__match_subject_1) {
     case 1: {
         auto __tup_1 = ::tpyapp::main::mk(1);
-        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        P* p = &(std::get<0>(__tup_1));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
         p = &*(__slot_1 = P(2));
@@ -418,7 +416,7 @@ void in_if(bool c) {
     std::optional<P> __slot_2;
     if (c) {
         auto __tup_1 = ::tpyapp::main::mk(1);
-        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        P* p = &(std::get<0>(__tup_1));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
         p = &*(__slot_1 = P(2));
@@ -459,7 +457,7 @@ void in_loop() {
     std::optional<P> __slot_3;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_1 = ::tpyapp::main::mk(i);
-        auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+        P* p = &(std::get<0>(__tup_1));
         int32_t k = std::get<1>(__tup_1);
         P& q = (*p);
         p = &*(__slot_1 = P((::tpy::add_check<int32_t>(20, i))));
@@ -1291,14 +1289,14 @@ void compare_operands() {
     Ce oe = Ce(5);
     Cl ol = Cl(5);
     auto __tup_1 = ::tpyapp::main::mke(1);
-    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    Ce* a = &(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     Ce& ka = (*a);
     a = &(oe);
     oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
     std::cout << "compare" << " " << "unpack_eq" << " " << ::tpy::print_bool((((*a)) == (Ce(6)))) << " " << ::tpy::print_bool((!(((*a)) == (ka)))) << " " << k << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::mkl(1);
-    auto* b = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
+    Cl* b = &(std::get<0>(__tup_2));
     int32_t j = std::get<1>(__tup_2);
     b = &(ol);
     ol.n = ::tpy::add_check<int32_t>(ol.n, 1);
@@ -1403,7 +1401,7 @@ void compare_operands() {
 //         print("ctor", "for_own_rvalue", t.n, s.n)
 Holder::Holder() {
     auto __tup_1 = ::tpyapp::main::mk(1);
-    auto* p = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    P* p = &(std::get<0>(__tup_1));
     int32_t k = std::get<1>(__tup_1);
     P& q = (*p);
     std::optional<P> __slot_1;
@@ -1457,7 +1455,7 @@ Holder::Holder() {
 void Holder::method() const {
     P other = P(100);
     auto __tup_1 = ::tpyapp::main::mk(5);
-    auto* a = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
+    P* a = &(std::get<0>(__tup_1));
     int32_t j = std::get<1>(__tup_1);
     P& b = (*a);
     a = &(other);

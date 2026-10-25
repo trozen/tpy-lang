@@ -21,9 +21,8 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_g::__next__() {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& __for_tup_0 = *__beg_0;
-            const auto& __tup_1 = __for_tup_0;
-            name = std::get<0>(__tup_1);
-            num = std::get<1>(__tup_1);
+            name = std::get<0>(__for_tup_0);
+            num = std::get<1>(__for_tup_0);
         }
         __state = S_RESUME_0;
         return name;

@@ -75,7 +75,7 @@ __coro_value value(::tpy::BigInt n) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __sub_0.emplace(::tpy::BigInt(1));
         __state = S_RESUME_0;
@@ -122,7 +122,7 @@ __coro_a_for_body a_for_body() {
         {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __after_else_0:;
         __sub_0.emplace(::tpy::BigInt(2));
@@ -165,7 +165,7 @@ __coro_a_for_else a_for_else() {
         while ((i < 2)) {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             i = ::tpy::add_check<int32_t>(i, 1);
         }
         __sub_0.emplace(::tpy::BigInt(3));
@@ -208,11 +208,11 @@ __coro_a_while_body a_while_body() {
             try {
                 auto __tup_1 = ::tpyapp::main::pair();
                 s = std::move(std::get<0>(__tup_1));
-                k = std::get<1>(__tup_1);
+                k = std::move(std::get<1>(__tup_1));
             } catch (const ::tpy::ValueError&) {
                 auto __tup_2 = ::tpyapp::main::fallback();
                 s = std::move(std::get<0>(__tup_2));
-                k = std::get<1>(__tup_2);
+                k = std::move(std::get<1>(__tup_2));
             }
         }
         __sub_0.emplace(::tpy::BigInt(4));
@@ -254,11 +254,11 @@ __coro_a_try_except a_try_except() {
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         } else {
             auto __tup_2 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_2));
-            k = std::get<1>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
         }
         __sub_0.emplace(::tpy::BigInt(9));
         __state = S_RESUME_0;
@@ -299,7 +299,7 @@ __coro_a_if_arms a_if_arms() {
         try {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             goto __with_exit_1;
         } catch (::tpy::BaseException& __exc_1) {
             __ctx_1.__exit__({}, &__exc_1, {});
@@ -406,13 +406,13 @@ __coro_a_with_target a_with_target() {
         case 1: {
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             break;
         }
         default: {
             auto __tup_2 = ::tpyapp::main::fallback();
             s = std::move(std::get<0>(__tup_2));
-            k = std::get<1>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
             break;
         }
         }
@@ -458,8 +458,8 @@ __coro_a_match_arm a_match_arm(int32_t m) {
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            k = std::get<1>(__tup_1);
+            r = std::get<0>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __sub_0.emplace(::tpy::BigInt(11));
         __state = S_RESUME_0;
@@ -504,14 +504,14 @@ __coro_a_record a_record(Cell& c) {
         switch (__match_subject_1) {
         case 1: {
             auto __tup_1 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
-            k = std::get<1>(__tup_1);
+            r = std::get<0>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
             break;
         }
         default: {
             auto __tup_2 = ::tpyapp::main::with_cell(c);
-            r = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2))));
-            k = std::get<1>(__tup_2);
+            r = std::get<0>(__tup_2);
+            k = std::move(std::get<1>(__tup_2));
             break;
         }
         }
@@ -767,7 +767,7 @@ void main() {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::pair();
             s = std::move(std::get<0>(__tup_1));
-            k = std::get<1>(__tup_1);
+            k = std::move(std::get<1>(__tup_1));
         }
         __sub_0.emplace(::tpy::BigInt(8));
         __state = S_RESUME_0;

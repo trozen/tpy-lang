@@ -21,9 +21,8 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t n = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            int32_t n = std::get<1>(__for_tup_0);
             std::cout << i << " " << n << "\n" << ::tpy::check_signals;
         }
     }
@@ -35,9 +34,8 @@ void main() {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
             const auto& __for_tup_1 = ::tpy::unwrap_ref(*__r_3);
-            const auto& __tup_2 = __for_tup_1;
-            int32_t i = std::get<0>(__tup_2);
-            std::string_view w = std::get<1>(__tup_2);
+            int32_t i = std::get<0>(__for_tup_1);
+            std::string_view w = std::get<1>(__for_tup_1);
             std::cout << i << " " << w << "\n" << ::tpy::check_signals;
         }
     }

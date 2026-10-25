@@ -9,6 +9,8 @@ namespace tpyapp::main {
 
 struct Item;
 struct H;
+struct Each;
+template<typename U> struct GEach;
 
 } // namespace tpyapp::main
 
@@ -21,6 +23,12 @@ namespace tpyapp::main {
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_fresh_hs;
+template <typename T>
+struct __gen_each;
+template <typename T>
+struct __gen_Each_each;
+template <typename U, typename T>
+struct __gen_GEach_each;
 
 // def bump_all(source: Iterable[Own[Item]]) -> Own[list[Item]]:
 template<::tpystd::typing::Iterable<Item> T_source>
@@ -40,6 +48,11 @@ std::vector<H> make_hs();
 ::tpy::ordered_set<H> make_h_set();
 // def fresh_hs() -> Iterator[Own[H]]:
 __gen_fresh_hs fresh_hs();
+// def each[T](xs: list[T]) -> Iterator[T]:
+template <typename T>
+__gen_each<T> each(std::vector<T>& xs);
+// def explicit_type_arg(items: list[Own[Item]]) -> None:
+void explicit_type_arg(std::vector<Item>& items);
 // def bump(k: int32, x: Own[Item]) -> int32:  # tpyc: warning(/Own\[Item\] param 'x' is never consumed/)
 int32_t bump(int32_t k, Item&& x);
 // def main() -> None:
@@ -103,6 +116,36 @@ inline size_t std::hash<::tpyapp::main::H>::operator()(const ::tpyapp::main::H& 
 namespace tpyapp::main {
 
 
+// class Each:
+struct Each {
+
+
+    template <typename T>
+    __gen_Each_each<T> each(std::vector<T>& xs) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Each";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Each& obj) {
+    ::tpy::print_object_default(os, "Each", obj);
+    return os;
+}
+
+// class GEach[U]:
+template<typename U>
+struct GEach {
+
+
+    template <typename T>
+    __gen_GEach_each<U, T> each(std::vector<T>& xs) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GEach";
+};
+
+template<typename U>
+inline std::ostream& operator<<(std::ostream& os, const GEach<U>& obj) {
+    ::tpy::print_object_default(os, "GEach", obj);
+    return os;
+}
+
 // def fresh_hs() -> Iterator[Own[H]]:
 struct __gen_fresh_hs : public ::tpy::next_iter_mixin<__gen_fresh_hs, H> {
     ::tpy::frame_state __state;
@@ -122,6 +165,203 @@ struct __gen_fresh_hs : public ::tpy::next_iter_mixin<__gen_fresh_hs, H> {
         return os << "<generator fresh_hs>";
     }
 };
+
+// def each[T](xs: list[T]) -> Iterator[T]:
+template <typename T>
+struct __gen_each : public ::tpy::next_iter_mixin<__gen_each<T>, ::tpy::yield_slot_t<T>> {
+    ::tpy::frame_state __state;
+    std::vector<T>& xs;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_each(std::vector<T>& xs)
+        : __state(S_INITIAL),
+          xs(xs) {}
+
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    __gen_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_each<T>&) {
+        return os << "<generator each>";
+    }
+};
+// def each[T](xs: list[T]) -> Iterator[T]:
+//     for x in xs:
+//         yield x                           # -> S_RESUME_0
+template <typename T>
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_each<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*x);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def each[T](xs: list[T]) -> Iterator[T]:
+template <typename T>
+__gen_each<T> each(std::vector<T>& xs) {
+    return __gen_each<T>(xs);
+}
+
+// def each[T](self, xs: list[T]) -> Iterator[T]:
+template <typename T>
+struct __gen_Each_each : public ::tpy::next_iter_mixin<__gen_Each_each<T>, ::tpy::yield_slot_t<T>> {
+    ::tpy::frame_state __state;
+    const Each& __self;
+    std::vector<T>& xs;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_Each_each(const Each& __self, std::vector<T>& xs)
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
+
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    __gen_Each_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_Each_each<T>&) {
+        return os << "<generator Each.each>";
+    }
+};
+
+// def each[T](self, xs: list[T]) -> Iterator[T]:
+//     for x in xs:
+//         yield x                                 # -> S_RESUME_0
+template <typename T>
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_Each_each<T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*x);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename T>
+inline __gen_Each_each<T> Each::each(std::vector<T>& xs) const {
+    return __gen_Each_each<T>(*this, xs);
+}
+
+// def each[T](self, xs: list[T]) -> Iterator[T]:
+template <typename U, typename T>
+struct __gen_GEach_each : public ::tpy::next_iter_mixin<__gen_GEach_each<U, T>, ::tpy::yield_slot_t<T>> {
+    ::tpy::frame_state __state;
+    const GEach<U>& __self;
+    std::vector<T>& xs;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::begin_elem_t<__for_src_0_t>* x = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_GEach_each(const GEach<U>& __self, std::vector<T>& xs)
+        : __state(S_INITIAL),
+          __self(__self),
+          xs(xs) {}
+
+    std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __next__();
+    __gen_GEach_each& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_GEach_each<U, T>&) {
+        return os << "<generator GEach.each>";
+    }
+};
+
+// def each[T](self, xs: list[T]) -> Iterator[T]:
+//     for x in xs:
+//         yield x                                 # -> S_RESUME_0
+template <typename U, typename T>
+std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_GEach_each<U, T>::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = xs;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield x
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        x = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*x);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+template <typename U>
+template <typename T>
+inline __gen_GEach_each<U, T> GEach<U>::each(std::vector<T>& xs) const {
+    return __gen_GEach_each<U, T>(*this, xs);
+}
 
 
 // def __init__(self, v: int32) -> None:

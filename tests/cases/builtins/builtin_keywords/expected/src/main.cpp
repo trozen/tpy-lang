@@ -34,9 +34,8 @@ void free_function() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
-            const auto& __tup_1 = __for_tup_0;
-            int32_t i = std::get<0>(__tup_1);
-            int32_t v = std::get<1>(__tup_1);
+            int32_t i = std::get<0>(__for_tup_0);
+            int32_t v = std::get<1>(__for_tup_0);
             std::cout << "fn enumerate" << " " << i << " " << v << "\n" << ::tpy::check_signals;
         }
     }
@@ -80,8 +79,7 @@ void free_function() {
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
                 auto&& __for_tup_1 = *__beg_0;
-                auto& __tup_1 = __for_tup_1;
-                int32_t i = std::get<0>(__tup_1);
+                int32_t i = std::get<0>(__for_tup_1);
                 __result.push_back(i);
             }
             std::move(__result);

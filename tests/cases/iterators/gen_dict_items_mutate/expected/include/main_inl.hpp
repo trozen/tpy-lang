@@ -26,9 +26,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_bump::__next__() {
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         { auto&& __for_step_0 = *((*__for_it_0))++; __for_tup_0 = std::tuple<int32_t, C*>{std::get<0>(__for_step_0), &(std::get<1>(__for_step_0))}; }
-        auto& __tup_1 = __for_tup_0;
-        k = std::get<0>(__tup_1);
-        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1))));
+        k = std::get<0>(__for_tup_0);
+        c = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__for_tup_0))));
         c->v = (::tpy::add_check<int32_t>(c->v, 1));
         __state = S_RESUME_0;
         return k;

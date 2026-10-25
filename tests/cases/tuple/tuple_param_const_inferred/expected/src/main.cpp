@@ -8,9 +8,8 @@ namespace tpyapp::main {
 //     a, b = p
 //     print(a.x + b.x)
 void show(const std::tuple<const T*, const T*>& p) {
-    auto& __tup_1 = p;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    const T& a = (*std::get<0>(p));
+    const T& b = (*std::get<1>(p));
     std::cout << (::tpy::add_check<int32_t>(a.x, b.x)) << "\n" << ::tpy::check_signals;
 }
 
@@ -19,9 +18,8 @@ void show(const std::tuple<const T*, const T*>& p) {
 //     a, b = p
 //     a.x = a.x + 100
 void bump(const std::tuple<T*, T*>& p) {
-    auto& __tup_1 = p;
-    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    T& a = (*std::get<0>(p));
+    T& b = (*std::get<1>(p));
     a.x = (::tpy::add_check<int32_t>(a.x, 100));
 }
 

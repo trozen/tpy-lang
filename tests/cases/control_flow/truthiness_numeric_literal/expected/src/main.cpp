@@ -251,9 +251,8 @@ void main() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         auto&& __for_tup_0 = *__beg_0;
-        const auto& __tup_1 = __for_tup_0;
-        int32_t a = std::get<0>(__tup_1);
-        bool c = std::get<1>(__tup_1);
+        int32_t a = std::get<0>(__for_tup_0);
+        bool c = std::get<1>(__for_tup_0);
         std::cout << "a =" << " " << a << " " << ::tpy::print_bool(c) << "\n" << ::tpy::check_signals;
         ::tpyapp::main::conditions(a, c);
         ::tpyapp::main::filters(a);

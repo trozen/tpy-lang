@@ -13,9 +13,8 @@ std::tuple<Elem*, Elem*> g{};
 //         a.x = 11
 //     print(t1.x, b is None)
 void main() {
-    auto& __tup_1 = g;
-    Elem* a = std::get<0>(__tup_1);
-    Elem* b = std::get<1>(__tup_1);
+    Elem* a = std::get<0>(g);
+    Elem* b = std::get<1>(g);
     if ((a != nullptr)) {
         a->x = 11;
     }

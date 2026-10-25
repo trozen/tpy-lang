@@ -21937,7 +21937,7 @@
  "rec__ctor__subclass_local__field_write": [
   "ok",
   "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
+  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__ctor__subclass_local__match_capture": [
   "ok",
@@ -22552,7 +22552,7 @@
  "rec__fn__subclass_local__field_write": [
   "ok",
   "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
+  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__fn__subclass_local__match_capture": [
   "ok",
@@ -23452,7 +23452,7 @@
  "rec__meth__subclass_local__field_write": [
   "ok",
   "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
+  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec__meth__subclass_local__match_capture": [
   "ok",
@@ -24052,7 +24052,7 @@
  "rec__nested__subclass_local__field_write": [
   "ok",
   "upcast narrows 'Sub' to 'R' -- only 'R' fields and methods will be accessible; k",
-  "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
+  "%h.f [storage] = form_convert[storage](%s0) print(%h.f [storage].x [raw]) print(%s0.x <R::x> [raw]) call(nested_inner, [])"
  ],
  "rec__nested__subclass_local__match_capture": [
   "reject:stmt.match:match.capture_shape",

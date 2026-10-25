@@ -203,9 +203,8 @@ int32_t _hex_val(int32_t c) {
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
             const auto& __for_tup_0 = *__beg_2;
-            const auto& __tup_1 = __for_tup_0;
-            std::string_view k = std::get<0>(__tup_1);
-            std::string_view v = std::get<1>(__tup_1);
+            std::string_view k = std::get<0>(__for_tup_0);
+            std::string_view v = std::get<1>(__for_tup_0);
             lines.push_back((::tpy::str_concat((::tpy::str_concat(k, ": ")), v)));
         }
     }

@@ -168,9 +168,8 @@ void sec_method(std::string_view s, ::tpy::BytesView b) {
 void sec_tuple_name(const std::tuple<std::string, ::tpy::Bytes>& t) {
     std::string_view a = std::get<0>(t);
     ::tpy::BytesView c = std::get<1>(t);
-    const auto& __tup_1 = t;
-    std::string_view x = std::get<0>(__tup_1);
-    ::tpy::BytesView y = std::get<1>(__tup_1);
+    std::string_view x = std::get<0>(t);
+    ::tpy::BytesView y = std::get<1>(t);
     std::cout << "tuple-name" << " " << a << " " << ::tpy::BytesPrinter(c) << " " << x << " " << ::tpy::BytesPrinter(y) << "\n" << ::tpy::check_signals;
 }
 
@@ -285,7 +284,7 @@ void sec_unpack() {
     std::cout << "unpack reused" << " " << host2 << " " << port2 << "\n" << ::tpy::check_signals;
     H h = H(5);
     auto __tup_4 = ::tpyapp::main::pick(h);
-    auto&& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
+    Rec& r = (*std::get<0>(__tup_4));
     std::string nm = std::move(std::get<1>(__tup_4));
     r.n = 55;
     h.s = ::tpyapp::main::mk_s(56);
@@ -382,9 +381,8 @@ void sec_loop_name() {
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
         const auto& __for_tup_0 = *__beg_2;
-        const auto& __tup_1 = __for_tup_0;
-        std::string_view ps = std::get<0>(__tup_1);
-        ::tpy::BytesView pbb = std::get<1>(__tup_1);
+        std::string_view ps = std::get<0>(__for_tup_0);
+        ::tpy::BytesView pbb = std::get<1>(__for_tup_0);
         q = ps;
         qb = ::tpy::Bytes(pbb);
     }
@@ -1112,24 +1110,20 @@ void sec_tuple_unpack_over_field() {
     PS q = PS(1);
     auto&& qu = q.u;
     auto&& qub = q.ub;
-    auto __tup_1 = std::tuple<std::string, Rec*>{std::get<0>(qu), &(std::get<1>(qu))};
-    std::string y = std::get<0>(__tup_1);
-    auto&& r0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    auto __tup_2 = std::tuple<::tpy::Bytes, Rec*>{std::get<0>(qub), &(std::get<1>(qub))};
-    ::tpy::Bytes z = std::get<0>(__tup_2);
-    auto&& rb0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    std::string y = std::get<0>(qu);
+    Rec& r0 = std::get<1>(qu);
+    ::tpy::Bytes z = std::get<0>(qub);
+    Rec& rb0 = std::get<1>(qub);
     q.u = std::tuple<std::string, Rec>{::tpyapp::main::mk_s(7), Rec(7)};
     q.ub = std::tuple<::tpy::Bytes, Rec>{::tpyapp::main::mk_b(7), Rec(7)};
     std::cout << "tuple-unpack-field" << " " << y << " " << ::tpy::BytesPrinter(z) << "\n" << ::tpy::check_signals;
     P p = P(1);
     auto&& u = p.u;
     auto&& ub = p.ub;
-    auto __tup_3 = std::tuple<Rec*, std::string>{&(std::get<0>(u)), std::get<1>(u)};
-    auto&& r = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
-    std::string y2 = std::get<1>(__tup_3);
-    auto __tup_4 = std::tuple<Rec*, ::tpy::Bytes>{&(std::get<0>(ub)), std::get<1>(ub)};
-    auto&& rb = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_4)));
-    ::tpy::Bytes z2 = std::get<1>(__tup_4);
+    Rec& r = std::get<0>(u);
+    std::string y2 = std::get<1>(u);
+    Rec& rb = std::get<0>(ub);
+    ::tpy::Bytes z2 = std::get<1>(ub);
     p.u = std::tuple<Rec, std::string>{Rec(7), ::tpyapp::main::mk_s(7)};
     p.ub = std::tuple<Rec, ::tpy::Bytes>{Rec(7), ::tpyapp::main::mk_b(7)};
     std::cout << "tuple-unpack-field rec" << " " << y2 << " " << ::tpy::BytesPrinter(z2) << "\n" << ::tpy::check_signals;

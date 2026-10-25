@@ -1,0 +1,27 @@
+main.py:15: warning: 'Sub.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Base' part instead
+main.py:28: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:28: warning: copies Sub into field; use copy() to make this explicit
+main.py:29: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:29: warning: copies Sub into field; use copy() to make this explicit
+main.py:30: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:30: warning: copies Base into field (tuple element 0); use copy() to make this explicit
+main.py:34: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:34: warning: copies Sub into field; use copy() to make this explicit
+main.py:35: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:35: warning: copies Sub into field; use copy() to make this explicit
+main.py:36: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:36: warning: copies Base into field (tuple element 0); use copy() to make this explicit
+main.py:44: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:48: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:53: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:53: warning: copies Base into owned storage (tuple element 0); use copy() to make this explicit
+main.py:58: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:58: warning: copies Base | None into owned storage (tuple element 0); use copy() to make this explicit
+main.py:63: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:69: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:93: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:93: warning: copies Sub into owned storage (tuple element 1); use copy() to make this explicit
+main.py:95: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:95: warning: copies Sub into owned storage (tuple element 1); use copy() to make this explicit
+main.py:105: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:107: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol

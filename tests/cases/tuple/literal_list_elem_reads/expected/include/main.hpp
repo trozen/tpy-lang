@@ -177,9 +177,9 @@ inline Reader::Reader() : n(0) {}
 //     print("method.read", self.n, xs[0][1].v)
 inline void Reader::read() {
     std::array<std::tuple<int32_t, Box>, 1> xs = {std::tuple<int32_t, Box>{5, Box(6)}};
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& b = std::get<1>(__tup_1);
     b.v = 1;
     this->n = (::tpy::add_check<int32_t>(a, ::tpyapp::main::total([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0)))));
     std::cout << "method.read" << " " << this->n << " " << std::get<1>(::tpy::__getitem__(xs, 0)).v << "\n" << ::tpy::check_signals;
@@ -193,9 +193,9 @@ inline void Reader::read() {
 //     self.n = a + total(xs[0])  # tpyc: ok
 inline Built::Built() {
     std::array<std::tuple<int32_t, Box>, 1> xs = {std::tuple<int32_t, Box>{1, Box(2)}};
-    auto __tup_1 = [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0));
+    auto&& __tup_1 = ::tpy::__getitem__(xs, 0);
     int32_t a = std::get<0>(__tup_1);
-    auto&& b = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
+    Box& b = std::get<1>(__tup_1);
     b.v = 3;
     this->n = (::tpy::add_check<int32_t>(a, ::tpyapp::main::total([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<int32_t, const Box*>{std::get<0>(__t), &(std::get<1>(__t))}; }(::tpy::__getitem__(xs, 0)))));
 }

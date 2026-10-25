@@ -17,9 +17,8 @@ void main() {
     std::tuple<std::string, std::string> t = std::tuple<std::string, std::string>{"hello world long enough", "another long string here ok"};
     std::string_view x = "init";
     std::string_view y = "init";
-    const auto& __tup_1 = t;
-    x = std::get<0>(__tup_1);
-    y = std::get<1>(__tup_1);
+    x = std::get<0>(t);
+    y = std::get<1>(t);
     std::cout << x << "\n" << ::tpy::check_signals;
     std::cout << y << "\n" << ::tpy::check_signals;
 }
