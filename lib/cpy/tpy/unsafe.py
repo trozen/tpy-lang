@@ -9,6 +9,14 @@ from __future__ import annotations
 from tpy import Ptr, _ConstPtr, take_ptr
 
 
+def _target(p):
+    # The pointer's storage, null included: these operations never
+    # dereference, so a null pointer must not raise as `deref(p)` does.
+    if p is None:
+        return None
+    return p._obj if hasattr(p, '_obj') else p.__deref__()
+
+
 # ---------------------------------------------------------------------------
 # Heap simulation helpers for unsafe_alloc / unsafe_alloc_n
 # ---------------------------------------------------------------------------
@@ -148,33 +156,33 @@ def unsafe_ptr(container):
 
 def unsafe_load(p, offset: int):
     """Read a value through a pointer at offset."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     return obj[offset]
 
 
 def unsafe_store(p, offset: int, value) -> None:
     """Write a value through a pointer at offset."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     obj[offset] = value
 
 
 def unsafe_copy_n(dest, src, count: int) -> None:
     """Copy N elements between pointers."""
-    dest_obj = dest.__deref__() if hasattr(dest, '__deref__') else dest._obj
-    src_obj = src.__deref__() if hasattr(src, '__deref__') else src._obj
+    dest_obj = _target(dest)
+    src_obj = _target(src)
     for i in range(count):
         dest_obj[i] = src_obj[i]
 
 
 def unsafe_const_cast(p):
     """Remove const from a pointer (Ptr[readonly[T]] -> Ptr[T])."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     return take_ptr(obj)
 
 
 def unsafe_ptr_add(p, delta: int):
     """Advance a pointer by a signed element offset."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     if isinstance(obj, _HeapArray):
         return take_ptr(_HeapArrayView(object.__getattribute__(obj, '_slots'), int(delta)))
     if isinstance(obj, _HeapArrayView):
@@ -221,13 +229,13 @@ def unsafe_free(p) -> None:
 
 def unsafe_init(p, value) -> None:
     """Placement-new: construct an object at a pointer location."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     obj[0] = value
 
 
 def unsafe_move_out(p):
     """Move a value out of a pointer location without calling destructor."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     val = obj[0]
     obj[0] = None
     return val
@@ -235,7 +243,7 @@ def unsafe_move_out(p):
 
 def unsafe_drop(p) -> None:
     """Call destructor on an object at a pointer location."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     obj[0] = None
 
 
@@ -248,20 +256,20 @@ def unsafe_take(value):
 
 def unsafe_release(p) -> None:
     """Destruct and free a heap-allocated value (drop + free combined)."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     obj[0] = None
 
 
 def unsafe_replace(p, value):
     """Replace the heap-stored value at p, returning the live slot pointer."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     obj[0] = value
     return p
 
 
 def unsafe_transfer_ownership(p):
     """Adopt the heap-stored value at p as an owned value; clears the slot."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     val = obj[0]
     obj[0] = None
     return val
@@ -274,11 +282,11 @@ def unsafe_cstr(s: str):
 
 def unsafe_str_from_cstr(p) -> str:
     """Read a null-terminated C string into an owned str."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     return obj if isinstance(obj, str) else ''.join(obj)
 
 
 def unsafe_str_view(p, size: int) -> str:
     """Create a string view from a Ptr[char] and length."""
-    obj = p.__deref__() if hasattr(p, '__deref__') else p._obj
+    obj = _target(p)
     return ''.join(obj[i] for i in range(size))

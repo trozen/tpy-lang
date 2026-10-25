@@ -1,0 +1,7 @@
+arg 'NoneType' object has no attribute '__deref__'
+return 'NoneType' object has no attribute '__deref__'
+init 'NoneType' object has no attribute '__deref__'
+record 'NoneType' object has no attribute '__deref__'
+union 'NoneType' object has no attribute '__deref__'
+method 'NoneType' object has no attribute '__deref__'
+generator [1] 'NoneType' object has no attribute '__deref__'

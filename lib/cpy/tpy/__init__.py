@@ -223,6 +223,14 @@ float64 = float
 # Pointer types
 # ---------------------------------------------------------------------------
 
+def _deref_target(obj):
+    # A null pointer dereferences as None's own `__deref__` lookup fails: the
+    # AttributeError the compiled `deref(p)` and `Ptr[T]` -> `T` raise.
+    if obj is None:
+        raise AttributeError("'NoneType' object has no attribute '__deref__'")
+    return obj
+
+
 class _Ptr(Generic[T]):
     """Mutable pointer simulation."""
 
@@ -230,7 +238,7 @@ class _Ptr(Generic[T]):
         self._obj = obj
 
     def __deref__(self) -> T:
-        return self._obj
+        return _deref_target(self._obj)
 
     def span(self, length):
         """Ptr[T].span(n) -> Span[T] over the first n elements of the storage."""
@@ -308,7 +316,7 @@ class _ConstPtr(Generic[T]):
         self._obj = obj
 
     def __deref__(self) -> T:
-        return self._obj
+        return _deref_target(self._obj)
 
     @property
     def value(self):

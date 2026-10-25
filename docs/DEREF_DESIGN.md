@@ -118,7 +118,7 @@ Replaced the hardcoded `ptr_to_record` coercion with a generic deref fallback in
 
 ### Stage 6: Null-safety for Ptr / Ptr[readonly[T]] auto-deref -- Done
 
-Replaced unchecked `ptr->field` / `ptr->method()` with a null-checked access for `PtrType` (both mutable and const). Since 2026-10-23 the check is the None-access one (`tpy::none_attr(ptr, "field").field` / `tpy::none_attr(ptr, "method").method()`), raising `AttributeError` as CPython does for an attribute on None, which is what the `Ptr` stub forwards to. The `Ptr` -> `T` coercion and an explicit `deref(p)` / `.__deref__()` keep `tpy::deref_check`, which panics with "null pointer dereference" (TODO.md "null Ptr coercion and explicit deref: which exception").
+Replaced unchecked `ptr->field` / `ptr->method()` with a null-checked access for `PtrType` (both mutable and const). Since 2026-10-23 the check is the None-access one (`tpy::none_attr(ptr, "field").field` / `tpy::none_attr(ptr, "method").method()`), raising `AttributeError` as CPython does for an attribute on None, which is what the `Ptr` stub forwards to. The `Ptr` -> `T` coercion and an explicit `deref(p)` / `.__deref__()` render `tpy::deref_check`, which since 2026-10-25 is `none_attr(ptr, "__deref__")`: a null pointer raises `AttributeError` (`'NoneType' object has no attribute '__deref__'`), the error CPython gives for `None.__deref__()`; the CPython stub's `__deref__` raises the same.
 
 The C++ optimizer can elide redundant null checks on the same pointer in release builds (`-O2`/`-O3`).
 

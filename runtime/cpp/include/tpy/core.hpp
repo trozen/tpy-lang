@@ -684,33 +684,6 @@ inline void process_startup() {
 #endif
 }
 
-/**
- * Checked pointer dereference - panics if pointer is null.
- * Used for implicit Ptr[T] -> T coercion.
- */
-template <typename T>
-TPY_ALWAYS_INLINE T& deref_check(T* ptr) {
-    if (ptr == nullptr) [[unlikely]] {
-        tpy_panic("null pointer dereference");
-    }
-    return *ptr;
-}
-
-template <typename T>
-TPY_ALWAYS_INLINE const T& deref_check(const T* ptr) {
-    if (ptr == nullptr) [[unlikely]] {
-        tpy_panic("null pointer dereference");
-    }
-    return *ptr;
-}
-
-// User types with __deref__() method
-template <typename T>
-    requires requires(T& t) { t.__deref__(); }
-decltype(auto) deref_check(T& obj) {
-    return obj.__deref__();
-}
-
 // `a is b` over two objects: same object iff same address, once both are viewed
 // at a common type; objects of unrelated C++ types are never one object, so only
 // two Nones (null pointers) are identical there.
@@ -775,6 +748,21 @@ template <typename T>
 TPY_ALWAYS_INLINE T& none_attr(T* p, std::string_view attr) {
     if (p == nullptr) [[unlikely]] raise_none_access(NoneUseKind::attr, attr);
     return *p;
+}
+
+// The `Ptr[T]` -> `T` coercion and an explicit `deref(p)`: dereferencing is
+// the pointer's `__deref__` member, so a null pointer raises what CPython
+// raises for `None.__deref__()`, as `p.x` raises for `None.x`.
+template <typename T>
+TPY_ALWAYS_INLINE T& deref_check(T* ptr) {
+    return none_attr(ptr, "__deref__");
+}
+
+// User types with __deref__() method
+template <typename T>
+    requires requires(T& t) { t.__deref__(); }
+decltype(auto) deref_check(T& obj) {
+    return obj.__deref__();
 }
 template <typename T>
 TPY_ALWAYS_INLINE T& none_attr(std::optional<T>& o, std::string_view attr) {

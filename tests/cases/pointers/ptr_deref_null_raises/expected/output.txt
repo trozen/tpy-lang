@@ -1,0 +1,9 @@
+free 'NoneType' object has no attribute '__deref__'
+dunder 'NoneType' object has no attribute '__deref__'
+free 'NoneType' object has no attribute '__deref__'
+dunder 'NoneType' object has no attribute '__deref__'
+readonly 'NoneType' object has no attribute '__deref__'
+method 'NoneType' object has no attribute '__deref__'
+generator [1] 'NoneType' object has no attribute '__deref__'
+unsafe 'NoneType' object has no attribute '__deref__'
+non_null 7

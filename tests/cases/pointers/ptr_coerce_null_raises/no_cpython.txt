@@ -1,0 +1,1 @@
+Under CPython the Ptr[T] -> T coercion has no hook: the null pointer travels on and fails at its first use, or never.

@@ -1241,7 +1241,7 @@ Existing escape/safety tests:
 |------|---------------|-------|
 | Pointer escape/dangling | `tests/cases/pointers/error_ptr_*`, `escape_hoist_*` | ~20 |
 | Ptr non-null elision | `tests/cases/pointers/ptr_non_null_*` | 2 |
-| Null deref panics | `tests/cases/pointers/panic_ptr_deref_*` | 3 |
+| Null deref raises | `tests/cases/pointers/ptr_deref_null_raises`, `ptr_coerce_null_raises` | 2 |
 | String dangling | `tests/cases/str/error_strview_dangling_*` | 2 |
 | Tuple ref dangling | `tests/cases/tuple/error_tuple_ref_dangling` | 1 |
 | Container dangling | `tests/cases/list/error_dangling_*`, `dict/error_dict_return_*` | 3 |
