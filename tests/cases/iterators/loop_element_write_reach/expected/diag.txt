@@ -1,0 +1,2 @@
+main.py:575: warning: '+=' on 'a' falls back to '__add__' (Acc has no '__iadd__'): the object is updated in place, where Python rebinds 'a' -- define '__iadd__', or write 'a = a + 10'
+main.py:585: warning: '+=' on 'w' falls back to '__add__' (Acc has no '__iadd__'): the object is updated in place, where Python rebinds 'w' -- define '__iadd__', or bind the result to a new name, e.g. 'w2 = w + 10'

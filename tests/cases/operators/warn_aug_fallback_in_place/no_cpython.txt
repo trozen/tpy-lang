@@ -1,0 +1,4 @@
+The warned sections are the subject: TPy updates the object in place, so
+the alias sees the update (`a is b` True), where CPython rebinds the name
+(`11 1 False`). The expected output pins the warned in-place behavior until
+BUGS.md#borrow-unpack-target-rebind-writes-through is fixed.

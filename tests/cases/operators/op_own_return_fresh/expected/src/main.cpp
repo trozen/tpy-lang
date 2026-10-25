@@ -21,9 +21,11 @@ void test_own_dunder_fresh() {
 }
 
 // def test_own_augassign_fallback():
-//     # `+=` with no __iadd__ falls back to the Own-returning __add__: a fresh
-//     # value lands in `a`, matching CPython's rebind-to-fresh-object (the
-//     # borrow-returning fallback is rejected -- error_augassign_borrow_fallback).
+//     # `+=` with no __iadd__ falls back to the Own-returning __add__, whose
+//     # fresh value is written into `a`'s object (warned:
+//     # BUGS.md#borrow-unpack-target-rebind-writes-through); nothing else holds
+//     # it, so the output is CPython's (the borrow-returning fallback is
+//     # rejected -- error_augassign_borrow_fallback).
 //     a = Acc(1)
 //     b = Acc(2)
 //     a += b

@@ -1,0 +1,7 @@
+iadd 11 11 True
+list [1, 2, 3] [1, 2, 3] True
+bytearray bytearray(b'abc') bytearray(b'abc') True
+int 11 1
+str abc ab
+String abc ab
+valuetype 11 1

@@ -147,8 +147,9 @@ if TYPE_CHECKING:
 from .capture_copies import warn_closure_captures
 from .frame_traits import frame_type_of_function
 from .alias_rebind import (binding_roots, decide_rebind_storage,
-                           finalize_pointer_tuples, stamp_bind_kind,
-                           stamp_unpack_rebinds, unpack_target_records)
+                           finalize_pointer_tuples, is_reference_local,
+                           stamp_bind_kind, stamp_unpack_rebinds,
+                           unpack_target_records)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import (expression_spelling, operand_spelling,
@@ -5366,10 +5367,12 @@ class StatementAnalyzer:
 
     def _check_fallback_rebinds_owner(self, stmt: TpyAugAssign,
                                       method: str,
-                                      target_type: TpyType) -> None:
+                                      target_type: TpyType) -> str | None:
         """Error on `x += v` resolved to `__add__` when local `x` refers to
         storage it does not own: the update is emitted in place, so it would
-        write through to that storage where CPython rebinds `x`. Interim:
+        write through to that storage where CPython rebinds `x`. On an
+        owned reference-type `x`, return the warning to give once the
+        statement's other checks pass: an alias sees the update. Interim:
         BUGS.md#borrow-unpack-target-rebind-writes-through tracks lowering
         the fallback as the assignment `x = x + v`, which lifts this."""
         name = stmt.target.name
@@ -5377,11 +5380,38 @@ class StatementAnalyzer:
         # Module-level statements have no ownership fact here; their
         # fallback aug-assigns do not lower at all.
         if not self.ctx.in_function_body():
-            return
+            return None
         is_nonlocal = name in fs.current_nonlocal_names
         if (name not in fs.enclosing_borrowing_names
                 if is_nonlocal else fs.owns_whole(name)):
-            return
+            # An owned reference object is updated in place where Python
+            # rebinds the name, so an alias sees the change
+            # (BUGS.md#borrow-unpack-target-rebind-writes-through).
+            if not is_reference_local(target_type):
+                return None
+            op, imethod, hint = self._fallback_rebind_spelling(
+                stmt, is_nonlocal)
+            return (f"'{op}=' on '{name}' falls back to '{method}' "
+                    f"({user_type_name(unwrap_readonly(target_type))} has "
+                    f"no '{imethod}'): the object is updated in place, "
+                    f"where Python rebinds '{name}' -- define '{imethod}', "
+                    f"or {hint}")
+        op, imethod, hint = self._fallback_rebind_spelling(stmt, is_nonlocal)
+        raise self.ctx.error(
+            f"'{op}=' on '{name}' would rebind '{name}' "
+            f"({user_type_name(unwrap_readonly(target_type))} has no "
+            f"'{imethod}', so it falls back to '{method}'), but '{name}' "
+            f"refers to an object it does not own; this is not supported "
+            f"yet -- {hint}",
+            stmt,
+        )
+
+    @staticmethod
+    def _fallback_rebind_spelling(stmt: TpyAugAssign,
+                                  is_nonlocal: bool) -> tuple[str, str, str]:
+        """The operator, the in-place dunder Python would look up, and the
+        rebind spelling to suggest for a fallback `x op= v`."""
+        name = stmt.target.name
         op = op_spelling(stmt.op)
         # `**` has no in-place dunder in the table; name the one Python
         # would look up all the same.
@@ -5394,14 +5424,7 @@ class StatementAnalyzer:
         hint = (f"bind the result to a new name, e.g. "
                 f"'{name}2 = {name} {op} {value}'" if is_nonlocal
                 else f"write '{name} = {name} {op} {value}'")
-        raise self.ctx.error(
-            f"'{op}=' on '{name}' would rebind '{name}' "
-            f"({user_type_name(unwrap_readonly(target_type))} has no "
-            f"'{imethod}', so it falls back to '{method}'), but '{name}' "
-            f"refers to an object it does not own; this is not supported "
-            f"yet -- {hint}",
-            stmt,
-        )
+        return op, imethod, hint
 
     def _infer_new_local_view_type(
         self, name: str, var_type: TpyType,
@@ -8979,12 +9002,14 @@ class StatementAnalyzer:
                     # reassignment rules of a parameter, a loop variable
                     # and a global hold for it.
                     self._check_nonvalue_rebinding(stmt.target.name, stmt)
-                    self._check_fallback_rebinds_owner(stmt, result.method.name,
-                                                       target_type)
+                    in_place = self._check_fallback_rebinds_owner(
+                        stmt, result.method.name, target_type)
                     # `__add__` REBINDS the name: a pending deferred return
                     # of it must keep the object it named, so its capture
                     # goes back to eager, as for a plain rebind.
                     self._decline_deferred_return(stmt.target.name, stmt)
+                    if in_place is not None:
+                        self.ctx.warning(in_place, stmt)
                 return
             raise self.ctx.error(
                 f"Operator '{op_spelling(stmt.op)}=' is not supported for {target_type}",

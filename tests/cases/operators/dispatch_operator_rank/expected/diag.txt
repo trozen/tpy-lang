@@ -1,2 +1,3 @@
 main.py:237: warning: lambda at line 237 copies the object 'v' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
 main.py:237: warning: lambda at line 237 copies the object 'xs' refers to when it is created; changes to that object after this are not seen by it (a Python closure sees them)
+main.py:266: warning: '+=' on 'w' falls back to '__add__' (W has no '__iadd__'): the object is updated in place, where Python rebinds 'w' -- define '__iadd__', or write 'w = w + 3'

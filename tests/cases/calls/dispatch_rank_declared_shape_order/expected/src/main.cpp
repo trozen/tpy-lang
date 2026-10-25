@@ -908,8 +908,9 @@ std::string lit_cross__lit_a(std::string_view x, int64_t y) {
 //     ne = n != 3  # tpyc: ok
 //     print("operators:", n.hits, lt, chained, ne)
 //     acc = OpAcc(0)
-//     # Augmented assignment through `__add__`.
-//     acc += 3  # tpyc: ok
+//     # Augmented assignment through `__add__` (in place, warned:
+//     # BUGS.md#borrow-unpack-target-rebind-writes-through).
+//     acc += 3  # tpyc: warning(/falls back to '__add__'.*updated in place/)
 //     w = OpWidth()
 //     # `int32` is the default int's home; a float literal takes the Optional.
 //     print("operators:", acc.n, w + 3, w - 3.0)  # tpyc: ok

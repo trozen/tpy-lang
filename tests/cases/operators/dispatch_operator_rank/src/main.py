@@ -261,8 +261,9 @@ def spellings() -> None:
 
 def aug_fallback() -> None:
     w = W(0)
-    # `+=` with only `__add__`: `w = w + 3` runs `__add__(int)`.
-    w += 3  # tpyc: ok
+    # `+=` with only `__add__` runs `__add__(int)` and writes the result into
+    # w's object (warned; BUGS.md#borrow-unpack-target-rebind-writes-through).
+    w += 3  # tpyc: warning(/falls back to '__add__'.*updated in place/)
     print("aug_fallback:", w.n)
 
 

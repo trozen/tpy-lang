@@ -1,3 +1,4 @@
 main.py:262: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:426: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:838: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol
+main.py:1153: warning: '+=' on 'acc' falls back to '__add__' (OpAcc has no '__iadd__'): the object is updated in place, where Python rebinds 'acc' -- define '__iadd__', or write 'acc = acc + 3'

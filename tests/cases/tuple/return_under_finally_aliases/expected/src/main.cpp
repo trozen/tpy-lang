@@ -543,9 +543,10 @@ std::tuple<::tpy::ordered_set<int32_t>, int32_t> aug_set() {
     }
 }
 
-// # a record with only `__add__`: `+=` rebinds, the pending return keeps the
-// # original object, which the eager capture copies (warned) before the finally
-// # rebinds the name (BUGS.md#finally-mutate-then-rebind-return).
+// # a record with only `__add__`: `+=` rebinds in Python (TPy writes in place,
+// # warned: BUGS.md#borrow-unpack-target-rebind-writes-through); the pending
+// # return keeps the original object, which the eager capture copies (warned)
+// # before the finally rebinds the name (BUGS.md#finally-mutate-then-rebind-return).
 // def aug_rebinds() -> tuple[Own[Plus], int32]:
 //     p = Plus(1)
 //     try:

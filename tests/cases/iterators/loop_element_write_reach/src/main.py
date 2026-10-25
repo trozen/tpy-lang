@@ -568,20 +568,21 @@ class IAcc:
         return self
 
 
-# an owned local nothing aliases: += falls back to __add__ and rebinds it
+# an owned local nothing aliases: += falls back to __add__, updated in place
+# (warned; BUGS.md#borrow-unpack-target-rebind-writes-through)
 def aug_owned_local() -> int32:
     a = Acc(1)
-    a += 10  # tpyc: ok
+    a += 10  # tpyc: warning(/falls back to '__add__'.*updated in place/)
     return a.n
 
 
-# through nonlocal, an owned enclosing local: += falls back to __add__ and
-# rebinds it
+# through nonlocal, an owned enclosing local: += falls back to __add__,
+# updated in place (warned)
 def aug_nonlocal_owned() -> int32:
     w = Acc(1)
     def g() -> None:
         nonlocal w
-        w += 10  # tpyc: ok
+        w += 10  # tpyc: warning(/falls back to '__add__'.*updated in place/)
     g()
     return w.n
 
