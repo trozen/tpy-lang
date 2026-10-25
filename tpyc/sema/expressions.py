@@ -82,7 +82,7 @@ from ..prescan import (
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
 from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
-from .arg_binding import peel_coercions
+from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -96,6 +96,7 @@ from .list_elem import (Role, container_call, container_calls, iterated_step,
                         without_mutable_twins,
                         protocol_is_elem_blind)
 from .pending_num import (ContainerCells, PendingNumCell, PendingNums,
+                          int_tparam_conversion,
                           pairs_as,
                           receives_pending, value_leaves,
                           is_pending_num, pending_join, strip_int,
@@ -322,7 +323,7 @@ def generic_constructor_factory(ctx: 'SemanticContext',
     # The empty container's own analysis spells its record as the call's
     # type; met again at a slot, it is still the factory.
     if not (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
-            and not expr.args
+            and not source_view(expr).operands
             and (expr.call_type is None
                  or isinstance(expr.call_type, PENDING_CONTAINER_TYPES))):
         return None
@@ -2041,6 +2042,15 @@ class ExpressionAnalyzer:
 
         return None
 
+    def _int_type_param_read(self, expr: TpyName) -> TpyType:
+        value_t = self.ctx.default_int_type
+        conv = int_tparam_conversion(self.ctx, expr, value_t,
+                                     CoercionContext.ARG,
+                                     "constant generic read")
+        assert conv is not None
+        self.ctx.func.int_tparam_reads.append((expr, conv))
+        return value_t
+
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
         self.ctx.read_bindings[expr] = resolve_read(self.ctx, expr.name)
@@ -2076,10 +2086,11 @@ class ExpressionAnalyzer:
         # the iteration step). So no closure can retain an ephemeral frame-slot borrow
         # past its step.
 
-        # An INT type param of a generic class is a compile-time value
-        # (e.g., int32(N)), treated as int32-compatible.
+        # A value read of an INT type param is a default-int value; the
+        # body-end rewrite puts the conversion of the raw constant in the
+        # name's place (`PendingNums.settle_all`).
         if read.int_type_param:
-            return TypeParamRef(expr.name, kind=TypeParamKind.INT)
+            return self._int_type_param_read(expr)
 
         # Use namespace for unified lookup (includes builtins)
         if self.ctx.func.current_ns:
@@ -6835,9 +6846,9 @@ class ExpressionAnalyzer:
     def _shared_key_param(self, sv: SubscriptViews) -> TpyType | None:
         """The key parameter every variant of the dunder set `sv`
         declares, None when they differ."""
-        arity = sv.shape.arity
         return self.calls.shared_param_type(without_mutable_twins(
-            [m for m in sv.views if len(m.params) == arity]), 0)
+            [m for m in sv.views if sv.shape.binding(m) is not None]), 0,
+            sv.shape)
 
     def _subscript_read(self, expr: TpySubscript, sv: SubscriptViews,
                         readonly: bool, key_type: TpyType) -> TpyType:
@@ -6987,7 +6998,7 @@ class ExpressionAnalyzer:
         const_receiver = False
         if len(overloads) == 1:
             # One variant: received as a call to it alone is.
-            if len(overloads[0].params) == len(ranked):
+            if CallShape(len(ranked)).binding(overloads[0]) is not None:
                 method = overloads[0]
         else:
             winner, const_receiver = self.calls.rank_method_call(

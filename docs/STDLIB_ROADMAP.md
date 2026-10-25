@@ -251,7 +251,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 
 | Item | Status | Notes |
 |---|---|---|
-| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` take one iterable (`max(xs)`, `min(xs, key=f)`; an empty one raises `ValueError`) or two / three operands. Over class instances the result is the element or operand itself where named operands or a container lend it; over an iterator it is a value (a binding warns); tuples holding one are refused (BUGS.md#min-max-key-result-copies). `default=` is missing. `sum(xs, start=n)` by keyword is refused (builtin functions take no keywords but `key=` / `reverse=`) |
+| `abs`, `min`, `max`, `sum` | Partial | `min`/`max` take one iterable (`max(xs)`, `min(xs, key=f)`; an empty one raises `ValueError`) or two / three operands. Over class instances the result is the element or operand itself where named operands or a container lend it; over an iterator it is a value (a binding warns); tuples holding one are refused (BUGS.md#min-max-key-result-copies). `default=` is missing. `sum(xs, start=n)` takes its keyword, as builtins take keywords by CPython's rules |
 | `pow`, `divmod`, `round` | Done | |
 | `bin`, `hex`, `oct` | Done | |
 | `chr`, `ord` | Done | |
@@ -286,7 +286,7 @@ functions, exceptions, I/O) and is re-exported by `lib/tpy/builtins.py`.
 | Item | Status | Notes |
 |---|---|---|
 | `print` | Done | `print(*xs)` spreads a list, `Array`, `Span` or `*args` pack; any other iterable is refused and has to be materialized by the caller (`print(*list(g))`); `Optional` elements are refused |
-| `open`, `open_text`, `open_binary` | Partial | `TextIO` / `BinaryIO` context managers. A text file bound to a name iterates its lines (`for line in f`, comprehensions, generator and `async` bodies, `list(f)` / `enumerate(f)` / `zip(f, g)`), each keeping its newline; `for line in open(p)` without a binding, a `TextIO` parameter as a loop source and iterating a `BinaryIO` are missing (TODO.md "Iterating a file object"); keywords (`open(p, mode="r")`) are refused (BUGS.md#builtin-open-keyword-args) |
+| `open`, `open_text`, `open_binary` | Partial | `TextIO` / `BinaryIO` context managers. A text file bound to a name iterates its lines (`for line in f`, comprehensions, generator and `async` bodies, `list(f)` / `enumerate(f)` / `zip(f, g)`), each keeping its newline; `for line in open(p)` without a binding, a `TextIO` parameter as a loop source and iterating a `BinaryIO` are missing (TODO.md "Iterating a file object"); `file` and `mode` take keywords (`open(p, mode="r")`), the other parameters are missing (TODO.md "Missing builtin parameters") |
 | `input` | Done | Both `input()` and `input(prompt)`; EOF raises `EOFError` |
 
 **Descriptors / class utilities**

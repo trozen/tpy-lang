@@ -263,6 +263,10 @@ class TypeDef:
     # so the argument is analysed as a condition: an `and` / `or` / ternary
     # there needs no one value type.
     ctor_arg_truth_test: bool = False
+    # CPython's constructor reads keyword arguments as entries (`dict(x=1)`
+    # is `{'x': 1}`), a construction TPy does not build: a keyword there is
+    # refused as that restriction, never bound to a parameter.
+    ctor_keywords_are_entries: bool = False
     subscript_borrows: bool = False
     # Value type whose every value is a borrow handle into storage it does
     # not own (StrView, Span, dict views, ...). Set only from the stub's
@@ -403,6 +407,9 @@ class TypeDef:
     # or for dynamic RECORD/PROTOCOL/ENUM entries whose construction goes
     # through sema registration, not a factory callable.
     param_kinds: tuple["TypeParamKind", ...] = ()
+    # The type parameters' names, as the stub's record declares them; empty
+    # until that record attaches (a primitive or a stub-less factory).
+    param_names: tuple[str, ...] = ()
     type_factory: Optional[Callable[..., "TpyType"]] = None
 
 
@@ -500,6 +507,7 @@ def attach_dynamic_type_def(
         td = TypeDef(
             qname=qname, category=category,
             record=record, protocol=protocol, enum=enum,
+            param_names=tuple(getattr(record, "type_params", ())),
             is_value_type=(is_value_type if is_value_type is not None else False),
             is_indirecting=record_is_indirecting,
         )
@@ -509,6 +517,7 @@ def attach_dynamic_type_def(
     else:
         if record is not None:
             td.record = record
+            td.param_names = tuple(getattr(record, "type_params", ()))
             # Stub-declared indirection (@native(..., indirecting=True))
             # latches onto the existing static TypeDef so the cycle walker can
             # consult one uniform flag for builtins and user @native records.
@@ -622,6 +631,7 @@ def clear_dynamic_type_defs() -> None:
         td = _type_defs.get(qname)
         if td is not None:
             td.record = None
+            td.param_names = ()
             td.protocol = None
             td.enum = None
             # Matches record/protocol/enum: the static `_populate` entries
@@ -1432,7 +1442,7 @@ def _populate() -> None:
     # element_of to override. cpp: ::tpy::ordered_map<K, V>.
     register(TypeDef(
         "builtins.dict", TC.DICT, cpp_default_init=_INERT,
-        subscript_borrows=True,
+        subscript_borrows=True, ctor_keywords_are_entries=True,
         is_send=lambda args: args[0].is_send() and args[1].is_send(),
         is_sync=False,
         cpp_formatter=lambda args: f"::tpy::ordered_map<{args[0].to_cpp()}, {args[1].to_cpp()}>",
@@ -1467,9 +1477,10 @@ def _populate() -> None:
     # (element, size) where size is int or integer-kind TypeParamRef.
     # cpp: std::array<T, N>; is_send/is_sync propagate from element.
     def _array_cpp(args: tuple) -> str:
-        elem, size = args
-        size_str = str(size) if isinstance(size, int) else size.to_cpp()
-        return f"std::array<{elem.to_cpp()}, {size_str}>"
+        from tpyc.typesys import template_args_cpp
+        args_cpp = template_args_cpp("Array", get_type_def("tpy.Array"), args,
+                                     lambda a: a.to_cpp())
+        return f"std::array<{args_cpp}>"
 
     register(TypeDef(
         "tpy.Array", TC.ARRAY,

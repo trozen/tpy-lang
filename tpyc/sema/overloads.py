@@ -9,12 +9,13 @@ from __future__ import annotations
 from dataclasses import replace as dc_replace
 from enum import Enum
 from collections.abc import Hashable
-from typing import TYPE_CHECKING, Callable, NamedTuple
+from typing import TYPE_CHECKING, Callable, NamedTuple, Sequence
 
 from ..typesys import (
     same_class,
     TpyType, IntLiteralType, FloatLiteralType, FLOAT,
-    TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
+    TypeParamRef, FunctionInfo, ParamInfo, is_protocol_type,
+    unwrap_readonly,
     PendingStrType, PendingViewType, LiteralType, LiteralTag,
     PendingBytesType, TupleType, UnknownElementType, PendingContainerType,
     NominalType, PtrType, OwnType, ReadonlyType, RefType, CallableType, is_fn_type, VoidType, NoneType,
@@ -26,8 +27,9 @@ from ..typesys import (
 from ..type_def_registry import (
     is_fixed_int_type, is_big_int_type, is_bool_type,
     is_str_type, is_bytes_type, is_str_category, is_bytes_category,
-    int_traits_of,
+    int_traits_of, is_varargs,
 )
+from .arg_binding import ArgBinding, BindReject, CallSource, bind
 from ..coercions import (resolve_coercion, CoercionContext, int_literal_fits_fixed_int,
                          coercion_refuses_value)
 from ..identity_map import IdentityMap
@@ -102,18 +104,72 @@ class OverloadAmbiguityError(Exception):
 
 
 class CallShape(NamedTuple):
-    """How a call passes its arguments: how many in all, and the names of
-    those passed by keyword. Every filter of an overload set by the call
-    (`CallAnalyzer.admitted_overloads`, the pending-number gate) reads it,
-    so they agree on which variants the call can reach."""
-    arity: int
+    """How a call passes its arguments: how many positionally, the names of
+    those passed by keyword in written order, and whether it unpacks a
+    `**expr`. Every filter of an overload set by the call
+    (`CallAnalyzer.admitted_overloads`, the pending-number gate) places
+    them through the one binding (`bind`), as the ranking does, so they
+    agree on which variants the call can reach and at which parameter."""
+    positional: int
     keywords: tuple[str, ...] = ()
+    double_star: bool = False
 
-    def names_keywords(self, fn: FunctionInfo) -> bool:
-        """Whether `fn` takes each keyword argument of the call."""
-        return all(any(p.is_kwargs or (p.name == k and not p.is_variadic)
-                       for p in fn.params)
-                   for k in self.keywords)
+    def source(self) -> CallSource:
+        """A source of this shape; `bind` reads no operand."""
+        return CallSource((None,) * self.positional,
+                          tuple((k, None) for k in self.keywords),
+                          _UNPACKED if self.double_star else None)
+
+    def binding(self, fn: FunctionInfo) -> ArgBinding | None:
+        """How a call of this shape binds to `fn`; None when it does not."""
+        bound = bind(self.source(), fn.params, fn.name)
+        return None if isinstance(bound, BindReject) else bound
+
+    def param_type(self, fn: FunctionInfo, at: int | str) -> TpyType | None:
+        """The type of the parameter of `fn` the argument `at` (a position,
+        or a keyword's name) of a call of this shape binds; None when it
+        binds none, or the call does not bind to `fn`."""
+        bound = self.binding(fn)
+        i = bound.param_at(at) if bound is not None else None
+        # A `**kwargs` field is the TypedDict construction's, no parameter's.
+        if i is None or fn.params[i].is_kwargs:
+            return None
+        return fn.params[i].type
+
+
+# The `**expr` of a `CallShape.source`, which `bind` only tests for.
+_UNPACKED = object()
+
+
+def shape_of(src: CallSource) -> CallShape:
+    """The shape of a call written with `src`."""
+    return CallShape(len(src.positional), tuple(k for k, _ in src.keywords),
+                     src.double_star is not None)
+
+
+def bound_evidence(overload: FunctionInfo, args: CallSource,
+                   ) -> list[tuple[int, TpyType]] | BindReject:
+    """The argument types `args` (a call's source with each operand's type
+    in place of the node) bound to `overload`'s parameters: each with the
+    parameter it binds, in parameter order (`ArgBinding.evidence`), or why
+    they do not bind."""
+    bound = bind(args, overload.params, overload.name)
+    if isinstance(bound, BindReject):
+        return bound
+    return bound.evidence(args)
+
+
+def operand_param_type(param: ParamInfo, *,
+                       keep_readonly: bool = False) -> TpyType:
+    """The type one argument meets at `param`: a `*args` element meets
+    the pack's element type. Matching ignores the element's `readonly`;
+    `keep_readonly` keeps it for a caller that asks whether the callee
+    may write the argument."""
+    ptype = param.type
+    if param.is_variadic and is_varargs(unwrap_ref_type(ptype)):
+        elem = unwrap_ref_type(ptype).type_args[0]
+        return elem if keep_readonly else unwrap_readonly(elem)
+    return ptype
 
 
 def call_resolves_param(overload: FunctionInfo, index: int) -> bool:
@@ -200,10 +256,21 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     return all(_structural_match(a, p) for a, p in zip(arg_inners, param_inners))
 
 
+class LiteralHomes(NamedTuple):
+    """Where a numeric literal argument of a ranked call is at home: an int
+    literal at `int_home`, a float literal at `float_home` -- the default
+    int width and `float` (`call_ranking`), or at a constructor of a numeric
+    type the type it builds, for literals of its own kind
+    (`CallRanking.at_home`). None defers to the default."""
+    int_home: TpyType | None = None
+    float_home: TpyType | None = None
+
+
 def _scalar_widening_cost(
     actual: TpyType,
     expected: TpyType,
     default_int_type: TpyType | None = None,
+    homes: LiteralHomes | None = None,
 ) -> int:
     """Cost of widening ``actual`` to ``expected`` for a single type slot.
 
@@ -212,12 +279,13 @@ def _scalar_widening_cost(
     match tier so that e.g. ``list[int32]`` prefers ``Iterable[int32]`` over
     ``Iterable[int64]`` / ``Iterable[int]`` / ``Iterable[float]``.
 
-    A numeric literal ranks from its home: ``IntLiteralType`` as the
-    ``default_int_type`` would (so a list of ``int`` literals under
+    A numeric literal ranks from its home (`homes`, else the default int
+    width for an ``IntLiteralType`` -- so a list of ``int`` literals under
     ``default_int=int32`` scores ``Iterable[int32]`` exactly like
-    ``list[int32]`` does), ``FloatLiteralType`` as ``float``. When
-    ``default_int_type`` is None, IntLiteral comparisons fall back to the
-    generic cross-type distance.
+    ``list[int32]`` does -- and ``float`` for a ``FloatLiteralType``); an
+    unknown container element from ``default_int_type``. When that is
+    None, IntLiteral comparisons fall back to the generic cross-type
+    distance.
     """
     if actual == expected:
         return 0
@@ -226,15 +294,20 @@ def _scalar_widening_cost(
     # convention that ``sum([]) == 0`` (int) regardless of which numeric
     # overload is declared first in the stdlib.
     if isinstance(actual, (IntLiteralType, UnknownElementType)):
-        if default_int_type is None:
+        home = (homes.int_home if homes is not None
+                and homes.int_home is not None
+                and isinstance(actual, IntLiteralType) else default_int_type)
+        if home is None:
             return 1
-        if expected == default_int_type:
+        if expected == home:
             return 0
-        return _scalar_widening_cost(default_int_type, expected, default_int_type)
+        return _scalar_widening_cost(home, expected, default_int_type)
     if isinstance(actual, FloatLiteralType):
-        if expected == FLOAT:
+        home = (homes.float_home if homes is not None
+                and homes.float_home is not None else FLOAT)
+        if expected == home:
             return 0
-        return _scalar_widening_cost(FLOAT, expected, default_int_type)
+        return _scalar_widening_cost(home, expected, default_int_type)
     a_tr = int_traits_of(actual)
     e_tr = int_traits_of(expected)
     if is_big_int_type(actual):
@@ -461,6 +534,7 @@ def _classify_strict_match(
     default_int_type: TpyType | None = None,
     type_ops: 'TypeOperations | None' = None,
     subclass_checker: 'SubclassChecker | None' = None,
+    homes: LiteralHomes | None = None,
 ) -> tuple[MatchTier, int] | None:
     """Strict (no-coercion) match with specificity tier + widening cost.
 
@@ -505,7 +579,8 @@ def _classify_strict_match(
     # the home, so str(IntLiteralType) picks the default-width overload
     # (int32) over the smallest-fitting one (int8).
     if isinstance(arg_inner, (IntLiteralType, FloatLiteralType)):
-        cost = _scalar_widening_cost(arg_inner, param_inner, default_int_type)
+        cost = _scalar_widening_cost(arg_inner, param_inner, default_int_type,
+                                     homes)
         if is_fixed_int_type(param_inner):
             if (isinstance(arg_inner, IntLiteralType)
                     and int_literal_fits_fixed_int(arg_inner, param_inner)):
@@ -520,7 +595,7 @@ def _classify_strict_match(
         if isinstance(arg_inner, NoneType):
             return (MatchTier.EXACT_CONCRETE, 0)
         return _classify_strict_match(arg_inner, param_inner.inner, protocol_classifier, default_int_type,
-                                      type_ops, subclass_checker)
+                                      type_ops, subclass_checker, homes)
     # Callable -> Fn: std::function satisfies template requires clauses
     if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
             and arg_inner.param_types == param_inner.param_types
@@ -669,12 +744,11 @@ def type_matches_numeric(
 ) -> bool:
     """Type matching for numeric operators and constructors.
 
-    Handles IntLiteralType and TypeParamRef(INT) flexibility without
-    triggering general type coercions (e.g., int32->BigInt promotion).
+    Handles IntLiteralType flexibility without triggering general type
+    coercions (e.g., int32->BigInt promotion).
 
     - Exact equality
     - IntLiteralType matches IntLiteralType, any fixed-width int, BigInt, float, or float32
-    - INT TypeParamRef matches any fixed-width int or BigInt
     """
     if arg_type == param_type:
         return True
@@ -687,9 +761,6 @@ def type_matches_numeric(
             return True
     if isinstance(arg_type, FloatLiteralType):
         if is_any_float_type(param_type):
-            return True
-    if isinstance(arg_type, TypeParamRef) and arg_type.kind == TypeParamKind.INT:
-        if is_integer_type(param_type):
             return True
     # T -> Optional[T]: unwrap Optional param and match inner type
     if isinstance(param_type, OptionalType):
@@ -852,6 +923,7 @@ def _converted_cell(
     deref_checker: DerefChecker | None,
     subclass_checker: SubclassChecker | None,
     default_int_type: TpyType | None,
+    homes: LiteralHomes | None = None,
 ) -> _Conversion | None:
     """How an argument the strict match refuses converts to its parameter,
     None when it does not: whether it narrows (a `narrows_checked` row: an
@@ -878,7 +950,8 @@ def _converted_cell(
     if _numeric_scalar(arg_inner) and _numeric_scalar(target):
         # Between two narrowing candidates the nearer slot wins too
         # (`bytearray.append(int32 | uint8)` with an int64 takes int32).
-        widening = _scalar_widening_cost(arg_inner, target, default_int_type)
+        widening = _scalar_widening_cost(arg_inner, target, default_int_type,
+                                         homes)
     cost = _coercion_upcast_distance(arg_type, target, subclass_checker) or 0
     # A `Literal[...]` value converts to its own base type a step more
     # cheaply than to any other, so `Literal["r"]` at `str` / `String`
@@ -886,75 +959,6 @@ def _converted_cell(
     if isinstance(arg_inner, LiteralType):
         cost += int(not converts_literal_to_base(arg_inner, param_type))
     return _Conversion(narrowing, widening, cost)
-
-
-def _expand_arg_types_with_kwargs(
-    arg_types: list[TpyType],
-    kwarg_types: dict[str, TpyType],
-    overload: FunctionInfo,
-) -> list[TpyType] | None:
-    """Expand positional arg_types by inserting kwarg types at their param slots.
-
-    Mirrors the argument binding (``tpyc/sema/arg_binding.py``) but
-    operates on types so ``CallRanking.resolve`` can score
-    kwargs-disambiguated candidates. Returns
-    ``None`` when the overload cannot accept the given kwargs (unknown name,
-    duplicate of a positional, or missing required param); the overload is
-    then rejected at the candidate level.
-
-    Defaulted positional gaps between the last positional arg and the rightmost
-    kwarg are filled with the param's own type -- trivially matches itself and
-    does not skew cross-overload scoring.
-    """
-    name_to_index = {p.name: i for i, p in enumerate(overload.params) if not p.is_variadic}
-
-    # One pass over kwargs: validate name, reject positional collisions,
-    # and track the rightmost explicitly-provided slot.
-    rightmost = len(arg_types) - 1
-    for kw_name in kwarg_types:
-        idx = name_to_index.get(kw_name)
-        if idx is None:
-            return None
-        if idx < len(arg_types) and not overload.params[idx].keyword_only:
-            return None
-        if idx > rightmost:
-            rightmost = idx
-
-    # Variadic: positional args feed *args; kwargs feed kwonly slots.
-    # Append kwonly types in declaration order so _classify_overload can
-    # score them at the right positions. Defensive: the parser currently
-    # blocks `*args` on `@overload` (parser.py raises "*args is not supported
-    # on @overload stubs"), so this branch is unreachable from user code
-    # today. Kept correct in case that gate ever opens.
-    if overload.has_variadic:
-        result = list(arg_types)
-        for p in overload.params:
-            if not p.keyword_only:
-                continue
-            if p.name in kwarg_types:
-                result.append(kwarg_types[p.name])
-            elif not p.has_default:
-                return None
-        return result
-
-    result: list[TpyType] = []
-    for i in range(rightmost + 1):
-        p = overload.params[i]
-        if i < len(arg_types):
-            result.append(arg_types[i])
-        elif p.name in kwarg_types:
-            result.append(kwarg_types[p.name])
-        elif p.has_default:
-            result.append(p.type)
-        else:
-            return None
-
-    # Required kwonly beyond rightmost must be in kwargs
-    for i, p in enumerate(overload.params):
-        if i > rightmost and p.keyword_only and not p.has_default and p.name not in kwarg_types:
-            return None
-
-    return result
 
 
 class OverloadFit(NamedTuple):
@@ -995,16 +999,15 @@ def _has_type_param_params(overload: FunctionInfo) -> bool:
 
 def _classify_overload(
     overload: FunctionInfo,
-    arg_types: list[TpyType],
+    evidence: 'Sequence[tuple[int, TpyType]]',
     ranking: 'CallRanking',
-    kwarg_types: dict[str, TpyType] | None = None,
     joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
     convert: bool = False,
     binding: dict[str, TpyType] | None = None,
 ) -> OverloadFit | None:
-    """Classify every arg against ``overload``'s params, returning its fit
-    or ``None`` if any arg rejects (or the container arguments do not fit
-    it together).
+    """Classify every argument against the parameter of ``overload`` it
+    binds (`evidence`, `bound_evidence`), returning its fit or ``None`` if
+    any arg rejects (or the container arguments do not fit it together).
 
     Strict (``convert`` off): for a generic overload (``TypeParamRef`` in
     params) inference runs first (using ``protocol_checker`` to validate
@@ -1021,13 +1024,6 @@ def _classify_overload(
     classifier = ranking.classifier
     default_int_type = ranking.default_int_type
     type_ops = ranking.type_ops
-    if kwarg_types:
-        expanded = _expand_arg_types_with_kwargs(arg_types, kwarg_types, overload)
-        if expanded is None:
-            return None
-        arg_types = expanded
-    if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
-        return None
     params = overload.params
     if convert and binding is not None:
         assert type_ops is not None
@@ -1039,8 +1035,9 @@ def _classify_overload(
             return None
         joined: set[str] = set()
         inferred = type_ops.infer_type_params_for_function(
-            overload, arg_types, protocol_checker or _always_false_checker,
-            joined=joined,
+            overload, [t for _, t in evidence],
+            protocol_checker or _always_false_checker,
+            joined=joined, slots=[slot for slot, _ in evidence],
         )
         # A joined fixed-int binding converts an argument, so it is no
         # strict match; the conversion stage ranks it at its instantiation.
@@ -1052,8 +1049,8 @@ def _classify_overload(
     meets: list[ContainerMeet | None] = []
     narrowing = 0
     conversion_widening = 0
-    for i, (arg_t, param) in enumerate(zip(arg_types, params)):
-        ptype = param.type
+    for i, arg_t in evidence:
+        ptype = operand_param_type(params[i])
         resolved = ptype
         if (has_tpr and _undecided_container(arg_t)
                 and contains_type_param(ptype)):
@@ -1106,11 +1103,17 @@ def _classify_overload(
 
 class OverloadCandidate(NamedTuple):
     """One candidate of an overloaded call: the signature and the argument
-    types the call has at it (a caller that types arguments per candidate
-    passes each its own)."""
+    types the call has at it, as written (a `CallSource` with each
+    operand's type in place of its node; a caller that types arguments per
+    candidate passes each its own). The ranking places them on the
+    signature through the call's one binding (`bound_evidence`)."""
     overload: FunctionInfo
-    arg_types: list[TpyType]
-    kwarg_types: dict[str, TpyType] | None = None
+    args: CallSource
+
+
+def typed_source(args: 'CallSource | Sequence[TpyType]') -> CallSource:
+    """`args` as a typed `CallSource`: a list is positional types."""
+    return args if isinstance(args, CallSource) else CallSource(tuple(args))
 
 
 class OverloadPick(NamedTuple):
@@ -1124,18 +1127,19 @@ class OverloadPick(NamedTuple):
 def _pick_best(candidates: list[OverloadCandidate],
                ranked: list[tuple[tuple, int]], converted: bool) -> int:
     """The tie rule of every overloaded call: the best-ranked of the
-    applicable `(rank, index)` pairs. Candidates with one parameter-type
-    sequence match identically (a substituted generic and its concrete
-    twin), so the first of them stands for all; a top tie between distinct
-    signatures is refused in either stage (`OverloadAmbiguityError`)."""
+    applicable `(rank, index)` pairs. Candidates of one declaration (its
+    `root`: views of it at several substitutions) stand for one; a top tie
+    between distinct declarations is refused in either stage
+    (`OverloadAmbiguityError`) -- even when their substitutions coincide,
+    or declaration order would decide."""
     ranked = sorted(ranked, key=lambda r: r[0])
     best = ranked[0][0]
-    seen: set[tuple[TpyType, ...]] = set()
+    seen: set[int] = set()
     tied: list[int] = []
     for score, index in ranked:
         if score != best:
             break
-        key = tuple(p.type for p in candidates[index].overload.params)
+        key = id(candidates[index].overload.root)
         if key not in seen:
             seen.add(key)
             tied.append(index)
@@ -1185,34 +1189,34 @@ def _rank_stages(
 ) -> OverloadPick:
     """The two stages of `rank_overload_candidates` over one partition.
 
-    The strict stage takes the candidates that convert no argument; when
-    none does, a generic overload the legacy structural match accepts
-    (``type_ops`` omitted: first match in declaration order); then the
-    conversion stage ranks every candidate a conversion makes applicable,
-    a generic refused for a joined fixed-int binding at its instantiation.
-    A non-generic candidate is classified once for both stages.
+    The strict stage takes the candidates that convert no argument; then
+    the conversion stage ranks every candidate a conversion makes
+    applicable, a generic refused for a joined fixed-int binding at its
+    instantiation. A candidate the call's arguments do not bind to
+    (`bound_evidence`) is not applicable; a non-generic one is classified
+    once for both stages. Without ``type_ops`` a generic candidate takes
+    part in the conversion stage only, at its declared parameters.
     """
     joined: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
-    fallback: int | None = None
     fits: list[OverloadFit | None] = []
-    for index, cand in enumerate(candidates):
+    evidences: list[list[tuple[int, TpyType]] | None] = []
+    for cand in candidates:
         overload = cand.overload
+        evidence = bound_evidence(overload, cand.args)
         generic = _has_type_param_params(overload)
+        if isinstance(evidence, BindReject):
+            evidences.append(None)
+            fits.append(None)
+            continue
+        evidences.append(evidence)
         if generic and ranking.type_ops is None:
-            # Legacy structural-match fallback for generic overloads when the
-            # caller hasn't plumbed type_ops (e.g. the error-message-preservation
-            # path in calls.py). Kwargs aren't supported on this fallback path
-            # because it uses raw structural matching without arity expansion.
-            if (fallback is None and not cand.kwarg_types
-                    and overload.min_args <= len(cand.arg_types) <= overload.max_args
-                    and all(_structural_match(arg_t, p.type)
-                            for arg_t, p in zip(cand.arg_types, overload.params))):
-                fallback = index
+            # Nothing to infer with: only the conversion stage takes it, at
+            # its parameters as declared.
             fits.append(None)
             continue
         fits.append(_classify_overload(
-            overload, cand.arg_types, ranking, kwarg_types=cand.kwarg_types,
-            joined_out=joined, convert=not generic,
+            overload, evidence, ranking, joined_out=joined,
+            convert=not generic,
         ))
     strict = [i for i, fit in enumerate(fits)
               if fit is not None and fit.converted == 0]
@@ -1221,15 +1225,13 @@ def _rank_stages(
             _pick_best(candidates, [(fits[i].rank(), i) for i in strict],
                        converted=False),
             tuple(strict))
-    if fallback is not None:
-        return OverloadPick(fallback)
     ranked: list[tuple[tuple, int]] = []
     for index, cand in enumerate(candidates):
         fit = fits[index]
-        if _has_type_param_params(cand.overload):
+        evidence = evidences[index]
+        if evidence is not None and _has_type_param_params(cand.overload):
             fit = _classify_overload(
-                cand.overload, cand.arg_types, ranking,
-                kwarg_types=cand.kwarg_types, convert=True,
+                cand.overload, evidence, ranking, convert=True,
                 binding=joined.get(cand.overload),
             )
         if fit is not None:
@@ -1237,6 +1239,24 @@ def _rank_stages(
     if not ranked:
         return OverloadPick(None)
     return OverloadPick(_pick_best(candidates, ranked, converted=True))
+
+
+def structural_matches(overloads: list[FunctionInfo],
+                       args: CallSource) -> list[FunctionInfo]:
+    """The generic overloads whose declared parameters take `args` (types,
+    as written) by shape alone, a type parameter matching anything: the
+    candidates a call no ranking took names in its diagnostic."""
+    out: list[FunctionInfo] = []
+    for overload in overloads:
+        if not _has_type_param_params(overload):
+            continue
+        evidence = bound_evidence(overload, args)
+        if isinstance(evidence, BindReject):
+            continue
+        if all(_structural_match(t, operand_param_type(overload.params[i]))
+               for i, t in evidence):
+            out.append(overload)
+    return out
 
 
 def filter_receiver_overloads(
@@ -1285,33 +1305,48 @@ class CallRanking(NamedTuple):
     subclass_checker: SubclassChecker
     type_ops: 'TypeOperations | None'
     receives: 'ReceiveChecker'
+    # Where a numeric literal argument is at home (`LiteralHomes`); unset,
+    # the default int (`default_int_type`) and `float`.
+    homes: LiteralHomes = LiteralHomes()
 
-    def resolve(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
+    def resolve(self, overloads: list[FunctionInfo],
+                args: 'CallSource | Sequence[TpyType]',
                 is_readonly_receiver: bool | None = None,
                 is_consuming_receiver: bool | None = None,
-                kwarg_types: dict[str, TpyType] | None = None,
                 ) -> FunctionInfo | None:
-        """The winner of ``overloads`` at one argument list (the
-        receiver's consuming kind filtered first,
-        `filter_receiver_overloads`), None when none matches; a genuine
+        """The winner of ``overloads`` at one argument list (``args``, the
+        argument types as written: positionals and keywords; a list is
+        positionals only), the receiver's consuming kind filtered first
+        (`filter_receiver_overloads`); None when none matches. A genuine
         tie at the top raises ``OverloadAmbiguityError`` rather than
-        being broken by declaration order. ``kwarg_types`` are inserted
-        at each candidate's matching parameter slots, so keywords can
-        disambiguate overloads the positional arguments tie on."""
+        being broken by declaration order. Each candidate takes the
+        arguments where the call's binding places them on it, so keywords
+        rank as their positional twins do."""
         overloads = filter_receiver_overloads(overloads, is_consuming_receiver)
-        pick = rank_overload_candidates(
-            [OverloadCandidate(ov, arg_types, kwarg_types) for ov in overloads],
-            self, readonly_receiver=is_readonly_receiver)
+        pick = self.rank(overloads, args, is_readonly_receiver)
         return overloads[pick.winner] if pick.winner is not None else None
 
-    def rank(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
+    def rank(self, overloads: list[FunctionInfo],
+             args: 'CallSource | Sequence[TpyType]',
              is_readonly_receiver: bool | None = None,
              ) -> OverloadPick:
         """`rank_overload_candidates` over ``overloads`` at one argument
         list: the pick with its stage."""
+        args = typed_source(args)
         return rank_overload_candidates(
-            [OverloadCandidate(ov, arg_types) for ov in overloads],
+            [OverloadCandidate(ov, args) for ov in overloads],
             self, readonly_receiver=is_readonly_receiver)
+
+    def at_home(self, built: TpyType) -> 'CallRanking':
+        """This ranking at a constructor call of numeric type `built`: a
+        literal of its own kind is at home there (`float32(1.5)` takes its
+        `x: float32` variant, `int8(100)` its `x: int8` one), as an
+        operator literal's home is the other operand
+        (`operators.literal_home`); a literal of the other kind keeps its
+        own (`float(5)` ranks the int literal at the default int)."""
+        if is_any_float_type(built):
+            return self._replace(homes=self.homes._replace(float_home=built))
+        return self._replace(homes=self.homes._replace(int_home=built))
 
     def admits(self, arg_type: TpyType, param_type: TpyType) -> bool:
         """Whether an argument of `arg_type` may be passed at `param_type`
@@ -1335,14 +1370,14 @@ class CallRanking(NamedTuple):
         literal's open leaf, when the caller has decided it."""
         strict = _classify_strict_match(
             arg_type, param_type, self.classifier, self.default_int_type,
-            self.type_ops, self.subclass_checker)
+            self.type_ops, self.subclass_checker, self.homes)
         if strict is not None:
             return _Cell(strict[0], strict[1], _NO_CONVERSION)
         if not convert:
             return None
         conversion = _converted_cell(
             arg_type, param_type, self.protocol_checker, self.deref_checker,
-            self.subclass_checker, self.default_int_type)
+            self.subclass_checker, self.default_int_type, self.homes)
         if conversion is None:
             conversion = self.received(arg_type, param_type, open_leaf)
         if conversion is None:

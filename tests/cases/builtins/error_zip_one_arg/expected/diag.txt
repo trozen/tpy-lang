@@ -1,1 +1,5 @@
 main.py:4: error: No matching overload for 'zip' with argument types (list[int32])
+  'zip(iter1: Iterable[T1], iter2: Iterable[T2], /)' expects 2 argument(s), got 1
+  'zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], /)' expects 3 argument(s), got 1
+  'zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], /)' expects 4 argument(s), got 1
+  'zip(iter1: Iterable[T1], iter2: Iterable[T2], iter3: Iterable[T3], iter4: Iterable[T4], iter5: Iterable[T5], /)' expects 5 argument(s), got 1

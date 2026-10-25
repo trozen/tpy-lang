@@ -5,7 +5,7 @@
 
 def main() -> None:
     # OSError's group would rank `(errno, strerror)` the winner by position.
-    e = OSError(2, strerror="x")  # tpyc: error(/parameter 'strerror' is positional-only and cannot be passed by keyword/)
+    e = OSError(2, strerror="x")  # tpyc: error(/No matching overload for 'OSError' with argument types \(int, strerror=str\)/)
     print(e.errno)
 
 

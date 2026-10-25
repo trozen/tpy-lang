@@ -254,12 +254,12 @@ std::string twin_declared_first__Iterable_int64__int64(const T_xs& xs, int64_t v
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 std::string twin_declared_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
-// def gv(xs: list[int64], t: int32) -> str:
-std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t);
-// @dispatch
 // def gv[T](xs: Iterable[int64], t: T) -> str:
 template<typename T, ::tpystd::typing::Iterable<int64_t> T_xs>
 std::string gv__Iterable_int64__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t);
+// @dispatch
+// def gv(xs: list[int64], t: int32) -> str:
+std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t);
 // @dispatch
 // def hv(xs: Iterable[int64], t: int32) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
@@ -636,6 +636,11 @@ template<typename T, ::tpystd::typing::Iterable<T> T_xs>
 std::string twin_declared_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) {
     return "generic";
 }
+// # A declared view is a declared slot in a generic candidate as in a plain
+// # one: `gv`'s generic takes an int32 list at its view, which converts per
+// # element, and wins over the list candidate, which would widen the list.
+// # The winner is declared first for the CPython stub;
+// # overload_pending_container_rank pins the other order.
 // @dispatch
 // def gv[T](xs: Iterable[int64], t: T) -> str:
 //     return "gen-view"

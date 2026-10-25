@@ -1,1 +1,3 @@
-main.py:18: error: Ambiguous overload for 'f': multiple candidates match equally: f(list[str]); f(list[int64])
+main.py:18: error: Ambiguous overload for 'f': multiple candidates match equally:
+  f(list[str])
+  f(list[int64])

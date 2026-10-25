@@ -482,7 +482,9 @@ class V:
     def __add__(self, x: int) -> int32: ...
 
 V() + n     # n: int -- Ambiguous overload for '__add__': multiple candidates
-            # match equally: __add__(int | None); __add__(int)
+            # match equally:
+            #   __add__(int | None)
+            #   __add__(int)
 ```
 
 **An operator literal's home is the other operand** (NumPy's weak scalars,
@@ -508,11 +510,14 @@ sema resolves the dunder.
 
 Under CPython, the `@dispatch` stand-in (`dispatch` in
 `lib/cpy/tpy/__init__.py`) does not rank: it runs the first variant in
-declaration order that is applicable by arity and by type (`isinstance`,
-a fixed-int literal by range, a fixed int at a wider fixed-int slot, an
-`int` at `float` (converted), a `Literal` by value, a protocol by
+declaration order the call binds to (`inspect.Signature.bind`, keywords
+by name) that is applicable by type (`isinstance`, a fixed-int literal
+by range, a fixed int at a wider fixed-int slot, an `int` at `float`
+(converted, by position or by a keyword that binds that parameter -- not
+one that names a positional-only parameter and lands in `**kwargs`), a
+`Literal` by value, a protocol by
 `hasattr`, a builtin container by its class, a `Callable` by arity), and
-when none matches by type the first by arity (`docs/LANGUAGE_FEATURES.md`,
+when none matches by type the first it binds to (`docs/LANGUAGE_FEATURES.md`,
 "CPython compatible"). A test whose output CPython also produces declares
 the compiler's winner first; that the compiler's pick does not depend on
 declaration order is pinned by compiler-only cases (`no_cpython.txt`).
@@ -520,7 +525,7 @@ Declaring the winner first is not enough when two calls to one set have
 different compiler winners the stub cannot tell apart -- a `Literal`
 value vs a plain variable of that value, `@readonly` receiver twins
 called on a readonly receiver, aliased classes (`StrView` / `String` are
-`str` there), element types, union members, keyword arguments; such a
+`str` there), element types, union members; such a
 case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls).
 `@readonly` twins declare the mutating twin first.
 
@@ -712,6 +717,24 @@ lower numeric value beats higher):
 | 7 | `GENERIC_PROTOCOL_STRUCTURAL` | Same, but structural conformance. |
 | 8 | `GENERIC_WILDCARD` | Bare type parameter (possibly wrapped in `Ref` / `readonly` / `Own`: `x: T`, `x: readonly[T]`, `x: Own[T]`). Accepts any argument -- the fallback. |
 
+**A literal's home.** A numeric literal's home is where it ranks
+`EXACT_CONCRETE` without a width cost: an int literal at the default int,
+a float literal at `float` (`CallRanking.homes`). At a constructor of a
+numeric type `T` (`int8(...)`, `float32(...)`), `T` is the home of
+literals of its own kind only, as an operator literal's home is the other
+operand: `float32(1.5)` takes its `x: float32` variant and `int8(100)`
+its `x: int8` one, while the int literal of `float(5)` keeps the int home
+and renders its conversion. An integer constant generic (`N` of
+`class Box[N: int]`) has no ranking rule of its own: a value read of `N`
+is an ordinary value of the default int (sema types it so and converts the
+constant once where it is read), so it ranks, infers and converts as any
+default-int value does. Under the default `int32`, `pick(N)` beside
+`pick(int32)` / `pick(int)` takes the `int32` variant, `take(N)` beside
+`take(uint8)` / `take(int64)` the `int64` one, `str(N)` the `int32`
+variant and `uint8(N)` the checked narrowing; under
+`--default-int=BigInt` `pick(N)` takes `pick(int)` and `str(N)` the `int`
+variant.
+
 **Tiers come from the declared parameter.** A parameter declared with the
 callee's own type parameter ranks by its DECLARED shape (`_declared_tier`):
 bare `T` is the wildcard, a protocol over `T` a generic protocol, any other
@@ -902,7 +925,8 @@ reports:
 
 ```
 Ambiguous overload for 'describe': multiple candidates match equally:
-  describe(Greeter); describe(Farewell)
+  describe(Greeter)
+  describe(Farewell)
 ```
 
 A crossed tie is one too: with `class Dog(Animal)`,
@@ -1079,30 +1103,40 @@ The same mechanism makes `sum([1, 2, 3])` resolve to `int32` via the
 
 #### Keyword arguments
 
-When a call supplies keyword arguments, each candidate overload independently
-expands the positional `arg_types` list by inserting kwarg types at their
-matching param slots (`_expand_arg_types_with_kwargs` in
-`sema/overloads.py`). Overloads that don't declare a given kwarg name (or
-where a kwarg collides with a filled positional slot, or a required kwonly
-is missing) are rejected at the candidate level. Defaulted positional gaps
-between the last positional and the rightmost kwarg are filled with the
-param's own type so the gap doesn't skew cross-overload scoring. The
-kwarg's type then participates in tier ranking like any other arg, so a
-call like `f(xs, start=1.0)` cleanly picks the `Iterable[float]` overload
-over an otherwise-tied `Iterable[int]` sibling. A kwarg name that no
-overload accepts produces a targeted *"got unexpected keyword argument"*
-diagnostic before the generic *"no matching overload"* fallback. Applies
-to both free-function and method `@overload` groups; not to overloaded
-builtins (which still reject kwargs at the call-site gate).
+Every candidate takes the call's arguments where the call's one binding
+places them (`bind` in `sema/arg_binding.py`, read over the arguments'
+types: `bound_evidence` in `sema/overloads.py`) -- the same placement its
+commit makes. A candidate the call does not bind to (a keyword it does not
+declare, one naming a positional-only parameter, one colliding with a
+filled positional, a required parameter left out, too many positionals)
+is not applicable; a keyword naming no parameter, a positional-only one or
+the `*args` one goes to a `**kwargs: Unpack[TD]` region where there is one.
+A left-out default is no argument, so it neither scores nor skews the
+ranking. Each keyword then ranks at the parameter it binds like any other
+argument -- a keyword or keyword-only argument is inference evidence at a
+generic candidate too -- so a call written with keywords picks the variant
+its positional twin picks, and `f(xs, start=1.0)` picks the
+`Iterable[float]` overload over an otherwise-tied `Iterable[int]` sibling.
+When no candidate binds the call and all refuse it for one reason, that
+reason is the diagnostic (*"got multiple values for argument 'x'"*); when
+they refuse it for different reasons, *"No matching overload"* lists the
+argument types and then each variant, by its parameters, with its reason,
+one line apiece (`'get(key: str, default: int32, /)' parameter 'default'
+is positional-only ...`); otherwise it lists the argument types, each
+keyword as `name=T`. Applies to free functions, methods, constructor
+groups, template constructors, subscript and operator dunders and builtins:
+a builtin's stub declares CPython 3.12's parameter names and `/` / `*`
+markers, so `sorted(xs, key=f)` binds `key` keyword-only and
+`sorted(xs, f)` is refused.
 
 #### `Fn[...]` parameters and contextual callable typing
 
 Callable args (lambdas, named function refs) need a target type to resolve.
 `tpyc/sema/calls.py:_resolve_call_overloads` (shared by user and builtin
 paths) classifies overload sets via a *regime predicate* before tier
-ranking. For each candidate, `_supplied_fn_slots` walks positional + kwarg
-args against `func.params` and reports which Fn-typed slots are filled by
-a *supplied* (non-default) arg. Three regimes:
+ranking. For each candidate, `supplied_fn_slots` reads its binding of the
+call and reports which Fn-typed slots are filled by a *supplied*
+(non-default) arg, positional or keyword. Three regimes:
 
 - **Regime A** (zero candidates with supplied Fn slots): the existing
   direct arg analysis -- no two-phase Fn typing needed.
@@ -1112,8 +1146,8 @@ a *supplied* (non-default) arg. Three regimes:
   TPR-return body-inference branch -- this is what lets shapes like
   `map[T, U](Fn[[T], U], Iterable[T])` extract `U` from the lambda body
   without the call site having to pin it.
-- **Regime C** (2+ candidates with supplied Fn slots, or 1 with a
-  kwarg-supplied Fn slot): per-candidate evidence collection in
+- **Regime C** (2+ candidates with supplied Fn slots): per-candidate
+  evidence collection in
   `_resolve_regime_c` + `_build_regime_c_evidence`. Each candidate
   substitutes partial inference into its Fn-slot param to get a hint,
   then synthesises the lambda's "type" as that hint. When the hint

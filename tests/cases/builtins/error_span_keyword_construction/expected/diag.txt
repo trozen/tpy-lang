@@ -1,0 +1,3 @@
+main.py:7: error: No matching overload for 'Span' with argument types (source=Span[int32])
+  'Span(ptr: Ptr[T], length: int32, /)' got unexpected keyword argument 'source'
+  'Span(source: Span[T], /)' parameter 'source' is positional-only and cannot be passed by keyword

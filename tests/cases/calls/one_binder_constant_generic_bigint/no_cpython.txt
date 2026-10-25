@@ -1,0 +1,2 @@
+A constant generic (`class Box[N: int]`) is a value only to the compiler:
+under CPython `N` is a `TypeVar`, and `str(N)` prints its name.

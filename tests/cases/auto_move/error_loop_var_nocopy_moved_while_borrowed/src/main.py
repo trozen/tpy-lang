@@ -24,7 +24,7 @@ def main() -> None:
     keep = C(5)
     for p in ps:
         keep = p.cell
-        out.append(p)  # tpyc: error(/@nocopy type 'P' cannot be copied into 'value: Own\[P\]'/)
+        out.append(p)  # tpyc: error(/@nocopy type 'P' cannot be copied into 'object: Own\[P\]'/)
     keep.v += 10
     print(keep.v, len(out))
 

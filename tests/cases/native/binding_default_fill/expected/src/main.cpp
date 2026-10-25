@@ -137,6 +137,13 @@ __coro_coro coro(::nb::Q& q) {
 //     # the callable candidate refuses it, the int one takes it.
 //     ve = VErr(value=3)  # tpyc: ok
 //     print("group-kw-shared-name", str(ve))
+//     # A keyword picks the constructor variant, the positional and the
+//     # keyword spelling alike, and a generic variant's type argument is
+//     # inferred from a keyword.
+//     ka = KErr("a", k=3)  # tpyc: ok
+//     kb = KErr([1, 2], k=3)  # tpyc: ok
+//     kc = KErr(x=[1, 2, 3])  # tpyc: ok
+//     print("group-kw-generic", str(ka), str(kb), str(kc))
 //     try:
 //         raise GErr("y")  # tpyc: ok
 //     except GErr as g:
@@ -230,6 +237,10 @@ void main() {
     std::cout << "group-kw-lambda" << " " << std::string(::tpy::__str__(le)) << "\n" << ::tpy::check_signals;
     ::nb::VErr ve = ::nb::VErr(3);
     std::cout << "group-kw-shared-name" << " " << std::string(::tpy::__str__(ve)) << "\n" << ::tpy::check_signals;
+    ::nb::KErr ka = ::nb::KErr(std::string_view("a"), 3);
+    ::nb::KErr kb = ::nb::KErr({1, 2}, 3);
+    ::nb::KErr kc = ::nb::KErr({1, 2, 3}, 2);
+    std::cout << "group-kw-generic" << " " << std::string(::tpy::__str__(ka)) << " " << std::string(::tpy::__str__(kb)) << " " << std::string(::tpy::__str__(kc)) << "\n" << ::tpy::check_signals;
     {
         try {
             throw ::nb::GErr(std::string_view("y"), 6);

@@ -1,1 +1,3 @@
-main.py:26: error: Ambiguous overload for '__setitem__': multiple candidates match equally: __setitem__(int64 | None, int32); __setitem__(int64, int32)
+main.py:26: error: Ambiguous overload for '__setitem__': multiple candidates match equally:
+  __setitem__(int64 | None, int32)
+  __setitem__(int64, int32)

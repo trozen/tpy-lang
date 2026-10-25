@@ -30,7 +30,7 @@ def f(s: S, k: int32) -> None:
         raise F(k)
     except E as e:
         # the handler's `e` is the exception in flight, which may be an `F`
-        s.errs.append(e)  # tpyc: error(/cannot store 'E' borrow as owned 'E' in argument 'value'.*slicing/)
+        s.errs.append(e)  # tpyc: error(/cannot store 'E' borrow as owned 'E' in argument 'object'.*slicing/)
 
 
 def main() -> None:

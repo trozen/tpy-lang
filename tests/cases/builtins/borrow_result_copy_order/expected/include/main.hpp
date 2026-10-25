@@ -21,6 +21,8 @@ __gen_walk walk(std::vector<P>& ps);
 ::tpy::BigInt bump_ret(P& p);
 // def set_first(ps: list[P]) -> int:
 ::tpy::BigInt set_first(std::vector<P>& ps);
+// def bump_kw(*, p: P) -> None:
+void bump_kw(P& p);
 // def main() -> None:
 void main();
 

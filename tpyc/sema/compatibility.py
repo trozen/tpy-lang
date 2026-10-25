@@ -3338,9 +3338,10 @@ class TypeCompatibility:
     def ambiguous_overload_text(self, func_name: str,
                                 candidates: tuple['FunctionInfo', ...]) -> str:
         """The message every call position reports a top tie with."""
-        sigs = "; ".join(self.call_signature_text(c) for c in candidates)
-        return (f"Ambiguous overload for '{func_name}': "
-                f"multiple candidates match equally: {sigs}")
+        head = (f"Ambiguous overload for '{func_name}': "
+                f"multiple candidates match equally:")
+        return "\n".join([head] + [f"  {self.call_signature_text(c)}"
+                                   for c in candidates])
 
     def diag_type(self, t: TpyType, slot: TpyType | None = None) -> TpyType:
         """User-facing type for diagnostics: a pending container literal is

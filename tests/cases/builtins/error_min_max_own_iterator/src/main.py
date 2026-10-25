@@ -23,7 +23,7 @@ def owns(n: int) -> Iterator[Own[P]]:
 
 
 def main() -> None:
-    o = max(owns(3), key=key_of)  # tpyc: error(/No matching overload for max/)
+    o = max(owns(3), key=key_of)  # tpyc: error(/No matching overload for 'max'/)
     print(o.v)
 
 

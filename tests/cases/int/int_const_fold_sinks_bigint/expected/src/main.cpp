@@ -110,7 +110,7 @@ void sinks() {
 void formatting() {
     std::cout << "fstr" << " " << std::format("{}", static_cast<int64_t>((-9223372036854775807LL - 1))) << " " << std::format("{}", static_cast<int64_t>(1099511627776)) << " " << std::format("{}", static_cast<int64_t>(1099511627776)) << " " << std::format("{}", 6) << "\n" << ::tpy::check_signals;
     std::cout << "fstr" << " " << std::format("{}", (::tpy::BigInt::from_str("1267650600228229401496703205376")).to_string()) << " " << std::format("{}", static_cast<uint64_t>(18446744073709551615ull)) << " " << std::format("{}", ::tpy::repr_of(6)) << "\n" << ::tpy::check_signals;
-    std::cout << "str" << " " << ::tpy::fixed_to_str<int64_t>(static_cast<int64_t>(1099511627776)) << " " << ::tpy::fixed_to_str<int64_t>(static_cast<int64_t>((-9223372036854775807LL - 1))) << "\n" << ::tpy::check_signals;
+    std::cout << "str" << " " << (::tpy::BigInt(static_cast<int64_t>(1099511627776LL))).to_string() << " " << (::tpy::BigInt(static_cast<int64_t>(-9223372036854775807LL - 1))).to_string() << "\n" << ::tpy::check_signals;
 }
 
 // def unary() -> None:

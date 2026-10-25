@@ -1,0 +1,1 @@
+main.py:7: error: 'len' parameter 'obj' is positional-only and cannot be passed by keyword

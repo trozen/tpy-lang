@@ -32,7 +32,7 @@ _FAST = _os.environ.get("TPY_CPYTHON_FAST") == "1"
 
 class char(str):
     """CPython stub: char(int) -> chr(int), char(str) -> str."""
-    def __new__(cls, val):
+    def __new__(cls, val, /):
         if isinstance(val, int):
             return str.__new__(cls, chr(val))
         return str.__new__(cls, val)
@@ -86,7 +86,7 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
         MIN = min_val
         MAX = max_val
 
-        def __new__(cls, value: int = 0) -> FixedInt:
+        def __new__(cls, value: int = 0, /) -> FixedInt:
             # A subclass may add its own __new__ further along the MRO.
             if cls is FixedInt and type(value) is int and min_val <= value <= max_val:
                 return int.__new__(cls, value)
@@ -201,7 +201,7 @@ else:
         (BUGS.md#cpy-float32-double-precision). repr/str stay float's,
         printing the widened double exactly as the C++ runtime does."""
 
-        def __new__(cls, value=0.0):
+        def __new__(cls, value=0.0, /):
             return super().__new__(cls, _to_f32(float(value)))
 
     def _f32_wrap(value):
@@ -478,7 +478,7 @@ else:
 
         _elem_type = None
 
-        def __init__(self, data):
+        def __init__(self, data, /):
             if isinstance(data, (list, Array)):
                 if hasattr(data, '_data'):
                     self._data = data._data
@@ -545,7 +545,7 @@ class SpanIter:
     def __class_getitem__(cls, item):
         return cls
 
-    def __init__(self, span):
+    def __init__(self, span, /):
         if isinstance(span, Span):
             self._data = span._data
         elif isinstance(span, (list, tuple)):
@@ -659,21 +659,6 @@ def pure(func):
 _dispatch_registry: dict[tuple[str, str], list] = {}
 
 
-def _arity_of(func) -> tuple[int, int]:
-    """Return (min_args, max_args) for a function."""
-    import inspect
-    sig = inspect.signature(func)
-    min_args = 0
-    max_args = 0
-    for p in sig.parameters.values():
-        if p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD):
-            continue
-        max_args += 1
-        if p.default is inspect.Parameter.empty:
-            min_args += 1
-    return min_args, max_args
-
-
 def _callable_arity_of_annotation(ann) -> int | None:
     """Parameter count of a `Callable[[T1, ...], R]` / `Fn[...]` annotation,
     or None when the annotation isn't a parameterised callable. Used to
@@ -769,25 +754,56 @@ def _is_int_at_float(ann, arg) -> bool:
             and isinstance(ann, type) and issubclass(ann, float))
 
 
-def _float_converted(func, args: tuple, hints: dict) -> tuple:
-    """`args` with each int at a `float` slot converted, so the variant
-    prints `3.0` as the compiled one does."""
+def _keyword_params(func) -> set:
+    """The parameter names a keyword argument binds by name. A keyword
+    spelling a positional-only parameter's name lands in `**kwargs`, so it
+    is never judged or converted at that parameter's annotation."""
     import inspect
-    params = list(inspect.signature(func).parameters.keys())
-    return tuple(hints[params[i]](arg)
-                 if i < len(params) and params[i] in hints
-                 and _is_int_at_float(hints[params[i]], arg) else arg
-                 for i, arg in enumerate(args))
+    by_name = (inspect.Parameter.POSITIONAL_OR_KEYWORD,
+               inspect.Parameter.KEYWORD_ONLY)
+    return {name for name, p in inspect.signature(func).parameters.items()
+            if p.kind in by_name}
 
 
-def _type_matches(func, args: tuple, hints: dict) -> bool:
-    """Check if positional args match the function's type annotations."""
+def _float_converted(func, args: tuple, hints: dict,
+                     kwargs: dict) -> tuple[tuple, dict]:
+    """`args` and `kwargs` with each int at a `float` slot converted, so
+    the variant prints `3.0` as the compiled one does -- a keyword as its
+    positional twin."""
     import inspect
     params = list(inspect.signature(func).parameters.keys())
-    for i, arg in enumerate(args):
-        if i >= len(params):
-            break
-        pname = params[i]
+    converted = tuple(hints[params[i]](arg)
+                      if i < len(params) and params[i] in hints
+                      and _is_int_at_float(hints[params[i]], arg) else arg
+                      for i, arg in enumerate(args))
+    by_name = _keyword_params(func)
+    converted_kw = {k: hints[k](v) if k in by_name and k in hints
+                    and _is_int_at_float(hints[k], v) else v
+                    for k, v in kwargs.items()}
+    return converted, converted_kw
+
+
+def _binds(func, args: tuple, kwargs: dict) -> bool:
+    """Whether a call with `args` and `kwargs` binds to `func`'s parameters,
+    keywords by name -- the binding the compiler ranks every variant at."""
+    import inspect
+    try:
+        inspect.signature(func).bind(*args, **kwargs)
+    except TypeError:
+        return False
+    return True
+
+
+def _type_matches(func, args: tuple, hints: dict,
+                  kwargs: dict | None = None) -> bool:
+    """Check if the args -- positional, and keyword by name -- match the
+    function's type annotations."""
+    import inspect
+    params = list(inspect.signature(func).parameters.keys())
+    named = [(params[i], arg) for i, arg in enumerate(args) if i < len(params)]
+    by_name = _keyword_params(func)
+    named += [(k, v) for k, v in (kwargs or {}).items() if k in by_name]
+    for pname, arg in named:
         if pname == "self":
             continue
         if pname not in hints:
@@ -857,13 +873,14 @@ def dispatch(func):
     The compiler resolves a @dispatch set statically by ranking the
     applicable variants; this stand-in does not rank. The variants are
     accumulated by qualified name and each call runs the FIRST variant in
-    declaration order that is applicable by arity and by `_type_matches`
-    on the annotated parameter types (a class by isinstance, a fixed-int
+    declaration order the call binds to (`_binds`: arity and keyword names)
+    that `_type_matches` takes, positionals and keywords alike, on the
+    annotated parameter types (a class by isinstance, a fixed-int
     slot by the literal's range or a widening, an int at a `float` slot,
     converted to it, a `Literal` by value, a non-runtime protocol by its
     attributes, a builtin container by its class, a `Callable[[...], R]`
     by the callable's arity; element types and unions are not checked).
-    When none matches by type, the first by arity runs. A test whose
+    When none matches by type, the first the call binds to runs. A test whose
     output CPython also produces therefore declares the compiler's winner
     first; that the compiler's pick does not depend on declaration order
     is pinned by compiler-only cases. Declaring the winner first is not
@@ -871,8 +888,7 @@ def dispatch(func):
     this stub cannot tell apart -- a `Literal` value vs a plain variable
     of that value, `@readonly` receiver twins called on a readonly
     receiver, aliased classes (`StrView` / `String` are `str` here),
-    element types, union members, keyword arguments; such a case goes
-    compiler-only. `@readonly` twins: declare the mutating twin first.
+    element types, union members; such a case goes compiler-only. `@readonly` twins: declare the mutating twin first.
     `typing.overload` is left untouched: its stubs-plus-implementation
     form already runs under stock CPython.
     """
@@ -885,18 +901,17 @@ def dispatch(func):
 
     def dispatcher(*args, **kwargs):
         n = len(args) + len(kwargs)
-        # Pass 1: the first variant that matches by arity and type.
+        # Pass 1: the first variant the call binds to whose types match.
         for variant in variants:
-            lo, hi = _arity_of(variant)
-            if lo <= n <= hi:
+            if _binds(variant, args, kwargs):
                 hints = _bind_forward_refs(variant, _param_hints(variant), args)
-                if _type_matches(variant, args, hints):
-                    return variant(*_float_converted(variant, args, hints),
-                                   **kwargs)
-        # Pass 2: arity match only (fallback for complex annotations)
+                if _type_matches(variant, args, hints, kwargs):
+                    conv_args, conv_kwargs = _float_converted(
+                        variant, args, hints, kwargs)
+                    return variant(*conv_args, **conv_kwargs)
+        # Pass 2: binding only (fallback for complex annotations)
         for variant in variants:
-            lo, hi = _arity_of(variant)
-            if lo <= n <= hi:
+            if _binds(variant, args, kwargs):
                 return variant(*args, **kwargs)
         raise TypeError(
             f"No matching overload for {key[1]} with {n} argument(s)")

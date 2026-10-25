@@ -1,0 +1,1 @@
+main.py:21: error: 'f' takes 0 positional argument(s), got 1

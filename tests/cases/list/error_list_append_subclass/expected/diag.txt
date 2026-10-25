@@ -1,1 +1,1 @@
-main.py:23: error: Type mismatch in argument 'value': expected Base, got Child
+main.py:23: error: Type mismatch in argument 'object': expected Base, got Child

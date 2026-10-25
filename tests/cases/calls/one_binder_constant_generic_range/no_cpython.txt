@@ -1,0 +1,3 @@
+A constant generic (`class Box[N: int]`) is a value only to the compiler:
+under CPython `N` is a `TypeVar`, and `float(N)` raises TypeError; a generic
+function is not subscriptable there, so `identity[T](x)` raises too.

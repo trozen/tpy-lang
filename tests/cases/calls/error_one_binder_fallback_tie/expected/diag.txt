@@ -1,0 +1,3 @@
+main.py:20: error: Ambiguous overload for 'cross': multiple candidates match equally:
+  cross(T, T, int32, int64)
+  cross(T, T, int64, int32)

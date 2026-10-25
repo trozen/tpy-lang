@@ -31,7 +31,7 @@ void __tpy_builder_argparse_help_1() {
 
 // args = parser.parse_args(["2.5", "--gain", "1.25"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
-    float scale = 0;
+    float scale = static_cast<float>(0);
     float bias = 0.5f;
     std::optional<float> gain = std::nullopt;
     std::string_view __tpy_argparse_usage = "usage: prog [-h] [--bias BIAS] [--gain GAIN] scale";

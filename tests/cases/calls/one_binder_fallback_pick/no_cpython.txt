@@ -1,0 +1,2 @@
+The subject is an explicit type argument at a generic function call
+(`two[float](...)`), and a function is not subscriptable under CPython.

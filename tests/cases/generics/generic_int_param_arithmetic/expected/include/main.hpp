@@ -41,21 +41,21 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
 //     return int32(N * 2)
 template<typename T, std::size_t N>
 inline int32_t Container<T, N>::get_double() const {
-    return (::tpy::mul_check<int32_t>(N, 2));
+    return (::tpy::mul_check<int32_t>(::tpy::int_cast_check<int32_t>(N), 2));
 }
 
 // def get_plus_one(self) -> int32:
 //     return int32(N + 1)
 template<typename T, std::size_t N>
 inline int32_t Container<T, N>::get_plus_one() const {
-    return (::tpy::add_check<int32_t>(N, 1));
+    return (::tpy::add_check<int32_t>(::tpy::int_cast_check<int32_t>(N), 1));
 }
 
 // def get_minus_five(self) -> int32:
 //     return int32(N - 5)
 template<typename T, std::size_t N>
 inline int32_t Container<T, N>::get_minus_five() const {
-    return (::tpy::sub_check<int32_t>(N, 5));
+    return (::tpy::sub_check<int32_t>(::tpy::int_cast_check<int32_t>(N), 5));
 }
 
 void __tpy_init();

@@ -123,6 +123,17 @@ class VErr(Exception):
     def __init__(self, value: int32) -> None: ...
 
 
+@native("nb::KErr")
+class KErr(Exception):
+    @dispatch
+    @cpp_template("nb::KErr({0}, {1})")
+    def __init__(self, x: str, *, k: int32 = 1) -> None: ...
+
+    @dispatch
+    @cpp_template("nb::KErr({0}, {1})")
+    def __init__[T](self, x: list[T], *, k: int32 = 2) -> None: ...
+
+
 @native("nb::cppdef")
 def cppdef(x: int32, y: int32 = 5) -> int32: ...
 
@@ -250,6 +261,13 @@ def main() -> None:
     # the callable candidate refuses it, the int one takes it.
     ve = VErr(value=3)  # tpyc: ok
     print("group-kw-shared-name", str(ve))
+    # A keyword picks the constructor variant, the positional and the
+    # keyword spelling alike, and a generic variant's type argument is
+    # inferred from a keyword.
+    ka = KErr("a", k=3)  # tpyc: ok
+    kb = KErr([1, 2], k=3)  # tpyc: ok
+    kc = KErr(x=[1, 2, 3])  # tpyc: ok
+    print("group-kw-generic", str(ka), str(kb), str(kc))
     try:
         raise GErr("y")  # tpyc: ok
     except GErr as g:

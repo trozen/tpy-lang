@@ -1184,9 +1184,42 @@ def spells_readonly_arg_const(td: Optional["TypeDef"]) -> bool:
     return declares_borrowing_view(td)
 
 
+# An INT type parameter is a C++ `std::size_t`: every argument fits 0..this.
+INT_TYPE_ARG_MAX = 2**64 - 1
+
+
+def int_type_arg_cpp(arg: int, owner: str, param: str) -> str:
+    """An integer type argument's C++ spelling. Every integer type argument
+    reaches C++ here, so the range is enforced here too: sema's located
+    check covers the positions it walks, this one every position."""
+    if not 0 <= arg <= INT_TYPE_ARG_MAX:
+        # codegen_cpp imports this module.
+        from .codegen_cpp.context import CodeGenError
+        raise CodeGenError(
+            f"integer type argument {param} = {arg} of '{owner}' is out of "
+            f"range (0 to {INT_TYPE_ARG_MAX})")
+    # A literal past int64 has no signed C++ type; the parameter it
+    # instantiates is a `std::size_t`.
+    return f"{arg}ULL" if arg > 2**63 - 1 else str(arg)
+
+
+def template_args_cpp(owner: str, td: Optional["TypeDef"], args: Sequence[object],
+                      render: Callable[['TpyType'], str]) -> str:
+    """The C++ template argument list of `owner[args]`; `td` is the
+    template's TypeDef (its parameter names and readonly spelling)."""
+    const_readonly = spells_readonly_arg_const(td)
+    names = td.param_names if td is not None else ()
+    return ", ".join(
+        int_type_arg_cpp(arg, owner, names[i] if i < len(names) else f"#{i + 1}")
+        if isinstance(arg, int) and not isinstance(arg, bool)
+        else template_arg_cpp(arg, const_readonly, render)
+        for i, arg in enumerate(args))
+
+
 def template_arg_cpp(arg: object, const_readonly: bool,
                      render: Callable[['TpyType'], str]) -> str:
-    """One C++ template argument; `const_readonly` is
+    """One C++ template argument that is not an integer
+    (`template_args_cpp` spells those); `const_readonly` is
     `spells_readonly_arg_const` of the template."""
     if not isinstance(arg, TpyType):
         return str(arg)
@@ -1337,11 +1370,8 @@ class NominalType(TpyType):
         # codegen_cpp/generator.py).
         cpp_name = self._cpp_base_name()
         if self.type_args:
-            const_readonly = spells_readonly_arg_const(td)
-            args = ", ".join(
-                template_arg_cpp(t, const_readonly, lambda a: a.to_cpp())
-                for t in self.type_args
-            )
+            args = template_args_cpp(self.name, td, self.type_args,
+                                     lambda a: a.to_cpp())
             return f"{cpp_name}<{args}>"
         return cpp_name
 
@@ -9146,6 +9176,7 @@ class MethodSignature:
     cpp_template: str | None = None
     param_defaults: list = field(default_factory=list)  # list[TpyExpr | None]
     num_posonly_params: int = 0  # leading params before a '/' separator (self excluded)
+    keyword_only_start: int | None = None  # index into params where keyword-only begins
 
 
 @dataclass

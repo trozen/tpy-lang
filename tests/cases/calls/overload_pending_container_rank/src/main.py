@@ -104,10 +104,9 @@ def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
     return "declared"
 
 
-# A declared view in a generic candidate, declared first: the generic cannot
-# be instantiated at an int32 list (its view refuses the element,
-# BUGS.md#generic-declared-view-refuses-conversion), so the list candidate
-# is the one applicable.
+# A declared view in a generic candidate, declared first: the generic takes
+# an int32 list at its view, which converts per element, and wins over the
+# list candidate, which would widen the list.
 @dispatch
 def gv[T](xs: Iterable[int64], t: T) -> str:
     return "gen-view"
@@ -134,7 +133,7 @@ def main() -> None:
     print("tiers:", tiers(ti), ti)
     t1 = [1, 2]
     print("twin generic first:", twin_generic_first(t1, a64()), t1)
-    # `gv`'s list candidate decides `gm1`, so a wider value fits after the call.
+    # `gv`'s view decides nothing; `gm1` takes the wider value appended after.
     gm1 = [1, 2]  # tpyc: type(list[int64])
     print("generic declared view:", gv(gm1, 3), gm1)
     gm1.append(a64())

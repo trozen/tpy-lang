@@ -456,18 +456,18 @@ def twin_declared_first[T](xs: Iterable[T], v: T) -> str:
 
 
 # A declared view is a declared slot in a generic candidate as in a plain
-# one. `gv`'s generic cannot be instantiated at an int32 list (its view
-# refuses the element, BUGS.md#generic-declared-view-refuses-conversion),
-# so the list candidate is the one applicable. The winner is declared first
-# for the CPython stub; overload_pending_container_rank pins the other order.
-@dispatch
-def gv(xs: list[int64], t: int32) -> str:
-    return "list64"
-
-
+# one: `gv`'s generic takes an int32 list at its view, which converts per
+# element, and wins over the list candidate, which would widen the list.
+# The winner is declared first for the CPython stub;
+# overload_pending_container_rank pins the other order.
 @dispatch
 def gv[T](xs: Iterable[int64], t: T) -> str:
     return "gen-view"
+
+
+@dispatch
+def gv(xs: list[int64], t: int32) -> str:
+    return "list64"
 
 
 @dispatch
@@ -830,9 +830,9 @@ def main() -> None:
     print("view first64:", view_first64(w2), w2)
     t2 = [1, 2]
     print("twin declared first:", twin_declared_first(t2, a64()), t2)
-    # a declared view in a generic candidate and in a plain one: `gv`'s list
-    # candidate decides `gm1`, so a wider value fits after the call; `hv`'s
-    # view decides nothing and the leaf settles when the call ends
+    # a declared view in a generic candidate and in a plain one decides
+    # nothing: `gm1` takes the wider value appended after the call, `hm1`'s
+    # leaf settles when the call ends
     gm1 = [1, 2]  # tpyc: type(list[int64])
     print("generic declared view:", gv(gm1, 3), gm1)
     gm1.append(a64())

@@ -22,13 +22,13 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_float_type,
     is_void_like_type,
     is_open_type_param_return, contains_type_param, coro_struct_owner,
-    strip_template_repr, resolve_int_literals,
+    strip_template_repr, resolve_int_literals, INT_TYPE_ARG_MAX,
 )
 from ..coercions import resolve_coercion, CoercionContext
 from ..diagnostics import SemanticError, nocopy_container_elem_error
 from .. import qnames
 from ..type_def_registry import (
-    is_copy_iter, is_own_iter, is_array, is_span, is_varargs, is_list, is_dict, is_set,
+    is_copy_iter, is_own_iter, is_array, is_span, is_list, is_dict, is_set,
     is_enum_type, is_str_type, is_borrowing_view_type,
     get_type_def, find_factory_by_simple_name, protocol_info_of, is_subtype,
     is_fixed_int_type,
@@ -36,7 +36,7 @@ from ..type_def_registry import (
 from ..parse import TpyFunction
 from tpyc import modules as builtin_modules
 from .arg_binding import positional_param_index
-from .overloads import call_ranking
+from .overloads import call_ranking, operand_param_type
 from .slot_hint import SlotHint, params_at_inferred
 from .type_join import NumKind, numeric_kind
 from .numeric_lattice import join_numeric
@@ -238,15 +238,7 @@ def seeded_arg_hint(
     """
     if seed is None or not seed.subst or slot is None:
         return None
-    return seed.arg_hint(_seeded_arg_param_type(params[slot]))
-
-
-def _seeded_arg_param_type(target: ParamInfo) -> TpyType:
-    ptype = unwrap_ref_type(target.type)
-    if target.is_variadic and is_varargs(ptype):
-        # *args: T has the varargs[T] (or varargs[readonly[T]]) body view; expose the element.
-        ptype = unwrap_readonly(ptype.type_args[0])
-    return ptype
+    return seed.arg_hint(unwrap_ref_type(operand_param_type(params[slot])))
 
 
 def _is_useful_seed_binding(t: object) -> bool:
@@ -286,6 +278,21 @@ def _is_useful_seed_binding(t: object) -> bool:
         (NoneType, VoidType, UnknownElementType, PendingViewType, PendingListType,
          TypeParamRef, IntLiteralType, FloatLiteralType),
     )
+
+
+def _check_own_int_type_args(typ: NominalType, kinds: Sequence[TypeParamKind],
+                             params: Sequence[str],
+                             loc: SourceLocation | None) -> None:
+    """Refuse an integer argument `typ` gives an INT parameter that the
+    parameter cannot hold (`params` names them, where the declaration is
+    known)."""
+    for i, (arg, kind) in enumerate(zip(typ.type_args, kinds)):
+        if (kind == TypeParamKind.INT and isinstance(arg, int)
+                and not 0 <= arg <= INT_TYPE_ARG_MAX):
+            name = params[i] if i < len(params) else f"#{i + 1}"
+            raise SemanticError(
+                f"integer type argument {name} = {arg} of '{typ.name}' is "
+                f"out of range (0 to {INT_TYPE_ARG_MAX})", loc)
 
 
 def _direct_fixed_int_binding(
@@ -392,12 +399,56 @@ class TypeOperations:
             return TupleType(resolved) if any(a is not b for a, b in zip(resolved, typ.element_types)) else typ
         return typ
 
+    def _type_param_table(
+        self, typ: NominalType,
+    ) -> tuple[Sequence[TypeParamKind], Sequence[str]] | None:
+        """The kinds and names of `typ`'s declared type parameters: a
+        record's (user or stub-backed builtin), else a factory builtin's
+        TypeDef; None for a name neither declares."""
+        record_info = self.ctx.registry.get_record_for_type(typ)
+        if record_info is not None:
+            return record_info.type_param_kinds, record_info.type_params
+        # Parser leaves some bare-name builtins without _module_qname (e.g.
+        # `def f(x: list)`), so the simple-name scan is the factory fallback.
+        qn = typ.qualified_name()
+        td = get_type_def(qn) if qn else None
+        if td is None or td.type_factory is None:
+            td = find_factory_by_simple_name(typ.name)
+        if td is not None and td.type_factory is not None:
+            return td.param_kinds, td.param_names
+        return None
+
+    def check_int_type_args(self, typ: TpyType,
+                            loc: SourceLocation | None) -> None:
+        """Refuse an integer type argument out of 0..2**64-1 anywhere in
+        `typ`. Range only: no position rule, so every place a type is
+        written (annotation, alias body, constructor) can apply it."""
+        if isinstance(typ, NominalType) and typ.type_args:
+            table = self._type_param_table(typ)
+            if table is not None:
+                _check_own_int_type_args(typ, table[0], table[1], loc)
+        for inner in typ.inner_types():
+            self.check_int_type_args(inner, loc)
+
     def validate_type(
         self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
         allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
         allow_pointer_repr_dynamic: bool = False,
     ) -> None:
-        """Validate that a type is well-formed.
+        """Validate that a type is well-formed: the integer type argument
+        range anywhere in it, then the position rules (`_validate_type`)."""
+        self.check_int_type_args(typ, loc)
+        self._validate_type(
+            typ, allow_type_param_ref, loc, allow_forward_ref=allow_forward_ref,
+            check_hashable_constraints=check_hashable_constraints,
+            allow_pointer_repr_dynamic=allow_pointer_repr_dynamic)
+
+    def _validate_type(
+        self, typ: TpyType, allow_type_param_ref: bool = False, loc: SourceLocation | None = None,
+        allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
+        allow_pointer_repr_dynamic: bool = False,
+    ) -> None:
+        """The position rules of `validate_type`.
 
         Args:
             typ: The type to validate.
@@ -426,7 +477,7 @@ class TypeOperations:
             # storage-shaped, where Optional[@dynamic P] has no valid value-repr,
             # so it must stay rejected. The transparent readonly wrappers are the
             # exception and preserve the flag explicitly in their own branch.
-            self.validate_type(
+            self._validate_type(
                 inner, allow_type_param_ref, loc,
                 allow_forward_ref=allow_forward_ref,
                 check_hashable_constraints=check_hashable_constraints,
@@ -457,20 +508,11 @@ class TypeOperations:
             # (covers bare-name NominalType like def f(x: list) that the
             # parser leaves without `_module_qname`).
             record_info = self.ctx.registry.get_record_for_type(typ)
-            kinds: tuple | None = None
+            kinds: Sequence[TypeParamKind] | None = None
             if record_info is None:
-                # Primary path: resolve via the fully qualified name the type
-                # already knows. Parser leaves some bare-name builtins without
-                # _module_qname (e.g. `def f(x: list)`), so qualified_name()
-                # returns None or just the simple name; for those we scan
-                # `builtins` + `tpy` by simple name as the factory-aware
-                # fallback. Either way a single TypeDef lookup wins.
-                qn = typ.qualified_name()
-                td = get_type_def(qn) if qn else None
-                if td is None or td.type_factory is None:
-                    td = find_factory_by_simple_name(typ.name)
-                if td is not None and td.type_factory is not None:
-                    kinds = td.param_kinds
+                table = self._type_param_table(typ)
+                if table is not None:
+                    kinds = table[0]
             if record_info is not None:
                 if typ.type_args:
                     if not record_info.is_generic():
@@ -481,7 +523,7 @@ class TypeOperations:
                             f"got {len(typ.type_args)}",
                             loc,
                         )
-                    self.validate_record_type_args(
+                    self._validate_record_type_args(
                         typ, record_info, allow_type_param_ref, loc,
                         allow_forward_ref=allow_forward_ref,
                         check_hashable_constraints=check_hashable_constraints,
@@ -654,7 +696,7 @@ class TypeOperations:
             # allow_pointer_repr_dynamic across it: readonly[Optional[@dynamic P]]
             # at a parameter is still a pointer-repr borrow (const P*), unlike
             # the container/Own/tuple positions where _recurse resets the flag.
-            self.validate_type(
+            self._validate_type(
                 typ.wrapped, allow_type_param_ref, loc,
                 allow_forward_ref=allow_forward_ref,
                 check_hashable_constraints=check_hashable_constraints,
@@ -763,6 +805,19 @@ class TypeOperations:
         loc: SourceLocation | None = None,
         allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
     ) -> None:
+        """`_validate_record_type_args` after the integer type argument
+        range check over the whole of `typ`."""
+        self.check_int_type_args(typ, loc)
+        self._validate_record_type_args(
+            typ, record_info, allow_type_param_ref, loc,
+            allow_forward_ref=allow_forward_ref,
+            check_hashable_constraints=check_hashable_constraints)
+
+    def _validate_record_type_args(
+        self, typ: NominalType, record_info: RecordInfo, allow_type_param_ref: bool = False,
+        loc: SourceLocation | None = None,
+        allow_forward_ref: bool = True, check_hashable_constraints: bool = True,
+    ) -> None:
         """Validate that type arguments match their expected kinds (TYPE vs INT).
 
         Args:
@@ -777,7 +832,7 @@ class TypeOperations:
         # Same closure pattern as `validate_type` -- one binding so flag
         # forwarding can't drift across the two recursive type-arg sites.
         def _recurse(inner: TpyType) -> None:
-            self.validate_type(
+            self._validate_type(
                 inner, allow_type_param_ref, loc,
                 allow_forward_ref=allow_forward_ref,
                 check_hashable_constraints=check_hashable_constraints,
@@ -800,7 +855,7 @@ class TypeOperations:
             if kind == TypeParamKind.INT:
                 # Expect an integer value or INT TypeParamRef (forwarding)
                 if isinstance(arg, int):
-                    continue  # Valid: integer literal
+                    continue
                 if isinstance(arg, TypeParamRef) and arg.kind == TypeParamKind.INT:
                     continue  # Valid: forwarding an INT type param
                 raise SemanticError(
@@ -1523,17 +1578,16 @@ class TypeOperations:
         func: FunctionInfo,
         arg_types: list[TpyType | None],
         type_conforms_to_protocol: callable,
+        *,
+        slots: 'list[int | None]',
         expected_return_type: SlotHint | TpyType | None = None,
         explicit_type_args: 'tuple[TpyType | None, ...] | None' = None,
         joined: set[str] | None = None,
-        slots: 'list[int | None] | None' = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from function arguments.
 
         `slots` gives the parameter each of `arg_types` binds (a bound call's
-        `ArgBinding.evidence`); without it `arg_types` are a call's
-        positional arguments in order, which bind the positional parameters
-        and past them the `*args` one.
+        `ArgBinding.evidence`).
 
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         If expected_return_type is provided, unresolved params are matched against the return type
@@ -1548,13 +1602,6 @@ class TypeOperations:
         # A fill-only hint prefers no protocol form for the result.
         expected_return_type = (return_hint.type if return_hint is not None
                                 and not return_hint.is_fill else None)
-        if slots is None:
-            if (len(arg_types) < func.min_args
-                    or len(arg_types) > func.max_args):
-                return None
-            slots = [positional_param_index(func.params, i)
-                     for i in range(len(arg_types))]
-
         inferred: dict[str, TpyType] = {}
         if explicit_type_args:
             if len(explicit_type_args) > len(func.type_params):
@@ -1579,16 +1626,20 @@ class TypeOperations:
                 continue
             p = func.params[slot]
             ptype = p.type
+            # A parameter naming no type parameter is evidence of nothing:
+            # whether it takes its argument is the argument check's to say.
+            if not contains_type_param(ptype):
+                continue
             if _fills_none_arm(ptype, arg_t):
                 none_arms.append((ptype, arg_t))
                 continue
-            if p.is_variadic and is_varargs(unwrap_ref_type(ptype)):
+            if p.is_variadic:
                 # A `*args` element: `varargs<T>` elements are bare-T slots,
                 # so canonicalize the arg side (see to_bare_slot_form) --
                 # the non-variadic ref-param path gets the equivalent strip
                 # via the Ref-vs-Ref rule in match_type_with_inference.
-                elem_type = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
-                if not match_arg(elem_type, to_bare_slot_form(arg_t)):
+                if not match_arg(operand_param_type(p),
+                                 to_bare_slot_form(arg_t)):
                     return None
                 continue
             # @value_ptr_coercion: Ptr[T] params accept T values, so match
@@ -1743,22 +1794,20 @@ class TypeOperations:
     def infer_type_params_for_record(
         self,
         record: RecordInfo,
-        arg_types: list[TpyType | None],
+        evidence: 'list[tuple[int, TpyType]]',
         expected_type: SlotHint | TpyType | None = None,
         explicit_type_args: tuple['TpyType | None', ...] | None = None,
     ) -> dict[str, TpyType] | None:
         """Infer type parameters from constructor arguments for user-defined generic record.
 
+        `evidence` pairs each argument's type with the index of the
+        `init_params` entry it binds (the construction's `ArgBinding`).
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         If expected_type is provided, unresolved params are matched against the record type
         pattern (a fill-only hint binds only what nothing else does -- `result_bindings`).
         If explicit_type_args is provided, pre-populates inferred with those (positional, None = skip).
         """
         hint = SlotHint.of(expected_type)
-        min_args = sum(1 for _, _, default in record.init_params if default is None)
-        if len(arg_types) < min_args or len(arg_types) > len(record.init_params):
-            return None
-
         inferred: dict[str, TpyType] = {}
         if explicit_type_args:
             if len(explicit_type_args) > len(record.type_params):
@@ -1767,8 +1816,10 @@ class TypeOperations:
                 if arg is not None:
                     inferred[tp] = arg
         none_arms: list[tuple[TpyType, TpyType]] = []
-        for (pname, ptype, _), arg_type in zip(record.init_params, arg_types):
-            if arg_type is None:  # left to its default: no evidence
+        for i, arg_type in evidence:
+            _, ptype, _ = record.init_params[i]
+            # A parameter naming no type parameter is evidence of nothing.
+            if arg_type is None or not contains_type_param(ptype):
                 continue
             if _fills_none_arm(ptype, arg_type):
                 none_arms.append((ptype, arg_type))
@@ -2135,7 +2186,7 @@ class TypeOperations:
             if slot is None:
                 out.append(None)
                 continue
-            ptype = _seeded_arg_param_type(func.params[slot])
+            ptype = unwrap_ref_type(operand_param_type(func.params[slot]))
             # An ``Optional[T]`` param accepts a bare T arg, so the hint
             # exposes the inner T (``post_substitute_hint``'s shape).
             out.append(SlotHint.declared(_hint_shape(ptype)))
@@ -2166,9 +2217,11 @@ class TypeOperations:
                 and is_subtype(record_info, proto_info))
 
     def match_generic_constructor(
-        self, params: list, arg_types: list[TpyType]
+        self, placed: list[tuple[TpyType, TpyType]]
     ) -> dict[str, TpyType] | None:
         """Try to match constructor params against arg types and infer type parameters.
+        `placed` holds each argument's type with the parameter type its
+        binding gives it.
 
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         Supports protocol params like "NativeIterable[T]" which infer T from element type.
@@ -2179,8 +2232,7 @@ class TypeOperations:
         to preserve helpful errors (e.g. "unsafe_store() requires a mutable pointer").
         """
         inferred: dict[str, TpyType] = {}
-        for param, arg_type in zip(params, arg_types):
-            pt = param.type
+        for pt, arg_type in placed:
             # For Ptr[TypeParam] constructor params, allow T = readonly[X] inference
             # from Ptr[readonly[X]] arguments. This is safe here (constructor context)
             # because the resulting type (e.g. Span[readonly[T]]) captures readonly-ness.

@@ -1957,9 +1957,9 @@ def scal[T](a: T, b: T) -> Own[T]:
     assert _perms(records[(4, "TpyCall")]) == {(): P.MOVE}
     arg = ("may copy T into argument '{}' of 'min(...)'{} if not a value "
            "type; use copy() to make this explicit")
-    assert warnings == [arg.format("a", " (tuple element 0)"),
-                        arg.format("b", " (tuple element 0)"),
-                        arg.format("a", ""), arg.format("b", "")]
+    assert warnings == [arg.format("arg1", " (tuple element 0)"),
+                        arg.format("arg2", " (tuple element 0)"),
+                        arg.format("arg1", ""), arg.format("arg2", "")]
 
 
 def test_projections_of_calls_take_the_calls_incoming_answer() -> None:
@@ -2839,7 +2839,7 @@ _W, _H = P.WARNED, P.HEDGED
       (21, "copies A | B into field (tuple element 0)"),
       (22, "copies A | B into field (tuple element 0)"),
       (24, "copies A | B into owned storage (tuple element 0)"),
-      (25, "copies A into owned storage (argument 'value' tuple element 0)"),
+      (25, "copies A into owned storage (argument 'object' tuple element 0)"),
       (26, "copies A | B into owned storage (tuple element 0)"),
       (27, "copies A into owned storage (argument 'p' tuple element 0)"),
       (28, "copies tuple[Own[A | B], int32] into owned storage"),
@@ -2856,7 +2856,7 @@ _W, _H = P.WARNED, P.HEDGED
       (21, "copies readonly[A] into field (tuple element 0)"),
       (22, "copies A into field (tuple element 0)"),
       (24, "copies readonly[A] into owned storage (tuple element 0)"),
-      (25, "copies A into owned storage (argument 'value' tuple element 0)"),
+      (25, "copies A into owned storage (argument 'object' tuple element 0)"),
       (26, "copies readonly[A] into owned storage (tuple element 0)"),
       (27, "copies A into owned storage (argument 'p' tuple element 0)"),
       (28, "copies tuple[Own[readonly[A]], int32] into owned storage"),
@@ -2881,7 +2881,7 @@ _W, _H = P.WARNED, P.HEDGED
        "type"),
       (24, "may copy Send[T] into owned storage (tuple element 0) if not a "
        "value type"),
-      (25, "may copy Send[T] into owned storage (argument 'value' tuple "
+      (25, "may copy Send[T] into owned storage (argument 'object' tuple "
        "element 0) if not a value type"),
       (26, "may copy Send[T] into owned storage (tuple element 0) if not a "
        "value type"),

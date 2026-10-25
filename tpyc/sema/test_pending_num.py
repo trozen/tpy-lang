@@ -33,7 +33,7 @@ from .context import SemanticContext
 from .statements import global_rebind_message
 from .pending_num import (NO_COMMON, PENDING_NUM_COERCION, ContainerCells,
                           PendingNumCell, PendingNums,
-                          Entry, _splice_out, lub_int, pending_join,
+                          Entry, _rewrite_body, lub_int, pending_join,
                           tree_leaves)
 
 
@@ -965,30 +965,30 @@ def _body_holding(init: object) -> list:
     return body
 
 
-def test_splice_out_unwraps_a_placeholder_the_body_holds() -> None:
+def test_rewrite_body_unwraps_a_placeholder_the_body_holds() -> None:
     held = _placeholder(2)
     body = _body_holding(held)
-    _splice_out(body, [held])
+    _rewrite_body(None, body, [held], [])
     assert body[0].init is held.expr
 
 
-def test_splice_out_rebuilds_a_tuple_holding_a_placeholder() -> None:
+def test_rewrite_body_rebuilds_a_tuple_holding_a_placeholder() -> None:
     # A tuple field cannot be written in place, so the walk stores a new one.
     module = Parser().parse("def f() -> None:\n"
                             "    x = sum(v for v in range(3))\n")
     genexpr = module.functions[0].body[0].init.args[0]
     held = _placeholder(2)
     genexpr.frame_range_args = (TpyName("a"), held)
-    _splice_out(module.functions[0].body, [held])
+    _rewrite_body(None, module.functions[0].body, [held], [])
     assert isinstance(genexpr.frame_range_args, tuple)
     assert genexpr.frame_range_args[1] is held.expr
 
 
-def test_splice_out_refuses_a_placeholder_held_outside_the_body() -> None:
+def test_rewrite_body_refuses_a_placeholder_held_outside_the_body() -> None:
     body = _body_holding(TpyName("v"))
     with pytest.raises(AssertionError,
-                       match="placeholder at line 7 is held where"):
-        _splice_out(body, [_placeholder(7)])
+                       match="rewrites at line 7 is held where"):
+        _rewrite_body(None, body, [_placeholder(7)], [])
 
 
 def test_assert_settled_refuses_a_surviving_placeholder() -> None:
@@ -1458,7 +1458,7 @@ def _defaulted_getitem(fns: list) -> list:
     pytest.param("print([10, 20].__getitem__(x))", CallShape(1), False,
                  id="defaulted-variant-competes"),
     pytest.param("print([].__getitem__(x, extra=1))",
-                 CallShape(2, ("extra",)), True, id="keyword-names-the-set"),
+                 CallShape(1, ("extra",)), True, id="keyword-names-the-set"),
 ])
 def test_container_prep_gate_takes_the_whole_set(
         monkeypatch: pytest.MonkeyPatch, use: str, shape: CallShape,

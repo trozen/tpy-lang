@@ -355,7 +355,7 @@ def _convert_fit(args, params, ops=None, subclass_checker=None, declared=None,
     """`_classify_overload` in the conversion stage, at a candidate taking
     `params` (or `declared`)."""
     overload = declared if declared is not None else _fn("f", *params)
-    return _classify_overload(overload, list(args),
+    return _classify_overload(overload, list(enumerate(args)),
                               _ranking(protocol_checker, ops=ops,
                                        subclass_checker=subclass_checker),
                               convert=True)
@@ -814,7 +814,7 @@ def test_presubstituted_view_widens_an_undecided_container_once():
     ops = _Ops({_iterable(INT64): [(None, INT32, INT64)]})
     ops.protocol_type_args_of = lambda arg, proto: None
     fit = _classify_overload(
-        inst, [_OPEN_LIST],
+        inst, [(0, _OPEN_LIST)],
         _ranking(lambda a, p: True, ops=ops,
                  classifier=lambda a, p: ProtocolConformanceKind.EXPLICIT))
     assert fit is not None
@@ -942,7 +942,7 @@ _KW_GROUP = """class G:
             "        self.n = 2\n"
             "def main() -> None:\n    xs = []\n    raise E(xs)\n",
             r"^Ambiguous overload for 'E\.__init__': multiple candidates match "
-            r"equally: __init__\(list\[str\]\); __init__\(list\[int64\]\)$",
+            r"equally:\n  __init__\(list\[str\]\)\n  __init__\(list\[int64\]\)$",
             id="raise-group-ambiguous"),
         # The `typing.overload` form: the stub the call resolves to decides
         # the local (its implementation's narrowing does not lower,
@@ -981,11 +981,14 @@ _KW_GROUP = """class G:
             "def main() -> None:\n    ms = [1, 2]\n    print(K(ms).n)\n",
             r"^No matching overload for 'K' with argument types \(list\[int32\]\)",
             id="ctor-group-no-match"),
-        # A keyword construction ranks every candidate of the group; a
-        # keyword no candidate declares is named.
+        # A keyword construction ranks every candidate of the group; each
+        # candidate names the keyword it does not declare.
         pytest.param(
             _KW_GROUP + "def main() -> None:\n    print(G(s='x', a=1).v)\n",
-            r"^No matching overload for 'G' with argument types \(s=str, a=int\)$",
+            r"^No matching overload for 'G' with argument types \(s=str, a=int\)\n"
+            r"  'G\(a: int32, \*, k: int32\)' got unexpected keyword argument 's'\n"
+            r"  'G\(s: str, b: int32, \*, k: int32\)' got unexpected keyword "
+            r"argument 'a'$",
             id="ctor-group-kwargs-no-match"),
         pytest.param(
             _KW_GROUP + "def main() -> None:\n    print(G(zz=1).v)\n",

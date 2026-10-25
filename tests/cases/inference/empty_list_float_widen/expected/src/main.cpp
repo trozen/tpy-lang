@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     print(xs)
 void test() {
     std::vector<double> xs = std::vector<double>{};
-    xs.push_back(1);
+    xs.push_back(static_cast<double>(1));
     xs.push_back(2.0);
     std::cout << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }

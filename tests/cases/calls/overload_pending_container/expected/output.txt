@@ -55,7 +55,7 @@ from view big: iterbig [1, 2]
 view first32: iter32 [1, 2]
 view first64: iter64 [1, 2]
 twin declared first: declared [1, 2]
-generic declared view: list64 [1, 2]
+generic declared view: gen-view [1, 2]
 plain declared view: plain-view [1, 2] 1099511627776
 regime c rank: iter32 [1, 2]
 generic keyword: 1099511627776 1099511627776

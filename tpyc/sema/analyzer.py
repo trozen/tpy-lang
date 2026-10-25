@@ -2568,6 +2568,7 @@ class SemanticAnalyzer:
         self, alias_name: str, typ: TpyType, loc: 'SourceLocation | None'
     ) -> None:
         """Validate that all NominalType members in a type alias are registered."""
+        self.type_ops.check_int_type_args(typ, loc)
         # Recursive union aliases have self-referencing NominalType placeholders
         # inside their members -- safety was already validated.
         if alias_name in self.ctx.recursive_union_names:

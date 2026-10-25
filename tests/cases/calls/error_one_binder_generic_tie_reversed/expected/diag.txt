@@ -1,0 +1,3 @@
+main.py:22: error: Ambiguous overload for 'pick': multiple candidates match equally:
+  pick(int32, T)
+  pick(T, int32)

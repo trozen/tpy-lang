@@ -35,7 +35,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
 //     return N  # N coerces to BigInt
 template<typename T, std::size_t N>
 inline ::tpy::BigInt Container<T, N>::get_size_as_bigint() const {
-    return ::tpy::BigInt(static_cast<int64_t>(N));
+    return ::tpy::BigInt(static_cast<uint64_t>(N));
 }
 
 void __tpy_init();

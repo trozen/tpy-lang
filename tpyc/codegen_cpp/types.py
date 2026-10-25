@@ -11,8 +11,8 @@ from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType,
     PendingListType, PendingDictType, PendingSetType, PendingViewType, ViewTypeFamily, make_list, make_dict, make_set, TypeParamRef, NominalType,
     UnionType, NoneType, VoidType, TupleType, ReadonlyType, OwnType,
-    ConcreteCoroType, ConcreteFrameType, spells_readonly_arg_const,
-    template_arg_cpp, varargs_elem_cpp,
+    ConcreteCoroType, ConcreteFrameType,
+    template_args_cpp, varargs_elem_cpp,
     unwrap_readonly, unwrap_ref_type, is_protocol_type, resolve_int_literals,
     is_integer_type, is_float_type, is_numeric_type, is_void_like_type,
     substitute_type_params_simple,
@@ -444,11 +444,8 @@ class TypeResolver:
             td = type_def_of(typ)
             if td is None or td.cpp_formatter is None:
                 base = typ.to_cpp_base_name()
-                const_readonly = spells_readonly_arg_const(td)
-                args = ", ".join(
-                    template_arg_cpp(t, const_readonly, self.type_to_cpp)
-                    for t in typ.type_args
-                )
+                args = template_args_cpp(typ.name, td, typ.type_args,
+                                         self.type_to_cpp)
                 return f"{base}<{args}>"
         # Default: use the type's built-in to_cpp() method
         return typ.to_cpp()

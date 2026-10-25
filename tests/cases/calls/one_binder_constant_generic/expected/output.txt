@@ -1,0 +1,15 @@
+ops -3 -4 4 True
+aug 3
+holder 3
+ctor 3.0 3 3
+decl 3
+fn int32 int64
+nested 3
+lambda 6
+ops -16777217 -16777218 16777218 False
+aug 16777217
+holder 16777217
+ctor 16777217.0 16777217 16777217
+decl 16777217
+fn int32 int64
+small 200

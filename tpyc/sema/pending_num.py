@@ -37,7 +37,8 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping, Sequence
 
-from ..coercions import Coercion, CoercionContext, int_literal_fits_fixed_int
+from ..coercions import (Coercion, CoercionContext, int_literal_fits_fixed_int,
+                         int_payload, resolve_coercion)
 from ..parse import (
     TpyArrayLiteral, TpyCall, TpyCoerce, TpyDictLiteral, TpyExpr,
     TpyIntLiteral, TpyListRepeat, TpyMethodCall, TpyName, TpySetLiteral,
@@ -50,7 +51,7 @@ from ..typesys import (
     OptionalType, PendingContainerType, PendingListType, PendingDictType,
     PendingSetType, TupleType, UnionType, UnknownElementType,
     ContainerLiteralInfo, ListLiteralInfo,
-    TypeParamRef, BIGINT, FLOAT, INT64, ELEM, KEY, VALUE,
+    TypeParamKind, TypeParamRef, BIGINT, FLOAT, INT64, ELEM, KEY, VALUE,
     is_float_type, contains_pending_leaf,
     contains_pending_num, contains_type_param,
     is_integer_type, unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
@@ -3368,12 +3369,19 @@ class PendingNums:
         """Decide every cell of the function, resolve what waited on them,
         and rewrite every type and node that held a pending one."""
         func = self.ctx.func
-        if not self._cids():
-            return
+        if self._cids():
+            self._settle_cells()
+        if func.pending_num_splices or func.int_tparam_reads:
+            _rewrite_body(self.ctx, body or [], func.pending_num_splices,
+                          func.int_tparam_reads)
+            func.pending_num_splices = []
+            func.int_tparam_reads = []
+
+    def _settle_cells(self) -> None:
         self.settle(set(self._cids()))
         # A cell settled early, inside its first arm, is judged here with
         # every arm seen.
-        for cid in func.pending_cell_of.values():
+        for cid in self.ctx.func.pending_cell_of.values():
             self.check_arm_group(self.ctx.pending_num_cells[cid])
         self.resolve_ready()
         # The expression types that held a pending leaf are rewritten with
@@ -3388,9 +3396,6 @@ class PendingNums:
                 t = self.ctx.declared_var_types.get(key)
                 if t is not None:
                     self.ctx.declared_var_types[key] = self.finalize(t)
-        if func.pending_num_splices:
-            _splice_out(body or [], func.pending_num_splices)
-            func.pending_num_splices = []
 
     def assert_settled(self, body: list[TpyStmt] | None) -> None:
         """The invariant after a body's `resolve_all`: no pending number is
@@ -3533,12 +3538,43 @@ def _line(node: TpyStmt | TpyExpr | None) -> int | None:
     return getattr(getattr(node, "loc", None), "line", None)
 
 
-def _splice_out(body: list[TpyStmt], placeholders: list[TpyCoerce]) -> None:
-    """Replace every placeholder that turned out to convert nothing by the
-    expression it wraps, wherever the tree holds it, so the tree is the one
-    an annotated local gives. One walk of the body for all of them: the
-    placeholder does not know where its caller stored it."""
+def int_tparam_conversion(ctx: 'SemanticContext', name: TpyName,
+                          target: TpyType, context_kind: str,
+                          context_msg: str) -> TpyCoerce | None:
+    """The one conversion of the constant an INT type parameter `name`
+    reads to `target` (an optional target holds the converted payload), or
+    None when no row converts it there."""
+    raw_t = TypeParamRef(name.name, kind=TypeParamKind.INT)
+    coercion = resolve_coercion(raw_t, int_payload(target), None)
+    if coercion is None:
+        return None
+    raw = TpyName(name.name, loc=name.loc)
+    ctx.set_expr_type(raw, raw_t)
+    node = TpyCoerce(expr=raw, actual_type=raw_t, expected_type=target,
+                     coercion=coercion, context_kind=context_kind,
+                     context_msg=context_msg, loc=name.loc)
+    ctx.set_expr_type(node, target)
+    return node
+
+
+def _rewrite_body(ctx: 'SemanticContext', body: list[TpyStmt],
+                  placeholders: list[TpyExpr],
+                  reads: list[tuple[TpyExpr, TpyExpr]]) -> None:
+    """One walk of the body, wherever the tree holds each node (its caller
+    stored it, not knowing what it becomes):
+    - a placeholder that turned out to convert nothing is replaced by the
+      expression it wraps, so the tree is the one an annotated local gives;
+    - a value read of an INT type parameter is replaced by its conversion
+      to the default int, or -- where the parent is a conversion of that
+      value to a number or an optional number -- the parent by ONE
+      conversion of the constant to the parent's type. The folded
+      conversion is checked unless the target holds every type argument
+      (uint64, a float, int through uint64), so a wider sink keeps the
+      full value and a narrower one checks once. A conversion the tree
+      holds no node for (an aggregate literal element C++ converts
+      implicitly) keeps the checked default-int read."""
     ids = {id(p) for p in placeholders}
+    read_of = {id(name): conv for name, conv in reads}
     found: set[int] = set()
 
     def unwrap(v: object) -> object:
@@ -3547,12 +3583,35 @@ def _splice_out(body: list[TpyStmt], placeholders: list[TpyCoerce]) -> None:
             v = v.expr  # type: ignore[attr-defined]
         return v
 
-    rewrite_tree(body, unwrap)
-    for p in placeholders:
-        if id(p) not in found:
-            line = getattr(p.loc, "line", None)
+    def replace(v: object) -> object:
+        v = unwrap(v)
+        if isinstance(v, TpyCoerce):
+            inner = unwrap(v.expr)
+            conv = read_of.get(id(inner))
+            payload = int_payload(v.expected_type)
+            if (conv is not None
+                    and (is_integer_type(payload) or is_float_type(payload))
+                    and v.actual_type == conv.expected_type):
+                assert isinstance(inner, TpyName)
+                folded = int_tparam_conversion(
+                    ctx, inner, v.expected_type, v.context_kind,
+                    v.context_msg)
+                if folded is not None:
+                    found.add(id(inner))
+                    folded.by_step = v.by_step
+                    return folded
+        conv = read_of.get(id(v))
+        if conv is not None:
+            found.add(id(v))
+            return conv
+        return v
+
+    rewrite_tree(body, replace)
+    for node in [*placeholders, *(name for name, _ in reads)]:
+        if id(node) not in found:
+            line = getattr(node.loc, "line", None)
             raise AssertionError(
-                f"Internal error: a conversion placeholder at line {line} is "
+                f"Internal error: a node sema rewrites at line {line} is "
                 f"held where its function's body does not reach it")
 
 

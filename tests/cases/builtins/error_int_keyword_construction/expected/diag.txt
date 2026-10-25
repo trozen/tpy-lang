@@ -1,0 +1,15 @@
+main.py:7: error: No matching overload for 'int' with argument types (x=int)
+  'int()' got unexpected keyword argument 'x'
+  'int(x: int, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: int8, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: int16, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: int32, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: int64, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: uint8, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: uint16, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: uint32, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: uint64, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: float, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: str, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: bool, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'int(x: char, /)' parameter 'x' is positional-only and cannot be passed by keyword

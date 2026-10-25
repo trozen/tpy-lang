@@ -94,14 +94,10 @@ def _substitute_method_signature(
     """
     if not subst:
         return method
-    return MethodSignature(
-        name=method.name,
+    return dataclasses.replace(
+        method,
         params=[(n, type_ops.substitute_types(t, subst)) for n, t in method.params],
         return_type=type_ops.substitute_types(method.return_type, subst),
-        is_readonly=method.is_readonly,
-        readonly_opt_out=method.readonly_opt_out,
-        cpp_template=method.cpp_template,
-        param_defaults=method.param_defaults,
     )
 
 
@@ -1001,11 +997,12 @@ class ProtocolChecker:
         protocol: NominalType,
         method_name: str,
         self_type: TpyType | None = None,
-    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None, list, int] | None:
+    ) -> tuple[list[tuple[str, TpyType]], TpyType, str | None, list, int,
+               int | None] | None:
         """Get a method's signature from a protocol.
 
         Returns (params, return_type, cpp_template, param_defaults,
-        num_posonly_params) with Self
+        num_posonly_params, keyword_only_start) with Self
         substituted, or None if not found. Searches the protocol and all its
         parent protocols. `param_defaults` is the parallel default list (None
         per required param, TpyExpr per optional param); empty when no defaults
@@ -1046,7 +1043,8 @@ class ProtocolChecker:
                     cpp_template = get_dunder_cpp_template(method_name)
                 return (params, return_type, cpp_template,
                         method_sig.param_defaults,
-                        method_sig.num_posonly_params)
+                        method_sig.num_posonly_params,
+                        method_sig.keyword_only_start)
 
         return None
 

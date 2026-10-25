@@ -1,1 +1,1 @@
-main.py:27: error: @nocopy type 'P' cannot be copied into 'value: Own[P]'. Only the original owner can be moved at its last use.
+main.py:27: error: @nocopy type 'P' cannot be copied into 'object: Own[P]'. Only the original owner can be moved at its last use.

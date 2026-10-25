@@ -19,7 +19,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    a = 5;
+    a = static_cast<double>(5);
     b = 3.14;
     c = 1.0;
     std::cout << ::tpy::print_float(a) << "\n" << ::tpy::check_signals;

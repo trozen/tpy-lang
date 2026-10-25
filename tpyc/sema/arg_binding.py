@@ -5,11 +5,11 @@ binds them: written positionals fill the positional parameters left to
 right and overflow into `*args`, keywords match by name (the ones naming no
 parameter go to a `**kwargs: Unpack[TD]` region), and every parameter left
 out takes its default. `bind` is that rule for a call to its callee, and
-rejects a call's argument shape there. Overload ranking still places the
-keywords on its own to score each candidate (`_expand_arg_types_with_kwargs`,
-`CallAnalyzer._supplied_fn_slots`), more leniently than `bind` -- it lets a
-positional-only parameter take a keyword; the winner is bound by `bind`,
-which rejects that there.
+rejects a call's argument shape there. Overload ranking places each
+candidate's arguments with it too -- over the arguments' types instead of
+their nodes (`overloads.bound_evidence`) -- so a candidate the call does not
+bind to is not applicable, and the winner is committed at the slots it was
+ranked at.
 
 A call holds one argument list (`args` / `kwargs` / `double_star_unpack`).
 Before its first commit it is the call as written. The commit
@@ -37,6 +37,7 @@ from ..typesys import ParamInfo
 
 if TYPE_CHECKING:
     from ..parse import TpyExpr
+    from ..parse.nodes import TpyCallLike
     from ..typesys import FunctionInfo, TpyType
 
 
@@ -51,6 +52,24 @@ class CallSource:
 
     def keyword(self, name: str) -> 'TpyExpr | None':
         return next((e for k, e in self.keywords if k == name), None)
+
+    def at(self, at: 'int | str') -> 'TpyExpr | None':
+        """The operand written at `at`: a position, or a keyword's name."""
+        return self.positional[at] if isinstance(at, int) else self.keyword(at)
+
+    @property
+    def addresses(self) -> list['int | str']:
+        """Where each operand is written, positionals first: a position,
+        or a keyword's name (the `**expr` is no operand of a parameter)."""
+        return [*range(len(self.positional)), *(k for k, _ in self.keywords)]
+
+    def mapped(self, f: 'Callable[[int | str, TpyExpr], object]') -> 'CallSource':
+        """This source with each operand replaced by `f(address, operand)`
+        (a probe typing them: the source of the call's argument types)."""
+        return CallSource(
+            tuple(f(i, e) for i, e in enumerate(self.positional)),
+            tuple((k, f(k, e)) for k, e in self.keywords),
+            self.double_star)
 
     @property
     def operands(self) -> list['TpyExpr']:
@@ -276,6 +295,33 @@ class ArgBinding:
                 out.append((i, self.expr(i, src)))
         return out
 
+    def addresses(self) -> list[tuple[int, 'int | str']]:
+        """`evidence`'s entries as where each written argument is in the
+        call: its parameter with its written position, or its keyword."""
+        out: list[tuple[int, int | str]] = []
+        for i, s in enumerate(self.slots):
+            if s.kind is SlotKind.VARIADIC:
+                out.extend((i, j) for j in s.elements)
+            elif s.kind is SlotKind.POSITIONAL:
+                out.append((i, s.index))
+            elif s.kind is SlotKind.KEYWORD:
+                out.append((i, s.name))
+        return out
+
+    def param_at(self, at: 'int | str') -> int | None:
+        """The parameter the written argument `at` (a position, or a
+        keyword's name) binds: the `*args` one for an element of it, the
+        `**kwargs` one for a field of its region; None when it binds none."""
+        for i, s in enumerate(self.slots):
+            if isinstance(at, int):
+                if ((s.kind is SlotKind.POSITIONAL and s.index == at)
+                        or (s.kind is SlotKind.VARIADIC and at in s.elements)):
+                    return i
+            elif ((s.kind is SlotKind.KEYWORD and s.name == at)
+                    or (s.kind is SlotKind.KWARGS and at in s.fields)):
+                return i
+        return None
+
     def received(self, src: CallSource,
                  operands: Sequence['TpyExpr']) -> CallSource:
         """`src` with each written argument replaced by its received
@@ -346,6 +392,32 @@ class ArgBinding:
             start = sum(1 for j in range(va) if self.positions[j] is not None)
             for k in range(len(self.slots[va].elements)):
                 out[start + k] = va
+        return out
+
+    def committed_slots(self) -> list[tuple[int, int]]:
+        """Each fixed parameter a written argument binds, with the index
+        of its operand in the committed list, in list order."""
+        assert self.at is not None
+        return [(i, self.at[i]) for i in self.param_order()
+                if self.slots[i].kind in (SlotKind.POSITIONAL,
+                                          SlotKind.KEYWORD)]
+
+    def committed_evidence(self, call: TpyCallLike
+                           ) -> list[tuple[int, TpyExpr]]:
+        """`evidence` over `call`'s committed list: every operand a written
+        argument became, with the parameter it binds, in list order -- a
+        `*args` element read out of the pack, filled defaults and the
+        `**kwargs` region left out."""
+        assert self.at is not None
+        out: list[tuple[int, TpyExpr]] = []
+        for i in self.param_order():
+            kind = self.slots[i].kind
+            operand = call.args[self.at[i]]
+            if kind is SlotKind.VARIADIC:
+                assert isinstance(operand, TpyVarargPack)
+                out.extend((i, e) for e in operand.args)
+            elif kind in (SlotKind.POSITIONAL, SlotKind.KEYWORD):
+                out.append((i, operand))
         return out
 
     def param_order(self) -> list[int]:
@@ -467,10 +539,13 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
     name_to_index = {p.name: i for i, p in enumerate(params)
                      if not p.is_variadic}
 
-    # A keyword naming no parameter is a `**kwargs` field.
+    # A keyword naming no parameter a keyword can bind is a `**kwargs`
+    # field: a positional-only or the `*args` name included, as in CPython
+    # (`def f(x, /, **kw)`: `f(1, x=2)` gives `kw == {'x': 2}`).
     regular: dict[str, TpyExpr] = {}
     fields: list[str] = []
-    named = {p.name for p in params if not p.is_kwargs}
+    named = {p.name for p in params
+             if not p.is_kwargs and not p.is_variadic and not p.positional_only}
     for k, e in written.keywords:
         if kw_param is not None and k not in named:
             fields.append(k)
@@ -480,8 +555,28 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
     def reject(msg: str) -> BindReject:
         return BindReject(f"'{name}' {msg}")
 
-    if kwonly and va is None and n > len(fixed_pos):
-        return reject(f"takes {len(fixed_pos)} positional argument(s), got {n}")
+    # CPython's order: the keywords first, then the positional count, then
+    # what is missing.
+    for k in regular:
+        if k not in name_to_index:
+            return reject(f"got unexpected keyword argument '{k}'")
+        if params[name_to_index[k]].positional_only:
+            return reject(f"parameter '{k}' is positional-only and "
+                          f"cannot be passed by keyword")
+    for pname, idx in name_to_index.items():
+        if (pname in regular and idx < n
+                and not params[idx].keyword_only):
+            return reject(f"got multiple values for argument '{pname}'")
+
+    min_args = sum(1 for p in params
+                   if not p.has_default and not p.keyword_only
+                   and not p.is_variadic and not p.is_kwargs)
+    if va is None and n > len(fixed_pos):
+        takes = (f"{len(fixed_pos)} positional argument(s)"
+                 if min_args == len(fixed_pos)
+                 else f"{min_args} to {len(fixed_pos)} positional arguments")
+        return BindReject(f"'{name}' takes {takes}, got {n}",
+                          arity=(min_args, len(fixed_pos), n))
 
     if not regular:
         for i in kwonly:
@@ -494,16 +589,6 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
                     return reject(
                         f"missing required argument: '{params[i].name}'")
     else:
-        for k in regular:
-            if k not in name_to_index:
-                return reject(f"got unexpected keyword argument '{k}'")
-            if params[name_to_index[k]].positional_only:
-                return reject(f"parameter '{k}' is positional-only and "
-                              f"cannot be passed by keyword")
-        for pname, idx in name_to_index.items():
-            if (pname in regular and idx < n
-                    and not params[idx].keyword_only):
-                return reject(f"got multiple values for argument '{pname}'")
         if va is not None:
             for i in fixed_pos[n:]:
                 if params[i].name not in regular and not params[i].has_default:
@@ -569,14 +654,13 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
         order = fixed_pos + kwonly
         for at, i in enumerate(order[:length]):
             positions[i] = at
-        # Positional overflow past every parameter: the arity check says so.
-        length = max(length, n)
 
-    count = length + (1 if kw_param is not None else 0)
-    min_args = sum(1 for p in params
-                   if not p.has_default and not p.keyword_only
-                   and not p.is_variadic and not p.is_kwargs)
-    max_args = 2**31 if va is not None else len(params)
+    # Excess positionals were refused above, so only a missing required
+    # positional is left for the count; the `**kwargs` region is no argument
+    # of it.
+    count = length
+    max_args = (2**31 if va is not None
+                else len(params) - (1 if kw_param is not None else 0))
     if count < min_args or count > max_args:
         return BindReject(arity_error_msg(name, min_args, max_args, count),
                           arity=(min_args, max_args, count))

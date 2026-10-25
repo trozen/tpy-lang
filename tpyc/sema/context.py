@@ -67,6 +67,7 @@ from ..prescan import (
     FactKills, InPlaceWrites, bound_names_of, collect_fact_kills,
     loop_bindings_of, walrus_names_of,
 )
+from .arg_binding import ArgBinding, CallSource, bind
 from .call_lends import (
     NO_CALLS, MayLend, escaping_borrow_tuple, frame_operands,
     escaping_borrow_writes, frame_call,
@@ -2085,6 +2086,10 @@ class FunctionTrackingState:
     awaiting_container: list[tuple[int, 'TpyExpr']] = field(default_factory=list)
     # Conversion placeholders that settled to none, spliced out at the end.
     pending_num_splices: list[TpyExpr] = field(default_factory=list)
+    # Each value read of an INT type parameter with the conversion to the
+    # default int that takes its place at the end (the parent sink stored
+    # the name before the read's own node could exist).
+    int_tparam_reads: list[tuple[TpyExpr, TpyExpr]] = field(default_factory=list)
 
     # --- Global declaration tracking ---
     global_declarations: set[str] = field(default_factory=set)
@@ -2543,12 +2548,12 @@ class OpenCallArgs:
     argument where they are a view (`Iterable[T]`); a declared view
     converts per element and decides nothing. `scored` says several
     candidates compete, so the winner receives the arguments after
-    selection (`CallAnalyzer.receive_winner_args`). `keywords` names the
-    keyword arguments among `nodes`."""
+    selection (`CallAnalyzer.receive_winner_args`). `source` is the call
+    as written, which says where each of `nodes` binds on a candidate."""
     nodes: list['TpyExpr']
     resolved: bool
     scored: bool
-    keywords: dict[str, 'TpyExpr'] = field(default_factory=dict)
+    source: CallSource = field(default_factory=CallSource)
     cells: list['PendingNumCell'] = field(default_factory=list)
     # Which node handed over which of `cells`.
     handed: list[tuple['TpyExpr', list['PendingNumCell']]] = field(
@@ -2569,17 +2574,17 @@ class OpenCallArgs:
         index = next((i for i, n in enumerate(self.nodes) if n is node), None)
         if not self.scored or index is None:
             return False
-        name = next((k for k, v in self.keywords.items() if v is node), None)
+        src = self.source
+        at = next((a for a in src.addresses if src.at(a) is node), None)
+        if at is None:
+            # An operand no call spells (an operator's): positional.
+            src, at = CallSource(tuple(self.nodes)), index
         for f in self.candidates:
-            if name is not None:
-                at = next((p for p in f.params if p.name == name), None)
-            elif index < len(f.params):
-                at = f.params[index]
-            else:
-                at = f.params[-1] if f.has_variadic else None
-            if at is None:
+            bound = bind(src, f.params, f.name)
+            i = bound.param_at(at) if isinstance(bound, ArgBinding) else None
+            if i is None:
                 continue
-            t = unwrap_qualifiers(at.type)
+            t = unwrap_qualifiers(f.params[i].type)
             if is_protocol_type(t) or contains_type_param(t):
                 return False
         return True
@@ -4644,6 +4649,23 @@ class SemanticContext:
             scope = scope.parent
         outer = scope.outer_function if scope is not None else None
         return outer if isinstance(outer, TpyFunction) else None
+
+    def in_generic_scope(self) -> bool:
+        """Whether the body under analysis may name a type parameter: its
+        own function's, an enclosing function's (a nested def), or its
+        class's."""
+        if self.record_ctx.type_params:
+            return True
+        func = self.func.current_function
+        if isinstance(func, TpyFunction) and func.type_params:
+            return True
+        scope = self.func.current_scope
+        while scope is not None:
+            outer = scope.outer_function if scope.function_root else None
+            if isinstance(outer, TpyFunction) and outer.type_params:
+                return True
+            scope = scope.parent
+        return False
 
     def in_function_body(self) -> bool:
         """Whether the code being analyzed is a `def`'s body, not the

@@ -2,7 +2,7 @@
 # by name.
 def main() -> None:
     xs = [3, 1, 2]
-    print(sorted(xs, rev=True))  # tpyc: error(/'sorted\(\)' does not support keyword argument 'rev'/)
+    print(sorted(xs, rev=True))  # tpyc: error(/'sorted' got unexpected keyword argument 'rev'/)
 
 
 main()

@@ -10,6 +10,6 @@ class Counter:
 
 def main() -> None:
     c = Counter()
-    c.increment(int32(1), int32(2))  # tpyc: error(/expects 0 to 1 arguments, got 2/)
+    c.increment(int32(1), int32(2))  # tpyc: error(/takes 0 to 1 positional arguments, got 2/)
 
 main()

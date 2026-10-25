@@ -121,7 +121,7 @@
  ],
  "borrow__collection__T_lit": [
   "ok",
-  "copies Cell into owned storage (argument 'value' tuple element 0); use copy() to",
+  "copies Cell into owned storage (argument 'object' tuple element 0); use copy() t",
   "std::vector<std::tuple<Cell, int32_t>> probe_xs = std::vector<std::tuple<Cell, int32_t>>{} | probe_xs.push_back(std::tuple<Cell, int32_t>{Cell(b), 1}) | std::get<0>(::tpy::__getitem__(probe_xs, 0)).n = 9",
   "differs"
  ],
@@ -354,7 +354,7 @@
   "same"
  ],
  "nocopy__collection__S": [
-  "@nocopy type 'NCell' is used after this point and cannot be moved into 'value: O",
+  "@nocopy type 'NCell' is used after this point and cannot be moved into 'object: ",
   "",
   "",
   ""

@@ -1,1 +1,3 @@
-main.py:22: error: Ambiguous overload for '__contains__': multiple candidates match equally: __contains__(int64 | None); __contains__(int64)
+main.py:22: error: Ambiguous overload for '__contains__': multiple candidates match equally:
+  __contains__(int64 | None)
+  __contains__(int64)

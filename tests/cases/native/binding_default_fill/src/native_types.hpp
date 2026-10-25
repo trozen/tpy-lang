@@ -70,6 +70,12 @@ struct LErr : ::tpy::Exception {
     LErr(int32_t n) : ::tpy::Exception(std::to_string(n)) {}
     TPY_THROWABLE_VIRTUALS(LErr)
 };
+// A constructor group with a keyword-only parameter and a generic variant.
+struct KErr : ::tpy::Exception {
+    KErr(std::string_view s, int32_t k) : ::tpy::Exception(std::string(s) + ":" + std::to_string(k)) {}
+    KErr(const std::vector<int32_t>& xs, int32_t k) : ::tpy::Exception(std::to_string(xs.size()) + ":" + std::to_string(k)) {}
+    TPY_THROWABLE_VIRTUALS(KErr)
+};
 struct VErr : ::tpy::Exception {
     VErr(std::function<int32_t(int32_t)>) : ::tpy::Exception("callable") {}
     VErr(int32_t) : ::tpy::Exception("number") {}

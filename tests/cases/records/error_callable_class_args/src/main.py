@@ -7,6 +7,6 @@ class Doubler:
 
 def main():
     d = Doubler()
-    d(1, 2)  # tpyc: error(/expects 1/)
+    d(1, 2)  # tpyc: error(/takes 1 positional argument/)
 
 main()

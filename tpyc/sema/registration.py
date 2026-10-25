@@ -1017,17 +1017,22 @@ class TypeRegistrar:
         through to `substitute_type_params` at a downstream use site and
         crash with a context-less "Unknown type parameter 'X'".
         """
+        def resolve_bound(bound_type: TpyType) -> TpyType:
+            resolved_bound = self.type_ops.resolve_type(bound_type)
+            if not _is_valid_type_param_bound(resolved_bound):
+                raise SemanticError(
+                    f"Type parameter bound must be a protocol, a class, or a "
+                    f"type parameter, got {resolved_bound}",
+                    loc,
+                )
+            # A bound is never rendered, so the render guard cannot see it.
+            self.type_ops.check_int_type_args(resolved_bound, loc)
+            return resolved_bound
+
         resolved: dict[str, TpyType] = {}
         if type_params is None:
             for param_name, bound_type in raw_bounds.items():
-                resolved_bound = self.type_ops.resolve_type(bound_type)
-                if not _is_valid_type_param_bound(resolved_bound):
-                    raise SemanticError(
-                        f"Type parameter bound must be a protocol, a class, or a "
-                        f"type parameter, got {resolved_bound}",
-                        loc,
-                    )
-                resolved[param_name] = resolved_bound
+                resolved[param_name] = resolve_bound(bound_type)
             return resolved
         # Declaration-order walk so a bound that names a sibling is checked
         # against the params declared so far. raw_bounds only contains bounded
@@ -1036,14 +1041,7 @@ class TypeRegistrar:
         declared_so_far: set[str] = set()
         for param_name in type_params:
             if param_name in raw_bounds:
-                bound_type = raw_bounds[param_name]
-                resolved_bound = self.type_ops.resolve_type(bound_type)
-                if not _is_valid_type_param_bound(resolved_bound):
-                    raise SemanticError(
-                        f"Type parameter bound must be a protocol, a class, or a "
-                        f"type parameter, got {resolved_bound}",
-                        loc,
-                    )
+                resolved_bound = resolve_bound(raw_bounds[param_name])
                 self._reject_forward_typeparam_bound_refs(
                     param_name, resolved_bound, type_params, declared_so_far, loc)
                 resolved[param_name] = resolved_bound
@@ -2870,6 +2868,10 @@ class TypeRegistrar:
                         f"Use '{base_type.name}[T]' with appropriate type arguments.",
                         record.loc
                     )
+                self.type_ops.validate_record_type_args(
+                    base_type, parent_info,
+                    allow_type_param_ref=record_info.is_generic(),
+                    loc=record.loc)
                 # Mint a qname-bearing parent so downstream `is_user_record`
                 # (TypeDef-backed) resolves correctly on the stored reference.
                 parent = base_type
@@ -3971,6 +3973,10 @@ class TypeRegistrar:
                 for n, t in msig.params
             ]
             resolved_return = self.type_ops.resolve_type(msig.return_type, protocols_only=True)
+            # A structural protocol's signature is never rendered, so the
+            # render guard cannot see it.
+            for t in [*(t for _, t in resolved_params), resolved_return]:
+                self.type_ops.check_int_type_args(t, protocol.loc)
             resolved_methods.append(MethodSignature(
                 name=msig.name,
                 params=resolved_params,
@@ -3980,6 +3986,7 @@ class TypeRegistrar:
                 cpp_template=msig.cpp_template,
                 param_defaults=msig.param_defaults,
                 num_posonly_params=msig.num_posonly_params,
+                keyword_only_start=msig.keyword_only_start,
             ))
         self._defer_protocol_defaults(resolved_methods)
         info = ProtocolInfo(
@@ -4515,7 +4522,11 @@ class TypeRegistrar:
         resolved_vararg_type = None
         if func.vararg_name is not None:
             resolved_vararg_type = self.type_ops.resolve_type(func.vararg_type)
-            self.type_ops.validate_type(resolved_vararg_type, allow_type_param_ref=is_generic)
+            try:
+                self.type_ops.validate_type(resolved_vararg_type,
+                                            allow_type_param_ref=is_generic)
+            except SemanticError as e:
+                raise self.ctx.error(str(e), func)
 
         resolved_return = self.type_ops.resolve_type(func.return_type)
         try:
@@ -4629,11 +4640,15 @@ class TypeRegistrar:
         resolved_kwarg_type = None
         if func.kwarg_name is not None and func.kwarg_type is not None:
             resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
-            # Validate no field name conflicts with regular params
+            # Validate no field name conflicts with a parameter a keyword
+            # can bind: a positional-only or `*args` one's name is a
+            # field's (PEP 692).
             if isinstance(resolved_kwarg_type, NominalType):
                 td_record = self.ctx.registry.get_record_for_type(resolved_kwarg_type)
                 if td_record is not None:
-                    param_names = {n for n, _ in resolved_params}
+                    param_names = {p.name for p in param_infos
+                                   if not p.positional_only
+                                   and not p.is_variadic}
                     for fld in td_record.fields:
                         if fld.name in param_names:
                             raise SemanticError(

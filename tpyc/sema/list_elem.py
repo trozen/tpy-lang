@@ -25,10 +25,12 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Callable
 
 from ..typesys import (FunctionInfo, MethodSignature, NominalType,
-                       OptionalType, PendingContainerType, PendingListType,
-                       RecordInfo, TpyType, TypeParamRef, UnionType, NoneType,
-                       contains_type_param, is_protocol_type,
-                       strip_auto_readonly, without_readonly)
+                       OptionalType, ParamInfo, PendingContainerType,
+                       PendingListType, RecordInfo, TpyType, TypeParamRef,
+                       UnionType, NoneType, contains_type_param,
+                       is_protocol_type, strip_auto_readonly, without_readonly)
+
+from .arg_binding import BindReject, CallSource, bind
 
 from .pending_num import bare_slot
 
@@ -60,13 +62,15 @@ _EFFECTS = {"insert": Effect.INSERT, "lookup": Effect.LOOKUP}
 @dataclass(frozen=True)
 class ContainerCall:
     """A method of a container stub as a call on a container literal sees
-    it: the overload, per argument its role and, for a PART, the step of
-    the container's tree it is and whether the method returns it, whether
-    a parameter, the result or a bound of its own builds a type from the
-    parts, the method's declared effect, and whether what it returns
-    follows the parts (a part, an optional part, a view) rather than
-    building a type from them."""
+    it: the overload, per written argument the parameter it binds
+    (`arg_params`), its role and, for a PART, the step of the container's
+    tree it is and whether the method returns it, whether a parameter, the
+    result or a bound of its own builds a type from the parts, the method's
+    declared effect, and whether what it returns follows the parts (a
+    part, an optional part, a view) rather than building a type from
+    them."""
     fn: FunctionInfo
+    arg_params: tuple[ParamInfo, ...]
     roles: tuple[tuple[Role, str] | None, ...]
     # Per argument: a PART the result is typed by (`get`'s and `pop`'s
     # default) rather than one the method only compares (their key).
@@ -136,19 +140,25 @@ def container_calls(ctx: 'SemanticContext',
                     arity: int,
                     admits: Callable[[FunctionInfo], bool] | None = None,
                     ) -> list[ContainerCall]:
-    """Every overload of the method `name` of `container`'s kind taking
-    `arity` arguments, classified (`ContainerCall`); with `admits`, only
-    those it says can take the arguments known so far. The mutable and
-    const twins of an `@auto_readonly` method use the parts alike: one
-    stands for both."""
+    """Every overload of the method `name` of `container`'s kind a call
+    passing `arity` positional arguments binds to (`bind`), classified at
+    where it binds them (`ContainerCall`); with `admits`, only those it
+    says can take the arguments known so far. The mutable and const twins
+    of an `@auto_readonly` method use the parts alike: one stands for
+    both."""
     stub = _stub(ctx, container)
     if stub is None:
         return []
     _, steps = stub
-    fns = [fn for fn in container_overloads(ctx, container, name)
-           if len(fn.params) == arity and (admits is None or admits(fn))]
-    return [_classify(fn, steps, _qname(container))
-            for fn in without_mutable_twins(fns)]
+    written = CallSource((None,) * arity)
+    bound = []
+    for fn in container_overloads(ctx, container, name):
+        b = bind(written, fn.params, fn.name)
+        if not isinstance(b, BindReject) and (admits is None or admits(fn)):
+            bound.append((fn, [b.param_at(i) for i in range(arity)]))
+    kept = without_mutable_twins([fn for fn, _ in bound])
+    return [_classify(fn, at, steps, _qname(container))
+            for fn, at in bound if any(fn is k for k in kept)]
 
 
 def container_overloads(ctx: 'SemanticContext',
@@ -183,8 +193,10 @@ def container_call(ctx: 'SemanticContext',
     return calls[0] if len(calls) == 1 else None
 
 
-def _classify(fn: FunctionInfo, steps: dict[str, str],
-              qname: str) -> ContainerCall:
+def _classify(fn: FunctionInfo, at: 'list[int | None]',
+              steps: dict[str, str], qname: str) -> ContainerCall:
+    """`fn` classified, its roles read at the parameters `at` the written
+    arguments bind, in written order."""
     params = set(steps)
     roles: list[tuple[Role, str] | None] = []
     returned: list[bool] = []
@@ -209,8 +221,10 @@ def _classify(fn: FunctionInfo, steps: dict[str, str],
     protocol = any(r is not None and r[0] is Role.SOURCE
                    and is_protocol_type(bare_slot(p.type))
                    for r, p in zip(roles, fn.params))
+    # Arity is checked by the binding, so each written argument binds one.
     return ContainerCall(
-        fn, tuple(roles), tuple(returned), builds, effect,
+        fn, tuple(fn.params[i] for i in at), tuple(roles[i] for i in at),
+        tuple(returned[i] for i in at), builds, effect,
         _follows(fn.return_type, params) and not fresh,
         not contains_type_param(fn.return_type, params), protocol,
         any(contains_type_param(p.type, params) for p in fn.params),

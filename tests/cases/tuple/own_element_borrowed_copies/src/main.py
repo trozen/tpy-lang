@@ -233,7 +233,7 @@ async def arg_async_name(p: P) -> int32:
 
 # argument: a container insert, from a literal, a local and a parameter
 def insert_literal(xs: list[tuple[P, P]], p: P) -> None:
-    xs.append((p, p))  # tpyc: warning(/argument 'value' tuple element 0\)/) warning(/argument 'value' tuple element 1\)/)
+    xs.append((p, p))  # tpyc: warning(/argument 'object' tuple element 0\)/) warning(/argument 'object' tuple element 1\)/)
 
 
 def insert_name(xs: list[tuple[P, P]], p: P) -> None:

@@ -34,7 +34,7 @@ from ..prescan import _expr_to_narrowing_key
 from .compatibility import InferredSlot, inferred_receiver
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
-from ..type_def_registry import is_list, is_set, is_borrowing_view_type, is_varargs, protocol_info_of
+from ..type_def_registry import is_list, is_set, is_borrowing_view_type, protocol_info_of
 from .bound_check import raise_if_class_param_bound_violated
 from .arg_binding import (
     CallSource, SlotKind, adopt_temp_call, relayout, source_view,
@@ -48,7 +48,7 @@ from .calls import (
 )
 from .type_ops import seeded_arg_hint
 from .context import CompTarget, GenericMethodRoute, PENDING_CONTAINER_TYPES
-from .overloads import CallShape
+from .overloads import CallShape, operand_param_type
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls, container_overloads)
 from .pending_num import (ContainerCells, Entry,
@@ -377,7 +377,7 @@ class MethodAnalyzer:
         sources: list[tuple[int, TpyExpr, TpyType, bool]] = []
         lc = pend.container_cells(obj_type)
         for i, (arg, param, role) in enumerate(
-                zip(args, cc.fn.params, cc.roles)):
+                zip(args, cc.arg_params, cc.roles)):
             if role is None:
                 pre.append(known[i] if i in known
                            else self.expr.analyze_arg_at_param(
@@ -539,7 +539,8 @@ class MethodAnalyzer:
             [params[k] for k in param_at], expr.resolved_function_info,
             call=expr,
             inferred_slots={j: inferred[k] for j, k in enumerate(param_at)
-                            if k in inferred})
+                            if k in inferred},
+            param_indices=param_at)
 
     def _inferred_receiver_slots(self, expr: TpyMethodCall
                                  ) -> dict[int, InferredSlot]:
@@ -590,10 +591,6 @@ class MethodAnalyzer:
             # committed it (a call macro's argument analyzed again).
             written = source_view(expr, peel=False)
             positional = list(written.positional)
-            keywords = dict(written.keywords)
-            if written.double_star is not None:
-                raise self.ctx.error(
-                    f"'{expr.method}' does not accept **kwargs", expr)
             resolved_overloads = [
                 self.type_ops.substitute_method_type_params(m, type_subst) if type_subst else m
                 for m in overloads
@@ -609,42 +606,40 @@ class MethodAnalyzer:
                 if known is None:
                     self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                 arg_types, ranked_types = self.calls.probe_overload_args(
-                    expr, positional, resolved_overloads, known)
+                    expr, written, resolved_overloads, known)
                 # The winner receives the arguments the preparation typed
                 # as it typed them; every other one re-enters at its slot.
                 decided = ([known.get(i) for i in range(len(positional))]
                            if known else None)
-                kwarg_types: dict[str, TpyType] | None = None
-                if keywords:
-                    kwarg_types = self.calls.probe_kwargs(
-                        keywords, resolved_overloads,
-                        call_shape(expr, positional))
                 resolved, const_receiver = self.calls.rank_method_call(
-                    expr.method, resolved_overloads, ranked_types, positional,
+                    expr.method, resolved_overloads, ranked_types, written,
                     expr, readonly_receiver=is_readonly_receiver,
-                    consuming_receiver=is_consuming_receiver,
-                    kwarg_types=kwarg_types)
+                    consuming_receiver=is_consuming_receiver)
                 if resolved is None:
-                    self.calls.reject_unaccepted_keyword(
-                        expr, expr.method, overloads, kwarg_types or ())
                     self.calls.raise_no_match(
                         expr.method, resolved_overloads, ranked_types,
-                        positional, expr,
-                        [self.compat.call_type_text(t) for t in arg_types])
+                        written, expr,
+                        [self.compat.call_type_text(t)
+                         for t in arg_types.positional])
                 expr.resolved_function_info = resolved
                 expr.const_receiver = const_receiver
                 coerce_arg_types = decided
                 binding = self.calls.bind_args(expr, resolved.params,
                                                expr.method)
-                if keywords or (resolved.materializes_defaults
-                                and self._renders_call(expr)):
+                if (written.keywords or written.double_star is not None
+                        or binding.kwargs is not None
+                        or (resolved.materializes_defaults
+                            and self._renders_call(expr))):
                     # Winner picked; its binding spells the keywords in
-                    # their slots. A default with no C++ spelling must be
-                    # filled even with no kwargs, or the emitted call is an
-                    # argument short.
+                    # their slots, its `**kwargs` region last (an empty
+                    # region too: the signature takes it). A default
+                    # with no C++ spelling must be filled even with no
+                    # kwargs, or the emitted call is an argument short.
                     layout = self.calls.commit_args(
                         expr, resolved, binding, type_subst, analyze=False,
-                        fill=self._renders_call(expr))
+                        fill=self._renders_call(expr),
+                        kwargs_arg=self.calls.kwargs_region_arg(
+                            expr, resolved, binding, expr.method))
                     # The arguments are analyzed again at the winner's slots.
                     self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                     coerce_arg_types = None
@@ -1702,9 +1697,8 @@ class MethodAnalyzer:
                  for slot, arg in binding.evidence(source_view(expr))]
         type_param_names = set(info.type_params)
         for slot, arg_type in typed:
-            pname, ptype = method.params[slot]
-            if method.params[slot].is_variadic and is_varargs(unwrap_ref_type(ptype)):
-                ptype = unwrap_readonly(unwrap_ref_type(ptype).type_args[0])
+            pname = method.params[slot].name
+            ptype = operand_param_type(method.params[slot])
             if not contains_type_param(ptype, type_param_names):
                 continue
             # Resolve a literal marker before binding
@@ -2341,14 +2335,19 @@ class MethodAnalyzer:
                                      return_type: TpyType,
                                      cpp_template: str | None = None,
                                      param_defaults: list | None = None,
-                                     num_posonly: int = 0) -> FunctionInfo:
-        """Build a FunctionInfo for a protocol method signature."""
+                                     num_posonly: int = 0,
+                                     keyword_only_start: int | None = None,
+                                     ) -> FunctionInfo:
+        """Build a FunctionInfo for a protocol method signature, its `/`
+        and `*` markers as declared."""
         # param_defaults is parallel to raw_params (None for required, TpyExpr for optional);
         # empty list means no defaults declared at protocol method level.
         defaults = param_defaults if param_defaults else [None] * len(raw_params)
         params = [
             ParamInfo(n, t, default_expr=default,
-                      positional_only=i < num_posonly)
+                      positional_only=i < num_posonly,
+                      keyword_only=(keyword_only_start is not None
+                                    and i >= keyword_only_start))
             for i, ((n, t), default) in enumerate(zip(raw_params, defaults))
         ]
         # __next__ on Iterator protocol has implicit @error_return(StopIteration)
@@ -2369,10 +2368,10 @@ class MethodAnalyzer:
             method_sig = self.protocols.get_protocol_method_signature(obj_type, expr.method)
             if method_sig is None:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
-            raw_params, return_type, cpp_template, param_defaults, n_posonly = method_sig
+            raw_params, return_type, cpp_template, param_defaults, n_posonly, kw_start = method_sig
             fi = self._build_protocol_method_info(
                 obj_type, expr.method, raw_params, return_type,
-                cpp_template, param_defaults, n_posonly)
+                cpp_template, param_defaults, n_posonly, kw_start)
             return self._resolve_and_check_args(expr, [fi], {})
 
         if isinstance(obj_type, TypeParamRef):
@@ -2381,10 +2380,10 @@ class MethodAnalyzer:
                 method_sig = self.protocols.get_protocol_method_signature(bound, expr.method, self_type=obj_type)
                 if method_sig is None:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
-                raw_params, return_type, cpp_template, param_defaults, n_posonly = method_sig
+                raw_params, return_type, cpp_template, param_defaults, n_posonly, kw_start = method_sig
                 fi = self._build_protocol_method_info(
                     bound, expr.method, raw_params, return_type,
-                    cpp_template, param_defaults, n_posonly)
+                    cpp_template, param_defaults, n_posonly, kw_start)
                 return self._resolve_and_check_args(expr, [fi], {})
 
         return None

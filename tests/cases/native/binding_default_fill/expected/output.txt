@@ -9,6 +9,7 @@ fn-method 1057
 group 1005 x6
 group-kw-lambda 4
 group-kw-shared-name number
+group-kw-generic a:3 2:3 3:2
 group-raise y6
 template 1004
 template-qualified 1004

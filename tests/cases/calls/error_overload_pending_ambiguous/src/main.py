@@ -15,7 +15,7 @@ def f(xs: list[int64]) -> str:
 
 def main() -> None:
     xs = []
-    print(f(xs))  # tpyc: error(/Ambiguous overload for .f.: multiple candidates match equally: f\(list\[str\]\); f\(list\[int64\]\)/)
+    print(f(xs))  # tpyc: error(/Ambiguous overload for .f.: multiple candidates match equally:$/)
 
 
 main()

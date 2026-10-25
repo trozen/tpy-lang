@@ -96,7 +96,7 @@ std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t) {
 //     print("tiers:", tiers(ti), ti)
 //     t1 = [1, 2]
 //     print("twin generic first:", twin_generic_first(t1, a64()), t1)
-//     # `gv`'s list candidate decides `gm1`, so a wider value fits after the call.
+//     # `gv`'s view decides nothing; `gm1` takes the wider value appended after.
 //     gm1 = [1, 2]  # tpyc: type(list[int64])
 //     print("generic declared view:", gv(gm1, 3), gm1)
 //     gm1.append(a64())
@@ -118,7 +118,7 @@ void main() {
     std::array<int32_t, 2> t1 = {1, 2};
     std::cout << "twin generic first:" << " " << ::tpyapp::main::twin_generic_first__Iterable_int64__int64(t1, ::tpyapp::main::a64()) << " " << ::tpy::ListPrinter(t1) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> gm1 = {1, 2};
-    std::cout << "generic declared view:" << " " << ::tpyapp::main::gv__list_int64__int32(gm1, 3) << " " << ::tpy::ListPrinter(gm1) << "\n" << ::tpy::check_signals;
+    std::cout << "generic declared view:" << " " << ::tpyapp::main::gv__Iterable_int64__T<int32_t>(gm1, 3) << " " << ::tpy::ListPrinter(gm1) << "\n" << ::tpy::check_signals;
     gm1.push_back(::tpyapp::main::a64());
     std::cout << "generic declared view:" << " " << ::tpy::__getitem__(gm1, 2) << "\n" << ::tpy::check_signals;
 }

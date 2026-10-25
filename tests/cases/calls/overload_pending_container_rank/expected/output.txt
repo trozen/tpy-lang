@@ -5,5 +5,5 @@ scalar int: Iterable [1, 2]
 to big: iter64 [1, 2]
 tiers: generic [1, 2, 1]
 twin generic first: declared [1, 2]
-generic declared view: list64 [1, 2]
+generic declared view: gen-view [1, 2]
 generic declared view: 1099511627776

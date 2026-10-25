@@ -9,14 +9,16 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
-    ResolvedBinop, ResolvedUnaryop, FunctionInfo, ParamInfo, RecordInfo, TypeParamKind,
-    INT32, FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
+    TpyType, IntLiteralType, FloatLiteralType, LiteralType,
+    ResolvedBinop, ResolvedUnaryop, FunctionInfo, ParamInfo, RecordInfo,
+    FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
     unwrap_readonly, resolve_int_literals,
     substitute_type_params_simple, is_any_float_type, answers_as_call,
 )
 from ..parse import TpyAugAssign, TpyBinOp, TpyExpr
-from .overloads import (call_ranking, filter_receiver_overloads,
+from .arg_binding import BindReject, CallSource
+from .overloads import (CallShape, bound_evidence, call_ranking,
+                        filter_receiver_overloads,
                         OverloadAmbiguityError, converts_literal_to_base,
                         pins_const_receiver)
 from .literal_utils import numeric_literal_type
@@ -220,25 +222,14 @@ class OperatorResolver:
         )
 
     def _resolve_pending_types(self, tpy_type: TpyType) -> TpyType:
-        """Resolve pending/structural types (PendingListType, TypeParamRef, LiteralType).
+        """Resolve pending/structural types (PendingListType, LiteralType).
 
         Preserves IntLiteralType for flexible overload matching.
         """
-        if isinstance(tpy_type, TypeParamRef) and tpy_type.kind == TypeParamKind.INT:
-            return INT32
         if isinstance(tpy_type, PendingContainerType):
             return tpy_type.spelled(tpy_type.parts())
         if isinstance(tpy_type, LiteralType):
             return tpy_type.base_type
-        return tpy_type
-
-    def _operand_arg(self, tpy_type: TpyType) -> TpyType:
-        """An operand's type as the ranking takes it: as analyzed (an
-        undecided container stays undecided, a `Literal[...]` a literal),
-        an int-kind type param read as `int32`."""
-        tpy_type = unwrap_ref_type(tpy_type)
-        if isinstance(tpy_type, TypeParamRef) and tpy_type.kind == TypeParamKind.INT:
-            return INT32
         return tpy_type
 
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
@@ -318,8 +309,9 @@ class OperatorResolver:
         candidates would. Returns the winner, with whether its call pins
         the receiver const (`pins_const_receiver`), or the tie as a
         value."""
+        shape = CallShape(len(args))
         cands = filter_receiver_overloads(
-            [m for m in overloads if len(m.params) == len(args)],
+            [m for m in overloads if shape.binding(m) is not None],
             is_consuming_receiver=False)
         if not cands:
             return None
@@ -365,8 +357,13 @@ class OperatorResolver:
                 param_type = substitute_type_params_simple(param_type, bind)
             params.append(dc_replace(param, type=param_type))
         view = dc_replace(method, params=params, type_params=own_params)
+        evidence = bound_evidence(view, CallSource(tuple(args)))
+        if isinstance(evidence, BindReject):
+            return None
         bound = self.type_ops.infer_type_params_for_function(
-            view, args, self.protocols.type_conforms_to_protocol)
+            view, [t for _, t in evidence],
+            self.protocols.type_conforms_to_protocol,
+            slots=[i for i, _ in evidence])
         if bound is None:
             return None
         return RankedDunder(method, {**bind, **bound})
@@ -549,8 +546,8 @@ class OperatorResolver:
 
         # Each operand is ranked as analyzed: an undecided container as it
         # is, a `Literal[...]` as a literal.
-        left_arg = self._operand_arg(left_type)
-        right_arg = self._operand_arg(right_type)
+        left_arg = unwrap_ref_type(left_type)
+        right_arg = unwrap_ref_type(right_type)
         left_expr, right_expr = _operand_exprs(loc_node)
 
         # 1. Try direct: left.__add__(right)
@@ -687,7 +684,7 @@ class OperatorResolver:
             return None
 
         type_subst = self._build_type_subst(target_effective, value_type)
-        value_arg = self._operand_arg(value_type)
+        value_arg = unwrap_ref_type(value_type)
         home = literal_home(value_type, target_type, target_effective)
 
         found = self._rank_set(self.dunder_overloads(record, method_name),

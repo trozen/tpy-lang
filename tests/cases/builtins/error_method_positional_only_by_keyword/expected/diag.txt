@@ -1,0 +1,3 @@
+main.py:8: error: No matching overload for 'get' with argument types (str, default=int)
+  'get(key: str, /)' got unexpected keyword argument 'default'
+  'get(key: str, default: int32, /)' parameter 'default' is positional-only and cannot be passed by keyword

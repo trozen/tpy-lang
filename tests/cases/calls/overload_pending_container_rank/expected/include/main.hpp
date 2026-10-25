@@ -135,10 +135,9 @@ template<::tpystd::typing::Iterable<int64_t> T_xs>
 std::string twin_generic_first__Iterable_int64__int64(const T_xs& xs, int64_t v) {
     return "declared";
 }
-// # A declared view in a generic candidate, declared first: the generic cannot
-// # be instantiated at an int32 list (its view refuses the element,
-// # BUGS.md#generic-declared-view-refuses-conversion), so the list candidate
-// # is the one applicable.
+// # A declared view in a generic candidate, declared first: the generic takes
+// # an int32 list at its view, which converts per element, and wins over the
+// # list candidate, which would widen the list.
 // @dispatch
 // def gv[T](xs: Iterable[int64], t: T) -> str:
 //     return "gen-view"

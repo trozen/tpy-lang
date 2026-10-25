@@ -33,7 +33,7 @@ from ..typesys import (
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     CallableType, is_fn_type, unwrap_ref_type,
     is_integer_type, is_any_int_type,
-    is_callable_type, is_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
+    is_callable_type, is_float_type, is_any_float_type, is_readonly_span, varargs_is_readonly, unwrap_qualifiers,
     PendingContainerType,
     unwrap_send_sync,
     param_has_mutable_borrow_surface, contains_type_param,
@@ -56,7 +56,7 @@ from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
                               walk_attribute_chain)
 from .arg_binding import (
-    ArgBinding, BindReject, CallSource, bind, init_param_infos,
+    ArgBinding, BindReject, CallSource, bind, committed, init_param_infos,
     adopt_temp_call, positional_param_index, relaid_copy,
     relayout, source_view, temp_call_args,
 )
@@ -83,12 +83,12 @@ from .overloads import (
     OverloadCandidate, rank_overload_candidates,
     call_resolves_param, call_resolves_params,
     CallRanking, CallShape, call_ranking, pins_const_receiver,
-    declared_readonly,
+    declared_readonly, shape_of, structural_matches, bound_evidence,
+    operand_param_type, typed_source,
 )
 from .list_elem import without_mutable_twins
 from .context import CallOperands
-from .int_narrowing import (proven_cast, select_template_ctor,
-                           site_value_range)
+from .int_narrowing import proven_cast, site_value_range
 from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
                            path_key, pointee_root, receiver_leaves,
                            storage_roots)
@@ -156,19 +156,27 @@ def _enrich_literal_types(
     )
     if not has_literal_param:
         return arg_types
-    enriched = []
-    for arg_t, arg in zip(arg_types, args):
-        if is_str_type(arg_t) and isinstance(arg, TpyStrLiteral):
-            enriched.append(LiteralType(STR, (LiteralValue(LiteralTag.STR, arg.value),)))
-        elif isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
-            enriched.append(LiteralType(INT32, (LiteralValue(LiteralTag.INT, arg_t.value),)))
-        elif is_bool_type(arg_t) and isinstance(arg, TpyBoolLiteral):
-            enriched.append(LiteralType(BOOL, (LiteralValue(LiteralTag.BOOL, arg.value),)))
-        elif isinstance(arg_t, LiteralType):
-            enriched.append(arg_t)
-        else:
-            enriched.append(arg_t)
-    return enriched
+    return [_enriched_literal(t, a) for t, a in zip(arg_types, args)]
+
+
+def _enriched_literal(arg_t: TpyType, arg: 'TpyExpr | None') -> TpyType:
+    if is_str_type(arg_t) and isinstance(arg, TpyStrLiteral):
+        return LiteralType(STR, (LiteralValue(LiteralTag.STR, arg.value),))
+    if isinstance(arg_t, IntLiteralType) and arg_t.value is not None:
+        return LiteralType(INT32, (LiteralValue(LiteralTag.INT, arg_t.value),))
+    if is_bool_type(arg_t) and isinstance(arg, TpyBoolLiteral):
+        return LiteralType(BOOL, (LiteralValue(LiteralTag.BOOL, arg.value),))
+    return arg_t
+
+
+def enriched_source(typed: CallSource, src: CallSource,
+                    candidates: list[FunctionInfo]) -> CallSource:
+    """`_enrich_literal_types` over every operand of a call written with
+    `src` whose types are `typed`, keywords included."""
+    if not any(isinstance(p.type, LiteralType)
+               for c in candidates for p in c.params):
+        return typed
+    return typed.mapped(lambda at, t: _enriched_literal(t, src.at(at)))
 
 
 def filled_default(default: TpyExpr, call_loc: 'SourceLocation | None',
@@ -413,6 +421,18 @@ def _native_cpp_names_overlay(overlay: dict[str, str]) -> Iterator[None]:
                 nmap[k] = prev
 
 
+def _ctor_placement(ctor: FunctionInfo, written: CallSource,
+                    name: str) -> list[tuple[int, int | str]] | None:
+    """Where construction `written` (`source_view`) of the type a
+    diagnostic calls `name` places each argument on `ctor`: (parameter
+    index, written address) pairs, a `*args` element at the variadic
+    parameter; None when it does not bind."""
+    bound = bind(written, ctor.params, name)
+    if isinstance(bound, BindReject):
+        return None
+    return bound.addresses()
+
+
 def _resolve_cpp_template_type_params(
     fi: FunctionInfo,
     type_params: dict[str, TpyType] | None = None,
@@ -493,11 +513,17 @@ class ResolveResult:
     """
     matched: FunctionInfo | None
     matched_origin: tuple[FunctionInfo, dict[str, TpyType]] | None
-    arg_types: list[TpyType]
-    enriched_types: list[TpyType]
-    kwarg_types: dict[str, TpyType] | None
+    # The argument types as written (`CallSource` of types), and as ranked
+    # (a literal as its single-value `Literal`, `enriched_source`).
+    typed: CallSource
+    enriched: CallSource
     contextual_callable_used: bool = False
     first_contextual_error: SemanticError | None = None
+
+    @property
+    def arg_types(self) -> list[TpyType]:
+        """The positional argument types."""
+        return list(self.typed.positional)
 
     @property
     def declared(self) -> FunctionInfo | None:
@@ -518,8 +544,17 @@ class SuppliedFnSlot:
     """
     param_index: int       # index in func.params
     arg_expr: TpyExpr      # the supplied arg expression
-    arg_index: int | None  # index in expr.args (None if supplied via kwarg)
-    kwarg_name: str | None # kwarg name (None if supplied positionally)
+    at: int | str          # where it is written: a position, or its keyword
+
+
+def supplied_fn_slots(binding: ArgBinding, src: CallSource,
+                      func: FunctionInfo) -> list[SuppliedFnSlot]:
+    """The callable-typed parameters of `func` the call written with `src`
+    fills, where its binding places the arguments."""
+    return [SuppliedFnSlot(i, src.at(at), at)
+            for i, at in binding.addresses()
+            if not func.params[i].is_variadic
+            and _is_fn_slot_param(func.params[i].type)]
 
 
 def _is_numeric_or_int_literal(t: TpyType) -> bool:
@@ -784,24 +819,10 @@ def call_shape(call: 'TpyExpr | TpyStmt', args: list[TpyExpr]) -> CallShape:
     """The shape of `call` passing `args` positionally (a subscript's
     dunder call passes its key, and a store's value, so): those and the
     keywords it is written with (`source_view`)."""
-    keywords = (source_view(call).keywords
-                if isinstance(call, (TpyCall, TpyMethodCall)) else ())
-    return CallShape(len(args) + len(keywords),
-                     tuple(k for k, _ in keywords))
-
-
-def source_shape(src: CallSource) -> CallShape:
-    """The shape of a call written with `src`."""
-    return CallShape(len(src.positional) + len(src.keywords),
-                     tuple(k for k, _ in src.keywords))
-
-
-def param_type_at(fn: FunctionInfo, at: int | str) -> TpyType | None:
-    """The type of `fn`'s parameter at position `at`, or named `at`; None
-    when it has none there."""
-    if isinstance(at, str):
-        return next((p.type for p in fn.params if p.name == at), None)
-    return fn.params[at].type if at < len(fn.params) else None
+    src = (source_view(call) if isinstance(call, (TpyCall, TpyMethodCall))
+           else CallSource())
+    return CallShape(len(args), tuple(k for k, _ in src.keywords),
+                     src.double_star is not None)
 
 
 def _is_fn_slot_param(ptype: TpyType) -> bool:
@@ -921,9 +942,14 @@ class CallAnalyzer:
                 or fi.qualified_name == qnames.COPY):
             return
         params = fi.params
-        by_name = {p.name: i for i, p in enumerate(params)}
-        slots = list(enumerate(call.args)) + [
-            (by_name.get(k, -1), a) for k, a in (call.kwargs or {}).items()]
+        if committed(call):
+            slots = call.binding.committed_evidence(call)
+        else:
+            # A call that commits no binding (`print`, `isinstance`, ...)
+            # keeps its written layout.
+            by_name = {p.name: i for i, p in enumerate(params)}
+            slots = list(enumerate(call.args)) + [
+                (by_name.get(k, -1), a) for k, a in (call.kwargs or {}).items()]
         for idx, arg in slots:
             inner = peel_coerce(arg)
             if not (isinstance(inner, TpyCallLike)
@@ -931,7 +957,7 @@ class CallAnalyzer:
                 continue
             if not 0 <= idx < len(params):
                 continue
-            ptype = params[idx].type
+            ptype = operand_param_type(params[idx], keep_readonly=True)
             if isinstance(ptype, ReadonlyType):
                 continue
             callee = (call.func.name if isinstance(call, TpyCall)
@@ -1254,13 +1280,14 @@ class CallAnalyzer:
             outer_call,
         )
 
-    def _reject_kwargs_for_builtin(self, expr: TpyCall, name: str,
-                                   src: CallSource | None = None) -> None:
-        """Reject keywords written on a builtin call that takes none:
-        `src` is what the call was written with (default `source_view`)."""
-        if (src if src is not None else source_view(expr)).keywords:
+    def reject_keywords(self, expr: TpyCall, name: str) -> None:
+        """Refuse keywords at a call the compiler analyzes itself rather
+        than binding it to a stub (`isinstance`, `copy`, an enum lookup):
+        it has no parameter a keyword could name."""
+        written = source_view(expr)
+        if written.keywords or written.double_star is not None:
             raise self.ctx.error(
-                f"Keyword arguments not supported for builtin '{name}'", expr)
+                f"{name}() takes no keyword arguments", expr)
 
     def _set_record_constructor_info(
         self,
@@ -1641,15 +1668,19 @@ class CallAnalyzer:
                 if expr.subscript_callee is not None:
                     if not self.ctx.registry.is_known_type(expr.func_name):
                         return self._rewrite_subscript_callee(expr)
-                # It's a builtin type instantiation -- validate constructor args
-                self._reject_kwargs_for_builtin(expr, expr.func_name)
+                # A builtin type instantiation: only the type arguments' range
+                # is checked here, not the annotation position rules
+                # (BUGS.md#builtin-ctor-type-args-skip-position-rules).
+                self.type_ops.check_int_type_args(expr.call_type, expr.loc)
+                written = source_view(expr)
                 # Derive per-arg hints from __init__ param types when possible.
                 # e.g. dict[str, str|int32]([("a","b"), ("c",1)]) -> hint list[tuple[str, str|int32]]
-                arg_hints = self._derive_ctor_arg_hints(expr)
-                arg_types = [self.expr.analyze_expr_with_hint(arg, hint)
-                             for arg, hint in zip(expr.args, arg_hints)]
-                if arg_types:
-                    self._validate_generic_constructor(expr, arg_types)
+                arg_hints = self._derive_ctor_arg_hints(expr, written)
+                typed = written.mapped(
+                    lambda at, arg: self.expr.analyze_expr_with_hint(
+                        arg, arg_hints[at]))
+                if written.addresses or written.double_star is not None:
+                    self._validate_generic_constructor(expr, written, typed)
                 if isinstance(expr.call_type, PtrType) and expr.args:
                     self._validate_ptr_constructor(expr)
                     # Set resolved constructor for codegen (the &{0} template)
@@ -1658,7 +1689,8 @@ class CallAnalyzer:
                         rec = self.ctx.registry.get_builtin_record(td.qname)
                         if rec:
                             for ctor in rec.get_method_overloads("__init__"):
-                                if len(ctor.params) == len(expr.args) and (ctor.cpp_template or ctor.native_function):
+                                if (CallShape(len(expr.args)).binding(ctor) is not None
+                                        and (ctor.cpp_template or ctor.native_function)):
                                     expr.resolved_function_info = ctor
                                     break
                     self._validate_lvalue_params(expr)
@@ -1834,9 +1866,16 @@ class CallAnalyzer:
                 raise self.ctx.error(f"Unknown type '{expr.func_name}'", expr)
             params = ", ".join(record_info.type_params)
 
-            # Check for constructors that can infer type from arguments
-            if expr.args:
-                arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg))) for arg in expr.args]
+            # Check for constructors that can infer type from arguments.
+            written = source_view(expr)
+            if written.addresses or written.double_star is not None:
+                typed = written.mapped(lambda _, arg: unwrap_own(
+                    unwrap_ref_type(self.expr.analyze_expr(arg))))
+                args = [written.at(at) for at in written.addresses]
+                arg_types = [typed.at(at) for at in written.addresses]
+                # A call no `__init__` binds is refused for its binding,
+                # before an empty-container argument can be blamed instead.
+                self._refuse_unbound_ctor(expr, record_info, written, typed)
                 # Empty-container args (`set()`, `{}`, `[]` with no type hint)
                 # can't drive ctor inference -- their element types are
                 # UnknownElementType. Emit the proper user-facing diagnostic
@@ -1844,73 +1883,78 @@ class CallAnalyzer:
                 # into cpp_template substitution (which raises
                 # "UnknownElementType should be resolved before codegen" or
                 # "Unknown type parameter 'K'").
-                for arg, at in zip(expr.args, arg_types):
+                for arg, at in zip(args, arg_types):
                     if isinstance(at, PendingListType) and isinstance(at.element_type, UnknownElementType):
-                        self._raise_empty_container_from_arg(expr, expr.args, arg_types)
+                        self._raise_empty_container_from_arg(expr, args, arg_types)
                     if isinstance(at, PendingSetType) and isinstance(at.element_type, UnknownElementType):
-                        self._raise_empty_container_from_arg(expr, expr.args, arg_types)
+                        self._raise_empty_container_from_arg(expr, args, arg_types)
                     if isinstance(at, PendingDictType) and (
                             isinstance(at.key_type, UnknownElementType)
                             or isinstance(at.value_type, UnknownElementType)):
-                        self._raise_empty_container_from_arg(expr, expr.args, arg_types)
-                init_overloads = record_info.get_method_overloads("__init__")
-                if init_overloads:
-                    for ctor in init_overloads:
-                        if len(ctor.params) != len(arg_types):
-                            continue
-                        # Try to match and infer type parameters
-                        inferred_params = self.type_ops.match_generic_constructor(ctor.params, arg_types)
-                        if inferred_params is not None:
-                            # Guard against UNKNOWN_ELEMENT leaking from a
-                            # `Pending*` arg (e.g. `list(set())`, `list({})`).
-                            # The element is still unresolved; we must not feed
-                            # UnknownElementType into the type factory or cpp
-                            # template substitution. Fire the same
-                            # empty-container diagnostic that resolve_all
-                            # would, sourced from the offending Pending* arg.
-                            if any(isinstance(v, UnknownElementType)
-                                   for v in inferred_params.values()):
-                                self._raise_empty_container_from_arg(expr, expr.args, arg_types)
-                            # Use type_factory to create the result type
-                            if (all(p in inferred_params for p in record_info.type_params)
-                                    and record_info.type_factory):
-                                factory_args = []
-                                for p in record_info.type_params:
-                                    t = inferred_params[p]
-                                    t = resolve_int_literals(t, self.ctx.default_int_for_literal)
-                                    # Constructors produce owned storage -- strip Ref
-                                    t = unwrap_ref_type(t)
-                                    factory_args.append(t)
-                                result_type = record_info.type_factory(*factory_args)
-                                expr.call_type = result_type
-                                if isinstance(result_type, PtrType):
-                                    self._validate_ptr_constructor(expr)
-                                if ctor.cpp_template or ctor.native_function:
-                                    # Use extract_type_params on the clean result_type
-                                    # (Ref already stripped), not inferred_params which
-                                    # may contain val_or_ref wrappers.
-                                    clean_params = extract_type_params(result_type)
-                                    expr.resolved_function_info = _resolve_cpp_template_type_params(
-                                        ctor, clean_params, result_type=result_type, ctx=self.ctx)
-                                self._validate_lvalue_params(expr)
-                                self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
-                                return result_type
-                            # T not inferred from args; try assignment target hint
-                            hint = (self.expr.type_hint_for(expr)
-                                    if record_info.type_factory else None)
-                            if hint is not None:
-                                if isinstance(hint, OwnType):
-                                    hint = hint.wrapped
-                                hint = unwrap_readonly(hint)
-                                if hint.qualified_name() == lookup_td.qname:
-                                    expr.call_type = hint
-                                    if ctor.cpp_template or ctor.native_function:
-                                        hint_params = extract_type_params(hint)
-                                        expr.resolved_function_info = _resolve_cpp_template_type_params(
-                                            ctor, hint_params, result_type=hint, ctx=self.ctx)
-                                    self._validate_lvalue_params(expr)
-                                    self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
-                                    return hint
+                        self._raise_empty_container_from_arg(expr, args, arg_types)
+                fits: list[tuple[FunctionInfo, dict[str, TpyType]]] = []
+                for ctor in record_info.get_method_overloads("__init__"):
+                    placed = _ctor_placement(ctor, written, expr.func_name)
+                    if placed is None:
+                        continue
+                    inferred_params = self.type_ops.match_generic_constructor(
+                        [(operand_param_type(ctor.params[i]),
+                          typed.at(at)) for i, at in placed])
+                    if inferred_params is not None:
+                        fits.append((ctor, inferred_params))
+                if fits:
+                    ctor, inferred_params = fits[self._pick_generic_ctor(
+                        expr, record_info, fits, typed)]
+                    # Guard against UNKNOWN_ELEMENT leaking from a
+                    # `Pending*` arg (e.g. `list(set())`, `list({})`).
+                    # The element is still unresolved; we must not feed
+                    # UnknownElementType into the type factory or cpp
+                    # template substitution. Fire the same
+                    # empty-container diagnostic that resolve_all
+                    # would, sourced from the offending Pending* arg.
+                    if any(isinstance(v, UnknownElementType)
+                           for v in inferred_params.values()):
+                        self._raise_empty_container_from_arg(expr, args, arg_types)
+                    # Use type_factory to create the result type
+                    if (all(p in inferred_params for p in record_info.type_params)
+                            and record_info.type_factory):
+                        factory_args = []
+                        for p in record_info.type_params:
+                            t = inferred_params[p]
+                            t = resolve_int_literals(t, self.ctx.default_int_for_literal)
+                            # Constructors produce owned storage -- strip Ref
+                            t = unwrap_ref_type(t)
+                            factory_args.append(t)
+                        result_type = record_info.type_factory(*factory_args)
+                        expr.call_type = result_type
+                        if isinstance(result_type, PtrType):
+                            self._validate_ptr_constructor(expr)
+                        if ctor.cpp_template or ctor.native_function:
+                            # Use extract_type_params on the clean result_type
+                            # (Ref already stripped), not inferred_params which
+                            # may contain val_or_ref wrappers.
+                            clean_params = extract_type_params(result_type)
+                            expr.resolved_function_info = _resolve_cpp_template_type_params(
+                                ctor, clean_params, result_type=result_type, ctx=self.ctx)
+                        self._validate_lvalue_params(expr)
+                        self._check_ctor_arg_compatibility(expr, ctor, written, typed, inferred_params)
+                        return result_type
+                    # T not inferred from args; try assignment target hint
+                    hint = (self.expr.type_hint_for(expr)
+                            if record_info.type_factory else None)
+                    if hint is not None:
+                        if isinstance(hint, OwnType):
+                            hint = hint.wrapped
+                        hint = unwrap_readonly(hint)
+                        if hint.qualified_name() == lookup_td.qname:
+                            expr.call_type = hint
+                            if ctor.cpp_template or ctor.native_function:
+                                hint_params = extract_type_params(hint)
+                                expr.resolved_function_info = _resolve_cpp_template_type_params(
+                                    ctor, hint_params, result_type=hint, ctx=self.ctx)
+                            self._validate_lvalue_params(expr)
+                            self._check_ctor_arg_compatibility(expr, ctor, written, typed, inferred_params)
+                            return hint
 
                 # Show specific error when a non-literal type with element info
                 # can't match any constructor (e.g., Range passed to list())
@@ -2395,7 +2439,7 @@ class CallAnalyzer:
         This is handled specially because the module system doesn't support
         truly generic functions yet.
         """
-        self._reject_kwargs_for_builtin(expr, "copy")
+        self.reject_keywords(expr, "copy")
         if len(expr.args) != 1:
             raise self.ctx.error("copy() takes exactly 1 argument", expr)
         arg_type = self.expr.analyze_expr(expr.args[0])
@@ -2459,7 +2503,7 @@ class CallAnalyzer:
         iteration. Returns CopyIter[T] where T is the element type.
         Suppresses the bulk copy warning on extend(), list(), etc.
         """
-        self._reject_kwargs_for_builtin(expr, "copy_iter")
+        self.reject_keywords(expr, "copy_iter")
         if len(expr.args) != 1:
             raise self.ctx.error("copy_iter() takes exactly 1 argument", expr)
         arg_type = self.expr.analyze_expr(expr.args[0])
@@ -2491,7 +2535,7 @@ class CallAnalyzer:
         The argument must be at its last use (movable), since own_iter
         takes ownership of the container via std::move.
         """
-        self._reject_kwargs_for_builtin(expr, "own_iter")
+        self.reject_keywords(expr, "own_iter")
         if len(expr.args) != 1:
             raise self.ctx.error("own_iter() takes exactly 1 argument", expr)
         arg_type = self.expr.analyze_expr(expr.args[0])
@@ -2532,7 +2576,7 @@ class CallAnalyzer:
 
     def _analyze_tpy_try_parse(self, expr: TpyCall) -> TpyType:
         """Analyze try_parse(EnumT, str) -> Optional[EnumT] for some enum type EnumT."""
-        self._reject_kwargs_for_builtin(expr, "try_parse")
+        self.reject_keywords(expr, "try_parse")
         if len(expr.args) != 2:
             raise self.ctx.error(
                 "try_parse() takes exactly 2 arguments: try_parse(EnumT, name)",
@@ -2576,7 +2620,7 @@ class CallAnalyzer:
         codegen (see TpyCall.compile_time_assert)."""
         name = "assert_send" if send else "assert_sync"
         trait = "Send" if send else "Sync"
-        self._reject_kwargs_for_builtin(expr, name)
+        self.reject_keywords(expr, name)
         if expr.args:
             raise self.ctx.error(f"{name}() takes no value arguments", expr)
         self._validate_explicit_type_args(expr, 1)
@@ -2978,7 +3022,7 @@ class CallAnalyzer:
         union/protocol cases. For the static case, sets macro_expansion to a
         TpyBoolLiteral so codegen emits a constant.
         """
-        self._reject_kwargs_for_builtin(expr, "isinstance")
+        self.reject_keywords(expr, "isinstance")
         if len(expr.args) != 2:
             raise self.ctx.error(
                 f"isinstance() takes exactly 2 arguments, got {len(expr.args)}", expr
@@ -3371,7 +3415,7 @@ class CallAnalyzer:
         via `macro_expansion`. Codegen then emits `make_any(...)`
         directly without going through the constructor path.
         """
-        self._reject_kwargs_for_builtin(expr, "Any")
+        self.reject_keywords(expr, "Any")
         if len(expr.args) != 1:
             raise self.ctx.error(
                 f"Any(...) takes exactly 1 argument, got {len(expr.args)}",
@@ -3401,7 +3445,7 @@ class CallAnalyzer:
         semantics). For Any sources, codegen emits any_cast_or_panic<T>.
         Either way the static result type is T.
         """
-        self._reject_kwargs_for_builtin(expr, "cast")
+        self.reject_keywords(expr, "cast")
         if len(expr.args) != 2:
             raise self.ctx.error(
                 f"typing.cast() takes exactly 2 arguments, got {len(expr.args)}",
@@ -3446,7 +3490,7 @@ class CallAnalyzer:
 
     def _analyze_enum_from_value(self, expr: TpyCall, enum_type: NominalType) -> TpyType:
         """Analyze enum value lookup: Color(0) -> Color."""
-        self._reject_kwargs_for_builtin(expr, enum_type.name)
+        self.reject_keywords(expr, enum_type.name)
         if len(expr.args) != 1:
             raise self.ctx.error(
                 f"Enum '{enum_type.name}' constructor takes exactly 1 argument, "
@@ -3549,20 +3593,21 @@ class CallAnalyzer:
             f"evaluated operand; assign it to a local before the expression "
             f"to make the unconditional build explicit", arg)
 
-    def check_own_callback_feeds(self, expr: TpyCall,
-                                 params: 'list[ParamInfo]',
-                                 args: 'list[TpyExpr]',
-                                 arg_types: 'list[TpyType | None]') -> None:
+    def check_own_callback_feeds(
+            self, bound: 'list[tuple[int, ParamInfo, TpyExpr, TpyType | None]]',
+    ) -> dict[int, TpyType]:
         """An iterable argument whose elements a callable argument receives
-        as `Own[X]` is an owning element slot: `params` (the callee's
-        declaration, type parameters unsubstituted) types the callable slot
+        as `Own[X]` is an owning element slot: the callee's declaration
+        (type parameters unsubstituted) types the callable slot
         `Fn[[..., T, ...], U]` and the iterable slot `Iterable[T]` with the
         same `T`, and the callable's own parameter there is `Own[X]`. Each such
-        argument gets the `Iterable[Own[X]]` parameter's element-copy check,
-        and that effective slot lands in `ctx.own_callback_feeds` for the
-        lowering."""
+        argument gets the `Iterable[Own[X]]` parameter's element-copy check.
+        `bound` holds each written argument where the call's binding puts
+        it: (parameter index, declared parameter, operand, ranked type).
+        Returns the effective slots by parameter index, for the lowering
+        (`ctx.own_callback_feeds`)."""
         owned_elems: dict[str, OwnType] = {}
-        for p, arg_t in zip(params, arg_types):
+        for _, p, _, arg_t in bound:
             slot = unwrap_send_sync(unwrap_ref_type(p.type))
             fn_t = (unwrap_send_sync(unwrap_ref_type(unwrap_readonly(arg_t)))
                     if arg_t is not None else None)
@@ -3571,10 +3616,10 @@ class CallAnalyzer:
             for slot_pt, fn_pt in zip(slot.param_types, fn_t.param_types):
                 if isinstance(slot_pt, TypeParamRef) and isinstance(fn_pt, OwnType):
                     owned_elems[slot_pt.name] = fn_pt
-        if not owned_elems:
-            return
         feeds: dict[int, TpyType] = {}
-        for i, (p, arg, arg_t) in enumerate(zip(params, args, arg_types)):
+        if not owned_elems:
+            return feeds
+        for i, p, arg, arg_t in bound:
             slot = unwrap_send_sync(unwrap_ref_type(p.type))
             if not (isinstance(slot, NominalType)
                     and slot.qualified_name() == qnames.ITERABLE
@@ -3588,8 +3633,7 @@ class CallAnalyzer:
             self.compat.check_type_compatible(
                 arg_t, owning_slot, f"argument '{p.name}'", source_expr=arg,
                 coercion_ctx=CoercionContext.ARG)
-        if feeds:
-            self.ctx.own_callback_feeds[expr] = feeds
+        return feeds
 
     def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
                         pname: str, ptype: TpyType) -> None:
@@ -3704,16 +3748,20 @@ class CallAnalyzer:
         if isinstance(arg_type, PendingViewType):
             self.deduction.mark_view_param_context(arg, ptype, arg_type.family)
 
-    def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
-        """Derive per-argument type hints from __init__ param types.
+    def _derive_ctor_arg_hints(
+            self, expr: TpyCall,
+            written: CallSource) -> 'dict[int | str, TpyType | None]':
+        """Derive per-argument type hints, by written address, from the
+        types of the `__init__` parameters construction `written` binds.
 
         For generic constructors like dict[str, str|int32]([("a","b"), ("c",1)]),
         resolves __init__ param types with the known type params to produce
         concrete hints (e.g. list[tuple[str, str|int32]]).  Falls back to
         call_type when no __init__ overloads are found.
         """
-        fallback = [expr.call_type] * len(expr.args)
-        if not expr.call_type or not expr.args:
+        fallback: dict[int | str, TpyType | None] = {
+            at: expr.call_type for at in written.addresses}
+        if not expr.call_type or not fallback:
             return fallback
 
         lookup_qname: str | None = None
@@ -3740,23 +3788,32 @@ class CallAnalyzer:
         if not inferred:
             return fallback
 
-        nargs = len(expr.args)
-        hints: list[TpyType | None] = []
+        options: list[dict[int | str, TpyType | None]] = []
         for ctor in record_info.get_method_overloads("__init__"):
-            if len(ctor.params) != nargs:
+            placed = _ctor_placement(ctor, written, expr.func_name)
+            if placed is None:
                 continue
-            for p, arg in zip(ctor.params, expr.args):
-                resolved = self.type_ops.substitute_type_params(p.type, inferred)
+            ctor_hints = dict(fallback)
+            for i, at in placed:
+                p = ctor.params[i]
+                resolved = self.type_ops.substitute_type_params(
+                    operand_param_type(p), inferred)
                 hint = self._concrete_hint_from_param(resolved)
-                hints.append(hint if hint is not None else expr.call_type)
-            break
-        if not hints:
+                if hint is not None:
+                    ctor_hints[at] = hint
+            options.append(ctor_hints)
+        if not options:
             return fallback
+        # The arguments are typed before a variant is picked: an argument
+        # takes a hint only where every variant it binds gives the same.
+        hints = {at: h if all(o[at] == h for o in options) else expr.call_type
+                 for at, h in options[0].items()}
         # If the derived hint type doesn't match the arg expression
         # (e.g. ListType hint for a dict literal arg), fall back to call_type
-        for i, (hint, arg) in enumerate(zip(hints, expr.args)):
-            if is_list(hint) and isinstance(arg, (TpyDictLiteral, TpySetLiteral)):
-                hints[i] = expr.call_type
+        for at, hint in hints.items():
+            if is_list(hint) and isinstance(
+                    written.at(at), (TpyDictLiteral, TpySetLiteral)):
+                hints[at] = expr.call_type
         return hints
 
     @staticmethod
@@ -3786,11 +3843,14 @@ class CallAnalyzer:
             elem = elem.wrapped
         return make_list(elem)
 
-    def _validate_generic_constructor(self, expr: TpyCall, arg_types: list[TpyType]) -> None:
-        """Validate and resolve generic type constructor calls.
+    def _validate_generic_constructor(self, expr: TpyCall, written: CallSource,
+                                      typed: CallSource) -> None:
+        """Validate and resolve generic type constructor calls, written with
+        `written` (`source_view`), its arguments typed as `typed`.
 
-        When call_type is set (e.g., list[int](iterable)), checks that args
-        conform to constructor params and sets resolved_function_info for codegen.
+        When call_type is set (e.g., list[int](iterable)), checks that the
+        arguments conform to the constructor parameters they bind and sets
+        resolved_function_info for codegen.
         For params with TypeParamRef (e.g. Span[T]), structural compatibility is
         checked (arg must be a container with matching element type) even though
         T itself is unresolved.
@@ -3811,15 +3871,20 @@ class CallAnalyzer:
             return
         init_overloads = record_info.get_method_overloads("__init__")
         if not init_overloads:
+            self._refuse_unbound_ctor(expr, record_info, written, typed)
             return
         inferred = extract_type_params(expr.call_type) if expr.call_type else {}
+        accepted: list[tuple[FunctionInfo, bool]] = []
         for ctor in init_overloads:
-            if len(ctor.params) != len(arg_types):
+            placed = _ctor_placement(ctor, written, expr.func_name)
+            if placed is None:
                 continue
             rejected = False
             fully_checked = True
-            for p, at in zip(ctor.params, arg_types):
-                p_type = unwrap_ref_type(p.type)
+            for i, address in placed:
+                at = typed.at(address)
+                p = ctor.params[i]
+                p_type = unwrap_ref_type(operand_param_type(p))
                 if is_protocol_type(p_type):
                     if not self.protocols.type_extends_any_protocol(at, p_type.name):
                         rejected = True
@@ -3859,10 +3924,18 @@ class CallAnalyzer:
                     rejected = True
                     break
             if not rejected:
-                if fully_checked and (ctor.cpp_template or ctor.native_function):
-                    expr.resolved_function_info = _resolve_cpp_template_type_params(
-                        ctor, inferred, result_type=expr.call_type, ctx=self.ctx)
-                return
+                accepted.append((ctor, fully_checked))
+        if accepted:
+            index = self._pick_generic_ctor(
+                expr, record_info, [(c, inferred) for c, _ in accepted],
+                typed)
+            ctor, fully_checked = accepted[index]
+            if fully_checked and (ctor.cpp_template or ctor.native_function):
+                expr.resolved_function_info = _resolve_cpp_template_type_params(
+                    ctor, inferred, result_type=expr.call_type, ctx=self.ctx)
+            return
+        self._refuse_unbound_ctor(expr, record_info, written, typed)
+        arg_types = list(typed.positional)
         # Arg type compatible with target (e.g. dict[K,V]({...}), list[T](other_list))
         if len(arg_types) == 1 and self.compat.is_type_compatible(arg_types[0], expr.call_type):
             return
@@ -3873,19 +3946,74 @@ class CallAnalyzer:
                 expr
             )
 
+    def _pick_generic_ctor(
+        self, expr: TpyCall, record: RecordInfo,
+        fits: 'list[tuple[FunctionInfo, dict[str, TpyType]]]',
+        typed: CallSource,
+    ) -> int:
+        """The index in `fits` -- the `__init__` variants of generic builtin
+        `record` that take construction `expr`, its arguments typed as
+        `typed`, each with the type arguments it takes them at -- of the one
+        the call runs: ranked as every overloaded call is, declaration order
+        deciding nothing."""
+        if len(fits) == 1:
+            return 0
+        subs: list[FunctionInfo] = []
+        for ctor, subst in fits:
+            # A type parameter the arguments leave open stays open.
+            full: dict[str, TpyType] = {tp: TypeParamRef(tp)
+                                        for tp in record.type_params}
+            full.update(subst)
+            subs.append(self.type_ops.substitute_method_type_params(ctor, full))
+        declared = {id(sub): ctor for sub, (ctor, _) in zip(subs, fits)}
+        try:
+            pick = rank_overload_candidates(
+                [OverloadCandidate(sub, typed) for sub in subs],
+                self.ranking())
+        except OverloadAmbiguityError as e:
+            raise self._ambiguous_overload_error(
+                expr, expr.func_name, OverloadAmbiguityError(
+                    tuple(declared.get(id(c), c) for c in e.candidates),
+                    e.converted))
+        if pick.winner is None:
+            raise self._ambiguous_overload_error(
+                expr, expr.func_name,
+                OverloadAmbiguityError(tuple(c for c, _ in fits)))
+        return pick.winner
+
     def _check_ctor_arg_compatibility(
         self,
         expr: TpyCall,
         ctor: FunctionInfo,
-        arg_types: list[TpyType],
+        written: CallSource,
+        typed: CallSource,
         inferred: dict[str, TpyType],
     ) -> None:
         """Check copy/ownership warnings for constructor args (e.g., Own[T] in Iterable[Own[T]])."""
-        for param, arg_type, arg_expr in zip(ctor.params, arg_types, expr.args):
-            param_type = self.type_ops.substitute_param_type(param.type, inferred)
+        for i, at in _ctor_placement(ctor, written, expr.func_name) or ():
+            param = ctor.params[i]
+            param_type = self.type_ops.substitute_param_type(
+                operand_param_type(param), inferred)
             self.compat.check_type_compatible(
-                arg_type, param_type, f"{expr.func_name}() argument", source_expr=arg_expr,
+                typed.at(at), param_type, f"{expr.func_name}() argument",
+                source_expr=written.at(at),
             )
+
+    def _refuse_unbound_ctor(self, expr: TpyCall, record: RecordInfo,
+                             written: CallSource, typed: CallSource) -> None:
+        """Refuse construction `written` of generic builtin `record` when
+        it binds to none of its `__init__` variants, as a user type's
+        construction is: the shared no-match error, or, with no `__init__`
+        declared, a keyword refused by the binding against no parameter."""
+        name = expr.func_name
+        inits = record.get_method_overloads("__init__")
+        if not inits:
+            if written.keywords or written.double_star is not None:
+                self.bind_args(expr, [], f"{name}()", written)
+            return
+        if all(_ctor_placement(o, written, name) is None for o in inits):
+            self.raise_no_match(name, inits, typed, written, expr,
+                                constructed=record)
 
     def _validate_lvalue_params(self, expr: TpyCall) -> None:
         """Validate requires_mutable_lvalue constraints on resolved params."""
@@ -4329,16 +4457,20 @@ class CallAnalyzer:
         )
 
     def pick_template_ctor(self, init_overloads: list[FunctionInfo],
-                           arg_types: list[TpyType]) -> FunctionInfo | None:
+                           args: 'CallSource | list[TpyType]',
+                           built: TpyType | None = None,
+                           ) -> FunctionInfo | None:
         """The `__init__` overload a call of a template-constructed type
-        (`int8(x)`) takes for `arg_types`: the numeric pick
-        (`select_template_ctor`), else protocol-aware overload resolution
-        (`bool(obj)` via Truthy). Raises OverloadAmbiguityError."""
-        ctor = select_template_ctor(init_overloads, arg_types,
-                                    self.ctx.default_int_type)
-        if ctor is not None:
-            return ctor
-        return self.ranking().resolve(init_overloads, arg_types)
+        (`int8(x)`) takes for the argument types `args`: ranked as every
+        overloaded call is (`CallRanking`); a numeric literal is at home in
+        the numeric type the call builds (`built`), so `int8(100)` takes
+        `x: int8`. Raises OverloadAmbiguityError."""
+        ranking = self.ranking()
+        if built is not None and (is_fixed_int_type(built)
+                                  or is_any_float_type(built)
+                                  or is_big_int_type(built)):
+            ranking = ranking.at_home(built)
+        return ranking.resolve(init_overloads, args)
 
     def narrowing_ctor(self, arg: TpyExpr, source: TpyType, target: TpyType,
                        value_range: 'ValueRange | None') -> FunctionInfo | None:
@@ -4353,7 +4485,7 @@ class CallAnalyzer:
             return None
         try:
             ctor = self.pick_template_ctor(
-                record.get_method_overloads("__init__"), [source])
+                record.get_method_overloads("__init__"), [source], target)
         except OverloadAmbiguityError:
             return None
         if ctor is None or not ctor.cpp_template:
@@ -4374,41 +4506,49 @@ class CallAnalyzer:
         and str(container).
         """
         written = source_view(expr)
-        self._reject_kwargs_for_builtin(expr, expr.func_name, written)
+        operands = [e for e in written.operands if e is not written.double_star]
         td = get_type_def(record.builtin_type_key)
         if td is not None and td.ctor_arg_truth_test:
-            for arg in written.positional:
+            for arg in operands:
                 self.expr.mark_truth_test(arg)
-        arg_types = [unwrap_own(unwrap_ref_type(self.expr.analyze_expr(arg)))
-                     for arg in written.positional]
+        typed = written.mapped(lambda _, arg: unwrap_own(unwrap_ref_type(
+            self.expr.analyze_expr(arg))))
+        # The operand types in written order; once a variant is picked, in
+        # the order of the parameters they bind.
+        arg_types = [*typed.positional, *(t for _, t in typed.keywords)]
         if td is not None and td.ctor_arg_truth_test:
-            record_truth_calls(self.ctx, [leaf for arg in written.positional
+            record_truth_calls(self.ctx, [leaf for arg in operands
                                           for leaf in truthy_operands(arg)])
 
         # Resolve the concrete type (e.g. FLOAT32 singleton). __init__ returns None
         # in Python, so we look up the actual type via the type factory.
         record_type = builtin_modules.get_builtin_type_obj(record.builtin_type_key)
+        # An int literal the fixed-int type cannot hold is refused whichever
+        # variant would take it.
+        if (record_type is not None and is_fixed_int_type(record_type)
+                and len(arg_types) == 1
+                and isinstance(arg_types[0], IntLiteralType)):
+            lit = arg_types[0]
+            ret_tr = int_traits_of(record_type)
+            if lit.value is not None and not (ret_tr.min_value <= lit.value <= ret_tr.max_value):
+                raise self.ctx.error(
+                    f"{record_type} overflow: {lit.value} is outside range "
+                    f"[{ret_tr.min_value}, {ret_tr.max_value}]",
+                    expr,
+                )
 
         try:
-            ctor = self.pick_template_ctor(init_overloads, arg_types)
+            ctor = self.pick_template_ctor(init_overloads, typed, record_type)
         except OverloadAmbiguityError as e:
             raise self._ambiguous_overload_error(expr, init_overloads[0].name, e)
         if ctor is not None:
+            evidence = bound_evidence(ctor, typed)
+            assert not isinstance(evidence, BindReject)
+            arg_types = [t for _, t in evidence]
             self._check_ctor_type_param_bounds(
                 expr, expr.func_name, ctor, arg_types)
             self.fill_positional_call(expr, ctor, {}, written)
             ret = record_type or ctor.return_type
-            # Reject int literals that are out of range for the target fixed-int type
-            if (is_fixed_int_type(ret) and len(arg_types) == 1
-                    and isinstance(arg_types[0], IntLiteralType)):
-                lit = arg_types[0]
-                ret_tr = int_traits_of(ret)
-                if lit.value is not None and not (ret_tr.min_value <= lit.value <= ret_tr.max_value):
-                    raise self.ctx.error(
-                        f"{ret} overflow: {lit.value} is outside range "
-                        f"[{ret_tr.min_value}, {ret_tr.max_value}]",
-                        expr,
-                    )
             expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret, ctx=self.ctx)
             self._check_cast_safe(expr, ctor, arg_types, ret)
             # Borrowing views (StrView/BytesView/Span/SpanIter) need call_type
@@ -4419,6 +4559,18 @@ class CallAnalyzer:
                 expr.call_type = ret
             return ret
 
+        # A fallback converts the one operand of a one-argument variant, so a
+        # keyword must name that variant's parameter, which it is bound to.
+        keyed = bool(written.keywords) or written.double_star is not None
+        pname = "x"
+        if keyed:
+            lone = next((o.params[0].name for o in init_overloads
+                         if len(o.params) == 1 and not isinstance(
+                             bound_evidence(o, typed), BindReject)), None)
+            if lone is None:
+                self.raise_no_match(expr.func_name, init_overloads, typed,
+                                    written, expr)
+            pname = lone
         # bool(obj) __len__ fallback: types with __len__ but no __bool__
         if record.builtin_type_key == qnames.BOOL and len(arg_types) == 1:
             arg_type = arg_types[0]
@@ -4427,11 +4579,14 @@ class CallAnalyzer:
                 if arg_record and arg_record.get_method_overloads("__len__"):
                     expr.resolved_function_info = FunctionInfo(
                         name="__len__",
-                        params=[ParamInfo("x", arg_type)],
+                        params=[ParamInfo(pname, arg_type)],
                         return_type=BOOL,
                         cpp_template="(::tpy::__len__({0}) != 0)",
                         is_readonly=True,
                     )
+                    if keyed:
+                        self.fill_positional_call(
+                            expr, expr.resolved_function_info, {}, written)
                     return BOOL
 
         # str(container) fallback: containers have runtime to_str helpers.
@@ -4447,17 +4602,22 @@ class CallAnalyzer:
             if tmpl is not None:
                 expr.resolved_function_info = FunctionInfo(
                     name="str",
-                    params=[ParamInfo("x", arg_types[0])],
+                    params=[ParamInfo(pname, arg_types[0])],
                     return_type=STR,
                     cpp_template=tmpl,
                     is_readonly=True,
                 )
+                if keyed:
+                    self.fill_positional_call(
+                        expr, expr.resolved_function_info, {}, written)
                 return STR
 
         # No matching overload found
         type_name = expr.func_name
         if not init_overloads:
             raise self.ctx.error(f"{type_name}() is not callable", expr)
+        if keyed:
+            self.raise_no_match(type_name, init_overloads, typed, written, expr)
         # Build expected arity from overloads
         arities = sorted({len(o.params) for o in init_overloads})
         got = len(arg_types)
@@ -4520,11 +4680,7 @@ class CallAnalyzer:
             if isinstance(type_arg, NominalType) and type_arg.is_record and not type_arg.type_args:
                 if self.ctx.registry.get_record_for_type(type_arg) is None:
                     raise self.ctx.error(f"Unknown type: {type_arg.name}", expr)
-            in_generic = bool(
-                (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
-                or self.ctx.record_ctx.type_params
-            )
-            self.type_ops.validate_type(type_arg, allow_type_param_ref=in_generic, loc=expr.loc, allow_forward_ref=False)
+            self.type_ops.validate_type(type_arg, allow_type_param_ref=self.ctx.in_generic_scope(), loc=expr.loc, allow_forward_ref=False)
 
     def _infer_arg_types(
         self, func: FunctionInfo,
@@ -4532,10 +4688,11 @@ class CallAnalyzer:
         seed: ReturnSeed | None = None, *,
         overloads: list[FunctionInfo] | None = None,
         shape: CallShape | None = None,
+        ats: 'list[int | str] | None' = None,
     ) -> list[TpyType | None]:
         with self.ctx.probe_slot_scope(True):
             return self._infer_arg_types_in(func, evidence, seed,
-                                            overloads, shape)
+                                            overloads, shape, ats)
 
     def _infer_arg_types_in(
         self, func: FunctionInfo,
@@ -4543,14 +4700,15 @@ class CallAnalyzer:
         seed: ReturnSeed | None = None,
         overloads: list[FunctionInfo] | None = None,
         shape: CallShape | None = None,
+        ats: 'list[int | str] | None' = None,
     ) -> list[TpyType | None]:
         """Analyze a call's arguments for type param inference, with two
         phases for Fn/Callable params. `evidence` pairs each argument with
         the index of the parameter of `func` it binds (`ArgBinding.evidence`;
         None: no parameter); the types come back in its order. With
-        `overloads` -- the call's whole set, called with `shape` -- the
-        evidence is the call's positional arguments in written order, each
-        analyzed as that set's probe argument (`probe_arg`).
+        `overloads` -- the call's whole set, called with `shape` -- each
+        argument is analyzed as that set's probe argument (`probe_arg`) at
+        where it is written (`ats`, `ArgBinding.addresses`).
 
         When a generic function has Fn/Callable params (e.g. map[T,U](fn: Fn[[T],U], ...)),
         function refs and lambdas can't be analyzed without concrete type hints. We:
@@ -4571,7 +4729,8 @@ class CallAnalyzer:
                          hint: SlotHint | None) -> TpyType:
             if overloads is None:
                 return self.expr.analyze_call_arg(arg, hint)
-            return self.probe_arg(arg, overloads, shape, k, hint)
+            return self.probe_arg(arg, overloads, shape,
+                                  ats[k] if ats is not None else k, hint)
 
         # Quick check: if no Fn/Callable params, analyze all args directly.
         # Only an argument its context types (a lambda, a function named as
@@ -4611,8 +4770,7 @@ class CallAnalyzer:
             # element evidence can bind the type param -- otherwise a Span-vs-
             # element shape mismatch leaves T unbound and a sibling Fn arg
             # can't concretize its hint.
-            if param.is_variadic and is_varargs(unwrap_ref_type(match_ptype)):
-                match_ptype = unwrap_readonly(unwrap_ref_type(match_ptype).type_args[0])
+            match_ptype = operand_param_type(param)
             self.type_ops.match_type_with_inference(match_ptype, arg_type, partial_inferred)
         self.type_ops._bind_none_arms(none_arms, partial_inferred)
         # Resolve literal markers (a nested one too: the hint spells the
@@ -4623,7 +4781,8 @@ class CallAnalyzer:
             elif isinstance(v, TpyType):
                 partial_inferred[k] = resolve_int_literals(v, self.ctx.default_int_type or INT32)
 
-        if partial_inferred:
+        # A non-generic callee's callable parameter is its hint as it is.
+        if partial_inferred or not func.type_params:
             for k in fn_positions:
                 slot, arg = evidence[k]
                 ptype = unwrap_ref_type(func.params[slot].type)
@@ -4649,30 +4808,6 @@ class CallAnalyzer:
 
         return arg_types
 
-    def _placed_key_kwargs(self, expr: TpyCall, name: str
-                           ) -> tuple[TpyExpr | None, CallSource | None]:
-        """The keywords of sorted/min/max -- `key=`, and `reverse=` for
-        sorted -- placed in the positional order their stubs declare: the
-        key expression written (else None) and the placed arguments the
-        overload ranking reads (None when there is nothing to place). The
-        call keeps them as keywords; its commit lays them out by name."""
-        if name not in ("sorted", "min", "max"):
-            return None, None
-        src = source_view(expr, peel=False)
-        if not src.keywords:
-            return None, None
-        # Ranking places these keywords itself: the builtin ranking cannot
-        # place a keyword for a generic candidate.
-        allowed = ("key", "reverse") if name == "sorted" else ("key",)
-        bad = [k for k, _ in src.keywords if k not in allowed]
-        if bad:
-            raise self.ctx.error(
-                f"'{name}()' does not support keyword argument '{bad[0]}'", expr)
-        return src.keyword("key"), CallSource(
-            (*src.positional,
-             *(e for k in allowed if (e := src.keyword(k)) is not None)),
-            (), src.double_star)
-
     @staticmethod
     def _mark_key_lambda(key_arg: TpyExpr | None) -> None:
         """Give the key lambda -- spelled, or the one a class name at the key
@@ -4682,88 +4817,6 @@ class CallAnalyzer:
         lam = lambda_of(key_arg) if key_arg is not None else None
         if isinstance(lam, TpyLambda):
             lam.readonly_params = True
-
-    def _supplied_fn_slots(
-        self, src: CallSource, func: FunctionInfo,
-    ) -> list[SuppliedFnSlot] | None:
-        """Walk the call's positional + keyword args (`src`) against
-        func.params, returning the list of Fn-typed slots filled by
-        supplied (non-default) arguments.
-
-        Returns ``None`` when the call shape rejects this candidate:
-        unknown kwarg, positional/keyword collision, missing required
-        param, or too many positional args. An empty list means the
-        candidate is viable but has no supplied Fn args.
-
-        Mirrors the validity rules in `_expand_arg_types_with_kwargs`
-        but tracks supplied-vs-default per slot, which the type-only
-        expansion loses.
-
-        Variadic stubs (`*args` on `@overload`) are parser-blocked, so
-        this helper returns ``None`` for any candidate with
-        ``has_variadic`` -- callers fall back to the existing
-        non-regime-aware flow if needed.
-        """
-        if func.has_variadic:
-            return None
-
-        args = src.positional
-        kwargs = dict(src.keywords)
-
-        if len(args) > len(func.params):
-            return None  # too many positional
-
-        # Reject any positional fill of a keyword-only param.
-        for i in range(min(len(args), len(func.params))):
-            if func.params[i].keyword_only:
-                return None
-
-        name_to_index = {p.name: i for i, p in enumerate(func.params)}
-
-        # Validate kwargs against param names + reject collisions.
-        rightmost = len(args) - 1
-        for kw_name in kwargs:
-            idx = name_to_index.get(kw_name)
-            if idx is None:
-                return None  # unknown kwarg
-            if idx < len(args) and not func.params[idx].keyword_only:
-                return None  # positional/keyword collision
-            if idx > rightmost:
-                rightmost = idx
-
-        result: list[SuppliedFnSlot] = []
-        for i in range(rightmost + 1):
-            p = func.params[i]
-            if i < len(args):
-                if _is_fn_slot_param(p.type):
-                    result.append(SuppliedFnSlot(
-                        param_index=i, arg_expr=args[i],
-                        arg_index=i, kwarg_name=None))
-            elif p.name in kwargs:
-                if _is_fn_slot_param(p.type):
-                    result.append(SuppliedFnSlot(
-                        param_index=i, arg_expr=kwargs[p.name],
-                        arg_index=None, kwarg_name=p.name))
-            elif p.has_default:
-                pass  # default; not supplied
-            else:
-                return None  # missing required positional
-
-        # Required positional / keyword-only params beyond rightmost
-        # must have a default (positional case) or be in kwargs
-        # (keyword-only case). Otherwise the candidate isn't viable for
-        # this call shape.
-        for i, p in enumerate(func.params):
-            if i <= rightmost:
-                continue
-            if p.keyword_only:
-                if not p.has_default and p.name not in kwargs:
-                    return None
-            else:
-                if not p.has_default:
-                    return None
-
-        return result
 
     def _resolve_call_overloads(
         self,
@@ -4780,8 +4833,9 @@ class CallAnalyzer:
         """Selection-only overload resolution shared by builtin and user paths.
 
         `src`: the arguments the ranking reads, when not the call's own
-        fields (a builtin's keywords placed by position, at a step that
-        does not commit that placement).
+        fields. Every candidate takes them where the call's one binding
+        places them on its parameters (`bind`); one they do not bind to is
+        not applicable.
 
         Picks a regime based on how many candidates have an Fn-typed param
         filled by a *supplied* (non-default) call argument:
@@ -4799,23 +4853,18 @@ class CallAnalyzer:
         Raises ``OverloadAmbiguityError`` from the ranking --
         the caller wraps to surface a located diagnostic.
         """
-        # Regime predicate: which candidates have at least one Fn-typed
-        # param filled by a supplied (non-default) arg? Short-circuit when
-        # no overload has any callable-typed param at all -- skips the
-        # per-candidate _supplied_fn_slots walks for the common
-        # non-callable overload set.
         if src is None:
             src = source_view(expr, peel=False)
-        any_fn_typed_param = any(
-            _is_fn_slot_param(p.type)
-            for f in func_infos for p in f.params
-        )
+        shape = shape_of(src)
+        bound = [(f, b) for f in func_infos
+                 if (b := shape.binding(f)) is not None]
+        # Regime predicate: which candidates have at least one Fn-typed
+        # param filled by a supplied (non-default) arg?
         fn_bearing_supplied: list[tuple[FunctionInfo, list[SuppliedFnSlot]]] = []
-        if any_fn_typed_param:
-            for f in func_infos:
-                slots = self._supplied_fn_slots(src, f)
-                if slots:  # non-None and non-empty
-                    fn_bearing_supplied.append((f, slots))
+        for f, b in bound:
+            slots = supplied_fn_slots(b, src, f)
+            if slots:
+                fn_bearing_supplied.append((f, slots))
 
         # Candidates that differ only in a type parameter's bound (a value
         # and a reference overload of one signature) or a parameter's
@@ -4824,22 +4873,14 @@ class CallAnalyzer:
         # bound picks among them.
         shapes: list[list[tuple[str, TpyType]]] = []
         for f, _slots in fn_bearing_supplied:
-            shape = [(p.name, unwrap_readonly(p.type)) for p in f.params]
-            if shape not in shapes:
-                shapes.append(shape)
+            sig = [(p.name, unwrap_readonly(p.type)) for p in f.params]
+            if sig not in shapes:
+                shapes.append(sig)
 
         # Route to Regime C when there are 2+ Fn-bearing-by-supplied
-        # candidates, or when any candidate has a kwarg-supplied Fn slot
-        # (Regime B's `_infer_arg_types` is positional-only and would
-        # leave a kwarg-supplied lambda untyped).
-        any_kwarg_fn_slot = any(
-            s.kwarg_name is not None
-            for _, slots in fn_bearing_supplied
-            for s in slots
-        )
-        if len(shapes) >= 2 or (
-            fn_bearing_supplied and any_kwarg_fn_slot
-        ):
+        # candidates; one is typed at its own binding (Regime B), a keyword
+        # as its positional twin.
+        if len(shapes) >= 2:
             with self.ctx.probe_slot_scope(True):
                 return self._resolve_regime_c(
                     expr, src, fn_bearing_supplied, func_infos,
@@ -4862,30 +4903,27 @@ class CallAnalyzer:
             seed = self.type_ops.seed_subst_from_return_hint(
                 fn_generic, self.expr.slot_hint_for(expr),
             ).with_explicit(fn_generic.type_params, expr.type_args)
-            arg_types = self.ranked_arg_types(
-                self._infer_arg_types(
-                    fn_generic,
-                    [(positional_param_index(fn_generic.params, i), a)
-                     for i, a in enumerate(src.positional)], seed,
-                    overloads=func_infos, shape=source_shape(src)),
-                [p.type for f in func_infos for p in f.params])
+            generic_binding = next(b for f, b in bound if f is fn_generic)
+            addressed = generic_binding.addresses()
+            # An operand the candidate's binding leaves out (a `**kwargs`
+            # field) is typed unhinted at no parameter.
+            ats = [at for _, at in addressed]
+            ats += [at for at in src.addresses if at not in ats]
+            slots = [i for i, _ in addressed] + [None] * (len(ats) - len(addressed))
+            types = self._infer_arg_types(
+                fn_generic, [(slot, src.at(at)) for slot, at in zip(slots, ats)],
+                seed, overloads=func_infos, shape=shape, ats=ats)
+            named = [p.type for f in func_infos for p in f.params]
+            by_at = dict(zip(ats, self.ranked_arg_types(types, named)))
+            typed = src.mapped(lambda at, _: by_at[at])
         else:
-            arg_types = self._probe_candidate_args(expr, list(src.positional),
-                                                   func_infos)
+            _, typed = self.probe_overload_args(expr, src, func_infos)
 
         if strip_ref_own:
-            arg_types = [unwrap_own(unwrap_ref_type(t)) for t in arg_types]
+            typed = typed.mapped(lambda _, t: unwrap_own(unwrap_ref_type(t)))
 
-        kwarg_types: dict[str, TpyType] | None = None
-        if src.keywords:
-            # A keyword argument gets no hint of its own; the enclosing one
-            # stays in force with its provenance, as for any unhinted arg.
-            kwarg_types = self.probe_kwargs(dict(src.keywords), func_infos,
-                                            source_shape(src))
-
-        # Build the unified candidate pool. Pool ordering matters for
-        # ambiguity tiebreak in the ranking's stable-sort dedupe,
-        # so we mirror each path's existing order.
+        # Build the unified candidate pool. Its order decides no winner
+        # (a tie is ambiguous), only the order an ambiguity names them in.
         if preserve_declaration_order:
             iter_funcs = func_infos
         else:
@@ -4898,10 +4936,16 @@ class CallAnalyzer:
 
         for func in iter_funcs:
             if is_generic_for_pool(func):
+                # Every argument is evidence at the parameter it binds,
+                # keywords and keyword-only ones included.
+                evidence = bound_evidence(func, typed)
+                if isinstance(evidence, BindReject):
+                    continue
                 type_subst = self.type_ops.infer_type_params_for_function(
-                    func, arg_types, self.protocols.satisfies_bound,
+                    func, [t for _, t in evidence], self.protocols.satisfies_bound,
                     expected_return_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=explicit_type_args,
+                    slots=[slot for slot, _ in evidence],
                 )
                 if type_subst is not None:
                     if resolve_pending_view:
@@ -4914,10 +4958,14 @@ class CallAnalyzer:
             else:
                 candidates.append(func)
 
-        enriched_types = _enrich_literal_types(arg_types, src.positional,
-                                               candidates)
-        matched = self.ranking().resolve(candidates, enriched_types,
-                                         kwarg_types=kwarg_types)
+        enriched = enriched_source(typed, src, candidates)
+        try:
+            matched = self.ranking().resolve(candidates, enriched)
+        except OverloadAmbiguityError as e:
+            # Named as declared: two substitutions may read alike.
+            raise OverloadAmbiguityError(
+                tuple(generic_originals[id(c)][0] if id(c) in generic_originals
+                      else c for c in e.candidates), e.converted) from None
 
         matched_origin = generic_originals.get(id(matched)) if matched is not None else None
 
@@ -4936,9 +4984,8 @@ class CallAnalyzer:
         return ResolveResult(
             matched=matched,
             matched_origin=matched_origin,
-            arg_types=arg_types,
-            enriched_types=enriched_types,
-            kwarg_types=kwarg_types,
+            typed=typed,
+            enriched=enriched,
             contextual_callable_used=contextual,
         )
 
@@ -5079,23 +5126,14 @@ class CallAnalyzer:
         by `ctx.expr_type_hint` rejects that candidate. Workaround:
         hoist the lambda to a typed local.
         """
-        # Identify positional indices and kwarg names that are Fn-supplied
-        # for at least one candidate -- those need per-candidate handling.
-        fn_pos_idx_supplied: set[int] = set()
-        fn_kw_names_supplied: set[str] = set()
-        for _, slots in fn_bearing_supplied:
-            for s in slots:
-                if s.arg_index is not None:
-                    fn_pos_idx_supplied.add(s.arg_index)
-                else:
-                    assert s.kwarg_name is not None
-                    fn_kw_names_supplied.add(s.kwarg_name)
+        # The operands that are Fn-supplied for at least one candidate --
+        # those need per-candidate handling.
+        fn_supplied = {s.at for _, slots in fn_bearing_supplied for s in slots}
 
-        baseline_pos: list[TpyType | None] = [None] * len(src.positional)
-        baseline_kw: dict[str, TpyType] = {}
+        baseline: dict[int | str, TpyType] = {}
         saved_unhinted_error: SemanticError | None = None
 
-        # Pre-analyze: positions/kwargs that don't need contextual typing.
+        # Pre-analyze: operands that don't need contextual typing.
         # An arg needs contextual typing iff it's a TpyLambda or a TpyName
         # resolving to a function. Everything else (variables, literals,
         # arbitrary expressions) is pre-analyzed once, as any overload
@@ -5103,44 +5141,27 @@ class CallAnalyzer:
         # `func_infos`, not the Fn-bearing candidates tried here: whether
         # a number's width picks the variant is the set's fact.
         named = [p.type for f, _ in fn_bearing_supplied for p in f.params]
-        shape = source_shape(src)
-
-        def baseline(arg: TpyExpr, at: int | str) -> TpyType:
-            return self.ranked_arg_types([self.probe_arg(
-                arg, func_infos, shape, at)], named)[0]
-
-        for i, arg in enumerate(src.positional):
-            if i in fn_pos_idx_supplied and self._is_contextual_fn_arg(arg):
+        shape = shape_of(src)
+        for at in src.addresses:
+            arg = src.at(at)
+            if at in fn_supplied and self._is_contextual_fn_arg(arg):
                 continue  # defer to per-candidate
             try:
-                baseline_pos[i] = baseline(arg, i)
+                baseline[at] = self.ranked_arg_types([self.probe_arg(
+                    arg, func_infos, shape, at)], named)[0]
             except SemanticError as e:
                 if saved_unhinted_error is None:
                     saved_unhinted_error = e
-        if src.keywords:
-            for k, v in src.keywords:
-                if k in fn_kw_names_supplied and self._is_contextual_fn_arg(v):
-                    continue
-                try:
-                    baseline_kw[k] = baseline(v, k)
-                except SemanticError as e:
-                    if saved_unhinted_error is None:
-                        saved_unhinted_error = e
 
         if strip_ref_own:
-            baseline_pos = [
-                unwrap_own(unwrap_ref_type(t)) if t is not None else None
-                for t in baseline_pos
-            ]
-            baseline_kw = {k: unwrap_own(unwrap_ref_type(v)) for k, v in baseline_kw.items()}
+            baseline = {k: unwrap_own(unwrap_ref_type(v))
+                        for k, v in baseline.items()}
 
-        # Per-candidate trial: build (substituted_candidate, arg_types,
-        # kwarg_types, original, type_subst) for each candidate that
-        # passes the trial.
+        # Per-candidate trial: the substituted candidate, its argument
+        # types, and its origin, for each candidate that passes the trial.
         candidate_evidences: list[tuple[
             FunctionInfo,                                  # substituted
-            list[TpyType],                                 # arg_types
-            dict[str, TpyType],                            # kwarg_types
+            CallSource,                                    # argument types
             tuple[FunctionInfo, dict[str, TpyType]] | None,  # origin
         ]] = []
         saved_dry_error: SemanticError | None = None
@@ -5159,9 +5180,7 @@ class CallAnalyzer:
         for func, fn_slots in fn_bearing_supplied:
             try:
                 evidence = self._build_regime_c_evidence(
-                    expr, src, func, fn_slots,
-                    baseline_pos=baseline_pos,
-                    baseline_kw=baseline_kw,
+                    expr, src, func, fn_slots, baseline=baseline,
                     explicit_type_args=explicit_type_args,
                     resolve_pending_view=resolve_pending_view,
                 )
@@ -5176,29 +5195,22 @@ class CallAnalyzer:
         # Each candidate carries its own argument types, so the ranking
         # takes them per candidate rather than through `CallRanking.resolve`.
         pick = rank_overload_candidates(
-            [OverloadCandidate(substituted, arg_types, kwarg_types or None)
-             for substituted, arg_types, kwarg_types, _ in candidate_evidences],
+            [OverloadCandidate(substituted, typed)
+             for substituted, typed, _ in candidate_evidences],
             self.ranking())
 
         matched: FunctionInfo | None = None
         matched_origin: tuple[FunctionInfo, dict[str, TpyType]] | None = None
-        winner_arg_types: list[TpyType] | None = None
-        winner_kwarg_types: dict[str, TpyType] | None = None
+        winner_typed: CallSource | None = None
         if pick.winner is not None:
-            matched, winner_arg_types, winner_kwarg_types, matched_origin = (
+            matched, winner_typed, matched_origin = (
                 candidate_evidences[pick.winner])
 
-        # arg_types for downstream diagnostics: the winner's typed list
-        # if any candidate matched, else the baseline (with ANY at any
-        # contextual slot that was deferred and never filled in).
-        if winner_arg_types is not None:
-            display_arg_types = winner_arg_types
-        else:
-            display_arg_types = [
-                baseline_pos[i] if baseline_pos[i] is not None else ANY
-                for i in range(len(src.positional))
-            ]
-        display_kwarg_types = winner_kwarg_types if winner_kwarg_types is not None else baseline_kw
+        # The argument types for downstream diagnostics: the winner's if
+        # any candidate matched, else the baseline (with ANY at any
+        # contextual operand that was deferred and never filled in).
+        display = (winner_typed if winner_typed is not None
+                   else src.mapped(lambda at, _: baseline.get(at, ANY)))
 
         # Stash priority: per-candidate dry error (most informative for
         # the user's call shape) > pre-analysis failure.
@@ -5208,15 +5220,12 @@ class CallAnalyzer:
         # stage found applicable, or every candidate when it found none.
         pool_for_enrich = ([candidate_evidences[i][0] for i in pick.strict]
                            if pick.strict else [e[0] for e in candidate_evidences])
-        enriched_types = _enrich_literal_types(display_arg_types,
-                                               src.positional, pool_for_enrich)
 
         return ResolveResult(
             matched=matched,
             matched_origin=matched_origin,
-            arg_types=display_arg_types,
-            enriched_types=enriched_types,
-            kwarg_types=display_kwarg_types or None,
+            typed=display,
+            enriched=enriched_source(display, src, pool_for_enrich),
             contextual_callable_used=contextual_callable_used,
             first_contextual_error=first_contextual_error,
         )
@@ -5228,14 +5237,12 @@ class CallAnalyzer:
         func: FunctionInfo,
         fn_slots: list[SuppliedFnSlot],
         *,
-        baseline_pos: list[TpyType | None],
-        baseline_kw: dict[str, TpyType],
+        baseline: 'dict[int | str, TpyType]',
         explicit_type_args: tuple[TpyType, ...] | None,
         resolve_pending_view: bool,
     ) -> tuple[
         FunctionInfo,                                # substituted candidate
-        list[TpyType],                               # arg_types
-        dict[str, TpyType],                          # kwarg_types
+        CallSource,                                  # argument types
         tuple[FunctionInfo, dict[str, TpyType]] | None,  # origin
     ] | None:
         """Build per-candidate evidence for Regime C scoring.
@@ -5247,49 +5254,36 @@ class CallAnalyzer:
         function-ref dry match -- caller stashes and treats as
         candidate rejection.
         """
+        bound = bind(src, func.params, func.name)
+        if isinstance(bound, BindReject):
+            return None
         # Reject early when this candidate would need a non-Fn-slot
         # arg whose baseline analysis failed (saved_unhinted_error path).
-        # After this check every non-Fn-slot position has a real
-        # baseline type; Fn-slot positions are filled below.
-        fn_slot_pos_indices = {s.arg_index for s in fn_slots if s.arg_index is not None}
-        fn_slot_kw_names = {s.kwarg_name for s in fn_slots if s.kwarg_name is not None}
-        for i in range(len(src.positional)):
-            if i not in fn_slot_pos_indices and baseline_pos[i] is None:
-                return None
-        # Same check for kwargs: a non-Fn kwarg whose pre-analysis raised
-        # is absent from baseline_kw. Don't let inference run with a
-        # silently-missing kwarg type -- reject the candidate.
-        if src.keywords:
-            for kw_name, _ in src.keywords:
-                if kw_name in fn_slot_kw_names:
-                    continue
-                if kw_name not in baseline_kw:
-                    return None
+        # After this check every non-Fn-slot operand has a real
+        # baseline type; Fn-slot ones are filled below.
+        fn_ats = {s.at for s in fn_slots}
+        if any(at not in fn_ats and at not in baseline
+               for at in src.addresses):
+            return None
 
-        # Build arg_types -- non-Fn slots from baseline, Fn slots filled
-        # by the per-slot trial below. The placeholder for Fn slots is
-        # overwritten unconditionally before scoring.
-        arg_types: list[TpyType] = [
-            baseline_pos[i] if i not in fn_slot_pos_indices else VOID
-            for i in range(len(src.positional))
-        ]
-        kwarg_types: dict[str, TpyType] = dict(baseline_kw)
+        # Non-Fn operands from the baseline, Fn ones filled by the per-slot
+        # trial below (the placeholder is overwritten before scoring).
+        types: dict[int | str, TpyType] = {
+            at: (VOID if at in fn_ats else baseline[at])
+            for at in src.addresses}
 
         # Partial inference from already-typed args (non-Fn slots only,
-        # so the inference reflects what non-callable args determine).
+        # so the inference reflects what non-callable args determine),
+        # each at the parameter the candidate's binding gives it.
         partial_inferred: dict[str, TpyType] = {}
         if func.is_generic():
-            for i, ((_, ptype), arg_type) in enumerate(zip(func.params, arg_types)):
-                if i in fn_slot_pos_indices:
-                    continue  # Fn slot placeholder; filled below
-                self.type_ops.match_type_with_inference(ptype, arg_type, partial_inferred)
-            for kw_name, kw_t in kwarg_types.items():
-                if kw_name in fn_slot_kw_names:
-                    continue  # Fn slot; defer
-                idx = next((i for i, p in enumerate(func.params) if p.name == kw_name), None)
-                if idx is None:
+            for i, at in bound.addresses():
+                ptype = operand_param_type(func.params[i])
+                # A parameter naming no type parameter is no evidence.
+                if at in fn_ats or not contains_type_param(ptype):
                     continue
-                self.type_ops.match_type_with_inference(func.params[idx].type, kw_t, partial_inferred)
+                self.type_ops.match_type_with_inference(ptype, types[at],
+                                                        partial_inferred)
             # Resolve literal markers -> concrete, PendingView -> owned (mirrors
             # _infer_arg_types' resolution step).
             for k, v in list(partial_inferred.items()):
@@ -5305,9 +5299,13 @@ class CallAnalyzer:
                     if func.is_generic() else ptype)
             if not is_callable_type(hint):
                 return None
-            if any(contains_type_param(p) for p in hint.param_types):
-                # V1 limit: hint param types still have unresolved TPRs.
-                # No way to validate the lambda/ref against this slot.
+            # V1 limit: hint param types still name the callee's own
+            # unresolved type params -- no way to validate the lambda/ref
+            # against this slot. An enclosing scope's type param is a real
+            # in-scope type, as Regime B takes it.
+            unresolved = set(func.type_params) - set(partial_inferred)
+            if any(contains_type_param(p, unresolved)
+                   for p in hint.param_types):
                 return None
 
             arg = slot.arg_expr
@@ -5354,31 +5352,17 @@ class CallAnalyzer:
                 slot_type = self.expr.build_concrete_callable(fi, type_args, hint)
             else:
                 # Pre-analyzed at baseline (variable / arbitrary expr).
-                # If pre-analysis failed (baseline is None), reject.
-                if slot.arg_index is not None:
-                    if baseline_pos[slot.arg_index] is None:
-                        return None
-                    slot_type = baseline_pos[slot.arg_index]
-                else:
-                    if slot.kwarg_name not in baseline_kw:
-                        return None
-                    slot_type = baseline_kw[slot.kwarg_name]
+                # If pre-analysis failed (no baseline), reject.
+                if slot.at not in baseline:
+                    return None
+                slot_type = baseline[slot.at]
+            types[slot.at] = slot_type
 
-            if slot.arg_index is not None:
-                arg_types[slot.arg_index] = slot_type
-            else:
-                kwarg_types[slot.kwarg_name] = slot_type
-
+        typed = src.mapped(lambda at, _: types[at])
         # Run full inference on the candidate, each argument's type at the
         # parameter the candidate's binding gives it.
         if func.is_generic():
-            bound = bind(src, func.params, func.name)
-            if isinstance(bound, BindReject):
-                return None
-            # The binding read over the arguments' types instead of nodes.
-            evidence = bound.evidence(CallSource(
-                tuple(arg_types),
-                tuple((k, kwarg_types[k]) for k, _ in src.keywords)))
+            evidence = bound.evidence(typed)
             type_subst = self.type_ops.infer_type_params_for_function(
                 func, [t for _, t in evidence], self.protocols.satisfies_bound,
                 expected_return_type=self.expr.slot_hint_for(expr),
@@ -5397,7 +5381,7 @@ class CallAnalyzer:
             substituted = func
             origin = None
 
-        return substituted, arg_types, kwarg_types, origin
+        return substituted, typed, origin
 
     def _return_tpr_pinnable_from_context(
         self, func: FunctionInfo, return_tpr: TypeParamRef,
@@ -5458,13 +5442,11 @@ class CallAnalyzer:
 
     def _viable_candidates(self, expr: TpyCall,
                            candidates: list[FunctionInfo]) -> list[FunctionInfo]:
-        """The candidates the shape of call `expr`, as written, leaves:
-        its argument count and keyword names."""
+        """The candidates the call `expr`, as written, binds to."""
         if len(candidates) == 1:
             return candidates
-        written = source_view(expr, peel=False)
-        return [f for f in candidates
-                if self._supplied_fn_slots(written, f) is not None]
+        shape = shape_of(source_view(expr, peel=False))
+        return [f for f in candidates if shape.binding(f) is not None]
 
     @contextmanager
     def _adaptive_list_args(self, expr: TpyCall, viable: list[FunctionInfo]
@@ -5499,7 +5481,7 @@ class CallAnalyzer:
         call's committed slot (`SemanticContext.slot_step_commits`): a
         probe's parameter is not the one that decides it."""
         scope = OpenCallArgs(nodes, resolved=not scored, scored=scored,
-                             keywords=dict(source_view(use).keywords),
+                             source=source_view(use),
                              candidates=list(candidates or ()))
         self.ctx.open_call_args.append(scope)
         try:
@@ -5513,22 +5495,6 @@ class CallAnalyzer:
             self.pend.settle(open_cells, use=use,
                              what=f"an argument to '{name}()'")
             self.pend.resolve_ready()
-
-    @staticmethod
-    def _param_resolved(scope: OpenCallArgs, node: TpyExpr,
-                        args: list[TpyExpr], declared: FunctionInfo) -> bool:
-        """Whether the parameter of `declared` that receives argument
-        `node` (positional in `args`, or a keyword of `scope`) is one the
-        call resolves (`call_resolves_param`)."""
-        index = next((i for i, a in enumerate(args) if a is node), None)
-        if index is None:
-            name = next((k for k, v in scope.keywords.items() if v is node),
-                        None)
-            index = next((i for i, p in enumerate(declared.params)
-                          if p.name == name), None)
-        else:
-            index = positional_param_index(declared.params, index)
-        return index is not None and call_resolves_param(declared, index)
 
     def step_commits(self, call: 'TpyExpr | TpyStmt | None') -> bool:
         """Whether the step of `call` -- its commit, its receive -- writes
@@ -5554,40 +5520,28 @@ class CallAnalyzer:
             return self.pend.known_type(inner)
         return [ranked(t) for t in arg_types]
 
-    def probe_kwargs(self, kwargs: 'dict[str, TpyExpr]',
-                     overloads: list[FunctionInfo],
-                     shape: CallShape) -> dict[str, TpyType]:
-        """The keyword arguments of a call of `shape` to several
-        `overloads`, typed for the ranking as its positional ones are
-        (`probe_arg`)."""
-        named = [p.type for f in overloads for p in f.params]
-        with self.ctx.probe_slot_scope(True):
-            return {k: self.ranked_arg_types(
-                        [self.probe_arg(v, overloads, shape, k)], named)[0]
-                    for k, v in kwargs.items()}
-
     def probe_arg(self, arg: TpyExpr, overloads: list[FunctionInfo],
                   shape: CallShape, at: int | str,
                   hint: 'SlotHint | TpyType | None' = None) -> TpyType:
         """Argument `arg` of a call of `shape` to the overload set
-        `overloads` -- the call's whole set -- passed at parameter `at` (a
-        position, or a keyword's name), analyzed for the ranking. Where its
-        width cannot pick the variant (`number_arg_stays_open`) a pending
-        number passes the probe open (`ranked_arg_types` ranks it at the
-        type its cells have so far) and the winner's parameter receives
-        it; elsewhere the use fixes it."""
+        `overloads` -- the call's whole set -- written at `at` (a position,
+        or a keyword's name), analyzed for the ranking. Where its width
+        cannot pick the variant (`number_arg_stays_open`) a pending number
+        passes the probe open (`ranked_arg_types` ranks it at the type its
+        cells have so far) and the winner's parameter receives it; elsewhere
+        the use fixes it."""
         stays_open = self.number_arg_stays_open(overloads, shape, at)
         with self.pend.sink(arg if stays_open else None):
             return self.expr.analyze_call_arg(arg, hint)
 
     def number_arg_stays_open(self, overloads: list[FunctionInfo],
                               shape: CallShape, at: int | str) -> bool:
-        """Whether a pending number passed at parameter `at` (a position,
-        or a keyword's name) of a call of `shape` to `overloads` stays
-        open: its width cannot change which variant wins. That holds when
-        every variant taking that shape (`admitted_overloads` with nothing
-        known) that an integer can be passed to there
-        (`CallRanking.admits`) declares one parameter type
+        """Whether a pending number written at `at` (a position, or a
+        keyword's name) of a call of `shape` to `overloads` stays open: its
+        width cannot change which variant wins. That holds when every
+        variant taking that shape (`admitted_overloads` with nothing known)
+        that an integer can be passed to at the parameter the argument binds
+        there (`CallRanking.admits`) declares one parameter type
         (`shared_param_type`) a pending number converts into
         (`receives_pending`) -- the rule an argument to one callee follows
         (`ExpressionAnalyzer.analyze_arg_at_param`). The other arguments'
@@ -5597,9 +5551,9 @@ class CallAnalyzer:
         ranking = self.ranking()
         takers = [f for f in self.admitted_overloads(overloads, shape, {})
                   if f.has_variadic or (
-                      (p := param_type_at(f, at)) is not None
+                      (p := shape.param_type(f, at)) is not None
                       and ranking.admits(IntLiteralType(), p))]
-        return receives_pending(self.shared_param_type(takers, at))
+        return receives_pending(self.shared_param_type(takers, at, shape))
 
     def ranking(self) -> CallRanking:
         """The checkers every overloaded call ranks its set with."""
@@ -5607,49 +5561,58 @@ class CallAnalyzer:
                             self.compat)
 
     def admitted_overloads(self, overloads: list[FunctionInfo],
-                           shape: CallShape, known: 'dict[int, TpyType]', *,
+                           shape: CallShape,
+                           known: 'dict[int | str, TpyType]', *,
                            twins_as_one: bool = True,
                            ) -> list[FunctionInfo]:
-        """The overloads taking a call of `shape` (its arity, each keyword
-        by name) that each argument known so far (`known`, by position)
-        can be passed to (`CallRanking.admits`), an `@auto_readonly` twin
-        pair as one unless `twins_as_one` is off: a FILTER, never a
-        ranking -- a variant only a conversion of a known argument reaches
-        stays beside a closer one, and the complete call is ranked once
-        every argument is typed."""
+        """The overloads a call of `shape` binds to (`bind`) that each
+        argument known so far (`known`, by where it is written) can be
+        passed to at the parameter it binds (`CallRanking.admits`), an
+        `@auto_readonly` twin pair as one unless `twins_as_one` is off: a
+        FILTER, never a ranking -- a variant only a conversion of a known
+        argument reaches stays beside a closer one, and the complete call
+        is ranked once every argument is typed."""
         ranking = self.ranking()
         # A pending number is passed at the type its cells have so far.
-        types = {i: self.pend.known_type(t) for i, t in known.items()}
-        arity = shape.arity
-        admitted = [
-            f for f in overloads
-            if shape.names_keywords(f) and (
-                f.has_variadic or (f.min_args <= arity <= f.max_args
-                                   and all(ranking.admits(t, f.params[i].type)
-                                           for i, t in types.items())))]
+        types = {at: self.pend.known_type(t) for at, t in known.items()}
+        admitted = []
+        for f in overloads:
+            bound = shape.binding(f)
+            if bound is None:
+                continue
+            if not f.has_variadic and not all(
+                    ranking.admits(t, f.params[i].type)
+                    for at, t in types.items()
+                    if (i := bound.param_at(at)) is not None
+                    and not f.params[i].is_kwargs):
+                continue
+            admitted.append(f)
         return without_mutable_twins(admitted) if twins_as_one else admitted
 
     def rank_method_call(
             self, name: str, views: list[FunctionInfo],
-            arg_types: list[TpyType], args: 'list[TpyExpr | None]',
+            arg_types: 'CallSource | list[TpyType]',
+            args: 'CallSource | list[TpyExpr | None]',
             loc: 'TpyExpr | TpyStmt', *, readonly_receiver: bool,
             consuming_receiver: bool = False,
-            kwarg_types: 'dict[str, TpyType] | None' = None,
     ) -> tuple[FunctionInfo | None, bool]:
-        """The variant of an overloaded method a call with `arg_types`
-        runs (`views`, substituted at the receiver), ranked over the
-        complete call with the receiver's kind as the first component --
-        the explicit `xs.m(a)` and the dunder call a subscript is alike --
-        and whether the call passes the receiver const so C++ runs it
+        """The variant of an overloaded method a call with `arg_types` (as
+        written: positionals and keywords; a list is positionals) runs
+        (`views`, substituted at the receiver), ranked over the complete
+        call with the receiver's kind as the first component -- the
+        explicit `xs.m(a)` and the dunder call a subscript is alike -- and
+        whether the call passes the receiver const so C++ runs it
         (`pins_const_receiver`); None when no variant takes the call. A tie
-        at the top is the call's ambiguity error at `loc`."""
-        exprs = list(args) + [None] * (len(arg_types) - len(args))
-        enriched = _enrich_literal_types(arg_types, exprs, views)
+        at the top is the call's ambiguity error at `loc`. `args`: the
+        operands as written, by which a literal ranks as itself."""
+        typed = typed_source(arg_types)
+        src = (args if isinstance(args, CallSource) else CallSource(
+            tuple(args) + (None,) * (len(typed.positional) - len(args))))
+        enriched = enriched_source(typed, src, views)
         try:
             winner = self.ranking().resolve(
                 views, enriched, is_readonly_receiver=readonly_receiver,
-                is_consuming_receiver=consuming_receiver,
-                kwarg_types=kwarg_types)
+                is_consuming_receiver=consuming_receiver)
         except OverloadAmbiguityError as e:
             raise self.ctx.error(self.compat.ambiguous_overload_text(
                 name, e.candidates), loc)
@@ -5657,102 +5620,165 @@ class CallAnalyzer:
             winner, views, readonly_receiver))
 
     def no_match_hint(self, views: list[FunctionInfo],
-                      arg_types: list[TpyType],
-                      args: 'list[TpyExpr | None]') -> str:
+                      arg_types: CallSource, args: CallSource) -> str:
         """What a "No matching overload" message adds: when every variant
-        taking the call's arity fails at the same one argument, a
-        literal-seeded local, the annotation (or conversion) that types it
-        as the parameter there (`PendingNums.annotation_hint`) -- given
-        when the variants it applies to declare one type there."""
+        the call binds to fails at the same one argument, a literal-seeded
+        local, the annotation (or conversion) that types it as the
+        parameter there (`PendingNums.annotation_hint`) -- given when the
+        variants it applies to declare one type there."""
         ranking = self.ranking()
-        n = len(arg_types)
-        cands = [f for f in views
-                 if not f.has_variadic and f.min_args <= n <= f.max_args]
-        failing = {tuple(j for j, t in enumerate(arg_types)
-                         if not ranking.admits(self.pend.known_type(t),
-                                               f.params[j].type))
-                   for f in cands}
+        shape = shape_of(arg_types)
+        cands = [(f, b) for f in views if not f.has_variadic
+                 and (b := shape.binding(f)) is not None]
+        failing = {tuple(at for at in arg_types.addresses
+                         if (i := b.param_at(at)) is not None
+                         and not f.params[i].is_kwargs
+                         and not ranking.admits(
+                             self.pend.known_type(arg_types.at(at)),
+                             f.params[i].type))
+                   for f, b in cands}
         if len(failing) != 1:
             return ""
         only = failing.pop()
-        if len(only) != 1 or only[0] >= len(args):
+        if len(only) != 1:
             return ""
-        arg = args[only[0]]
+        at = only[0]
+        arg = args.at(at) if (isinstance(at, str) or at < len(args.positional)) else None
         if not isinstance(arg, TpyName):
             return ""
         hints = {h for h in (self.pend.annotation_hint(
-                     arg.name, f.params[only[0]].type) for f in cands) if h}
+                     arg.name, f.params[b.param_at(at)].type)
+                     for f, b in cands) if h}
         return hints.pop() if len(hints) == 1 else ""
 
     def raise_no_match(self, name: str, views: list[FunctionInfo],
-                       arg_types: list[TpyType],
-                       args: 'list[TpyExpr | None]',
+                       arg_types: 'CallSource | list[TpyType]',
+                       args: 'CallSource | list[TpyExpr | None]',
                        loc: 'TpyExpr | TpyStmt',
-                       arg_texts: 'list[str] | None' = None) -> NoReturn:
-        """The error of an overloaded call no variant of `views` takes:
-        the argument types as the call has them (`arg_texts` where an
-        argument is named by its spelling instead), and what types a
-        literal-seeded local the variants refuse (`no_match_hint`)."""
-        texts = (arg_texts if arg_texts is not None
-                 else [self.compat.call_type_text(t) for t in arg_types])
-        hint = self.no_match_hint(views, arg_types, args)
-        raise self.ctx.error(
-            f"No matching overload for '{name}' with argument types "
-            f"({', '.join(texts)}){hint}", loc)
+                       arg_texts: 'list[str] | None' = None, *,
+                       constructed: RecordInfo | None = None) -> NoReturn:
+        """The error of an overloaded call no variant of `views` takes. When
+        the call's arguments bind to none of them, all for one reason, that
+        reason (`bind`'s); else the argument types as the call has them,
+        each keyword by its name (`arg_texts` where a positional is named by
+        its spelling instead), and what types a literal-seeded local the
+        variants refuse (`no_match_hint`). `constructed`: the type the call
+        constructs, whose constructor may read keywords as entries."""
+        typed = typed_source(arg_types)
+        src = (args if isinstance(args, CallSource) else CallSource(
+            tuple(args) + (None,) * (len(typed.positional) - len(args)),
+            tuple((k, None) for k, _ in typed.keywords)))
+        rejects = [bind(typed, f.params, name) for f in views]
+        reasons = {r.message for r in rejects if isinstance(r, BindReject)}
+        refused = bool(views) and all(isinstance(r, BindReject)
+                                      for r in rejects)
+        td = (get_type_def(constructed.builtin_type_key)
+              if constructed is not None and constructed.builtin_type_key
+              else None)
+        if (refused and td is not None and td.ctor_keywords_are_entries
+                and (typed.keywords or typed.double_star is not None)):
+            # CPython builds `{'x': 1}` from `dict(x=1)`: no parameter of
+            # the stub is what the keyword names.
+            raise self.ctx.error(
+                f"keyword arguments to {name}() are not supported; write a "
+                f"{name} literal", loc)
+        if refused and len(reasons) == 1:
+            raise self.ctx.error(reasons.pop(), loc)
+        texts = (list(arg_texts) if arg_texts is not None
+                 else [self.compat.call_type_text(t) for t in typed.positional])
+        texts += [f"{k}={self.compat.call_type_text(t)}"
+                  for k, t in typed.keywords]
+        head = (f"No matching overload for '{name}' with argument types "
+                f"({', '.join(texts)})")
+        if refused:
+            # Each variant names itself by its parameter types, so the
+            # reason it gives is told apart from its siblings'.
+            lines = list(dict.fromkeys(
+                bind(typed, f.params, self._variant_text(name, f)).message
+                for f in views))
+            raise self.ctx.error(
+                "\n".join([head] + [f"  {line}" for line in lines]), loc)
+        hint = self.no_match_hint(views, typed, src)
+        raise self.ctx.error(f"{head}{hint}", loc)
+
+    def _variant_text(self, name: str, variant: FunctionInfo) -> str:
+        """One overload variant of `name` as a diagnostic lists it: its
+        parameter types, `/` and `*` where it has them."""
+        parts: list[str] = []
+        params = variant.params
+        for i, p in enumerate(params):
+            if (p.keyword_only and not p.is_kwargs
+                    and (i == 0 or not params[i - 1].keyword_only)
+                    and not any(q.is_variadic for q in params[:i])):
+                parts.append("*")
+            text = self.compat.call_type_text(p.type)
+            parts.append(f"*{p.name}" if p.is_variadic
+                         else f"**{p.name}" if p.is_kwargs
+                         else f"{p.name}: {text}")
+            if p.positional_only and (i + 1 == len(params)
+                                      or not params[i + 1].positional_only):
+                parts.append("/")
+        return f"{name}({', '.join(parts)})"
 
     @staticmethod
     def shared_param_type(survivors: list[FunctionInfo],
-                          index: int | str) -> TpyType | None:
-        """The parameter type at `index` (a position, or a keyword's name)
-        every survivor declares, when they agree (a variadic one, or one
-        without that parameter, agrees with nothing); None otherwise -- no
-        survivor's hint is borrowed for the others."""
+                          at: int | str, shape: CallShape) -> TpyType | None:
+        """The type of the parameter the argument written at `at` (a
+        position, or a keyword's name) of a call of `shape` binds, when every
+        survivor declares one there and they agree (a variadic survivor, or
+        one it binds no parameter of, agrees with nothing); None otherwise
+        -- no survivor's hint is borrowed for the others."""
         if not survivors or any(f.has_variadic for f in survivors):
             return None
-        types = {param_type_at(f, index) for f in survivors}
+        types = {shape.param_type(f, at) for f in survivors}
         return types.pop() if len(types) == 1 and None not in types else None
 
-    def probe_overload_args(self, call: TpyExpr, args: list[TpyExpr],
+    def probe_overload_args(self, call: TpyExpr, src: CallSource,
                             overloads: list[FunctionInfo],
-                            known: 'dict[int, TpyType] | None' = None,
-                            ) -> tuple[list[TpyType], list[TpyType]]:
-        """The arguments of a call to several overloads, typed for the
-        ranking; `known` holds those analyzed already. An argument its
-        context types (a lambda, a function named as a value, a container
-        literal or comprehension) is analyzed last, at the parameter type
-        every variant the other arguments admit declares there
+                            known: 'dict[int | str, TpyType] | None' = None,
+                            ) -> tuple[CallSource, CallSource]:
+        """The arguments of a call written with `src` to several overloads,
+        typed for the ranking, keywords as positionals; `known` holds those
+        analyzed already, by where they are written. An argument its context
+        types (a lambda, a function named as a value, a container literal or
+        comprehension) is analyzed last, at the type of the parameter it
+        binds on every variant the other arguments admit
         (`admitted_overloads`, `shared_param_type`) -- unhinted when they
         disagree, never at one survivor's. Returns the arguments' types and
         the types the ranking takes them at (`ranked_arg_types`,
-        `ranked_at_slot`)."""
+        `ranked_at_slot`), each a source of types."""
         known = dict(known or {})
         named = [p.type for f in overloads for p in f.params]
         ranked = dict(zip(known, self.ranked_arg_types(
             list(known.values()), named)))
-        contextual = [i for i, a in enumerate(args) if i not in known
-                      and self.context_typed(a)]
-        if not known and not contextual:
-            types = self._probe_candidate_args(call, args, overloads)
-            return types, list(types)
+        contextual = [at for at in src.addresses if at not in known
+                      and self.context_typed(src.at(at))]
+        shape = shape_of(src)
+        if not known and not any(isinstance(at, int) for at in contextual):
+            for i, t in enumerate(self._probe_candidate_args(
+                    call, list(src.positional), overloads)):
+                known[i] = ranked[i] = t
         # The probe's slot decides types only: the winner's receive is
         # where each argument commits (`receive_winner_args`).
-        shape = call_shape(call, args)
         with self.ctx.probe_slot_scope(True):
-            for i, arg in enumerate(args):
-                if i not in known and i not in contextual:
-                    known[i] = ranked[i] = self.ranked_arg_types(
-                        [self.probe_arg(arg, overloads, shape, i)], named)[0]
-            survivors = self.admitted_overloads(overloads, shape, known)
-            for i in contextual:
-                hint = self.shared_param_type(survivors, i)
-                if hint is None:
-                    known[i] = ranked[i] = self.expr.analyze_call_arg(args[i])
+            for at in src.addresses:
+                if at not in known and at not in contextual:
+                    known[at] = ranked[at] = self.ranked_arg_types(
+                        [self.probe_arg(src.at(at), overloads, shape, at)],
+                        named)[0]
+            survivors = (self.admitted_overloads(overloads, shape, known)
+                         if contextual else [])
+            for at in contextual:
+                arg = src.at(at)
+                hint = self.shared_param_type(survivors, at, shape)
+                # A parameter naming a type parameter is no type to hint.
+                if hint is None or contains_type_param(hint):
+                    known[at] = ranked[at] = self.expr.analyze_call_arg(arg)
                     continue
-                known[i] = self.expr.analyze_arg_at_param(args[i], hint,
-                                                          hint)
-                ranked[i] = self.ranked_at_slot(known[i], hint)
-        return ([known[i] for i in range(len(args))],
-                [ranked[i] for i in range(len(args))])
+                known[at] = self.expr.analyze_arg_at_param(arg, hint, hint)
+                ranked[at] = self.ranked_at_slot(known[at], hint)
+        return (src.mapped(lambda at, _: known[at]),
+                src.mapped(lambda at, _: ranked[at]))
 
     def context_typed(self, arg: TpyExpr) -> bool:
         """Whether argument `arg`'s type is given by its context: a lambda,
@@ -5786,6 +5812,7 @@ class CallAnalyzer:
                             own_checks: bool = True,
                             contexts: 'list[str] | None' = None,
                             inferred_slots: 'Mapping[int, InferredSlot] | None' = None,
+                            param_indices: 'Sequence[int] | None' = None,
                             ) -> list[TpyType]:
         """The one receive step every winner and commit runs: each argument
         of `args` re-enters through the analysis entry rule at its
@@ -5834,7 +5861,9 @@ class CallAnalyzer:
         subscript's key); a None entry keeps the parameter's name.
         `inferred_slots` maps an argument position to the parameter typed by
         a type argument an earlier call inferred (`coerce_expr`'s
-        `inferred_slot`).
+        `inferred_slot`). `param_indices[i]`: the parameter of `declared`
+        argument `i` binds (its binding's), which says whether the call
+        resolves it -- given wherever `scope` scored the call.
         Returns the argument types received."""
         probing = not self.step_commits(call)
         # A callee Phase 2 inferred const may still write its argument
@@ -5850,8 +5879,9 @@ class CallAnalyzer:
                      and i < len(arg_types) else None)
             at_declared = (given is None and scope is not None
                            and scope.scored and declared is not None
-                           and not self._param_resolved(scope, arg, args,
-                                                        declared))
+                           and not (param_indices is not None
+                                    and call_resolves_param(
+                                        declared, param_indices[i])))
             saved = scope.receiving if scope is not None else None
             if at_declared:
                 scope.release(arg)
@@ -5879,38 +5909,41 @@ class CallAnalyzer:
             matched: FunctionInfo, declared: FunctionInfo | None,
             subst: 'dict[str, TpyType | int]', name: str, *,
             builtin_form: bool = False,
-            feeds: 'tuple[list[ParamInfo], list[TpyType]] | None' = None,
-    ) -> None:
+            feeds: 'tuple[list[ParamInfo], CallSource] | None' = None,
+    ) -> ArgBinding:
         """Commit the winner `matched` (as `declared`) of an overload
         ranking of call `expr` to `name`: bind the call as written to it,
         receive each written argument at the parameter it binds (`scope`,
         the call's open arguments), and lay the call out with the received
-        operands at the type arguments `subst` (`commit_args`). `feeds`:
-        the generic declaration's params and the ranked argument types,
-        for `check_own_callback_feeds`."""
+        operands, and its `**kwargs` region, at the type arguments `subst`
+        (`commit_args`). `feeds`: the generic declaration's params and the
+        ranked argument types as written, for `check_own_callback_feeds`.
+        Returns the binding."""
         written = source_view(expr)
         binding = self.bind_args(expr, matched.params, name, src=written)
         evidence = binding.evidence(written)
         operands = [a for _, a in evidence]
+        fed: dict[int, TpyType] = {}
         if feeds is not None:
-            self.check_own_callback_feeds(expr, feeds[0], operands, feeds[1])
+            decl, typed = feeds
+            fed = self.check_own_callback_feeds(
+                [(i, decl[i], a, t) for (i, a), (_, t)
+                 in zip(evidence, binding.evidence(typed))])
         self.receive_winner_args(scope, operands, None,
                                  [matched.params[i] for i, _ in evidence],
                                  declared, call=expr,
-                                 builtin_form=builtin_form)
+                                 builtin_form=builtin_form,
+                                 param_indices=[i for i, _ in evidence])
+        kwargs_arg = self.kwargs_region_arg(expr, matched, binding, name)
         self.commit_args(expr, matched, binding, subst, analyze=True,
+                         kwargs_arg=kwargs_arg,
                          src=binding.received(written, operands))
-
-    def reject_unaccepted_keyword(self, expr: 'TpyCall | TpyMethodCall',
-                                  name: str, overloads: list[FunctionInfo],
-                                  keywords: Iterable[str]) -> None:
-        """Reject call `expr` to the overload group `overloads` of `name`
-        when one of its `keywords` names no parameter of any of them."""
-        accepted = {p.name for o in overloads for p in o.params}
-        for k in keywords:
-            if k not in accepted:
-                raise self.ctx.error(
-                    f"'{name}' got unexpected keyword argument '{k}'", expr)
+        if fed and committed(expr):
+            # The lowering reads each by where the layout puts its argument.
+            at = expr.binding.at
+            self.ctx.own_callback_feeds[expr] = {
+                at[i]: slot for i, slot in fed.items() if at[i] is not None}
+        return binding
 
     def _receive_arg(self, i: int, args: list[TpyExpr],
                      given: TpyType | None,
@@ -6009,22 +6042,17 @@ class CallAnalyzer:
         Uses two-pass overload resolution: prefer exact type matches over coercion matches.
         For generic overloads (with type_params), uses type inference.
         """
-        # Counted on the call as written: placed by position, `key=` and
-        # `reverse=` would read as one another.
         viable = self._viable_candidates(expr, overloads)
-        key_arg, placed = self._placed_key_kwargs(expr, overloads[0].name)
-        src = placed if placed is not None else source_view(expr, peel=False)
+        src = source_view(expr, peel=False)
         with self._adaptive_list_args(expr, viable) as scope:
-            return self._builtin_function_overloads(expr, overloads, key_arg,
-                                                    src, scope)
+            return self._builtin_function_overloads(expr, overloads, src,
+                                                    scope)
 
     def _builtin_function_overloads(self, expr: TpyCall,
                                     overloads: list[FunctionInfo],
-                                    key_arg: TpyExpr | None,
                                     src: CallSource,
                                     scope: OpenCallArgs | None) -> TpyType:
-        """`src`: the arguments, keywords placed by position."""
-        self._reject_kwargs_for_builtin(expr, overloads[0].name, src)
+        """`src`: the arguments as written."""
         protocol_checker = self.protocols.type_conforms_to_protocol
 
         # Validate explicit type args before generic inference
@@ -6063,18 +6091,21 @@ class CallAnalyzer:
             subst: dict[str, TpyType | int] = {}
             if result.matched_origin is not None:
                 overload, type_subst = result.matched_origin
-                feeds = (overload.params,
-                         [unwrap_own(unwrap_ref_type(t)) for t in arg_types])
+                feeds = (overload.params, result.typed.mapped(
+                    lambda _, t: unwrap_own(unwrap_ref_type(t))))
                 self.expr.set_step_route(expr, GenericCallRoute(builtin=True))
                 expr.inferred_type_args = tuple(
                     self._resolve_inferred_type_arg(type_subst[p])
                     for p in overload.type_params)
                 subst = dict(zip(overload.type_params,
                                  expr.inferred_type_args))
-            self.commit_overload_winner(expr, scope, matched, result.declared,
-                                        subst, expr.func_name,
-                                        builtin_form=True, feeds=feeds)
-            self._mark_key_lambda(key_arg)
+            binding = self.commit_overload_winner(
+                expr, scope, matched, result.declared, subst, expr.func_name,
+                builtin_form=True, feeds=feeds)
+            key = next((i for i, p in enumerate(matched.params)
+                        if p.name == "key"), None)
+            self._mark_key_lambda(binding.expr(key, src)
+                                  if key is not None else None)
             if result.matched_origin is not None:
                 expr.representational_subst_params = (
                     self.type_ops.compute_representational_subst_params(
@@ -6152,26 +6183,35 @@ class CallAnalyzer:
         # no candidate took has only a placeholder type here: it is named by
         # its spelling, and a candidate whose slot there takes no callable
         # cannot be what the call meant, so it says nothing about the others.
-        placeholder = ({i for i, a in enumerate(src.positional)
-                        if self._is_contextual_fn_arg(a)
-                        and i < len(arg_types) and isinstance(arg_types[i], AnyType)}
+        typed = result.typed
+        placeholder = ({at for at in src.addresses
+                        if self._is_contextual_fn_arg(src.at(at))
+                        and isinstance(typed.at(at), AnyType)}
                        if result.contextual_callable_used else set())
         arg_texts = [
             (src.positional[i].name if isinstance(src.positional[i], TpyName)
              else "lambda")
             if i in placeholder else self.compat.call_type_text(t)
             for i, t in enumerate(arg_types)]
-        arg_type_strs = ", ".join(arg_texts)
+        arg_type_strs = ", ".join(
+            arg_texts + [f"{k}={self.compat.call_type_text(t)}"
+                         for k, t in typed.keywords])
+        shape = shape_of(src)
 
-        def shape_candidates() -> Iterator[FunctionInfo]:
+        def shape_candidates() -> Iterator[
+                tuple[FunctionInfo, list[tuple[int, int | str]]]]:
+            """Each generic overload the call binds to, with where it binds
+            each argument."""
             for overload in generic:
-                if not (overload.min_args <= len(arg_types) <= overload.max_args):
+                bound = shape.binding(overload)
+                if bound is None:
                     continue
-                if any(i < len(overload.params)
+                addressed = bound.addresses()
+                if any(at in placeholder
                        and not _is_fn_slot_param(overload.params[i].type)
-                       for i in placeholder):
+                       for i, at in addressed):
                     continue
-                yield overload
+                yield overload, addressed
 
         # Check for bound violations on generic overloads (give specific error).
         # Skip type args that resolved to UnknownElementType -- the only signal
@@ -6182,17 +6222,18 @@ class CallAnalyzer:
         # only when EVERY candidate the arguments fit was refused for one.
         bound_failures: list[tuple[TpyType, TpyType]] = []
         bound_free_fit = False
-        for overload in shape_candidates():
+        for overload, addressed in shape_candidates():
             inferred: dict[str, TpyType] = {}
             if explicit:
                 for tp, ta in zip(overload.type_params, explicit):
                     inferred[tp] = ta
             # Only an overload every argument fits in shape is refused FOR its
             # bound; one the arguments do not fit says nothing about them.
-            if not all(i in placeholder
-                       or self.type_ops.match_type_with_inference(ptype, arg_t, inferred)
-                       for i, ((_, ptype), arg_t)
-                       in enumerate(zip(overload.params, arg_types))):
+            if not all(at in placeholder
+                       or self.type_ops.match_type_with_inference(
+                           operand_param_type(overload.params[i]),
+                           typed.at(at), inferred)
+                       for i, at in addressed):
                 continue
             exp = self.expr.type_hint_for(expr)
             if exp and not inferred:
@@ -6224,13 +6265,15 @@ class CallAnalyzer:
             )
 
         # For generic overloads, check for conflicting type parameter inference
-        for overload in shape_candidates():
+        for overload, addressed in shape_candidates():
             partial: dict[str, TpyType] = {}
             conflict_param = None
-            for i, ((pname, ptype), arg_t) in enumerate(
-                    zip(overload.params, arg_types)):
-                if i in placeholder:
+            for i, at in addressed:
+                if at in placeholder:
                     continue
+                pname = overload.params[i].name
+                ptype = operand_param_type(overload.params[i])
+                arg_t = typed.at(at)
                 before = dict(partial)
                 if not self.type_ops.match_type_with_inference(ptype, arg_t, partial):
                     # Find which type param conflicted
@@ -6265,8 +6308,8 @@ class CallAnalyzer:
                         f"{expr.func_name}() requires a mutable pointer, got {arg_t}", expr
                     )
 
-        self.raise_no_match(expr.func_name, overloads, arg_types,
-                            list(src.positional), expr, arg_texts)
+        self.raise_no_match(expr.func_name, overloads, typed, src, expr,
+                            arg_texts)
 
     def _winner_past_ranking(
             self, expr: TpyCall, name: str, candidates: list[FunctionInfo],
@@ -6276,40 +6319,92 @@ class CallAnalyzer:
         when none takes it. `generic_ok`: the caller can commit a generic
         pick, inferring its type arguments.
 
-        The structural-match fallback keeps targeted diagnostics such as
-        unsafe_cast's "requires a type argument". It is skipped when the
-        ranking typed a lambda or function reference against a candidate's
-        callable parameter: matching that synthesized evidence again would
-        mislead, so the stashed per-candidate rejection is raised instead.
-        It runs while the arguments are still open, so its pick receives
-        them as the ranking's winner does."""
-        if not result.contextual_callable_used:
-            try:
-                # No `type_ops`: with it the generic candidates would be
-                # inferred again instead of matched structurally, which is
-                # this fallback's point. The pool already scored every
-                # non-generic candidate through the undecided-container arm;
-                # one it refused there and this match admits is refused
-                # again by the commit it gets.
-                matched = self.ranking()._replace(type_ops=None).resolve(
-                    candidates, result.enriched_types,
-                    kwarg_types=result.kwarg_types)
-            except OverloadAmbiguityError as e:
-                raise self._ambiguous_overload_error(expr, name, e)
-            if matched is not None:
-                return matched
+        A non-generic candidate the structural match takes comes first: the
+        pool scored it through the undecided-container arm, and one it
+        refused there is refused again by the commit it gets. Then the
+        generic candidates a trial commit validates, ranked at the
+        substitutions they validated with -- declaration order decides
+        nothing, a tie is the call's ambiguity. Last, the one generic
+        signature that takes the arguments by shape alone
+        (`structural_matches`), whose commit says why it does not take
+        them -- the targeted diagnostics such as unsafe_cast's "requires a
+        type argument". It is all skipped when the ranking typed a lambda
+        or function reference against a candidate's callable parameter:
+        matching that synthesized evidence again would mislead, so the
+        stashed per-candidate rejection is raised instead. It runs while
+        the arguments are still open, so its pick receives them as the
+        ranking's winner does."""
+        if result.contextual_callable_used:
+            if result.first_contextual_error is not None:
+                raise result.first_contextual_error
+            return None
+        try:
+            # No `type_ops`: the generic candidates are not ranked here.
+            matched = self.ranking()._replace(type_ops=None).resolve(
+                candidates, result.enriched)
+        except OverloadAmbiguityError as e:
+            raise self._ambiguous_overload_error(expr, name, e)
+        if matched is not None:
+            return matched
+        failed: list[SemanticError] = []
+        shaped = structural_matches(candidates, result.enriched)
+        if generic_ok:
+            validated: list[tuple[FunctionInfo, FunctionInfo]] = []
+            shaped_ids = {id(f) for f in shaped}
             for func in candidates:
-                if (generic_ok and func.is_generic()
-                        and self._validates(expr, func)):
-                    self.expr._peel_step_coercions(expr)
-                    return func
-        elif result.first_contextual_error is not None:
-            raise result.first_contextual_error
-        # A keyword no overload accepts is the most actionable cause; the
-        # caller's bare listing of argument types would omit it.
-        self.reject_unaccepted_keyword(expr, name, candidates,
-                                       result.kwarg_types or ())
+                if not func.is_generic():
+                    continue
+                found = self._validated(expr, func)
+                if isinstance(found, FunctionInfo):
+                    validated.append((func, found))
+                elif id(func) in shaped_ids:
+                    failed.append(found)
+            if len(validated) == 1:
+                return validated[0][0]
+            if validated:
+                try:
+                    pick = rank_overload_candidates(
+                        [OverloadCandidate(sub, result.enriched)
+                         for _, sub in validated], self.ranking())
+                except OverloadAmbiguityError as e:
+                    # Named as declared: two substitutions may read alike.
+                    declared = {id(sub): func for func, sub in validated}
+                    raise self._ambiguous_overload_error(
+                        expr, name, OverloadAmbiguityError(
+                            tuple(declared.get(id(c), c)
+                                  for c in e.candidates), e.converted))
+                if pick.winner is None:
+                    raise self._ambiguous_overload_error(
+                        expr, name, OverloadAmbiguityError(
+                            tuple(func for func, _ in validated)))
+                return validated[pick.winner][0]
+        if len({tuple(p.type for p in f.params) for f in shaped}) == 1:
+            return shaped[0]
+        # Every signature the arguments fit by shape refused them for one
+        # reason: that reason, whichever is tried first.
+        if failed and len(failed) == len(shaped) and len(
+                {e.message for e in failed}) == 1:
+            raise failed[0]
         return None
+
+    def _validated(self, expr: TpyCall,
+                   func: FunctionInfo) -> 'FunctionInfo | SemanticError':
+        """Generic candidate `func` at the substitution it takes call `expr`
+        with, else why it does not: checked at an overload probe's slot,
+        which decides types only, inside a trial that rolls back what the
+        check analyzed -- only the candidate picked is committed."""
+        saved = expr.resolved_function_info
+        try:
+            with self.ctx.trial_scope(), \
+                    self.ctx.probe_slot_scope(ProbeSlot.QUERY):
+                self._analyze_single_function_call(expr, func)
+                resolved = expr.resolved_function_info
+        except SemanticError as e:
+            return e
+        finally:
+            self.expr._peel_step_coercions(expr)
+            expr.resolved_function_info = saved
+        return resolved if resolved is not None else func
 
     def _analyze_user_function_call(
         self, expr: TpyCall, func_infos: list[FunctionInfo],
@@ -6349,24 +6444,9 @@ class CallAnalyzer:
                     expr, expr.func_name, func_infos, result, generic_ok=True)
                 if winner is not None:
                     return self._analyze_single_function_call(expr, winner)
-            self.raise_no_match(expr.func_name, func_infos, result.arg_types,
-                                list(source_view(expr).positional), expr)
+            self.raise_no_match(expr.func_name, func_infos, result.typed,
+                                source_view(expr), expr)
         return self._analyze_single_function_call(expr, func_infos[0])
-
-    def _validates(self, expr: TpyCall, func: FunctionInfo) -> bool:
-        """Whether generic candidate `func` takes call `expr`: checked at
-        an overload probe's slot, which decides types only, inside a trial
-        that rolls back what the check analyzed -- only the candidate that
-        passes is committed."""
-        try:
-            with self.ctx.trial_scope(), \
-                    self.ctx.probe_slot_scope(ProbeSlot.QUERY):
-                self._analyze_single_function_call(expr, func)
-        except SemanticError:
-            return False
-        finally:
-            self.expr._peel_step_coercions(expr)
-        return True
 
     def _marker_bound_note(
             self, type_arg: TpyType, bound: TpyType,
@@ -6577,10 +6657,12 @@ class CallAnalyzer:
             if isinstance(arg, TpyStarUnpack):
                 raise self.ctx.error(
                     f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
+        order = layout.binding.param_order()
         self.receive_winner_args(
             self.args_scope(args), args, None,
-            [func.params[i] for i in layout.binding.param_order()], func,
-            call=expr, fresh_own="reject_coro", char_literal_init=True)
+            [func.params[i] for i in order], func,
+            call=expr, fresh_own="reject_coro", char_literal_init=True,
+            param_indices=order)
 
     def _typecheck_and_coerce_arg(
         self, arg: TpyExpr, pname: str, ptype: TpyType,
@@ -6879,7 +6961,8 @@ class CallAnalyzer:
                 self.args_scope(layout.args), layout.args, None,
                 resolved_params, func, call=expr,
                 declared_types=[func.params[i].type for i in order],
-                fresh_own="note_lend", char_literal_init=True)
+                fresh_own="note_lend", char_literal_init=True,
+                param_indices=order)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(
@@ -6916,7 +6999,7 @@ class CallAnalyzer:
     ) -> TpyType:
         """Analyze Tree(value) -- wrapping a value in a recursive union type."""
         name = expr.func_name
-        self._reject_kwargs_for_builtin(expr, name)
+        self.reject_keywords(expr, name)
         if len(expr.args) != 1:
             raise self.ctx.error(
                 f"Recursive union constructor '{name}' takes exactly 1 argument, "
@@ -6964,17 +7047,13 @@ class CallAnalyzer:
                 raise self._ambiguous_overload_error(expr, f"{record.name}.__init__", e)
             winner = result.matched
             if winner is None:
-                # The commit takes no inference, so a generic pick is no
-                # winner here (BUGS.md#ctor-group-generic-fallback-unsubstituted).
+                # The commit takes the ranking's substitution, so a generic
+                # candidate the ranking did not pick is no winner here.
                 winner = self._winner_past_ranking(
                     expr, record.name, overloads, result, generic_ok=False)
             if winner is None:
-                self.raise_no_match(
-                    record.name, overloads, result.arg_types,
-                    list(written.positional), expr,
-                    [self.compat.call_type_text(t) for t in result.arg_types]
-                    + [f"{k}={self.compat.call_type_text(t)}"
-                       for k, t in (result.kwarg_types or {}).items()])
+                self.raise_no_match(record.name, overloads, result.typed,
+                                    written, expr)
             # The winner's own binding places each written argument -- a
             # keyword at the winner's slot, not the first stub's.
             self.commit_overload_winner(
@@ -7106,6 +7185,9 @@ class CallAnalyzer:
                             f"got {len(expr.call_type.type_args)}",
                             expr
                         )
+                    self.type_ops.validate_record_type_args(
+                        expr.call_type, record, allow_type_param_ref=True,
+                        loc=expr.loc)
                     bound_error = self.construction_bound_error(
                         record, record.name,
                         dict(zip(record.type_params, expr.call_type.type_args)))
@@ -7143,10 +7225,7 @@ class CallAnalyzer:
                         expr
                     )
                 # Validate non-wildcard entries
-                in_generic = bool(
-                    (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
-                    or self.ctx.record_ctx.type_params
-                )
+                in_generic = self.ctx.in_generic_scope()
                 for type_arg in expr.type_args:
                     if type_arg is not None:
                         if is_protocol_type(type_arg):
@@ -7222,17 +7301,16 @@ class CallAnalyzer:
                         if binding is not None else [])
             with self.open_call_args(expr, [a for _, a in evidence],
                                      record.name, scored=False):
-                arg_types: list[TpyType | None] = [None] * len(
-                    record.init_params)
+                typed: list[tuple[int, TpyType]] = []
                 with self.ctx.probe_slot_scope(True):
                     for i, arg in evidence:
                         _, ptype, _ = record.init_params[i]
                         hint = seed.arg_hint(unwrap_ref_type(ptype))
-                        arg_types[i] = self.expr.analyze_expr_with_hint(
-                            arg, hint)
+                        typed.append((i, self.expr.analyze_expr_with_hint(
+                            arg, hint)))
 
                 inferred = self.type_ops.infer_type_params_for_record(
-                    record, arg_types, expected_type=self.expr.slot_hint_for(expr),
+                    record, typed, expected_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=wildcard_type_args,
                 )
                 if inferred:
@@ -7436,12 +7514,10 @@ class CallAnalyzer:
                     inferred[tp] = arg
         # Seed from constructor args
         if evidence:
-            arg_types: list[TpyType | None] = [None] * len(record.init_params)
-            for i, arg in evidence:
-                arg_types[i] = self.ctx.get_expr_type(arg)
             # Try partial inference from available args
             partial = self.type_ops.infer_type_params_for_record(
-                record, arg_types, expected_type=None,
+                record, [(i, self.ctx.get_expr_type(arg))
+                         for i, arg in evidence], expected_type=None,
             )
             if partial:
                 for k, v in partial.items():

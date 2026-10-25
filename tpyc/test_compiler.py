@@ -7,7 +7,7 @@ import pytest
 from . import get_lib_dir, get_runtime_dir
 from .compiler import Compiler, BuildLayout, CompileError
 from .compilation_context import activate_compiler
-from .codegen_cpp import CodeGenOptions
+from .codegen_cpp import CodeGenError, CodeGenOptions
 from .diagnostics import DiagnosticLevel, SemanticError
 from .frontend_ir import FrontendModule, Import
 from .frontend_plugin import (
@@ -757,6 +757,48 @@ class TestCodegenRegression:
         compiler = Compiler(src_file, lib_dirs=[get_lib_dir() / "tpy"])
         with pytest.raises(SemanticError, match="cannot be constructed from"):
             compiler.compile()
+
+    # Positions sema's located range check does not walk
+    # (BUGS.md#int-type-arg-range-unlocated): the render guard refuses them.
+    @pytest.mark.parametrize("decl,owner", [
+        ("def main() -> None:\n"
+         "    def f(x: U[18446744073709551616]) -> None:\n"
+         "        print(1)\n"
+         "    print(0)\n", "U"),
+        ("from typing import Callable\n"
+         "class First:\n"
+         "    def f[T](self, cb: Callable[[T], U[18446744073709551616]]) -> None:\n"
+         "        print(1)\n", "U"),
+        ("from tpy import Array, int32\n"
+         "def main() -> None:\n"
+         "    def f(x: Array[int32, 18446744073709551616]) -> None:\n"
+         "        print(1)\n"
+         "    print(0)\n", "Array"),
+    ], ids=["nested_param", "generic_method", "nested_array_param"])
+    def test_int_type_arg_out_of_range_refused_at_render(self, decl, owner):
+        source = "class U[N: int]:\n    pass\n" + decl
+        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        with pytest.raises(
+                CodeGenError,
+                match=rf"integer type argument N = 18446744073709551616 of '{owner}' "
+                      r"is out of range \(0 to 18446744073709551615\)"):
+            compiler.generate_code_to_strings(modules[-1])
+
+    def test_int_type_arg_upper_bound_renders_unsigned_long_long(self):
+        # 2**64 - 1 does not fit a signed 64-bit literal, so it needs the
+        # ULL suffix to be a valid C++ template argument.
+        source = (
+            "from tpy import Array, int32\n"
+            "def main() -> None:\n"
+            "    def f(x: Array[int32, 18446744073709551615]) -> None:\n"
+            "        print(1)\n"
+            "    print(0)\n"
+        )
+        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        hpp, cpp = compiler.generate_code_to_strings(modules[-1])
+        assert "std::array<int32_t, 18446744073709551615ULL>" in hpp + cpp
 
 
 class TestSendSync:

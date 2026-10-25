@@ -1,0 +1,1 @@
+main.py:7: error: 'sorted' takes 1 positional argument(s), got 2

@@ -1,0 +1,21 @@
+module scale 6
+fn scale 6 label a2
+fn 5 4
+fn generic generic
+fn pad a:4 padn 5:7
+fn 5 20
+fn int 4 str ab
+fn region 1 2
+fn rest 2 3
+fn half 3.0 half 3.0
+method by 3 to big
+method conf 1 2 conf-s z
+method fconf 1.0 2
+method opt 3 opt 4 opt-s w
+protocol 11 12
+protocol 21 22
+subscript at 1 key a
+operator 3 10
+alias 7 0
+nested 1 1
+async label z4

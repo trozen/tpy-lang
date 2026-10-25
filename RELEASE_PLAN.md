@@ -43,10 +43,9 @@ release commit (annotated; the build hook bakes `git describe`), then
 - `collections.defaultdict` -- TODO: "collections: the rest of the
   module"
 - Per-instantiation result form for a generic body, then builtin
-  keyword arguments, then iterator provenance, in that order (user,
-  2026-10-05) -- TODO: "Per-instantiation result form for a generic
-  body", "Builtin functions take keyword arguments", "Iterator
-  provenance"
+  keyword arguments (landed), then iterator provenance, in that order
+  (user, 2026-10-05) -- TODO: "Per-instantiation result form for a
+  generic body", "Iterator provenance"
 - Regression from the lent-element move fix (2026-10-10): a user iterable
   or generator lending storage it does not own, at an owning element slot,
   copies silently where master aliased -- BUGS.md

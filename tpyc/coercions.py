@@ -12,7 +12,7 @@ from .typesys import (
     NominalType, PtrType, OptionalType, OwnType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
     is_integer_type, unwrap_readonly, AnyType, same_base_type,
-    VIEW_TYPE_FAMILIES,
+    VIEW_TYPE_FAMILIES, INT_TYPE_ARG_MAX,
 )
 from .type_def_registry import (
     is_array, is_span, is_list, is_dict, is_set, int_traits_of, float_traits_of,
@@ -75,6 +75,19 @@ def _match_any(_: TpyType, __: TpyType) -> bool:
 def _int_type_param_match(actual: TpyType, expected: TpyType) -> bool:
     """Check if actual is an INT TypeParamRef."""
     return isinstance(actual, TypeParamRef) and actual.kind == TypeParamKind.INT
+
+
+def _int_type_param_to_fixed_number(e: str, _a: TpyType, b: TpyType,
+                                    _c: CoercionContext) -> str:
+    # An INT type argument is any `std::size_t`, so a target that cannot hold
+    # 0..2**64-1 checks the read; the C++ compiler folds the check away for an
+    # in-range constant.
+    b = int_payload(b)
+    traits = int_traits_of(b)
+    if traits is not None and not (traits.min_value <= 0
+                                   and traits.max_value >= INT_TYPE_ARG_MAX):
+        return f"::tpy::int_cast_check<{b.to_cpp()}>({e})"
+    return f"static_cast<{b.to_cpp()}>({e})"
 
 
 def int_literal_fits_fixed_int(lit: TpyType, target: TpyType) -> bool:
@@ -282,12 +295,12 @@ class Coercion:
 COERCIONS: list[Coercion] = [
     # INT type parameter coercions (compile-time constants)
     Coercion(
-        name="int_type_param_to_fixed_int",
+        name="int_type_param_to_fixed_number",
         from_type=_is(TypeParamRef),
-        to_type=is_fixed_int_type,
+        to_type=lambda t: is_fixed_int_type(t) or is_float_category(t),
         type_match=_int_type_param_match,
         context_free_wrap=True,
-        codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
+        codegen=_int_type_param_to_fixed_number,
     ),
     Coercion(
         name="int_type_param_to_bigint",
@@ -295,7 +308,8 @@ COERCIONS: list[Coercion] = [
         to_type=is_big_int_type,
         type_match=_int_type_param_match,
         context_free_wrap=True,
-        codegen=lambda e, _a, _b, _c: f"::tpy::BigInt(static_cast<int64_t>({e}))",
+        # The constant is a `std::size_t`: through uint64 it keeps every value.
+        codegen=lambda e, _a, _b, _c: f"::tpy::BigInt(static_cast<uint64_t>({e}))",
     ),
 
     # Integer literal to any fixed-width integer (range-checked)

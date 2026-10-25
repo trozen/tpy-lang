@@ -1,0 +1,1 @@
+main.py:8: error: keyword arguments to dict() are not supported; write a dict literal

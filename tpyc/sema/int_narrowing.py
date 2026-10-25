@@ -9,48 +9,12 @@ from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING
 
 from ..parse import TpyExpr, TpyName
-from ..type_def_registry import int_traits_of, is_fixed_int_type
-from ..typesys import FunctionInfo, IntLiteralType, TpyType
-from .overloads import _scalar_widening_cost, type_matches_numeric
+from ..type_def_registry import int_traits_of
+from ..typesys import FunctionInfo, TpyType
 
 if TYPE_CHECKING:
     from .context import SemanticContext
     from .value_range import ValueRange
-
-
-def select_template_ctor(init_overloads: list[FunctionInfo],
-                         arg_types: list[TpyType],
-                         default_int_type: TpyType) -> FunctionInfo | None:
-    """The `__init__` overload a constructor call of a template-constructed
-    type takes: the first that matches, except that among fixed-int
-    overloads accepting an int literal the one nearest the default int wins
-    (str(5) -> fixed_to_str<int32_t>, not <int8_t>)."""
-    best_ctor: FunctionInfo | None = None
-    best_cost = 0
-    for ctor in init_overloads:
-        if len(ctor.params) != len(arg_types):
-            continue
-        if not all(type_matches_numeric(arg_type, ptype)
-                   for (_pname, ptype), arg_type in zip(ctor.params, arg_types)):
-            continue
-        is_fixed_int = False
-        cost = 0
-        for (_pname, ptype), arg_type in zip(ctor.params, arg_types):
-            if isinstance(arg_type, IntLiteralType) and is_fixed_int_type(ptype):
-                is_fixed_int = True
-                cost += _scalar_widening_cost(arg_type, ptype, default_int_type)
-        if best_ctor is None:
-            best_ctor = ctor
-            best_cost = cost
-            # Only a fixed-int first match can be improved on.
-            if not is_fixed_int:
-                break
-        elif is_fixed_int and cost < best_cost:
-            best_ctor = ctor
-            best_cost = cost
-        if best_cost == 0:
-            break
-    return best_ctor
 
 
 def site_value_range(ctx: 'SemanticContext', arg: TpyExpr) -> 'ValueRange | None':

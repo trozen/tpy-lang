@@ -1,0 +1,15 @@
+main.py:7: error: No matching overload for 'float32' with argument types (x=float)
+  'float32()' got unexpected keyword argument 'x'
+  'float32(x: float32, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: float, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: int, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: bool, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: str, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: int8, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: int16, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: int32, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: int64, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: uint8, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: uint16, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: uint32, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'float32(x: uint64, /)' parameter 'x' is positional-only and cannot be passed by keyword

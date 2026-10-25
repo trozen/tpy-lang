@@ -1,1 +1,1 @@
-main.py:5: error: Type mismatch in argument 'value': expected int32, got str
+main.py:5: error: Type mismatch in argument 'object': expected int32, got str

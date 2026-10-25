@@ -1,0 +1,7 @@
+main.py:7: error: No matching overload for 'char' with argument types (x=int)
+  'char()' got unexpected keyword argument 'x'
+  'char(x: int32, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'char(x: int, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'char(x: str, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'char(x: String, /)' parameter 'x' is positional-only and cannot be passed by keyword
+  'char(x: StrView, /)' parameter 'x' is positional-only and cannot be passed by keyword

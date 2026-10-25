@@ -6037,10 +6037,6 @@ class StatementAnalyzer:
                     stmt
                 )
             try:
-                in_generic = bool(
-                    (isinstance(self.ctx.func.current_function, TpyFunction) and self.ctx.func.current_function.type_params)
-                    or self.ctx.record_ctx.type_params
-                )
                 # An init-only function-local `p: Optional[Pet] = Dog()` lowers
                 # to a `const Pet*` pointing at the materialized rvalue, same
                 # shape as the parameter position. Allow the pointer-repr
@@ -6052,7 +6048,8 @@ class StatementAnalyzer:
                     stmt.init is not None
                     and not self.ctx.is_module_slot_stmt(stmt))
                 self.type_ops.validate_type(
-                    stmt.type, allow_type_param_ref=in_generic, loc=stmt.loc,
+                    stmt.type, allow_type_param_ref=self.ctx.in_generic_scope(),
+                    loc=stmt.loc,
                     allow_forward_ref=False,
                     allow_pointer_repr_dynamic=allow_ptr_repr_dyn)
             except SemanticError as e:

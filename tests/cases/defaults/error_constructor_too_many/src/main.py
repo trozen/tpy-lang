@@ -8,4 +8,4 @@ class Box:
         self.value = value
         self.tag = tag
 
-Box(int32(1), "a", "b")  # tpyc: error(/expects 1 to 2 arguments, got 3/)
+Box(int32(1), "a", "b")  # tpyc: error(/takes 1 to 2 positional arguments, got 3/)

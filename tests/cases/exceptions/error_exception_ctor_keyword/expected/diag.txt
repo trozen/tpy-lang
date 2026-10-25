@@ -1,1 +1,5 @@
-main.py:8: error: 'OSError()' parameter 'strerror' is positional-only and cannot be passed by keyword
+main.py:8: error: No matching overload for 'OSError' with argument types (int, strerror=str)
+  'OSError()' got unexpected keyword argument 'strerror'
+  'OSError(message: str, /)' got unexpected keyword argument 'strerror'
+  'OSError(errno: int32, strerror: str, /)' parameter 'strerror' is positional-only and cannot be passed by keyword
+  'OSError(errno: int32, strerror: str, filename: str, /)' parameter 'strerror' is positional-only and cannot be passed by keyword

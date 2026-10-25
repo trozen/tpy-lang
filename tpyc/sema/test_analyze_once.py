@@ -14,7 +14,7 @@ from ..diagnostics import SemanticError
 from ..parse import TpyCall, TpyName
 from ..parse.nodes import walk_body_stmts
 from ..thir.testutil import _compile, _entry
-from ..typesys import INT32
+from ..typesys import INT32, FunctionInfo
 from . import context as context_module
 from .calls import CallAnalyzer
 from .context import ProbeSlot, SemanticContext
@@ -186,7 +186,7 @@ def test_a_refused_fallback_candidate_leaves_nothing_behind(monkeypatch,
     neither, its slot step deciding types only there."""
     param, arg = _FALLBACK_ARGS[shape]
     seen: list[tuple[object, object]] = []
-    original = CallAnalyzer._validates
+    original = CallAnalyzer._validated
 
     def state(analyzer: CallAnalyzer, expr: TpyCall) -> tuple:
         ctx = analyzer.ctx
@@ -196,13 +196,14 @@ def test_a_refused_fallback_candidate_leaves_nothing_behind(monkeypatch,
                 len(ctx.pending_num_cells),
                 [_node_shape(a) for a in expr.args])
 
-    def validates(self, expr, func):
+    def validated(self, expr, func):
         before = state(self, expr)
         passed = original(self, expr, func)
-        seen.append((passed, before == state(self, expr)))
+        seen.append((isinstance(passed, FunctionInfo),
+                     before == state(self, expr)))
         return passed
 
-    monkeypatch.setattr(CallAnalyzer, "_validates", validates)
+    monkeypatch.setattr(CallAnalyzer, "_validated", validated)
     with pytest.raises(SemanticError, match="No matching overload"):
         _compile(_FALLBACK_CANDIDATES.format(param=param, arg=arg))
     assert seen == [(False, True), (False, True)]

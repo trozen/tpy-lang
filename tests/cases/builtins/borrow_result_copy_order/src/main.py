@@ -3,6 +3,7 @@
 # TPy prints 1009 where CPython prints 1100. Operand order is the postponed
 # evaluation-order policy (BUGS.md#subexpression-right-to-left-eval); this
 # case pins the current render. CPython's output differs, hence no_cpython.
+# The keyword section pins the copy warning at the parameter a keyword binds.
 from typing import Iterator
 
 
@@ -32,11 +33,18 @@ def set_first(ps: list[P]) -> int:
     return 0
 
 
+def bump_kw(*, p: P) -> None:
+    p.v += 1000
+
+
 def main() -> None:
     ps = [P(3), P(9)]
     # the hoisted copy runs before set_first
     t = set_first(ps) + bump_ret(max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p'/)
     print("order", t)
+    # by keyword: the copy is found at the parameter the keyword binds
+    bump_kw(p=max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p' of 'bump_kw/)
+    print("keyword", ps[0].v, ps[1].v)
 
 
 main()

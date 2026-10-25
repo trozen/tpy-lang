@@ -33,16 +33,28 @@ __gen_walk walk(std::vector<P>& ps) {
     return ::tpy::BigInt(0);
 }
 
+// def bump_kw(*, p: P) -> None:
+//     p.v += 1000
+void bump_kw(P& p) {
+    p.v = (p.v) + (::tpy::BigInt(1000));
+}
+
 // def main() -> None:
 //     ps = [P(3), P(9)]
 //     # the hoisted copy runs before set_first
 //     t = set_first(ps) + bump_ret(max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p'/)
 //     print("order", t)
+//     # by keyword: the copy is found at the parameter the keyword binds
+//     bump_kw(p=max(walk(ps), key=key_of))  # tpyc: warning(/copies P into argument 'p' of 'bump_kw/)
+//     print("keyword", ps[0].v, ps[1].v)
 void main() {
     std::vector<P> ps = {P(::tpy::BigInt(3)), P(::tpy::BigInt(9))};
     P __tmp_1 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
     ::tpy::BigInt t = ((::tpyapp::main::set_first(ps)) + (::tpyapp::main::bump_ret(__tmp_1)));
     std::cout << "order" << " " << t << "\n" << ::tpy::check_signals;
+    P __tmp_2 = ::tpy::builtin_max_elem_key(::tpyapp::main::walk(ps), key_of);
+    ::tpyapp::main::bump_kw(__tmp_2);
+    std::cout << "keyword" << " " << ::tpy::__getitem__(ps, 0).v << " " << ::tpy::__getitem__(ps, 1).v << "\n" << ::tpy::check_signals;
 }
 
 // main()

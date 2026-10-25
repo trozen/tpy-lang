@@ -2050,6 +2050,12 @@ class Parser:
                         raise ParseError(f"Protocol method parameter '{arg.arg}' must have type annotation", item)
                     param_type = self._parse_type_ref(arg.annotation)
                     params.append((arg.arg, param_type))
+                keyword_only_start = (len(params) if item.args.kwonlyargs
+                                      else None)
+                for arg in item.args.kwonlyargs:
+                    if arg.annotation is None:
+                        raise ParseError(f"Protocol method parameter '{arg.arg}' must have type annotation", item)
+                    params.append((arg.arg, self._parse_type_ref(arg.annotation)))
 
                 # return_type=None means no annotation; sema's
                 # `resolve_refs` substitutes VOID.
@@ -2063,6 +2069,8 @@ class Parser:
                 # _parse_param_defaults skips self via skip_receiver=True.
                 param_defaults = self._parse_param_defaults(
                     item, params, skip_receiver=True,
+                    kw_defaults=item.args.kw_defaults,
+                    n_kwonly=len(item.args.kwonlyargs),
                 )
 
                 methods.append(MethodSignature(
@@ -2074,6 +2082,7 @@ class Parser:
                     param_defaults=param_defaults,
                     num_posonly_params=self._count_posonly_params(
                         item, receiver_name="self"),
+                    keyword_only_start=keyword_only_start,
                 ))
             elif isinstance(item, ast.AnnAssign):
                 # Field declaration: name: Type

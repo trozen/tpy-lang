@@ -21,7 +21,7 @@ def main() -> None:
     v = V()
     n: int = 5
     # `int` at `int | None` and at `int` match equally.
-    print(v + n)  # tpyc: error(/Ambiguous overload for '__add__': multiple candidates match equally: __add__\(int \| None\); __add__\(int\)/)
+    print(v + n)  # tpyc: error(/Ambiguous overload for '__add__': multiple candidates match equally:$/)
 
 
 main()
