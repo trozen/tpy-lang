@@ -119,9 +119,9 @@ std::string _ipv4_to_str(uint8_t* addr_bytes) {
 //     un-zeroed padding can make bind return EINVAL. Do not switch to an
 //     init style that skips zero-fill.
 //     """
-//     port_no = posix_socket.htons(uint16.trunc(port))
+//     port_no = posix_socket.htons(uint16.wrap(port))
 //     if len(hostname := host) == 0:
-//         return SockaddrIn(uint16.trunc(AF_INET), port_no, 0)
+//         return SockaddrIn(uint16.wrap(AF_INET), port_no, 0)
 //
 //     addr_bytes = UninitArrayStorage[uint8, 4]()
 //     host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
@@ -133,7 +133,7 @@ std::string _ipv4_to_str(uint8_t* addr_bytes) {
 //             _raise_resolve_error()
 //
 //     addr_u32_ptr: Ptr[uint32] = unsafe_cast(addr_bytes.ptr())
-//     return SockaddrIn(uint16.trunc(AF_INET), port_no,
+//     return SockaddrIn(uint16.wrap(AF_INET), port_no,
 //                       unsafe_load(addr_u32_ptr, 0))
 ::sockaddr_in _build_sockaddr_in(std::string_view host, int32_t port) {
     uint16_t port_no = ::htons(static_cast<uint16_t>(port));
@@ -400,7 +400,7 @@ void socket::_connect_waiting(::sockaddr_in* addr) const {
 //             _raise_errno()
 //     try:
 //         peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-//                 int32.trunc(posix_socket.ntohs(addr.sin_port)))
+//                 int32.wrap(posix_socket.ntohs(addr.sin_port)))
 //     except OSError:
 //         posix_socket.close(new_fd)
 //         raise
@@ -446,15 +446,15 @@ std::tuple<int32_t, std::tuple<std::string, int32_t>> socket::_accept_fd() const
 // # Underscore-private: not part of CPython's socket surface.
 // def _send_from(self, data: bytes, offset: uint64) -> int32:
 //     data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
-//     start = unsafe_ptr_add(data_ptr, int64.trunc(offset))
+//     start = unsafe_ptr_add(data_ptr, int64.wrap(offset))
 //     if self._timeout != 0.0:
-//         return int32.trunc(self._send_waiting(start,
+//         return int32.wrap(self._send_waiting(start,
 //                                               uint64(len(data)) - offset))
 //     n = posix_socket.send(self.fd, start, uint64(len(data)) - offset,
 //                           int32(0))
 //     if n < int64(0):
 //         self._raise_io()
-//     return int32.trunc(n)
+//     return int32.wrap(n)
 int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const {
     const uint8_t* data_ptr = data.data();
     const uint8_t* start = (data_ptr + static_cast<int64_t>(offset));
@@ -474,7 +474,7 @@ int32_t socket::_send_from(::tpy::BytesView data, uint64_t offset) const {
 //     sent: uint64 = 0
 //     data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
 //     while sent < total:
-//         start = unsafe_ptr_add(data_ptr, int64.trunc(sent))
+//         start = unsafe_ptr_add(data_ptr, int64.wrap(sent))
 //         chunk: int64 = 0
 //         if self._timeout != 0.0:
 //             chunk = self._send_waiting(start, total - sent)
@@ -517,26 +517,26 @@ void socket::sendall(::tpy::BytesView data) const {
 //     deadline = _interrupt.deadline_after(self._timeout)
 //     sent: uint64 = 0
 //     while True:
-//         n = posix_socket.send(self.fd, unsafe_ptr_add(data, int64.trunc(sent)),
+//         n = posix_socket.send(self.fd, unsafe_ptr_add(data, int64.wrap(sent)),
 //                               size - sent, _MSG_DONTWAIT)
 //         if n >= 0:
-//             sent += uint64.trunc(n)
+//             sent += uint64.wrap(n)
 //             if sent == size or n == 0:
 //                 # The data is committed; a Ctrl-C that arrived meanwhile
 //                 # is delivered now.
 //                 _interrupt.check()
-//                 return int64.trunc(sent)
+//                 return int64.wrap(sent)
 //             continue
 //         err = posix_socket.tpy_errno()
 //         if err == _EINTR:
 //             continue
 //         if err != _EAGAIN:
 //             if sent > 0:
-//                 return int64.trunc(sent)
+//                 return int64.wrap(sent)
 //             self._raise_err(err)
 //         rc = _interrupt.wait_writable(self.fd, deadline)
 //         if rc == _interrupt.TIMED_OUT and sent > 0:
-//             return int64.trunc(sent)
+//             return int64.wrap(sent)
 //         self._check_wait(rc)
 int64_t socket::_send_waiting(const uint8_t* data, uint64_t size) const {
     double deadline = ::tpystd::_interrupt::deadline_after(this->_timeout);
@@ -611,7 +611,7 @@ int64_t socket::_recv_waiting(uint8_t* buf, uint64_t size) const {
 //         raise ValueError("negative buffersize in recv")
 //     if bufsize == int32(0):
 //         return bytes()
-//     buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
+//     buf = UninitHeapStorage[uint8](uint32.wrap(bufsize))
 //     n: int64 = 0
 //     if self._timeout != 0.0:
 //         n = self._recv_waiting(buf.ptr(), uint64(bufsize))

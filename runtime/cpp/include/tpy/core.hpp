@@ -28,6 +28,20 @@
 #include <utility>
 #include <variant>
 
+// The small checks the compiler inserts (None access, fixed-width overflow,
+// a zero divisor, an index, a null Ptr, ...) are forced inline in every build
+// mode, -O0 included: a site keeps only its test and one call to a
+// TPY_COLD_NORETURN throw function, so a debug build pays no TPy call on the
+// passing path and a debugger's step-into skips the helper. Checks too large
+// to copy into every site (pow, float/str parsing, range overflow) stay
+// ordinary functions. The bare attribute is for lambdas, which take no
+// `inline`: generated code binds a tuple source in one.
+#define TPY_ALWAYS_INLINE_ATTR [[gnu::always_inline]]
+#define TPY_ALWAYS_INLINE TPY_ALWAYS_INLINE_ATTR inline
+#define TPY_NOINLINE [[gnu::noinline]]
+#define TPY_COLD [[gnu::noinline, gnu::cold]]
+#define TPY_COLD_NORETURN [[noreturn, gnu::noinline, gnu::cold]]
+
 #include "interrupt.hpp"
 #include "throwable.hpp"
 #include "type_traits.hpp"
@@ -236,7 +250,7 @@ inline bool signals_deliverable() noexcept {
     return ops != nullptr && ops->deliverable() != 0;
 }
 
-[[gnu::cold, gnu::noinline]] inline void deliver_interrupt() {
+TPY_COLD inline void deliver_interrupt() {
     const interrupt_detail::Ops* ops =
         interrupt_detail::ops.load(std::memory_order_acquire);
     if (ops != nullptr) {
@@ -325,13 +339,13 @@ inline std::ostream& check_signals(std::ostream& os) {
 // evaluation.
 template<typename E>
     requires std::derived_from<E, BaseException>
-[[noreturn]] inline void raise(std::string_view msg) {
+TPY_COLD_NORETURN inline void raise(std::string_view msg) {
     throw E(msg);
 }
 template<typename E, typename T, typename... Rest>
     requires std::derived_from<E, BaseException>
-[[noreturn]] inline void raise(std::format_string<T, Rest...> fmt, T&& arg,
-                               Rest&&... rest) {
+TPY_COLD_NORETURN inline void raise(std::format_string<T, Rest...> fmt,
+                                                     T&& arg, Rest&&... rest) {
     throw E(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
 }
 // Structured OSError form: picks the ctor arity by which optional parts are
@@ -339,9 +353,9 @@ template<typename E, typename T, typename... Rest>
 // stand-in for CPython's None filename).
 template<typename E>
     requires std::derived_from<E, OSError>
-[[noreturn]] inline void raise(int32_t err, std::string_view strerror_arg,
-                               std::string_view filename_arg = "",
-                               std::string_view filename2_arg = "") {
+TPY_COLD_NORETURN inline void raise(int32_t err, std::string_view strerror_arg,
+                                                     std::string_view filename_arg = "",
+                                                     std::string_view filename2_arg = "") {
     if (!filename2_arg.empty()) throw E(err, strerror_arg, filename_arg, filename2_arg);
     if (!filename_arg.empty()) throw E(err, strerror_arg, filename_arg);
     throw E(err, strerror_arg);
@@ -351,12 +365,13 @@ template<typename E>
 // that supplies the no-message default `"assertion failed"`. Codegen emits
 // `raise_assertion_error()` for `assert cond` (no message) and
 // `raise_assertion_error(<msg-expr>)` for `assert cond, msg`.
-[[noreturn]] inline void raise_assertion_error(std::string_view msg = "assertion failed") {
+TPY_COLD_NORETURN inline void raise_assertion_error(
+        std::string_view msg = "assertion failed") {
     raise<AssertionError>(msg);
 }
 template<typename T, typename... Rest>
-[[noreturn]] inline void raise_assertion_error(std::format_string<T, Rest...> fmt, T&& arg,
-                                               Rest&&... rest) {
+TPY_COLD_NORETURN inline void raise_assertion_error(
+        std::format_string<T, Rest...> fmt, T&& arg, Rest&&... rest) {
     raise<AssertionError>(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...);
 }
 
@@ -368,12 +383,12 @@ template<typename T, typename... Rest>
 // forward declarations relocate to throwable.hpp; their bodies become
 // TPy-defined `raise X(msg)` one-liners resolved at link time.
 #define TPY_DEFINE_RAISE_HELPER(name, ExceptionClass)                              \
-    [[noreturn]] inline void name(std::string_view msg) {                          \
+    TPY_COLD_NORETURN inline void name(std::string_view msg) { \
         raise<ExceptionClass>(msg);                                                \
     }                                                                              \
     template<typename T, typename... Rest>                                         \
-    [[noreturn]] inline void name(std::format_string<T, Rest...> fmt, T&& arg,     \
-                                  Rest&&... rest) {                                \
+    TPY_COLD_NORETURN inline void name(                       \
+            std::format_string<T, Rest...> fmt, T&& arg, Rest&&... rest) {         \
         raise<ExceptionClass>(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...); \
     }
 
@@ -383,9 +398,10 @@ template<typename T, typename... Rest>
 // non-syscall raises (e.g. mode errors) that carry no errno.
 #define TPY_DEFINE_RAISE_OS_HELPER(name, ExceptionClass)                            \
     TPY_DEFINE_RAISE_HELPER(name, ExceptionClass)                                   \
-    [[noreturn]] inline void name(int32_t err, std::string_view strerror_arg,       \
-                                  std::string_view filename_arg = "",               \
-                                  std::string_view filename2_arg = "") {            \
+    TPY_COLD_NORETURN inline void name(                        \
+            int32_t err, std::string_view strerror_arg,                             \
+            std::string_view filename_arg = "",                                     \
+            std::string_view filename2_arg = "") {                                  \
         raise<ExceptionClass>(err, strerror_arg, filename_arg, filename2_arg);      \
     }
 
@@ -489,12 +505,12 @@ inline void OSError::__raise__() const {
 // its declared contract, and leaving it raises a catchable OverflowError.
 // Every such site routes through this helper so a later opt-in policy switch
 // has one place to change.
-[[noreturn]] inline void raise_fixedint_overflow(std::string_view msg) {
+TPY_COLD_NORETURN inline void raise_fixedint_overflow(std::string_view msg) {
     raise_overflow_error(msg);
 }
 template<typename T, typename... Rest>
-[[noreturn]] inline void raise_fixedint_overflow(std::format_string<T, Rest...> fmt,
-                                                 T&& arg, Rest&&... rest) {
+TPY_COLD_NORETURN inline void raise_fixedint_overflow(
+        std::format_string<T, Rest...> fmt, T&& arg, Rest&&... rest) {
     raise_overflow_error(std::format(fmt, std::forward<T>(arg), std::forward<Rest>(rest)...));
 }
 
@@ -561,7 +577,7 @@ inline std::string demangle_type_name(const char* mangled) {
 /**
  * Panic and abort - called on fatal runtime errors.
  */
-[[noreturn]] inline void tpy_panic(std::string_view msg) {
+TPY_COLD_NORETURN inline void tpy_panic(std::string_view msg) {
     std::fputs("TurboPython panic: ", stderr);
     std::fwrite(msg.data(), 1, msg.size(), stderr);
     std::fputc('\n', stderr);
@@ -673,16 +689,16 @@ inline void process_startup() {
  * Used for implicit Ptr[T] -> T coercion.
  */
 template <typename T>
-T& deref_check(T* ptr) {
-    if (ptr == nullptr) {
+TPY_ALWAYS_INLINE T& deref_check(T* ptr) {
+    if (ptr == nullptr) [[unlikely]] {
         tpy_panic("null pointer dereference");
     }
     return *ptr;
 }
 
 template <typename T>
-const T& deref_check(const T* ptr) {
-    if (ptr == nullptr) {
+TPY_ALWAYS_INLINE const T& deref_check(const T* ptr) {
+    if (ptr == nullptr) [[unlikely]] {
         tpy_panic("null pointer dereference");
     }
     return *ptr;
@@ -723,15 +739,7 @@ constexpr bool same_object(const A* a, const B* b) noexcept {
 // later build-wide failure policy has one place to plug in.
 enum class NoneUseKind : uint8_t { attr, item, operand_left, operand_right, unary, call };
 
-// The None checks are forced inline in every build mode, -O0 included:
-// each site keeps only the test and a cold call, and a debugger's
-// step-into skips them. The throw stays out of line below. The bare
-// attribute is for lambdas, which take no `inline`: generated code binds
-// a tuple source in one.
-#define TPY_ALWAYS_INLINE_ATTR [[gnu::always_inline]]
-#define TPY_ALWAYS_INLINE TPY_ALWAYS_INLINE_ATTR inline
-
-[[noreturn, gnu::noinline, gnu::cold]] inline void raise_none_access(
+TPY_COLD_NORETURN inline void raise_none_access(
         NoneUseKind kind, std::string_view a = {}, std::string_view b = {}) {
     switch (kind) {
         case NoneUseKind::attr:
@@ -912,16 +920,16 @@ TPY_ALWAYS_INLINE NoneCallee<F> none_call(const std::optional<F>& f) {
  * bad_optional_access::what() text diverges between libstdc++ and libc++.
  */
 template <typename T>
-T& typed_dict_field_check(std::optional<T>& opt) {
-    if (!opt.has_value()) {
+TPY_ALWAYS_INLINE T& typed_dict_field_check(std::optional<T>& opt) {
+    if (!opt.has_value()) [[unlikely]] {
         raise_key_error("KeyError");
     }
     return *opt;
 }
 
 template <typename T>
-const T& typed_dict_field_check(const std::optional<T>& opt) {
-    if (!opt.has_value()) {
+TPY_ALWAYS_INLINE const T& typed_dict_field_check(const std::optional<T>& opt) {
+    if (!opt.has_value()) [[unlikely]] {
         raise_key_error("KeyError");
     }
     return *opt;
@@ -1068,8 +1076,8 @@ own_return_t<T> transfer_ownership(T* p) {
  * Checked true division for floats -- throws ZeroDivisionError on a
  * zero divisor to match Python semantics.
  */
-inline constexpr double truediv(double a, double b) {
-    if (b == 0.0) raise_zero_division_error("float division by zero");
+TPY_ALWAYS_INLINE constexpr double truediv(double a, double b) {
+    if (b == 0.0) [[unlikely]] raise_zero_division_error("float division by zero");
     return a / b;
 }
 
@@ -1087,8 +1095,8 @@ inline constexpr double truediv(double a, double b) {
 #define TPY_CMATH_CONSTEXPR 0
 #endif
 
-inline constexpr double floordiv(double a, double b) {
-    if (b == 0.0) raise_zero_division_error("float floor division by zero");
+TPY_ALWAYS_INLINE constexpr double floordiv(double a, double b) {
+    if (b == 0.0) [[unlikely]] raise_zero_division_error("float floor division by zero");
 #if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
 #else
@@ -1128,13 +1136,13 @@ inline constexpr double fmod(double a, double b) {
 }
 
 // float32 arithmetic helpers
-inline constexpr float truediv_f32(float a, float b) {
-    if (b == 0.0f) raise_zero_division_error("float division by zero");
+TPY_ALWAYS_INLINE constexpr float truediv_f32(float a, float b) {
+    if (b == 0.0f) [[unlikely]] raise_zero_division_error("float division by zero");
     return a / b;
 }
 
-inline constexpr float floordiv_f32(float a, float b) {
-    if (b == 0.0f) raise_zero_division_error("float floor division by zero");
+TPY_ALWAYS_INLINE constexpr float floordiv_f32(float a, float b) {
+    if (b == 0.0f) [[unlikely]] raise_zero_division_error("float floor division by zero");
 #if TPY_CMATH_CONSTEXPR
     return std::floor(a / b);
 #else

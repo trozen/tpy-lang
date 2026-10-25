@@ -151,10 +151,10 @@ def negative(n: int64, k: int8) -> None:
         print("negative << ValueError")
 
 
-# the unchecked wrapping shifts take any fixed-width count too, unchecked: a
-# count below 0 or at or past the width is undefined, not a wrap
+# the wrapping shifts take any fixed-width count too, unchecked: the count is
+# reduced modulo the width
 def wrap(y: uint32, k: int64) -> None:
-    print("wrap", uint32.shl_wrap(y, k), uint32.shr_wrap(y, k))  # tpyc: ok
+    print("wrap", uint32.wrap_shl(y, k), uint32.wrap_shr(y, k))  # tpyc: ok
 
 
 def main() -> None:

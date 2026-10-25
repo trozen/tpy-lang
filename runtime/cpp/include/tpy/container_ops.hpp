@@ -45,12 +45,13 @@ inline constexpr int32_t SLICE_NONE = INT32_MIN;
  * Throws IndexError if index is out of bounds.
  */
 template <typename Container>
-std::size_t normalize_index(const Container& c, int32_t index, const char* context) {
+TPY_ALWAYS_INLINE std::size_t normalize_index(const Container& c, int32_t index,
+                                              const char* context) {
     std::ptrdiff_t i = index;
     if (i < 0) {
         i += static_cast<std::ptrdiff_t>(c.size());
     }
-    if (i < 0 || static_cast<std::size_t>(i) >= c.size()) {
+    if (i < 0 || static_cast<std::size_t>(i) >= c.size()) [[unlikely]] {
         raise_index_error(context);
     }
     return static_cast<std::size_t>(i);

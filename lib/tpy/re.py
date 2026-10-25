@@ -113,7 +113,7 @@ def _utf8_advance(data: Ptr[readonly[uint8]], offset: uint64,
     caller's loop still terminates."""
     if offset >= length:
         return offset + 1
-    lead = unsafe_load(data, uint32.trunc(offset))
+    lead = unsafe_load(data, uint32.wrap(offset))
     if lead < 0xC0:        # ASCII (< 0x80) or a stray continuation byte
         return offset + 1
     if lead < 0xE0:
@@ -235,11 +235,11 @@ class Match:
         (-1 needs a signed type)."""
         if group < 0 or group >= self._ngroups:
             raise error(f"no such group: {group}")
-        start = self._ovec_load(uint32.trunc(group * 2))
-        end = self._ovec_load(uint32.trunc(group * 2 + 1))
+        start = self._ovec_load(uint32.wrap(group * 2))
+        end = self._ovec_load(uint32.wrap(group * 2 + 1))
         if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
             return (0, 0)
-        return (int32.trunc(start), int32.trunc(end))
+        return (int32.wrap(start), int32.wrap(end))
 
     def start(self, group: int32 = 0) -> int32:
         return self.span(group)[0]
@@ -374,7 +374,7 @@ class Pattern:
         # (cross-sign widening is unsigned->signed-only). See BUGS.md.
         cap = uint64(len(subject) * 2 + len(repl) + 16)
         outlen: uint64 = cap
-        outbuf = UninitHeapStorage[uint8](uint32.trunc(cap))
+        outbuf = UninitHeapStorage[uint8](uint32.wrap(cap))
         rc = pcre2.substitute(
             self._code.get(), sub_data, uint64(len(subject)),
             0, opts | pcre2.PCRE2_SUBSTITUTE_OVERFLOW_LENGTH, md,
@@ -387,7 +387,7 @@ class Pattern:
             # Drop OVERFLOW_LENGTH on retry: buffer is now correctly sized,
             # and asking for overflow-length again would make PCRE2 redo
             # the sizing pass for nothing.
-            outbuf = UninitHeapStorage[uint8](uint32.trunc(outlen))
+            outbuf = UninitHeapStorage[uint8](uint32.wrap(outlen))
             rc = pcre2.substitute(
                 self._code.get(), sub_data, uint64(len(subject)),
                 0, opts, md,

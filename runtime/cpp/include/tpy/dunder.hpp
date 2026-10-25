@@ -110,11 +110,11 @@ int32_t __len__(const ordered_map<K, V>& x) {
 // This is checked last due to the requires clause
 template<typename T>
     requires requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; }
-int32_t __len__(const T& x) {
+TPY_ALWAYS_INLINE int32_t __len__(const T& x) {
     // CPython validates the length slot's result for every consumer (len(),
     // truthiness, reversed(), ...), not just for len(); guard here so all share it.
     int32_t n = x.__len__();
-    if (n < 0) raise_value_error("__len__() should return >= 0");
+    if (n < 0) [[unlikely]] raise_value_error("__len__() should return >= 0");
     return n;
 }
 
@@ -122,11 +122,11 @@ int32_t __len__(const T& x) {
 template<typename T>
     requires (requires(const T& t) { { t.__len__() } -> std::same_as<BigInt>; }
               && !requires(const T& t) { { t.__len__() } -> std::convertible_to<int32_t>; })
-int32_t __len__(const T& x) {
+TPY_ALWAYS_INLINE int32_t __len__(const T& x) {
     // to_fixed_check narrows the BigInt (OverflowError on an oversized result); a
     // negative in-range result is still ValueError, like the int-convertible branch.
     int32_t n = x.__len__().template to_fixed_check<int32_t>();
-    if (n < 0) raise_value_error("__len__() should return >= 0");
+    if (n < 0) [[unlikely]] raise_value_error("__len__() should return >= 0");
     return n;
 }
 
@@ -136,40 +136,40 @@ int32_t __len__(const T& x) {
 
 // Overload: std::vector
 template<typename T>
-decltype(auto) __getitem__(const std::vector<T>& x, int32_t i) {
+TPY_ALWAYS_INLINE decltype(auto) __getitem__(const std::vector<T>& x, int32_t i) {
     auto idx = normalize_index(x, i, "list index out of range");
     return x[idx];
 }
 
 template<typename T>
-decltype(auto) __getitem__(std::vector<T>& x, int32_t i) {
+TPY_ALWAYS_INLINE decltype(auto) __getitem__(std::vector<T>& x, int32_t i) {
     auto idx = normalize_index(x, i, "list index out of range");
     return x[idx];
 }
 
 // Overload: std::array
 template<typename T, std::size_t N>
-decltype(auto) __getitem__(const std::array<T, N>& x, int32_t i) {
+TPY_ALWAYS_INLINE decltype(auto) __getitem__(const std::array<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "array index out of range");
     return x[idx];
 }
 
 template<typename T, std::size_t N>
-decltype(auto) __getitem__(std::array<T, N>& x, int32_t i) {
+TPY_ALWAYS_INLINE decltype(auto) __getitem__(std::array<T, N>& x, int32_t i) {
     auto idx = normalize_index(x, i, "array index out of range");
     return x[idx];
 }
 
 // Overload: std::span (const)
 template<typename T>
-decltype(auto) __getitem__(std::span<const T> x, int32_t i) {
+TPY_ALWAYS_INLINE decltype(auto) __getitem__(std::span<const T> x, int32_t i) {
     auto idx = normalize_index(x, i, "span index out of range");
     return x[idx];
 }
 
 // Overload: std::span (mutable)
 template<typename T>
-T& __getitem__(std::span<T> x, int32_t i) {
+TPY_ALWAYS_INLINE T& __getitem__(std::span<T> x, int32_t i) {
     auto idx = normalize_index(x, i, "span index out of range");
     return x[idx];
 }
@@ -221,21 +221,21 @@ decltype(auto) __getitem__(T& x, int32_t i) {
 
 // Overload: std::vector
 template<typename T, typename V>
-void __setitem__(std::vector<T>& x, int32_t i, V&& v) {
+TPY_ALWAYS_INLINE void __setitem__(std::vector<T>& x, int32_t i, V&& v) {
     auto idx = normalize_index(x, i, "list assignment index out of range");
     x[idx] = std::forward<V>(v);
 }
 
 // Overload: std::array
 template<typename T, std::size_t N, typename V>
-void __setitem__(std::array<T, N>& x, int32_t i, V&& v) {
+TPY_ALWAYS_INLINE void __setitem__(std::array<T, N>& x, int32_t i, V&& v) {
     auto idx = normalize_index(x, i, "array index out of range");
     x[idx] = std::forward<V>(v);
 }
 
 // Overload: std::span (mutable)
 template<typename T, typename V>
-void __setitem__(std::span<T> x, int32_t i, V&& v) {
+TPY_ALWAYS_INLINE void __setitem__(std::span<T> x, int32_t i, V&& v) {
     auto idx = normalize_index(x, i, "span index out of range");
     x[idx] = std::forward<V>(v);
 }
@@ -264,7 +264,7 @@ void __setitem__(T& x, K&& k, V&& v) {
 
 // Overload: std::vector (list)
 template<typename T>
-void __delitem__(std::vector<T>& x, int32_t i) {
+TPY_ALWAYS_INLINE void __delitem__(std::vector<T>& x, int32_t i) {
     auto idx = normalize_index(x, i, "list assignment index out of range");
     x.erase(x.begin() + static_cast<std::ptrdiff_t>(idx));
 }

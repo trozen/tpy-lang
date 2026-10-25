@@ -267,9 +267,9 @@ def _build_sockaddr_in(host: str, port: int32) -> Own[SockaddrIn]:
     un-zeroed padding can make bind return EINVAL. Do not switch to an
     init style that skips zero-fill.
     """
-    port_no = posix_socket.htons(uint16.trunc(port))
+    port_no = posix_socket.htons(uint16.wrap(port))
     if len(hostname := host) == 0:
-        return SockaddrIn(uint16.trunc(AF_INET), port_no, 0)
+        return SockaddrIn(uint16.wrap(AF_INET), port_no, 0)
 
     addr_bytes = UninitArrayStorage[uint8, 4]()
     host_ptr: Ptr[readonly[uint8]] = unsafe_cast(unsafe_ptr(hostname))
@@ -281,7 +281,7 @@ def _build_sockaddr_in(host: str, port: int32) -> Own[SockaddrIn]:
             _raise_resolve_error()
 
     addr_u32_ptr: Ptr[uint32] = unsafe_cast(addr_bytes.ptr())
-    return SockaddrIn(uint16.trunc(AF_INET), port_no,
+    return SockaddrIn(uint16.wrap(AF_INET), port_no,
                       unsafe_load(addr_u32_ptr, 0))
 
 
@@ -524,7 +524,7 @@ class socket:
                 _raise_errno()
         try:
             peer = (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                    int32.trunc(posix_socket.ntohs(addr.sin_port)))
+                    int32.wrap(posix_socket.ntohs(addr.sin_port)))
         except OSError:
             posix_socket.close(new_fd)
             raise
@@ -559,15 +559,15 @@ class socket:
     # Underscore-private: not part of CPython's socket surface.
     def _send_from(self, data: bytes, offset: uint64) -> int32:
         data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
-        start = unsafe_ptr_add(data_ptr, int64.trunc(offset))
+        start = unsafe_ptr_add(data_ptr, int64.wrap(offset))
         if self._timeout != 0.0:
-            return int32.trunc(self._send_waiting(start,
+            return int32.wrap(self._send_waiting(start,
                                                   uint64(len(data)) - offset))
         n = posix_socket.send(self.fd, start, uint64(len(data)) - offset,
                               int32(0))
         if n < int64(0):
             self._raise_io()
-        return int32.trunc(n)
+        return int32.wrap(n)
 
     def sendall(self, data: bytes) -> None:
         """Send every byte in `data` (loops over send)."""
@@ -575,7 +575,7 @@ class socket:
         sent: uint64 = 0
         data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
         while sent < total:
-            start = unsafe_ptr_add(data_ptr, int64.trunc(sent))
+            start = unsafe_ptr_add(data_ptr, int64.wrap(sent))
             chunk: int64 = 0
             if self._timeout != 0.0:
                 chunk = self._send_waiting(start, total - sent)
@@ -597,26 +597,26 @@ class socket:
         deadline = _interrupt.deadline_after(self._timeout)
         sent: uint64 = 0
         while True:
-            n = posix_socket.send(self.fd, unsafe_ptr_add(data, int64.trunc(sent)),
+            n = posix_socket.send(self.fd, unsafe_ptr_add(data, int64.wrap(sent)),
                                   size - sent, _MSG_DONTWAIT)
             if n >= 0:
-                sent += uint64.trunc(n)
+                sent += uint64.wrap(n)
                 if sent == size or n == 0:
                     # The data is committed; a Ctrl-C that arrived meanwhile
                     # is delivered now.
                     _interrupt.check()
-                    return int64.trunc(sent)
+                    return int64.wrap(sent)
                 continue
             err = posix_socket.tpy_errno()
             if err == _EINTR:
                 continue
             if err != _EAGAIN:
                 if sent > 0:
-                    return int64.trunc(sent)
+                    return int64.wrap(sent)
                 self._raise_err(err)
             rc = _interrupt.wait_writable(self.fd, deadline)
             if rc == _interrupt.TIMED_OUT and sent > 0:
-                return int64.trunc(sent)
+                return int64.wrap(sent)
             self._check_wait(rc)
 
     # Blocking and timeout mode: a Ctrl-C already pending is delivered before
@@ -643,7 +643,7 @@ class socket:
             raise ValueError("negative buffersize in recv")
         if bufsize == int32(0):
             return bytes()
-        buf = UninitHeapStorage[uint8](uint32.trunc(bufsize))
+        buf = UninitHeapStorage[uint8](uint32.wrap(bufsize))
         n: int64 = 0
         if self._timeout != 0.0:
             n = self._recv_waiting(buf.ptr(), uint64(bufsize))
@@ -675,7 +675,7 @@ class socket:
         if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
             _raise_errno()
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                int32.trunc(posix_socket.ntohs(addr.sin_port)))
+                int32.wrap(posix_socket.ntohs(addr.sin_port)))
 
     def getpeername(self) -> tuple[str, int32]:
         addr = SockaddrIn(0, 0, 0)
@@ -683,7 +683,7 @@ class socket:
         if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
             _raise_errno()
         return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-                int32.trunc(posix_socket.ntohs(addr.sin_port)))
+                int32.wrap(posix_socket.ntohs(addr.sin_port)))
 
     def makefile(self, mode: str = "r",
                  buffering: int32 = -1) -> Own[BufferedReader]:

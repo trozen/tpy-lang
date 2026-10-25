@@ -423,11 +423,11 @@ inline uint64_t Match::_ovec_load(uint32_t i) const {
 //     (-1 needs a signed type)."""
 //     if group < 0 or group >= self._ngroups:
 //         raise error(f"no such group: {group}")
-//     start = self._ovec_load(uint32.trunc(group * 2))
-//     end = self._ovec_load(uint32.trunc(group * 2 + 1))
+//     start = self._ovec_load(uint32.wrap(group * 2))
+//     end = self._ovec_load(uint32.wrap(group * 2 + 1))
 //     if start == pcre2.PCRE2_UNSET or end == pcre2.PCRE2_UNSET:
 //         return (0, 0)
-//     return (int32.trunc(start), int32.trunc(end))
+//     return (int32.wrap(start), int32.wrap(end))
 inline std::tuple<int32_t, int32_t> Match::span(int32_t group) const {
     if (((group < 0) || (group >= this->_ngroups))) {
         throw error(std::format("no such group: {}", group));

@@ -158,16 +158,16 @@ inline Bytes bytes_from_buf(const uint8_t* p, uint64_t size) {
 // range(0, 256) -- never a narrowing of the integer type first. bool and the
 // character types are not integers here (nor in std::in_range's domain).
 template<std_integer T>
-inline uint8_t int_to_byte(T v) {
-    if (!std::in_range<uint8_t>(v)) raise_value_error("bytes must be in range(0, 256)");
+TPY_ALWAYS_INLINE uint8_t int_to_byte(T v) {
+    if (!std::in_range<uint8_t>(v)) [[unlikely]] raise_value_error("bytes must be in range(0, 256)");
     return static_cast<uint8_t>(v);
 }
 
 // Exactly a BigInt: a bool or a character would convert to one implicitly.
 template<std::same_as<BigInt> B>
-inline uint8_t int_to_byte(const B& v) {
+TPY_ALWAYS_INLINE uint8_t int_to_byte(const B& v) {
     int32_t small;
-    if (!v.template to_fixed_try<int32_t>(small)) raise_value_error("bytes must be in range(0, 256)");
+    if (!v.template to_fixed_try<int32_t>(small)) [[unlikely]] raise_value_error("bytes must be in range(0, 256)");
     return int_to_byte(small);
 }
 
@@ -234,7 +234,7 @@ inline std::string bytes_hex(BytesView b) {
 
 // -- Element access ---------------------------------------------------------
 
-inline uint8_t bytes_getitem(BytesView b, int32_t index) {
+TPY_ALWAYS_INLINE uint8_t bytes_getitem(BytesView b, int32_t index) {
     auto i = normalize_index(b, index, "bytes index out of range");
     return b[i];
 }
@@ -519,12 +519,12 @@ inline ByteArray bytearray_upper(BytesView b) {
 
 // -- Mutation helpers (for bytearray) ---------------------------------------
 
-inline void bytearray_setitem(ByteArray& b, int32_t index, uint8_t value) {
+TPY_ALWAYS_INLINE void bytearray_setitem(ByteArray& b, int32_t index, uint8_t value) {
     auto i = normalize_index(b, index, "bytearray index out of range");
     b[i] = value;
 }
 
-inline void bytearray_setitem(ByteArray& b, int32_t index, int32_t value) {
+TPY_ALWAYS_INLINE void bytearray_setitem(ByteArray& b, int32_t index, int32_t value) {
     bytearray_setitem(b, index, int_to_byte(value));
 }
 

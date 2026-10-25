@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const SHA256& obj) {
 
 // def update(self, data: bytes) -> None:
 //     n: int32 = int32(len(data))
-//     self.length = uint64.add_wrap(self.length, uint64(n))
+//     self.length = uint64.wrap_add(self.length, uint64(n))
 //     k: int32 = 0
 //     while k < n:
 //         self.buffer.append(data[k])
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const SHA256& obj) {
 //     self._drain_blocks()
 inline void SHA256::update(::tpy::BytesView data) {
     int32_t n = ::tpy::__len__(data);
-    this->length = static_cast<uint64_t>(this->length + ::tpy::int_cast_check<uint64_t>(n));
+    this->length = ::tpy::wrap_add<uint64_t>(this->length, ::tpy::int_cast_check<uint64_t>(n));
     int32_t k = 0;
     while ((k < n)) {
         this->buffer.push_back(::tpy::bytes_getitem(data, k));

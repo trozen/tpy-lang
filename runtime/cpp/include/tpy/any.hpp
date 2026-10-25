@@ -60,7 +60,7 @@ struct Any {
     Any(std::any v, const AnyOps* o) noexcept
         : value(std::move(v)), ops(o) {}
 
-    bool empty() const noexcept { return !value.has_value(); }
+    TPY_ALWAYS_INLINE bool empty() const noexcept { return !value.has_value(); }
 };
 
 // ---------------------------------------------------------------------
@@ -313,11 +313,11 @@ inline Any make_any(T value) {
 namespace detail {
 
 template <typename T>
-inline void check_any_cast(const Any& a) {
-    if (a.empty()) {
+TPY_ALWAYS_INLINE void check_any_cast(const Any& a) {
+    if (a.empty()) [[unlikely]] {
         ::tpy::tpy_panic("use of empty/moved-from Any");
     }
-    if (a.value.type() != typeid(T)) {
+    if (a.value.type() != typeid(T)) [[unlikely]] {
         ::tpy::raise_type_error("Any holds {}, cannot cast to {}",
                                 a.ops->type_name(),
                                 ::tpy::type_name<T>());
@@ -327,13 +327,13 @@ inline void check_any_cast(const Any& a) {
 }  // namespace detail
 
 template <typename T>
-T any_cast_or_panic(const Any& a) {
+TPY_ALWAYS_INLINE T any_cast_or_panic(const Any& a) {
     detail::check_any_cast<T>(a);
     return std::any_cast<T>(a.value);
 }
 
 template <typename T>
-T any_cast_or_panic(Any&& a) {
+TPY_ALWAYS_INLINE T any_cast_or_panic(Any&& a) {
     detail::check_any_cast<T>(a);
     T moved = std::any_cast<T>(std::move(a.value));
     // Clear the source so the documented "use of empty/moved-from Any"

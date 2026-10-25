@@ -263,7 +263,7 @@ inline void ArrayList<T, N>::append_default()
 //     if index is None:
 //         self._size -= 1
 //         return self._storage.take(self._size)
-//     ui = uint32.trunc(index)
+//     ui = uint32.wrap(index)
 //     assert ui < self._size
 //     result = self._storage.take(ui)
 //     self._storage.shift(ui + 1, ui, self._size - ui - 1)
@@ -286,7 +286,7 @@ inline ::tpy::own_return_t<T> ArrayList<T, N>::pop(std::optional<int32_t> index)
 
 // def insert(self, index: int32, value: Own[T]) -> None:
 //     assert self._size < self._storage.capacity()
-//     ui = uint32.trunc(index)
+//     ui = uint32.wrap(index)
 //     assert ui <= self._size
 //     self._storage.shift(ui, ui + 1, self._size - ui)
 //     self._storage.init(ui, value)
@@ -304,7 +304,7 @@ inline void ArrayList<T, N>::insert(int32_t index, ::tpy::own_param_t<T> value) 
 // def index[T: Equatable](self, value: T) -> int32:
 //     for ui in range(self._size):
 //         if self._storage.load(ui) == value:
-//             return int32.trunc(ui)
+//             return int32.wrap(ui)
 //     assert False, "list.index(x): x not in list"
 template<typename T, std::size_t N>
 inline int32_t ArrayList<T, N>::index(::tpy::readonly_form_t<T> value) const
@@ -375,8 +375,8 @@ inline void ArrayList<T, N>::reverse() {
 }
 
 // def swap(self, i: int32, j: int32) -> None:
-//     ui = uint32.trunc(i)
-//     uj = uint32.trunc(j)
+//     ui = uint32.wrap(i)
+//     uj = uint32.wrap(j)
 //     assert ui < self._size
 //     assert uj < self._size
 //     if ui == uj:
@@ -410,7 +410,7 @@ inline void ArrayList<T, N>::sort()
 
 // def truncate(self, new_len: int32) -> None:
 //     assert new_len >= 0
-//     u_new_len = uint32.trunc(new_len)
+//     u_new_len = uint32.wrap(new_len)
 //     if u_new_len < self._size:
 //         self._storage.drop_n(u_new_len, self._size - u_new_len)
 //         self._size = u_new_len
@@ -425,7 +425,7 @@ inline void ArrayList<T, N>::truncate(int32_t new_len) {
 }
 
 // def __len__(self) -> int32:
-//     return int32.trunc(self._size)
+//     return int32.wrap(self._size)
 template<typename T, std::size_t N>
 inline int32_t ArrayList<T, N>::__len__() const {
     return static_cast<int32_t>(this->_size);
@@ -434,7 +434,7 @@ inline int32_t ArrayList<T, N>::__len__() const {
 // @dispatch
 // @auto_readonly
 // def __getitem__(self, index: int32) -> auto_readonly[T]:
-//     ui = uint32.trunc(index)
+//     ui = uint32.wrap(index)
 //     assert ui < self._size
 //     return self._storage.load(ui)
 template<typename T, std::size_t N>
@@ -447,7 +447,7 @@ inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::__getitem__(int32_t index) {
 // @dispatch
 // @auto_readonly
 // def __getitem__(self, index: int32) -> auto_readonly[T]:
-//     ui = uint32.trunc(index)
+//     ui = uint32.wrap(index)
 //     assert ui < self._size
 //     return self._storage.load(ui)
 template<typename T, std::size_t N>
@@ -476,7 +476,7 @@ inline std::span<const T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) 
 }
 
 // def __setitem__(self, index: int32, value: Own[T]) -> None:
-//     ui = uint32.trunc(index)
+//     ui = uint32.wrap(index)
 //     assert ui < self._size
 //     self._storage.drop(ui)
 //     self._storage.init(ui, value)
@@ -489,7 +489,7 @@ inline void ArrayList<T, N>::__setitem__(int32_t index, ::tpy::own_param_t<T> va
 }
 
 // def __delitem__(self, index: int32) -> None:
-//     ui = uint32.trunc(index)
+//     ui = uint32.wrap(index)
 //     assert ui < self._size
 //     self._storage.drop(ui)
 //     self._storage.shift(ui + 1, ui, self._size - ui - 1)
@@ -544,7 +544,7 @@ inline bool ArrayList<T, N>::__eq__(const ArrayList<T, N>& other) const
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[T]]:
-//     return self._storage.ptr().span(int32.trunc(self._size))
+//     return self._storage.ptr().span(int32.wrap(self._size))
 template<typename T, std::size_t N>
 inline std::span<T> ArrayList<T, N>::__span__() {
     return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
@@ -552,7 +552,7 @@ inline std::span<T> ArrayList<T, N>::__span__() {
 
 // @auto_readonly
 // def __span__(self) -> Span[auto_readonly[T]]:
-//     return self._storage.ptr().span(int32.trunc(self._size))
+//     return self._storage.ptr().span(int32.wrap(self._size))
 template<typename T, std::size_t N>
 inline std::span<const T> ArrayList<T, N>::__span__() const {
     return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
@@ -578,7 +578,7 @@ inline ::tpy::SpanIter<const T> ArrayList<T, N>::__iter__() const {
 //     # TODO: warn for Spannable path too (also copies elements)
 //     if isinstance(items, Spannable):
 //         items_span = span(items)
-//         u_size = uint32.trunc(len(items_span))
+//         u_size = uint32.wrap(len(items_span))
 //         assert self._size + u_size <= self._storage.capacity()
 //         self._storage.init_from_span(self._size, items_span)
 //         self._size += u_size

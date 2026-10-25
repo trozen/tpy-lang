@@ -63,40 +63,40 @@ constexpr bool try_pow(T base, T exp, T& result) {
 
 // --- Type name helper for error messages ---
 
-template<typename T> constexpr const char* fixed_int_name() { return "FixedInt"; }
-template<> constexpr const char* fixed_int_name<int8_t>() { return "int8"; }
-template<> constexpr const char* fixed_int_name<int16_t>() { return "int16"; }
-template<> constexpr const char* fixed_int_name<int32_t>() { return "int32"; }
-template<> constexpr const char* fixed_int_name<int64_t>() { return "int64"; }
-template<> constexpr const char* fixed_int_name<uint8_t>() { return "uint8"; }
-template<> constexpr const char* fixed_int_name<uint16_t>() { return "uint16"; }
-template<> constexpr const char* fixed_int_name<uint32_t>() { return "uint32"; }
-template<> constexpr const char* fixed_int_name<uint64_t>() { return "uint64"; }
+template<typename T> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name() { return "FixedInt"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<int8_t>() { return "int8"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<int16_t>() { return "int16"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<int32_t>() { return "int32"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<int64_t>() { return "int64"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<uint8_t>() { return "uint8"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<uint16_t>() { return "uint16"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<uint32_t>() { return "uint32"; }
+template<> TPY_ALWAYS_INLINE constexpr const char* fixed_int_name<uint64_t>() { return "uint64"; }
 
 // --- Checked arithmetic ---
 
 template<fixed_check_type T>
-constexpr T add_check(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T add_check(T a, T b) {
     T result;
-    if (__builtin_add_overflow(a, b, &result)) {
+    if (__builtin_add_overflow(a, b, &result)) [[unlikely]] {
         raise_fixedint_overflow("{} overflow in addition", fixed_int_name<T>());
     }
     return result;
 }
 
 template<fixed_check_type T>
-constexpr T sub_check(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T sub_check(T a, T b) {
     T result;
-    if (__builtin_sub_overflow(a, b, &result)) {
+    if (__builtin_sub_overflow(a, b, &result)) [[unlikely]] {
         raise_fixedint_overflow("{} overflow in subtraction", fixed_int_name<T>());
     }
     return result;
 }
 
 template<fixed_check_type T>
-constexpr T mul_check(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T mul_check(T a, T b) {
     T result;
-    if (__builtin_mul_overflow(a, b, &result)) {
+    if (__builtin_mul_overflow(a, b, &result)) [[unlikely]] {
         raise_fixedint_overflow("{} overflow in multiplication", fixed_int_name<T>());
     }
     return result;
@@ -105,9 +105,10 @@ constexpr T mul_check(T a, T b) {
 // Python floor division: round toward negative infinity.
 // Divisor must be non-zero (caller's responsibility).
 template<typename T>
-constexpr T div_floor(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T div_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
-        if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
+        constexpr T min_v = std::numeric_limits<T>::min();
+        if (a == min_v && b == static_cast<T>(-1)) [[unlikely]] {
             raise_fixedint_overflow("integer overflow in division");
         }
         T q = a / b;
@@ -124,9 +125,10 @@ constexpr T div_floor(T a, T b) {
 // Python modulo: result has same sign as divisor.
 // Divisor must be non-zero (caller's responsibility).
 template<typename T>
-constexpr T mod_floor(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T mod_floor(T a, T b) {
     if constexpr (std::is_signed_v<T>) {
-        if (a == std::numeric_limits<T>::min() && b == static_cast<T>(-1)) [[unlikely]] {
+        constexpr T min_v = std::numeric_limits<T>::min();
+        if (a == min_v && b == static_cast<T>(-1)) [[unlikely]] {
             return 0;  // Python: INT_MIN % -1 == 0
         }
         T r = a % b;
@@ -141,7 +143,7 @@ constexpr T mod_floor(T a, T b) {
 
 // Checked variants: also check for division by zero.
 template<fixed_check_type T>
-constexpr T div_check(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T div_check(T a, T b) {
     if (b == 0) [[unlikely]] {
         raise_zero_division_error("integer division or modulo by zero");
     }
@@ -149,7 +151,7 @@ constexpr T div_check(T a, T b) {
 }
 
 template<fixed_check_type T>
-constexpr T mod_check(T a, T b) {
+TPY_ALWAYS_INLINE constexpr T mod_check(T a, T b) {
     if (b == 0) [[unlikely]] {
         raise_zero_division_error("integer modulo by zero");
     }
@@ -157,9 +159,10 @@ constexpr T mod_check(T a, T b) {
 }
 
 template<fixed_check_type T>
-constexpr T neg_check(T a) {
+TPY_ALWAYS_INLINE constexpr T neg_check(T a) {
     static_assert(std::is_signed_v<T>, "Negation only supported on signed types");
-    if (a == std::numeric_limits<T>::min()) {
+    constexpr T min_v = std::numeric_limits<T>::min();
+    if (a == min_v) [[unlikely]] {
         raise_fixedint_overflow("{} overflow in negation", fixed_int_name<T>());
     }
     return -a;
@@ -169,15 +172,15 @@ constexpr T neg_check(T a) {
 // count too wide for T (`int8(1) << int64(256)`) raises OverflowError instead of wrapping
 // into a small one on a conversion.
 template<typename T, bool IsLeft, typename C>
-constexpr int shift_count_check(C b) {
+TPY_ALWAYS_INLINE constexpr int shift_count_check(C b) {
     static_assert(std::is_integral_v<C>, "shift count must be a fixed-width integer");
     if constexpr (std::is_signed_v<C>) {
-        if (b < 0) {
+        if (b < 0) [[unlikely]] {
             raise_value_error("negative shift count");
         }
     }
     constexpr int bits = sizeof(T) * 8;
-    if (std::cmp_greater_equal(b, bits)) {
+    if (std::cmp_greater_equal(b, bits)) [[unlikely]] {
         if constexpr (IsLeft) {
             raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
         } else {
@@ -188,20 +191,56 @@ constexpr int shift_count_check(C b) {
 }
 
 template<fixed_check_type T, typename C>
-constexpr T lshift_check(T a, C count) {
+TPY_ALWAYS_INLINE constexpr T lshift_check(T a, C count) {
     const int b = shift_count_check<T, true>(count);
     using U = std::make_unsigned_t<T>;
     T result = static_cast<T>(static_cast<U>(a) << b);
-    if ((result >> b) != a) {
+    if ((result >> b) != a) [[unlikely]] {
         raise_fixedint_overflow("{} overflow in left shift", fixed_int_name<T>());
     }
     return result;
 }
 
 template<typename T, typename C>
-constexpr T rshift_check(T a, C count) {
+TPY_ALWAYS_INLINE constexpr T rshift_check(T a, C count) {
     const int b = shift_count_check<T, false>(count);
     return a >> b;
+}
+
+// --- Wrapping arithmetic (result modulo 2**bits) ---
+
+// At least `unsigned int` so 8/16-bit operands never promote to signed int,
+// where a product such as 65535 * 65535 overflows (UB).
+template<typename T>
+using wrap_uint_t = std::common_type_t<std::make_unsigned_t<T>, unsigned int>;
+
+// type_identity_t: T is named at the call, so a literal or a narrower operand
+// converts instead of taking part in deduction.
+template<typename T>
+TPY_ALWAYS_INLINE constexpr T wrap_add(std::type_identity_t<T> x, std::type_identity_t<T> y) {
+    using U = wrap_uint_t<T>;
+    return static_cast<T>(static_cast<U>(static_cast<U>(x) + static_cast<U>(y)));
+}
+
+template<typename T>
+TPY_ALWAYS_INLINE constexpr T wrap_sub(std::type_identity_t<T> x, std::type_identity_t<T> y) {
+    using U = wrap_uint_t<T>;
+    return static_cast<T>(static_cast<U>(static_cast<U>(x) - static_cast<U>(y)));
+}
+
+template<typename T>
+TPY_ALWAYS_INLINE constexpr T wrap_mul(std::type_identity_t<T> x, std::type_identity_t<T> y) {
+    using U = wrap_uint_t<T>;
+    return static_cast<T>(static_cast<U>(static_cast<U>(x) * static_cast<U>(y)));
+}
+
+// The count modulo bits in Python's sense (-1 -> bits-1): bits is a power of
+// two and the unsigned conversion is modular, so one AND does it.
+template<typename T, typename C>
+TPY_ALWAYS_INLINE constexpr int wrap_shift_count(C k) {
+    static_assert(std::is_integral_v<C>, "shift count must be a fixed-width integer");
+    constexpr unsigned bits = sizeof(T) * 8;
+    return static_cast<int>(static_cast<std::make_unsigned_t<C>>(k) & (bits - 1));
 }
 
 template<fixed_check_type T>
@@ -225,18 +264,20 @@ constexpr T pow_check(T base, T exp) {
 // --- Checked cast between fixed-int types ---
 
 template<typename To, typename From>
-constexpr To int_cast_check(From v) {
+TPY_ALWAYS_INLINE constexpr To int_cast_check(From v) {
+    // Bounds through constexpr locals: -O0 would otherwise call min()/max().
+    [[maybe_unused]] constexpr To to_min = std::numeric_limits<To>::min();
+    [[maybe_unused]] constexpr To to_max = std::numeric_limits<To>::max();
     if constexpr (std::is_signed_v<From> && std::is_unsigned_v<To>) {
-        if (v < 0 || static_cast<std::make_unsigned_t<From>>(v) > std::numeric_limits<To>::max()) {
+        if (v < 0 || static_cast<std::make_unsigned_t<From>>(v) > to_max) [[unlikely]] {
             raise_fixedint_overflow("{} overflow: value out of range", fixed_int_name<To>());
         }
     } else if constexpr (std::is_unsigned_v<From> && std::is_signed_v<To>) {
-        if (v > static_cast<std::make_unsigned_t<To>>(std::numeric_limits<To>::max())) {
+        if (v > static_cast<std::make_unsigned_t<To>>(to_max)) [[unlikely]] {
             raise_fixedint_overflow("{} overflow: value out of range", fixed_int_name<To>());
         }
     } else if constexpr (sizeof(From) > sizeof(To)) {
-        if (v < static_cast<From>(std::numeric_limits<To>::min()) ||
-            v > static_cast<From>(std::numeric_limits<To>::max())) {
+        if (v < static_cast<From>(to_min) || v > static_cast<From>(to_max)) [[unlikely]] {
             raise_fixedint_overflow("{} overflow: value out of range", fixed_int_name<To>());
         }
     }
@@ -250,22 +291,22 @@ constexpr To int_cast_check(From v) {
 // negative-exponent behavior.
 
 template<typename T> requires std::is_same_v<T, BigInt>
-T add_check(const T& a, const T& b) { return a + b; }
+TPY_ALWAYS_INLINE T add_check(const T& a, const T& b) { return a + b; }
 
 template<typename T> requires std::is_same_v<T, BigInt>
-T sub_check(const T& a, const T& b) { return a - b; }
+TPY_ALWAYS_INLINE T sub_check(const T& a, const T& b) { return a - b; }
 
 template<typename T> requires std::is_same_v<T, BigInt>
-T mul_check(const T& a, const T& b) { return a * b; }
+TPY_ALWAYS_INLINE T mul_check(const T& a, const T& b) { return a * b; }
 
 template<typename T> requires std::is_same_v<T, BigInt>
-T div_check(const T& a, const T& b) { return a / b; }
+TPY_ALWAYS_INLINE T div_check(const T& a, const T& b) { return a / b; }
 
 template<typename T> requires std::is_same_v<T, BigInt>
-T mod_check(const T& a, const T& b) { return a % b; }
+TPY_ALWAYS_INLINE T mod_check(const T& a, const T& b) { return a % b; }
 
 template<typename T> requires std::is_same_v<T, BigInt>
-T neg_check(const T& a) { return -a; }
+TPY_ALWAYS_INLINE T neg_check(const T& a) { return -a; }
 
 template<typename T> requires std::is_same_v<T, BigInt>
 T pow_check(const T& base, const T& exp) { return base.pow(exp); }
@@ -273,7 +314,7 @@ T pow_check(const T& base, const T& exp) { return base.pow(exp); }
 // The count converts checked: BigInt's `operator<<(int32_t)` would otherwise
 // see a wider count truncated.
 template<typename T, typename C> requires std::is_same_v<T, BigInt>
-T lshift_check(const T& a, const C& count) {
+TPY_ALWAYS_INLINE T lshift_check(const T& a, const C& count) {
     if constexpr (std::is_same_v<C, BigInt>) {
         return a << count;
     } else {

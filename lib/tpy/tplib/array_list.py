@@ -49,7 +49,7 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
         if index is None:
             self._size -= 1
             return self._storage.take(self._size)
-        ui = uint32.trunc(index)
+        ui = uint32.wrap(index)
         assert ui < self._size
         result = self._storage.take(ui)
         self._storage.shift(ui + 1, ui, self._size - ui - 1)
@@ -58,7 +58,7 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
 
     def insert(self, index: int32, value: Own[T]) -> None:
         assert self._size < self._storage.capacity()
-        ui = uint32.trunc(index)
+        ui = uint32.wrap(index)
         assert ui <= self._size
         self._storage.shift(ui, ui + 1, self._size - ui)
         self._storage.init(ui, value)
@@ -67,7 +67,7 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
     def index[T: Equatable](self, value: T) -> int32:
         for ui in range(self._size):
             if self._storage.load(ui) == value:
-                return int32.trunc(ui)
+                return int32.wrap(ui)
         assert False, "list.index(x): x not in list"
 
     def count[T: Equatable](self, value: T) -> int32:
@@ -94,8 +94,8 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
             hi -= 1
 
     def swap(self, i: int32, j: int32) -> None:
-        ui = uint32.trunc(i)
-        uj = uint32.trunc(j)
+        ui = uint32.wrap(i)
+        uj = uint32.wrap(j)
         assert ui < self._size
         assert uj < self._size
         if ui == uj:
@@ -110,18 +110,18 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
 
     def truncate(self, new_len: int32) -> None:
         assert new_len >= 0
-        u_new_len = uint32.trunc(new_len)
+        u_new_len = uint32.wrap(new_len)
         if u_new_len < self._size:
             self._storage.drop_n(u_new_len, self._size - u_new_len)
             self._size = u_new_len
 
     def __len__(self) -> int32:
-        return int32.trunc(self._size)
+        return int32.wrap(self._size)
 
     @dispatch
     @auto_readonly
     def __getitem__(self, index: int32) -> auto_readonly[T]:
-        ui = uint32.trunc(index)
+        ui = uint32.wrap(index)
         assert ui < self._size
         return self._storage.load(ui)
 
@@ -131,13 +131,13 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
         return self.__span__()[index]
 
     def __setitem__(self, index: int32, value: Own[T]) -> None:
-        ui = uint32.trunc(index)
+        ui = uint32.wrap(index)
         assert ui < self._size
         self._storage.drop(ui)
         self._storage.init(ui, value)
 
     def __delitem__(self, index: int32) -> None:
-        ui = uint32.trunc(index)
+        ui = uint32.wrap(index)
         assert ui < self._size
         self._storage.drop(ui)
         self._storage.shift(ui + 1, ui, self._size - ui - 1)
@@ -159,7 +159,7 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
 
     @auto_readonly
     def __span__(self) -> Span[auto_readonly[T]]:
-        return self._storage.ptr().span(int32.trunc(self._size))
+        return self._storage.ptr().span(int32.wrap(self._size))
 
     @auto_readonly
     def __iter__(self) -> SpanIter[auto_readonly[T]]:
@@ -169,7 +169,7 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
         # TODO: warn for Spannable path too (also copies elements)
         if isinstance(items, Spannable):
             items_span = span(items)
-            u_size = uint32.trunc(len(items_span))
+            u_size = uint32.wrap(len(items_span))
             assert self._size + u_size <= self._storage.capacity()
             self._storage.init_from_span(self._size, items_span)
             self._size += u_size

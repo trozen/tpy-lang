@@ -535,7 +535,7 @@ inline int32_t socket::getsockopt_int(int32_t level, int32_t optname) const {
 //     if posix_socket.getsockname(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
 //         _raise_errno()
 //     return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-//             int32.trunc(posix_socket.ntohs(addr.sin_port)))
+//             int32.wrap(posix_socket.ntohs(addr.sin_port)))
 inline std::tuple<std::string, int32_t> socket::getsockname() const {
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
     uint32_t addrlen = _SOCKADDR_IN_LEN;
@@ -551,7 +551,7 @@ inline std::tuple<std::string, int32_t> socket::getsockname() const {
 //     if posix_socket.getpeername(self.fd, take_ptr(addr), take_ptr(addrlen)) < int32(0):
 //         _raise_errno()
 //     return (_ipv4_to_str(unsafe_cast(take_ptr(addr.sin_addr))),
-//             int32.trunc(posix_socket.ntohs(addr.sin_port)))
+//             int32.wrap(posix_socket.ntohs(addr.sin_port)))
 inline std::tuple<std::string, int32_t> socket::getpeername() const {
     ::sockaddr_in addr = ::sockaddr_in{0, 0, 0};
     uint32_t addrlen = _SOCKADDR_IN_LEN;

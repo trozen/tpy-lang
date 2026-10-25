@@ -64,7 +64,7 @@
 #     and is rarely used. Match CPython if a real workload needs it.
 #   - `choice([])` raises `IndexError`, matching CPython.
 #
-# Uses `uint32.add_wrap / sub_wrap / mul_wrap / shl_wrap` for the modular
+# Uses `uint32.wrap_add / wrap_sub / wrap_mul / wrap_shl` for the modular
 # arithmetic MT needs (TPy's +/-/*/<< on fixed-width ints are
 # overflow-checked).
 #
@@ -151,8 +151,8 @@ class Random:
         mti: int32 = 1
         while mti < _N:
             prev: uint32 = self._state[mti - 1]
-            self._state[mti] = uint32.add_wrap(
-                uint32.mul_wrap(1812433253, prev ^ (prev >> 30)),
+            self._state[mti] = uint32.wrap_add(
+                uint32.wrap_mul(1812433253, prev ^ (prev >> 30)),
                 uint32(mti),
             )
             mti += 1
@@ -170,9 +170,9 @@ class Random:
             k = key_length
         while k > 0:
             prev: uint32 = self._state[i - 1]
-            mixed: uint32 = uint32.mul_wrap(prev ^ (prev >> 30), 1664525)
-            self._state[i] = uint32.add_wrap(
-                uint32.add_wrap(self._state[i] ^ mixed, key0),
+            mixed: uint32 = uint32.wrap_mul(prev ^ (prev >> 30), 1664525)
+            self._state[i] = uint32.wrap_add(
+                uint32.wrap_add(self._state[i] ^ mixed, key0),
                 uint32(j),
             )
             i += 1
@@ -186,8 +186,8 @@ class Random:
         k = _N - 1
         while k > 0:
             prev2: uint32 = self._state[i - 1]
-            mixed2: uint32 = uint32.mul_wrap(prev2 ^ (prev2 >> 30), 1566083941)
-            self._state[i] = uint32.sub_wrap(self._state[i] ^ mixed2, uint32(i))
+            mixed2: uint32 = uint32.wrap_mul(prev2 ^ (prev2 >> 30), 1566083941)
+            self._state[i] = uint32.wrap_sub(self._state[i] ^ mixed2, uint32(i))
             i += 1
             if i >= _N:
                 self._state[0] = self._state[_N - 1]
@@ -230,8 +230,8 @@ class Random:
         self._index += 1
         # Tempering.
         y = y ^ (y >> 11)
-        y = y ^ (uint32.shl_wrap(y, 7) & 0x9d2c5680)
-        y = y ^ (uint32.shl_wrap(y, 15) & 0xefc60000)
+        y = y ^ (uint32.wrap_shl(y, 7) & 0x9d2c5680)
+        y = y ^ (uint32.wrap_shl(y, 15) & 0xefc60000)
         y = y ^ (y >> 18)
         return y
 
@@ -527,7 +527,7 @@ def seed(n: int32) -> None:
     # INT32_MIN the mathematical abs doesn't fit in int32, but
     # `0 - n` in uint32 (mod 2^32) equals abs(n) for any negative n.
     if n < 0:
-        _inst._seed(uint32.sub_wrap(uint32(0), uint32.trunc(n)))
+        _inst._seed(uint32.wrap_sub(uint32(0), uint32.wrap(n)))
     else:
         _inst._seed(uint32(n))
 

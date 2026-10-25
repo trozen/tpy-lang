@@ -29,7 +29,7 @@
 #   - Forward-ref string annotations (`-> "SHA256"`) fail parse; class is
 #     defined before the factory to avoid them.
 #
-# Uses tpy.bits.rotr32 for rotation and UIntN.add_wrap for wrapping
+# Uses tpy.bits.rotr32 for rotation and UIntN.wrap_add for wrapping
 # addition (TPy's +/<< on fixed-width ints are overflow-checked; hash
 # algorithms need modular arithmetic).
 __tpy__ = {"cpp_namespace": "tpystd::hashlib"}
@@ -93,7 +93,7 @@ class SHA256:
 
     def update(self, data: bytes) -> None:
         n: int32 = int32(len(data))
-        self.length = uint64.add_wrap(self.length, uint64(n))
+        self.length = uint64.wrap_add(self.length, uint64(n))
         k: int32 = 0
         while k < n:
             self.buffer.append(data[k])
@@ -122,7 +122,7 @@ class SHA256:
             w2: uint32 = w[i - 2]
             s0: uint32 = rotr32(w15, 7) ^ rotr32(w15, 18) ^ (w15 >> 3)
             s1: uint32 = rotr32(w2, 17) ^ rotr32(w2, 19) ^ (w2 >> 10)
-            w.append(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(w[i - 16], s0), w[i - 7]), s1))
+            w.append(uint32.wrap_add(uint32.wrap_add(uint32.wrap_add(w[i - 16], s0), w[i - 7]), s1))
             i += 1
         a: uint32 = self.h[0]
         b: uint32 = self.h[1]
@@ -136,33 +136,33 @@ class SHA256:
         while t < 64:
             bsig1: uint32 = rotr32(e, 6) ^ rotr32(e, 11) ^ rotr32(e, 25)
             ch: uint32 = (e & f) ^ ((~e) & g)
-            t1: uint32 = uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(uint32.add_wrap(hh, bsig1), ch), _SHA256_K[t]), w[t])
+            t1: uint32 = uint32.wrap_add(uint32.wrap_add(uint32.wrap_add(uint32.wrap_add(hh, bsig1), ch), _SHA256_K[t]), w[t])
             bsig0: uint32 = rotr32(a, 2) ^ rotr32(a, 13) ^ rotr32(a, 22)
             maj: uint32 = (a & b) ^ (a & c) ^ (b & c)
-            t2: uint32 = uint32.add_wrap(bsig0, maj)
+            t2: uint32 = uint32.wrap_add(bsig0, maj)
             hh = g
             g = f
             f = e
-            e = uint32.add_wrap(d, t1)
+            e = uint32.wrap_add(d, t1)
             d = c
             c = b
             b = a
-            a = uint32.add_wrap(t1, t2)
+            a = uint32.wrap_add(t1, t2)
             t += 1
-        self.h[0] = uint32.add_wrap(self.h[0], a)
-        self.h[1] = uint32.add_wrap(self.h[1], b)
-        self.h[2] = uint32.add_wrap(self.h[2], c)
-        self.h[3] = uint32.add_wrap(self.h[3], d)
-        self.h[4] = uint32.add_wrap(self.h[4], e)
-        self.h[5] = uint32.add_wrap(self.h[5], f)
-        self.h[6] = uint32.add_wrap(self.h[6], g)
-        self.h[7] = uint32.add_wrap(self.h[7], hh)
+        self.h[0] = uint32.wrap_add(self.h[0], a)
+        self.h[1] = uint32.wrap_add(self.h[1], b)
+        self.h[2] = uint32.wrap_add(self.h[2], c)
+        self.h[3] = uint32.wrap_add(self.h[3], d)
+        self.h[4] = uint32.wrap_add(self.h[4], e)
+        self.h[5] = uint32.wrap_add(self.h[5], f)
+        self.h[6] = uint32.wrap_add(self.h[6], g)
+        self.h[7] = uint32.wrap_add(self.h[7], hh)
 
     def digest(self) -> bytes:
         clone: SHA256 = self.copy()
-        bit_len: uint64 = uint64.add_wrap(clone.length, clone.length)
-        bit_len = uint64.add_wrap(bit_len, bit_len)
-        bit_len = uint64.add_wrap(bit_len, bit_len)  # x8 for bits
+        bit_len: uint64 = uint64.wrap_add(clone.length, clone.length)
+        bit_len = uint64.wrap_add(bit_len, bit_len)
+        bit_len = uint64.wrap_add(bit_len, bit_len)  # x8 for bits
         clone.buffer.append(0x80)
         while int32(len(clone.buffer)) % 64 != 56:
             clone.buffer.append(0)

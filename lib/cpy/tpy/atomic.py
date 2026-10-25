@@ -34,7 +34,7 @@ class Atomic(metaclass=_AtomicMeta):
         return self._elem_type(value) if self._elem_type is not None else value
 
     def _wrap(self, value):
-        return self._elem_type.trunc(value) if self._elem_type is not None else value
+        return self._elem_type.wrap(value) if self._elem_type is not None else value
 
     def __init__(self, value):
         if self._elem_type is None:

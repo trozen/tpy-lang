@@ -62,7 +62,7 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     computes in the default int in TPy, and a wider one out of range raises
     OverflowError there, so there is no wrapped value to reproduce. The
     constructor raises OverflowError for a value outside the type, as a
-    store into a fixed-width slot does; only the `trunc` / `*_wrap` helpers
+    store into a fixed-width slot does; only the `wrap` / `wrap_*` helpers
     and `~` on an unsigned 32/64-bit value wrap."""
     if signed:
         min_val = -(2 ** (bits - 1))
@@ -109,39 +109,38 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
         def __str__(self): return str(int(self))
 
     @classmethod
-    def trunc(cls, value):
+    def wrap(cls, value):
         return cls(_modular(value))
 
+    # The operands are `T` parameters in TPy, so a value outside T raises
+    # OverflowError at the argument's conversion there too.
     @classmethod
-    def add_wrap(cls, a, b):
-        return cls(_modular(int(a) + int(b)))
+    def wrap_add(cls, a, b):
+        return cls(_modular(int(cls(a)) + int(cls(b))))
 
     @classmethod
-    def sub_wrap(cls, a, b):
-        return cls(_modular(int(a) - int(b)))
+    def wrap_sub(cls, a, b):
+        return cls(_modular(int(cls(a)) - int(cls(b))))
 
     @classmethod
-    def mul_wrap(cls, a, b):
-        return cls(_modular(int(a) * int(b)))
+    def wrap_mul(cls, a, b):
+        return cls(_modular(int(cls(a)) * int(cls(b))))
+
+    # Reducing the count first keeps a large count from building a huge int.
+    @classmethod
+    def wrap_shl(cls, a, n):
+        return cls(_modular(int(cls(a)) << (int(n) % bits)))
 
     @classmethod
-    def shl_wrap(cls, a, b):
-        return cls(_modular(int(a) << int(b)))
+    def wrap_shr(cls, a, n):
+        return cls(_modular(int(cls(a)) >> (int(n) % bits)))
 
-    @classmethod
-    def shr_wrap(cls, a, b):
-        # Logical (zero-fill) shift via unsigned route, matching the C++
-        # codegen for signed types. For unsigned types this is the same
-        # as Python's `>>`; for signed it differs (Python `>>` is
-        # arithmetic / sign-extending).
-        return cls(_modular((int(a) & (mod - 1)) >> int(b)))
-
-    FixedInt.trunc = trunc
-    FixedInt.add_wrap = add_wrap
-    FixedInt.sub_wrap = sub_wrap
-    FixedInt.mul_wrap = mul_wrap
-    FixedInt.shl_wrap = shl_wrap
-    FixedInt.shr_wrap = shr_wrap
+    FixedInt.wrap = wrap
+    FixedInt.wrap_add = wrap_add
+    FixedInt.wrap_sub = wrap_sub
+    FixedInt.wrap_mul = wrap_mul
+    FixedInt.wrap_shl = wrap_shl
+    FixedInt.wrap_shr = wrap_shr
 
     FixedInt._TPY_BASE = FixedInt
     FixedInt._TPY_BITS = bits

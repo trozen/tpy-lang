@@ -176,14 +176,14 @@ def _pump(s: Ptr[_z.Stream], data: bytes, flush: int32, first_chunk: int32,
             want = max_length - total
         if want == 0:
             break
-        buf = UninitHeapStorage[uint8](uint32.trunc(want))
+        buf = UninitHeapStorage[uint8](uint32.wrap(want))
         consumed: uint64 = 0
         produced: uint64 = 0
         out.rc = _z.step(s, unsafe_ptr_add(base, out.pos),
                          uint64(n - out.pos), buf.ptr(), uint64(want), flush,
                          take_ptr(consumed), take_ptr(produced))
-        out.pos += int32.trunc(consumed)
-        got = int32.trunc(produced)
+        out.pos += int32.wrap(consumed)
+        got = int32.wrap(produced)
         if got > 0:
             out.parts.append(unsafe_bytes_from_buf(buf.ptr(), produced))
             total += got

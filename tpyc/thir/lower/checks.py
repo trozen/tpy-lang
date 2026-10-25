@@ -9233,7 +9233,7 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     callee -- the same loop but with `inline_template` set (`_is_native_
     stub`), which skips the Own copy-temp, so Own-slot args are rejected by
     the caller; ("template", tmpl) a same-module static `@cpp_template`
-    call (`uint32.trunc(i)`) whose positional-only template expands over
+    call (`uint32.wrap(i)`) whose positional-only template expands over
     the builtins arg loop -- generic statics
     included, since the no-{T} template makes the type-arg
     substitution a no-op. None = an

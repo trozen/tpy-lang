@@ -14,6 +14,7 @@
 
 #pragma once
 
+#include "core.hpp"
 #include "type_traits.hpp"
 
 #include <array>
@@ -52,7 +53,7 @@ struct varargs {
           indirect_(o.indirect_),
           size_(o.size_) {}
 
-    T& operator[](int32_t i) const {
+    TPY_ALWAYS_INLINE T& operator[](int32_t i) const {
         return indirect_ ? *indirect_[i] : direct_[i];
     }
 
@@ -131,7 +132,7 @@ struct varargs<T, true> {
     varargs(const varargs<std::remove_const_t<U>>& o)
         : data_(o.data_), size_(o.size_) {}
 
-    T& operator[](int32_t i) const { return data_[i]; }
+    TPY_ALWAYS_INLINE T& operator[](int32_t i) const { return data_[i]; }
     int32_t size() const { return size_; }
     bool empty() const { return size_ == 0; }
     T* data() const { return data_; }
@@ -172,7 +173,7 @@ template<typename T, bool V>
 int32_t __len__(const varargs<T, V>& v) { return v.size(); }
 
 template<typename T, bool V>
-T& __getitem__(const varargs<T, V>& v, int32_t i) { return v[i]; }
+TPY_ALWAYS_INLINE T& __getitem__(const varargs<T, V>& v, int32_t i) { return v[i]; }
 
 } // namespace tpy
 

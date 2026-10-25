@@ -228,7 +228,7 @@ class _SslSession:
         """Decrypt up to `size` bytes; b"" on a clean close_notify (EOF)."""
         if size <= int32(0):
             return b""
-        buf = UninitHeapStorage[uint8](uint32.trunc(size))
+        buf = UninitHeapStorage[uint8](uint32.wrap(size))
         rc = mbedtls.tls_read(self._s, buf.ptr(), uint64(size))
         if mbedtls.tls_classify(rc) == 3:  # peer close_notify -> EOF
             return b""
@@ -436,7 +436,7 @@ class SSLSocket:
         data_ptr: Ptr[readonly[uint8]] = unsafe_ptr(data)
         while sent < total:
             rc = mbedtls.tls_write(self._session.get().raw(),
-                                   unsafe_ptr_add(data_ptr, int64.trunc(sent)),
+                                   unsafe_ptr_add(data_ptr, int64.wrap(sent)),
                                    total - sent)
             if rc < int32(0):
                 _raise_io_error(rc)

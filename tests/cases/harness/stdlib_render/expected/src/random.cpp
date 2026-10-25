@@ -38,12 +38,12 @@ void seed__noargs() {
 //     # INT32_MIN the mathematical abs doesn't fit in int32, but
 //     # `0 - n` in uint32 (mod 2^32) equals abs(n) for any negative n.
 //     if n < 0:
-//         _inst._seed(uint32.sub_wrap(uint32(0), uint32.trunc(n)))
+//         _inst._seed(uint32.wrap_sub(uint32(0), uint32.wrap(n)))
 //     else:
 //         _inst._seed(uint32(n))
 void seed__int32(int32_t n) {
     if ((n < 0)) {
-        _inst->_seed(static_cast<uint32_t>(0 - static_cast<uint32_t>(n)));
+        _inst->_seed(::tpy::wrap_sub<uint32_t>(0, static_cast<uint32_t>(n)));
     } else {
         _inst->_seed(static_cast<uint32_t>(n));
     }
@@ -167,9 +167,9 @@ double vonmisesvariate(double mu, double kappa) {
 //         k = key_length
 //     while k > 0:
 //         prev: uint32 = self._state[i - 1]
-//         mixed: uint32 = uint32.mul_wrap(prev ^ (prev >> 30), 1664525)
-//         self._state[i] = uint32.add_wrap(
-//             uint32.add_wrap(self._state[i] ^ mixed, key0),
+//         mixed: uint32 = uint32.wrap_mul(prev ^ (prev >> 30), 1664525)
+//         self._state[i] = uint32.wrap_add(
+//             uint32.wrap_add(self._state[i] ^ mixed, key0),
 //             uint32(j),
 //         )
 //         i += 1
@@ -183,8 +183,8 @@ double vonmisesvariate(double mu, double kappa) {
 //     k = _N - 1
 //     while k > 0:
 //         prev2: uint32 = self._state[i - 1]
-//         mixed2: uint32 = uint32.mul_wrap(prev2 ^ (prev2 >> 30), 1566083941)
-//         self._state[i] = uint32.sub_wrap(self._state[i] ^ mixed2, uint32(i))
+//         mixed2: uint32 = uint32.wrap_mul(prev2 ^ (prev2 >> 30), 1566083941)
+//         self._state[i] = uint32.wrap_sub(self._state[i] ^ mixed2, uint32(i))
 //         i += 1
 //         if i >= _N:
 //             self._state[0] = self._state[_N - 1]
@@ -208,8 +208,8 @@ void Random::_seed(uint32_t s) {
     }
     while ((k > 0)) {
         uint32_t prev = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(i, 1)));
-        uint32_t mixed = static_cast<uint32_t>((static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30)))) * 1664525);
-        ::tpy::__setitem__(this->_state, i, static_cast<uint32_t>(static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, i) ^ mixed)) + key0) + ::tpy::int_cast_check<uint32_t>(j)));
+        uint32_t mixed = ::tpy::wrap_mul<uint32_t>((static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30)))), 1664525);
+        ::tpy::__setitem__(this->_state, i, ::tpy::wrap_add<uint32_t>(::tpy::wrap_add<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, i) ^ mixed)), key0), ::tpy::int_cast_check<uint32_t>(j)));
         i = ::tpy::add_check<int32_t>(i, 1);
         j = ::tpy::add_check<int32_t>(j, 1);
         if ((i >= _N)) {
@@ -224,8 +224,8 @@ void Random::_seed(uint32_t s) {
     k = (::tpy::sub_check<int32_t>(_N, 1));
     while ((k > 0)) {
         uint32_t prev2 = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(i, 1)));
-        uint32_t mixed2 = static_cast<uint32_t>((static_cast<uint32_t>(prev2 ^ (::tpy::rshift_check<uint32_t>(prev2, 30)))) * 1566083941);
-        ::tpy::__setitem__(this->_state, i, static_cast<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, i) ^ mixed2)) - ::tpy::int_cast_check<uint32_t>(i)));
+        uint32_t mixed2 = ::tpy::wrap_mul<uint32_t>((static_cast<uint32_t>(prev2 ^ (::tpy::rshift_check<uint32_t>(prev2, 30)))), 1566083941);
+        ::tpy::__setitem__(this->_state, i, ::tpy::wrap_sub<uint32_t>((static_cast<uint32_t>(::tpy::__getitem__(this->_state, i) ^ mixed2)), ::tpy::int_cast_check<uint32_t>(i)));
         i = ::tpy::add_check<int32_t>(i, 1);
         if ((i >= _N)) {
             ::tpy::__setitem__(this->_state, 0, ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(_N, 1))));
@@ -296,8 +296,8 @@ void Random::_generate() {
 //     self._index += 1
 //     # Tempering.
 //     y = y ^ (y >> 11)
-//     y = y ^ (uint32.shl_wrap(y, 7) & 0x9d2c5680)
-//     y = y ^ (uint32.shl_wrap(y, 15) & 0xefc60000)
+//     y = y ^ (uint32.wrap_shl(y, 7) & 0x9d2c5680)
+//     y = y ^ (uint32.wrap_shl(y, 15) & 0xefc60000)
 //     y = y ^ (y >> 18)
 //     return y
 uint32_t Random::_genrand_uint32() {
@@ -307,8 +307,8 @@ uint32_t Random::_genrand_uint32() {
     uint32_t y = ::tpy::__getitem__(this->_state, this->_index);
     this->_index = ::tpy::add_check<int32_t>(this->_index, 1);
     y = (static_cast<uint32_t>(y ^ (::tpy::rshift_check<uint32_t>(y, 11))));
-    y = (static_cast<uint32_t>(y ^ (static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(y) << (7)) & static_cast<uint32_t>(2636928640)))));
-    y = (static_cast<uint32_t>(y ^ (static_cast<uint32_t>(static_cast<uint32_t>(static_cast<uint32_t>(y) << (15)) & static_cast<uint32_t>(4022730752)))));
+    y = (static_cast<uint32_t>(y ^ (static_cast<uint32_t>(static_cast<uint32_t>(static_cast<::tpy::wrap_uint_t<uint32_t>>(y) << ::tpy::wrap_shift_count<uint32_t>(7)) & static_cast<uint32_t>(2636928640)))));
+    y = (static_cast<uint32_t>(y ^ (static_cast<uint32_t>(static_cast<uint32_t>(static_cast<::tpy::wrap_uint_t<uint32_t>>(y) << ::tpy::wrap_shift_count<uint32_t>(15)) & static_cast<uint32_t>(4022730752)))));
     y = (static_cast<uint32_t>(y ^ (::tpy::rshift_check<uint32_t>(y, 18))));
     return y;
 }

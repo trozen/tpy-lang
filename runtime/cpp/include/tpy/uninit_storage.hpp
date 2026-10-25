@@ -72,14 +72,14 @@ public:
 
     // Construct the payload (precondition: empty). Two overloads mirror
     // UninitArrayStorage::init0 so an Own[T] source binds by move or copy.
-    void construct(T&& value) {
+    TPY_ALWAYS_INLINE void construct(T&& value) {
 #ifndef NDEBUG
         if (alive_) tpy_panic("UninitStorage::construct on a live slot");
 #endif
         ::new (static_cast<void*>(&storage_)) T(std::move(value));
         alive_ = true;
     }
-    void construct(const T& value) {
+    TPY_ALWAYS_INLINE void construct(const T& value) {
 #ifndef NDEBUG
         if (alive_) tpy_panic("UninitStorage::construct on a live slot");
 #endif
@@ -89,13 +89,13 @@ public:
 
     bool has() const noexcept { return alive_; }
 
-    T& get() & {
+    TPY_ALWAYS_INLINE T& get() & {
 #ifndef NDEBUG
         if (!alive_) tpy_panic("UninitStorage::get on a dead slot");
 #endif
         return *ptr();
     }
-    const T& get() const & {
+    TPY_ALWAYS_INLINE const T& get() const & {
 #ifndef NDEBUG
         if (!alive_) tpy_panic("UninitStorage::get on a dead slot");
 #endif
@@ -104,7 +104,7 @@ public:
 
     // Consuming read: unlike get() (which leaves the payload in place), this
     // empties the slot, so a second take() hits the dead-slot check.
-    T take() {
+    TPY_ALWAYS_INLINE T take() {
 #ifndef NDEBUG
         if (!alive_) tpy_panic("UninitStorage::take on a dead slot");
 #endif
@@ -123,8 +123,8 @@ public:
 
     // Raw address of the payload slot (live or not) -- for an owner that
     // caches a stable Ptr into a heap-pinned payload (e.g. Rc).
-    T* ptr() noexcept { return std::launder(reinterpret_cast<T*>(&storage_)); }
-    const T* ptr() const noexcept { return std::launder(reinterpret_cast<const T*>(&storage_)); }
+    TPY_ALWAYS_INLINE T* ptr() noexcept { return std::launder(reinterpret_cast<T*>(&storage_)); }
+    TPY_ALWAYS_INLINE const T* ptr() const noexcept { return std::launder(reinterpret_cast<const T*>(&storage_)); }
 
 private:
     alignas(T) unsigned char storage_[sizeof(T)];

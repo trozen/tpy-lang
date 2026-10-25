@@ -69,13 +69,13 @@ GzipFile open(std::string_view filename) {
 //     elif compresslevel == _COMPRESS_LEVEL_FAST:
 //         xfl = 4
 //     header = bytearray(b"\x1f\x8b\x08\x00")
-//     _put_u32le(header, uint32.trunc(int64(stamp)))
+//     _put_u32le(header, uint32.wrap(int64(stamp)))
 //     header.append(xfl)
 //     header.append(255)
 //     body = zlib.compress(data, compresslevel, -zlib.MAX_WBITS)
 //     trailer = bytearray()
 //     _put_u32le(trailer, zlib.crc32(data))
-//     _put_u32le(trailer, uint32.trunc(int64(len(data)) & 0xffffffff))
+//     _put_u32le(trailer, uint32.wrap(int64(len(data)) & 0xffffffff))
 //     return bytes(header) + body + bytes(trailer)
 ::tpy::Bytes compress(::tpy::BytesView data, int32_t compresslevel, std::optional<double> mtime) {
     double stamp = (((mtime.has_value())) ? ((*mtime)) : (::tpy::time_time()));
@@ -103,10 +103,10 @@ GzipFile open(std::string_view filename) {
 }
 
 // def _put_u32le(out: bytearray, v: uint32) -> None:
-//     out.append(uint8.trunc(v & 0xff))
-//     out.append(uint8.trunc((v >> 8) & 0xff))
-//     out.append(uint8.trunc((v >> 16) & 0xff))
-//     out.append(uint8.trunc((v >> 24) & 0xff))
+//     out.append(uint8.wrap(v & 0xff))
+//     out.append(uint8.wrap((v >> 8) & 0xff))
+//     out.append(uint8.wrap((v >> 16) & 0xff))
+//     out.append(uint8.wrap((v >> 24) & 0xff))
 void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
     out.push_back(static_cast<uint8_t>((static_cast<uint32_t>(v & 255))));
     out.push_back(static_cast<uint8_t>((static_cast<uint32_t>((::tpy::rshift_check<uint32_t>(v, 8)) & 255))));
@@ -130,7 +130,7 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
 //             raise EOFError(_TRUNCATED)
 //         if _u32le(tail, 0) != zlib.crc32(decompressed):
 //             raise BadGzipFile("CRC check failed")
-//         if _u32le(tail, 4) != uint32.trunc(int64(len(decompressed)) & 0xffffffff):
+//         if _u32le(tail, 4) != uint32.wrap(int64(len(decompressed)) & 0xffffffff):
 //             raise BadGzipFile("Incorrect length of data produced")
 //         members.append(decompressed)
 //         # CPython: `unused_data[8:].lstrip(b"\x00")`; bytes.lstrip takes no
@@ -289,7 +289,7 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v) {
 //     isize = _u32le(trailer, 4)
 //     if crc != self._crc:
 //         raise BadGzipFile(f"CRC check failed {hex(crc)} != {hex(self._crc)}")
-//     if isize != uint32.trunc(self._stream_size & 0xffffffff):
+//     if isize != uint32.wrap(self._stream_size & 0xffffffff):
 //         raise BadGzipFile("Incorrect length of data produced")
 //     # Members may be followed by zero padding.
 //     c = b"\x00"

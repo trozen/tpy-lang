@@ -51,7 +51,7 @@ class FixStr[N: int]:
 
     def __move__(self, other: Own[FixStr[N]]) -> None:
         # The storage can't move itself (it has no liveness); the owner does.
-        self._storage.relocate_from(other._storage, uint32.trunc(other._size))
+        self._storage.relocate_from(other._storage, uint32.wrap(other._size))
         self._size = other._size
 
     def append(self, c: char) -> None:

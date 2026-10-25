@@ -174,7 +174,7 @@ inline void Pool<T, N>::push(::tpy::own_param_t<T> value) {
 
 // @readonly
 // def get(self, i: int32) -> readonly[T]:
-//     return self._storage.load(uint32.trunc(i))
+//     return self._storage.load(uint32.wrap(i))
 template<typename T, std::size_t N>
 inline ::tpy::val_or_cref_t<T> Pool<T, N>::get(int32_t i) const {
     return this->_storage.load(static_cast<uint32_t>(i));

@@ -208,8 +208,8 @@ inline Random::Random(std::optional<uint32_t> seed_value)
 //     mti: int32 = 1
 //     while mti < _N:
 //         prev: uint32 = self._state[mti - 1]
-//         self._state[mti] = uint32.add_wrap(
-//             uint32.mul_wrap(1812433253, prev ^ (prev >> 30)),
+//         self._state[mti] = uint32.wrap_add(
+//             uint32.wrap_mul(1812433253, prev ^ (prev >> 30)),
 //             uint32(mti),
 //         )
 //         mti += 1
@@ -219,7 +219,7 @@ inline void Random::_init_genrand(uint32_t s) {
     int32_t mti = 1;
     while ((mti < _N)) {
         uint32_t prev = ::tpy::__getitem__(this->_state, (::tpy::sub_check<int32_t>(mti, 1)));
-        ::tpy::__setitem__(this->_state, mti, static_cast<uint32_t>(static_cast<uint32_t>(1812433253 * (static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30))))) + static_cast<uint32_t>(mti)));
+        ::tpy::__setitem__(this->_state, mti, ::tpy::wrap_add<uint32_t>(::tpy::wrap_mul<uint32_t>(1812433253, (static_cast<uint32_t>(prev ^ (::tpy::rshift_check<uint32_t>(prev, 30))))), static_cast<uint32_t>(mti)));
         mti = ::tpy::add_check<int32_t>(mti, 1);
     }
     this->_index = _N;

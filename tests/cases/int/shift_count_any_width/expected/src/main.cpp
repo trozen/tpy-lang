@@ -250,12 +250,12 @@ void negative(int64_t n, int8_t k) {
     }
 }
 
-// # the unchecked wrapping shifts take any fixed-width count too, unchecked: a
-// # count below 0 or at or past the width is undefined, not a wrap
+// # the wrapping shifts take any fixed-width count too, unchecked: the count is
+// # reduced modulo the width
 // def wrap(y: uint32, k: int64) -> None:
-//     print("wrap", uint32.shl_wrap(y, k), uint32.shr_wrap(y, k))  # tpyc: ok
+//     print("wrap", uint32.wrap_shl(y, k), uint32.wrap_shr(y, k))  # tpyc: ok
 void wrap(uint32_t y, int64_t k) {
-    std::cout << "wrap" << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) << (k)) << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) >> (k)) << "\n" << ::tpy::check_signals;
+    std::cout << "wrap" << " " << static_cast<uint32_t>(static_cast<::tpy::wrap_uint_t<uint32_t>>(y) << ::tpy::wrap_shift_count<uint32_t>(k)) << " " << static_cast<uint32_t>(static_cast<uint32_t>(y) >> ::tpy::wrap_shift_count<uint32_t>(k)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

@@ -36,7 +36,7 @@ class Pool[T, N: int]:
 
     @readonly
     def get(self, i: int32) -> readonly[T]:
-        return self._storage.load(uint32.trunc(i))
+        return self._storage.load(uint32.wrap(i))
 
 
 class Tagged:

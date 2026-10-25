@@ -552,7 +552,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.module_native",           # bare-@native module callee `m.f(x)`
                                     # -> `::native(args)`
     "call.static_template",         # positional-only @cpp_template static
-                                    # (`uint32.trunc(i)`) -> template expansion
+                                    # (`uint32.wrap(i)`) -> template expansion
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
     "call.fstr_expansion",          # `@inline` METHOD call -> the substituted

@@ -139,9 +139,9 @@ public:
         return *this;
     }
 
-    bool is_small() const noexcept { return (raw_ & TAG_MASK) == 0; }
+    TPY_ALWAYS_INLINE bool is_small() const noexcept { return (raw_ & TAG_MASK) == 0; }
 
-    int64_t small_value() const noexcept {
+    TPY_ALWAYS_INLINE int64_t small_value() const noexcept {
         return static_cast<int64_t>(raw_) >> 1;
     }
 
@@ -358,59 +358,39 @@ public:
     friend bool operator>(const BigInt& lhs, const BigInt& rhs) { return lhs.compare(rhs) > 0; }
     friend bool operator>=(const BigInt& lhs, const BigInt& rhs) { return lhs.compare(rhs) >= 0; }
 
-    // Generic conversion to any fixed-width integer type
+    // Generic conversion to any fixed-width integer type. The small-value
+    // test is inline at every site; a heap value takes the out-of-line path.
     template<typename T>
-    T to_fixed_check() const {
+    TPY_ALWAYS_INLINE T to_fixed_check() const {
         static_assert(std::is_integral_v<T>, "T must be an integer type");
 
-        if (is_small()) {
+        if (is_small()) [[likely]] {
             int64_t v = small_value();
             if constexpr (std::is_signed_v<T>) {
-                if (v >= static_cast<int64_t>(std::numeric_limits<T>::min()) &&
-                    v <= static_cast<int64_t>(std::numeric_limits<T>::max())) {
+                constexpr int64_t lo = static_cast<int64_t>(std::numeric_limits<T>::min());
+                constexpr int64_t hi = static_cast<int64_t>(std::numeric_limits<T>::max());
+                if (v >= lo && v <= hi) [[likely]] {
                     return static_cast<T>(v);
                 }
             } else {
-                if (v >= 0 && static_cast<uint64_t>(v) <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                constexpr uint64_t hi = static_cast<uint64_t>(std::numeric_limits<T>::max());
+                if (v >= 0 && static_cast<uint64_t>(v) <= hi) [[likely]] {
                     return static_cast<T>(v);
                 }
             }
             raise_fixedint_overflow("{} overflow: value out of range",
                                     tpy::fixed_int_name<T>());
         }
-
-        const HeapBig* p = heap_ptr();
-        if (p->len > 1) {
-            raise_fixedint_overflow("{} overflow: value out of range",
-                                    tpy::fixed_int_name<T>());
-        }
-
-        uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
-        if constexpr (std::is_signed_v<T>) {
-            __int128 value = (p->sign < 0)
-                ? -static_cast<__int128>(mag)
-                : static_cast<__int128>(mag);
-            __int128 min_v = static_cast<__int128>(std::numeric_limits<T>::min());
-            __int128 max_v = static_cast<__int128>(std::numeric_limits<T>::max());
-            if (value >= min_v && value <= max_v) {
-                return static_cast<T>(value);
-            }
-        } else {
-            if (p->sign >= 0 && mag <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
-                return static_cast<T>(mag);
-            }
-        }
-
-        raise_fixedint_overflow("{} overflow: value out of range",
-                                tpy::fixed_int_name<T>());
+        return to_fixed_check_heap<T>();
     }
+
 
     // Non-throwing "fits in T?" check + extract. Mirrors to_fixed_check but
     // returns a bool instead of raising, so range questions whose answer is
     // "no" (a membership needle outside the container's key width) do not
     // throw for control flow.
     template<typename T>
-    bool to_fixed_try(T& out) const noexcept {
+    TPY_ALWAYS_INLINE bool to_fixed_try(T& out) const noexcept {
         static_assert(std::is_integral_v<T>, "T must be an integer type");
         if (is_small()) {
             int64_t v = small_value();
@@ -428,27 +408,7 @@ public:
             }
             return false;
         }
-        const HeapBig* p = heap_ptr();
-        if (p->len > 1) {
-            return false;
-        }
-        uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
-        if constexpr (std::is_signed_v<T>) {
-            __int128 value = (p->sign < 0)
-                ? -static_cast<__int128>(mag)
-                : static_cast<__int128>(mag);
-            if (value >= static_cast<__int128>(std::numeric_limits<T>::min()) &&
-                value <= static_cast<__int128>(std::numeric_limits<T>::max())) {
-                out = static_cast<T>(value);
-                return true;
-            }
-        } else {
-            if (p->sign >= 0 && mag <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
-                out = static_cast<T>(mag);
-                return true;
-            }
-        }
-        return false;
+        return to_fixed_try_heap<T>(out);
     }
 
     bool to_i64_checked(int64_t& out) const noexcept {
@@ -845,6 +805,59 @@ public:
     }
 
 private:
+    template<typename T>
+    TPY_COLD T to_fixed_check_heap() const {
+        const HeapBig* p = heap_ptr();
+        if (p->len > 1) {
+            raise_fixedint_overflow("{} overflow: value out of range",
+                                    tpy::fixed_int_name<T>());
+        }
+
+        uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
+        if constexpr (std::is_signed_v<T>) {
+            __int128 value = (p->sign < 0)
+                ? -static_cast<__int128>(mag)
+                : static_cast<__int128>(mag);
+            __int128 min_v = static_cast<__int128>(std::numeric_limits<T>::min());
+            __int128 max_v = static_cast<__int128>(std::numeric_limits<T>::max());
+            if (value >= min_v && value <= max_v) {
+                return static_cast<T>(value);
+            }
+        } else {
+            if (p->sign >= 0 && mag <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                return static_cast<T>(mag);
+            }
+        }
+
+        raise_fixedint_overflow("{} overflow: value out of range",
+                                tpy::fixed_int_name<T>());
+    }
+
+    template<typename T>
+    TPY_NOINLINE bool to_fixed_try_heap(T& out) const noexcept {
+        const HeapBig* p = heap_ptr();
+        if (p->len > 1) {
+            return false;
+        }
+        uint64_t mag = (p->len == 0) ? 0 : p->limbs[0];
+        if constexpr (std::is_signed_v<T>) {
+            __int128 value = (p->sign < 0)
+                ? -static_cast<__int128>(mag)
+                : static_cast<__int128>(mag);
+            if (value >= static_cast<__int128>(std::numeric_limits<T>::min()) &&
+                value <= static_cast<__int128>(std::numeric_limits<T>::max())) {
+                out = static_cast<T>(value);
+                return true;
+            }
+        } else {
+            if (p->sign >= 0 && mag <= static_cast<uint64_t>(std::numeric_limits<T>::max())) {
+                out = static_cast<T>(mag);
+                return true;
+            }
+        }
+        return false;
+    }
+
     struct HeapBig {
         uint32_t len;     // Number of used limbs.
         uint32_t cap;     // Allocated limb capacity.
@@ -1594,27 +1607,35 @@ inline double truediv(const BigInt& a, const BigInt& b) {
 
 // Python int / int over 64-bit operands: below 2^53 both conversions are
 // exact, so the plain double division is the correct single rounding;
-// larger magnitudes take the BigInt path above.
-inline double truediv(int64_t a, int64_t b) {
-    if (b == 0) {
-        raise_zero_division_error("division by zero");
-    }
-    constexpr int64_t EXACT = int64_t(1) << std::numeric_limits<double>::digits;
-    if (a > -EXACT && a < EXACT && b > -EXACT && b < EXACT) {
-        return static_cast<double>(a) / static_cast<double>(b);
-    }
+// larger magnitudes take the BigInt path above, out of line.
+TPY_COLD inline double truediv_wide(int64_t a, int64_t b) {
     return truediv(BigInt(a), BigInt(b));
 }
 
-inline double truediv(uint64_t a, uint64_t b) {
-    if (b == 0) {
+TPY_COLD inline double truediv_wide(uint64_t a, uint64_t b) {
+    return truediv(BigInt(a), BigInt(b));
+}
+
+TPY_ALWAYS_INLINE double truediv(int64_t a, int64_t b) {
+    if (b == 0) [[unlikely]] {
+        raise_zero_division_error("division by zero");
+    }
+    constexpr int64_t EXACT = int64_t(1) << std::numeric_limits<double>::digits;
+    if (a > -EXACT && a < EXACT && b > -EXACT && b < EXACT) [[likely]] {
+        return static_cast<double>(a) / static_cast<double>(b);
+    }
+    return truediv_wide(a, b);
+}
+
+TPY_ALWAYS_INLINE double truediv(uint64_t a, uint64_t b) {
+    if (b == 0) [[unlikely]] {
         raise_zero_division_error("division by zero");
     }
     constexpr uint64_t EXACT = uint64_t(1) << std::numeric_limits<double>::digits;
-    if (a < EXACT && b < EXACT) {
+    if (a < EXACT && b < EXACT) [[likely]] {
         return static_cast<double>(a) / static_cast<double>(b);
     }
-    return truediv(BigInt(a), BigInt(b));
+    return truediv_wide(a, b);
 }
 
 

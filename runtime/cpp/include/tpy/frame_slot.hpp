@@ -141,7 +141,7 @@ public:
     bool has_value() const noexcept { return alive_; }
     explicit operator bool() const noexcept { return alive_; }
 
-    T& get() & {
+    TPY_ALWAYS_INLINE T& get() & {
 #ifndef NDEBUG
         if (!alive_) {
             tpy_panic("frame_slot::get on dead slot");
@@ -149,7 +149,7 @@ public:
 #endif
         return *ptr();
     }
-    const T& get() const & {
+    TPY_ALWAYS_INLINE const T& get() const & {
 #ifndef NDEBUG
         if (!alive_) {
             tpy_panic("frame_slot::get on dead slot");
@@ -161,14 +161,14 @@ public:
     T& unchecked() & noexcept { return *ptr(); }
     const T& unchecked() const & noexcept { return *ptr(); }
 
-    T& operator*() & { return get(); }
-    const T& operator*() const & { return get(); }
-    T* operator->() { return &get(); }
-    const T* operator->() const { return &get(); }
+    TPY_ALWAYS_INLINE T& operator*() & { return get(); }
+    TPY_ALWAYS_INLINE const T& operator*() const & { return get(); }
+    TPY_ALWAYS_INLINE T* operator->() { return &get(); }
+    TPY_ALWAYS_INLINE const T* operator->() const { return &get(); }
 
 private:
-    T* ptr() noexcept { return std::addressof(v_); }
-    const T* ptr() const noexcept { return std::addressof(v_); }
+    TPY_ALWAYS_INLINE T* ptr() noexcept { return std::addressof(v_); }
+    TPY_ALWAYS_INLINE const T* ptr() const noexcept { return std::addressof(v_); }
     // Placement-new needs a `void*`, which a const payload's own pointer
     // does not convert to -- hence the non-const storage below.
     std::remove_const_t<T>* raw() noexcept { return std::addressof(v_); }
@@ -256,7 +256,7 @@ public:
     bool has_value() const noexcept { return alive_; }
     explicit operator bool() const noexcept { return alive_; }
 
-    T& get() & {
+    TPY_ALWAYS_INLINE T& get() & {
 #ifndef NDEBUG
         if (!alive_) {
             tpy_panic("frame_slot::get on dead slot");
@@ -264,7 +264,7 @@ public:
 #endif
         return v_;
     }
-    const T& get() const & {
+    TPY_ALWAYS_INLINE const T& get() const & {
 #ifndef NDEBUG
         if (!alive_) {
             tpy_panic("frame_slot::get on dead slot");
@@ -276,10 +276,10 @@ public:
     T& unchecked() & noexcept { return v_; }
     const T& unchecked() const & noexcept { return v_; }
 
-    T& operator*() & { return get(); }
-    const T& operator*() const & { return get(); }
-    T* operator->() { return &get(); }
-    const T* operator->() const { return &get(); }
+    TPY_ALWAYS_INLINE T& operator*() & { return get(); }
+    TPY_ALWAYS_INLINE const T& operator*() const & { return get(); }
+    TPY_ALWAYS_INLINE T* operator->() { return &get(); }
+    TPY_ALWAYS_INLINE const T* operator->() const { return &get(); }
 
 private:
     T v_;
@@ -325,7 +325,7 @@ public:
     bool has_value() const noexcept { return p_ != nullptr; }
     explicit operator bool() const noexcept { return p_ != nullptr; }
 
-    T& get() & {
+    TPY_ALWAYS_INLINE T& get() & {
 #ifndef NDEBUG
         if (p_ == nullptr) {
             tpy_panic("frame_slot::get on dead slot");
@@ -333,7 +333,7 @@ public:
 #endif
         return *p_;
     }
-    const T& get() const & {
+    TPY_ALWAYS_INLINE const T& get() const & {
 #ifndef NDEBUG
         if (p_ == nullptr) {
             tpy_panic("frame_slot::get on dead slot");
@@ -345,10 +345,10 @@ public:
     T& unchecked() & noexcept { return *p_; }
     const T& unchecked() const & noexcept { return *p_; }
 
-    T& operator*() & { return get(); }
-    const T& operator*() const & { return get(); }
-    T* operator->() { return &get(); }
-    const T* operator->() const { return &get(); }
+    TPY_ALWAYS_INLINE T& operator*() & { return get(); }
+    TPY_ALWAYS_INLINE const T& operator*() const & { return get(); }
+    TPY_ALWAYS_INLINE T* operator->() { return &get(); }
+    TPY_ALWAYS_INLINE const T* operator->() const { return &get(); }
 
 private:
     T* p_ = nullptr;

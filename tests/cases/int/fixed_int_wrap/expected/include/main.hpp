@@ -7,10 +7,102 @@
 
 namespace tpyapp::main {
 
+struct Hasher;
+
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_wrapped_sums;
+
+// def conversions() -> None:
+void conversions();
+// def arithmetic() -> None:
+void arithmetic();
+// def shifts() -> None:
+void shifts();
+// def shift_count_types(k8: int8, k64: uint64) -> None:
+void shift_count_types(int8_t k8, uint64_t k64);
+// def take(s: list[int8]) -> int8:
+int8_t take(std::vector<int8_t>& s);
+// def shift_operand_order() -> None:
+void shift_operand_order();
+// def operand_out_of_range(big: int32) -> None:
+void operand_out_of_range(int32_t big);
+// def method() -> None:
+void method();
+// def wrapped_sums(xs: list[uint8]) -> Iterator[uint8]:
+__gen_wrapped_sums wrapped_sums(const std::vector<uint8_t>& xs);
+// def generator() -> None:
+void generator();
+// def comprehension() -> None:
+void comprehension();
 // def main() -> None:
 void main();
 
+// class Hasher:
+struct Hasher {
+    // h: list[uint32]
+    std::vector<uint32_t> h;
+    // acc: uint32
+    uint32_t acc;
+
+    // def __init__(self) -> None:
+    Hasher();
+
+    // def mix(self, c: uint32) -> None:
+    void mix(uint32_t c);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Hasher";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Hasher& obj) {
+    ::tpy::print_object_default(os, "Hasher", obj);
+    return os;
+}
+
+// def wrapped_sums(xs: list[uint8]) -> Iterator[uint8]:
+struct __gen_wrapped_sums : public ::tpy::next_iter_mixin<__gen_wrapped_sums, uint8_t> {
+    ::tpy::frame_state __state;
+    const std::vector<uint8_t>& xs;
+    uint8_t x;
+    using __for_src_0_t = decltype((xs));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_wrapped_sums(const std::vector<uint8_t>& xs)
+        : __state(S_INITIAL),
+          xs(xs) {}
+
+    std::expected<uint8_t, ::tpy::StopIteration> __next__();
+    __gen_wrapped_sums& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_wrapped_sums&) {
+        return os << "<generator wrapped_sums>";
+    }
+};
+
+
+// def __init__(self) -> None:
+//     self.h = [4294967295, 7]
+//     self.acc = 2166136261
+inline Hasher::Hasher()
+    : h(std::vector<uint32_t>{static_cast<int64_t>(4294967295), 7}),
+      acc(static_cast<uint32_t>(2166136261)) {}
+
+// # method: a field operand and a subscript operand
+// def mix(self, c: uint32) -> None:
+//     self.h[0] = uint32.wrap_add(self.h[0], c)  # tpyc: ok
+//     self.acc = uint32.wrap_mul(self.acc, 16777619)  # tpyc: ok
+//     self.h[1] = uint32.wrap_shl(self.h[1], self.h[0])  # tpyc: ok
+inline void Hasher::mix(uint32_t c) {
+    ::tpy::__setitem__(this->h, 0, ::tpy::wrap_add<uint32_t>(::tpy::__getitem__(this->h, 0), c));
+    this->acc = ::tpy::wrap_mul<uint32_t>(this->acc, 16777619);
+    ::tpy::__setitem__(this->h, 1, static_cast<uint32_t>(static_cast<::tpy::wrap_uint_t<uint32_t>>(::tpy::__getitem__(this->h, 1)) << ::tpy::wrap_shift_count<uint32_t>(::tpy::__getitem__(this->h, 0))));
+}
 void __tpy_init();
 } // namespace tpyapp::main

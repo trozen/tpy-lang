@@ -1173,11 +1173,11 @@ shipped so far; MD5/SHA-1/SHA-512 are mechanical follow-ups using the
 same class pattern (new H0/K constants, swap the round function,
 little-endian for MD5). Needed new shared primitives to get here:
 
-- `add_wrap`/`sub_wrap`/`mul_wrap` on all eight fixed-width int types
-  (int8/16/32/64, uint8/16/32/64) -- wrapping modular arithmetic,
-  analogous to Rust's `wrapping_add`. Signed variants route through the
-  unsigned type (`static_cast<intN_t>(static_cast<uintN_t>(a) OP ...)`)
-  to get defined wrap without signed-overflow UB.
+- `wrap_add`/`wrap_sub`/`wrap_mul`/`wrap_shl`/`wrap_shr` on all eight
+  fixed-width int types (int8/16/32/64, uint8/16/32/64) -- wrapping modular
+  arithmetic, analogous to Rust's `wrapping_add`. They render
+  `::tpy::wrap_add<T>(a, b)`, which computes in the unsigned twin widened
+  to at least `unsigned int`, so no operand promotes into signed-overflow UB.
 - `tpy.bits` module (`rotl32`/`rotr32`/`rotl64`/`rotr64`/`byteswap32`/
   `byteswap64`) wrapping C++20 `std::rotl`/`std::rotr` and C++23
   `std::byteswap`. Re-usable for ciphers, RNGs, `struct`, and
@@ -1190,7 +1190,7 @@ little-endian for MD5). Needed new shared primitives to get here:
 | `.digest_size`, `.block_size`, `.name` | Done | Instance attrs |
 | `md5`, `MD5` | Missing | Next slice; same pattern with little-endian state |
 | `sha1`, `SHA1` | Missing | Same pattern, 20-byte digest |
-| `sha512`, `SHA512` | Missing | Same pattern, 64-bit words -- needs uint64 rotate + add_wrap (both already present) |
+| `sha512`, `SHA512` | Missing | Same pattern, 64-bit words -- needs uint64 rotate + wrap_add (both already present) |
 | `blake2b`, `blake2s` | Missing | Pure TPy; Python has its own impl too |
 | `sha3_*`, `shake_*` | Missing | Later |
 | `new(name)` dispatcher | Missing | Returns a hash object by name; needs `type(x)`-style dispatch or a dict-of-factories |

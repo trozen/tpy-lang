@@ -48,7 +48,7 @@ class PStr[N: int]:
 
     def __move__(self, other: Own[PStr[N]]) -> None:
         # The @nomove storage can't move itself; the owner relocates.
-        self._storage.relocate_from(other._storage, uint32.trunc(other._size))
+        self._storage.relocate_from(other._storage, uint32.wrap(other._size))
         self._size = other._size
 
     def append(self, c: char) -> None:
