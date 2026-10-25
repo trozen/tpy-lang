@@ -19,11 +19,11 @@ from .dump import dump_function
 from .liveness import MIRPoint
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode,
-    MIRNotCovered, MIRPlace, MIRStorageWrite, MIRStorageWriteMode,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInits,
+    MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref
-from .value import MIRField, MIRFieldId, MIRValidationError
+from .value import MIRField, MIRFieldId, MIRValidationError, loan_field
 from .retention import MIRRetention, analyze_retention
 from .storage import analyze_storage, dump_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
@@ -305,11 +305,11 @@ def test_constructor_copies_a_borrowed_parameter_into_the_field(active) -> None:
     fn = _ctor(active, "Rec")
     lines = _lines(fn)
     # The view parameter's buffer is copied into the field: an allocation that may raise.
-    assert "initialize-receiver %0 (copy (*%1) may-raise, %2)" in lines
+    assert "initialize-receiver %0 (copy (*%1) may-raise, read %2)" in lines
     assert "exceptional exits" in lines and fn.exceptional_exits
-    name, n = fn.receiver_init.fields
-    assert (name.mode, name.may_raise, name.source) == (MIRMemberInitMode.COPY, True, fn.slots[1].id)
-    assert (n.mode, n.may_raise, n.source) == (MIRMemberInitMode.SCALAR, False, fn.slots[2].id)
+    name, n = fn.receiver_init.members.fields
+    assert name.value == MIRCopy(MIRPlace(fn.slots[1].id, (MIRDeref(),)), True)
+    assert n.value == MIRRead(MIRPlace(fn.slots[2].id))
     assert name.loc is not None and name.loc.line == 6
 
 
@@ -319,9 +319,9 @@ def test_constructor_initialization_modes(active) -> None:
     assert "initialize-receiver %0 (move %1)" in _lines(own) and not own.exceptional_exits
     # A by-value parameter initializing two fields is copied, then moved.
     assert "initialize-receiver %0 (copy %1 may-raise, move %1)" in _lines(_ctor(active, "Twice"))
-    # Constants materialize; a BigInt copy cannot raise (its allocation failure is a panic).
-    assert "initialize-receiver %0 (copy 'x' may-raise, copy 0, copy b'ab' may-raise, %1)" in _lines(
-        _ctor(active, "Lit"))
+    # Constants materialize (a BigInt's cannot raise: its allocation failure is a panic).
+    lit = _ctor(active, "Lit")
+    assert "initialize-receiver %0 ('x', 0, b'ab', read %1)" in _lines(lit) and lit.exceptional_exits
     # A bytes view is materialized, a BigInt and a String are copied from their const references.
     assert "initialize-receiver %0 (copy (*%1) may-raise)" in _lines(_ctor(active, "Byt"))
     assert "initialize-receiver %0 (copy (*%1))" in _lines(_ctor(active, "Big"))
@@ -330,17 +330,17 @@ def test_constructor_initialization_modes(active) -> None:
 
 def test_constructor_body_write_replaces_the_initialized_field(active) -> None:
     lines = _lines(_ctor(active, "Cond"))
-    assert "initialize-receiver %0 (copy '' may-raise)" in lines
+    assert "initialize-receiver %0 ('')" in lines
     assert "(*%0).__main__.Cond::name = copy (*%1) may-raise [in_place]" in lines
 
 
 def test_a_record_holding_a_view_stores_its_parameters_loan(active) -> None:
     # The view member stores the loan the view parameter holds: no copy, no exit.
     holder = _ctor(active, "Holder")
-    assert "initialize-receiver %0 (borrow (*%1))" in _lines(holder) and not holder.exceptional_exits
+    assert "initialize-receiver %0 (alias %1)" in _lines(holder) and not holder.exceptional_exits
     record = next(t for t in active.definitions.records if t.name == "Holder")
     definition = active.definitions.records[record]
-    assert [init.mode for init in definition.initializers] == [MIRMemberInitMode.BORROW]
+    assert [(loan_field(init.field.type), init.move) for init in definition.initializers] == [(True, False)]
 
 
 def test_caller_definitions_need_a_lent_or_moved_argument(active) -> None:
@@ -575,31 +575,32 @@ def test_validator_rejects_a_projection_inside_an_owned_leaf(active) -> None:
 
 
 def _with_init(fn: MIRFunction, *fields) -> MIRFunction:
-    return replace(fn, receiver_init=replace(fn.receiver_init, fields=fields))
+    return replace(fn, receiver_init=replace(fn.receiver_init, members=MIRMemberInits(fields)))
 
 
 def test_validator_rejects_receiver_inits_without_their_facts(active) -> None:
     fn = _ctor(active, "Rec")
-    name, n = fn.receiver_init.fields
+    name, n = fn.receiver_init.members.fields
+    param, scalar = name.value.source.root, n.value.source.root
     for fields, message in (
-            ((name.source, n), "invalid receiver initializer"),
-            ((replace(name, may_raise=False), n), "exit fact mismatch"),
-            ((replace(name, mode=MIRMemberInitMode.SCALAR), n), "initializer"),
-            ((replace(name, mode=MIRMemberInitMode.MOVE, may_raise=False), n), "initializer parameter"),
-            ((replace(name, source=MIRConstant(3)), n), "initializer constant"),
+            ((name.value, n), "invalid receiver initializer"),
+            ((replace(name, value=replace(name.value, may_raise=False)), n), "exit fact mismatch"),
+            ((replace(name, value=MIRRead(MIRPlace(param))), n), "invalid receiver initializer"),
+            ((replace(name, value=MIRMove(param)), n), "initializer parameter"),
+            ((replace(name, value=MIRConstant(3)), n), "initializer constant"),
             # Lowering never initializes a member from a parameter of another type
             # (the definition gate requires the member's own owned type).
-            ((replace(name, source=n.source), n), "initializer parameter"),
-            ((name, replace(n, mode=MIRMemberInitMode.COPY)), "initializer mode")):
+            ((replace(name, value=MIRCopy(MIRPlace(scalar), True)), n), "initializer parameter"),
+            ((name, replace(n, value=MIRCopy(MIRPlace(scalar)))), "invalid receiver initializer")):
         with pytest.raises(MIRValidationError, match=message):
             validate_function(_with_init(fn, *fields))
     # The body's exit fact follows the copy.
     with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
         validate_function(replace(fn, exceptional_exits=False))
     moved = _ctor(active, "OwnRec")
+    (member,) = moved.receiver_init.members.fields
     with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
-        validate_function(_with_init(moved, replace(moved.receiver_init.fields[0], mode=MIRMemberInitMode.COPY,
-                                                    may_raise=True)))
+        validate_function(_with_init(moved, replace(member, value=MIRCopy(MIRPlace(member.value.source), True))))
 
 
 def test_validator_checks_construct_and_field_write_facts(active) -> None:

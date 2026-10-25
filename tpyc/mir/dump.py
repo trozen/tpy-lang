@@ -6,10 +6,10 @@ from ..thir.scalar_leaves import MIRClass
 from .call_contract import MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint,
-    MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode,
-    MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct,
+    MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
+    MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIRSlotId, MIRWrap,
+    MIRRangeAdvance, MIRWrap,
 )
 from .value import MIRHolding, MIRShape
 from .place_text import _location, _place, _write_step, obligation_text
@@ -71,36 +71,56 @@ def _member_access(member: MIRShape | None) -> str:
     return "value"
 
 
-def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
-    """One receiver member's entry initialization: a scalar by its value, an
-    owned leaf or a record by how its storage arrives (a copy through a
-    borrowed parameter reads the storage it points at; a literal is built
-    over its operands, then moved in; a composed member lists its fields'
-    initializations in braces)."""
-    match member.source:
-        case MIRConstant(value=value):
-            source = repr(value)
-        case MIRConstruct(fields=fields):
-            source = "construct (" + ", ".join(repr(s.value) if isinstance(s, MIRConstant) else f"%{s.index}"
-                                             for s in fields) + ")"
-        case MIRMemberInits(fields=nested):
-            source = "{" + ", ".join(_member_init(m, borrowed) for m in nested) + "}"
-        case MIRWrap():
-            source = _wrap(member.source)
-        case _:
-            source = f"(*%{member.source.index})" if member.source in borrowed else f"%{member.source.index}"
-    match member.mode:
-        case MIRMemberInitMode.SCALAR:
-            return source
-        case MIRMemberInitMode.MOVE:
-            return f"move {source}"
-        case MIRMemberInitMode.BORROW:
-            return f"borrow {source}"
-    return f"copy {source}" + (" may-raise" if member.may_raise else "")
-
-
 def _wrap(wrap: MIRWrap) -> str:
     return f"wrap[{wrap.alternative}]" + ("" if wrap.source is None else f" {_place(wrap.source)}")
+
+
+def _rvalue(value: object) -> str:
+    """A value as a statement's right-hand side or an entry initializer
+    spells it; a composed member lists its fields' values in braces."""
+    match value:
+        case MIRRangeAdvance(source=source, step=step):
+            return f"range-advance %{source.index} step={step}"
+        case MIRIteratorInit(source=source):
+            return f"iterator-init %{source.index}"
+        case MIRIteratorHasNext(source=source):
+            return f"iterator-has-next %{source.index}"
+        case MIRIteratorRead(source=source):
+            return f"iterator-read %{source.index}"
+        case MIRIteratorAdvance(source=source):
+            return f"iterator-advance %{source.index}"
+        case MIRConstant(value=constant):
+            return repr(constant)
+        case MIRRead(source=source, may_raise=may_raise):
+            return f"read {_place(source)}" + (" may-raise" if may_raise else "")
+        case MIRAlias(source=source):
+            return f"alias %{source.index}"
+        case MIRBorrow(source=source, may_raise=may_raise):
+            return f"borrow {_place(source)}" + (" may-raise" if may_raise else "")
+        case MIRConstruct(fields=fields, may_raise=may_raise):
+            return "construct (" + ", ".join(_rvalue(s) if isinstance(s, MIRConstant) else f"%{s.index}"
+                                             for s in fields) + ")" + (" may-raise" if may_raise else "")
+        case MIRMemberInits(fields=members):
+            return "{" + ", ".join(_rvalue(m.value) for m in members) + "}"
+        case MIRWrap():
+            return _wrap(value)
+        case MIRIsAlternative(source=source, alternatives=alternatives):
+            return f"is-alternative {_place(source)} {alternatives}"
+        case MIRUnionExtract(source=source):
+            return f"extract {_place(source)}"
+        case MIRCopy(source=source, may_raise=may_raise):
+            return f"copy {_place(source)}" + (" may-raise" if may_raise else "")
+        case MIRMove(source=source):
+            return f"move %{source.index}"
+        case MIRCall() as call:
+            return _call(call)
+        case MIRCompare(op=op, left=left, right=right):
+            return f"%{left.index} {op} %{right.index}"
+        case MIRNot(operand=operand):
+            return f"not %{operand.index}"
+        case MIROp(op=op, operands=values, may_raise=may_raise):
+            return f"op {op} (" + ", ".join(f"%{v.index}" for v in values) + ")" + (" may-raise" if may_raise else "")
+    raise AssertionError("validated rvalue missing dump")
 
 
 
@@ -153,8 +173,7 @@ def dump_function(fn: MIRFunction) -> str:
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
     if fn.receiver_init is not None:
         init = fn.receiver_init
-        borrowed = {s.id for s in fn.slots if s.shape.is_pointer}
-        values = ", ".join(_member_init(member, borrowed) for member in init.fields)
+        values = ", ".join(_rvalue(member.value) for member in init.members.fields)
         lines.append(f"initialize-receiver %{init.receiver.index} ({values})")
     for region in fn.regions:
         parent = f"r{region.parent.index}" if region.parent is not None else "body"
@@ -176,53 +195,7 @@ def dump_function(fn: MIRFunction) -> str:
                 lines.append(f"  initialize-storage {_place(stmt.target)} alternative={stmt.alternative} "
                              f"value={stmt.value.value!r}{_location(stmt.loc)}")
                 continue
-            match stmt.value:
-                case MIRRangeAdvance(source=source, step=step):
-                    rhs = f"range-advance %{source.index} step={step}"
-                case MIRIteratorInit(source=source):
-                    rhs = f"iterator-init %{source.index}"
-                case MIRIteratorHasNext(source=source):
-                    rhs = f"iterator-has-next %{source.index}"
-                case MIRIteratorRead(source=source):
-                    rhs = f"iterator-read %{source.index}"
-                case MIRIteratorAdvance(source=source):
-                    rhs = f"iterator-advance %{source.index}"
-                case MIRConstant(value=value):
-                    rhs = repr(value)
-                case MIRRead(source=source, may_raise=may_raise):
-                    rhs = f"read {_place(source)}" + (" may-raise" if may_raise else "")
-                case MIRAlias(source=source):
-                    rhs = f"alias %{source.index}"
-                case MIRBorrow(source=source, may_raise=may_raise):
-                    rhs = f"borrow {_place(source)}" + (" may-raise" if may_raise else "")
-                case MIRConstruct(fields=fields, may_raise=may_raise):
-                    rhs = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")" + (
-                        " may-raise" if may_raise else "")
-                case MIRTupleConstruct(elements=elements):
-                    rhs = "tuple (" + ", ".join(
-                        "construct (" + ", ".join(f"%{s.index}" for s in element.fields) + ")"
-                        if isinstance(element, MIRConstruct) else f"%{element.index}"
-                        for element in elements) + ")"
-                case MIRWrap():
-                    rhs = _wrap(stmt.value)
-                case MIRIsAlternative(source=source, alternatives=alternatives):
-                    rhs = f"is-alternative {_place(source)} {alternatives}"
-                case MIRUnionExtract(source=source):
-                    rhs = f"extract {_place(source)}"
-                case MIRCopy(source=source, may_raise=may_raise):
-                    rhs = f"copy {_place(source)}" + (" may-raise" if may_raise else "")
-                case MIRMove(source=source):
-                    rhs = f"move %{source.index}"
-                case MIRCall() as call:
-                    rhs = _call(call)
-                case MIRCompare(op=op, left=left, right=right):
-                    rhs = f"%{left.index} {op} %{right.index}"
-                case MIRNot(operand=operand):
-                    rhs = f"not %{operand.index}"
-                case MIROp(op=op, operands=values, may_raise=may_raise):
-                    rhs = f"op {op} (" + ", ".join(f"%{v.index}" for v in values) + ")" + (" may-raise" if may_raise else "")
-                case _:
-                    raise AssertionError("validated rvalue missing dump")
+            rhs = _rvalue(stmt.value)
             fact = stmt.storage_write
             write = f" [{fact.mode.name.lower()}]" if fact is not None else ""
             lines.append(f"  {_place(stmt.target)} = {rhs}{write}{_location(stmt.loc)}")

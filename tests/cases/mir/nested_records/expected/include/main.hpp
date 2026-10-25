@@ -13,6 +13,7 @@ struct Built;
 struct Names;
 struct WrappedNames;
 struct Frame;
+struct Defaults;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -64,6 +65,8 @@ int32_t composed(int32_t x, std::string_view s);
 int32_t hand_over_callers();
 // def adopt_live() -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 bool adopt_live();
+// def tuple_member(x: int32) -> int32:  # tpyc: mir(covered)
+int32_t tuple_member(int32_t x);
 // def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
 void main();
 
@@ -188,6 +191,26 @@ inline std::ostream& operator<<(std::ostream& os, const Frame& obj) {
     return os;
 }
 
+// class Defaults:
+struct Defaults {
+    // name: str
+    std::string name;
+    // label: str
+    std::string label;
+    // p: Point | None
+    std::optional<Point> p;
+
+    // def __init__(self, label: str) -> None:  # tpyc: mir(covered)
+    Defaults() = default;
+    explicit Defaults(std::string_view label);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Defaults";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Defaults& obj) {
+    ::tpy::print_object_default(os, "Defaults", obj);
+    return os;
+}
+
 
 // def __init__(self, x: int32, name: str) -> None:  # tpyc: mir(covered)
 //     self.x = x
@@ -267,5 +290,17 @@ inline WrappedNames::WrappedNames(std::string_view s) : names(Names(s, s)) {}
 inline Frame::Frame(Line&& line, int32_t depth)
     : line(std::move(line)),
       depth(depth) {}
+
+// # constructor: entry members read as their method twins -- a constant is
+// # materialized (owned storage, no copy), a lent parameter is copied, an
+// # empty Optional record member is owned storage
+// def __init__(self, label: str) -> None:  # tpyc: mir(covered)
+//     self.name = "none"  # tpyc: mir_owned(self.name)
+//     self.label = label  # tpyc: mir_copy(self.label)
+//     self.p = None  # tpyc: mir_owned(self.p)
+inline Defaults::Defaults(std::string_view label)
+    : name("none"),
+      label(label),
+      p(std::nullopt) {}
 void __tpy_init();
 } // namespace tpyapp::main

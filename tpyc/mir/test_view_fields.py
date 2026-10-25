@@ -22,11 +22,11 @@ from .dependencies import (
 )
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInitMode, MIRMove, MIRNotCovered,
-    MIRPlace, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInits, MIRMove, MIRNotCovered,
+    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .shapes import MIRDeref
-from .value import MIRField, MIRValidationError
+from .value import MIRField, MIRValidationError, loan_field
 from .testutil import no_layouts, borrowed_shape, optional_shape, tuple_shape, union_shape, prepared
 from .prepare import validate_function, validated
 from .validate import MIRPresenceError
@@ -253,15 +253,16 @@ def _with_slot(fn: MIRFunction, sid: MIRSlotId, **changes) -> MIRFunction:
 def test_a_view_member_stores_a_lent_loan(program: _Program) -> None:
     # A str parameter the caller lends, a view parameter's loan, a literal's static storage.
     tok = program.definitions.records[_record(program, "Tok")]
-    assert [(i.field.id.name, i.source, i.mode, i.may_raise) for i in tok.initializers] == [
-        ("s", "s", MIRMemberInitMode.BORROW, False), ("n", "n", MIRMemberInitMode.SCALAR, False)]
+    assert [(i.field.id.name, i.source, i.move, i.may_raise) for i in tok.initializers] == [
+        ("s", "s", False, False), ("n", "n", False, False)]
     viewed = program.definitions.records[_record(program, "Viewed")]
-    assert [(i.source, i.mode) for i in viewed.initializers] == [("v", MIRMemberInitMode.BORROW)]
+    assert [(i.source, i.move) for i in viewed.initializers] == [("v", False)]
     lit = program.definitions.records[_record(program, "Lit")]
-    assert [(i.source, i.mode) for i in lit.initializers] == [(MIRConstant("lit"), MIRMemberInitMode.BORROW)]
+    assert [(i.source, i.move) for i in lit.initializers] == [(MIRConstant("lit"), False)]
     # The receiver's entry initialization stores the loan, no copy and no exit.
     ctor = _lowered(program, "Tok.__init__")
-    assert [m.mode for m in ctor.receiver_init.fields] == [MIRMemberInitMode.BORROW, MIRMemberInitMode.SCALAR]
+    s, n = ctor.receiver_init.members.fields
+    assert isinstance(s.value, MIRBorrow) and isinstance(n.value, MIRRead)
     assert not ctor.exceptional_exits
 
 
@@ -278,7 +279,7 @@ def test_a_base_leg_lends_the_derived_parameter_s_loan(program: _Program) -> Non
     # in the derived constructor would be; a literal leg stores static storage.
     def borrows(name: str) -> list:
         return [(i.field.id.name, i.source) for i in _definition(program, name).initializers
-                if i.mode is MIRMemberInitMode.BORROW]
+                if loan_field(i.field.type)]
     assert borrows("Derived") == [("s", "s")]
     assert borrows("ViewLent") == [("v", "s")]
     assert borrows("ViewLit") == [("v", MIRConstant("abc"))]
@@ -518,19 +519,21 @@ def test_receiver_view_member_validation(program: _Program) -> None:
     ctor = _lowered(program, "Tok.__init__")
     init = ctor.receiver_init
 
-    def member(**changes) -> MIRFunction:
-        return replace(ctor, receiver_init=replace(init, fields=(replace(init.fields[0], **changes),
-                                                                 *init.fields[1:])))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer mode"):
-        validate_function(member(mode=MIRMemberInitMode.COPY))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer mode"):
-        validate_function(member(may_raise=True))
+    s, n = init.members.fields
+
+    def member(value: object) -> MIRFunction:
+        return replace(ctor, receiver_init=replace(init, members=MIRMemberInits((replace(s, value=value), n))))
+    # A view member stores a loan: no copy, no exit.
+    with pytest.raises(MIRValidationError, match="invalid receiver initializer"):
+        validate_function(member(MIRCopy(s.value.source, True)))
+    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
+        validate_function(member(replace(s.value, may_raise=True)))
     # A scalar parameter lends nothing; a constant is a literal of the view's family.
     with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(member(source=init.fields[1].source))
+        validate_function(member(MIRBorrow(n.value.source)))
     with pytest.raises(MIRValidationError, match="invalid receiver initializer constant"):
-        validate_function(member(source=MIRConstant(1)))
-    validate_function(member(source=MIRConstant("lit")))
+        validate_function(member(MIRConstant(1)))
+    validate_function(member(MIRConstant("lit")))
 
 
 def test_storage_that_would_move_a_stored_loan_refuses(program: _Program) -> None:

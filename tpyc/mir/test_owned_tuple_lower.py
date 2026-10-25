@@ -134,9 +134,10 @@ def test_positive_producer_facts_and_inline_placement(artifacts: Artifacts) -> N
     assert "std::tuple<Cell, int32_t, Cell, bool>{Cell(2), 7, Cell(3), true}" in cpp
     for name, body in bodies.items():
         events = analyze_storage(prepared(body))
-        assert len(events.member_initializations) == 1, name
+        backing, = [s for s in body.slots if s.shape.owned_tuple]
+        # The backing initialized once, each inline member moved in from its own temporary.
+        assert sum(stmt.target.root == backing.id for stmt in events.writes.values()) == 1, name
         if name in ("repeat", "branch", "late", "method", "Runner"):
-            backing, = [s for s in body.slots if s.shape.owned_tuple]
             assert isinstance(backing.storage_duration, MIRRegionId)
         assert analyze_scope_ends(prepared(body)).ends
         assert not inspect_scope_lifetimes(prepared(body)).conflicts

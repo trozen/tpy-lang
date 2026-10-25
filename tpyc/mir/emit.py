@@ -17,7 +17,7 @@ from .nodes import (
     MIRGoto, MIRNot, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
     MIRRecordStorageKind, MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
-    member_init_operands, source_order, statement_target, place_shape,
+    source_order, statement_target, place_shape,
 )
 from ..thir.scalar_leaves import MIRClass
 from .value import (
@@ -25,7 +25,7 @@ from .value import (
     value_shape,
 )
 from .shapes import Projection, object_prefix
-from .validate import body_may_raise, reaches_element, statement_reads, successors
+from .validate import body_may_raise, operands, reaches_element, statement_reads, successors
 from .prepare import _FirstPhase, first_phase
 
 
@@ -910,7 +910,7 @@ def _reachable_slots(slots: Mapping[MIRSlotId, MIRSlot], blocks: list[MIRBlock],
     retained = {s.id for s in slots.values() if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
     if receiver is not None:
         retained.add(receiver.receiver)
-        retained.update(member_init_operands(receiver.fields))
+        retained.update(operands(receiver.members))
     for block in blocks:
         for stmt in block.statements:
             if (target := statement_target(stmt)) is not None:

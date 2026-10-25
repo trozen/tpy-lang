@@ -20,9 +20,9 @@ from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRCopy, MIRFunction,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall, MIRCopy, MIRFunction,
     MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind, MIRNotCovered, MIRRecordStorageInit, MIRRecordStorageKind, MIRReturn,
-    MIRStorageDuration, MIRPlace, MIRStorageWrite, MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRTupleConstruct,
+    MIRStorageDuration, MIRPlace, MIRStorageWrite, MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRConstruct,
     MIRWrap,
 )
 from .region_flow import MIRRegionFlow
@@ -439,7 +439,7 @@ def test_retained_holders_observe_named_backing_scope_end(
             members = (member,) if shape == "tuple" else (member, leaf_shape(scalar.type))
             values = (source,) if shape == "tuple" else (source, scalar.id)
             shape = tuple_shape(TupleType(types), members)
-            capture, copy = MIRTupleConstruct(values), MIRCopy(MIRPlace(holder))
+            capture, copy = MIRConstruct(values), MIRCopy(MIRPlace(holder))
         case "optional":
             shape = optional_shape(OptionalType(storage.type), borrowed_shape(storage.type, True))
             capture, copy = MIRWrap(1, MIRPlace(source)), MIRCopy(MIRPlace(holder))

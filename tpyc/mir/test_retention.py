@@ -8,9 +8,9 @@ from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from .dependencies import MIRDependencies, MIRReferent
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRFunction,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction,
     MIRGoto, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRWrap, MIRIsAlternative, MIRCopy,
+    MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap, MIRIsAlternative, MIRCopy,
 )
 from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -59,7 +59,7 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
             layout = (member, leaf_shape(INT32)) if mixed else (member,)
             holder = MIRSlot(SAVED, tuple_shape(TupleType(tuple(m.type for m in layout)), layout),
                              MIRSlotKind.LOCAL)
-            wrap, copy = MIRTupleConstruct((TEMP, N) if mixed else (TEMP,)), MIRCopy(MIRPlace(SAVED))
+            wrap, copy = MIRConstruct((TEMP, N) if mixed else (TEMP,)), MIRCopy(MIRPlace(SAVED))
             path = (MIRTupleIndex(0),)
         case "optional":
             holder = MIRSlot(SAVED, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
@@ -362,7 +362,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
             before = values.copy()
             replaced = None
             match stmt.value:
-                case MIRConstruct(fields=(operand,)):
+                case MIRConstruct(fields=(operand,)) if slots[stmt.target.root].shape.is_storage:
                     root = stmt.target.root
                     replaced = root if root in heap else None
                     heap[root] = values[operand]
@@ -372,7 +372,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
                     value = values[source.root]
                 case MIRAlias(source=source):
                     value = values[source]
-                case MIRTupleConstruct(elements=elements):
+                case MIRConstruct(fields=elements):
                     value = tuple(values[s] for s in elements)
                 case MIRWrap(source=source):
                     value = (values[source.root],) if source is not None else ()
@@ -413,7 +413,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
     def used_before_overwrite(root: MIRSlotId, future: list) -> bool:
         for _, stmt, _, _ in future:
             match stmt.value:
-                case MIRConstruct(fields=fields) | MIRTupleConstruct(elements=fields):
+                case MIRConstruct(fields=fields):
                     uses = fields
                 case MIRRead(source=source) | MIRBorrow(source=source):
                     uses = (source.root,)

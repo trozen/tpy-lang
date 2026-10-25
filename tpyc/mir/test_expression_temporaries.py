@@ -12,8 +12,8 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionTy
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRConstruct, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRRead,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRWrap,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRRead,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRConstruct, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRValidationError
@@ -174,7 +174,7 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
         case "tuple":
             wrapper = MIRSlot(wrapper_id, tuple_shape(TupleType((owned.type,)), (borrowed,)), MIRSlotKind.LOCAL,
                               residence=result.region)
-            capture = (MIRAssign(MIRPlace(wrapper_id), MIRTupleConstruct((holder,))),)
+            capture = (MIRAssign(MIRPlace(wrapper_id), MIRConstruct((holder,))),)
             path = MIRPlace(wrapper_id, (MIRTupleIndex(0),))
         case "optional":
             wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(owned.type), borrowed_shape(owned.type)),

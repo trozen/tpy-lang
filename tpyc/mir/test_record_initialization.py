@@ -7,10 +7,10 @@ import pytest
 from ..typesys import BOOL, INT32, NoneType, OptionalType, TupleType, UnionType
 from .dump import dump_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIREdge,
     MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite,
     MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRTupleConstruct, MIRStatement, MIRWrap,
+    MIRConstruct, MIRStatement, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -179,7 +179,7 @@ def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -
                        tuple_shape(TupleType((CELL, INT32) if two else (CELL,)),
                                    (member, leaf_shape(INT32)) if two else (member,)),
                        MIRSlotKind.LOCAL, residence=ROOT)
-        bind = MIRAssign(MIRPlace(holder), MIRTupleConstruct((CURRENT, VALUE) if two else (CURRENT,)))
+        bind = MIRAssign(MIRPlace(holder), MIRConstruct((CURRENT, VALUE) if two else (CURRENT,)))
         payload = MIRPlace(holder, (MIRTupleIndex(0), MIRDeref()))
     elif shape == "optional":
         slot = MIRSlot(holder, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL,

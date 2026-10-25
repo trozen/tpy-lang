@@ -31,16 +31,16 @@ from ..typesys import (
 from .nodes import (
     MIRAlias, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant,
     MIRConstruct, MIRFunction, MIRGlobalId, MIRGoto, MIRIsAlternative, MIRIteratorAdvance, MIRIteratorHasNext,
-    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNot, MIRNotCovered,
+    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInits, MIRMove, MIRNot, MIRNotCovered,
     MIROp, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReceiverInit,
     MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRStorageInit, MIRTupleConstruct, MIRUnionExtract, function_body_kind, MIRWrap, MIRCopy,
+    MIRStorageInit, MIRUnionExtract, function_body_kind, MIRWrap, MIRCopy,
 )
 from .value import (
     AGGREGATE_CLASSES, Declared, Local, MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRecords,
     MIRRole, MIRShape, MIRValidationError, admission_problem, lent_shape_problem, container_members, fact_shape,
-    holder_form, layout_fact, loan_access, member_compatible, member_types, position_problem, shape_problem,
-    subject_class, thir_member, value_shape, caller_storage,
+    holder_form, layout_fact, loan_access, loan_field, member_compatible, member_types, position_problem,
+    shape_problem, subject_class, thir_member, value_shape, caller_storage,
 )
 from .coverage import MIRUnsupported, literal_type, plain as _plain, require as _require
 from .definitions import (
@@ -1226,8 +1226,7 @@ class _Lowering:
         self.close_layouts()
         receiver_init = None
         if self.initialization is not None:
-            receiver_init = MIRReceiverInit(receiver, tuple(
-                self.member_init(init, names) for init in self.initialization.initializers))
+            receiver_init = MIRReceiverInit(receiver, self.member_inits(self.initialization.initializers, names))
         self.assembly = dict(
             void=isinstance(self.return_type, VoidType), return_type=self.return_type,
             kind=MIRBodyKind.CONSTRUCTOR if self.initialization is not None else function_body_kind(fn),
@@ -1235,23 +1234,37 @@ class _Lowering:
             receiver_init=receiver_init, parameter_bindings=tuple(self.parameter_bindings),
             return_representation=self.return_representation)
 
-    def member_init(self, init: MIRFieldInitializer, names: Mapping[str, MIRSlotId]) -> MIRMemberInit:
-        """One member's entry initialization from its verified initializer:
-        a parameter's slot (an `Own[R]` parameter's storage, not the holder
-        the body reaches it through), a constant, a container literal built
-        over parameters, or a record member built by its own constructor,
-        initialized field by field like the receiver."""
+    def member_inits(self, initializers: tuple[MIRFieldInitializer, ...],
+                     names: Mapping[str, MIRSlotId]) -> MIRMemberInits:
+        """Record storage's entry initialization from its verified
+        initializers, one value per field in layout order."""
+        return MIRMemberInits(tuple(MIRMemberInit(self.member_value(init, names), init.loc) for init in initializers))
+
+    def member_value(self, init: MIRFieldInitializer, names: Mapping[str, MIRSlotId]) -> object:
+        """The value a member takes at entry, spelled as the CFG spells it:
+        a parameter (an `Own[R]` parameter's storage, not the holder the
+        body reaches it through) read by value, lent as the loan a view
+        member stores, copied out of the storage it is or lends, or moved;
+        a constant; a container literal built over parameters; or a record
+        member built by its own constructor, initialized field by field
+        like the receiver."""
         match init.source:
             case str():
-                source = names[init.source]
+                sid = names[init.source]
+                shape = self.mir.records[sid].shape
+                if value_class(init.field.type) is MIRClass.LEAF:
+                    return MIRRead(MIRPlace(sid))
+                if loan_field(init.field.type):
+                    return (MIRAlias(sid) if shape.view_holder
+                            else MIRBorrow(MIRPlace(sid, object_prefix(shape))))
+                if init.move:
+                    return MIRMove(sid)
+                return MIRCopy(MIRPlace(sid, object_prefix(shape)), init.may_raise)
             case tuple():
-                source = MIRConstruct(tuple(names[n] if isinstance(n, str) else n for n in init.source), True)
+                return MIRConstruct(tuple(names[n] if isinstance(n, str) else n for n in init.source), True)
             case MIRComposedConstruct():
-                source = MIRMemberInits(tuple(self.member_init(member, names)
-                                              for member in init.source.initializers))
-            case _:
-                source = init.source
-        return MIRMemberInit(source, init.mode, init.may_raise, init.loc)
+                return self.member_inits(init.source.initializers, names)
+        return init.source
 
     # --- statements ---------------------------------------------------------------
 
@@ -1423,13 +1436,6 @@ class _Lowering:
             f.adopt(slot)
         f.borrow_operation(operation)
         f.write(slot, MIRAlias(source), loc)
-        return f
-
-    def put_owned_tuple_declare(self, loc: object, slot: MIRSlotId, value: Fragment) -> Fragment:
-        """A tuple local built in its own storage from its members."""
-        f = self.fragment()
-        dest = f.adopt(slot, f.scoped_duration())
-        f.write(dest, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         return f
 
     def put_assign(self, loc: object, target: Fragment, value: Fragment, in_place: bool) -> Fragment:
@@ -1610,14 +1616,17 @@ class _Lowering:
                          and stmt.init.tuple_layout == stmt.tuple_layout
                          and stmt.storage_placement is th.THIRStoragePlacement.SCOPE,
                          "owned tuple needs direct constructor literal")
-            value = self.tuple_expr(stmt.init, allow_owned=owning)
+            # An owned tuple's record members are built into temporaries of
+            # its full expression, which the tuple moves from.
+            value = (self.full_expression(stmt.init, check=lambda: self.tuple_expr(stmt.init, allow_owned=True))
+                     if owning else self.tuple_expr(stmt.init))
             self.tuple_compatible(stmt, value.shape_of().members, members)
             bound = self.bind(stmt.name, shape, loc=stmt.loc)
             if owning and id(stmt) in self.body_declarations:
                 self.tuple_roots[stmt.name] = stmt.name
             if not owning:
                 return self.declare(stmt.loc, bound, self.tuple_copy(value, stmt.name))
-            return self.put_owned_tuple_declare(stmt.loc, bound.slot, value)
+            return self.put_declare(stmt.loc, bound.slot, value, False)
         _require(stmt, isinstance(stmt, th.THIRVarDecl), "missing alias binding")
         # A narrowed Optional field's payload lives inline in the field,
         # which MIR keeps whole: a binding of the payload alone is not modeled.
@@ -2416,7 +2425,7 @@ class _Lowering:
                                  else f.leaf(unwrap_readonly(types[i % len(types)]), n, loc)
                                  for i, n in enumerate(init.source))
                 fields.append(f.materialize(MIRValue(MIRConstruct(elements, True), value_shape(member), loc)))
-            elif init.mode is MIRMemberInitMode.BORROW:
+            elif loan_field(init.field.type):
                 # A literal a view member stores: a holder of its static storage.
                 view = init.field.type
                 fields.append(f.holder(view_holder_shape(view), init.source, init.loc))
@@ -3276,8 +3285,9 @@ class _Lowering:
     def tuple_expr(self, expr: th.THIRExpr, *, allow_owned: bool = False) -> Fragment:
         """A tuple value: a copy of a binding's, or one built from its
         elements -- each in its member's form: a record a borrowed member
-        names (a binding's slot), a record an owned member builds, else a
-        value; `holder` is the shape of a slot holding it."""
+        names (a binding's slot), a record an owned member builds into a
+        temporary of the full expression and moves in (`literal_record`),
+        else a value; `holder` is the shape of a slot holding it."""
         _require(expr, expr.form in (th.Form.VALUE, th.Form.BORROW, th.Form.STORAGE), "unsupported tuple form")
         t = self.fragment()
         elements: list[object] = []
@@ -3307,7 +3317,7 @@ class _Lowering:
                 if isinstance(member, th.THIROwnedRecord):
                     _require(element, isinstance(expr, th.THIRTupleLiteral)
                              and isinstance(element, th.THIRCtorCall), "inline tuple record needs constructor")
-                    elements.append(t.splice(self.aggregate_value(element, member.type)))
+                    elements.append(t.splice(self.literal_record(element, member.type)))
                 elif isinstance(member, th.THIRBorrowedRecord):
                     _require(expr, isinstance(expr, th.THIRBorrowTupleLiteral), "value tuple borrows record")
                     if isinstance(element, (th.THIRName, th.THIRSelf)):
@@ -3330,7 +3340,7 @@ class _Lowering:
         _require(expr, expr.form is th.Form.STORAGE if holder.owned_tuple and isinstance(expr, th.THIRName)
                  else expr.form in (th.Form.VALUE, th.Form.BORROW), "tuple form disagrees with layout")
         t.value = MIRValue(self.wrapper_copy(MIRPlace(self.slot_of(expr.name)), holder) if isinstance(expr, th.THIRName)
-                           else MIRTupleConstruct(tuple(elements)), holder, expr.loc)
+                           else MIRConstruct(tuple(elements)), holder, expr.loc)
         return t
 
     def projection(self, expr: th.THIRSubscript, *, capture: bool = False) -> tuple[MIRShape, Fragment]:

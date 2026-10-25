@@ -142,12 +142,11 @@ def install() -> None:
 
     orig_pr = sctx.SemanticContext.mark_param_returned
 
-    def mark_param_returned(self, name, _seen=None, *, storage=False):
-        # Only the outermost call: the method recurses through aliases. A
-        # return marks its root twice (borrow, then `storage=True`); count once.
-        if _seen is None and not storage:
+    def mark_param_returned(self, key, *, storage=False):
+        # A return marks its root twice (borrow, then `storage=True`); count once.
+        if not storage:
             _record(self.func.current_function, "param_returned")
-        return orig_pr(self, name, _seen, storage=storage)
+        return orig_pr(self, key, storage=storage)
     sctx.SemanticContext.mark_param_returned = mark_param_returned
 
     orig_clh = loop_frames.check_loop_hold

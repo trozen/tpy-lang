@@ -15,7 +15,7 @@ from .call_contract import (
 )
 from .call_effects import resolve_call_writes
 from .shapes import (
-    REGION_STEPS, SELECTORS, MIRDeref, MIRContainerElements, object_prefix,
+    REGION_STEPS, SELECTORS, MIRDeref, MIRContainerElements, construct_members, object_prefix,
 )
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
@@ -30,7 +30,7 @@ from .nodes import (
     MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
     MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
     MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk, under_object, view_member, MIRWrap, MIRIsAlternative,
-    place_shape, MIRTupleConstruct, MIRUnionExtract,
+    place_shape, MIRUnionExtract,
 )
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, SUM_CLASSES, MIRField, MIRHolding, MIRRecords, MIRShape,
@@ -288,7 +288,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
     method = declaration.receiver is not None
     twin = declaration.access_twin
     if (callee is None or body.kind is not (MIRBodyKind.METHOD if method else MIRBodyKind.FREE_FUNCTION)
-            or (callee.identity.owner is not None) is not method or body.receiver_init is not None
+            or (callee.identity.owner is not None) is not method
             or twin and not (method and callee.signature.result_follows_receiver and callee.signature.passings)
             or body.borrowed_result != call_result(callee, method and declaration.receiver.readonly)
             or body.return_type != body_result(declaration)
@@ -440,7 +440,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                 # an object the caller reaches is a transfer (`_transfers`).
                 continue
             leaf_place = owned_leaf_place_type(stmt.target, slots, record_layouts) is not None
-            own_storage = not stmt.target.projections and target.shape.is_storage
+            own_storage = not stmt.target.projections and target.shape.owns_storage
             elements = stmt.target.projections[-1:] == (MIRContainerElements(),)
             origins = (resolve_referents(stmt.target, state, slots, record_layouts) if stmt.target.projections
                        else frozenset())
@@ -484,9 +484,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     # A holder of a sum's selected record, or an alias of its
                     # scalar payload: the dependency pass tracks either.
                     pass
-                case MIRTupleConstruct(elements=elements) if (
-                        not stmt.target.projections and all(isinstance(e, MIRSlotId) for e in elements)):
-                    # A tuple value built from the body's own slots.
+                case MIRConstruct() if not stmt.target.projections and all(
+                        m.is_holder or m.is_scalar for _, m in construct_members(target.shape, record_layouts)):
+                    # A value built from the body's own slots, holding no
+                    # storage member (a tuple of holders and scalars): what
+                    # it holds the dependency pass tracks.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
                                                   and _aggregate_member(source, slots, private_records(),

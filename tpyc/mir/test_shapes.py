@@ -29,7 +29,8 @@ from .reach import MIROrigin, origin
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, MIRWalk, field_member, step,
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload, MIRWalk, construct_members,
+    field_member, step,
     store_problem, walk, lent_members, lent_prefix, object_path, object_prefix, object_selector, sole_object,
 )
 from .prepare import validate_function
@@ -512,6 +513,24 @@ def test_wrapper_members_are_reached_only_by_their_own_projection(program: _Prog
         step(pair, MIRUnionPayload(0), program.records)
     with pytest.raises(MIRValidationError, match="payload projection needs a sum"):
         step(pair, MIRUnionPayload(1), program.records)
+
+
+def test_a_construct_takes_one_operand_per_member_of_its_target(program: _Program) -> None:
+    # A record's members are its layout's fields, at the record's access.
+    h = program.types["H"]
+    record = MIRShape(h, MIRClass.RECORD, MIRHolding.VALUE, True)
+    members = construct_members(record, program.records)
+    assert [projection for projection, _ in members] == list(program.records[h].fields)
+    assert all(member == member_shape(f.type, True, program.records) == step(record, f, program.records)
+               for f, member in members)
+    # A tuple's members are its elements, by index.
+    p = program.types["P"]
+    leaf, owned = MIRShape(INT32, MIRClass.LEAF), MIRShape(p, MIRClass.RECORD)
+    pair = MIRShape(TupleType((INT32, p)), MIRClass.TUPLE, members=(leaf, owned))
+    assert construct_members(pair, program.records) == ((MIRTupleIndex(0), leaf), (MIRTupleIndex(1), owned))
+    # A container literal's elements repeat with no member place of their own.
+    xs = member_shape(program.fields["H.xs"], False, program.records)
+    assert xs.cls is MIRClass.CONTAINER and xs.members and construct_members(xs, program.records) == ()
 
 
 def test_an_optional_fields_inline_payload_is_stored_at_the_fields_access(program: _Program) -> None:

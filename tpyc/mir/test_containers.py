@@ -29,7 +29,7 @@ from .retention import analyze_retention
 from .storage import analyze_storage
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
-    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
+    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
     MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref, object_prefix
@@ -581,8 +581,8 @@ def test_container_members_are_initialized_at_entry(active) -> None:
     bag = lower_constructor(active.constructors["Bag"], MIRBodyId("containers", "Bag"), definitions=active.definitions)
     pair = lower_constructor(active.constructors["Pair"], MIRBodyId("containers", "Pair"),
                              definitions=active.definitions)
-    assert "initialize-receiver %0 (move construct ())" in _lines(bag) and bag.exceptional_exits
-    assert "initialize-receiver %0 (move construct (%1, %1))" in _lines(pair)
+    assert "initialize-receiver %0 (construct () may-raise)" in _lines(bag) and bag.exceptional_exits
+    assert "initialize-receiver %0 (construct (%1, %1) may-raise)" in _lines(pair)
     heap: dict = {}
     execute(pair, Reference(1), 4, heap=heap)
     assert [v.elements for v in heap[1].values()] == [[4, 4]]
@@ -831,17 +831,19 @@ def test_validator_rejects_damaged_container_member_init(active) -> None:
                              definitions=active.definitions)
     validate_function(pair)
     init = pair.receiver_init
-    member = init.fields[0]
+    member = init.members.fields[0]
     receiver = init.receiver
+    param = member.value.fields[0]
 
-    def damaged(**changes) -> MIRFunction:
-        return replace(pair, receiver_init=replace(init, fields=(replace(member, **changes),)))
-    _rejects(damaged(source=MIRConstruct((receiver,), True)), "invalid receiver initializer literal")
-    _rejects(damaged(source=member.source.fields[0], mode=MIRMemberInitMode.COPY),
-             "invalid receiver initializer parameter")
-    _rejects(damaged(may_raise=False), "receiver initializer exit fact mismatch")
-    _rejects(damaged(source=MIRConstant(1)), "invalid receiver initializer")
-    assert member == MIRMemberInit(member.source, MIRMemberInitMode.MOVE, True, member.loc)
+    def damaged(value: object) -> MIRFunction:
+        return replace(pair, receiver_init=replace(init, members=MIRMemberInits((replace(member, value=value),))))
+    # The receiver is the storage entry builds, never an operand.
+    _rejects(damaged(MIRConstruct((receiver, receiver), True)), "invalid receiver initializer parameter")
+    # A literal allocates: its exit fact is the value's own.
+    _rejects(damaged(MIRConstruct((param, param), False)), "invalid receiver initializer literal")
+    _rejects(damaged(MIRCopy(MIRPlace(param))), "invalid receiver initializer parameter")
+    _rejects(damaged(MIRConstant(1)), "invalid receiver initializer")
+    assert member == MIRMemberInit(MIRConstruct((param, param), True), member.loc)
 
 
 # --- dict views -------------------------------------------------------------------

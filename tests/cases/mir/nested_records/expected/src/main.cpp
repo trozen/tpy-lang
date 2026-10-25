@@ -263,6 +263,17 @@ bool adopt_live() {
     return (held.x > 0);
 }
 
+// # free function: a tuple's record member is built in a temporary of the tuple's
+// # full expression and moved in, its own record arguments built the same way;
+// # the temporary is unnamed, so nothing aliases what the tuple holds
+// def tuple_member(x: int32) -> int32:  # tpyc: mir(covered)
+//     t = (Line(Point(x, "a"), Point(2, "b"), 3), 4)  # the member built in a temporary, then moved
+//     return t[0].a.x + t[0].b.x + t[1]
+int32_t tuple_member(int32_t x) {
+    auto t = std::tuple<Line, int32_t>{Line(Point(x, "a"), Point(2, "b"), 3), 4};
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(std::get<0>(t).a.x, std::get<0>(t).b.x)), std::get<1>(t)));
+}
+
 // # module driver: a print beside a writing call evaluates eagerly in an order MIR
 // # does not model
 // def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
@@ -297,6 +308,9 @@ bool adopt_live() {
 //     print("adopt_live", adopt_live())
 //     ln.swap()
 //     print("swap", ln.a.x, ln.b.x)
+//     d = Defaults("lbl")
+//     print("defaults", d.name, d.label, d.p is None)
+//     print("tuple_member", tuple_member(1))
 void main() {
     Line ln = Line(Point(1, "a"), Point(2, "b"), 3);
     std::cout << "read_path" << " " << ::tpyapp::main::read_path(ln) << "\n" << ::tpy::check_signals;
@@ -329,6 +343,9 @@ void main() {
     std::cout << "adopt_live" << " " << ::tpy::print_bool(::tpyapp::main::adopt_live()) << "\n" << ::tpy::check_signals;
     ln.swap();
     std::cout << "swap" << " " << ln.a.x << " " << ln.b.x << "\n" << ::tpy::check_signals;
+    Defaults d = Defaults("lbl");
+    std::cout << "defaults" << " " << d.name << " " << d.label << " " << ::tpy::print_bool((!d.p.has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << "tuple_member" << " " << ::tpyapp::main::tuple_member(1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

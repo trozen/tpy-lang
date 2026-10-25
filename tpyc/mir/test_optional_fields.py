@@ -297,9 +297,9 @@ def test_a_field_place_carries_an_owned_payload_layout(program: _Program) -> Non
 
 
 @pytest.mark.parametrize("name,init", [
-    ("H.__init__", "initialize-receiver %0 (copy %1, %2)"),
+    ("H.__init__", "initialize-receiver %0 (copy %1, read %2)"),
     ("Empty.__init__", "initialize-receiver %0 (wrap[0])"),
-    ("Built.__init__", "initialize-receiver %0 (move {%1})"),
+    ("Built.__init__", "initialize-receiver %0 ({read %1})"),
 ])
 def test_the_dump_spells_each_optional_member_initializer(program: _Program, name: str, init: str) -> None:
     verdict = program.verdicts[name]

@@ -12,9 +12,8 @@ from ..typesys import BOOL, INT32, ReadonlyType, TupleType
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct,
-    MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRStorageWrite, MIRStorageWriteMode,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRHolding, MIRValidationError
@@ -181,15 +180,20 @@ def test_explicit_roots_are_retained_and_exactly_bound(definitions: MIRDefinitio
 @pytest.mark.parametrize("escape", [False, True])
 def test_owned_tuple_member_infers_its_local_backing(definitions: MIRDefinitions, escape: bool) -> None:
     cell, layout = _cell(definitions)
-    pair, result = MIRSlotId(BODY, 5), MIRSlotId(BODY, 6)
+    pair, result, temporary = MIRSlotId(BODY, 5), MIRSlotId(BODY, 6), MIRSlotId(BODY, 7)
     member = MIRPlace(pair, (MIRTupleIndex(0),))
     fn = forwarding(definitions, dead=not escape)
     backing = MIRSlot(pair, tuple_shape(TupleType((cell, INT32)), (owned_shape(cell), leaf_shape(INT32))),
                       MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY, residence=ROOT)
-    fn = bind_parameters(replace(fn, slots=(*fn.slots, backing, MIRSlot(result, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)),
+    built = MIRSlot(temporary, owned_shape(cell), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY,
+                    residence=ROOT)
+    initialize = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+    fn = bind_parameters(replace(fn, slots=(*fn.slots, backing, MIRSlot(result, leaf_shape(INT32), MIRSlotKind.LOCAL,
+                                                                        residence=ROOT), built),
                  blocks=(MIRBlock(ENTRY, (
-                     MIRAssign(MIRPlace(pair), MIRTupleConstruct((MIRConstruct((VALUE,)), VALUE)),
-                               storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+                     # The member is built in its own temporary, which the tuple moves from.
+                     MIRAssign(MIRPlace(temporary), MIRConstruct((VALUE,)), storage_write=initialize),
+                     MIRAssign(MIRPlace(pair), MIRConstruct((temporary, VALUE)), storage_write=initialize),
                      MIRAssign(MIRPlace(ALIAS), MIRBorrow(member)),
                      MIRAssign(MIRPlace(result), MIRRead(MIRPlace(ALIAS, (MIRDeref(), layout.fields[0]))))),
                      MIRReturn(ALIAS if escape else result), ROOT),)))

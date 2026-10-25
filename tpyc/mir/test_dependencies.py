@@ -12,9 +12,9 @@ from .dependencies import MIRDependencies, MIRReferent, _dependencies, dump_depe
 from .liveness import MIRPoint, _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy,
     MIRFunction, MIRGoto, MIRIsAlternative, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRUnionExtract, MIRWrap,
+    MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRUnionExtract, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
@@ -74,7 +74,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
     if shape == "tuple":
         wrapper = MIRSlot(X, tuple_shape(TupleType((CELL, INT32)), (member, leaf_shape(INT32))), MIRSlotKind.LOCAL)
         scalar = MIRSlot(Z, leaf_shape(INT32), MIRSlotKind.PARAMETER)
-        initial, copy, reseat = MIRTupleConstruct((P, Z)), MIRCopy(MIRPlace(X)), MIRTupleConstruct((Q, Z))
+        initial, copy, reseat = MIRConstruct((P, Z)), MIRCopy(MIRPlace(X)), MIRConstruct((Q, Z))
         path = (MIRTupleIndex(0),)
     elif shape == "optional":
         wrapper = MIRSlot(X, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
@@ -137,7 +137,7 @@ def test_tuple_leaves_and_parameter_payloads_keep_separate_origins() -> None:
     slots = (reference(P, param=True), reference(Q, param=True), pair,
              replace(pair, id=Y), replace(pair, id=Z, kind=MIRSlotKind.PARAMETER))
     fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
-        MIRAssign(MIRPlace(X), MIRTupleConstruct((P, Q))),
+        MIRAssign(MIRPlace(X), MIRConstruct((P, Q))),
         MIRAssign(MIRPlace(Y), MIRCopy(MIRPlace(X))),
         MIRAssign(MIRPlace(X), MIRCopy(MIRPlace(Z))),
         MIRAssign(MIRPlace(Y), MIRCopy(MIRPlace(Y))),
@@ -379,3 +379,62 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
             validate_function(bad)
         assert all(s.storage_duration is None for fn in bodies.values() for s in fn.slots
                    if s.shape.holding is MIRHolding.POINTER)
+
+
+CONSTRUCT_SOURCE = """\
+from tpy import StrView, int32
+class P:
+    def __init__(self, x: int32) -> None:
+        self.x = x
+class Tok:
+    s: StrView
+    n: int32
+    def __init__(self, s: str, n: int32) -> None:
+        self.s = s
+        self.n = n
+class W:
+    def __init__(self, t: Tok) -> None:
+        self.t = t
+def rebind(flag: bool) -> int32:
+    a = P(1)
+    t = (a, 2)
+    if flag:
+        a = P(5)
+    return t[0].x + a.x
+def rec_tmp(k: int32) -> int32:
+    w = W(Tok("x" * (4 + k), 2))
+    return len(w.t.s)
+"""
+
+
+def test_a_construct_fills_each_member_from_its_operand() -> None:
+    # One rule for every construct: member i takes operand i's state.
+    compiler, modules = _compile(CONSTRUCT_SOURCE)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        bodies = {node.name: lower_function(thir, MIRBodyId("construct", node.name), definitions=definitions)
+                  for node, thir in ctx.thir_functions.items()}
+        # A tuple's holder member takes its operand's loan: `t[0]` keeps the
+        # first `P` after `a` is rebound to the second.
+        rebind = bodies["rebind"]
+        assert isinstance(rebind, MIRFunction), rebind
+        slots = {s.name: s.id for s in rebind.slots if s.name is not None}
+        first, second = (s.id for s in rebind.slots if s.shape.is_storage)
+        state = analyze(rebind).referents
+        held = {refs for point, live in state.items() for leaf, refs in live.items()
+                if leaf == MIRPlace(slots["t"], (MIRTupleIndex(0),))}
+        assert held == {frozenset({MIRReferent(MIRPlace(first))})}
+        assert any(live.get(MIRPlace(slots["a"])) == {MIRReferent(MIRPlace(second))} for live in state.values())
+        # A storage member moved in from a temporary carries the loans its
+        # object stores: `w.t.s` holds the buffer the `*` operation built.
+        rec_tmp = bodies["rec_tmp"]
+        assert isinstance(rec_tmp, MIRFunction), rec_tmp
+        tok, w = (s for s in rec_tmp.slots if s.shape.is_storage and s.type.name in ("Tok", "W"))
+        buffer, = (s.id for s in rec_tmp.slots if s.shape.leaf_storage)
+        layouts = rec_tmp.record_layouts
+        member, = layouts[w.type].fields
+        view, _ = layouts[tok.type].fields
+        stored = {refs for live in analyze(rec_tmp).referents.values() for leaf, refs in live.items()
+                  if leaf == MIRPlace(w.id, (member, view))}
+        assert stored == {frozenset({MIRReferent(MIRPlace(buffer))})}

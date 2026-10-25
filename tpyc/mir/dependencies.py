@@ -18,17 +18,17 @@ from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRCallStmt, MIRStatement, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
     MIRConstruct, MIRCopy, MIRFunction, MIRIsAlternative, MIRMove, MIRNot, MIRNotCovered, MIRPlace, MIRRead, MIRSlot,
-    MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
+    MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRReturn, statement_target, call_place, place_walk, view_member,
     MIRWrap, place_shape, MIRPresentCall,
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
-    loan_field, member_types, WRAPPER_CLASSES,
+    loan_field, member_types, value_shape, WRAPPER_CLASSES,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
-    object_prefix, optional_payload, wrapper_members,
+    construct_members, object_prefix, optional_payload, wrapper_members,
 )
 from .validate import successors
 from .presence import MIRPresence
@@ -220,7 +220,7 @@ def _coverage(fn: MIRFunction) -> tuple[str, MIRSlotId | None] | None:
     """Why the body is not covered, and the slot the reason names."""
     slots = {s.id: s for s in fn.slots}
     for slot in fn.slots:
-        root = (slot if slot.shape.is_storage or slot.shape.owned_tuple else
+        root = (slot if slot.shape.owns_storage else
                 slots[slot.alias_source.root] if slot.alias_source is not None else None)
         if root is not None and root.storage_duration is None:
             return f"missing storage duration for %{root.id.index}", root.id
@@ -405,28 +405,17 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
                 ) -> dict[MIRPlace, frozenset[MIRReferent]]:
     """The loans record storage of type `typ` stores once a whole write
     fills it, keyed under `place` at each of its view members (through
-    inline record members): a construct's view operand holds the loan its
-    member stores; a copy or a move carries the source object's stored
+    inline record members): a construct fills them member by member
+    (`construct_fill`); a copy or a move carries the source object's stored
     loans over; a call's owned result stores what the callee's result
     transfers name. Read off the state before the write."""
     keys = {key: key.projections[len(place.projections):]
             for key in _member_keys(place, layouts.get(typ), layouts)}
     if not keys:
         return {}
-    empty: frozenset[MIRReferent] = frozenset()
     match value:
         case MIRConstruct(fields=fields):
-            # A view member's operand holds its loan; a record member's
-            # operand (a holder, or storage handed over) stores the loans
-            # under the rest of the member path.
-            operands = dict(zip(layouts[typ].fields, fields))
-            filled = {}
-            for key, path in keys.items():
-                operand, rest = operands[path[0]], path[1:]
-                through = object_prefix(slots[operand].shape) if rest else ()
-                filled[key] = (resolve_referents(MIRPlace(operand, (*through, *rest)), state, slots, layouts) if rest
-                               else state.get(MIRPlace(operand), empty))
-            return filled
+            return construct_fill(place, value_shape(typ), fields, state, slots, layouts)
         case MIRCopy(source=source):
             # A source place reaching several objects carries the union of their loans.
             return {key: resolve_referents(MIRPlace(source.root, (*source.projections, *path)), state, slots, layouts)
@@ -450,6 +439,29 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
             return filled
     # Any other value stores loans no fact names.
     raise MIRUnseededLoan(None, "record storage filled with no stored loan")
+
+
+def construct_fill(place: MIRPlace, target: MIRShape, fields: tuple[MIRSlotId, ...], state: MIRReferents,
+                   slots: Mapping[MIRSlotId, MIRSlot], layouts: MIRRecords) -> dict[MIRPlace, frozenset[MIRReferent]]:
+    """What a construct of a value of shape `target` at `place` holds, member
+    by member (`construct_members`): member i takes operand i's state -- a
+    holder member (a view member, a tuple's pointer) the loan its operand
+    holds, at the member's place; a storage member the loans its operand's
+    object stores (a holder's referent, or storage handed over), at each
+    stored-loan entry under the member's place. Read off the state before
+    the write."""
+    empty: frozenset[MIRReferent] = frozenset()
+    filled: dict[MIRPlace, frozenset[MIRReferent]] = {}
+    for (projection, member), operand in zip(construct_members(target, layouts), fields):
+        at = MIRPlace(place.root, (*place.projections, projection))
+        if member.is_holder:
+            filled[at] = state.get(MIRPlace(operand), empty)
+            continue
+        through = object_prefix(slots[operand].shape)
+        for key in _member_keys(at, layouts.get(member.type), layouts):
+            rest = key.projections[len(at.projections):]
+            filled[key] = resolve_referents(MIRPlace(operand, (*through, *rest)), state, slots, layouts)
+    return filled
 
 
 def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
@@ -672,9 +684,11 @@ def _dependencies(presence: MIRPresence, liveness: MIRLiveness) -> MIRDependenci
                 # loans (`stored_on_fill`), never rebased.
                 result = {leaf: resolve_referents(_rebased(leaf, target, source), state, slots, layouts)
                           for leaf in leaves[target.root]}
-            case MIRTupleConstruct(elements=elements):
-                result = {leaf: state.get(MIRPlace(elements[leaf.projections[0].index]), empty)
-                          for leaf in leaves[target.root]}
+            case MIRConstruct(fields=fields) if (shape := place_shape(target, slots, layouts)).cls is not (
+                    MIRClass.RECORD):
+                # A record's members are its stored-loan entries, filled once
+                # below (`stored_on_fill`, `fill_through`) through the same rule.
+                result = construct_fill(target, shape, fields, state, slots, layouts)
             case MIRWrap(alternative=alternative, source=source):
                 leaf = MIRPlace(target.root, (*target.projections, MIRUnionPayload(alternative)))
                 if source is not None and leaf in leaves[target.root]:

@@ -14,7 +14,7 @@ from ..typesys import INT32_MIN, INT32_MAX, FieldInfo, NominalType, RecordInfo
 from .nodes import (
     MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
-    MIRStorageWrite, MIRStorageWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRTupleConstruct, MIRStorageInit,
+    MIRStorageWrite, MIRStorageWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageInit,
     MIREdge, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap, MIRNotCovered, MIRBodyId,
 )
@@ -30,7 +30,7 @@ from ..typesys import OwnType, TpyType, return_representation
 from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
 from .definitions import MIRDefinitions, declared_fields
 from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
-from .validate import statement_reads
+from .validate import operands, statement_reads
 from .prepare import MIRPrepared, prepare
 from .lower import MIRLoweredStorage
 
@@ -354,7 +354,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         reference = values[init.receiver]
         assert isinstance(reference, Reference) and not reference.path
         assert reference.identity not in objects or not objects[reference.identity]
-        def member_value(member: MIRField, source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits) -> Value:
+        def member_value(member: MIRField, source: object) -> Value:
             # A record member is inline storage: a copy of what its parameter
             # holds (or the parameter's own storage moved in), or the fields
             # its own constructor initializes.
@@ -364,11 +364,14 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRConstant():
                     return source.value
                 case MIRMemberInits():
-                    return {f.id: member_value(f, m.source) for f, m in zip(layout.fields, source.fields)}
+                    return {f.id: member_value(f, m.value) for f, m in zip(layout.fields, source.fields)}
                 case MIRConstruct():
                     return ContainerValue([s.value if isinstance(s, MIRConstant) else values[s]
                                            for s in source.fields])
-            value = values[source]
+                case MIRWrap(source=None):
+                    return optional_value()
+            (root,) = operands(source)
+            value = values[root]
             if layout is not None and isinstance(value, Reference):
                 held = objects[value.identity]
                 for step in value.path:
@@ -377,8 +380,8 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
             # A container member copies its parameter's container.
             return ContainerValue(value.elements) if isinstance(value, ContainerValue) else value
         objects[reference.identity] = {
-            member.id: member_value(member, value.source)
-            for member, value in zip(records[slots[init.receiver].type].fields, init.fields)
+            member.id: member_value(member, value.value)
+            for member, value in zip(records[slots[init.receiver].type].fields, init.members.fields)
         }
     next_identity = max(objects, default=0) + 1
     bid = fn.entry
@@ -495,14 +498,15 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRBorrow():
                     value = read(rhs.source)
                     assert isinstance(value, (Reference, ContainerValue))
-                case MIRTupleConstruct():
+                case MIRConstruct() if place_shape(stmt.target, slots, records).cls is MIRClass.TUPLE:
+                    # The interpreter's tuple value: a storage member's record
+                    # moves into the tuple's own backing object.
                     target = slots[stmt.target.root]
                     elements = []
                     backing: Record = {}
-                    for i, src in enumerate(rhs.elements):
-                        if isinstance(src, MIRConstruct):
-                            layout = records[place_shape(stmt.target, slots, records).elements[i].type]
-                            backing[MIRTupleIndex(i)] = {f.id: values[s] for f, s in zip(layout.fields, src.fields)}
+                    for i, (src, member) in enumerate(zip(rhs.fields, target.shape.elements)):
+                        if member.is_storage:
+                            backing[MIRTupleIndex(i)] = record(values[src]).copy()
                             elements.append(Reference(next_identity, (MIRTupleIndex(i),)))
                         else:
                             elements.append(values[src])

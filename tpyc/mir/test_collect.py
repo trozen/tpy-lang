@@ -123,8 +123,9 @@ def owned_pair() -> int32:
     return pair[0].value
 ''')
     assert re.search(r"fn .*::owned_pair@[^\n]+ ->", out)
-    assert "initialize-tuple-members %2[0], %2[1]" in out
-    assert "[initialize]" in out
+    # Each inline member built in its own temporary, which the tuple moves from.
+    assert re.search(r"%(\d+) = construct \(%\d+, %\d+\) \[initialize\]", out)
+    assert out.count("[initialize]") == 3
     assert "scope ends (possible normal storage ends" in out
 
 
@@ -182,7 +183,8 @@ def alias_pair() -> int32:
     body = out[out.index("::alias_pair@"):]
     body = body.split("\nfn ", 1)[0]
     assert "<MIR not covered:" not in body
-    assert body.count("[initialize]") == 1
+    # The member's temporary and the one backing, never an alias.
+    assert body.count("[initialize]") == 2
     assert " = copy " not in body
     assert "saved" not in body and "chain" not in body
 
@@ -574,6 +576,15 @@ def container_alias(ys: list[int32]) -> int32:
 def field_alias(l: L) -> int32:
     xs = l.items
     return xs[0]
+
+class Entry:
+    name: str
+    label: str
+    q: P | None
+    def __init__(self, label: str) -> None:
+        self.name = "none"
+        self.label = label
+        self.q = None
 """
 
 
@@ -606,6 +617,16 @@ def test_owned_locals_carry_kind_copy_and_in_place_events(facts) -> None:
     # A borrowed str parameter's external referent is spelled by the parameter.
     assert _borrows(owned, 16, "a") == [(0, {"a"})]
     assert "t" not in owned.holders and (16, "t") not in owned.borrows
+
+
+def test_a_constructor_entry_write_reads_as_its_method_twin(facts) -> None:
+    # One line-fact rule for entry and CFG writes: a constant is materialized,
+    # not copied; an empty Optional record member is owned storage.
+    entry = facts["Entry.__init__"]
+    line = {text.strip(): number for number, text in enumerate(LINE_FACT_SOURCE.splitlines(), 1)}
+    assert entry.writes[(line['self.name = "none"'], "self.name")] == (MIRLineWrite(0, MIRWriteKind.OWNED, False),)
+    assert entry.writes[(line["self.label = label"], "self.label")] == (MIRLineWrite(0, MIRWriteKind.OWNED, True),)
+    assert entry.writes[(line["self.q = None"], "self.q")] == (MIRLineWrite(0, MIRWriteKind.OWNED, False),)
 
 
 def test_a_record_alias_borrows_the_parameter(facts) -> None:

@@ -14,7 +14,7 @@ from ..typesys import INT32
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRRegionId, MIRSlotKind
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageVerdict
@@ -190,8 +190,11 @@ def boundary(n: int32) -> int32:
                             definitions=definitions)
     if reason is None:
         assert isinstance(result, MIRFunction)
-        # The named tuple's backing retains its existing body lifetime.
-        assert all(s.shape.is_storage is False for s in result.slots)
+        # The tuple's record member is built in a temporary of its full
+        # expression, which ends there; the tuple is its own backing.
+        storage = [s for s in result.slots if s.shape.is_storage]
+        assert storage and all(s.kind is MIRSlotKind.TEMPORARY and isinstance(s.storage_duration, MIRRegionId)
+                               for s in storage)
     else:
         assert isinstance(result, MIRNotCovered) and result.reason == reason
         bound = certify_thir_storage(MIRStorageRequest(fn, result.body, MIRBodyKind.FREE_FUNCTION,

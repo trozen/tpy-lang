@@ -207,6 +207,16 @@ def wrapper_members(shape: MIRShape) -> tuple[tuple[MIRTupleIndex | MIRUnionPayl
     return tuple((selector(i), m) for i, m in enumerate(shape.members) if m is not None)
 
 
+def construct_members(shape: MIRShape, records: MIRRecords) -> tuple[tuple[MIRField | MIRTupleIndex, MIRShape], ...]:
+    """The members a construct of a value of `shape` takes one operand for,
+    each with the projection reaching it: a record's layout fields at the
+    record's access, a tuple's elements. A container literal's members
+    repeat with no member place of their own, so it has none here."""
+    if shape.cls is MIRClass.RECORD:
+        return tuple((f, member_shape(f.type, shape.readonly, records)) for f in records[shape.type].fields)
+    return tuple((s, m) for s, m in wrapper_members(shape) if isinstance(s, MIRTupleIndex))
+
+
 def lent_members(shape: MIRShape) -> tuple[tuple[MIRTupleIndex | MIRUnionPayload, MIRShape], ...]:
     """The pointer members of a wrapper, each with the selector reaching it:
     the objects a holder of `shape` lends, one per member (an Optional

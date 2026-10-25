@@ -18,7 +18,6 @@ class MIRStorageEvents:
     # An assignment's own storage write: an initialization, a replacement,
     # an Optional assignment.
     writes: Mapping[MIRPoint, MIRAssign]
-    member_initializations: Mapping[MIRPoint, tuple[MIRPlace, ...]]
     # A call whose summary may write owned storage it is lent (an owned-leaf
     # field's buffer, a container's shape or elements) replaces it: one
     # replacement event per written place, at the call.
@@ -42,7 +41,6 @@ def analyze_storage(prepared: MIRPrepared) -> MIRStorageEvents | MIRNotCovered:
     reached = reachable_blocks(fn)
     slots = {slot.id: slot for slot in fn.slots}
     writes: dict[MIRPoint, MIRAssign] = {}
-    members: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     calls: dict[MIRPoint, tuple[MIRPlace, ...]] = {}
     moves: dict[MIRPoint, MIRPlace] = {}
     constructions: dict[MIRPoint, MIRStorageEvent] = {}
@@ -58,8 +56,6 @@ def analyze_storage(prepared: MIRPrepared) -> MIRStorageEvents | MIRNotCovered:
                 continue
             for event in events:
                 match event.kind:
-                    case MIRStorageEventKind.MEMBERS:
-                        members[point] = (*members.get(point, ()), event.place)
                     case MIRStorageEventKind.CALL_WRITE:
                         calls[point] = (*calls.get(point, ()), event.place)
                     case MIRStorageEventKind.MOVE:
@@ -75,7 +71,7 @@ def analyze_storage(prepared: MIRPrepared) -> MIRStorageEvents | MIRNotCovered:
                     case _:
                         assert isinstance(stmt, MIRAssign)
                         writes[point] = stmt
-    return MIRStorageEvents(fn, MappingProxyType(writes), MappingProxyType(members), MappingProxyType(calls),
+    return MIRStorageEvents(fn, MappingProxyType(writes), MappingProxyType(calls),
                             MappingProxyType(moves), MappingProxyType(constructions), MappingProxyType(payloads))
 
 
@@ -89,9 +85,6 @@ def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
         owner = f" rebind-owner=%{fact.rebind_owner.index}" if fact.rebind_owner is not None else ""
         lines.append(f"  bb{point.block.index} before {point.index}: {fact.mode.name.lower()} "
                      f"{_place(stmt.target)}{owner}{_location(stmt.loc)}")
-    for point, members in result.member_initializations.items():
-        lines.append(f"  bb{point.block.index} before {point.index}: initialize-tuple-members "
-                     + ", ".join(_place(member) for member in members))
     blocks = {block.id: block for block in result.function.blocks}
     for point, places in result.call_writes.items():
         loc = blocks[point.block].statements[point.index].loc

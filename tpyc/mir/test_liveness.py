@@ -11,8 +11,8 @@ from .liveness import MIRPoint, _liveness, dump_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
-    MIRIsAlternative, MIRMemberInit, MIRPlace, MIRRead, MIRReceiverInit, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRUnionExtract, MIRRvalue, MIRAlias, MIRConstruct, MIRCopy, MIRMove, MIRTupleConstruct, MIRGlobalId,
+    MIRIsAlternative, MIRMemberInit, MIRMemberInits, MIRPlace, MIRRead, MIRReceiverInit, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRUnionExtract, MIRRvalue, MIRAlias, MIRCopy, MIRMove, MIRConstruct, MIRGlobalId,
     MIRStorageDuration, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
@@ -153,7 +153,8 @@ def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
              MIRSlot(X, leaf_shape(INT32), MIRSlotKind.PARAMETER))
     fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (), MIRReturn()),), A,
                      records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
-                     receiver_init=MIRReceiverInit(P, (MIRMemberInit(X),)), kind=MIRBodyKind.CONSTRUCTOR))
+                     receiver_init=MIRReceiverInit(P, MIRMemberInits((MIRMemberInit(MIRRead(MIRPlace(X))),))),
+                     kind=MIRBodyKind.CONSTRUCTOR))
     result = prepared(fn).liveness
     assert result.live_in[A] == set()
     assert result.entry_live == {P, X}
@@ -191,7 +192,7 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
         other = MIRSlot(Y, tuple_shape(typ, layout), MIRSlotKind.PARAMETER)
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
         if operation == "tuple":
-            value, expected = MIRTupleConstruct((P, X)), {P, X}
+            value, expected = MIRConstruct((P, X)), {P, X}
         elif operation == "tuple_copy":
             value, expected = MIRCopy(MIRPlace(Y)), {Y}
         else:

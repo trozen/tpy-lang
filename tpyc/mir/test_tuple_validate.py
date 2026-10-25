@@ -7,7 +7,7 @@ import pytest
 from ..typesys import BOOL, INT32, TupleType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRPlace,
-    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRCopy,
+    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRConstruct, MIRCopy,
 )
 from .shapes import MIRDeref, MIRTupleIndex
 from .value import MIRField, MIRFieldId, MIRValidationError
@@ -33,9 +33,9 @@ SLOTS = (
     MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
 )
 INIT = MIRAssign(MIRPlace(X), MIRConstant(1))
-MAKE = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((R, X)))
+MAKE = MIRAssign(MIRPlace(PAIR), MIRConstruct((R, X)))
 COPY = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(PAIR)))
-RESEAT = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((A, X)))
+RESEAT = MIRAssign(MIRPlace(PAIR), MIRConstruct((A, X)))
 WRITE = MIRAssign(MIRPlace(A, (MIRDeref(), FIELD)), MIRConstant(9))
 PROJECT = MIRPlace(SAVED, (MIRTupleIndex(0), MIRDeref(), FIELD))
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(PROJECT))
@@ -64,7 +64,7 @@ def test_empty_tuple_payloads_construct_and_copy() -> None:
     slots = (reslot(SLOTS[3], type=TupleType(()), members=layout),
              reslot(SLOTS[4], type=TupleType(()), members=layout), SLOTS[2])
     fn = bind_parameters(MIRFunction(B, INT32, slots, (MIRBlock(ENTRY, (
-        MIRAssign(MIRPlace(PAIR), MIRTupleConstruct(())), COPY, INIT), MIRReturn(X)),), ENTRY))
+        MIRAssign(MIRPlace(PAIR), MIRConstruct(())), COPY, INIT), MIRReturn(X)),), ENTRY))
     validate_function(fn)
     assert execute(fn) == 1
 
@@ -72,9 +72,9 @@ def test_empty_tuple_payloads_construct_and_copy() -> None:
 @pytest.mark.parametrize("statement,reason", [
     (MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(A))), "wrapper copy source mismatch"),
     (MIRAssign(MIRPlace(X), MIRCopy(MIRPlace(PAIR))), "wrapper copy needs local wrapper destination"),
-    (MIRAssign(MIRPlace(SAVED), MIRTupleConstruct((X, R))), "payload type or access"),
-    (MIRAssign(MIRPlace(SAVED), MIRTupleConstruct((R,))), "payload type or access"),
-    (MIRAssign(MIRPlace(SAVED), MIRTupleConstruct((PAIR, X))), "payload type or access"),
+    (MIRAssign(MIRPlace(SAVED), MIRConstruct((X, R))), "payload type or access"),
+    (MIRAssign(MIRPlace(SAVED), MIRConstruct((R,))), "payload type or access"),
+    (MIRAssign(MIRPlace(SAVED), MIRConstruct((PAIR, X))), "payload type or access"),
     (MIRAssign(MIRPlace(SAVED), MIRRead(MIRPlace(PAIR))), "read type mismatch"),
     (MIRAssign(MIRPlace(SAVED), MIRAlias(PAIR)), "alias type mismatch"),
     (MIRAssign(MIRPlace(SAVED, (MIRTupleIndex(1),)), MIRConstant(2)), "element replacement"),

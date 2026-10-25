@@ -11,11 +11,11 @@ from enum import Enum, auto
 from ..thir.scalar_leaves import MIRClass, inline_member_type, value_class
 from ..typesys import OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
 from .nodes import (
-    MIRAssign, MIRConstruct, MIRMove, MIRPlace, MIRRecordStorageInit, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
-    MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRTupleConstruct, place_shape,
+    MIRAssign, MIRMove, MIRPlace, MIRRecordStorageInit, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
+    MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, place_shape,
 )
 from .shapes import (
-    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRWalk, Projection,
+    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRWalk, Projection,
     lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
 from .value import (
@@ -281,8 +281,6 @@ class MIRStorageEventKind(Enum):
     # An Optional record backing constructed empty (`MIRRecordStorageInit`):
     # its wrapper begins, no record in it.
     BACKING = auto()
-    # An owned tuple's inline record member its construction initializes.
-    MEMBERS = auto()
     # The current value replaced (IN_PLACE, OWN_SITE).
     REPLACE = auto()
     # A scalar wrapper's value replaced: its inline payload ends
@@ -327,8 +325,8 @@ def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
     """Every storage event of a statement, with its kind: a wrapper's
     physical construction (`MIRStorageInit`, `MIRRecordStorageInit`); an
     assignment by its storage write fact to a storage destination, to an
-    owned tuple's root (no `is_storage` destination: initialized with the
-    inline record members its construction builds) or to a place in a
+    owned tuple's root (no `is_storage` destination: its members moved in
+    from temporaries of their own) or to a place in a
     scalar wrapper (its payload storage) -- without its fact, the kind the
     destination gives (a replacement, a payload write), not `known`;
     each place of `call_writes` (the call as its caller's presence sees
@@ -357,9 +355,6 @@ def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
             else:
                 kind = MIRStorageEventKind.REPLACE
             events.append(MIRStorageEvent(kind, target, fact.rebind_owner if known else None, known))
-            if owned_tuple and isinstance(stmt.value, MIRTupleConstruct):
-                events.extend(MIRStorageEvent(MIRStorageEventKind.MEMBERS, MIRPlace(target.root, (MIRTupleIndex(i),)))
-                              for i, element in enumerate(stmt.value.elements) if isinstance(element, MIRConstruct))
     events.extend(MIRStorageEvent(MIRStorageEventKind.CALL_WRITE, place)
                   for place in call_writes if storage_destination(place, slots))
     if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and slots[stmt.value.source].shape.is_storage:

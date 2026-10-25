@@ -28,7 +28,7 @@ from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
 from .lower import MIRLoweredStorage, lower_constructor_storage, lower_function_storage
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRMemberInitMode, MIRNotCovered,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRNotCovered,
     MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
     place_shape,
 )
@@ -645,6 +645,14 @@ def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
     return MIRWriteKind.OWNED if storage_destination(place, slots) else None
 
 
+def _line_write(block: MIRBlockId, place: MIRPlace, value: object, slots: Mapping[MIRSlotId, MIRSlot],
+                records: Mapping[TpyType, MIRRecordLayout]) -> MIRLineWrite:
+    """A write of `value` into `place` as its line's facts read it, a CFG
+    statement's and a constructor entry's alike: what the place holds
+    (`_written_kind`), and whether the value is a copy."""
+    return MIRLineWrite(block.index, _written_kind(place, slots, records), isinstance(value, MIRCopy))
+
+
 def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
     """The per-line facts of a lowered body, None for a body that did not
     lower. Reads the analyses the verdict already ran, never re-lowers; runs
@@ -706,9 +714,8 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             if target is None:
                 continue
             if (spelled := _spell(target, named)) is not None:
-                copy = isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCopy)
-                writes.setdefault((line, spelled), []).append(
-                    MIRLineWrite(block.id.index, _written_kind(target, slots, records), copy))
+                writes.setdefault((line, spelled), []).append(_line_write(
+                    block.id, target, stmt.value if isinstance(stmt, MIRAssign) else None, slots, records))
             mode = modes.get(MIRPoint(block.id, index))
             if (mode is not None and mode is not MIRStorageWriteMode.INITIALIZE
                     and (spelled := _spell(target, storage)) is not None):
@@ -738,16 +745,13 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
         receiver = slots[fn.receiver_init.receiver]
         layout = next((r for r in fn.records if r.type == receiver.type), None)
         if layout is not None and receiver.id in named:
-            for member, field in zip(fn.receiver_init.fields, layout.fields):
+            for member, field in zip(fn.receiver_init.members.fields, layout.fields):
                 if member.loc is None:
                     continue
                 lines.add(member.loc.line)
-                spelled = _spell(MIRPlace(receiver.id, (*object_prefix(receiver.shape), field)), named)
-                kind = (MIRWriteKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR
-                        else MIRWriteKind.BORROWED if member.mode is MIRMemberInitMode.BORROW
-                        else MIRWriteKind.OWNED)
-                writes.setdefault((member.loc.line, spelled), []).append(
-                    MIRLineWrite(fn.entry.index, kind, member.mode is MIRMemberInitMode.COPY))
+                place = MIRPlace(receiver.id, (*object_prefix(receiver.shape), field))
+                writes.setdefault((member.loc.line, _spell(place, named)), []).append(
+                    _line_write(fn.entry, place, member.value, slots, records))
 
     dependencies = analyses.dependencies
     leaves: dict[str, list[MIRPlace]] = {}

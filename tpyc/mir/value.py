@@ -212,7 +212,7 @@ class MIRShape:
         """An Optional or a union whose every payload is an inert leaf by
         value (`scalar_members`): its payload is written in place, an
         activation scope lifetime tracks, so a holder of one is scoped storage.
-        A scalar tuple is built whole (`MIRTupleConstruct`) and has no such
+        A scalar tuple is built whole (`MIRConstruct`) and has no such
         event."""
         return self.cls in SUM_CLASSES and self.scalar_members
 
@@ -231,9 +231,16 @@ class MIRShape:
         elsewhere BORROW, anything held by value VALUE."""
         if self.holding is not MIRHolding.VALUE:
             return Form.BORROW
-        if self.is_storage or self.owned_tuple:
+        if self.owns_storage:
             return Form.STORAGE
         return Form.VALUE
+
+    @property
+    def owns_storage(self) -> bool:
+        """A value that is its own owned storage: owned storage, or a tuple
+        storing a record member inline -- a construct's storage target, a
+        storage root."""
+        return self.is_storage or self.owned_tuple
 
 
 def lent_record(shape: MIRShape) -> MIRShape | None:

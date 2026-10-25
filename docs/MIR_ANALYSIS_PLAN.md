@@ -2246,10 +2246,12 @@ as the corpus grows).
   operand position and a `MIRCopy` at an owned sink; `r.f = v` and the
   field `+=` are `IN_PLACE` replacement events on the field place
   (`storage.storage_destination`), as for owned-leaf locals. Each
-  constructor member is decided once (`MIRFieldInitializer`) and lowered as
-  a `MIRMemberInit(source, mode, may_raise, loc)` in
-  `MIRReceiverInit.fields`: SCALAR for an inert leaf, COPY from a
-  parameter's storage or a constant (`may_raise` from the TypeDef), MOVE
+  constructor member is decided once (`MIRFieldInitializer`, its one choice
+  the `move` bit) and lowered as a `MIRMemberInit(value, loc)` in
+  `MIRReceiverInit.members`, `value` the CFG's node for the same value: a
+  scalar parameter's `MIRRead`, a `MIRCopy` of a parameter's storage
+  (`may_raise` from the TypeDef), a constant (materialized: it raises as
+  owned storage taking it does, `validate.value_may_raise`), a `MIRMove`
   out of a by-value parameter; a receiver-init copy that may raise is an exceptional exit
   of the constructor, and the caller's `MIRConstruct` carries `may_raise`.
   A record declaration's initializer is a full expression that owns its
@@ -3467,10 +3469,11 @@ and setter and `getter_through_field`; `mir/method_calls`
   one exit fact of a whole-record copy: an owned-leaf field whose TypeDef
   copy may raise, any container field (a new allocation), or a member
   record whose copy may, recursively; a member whose layout is unknown
-  may. Every record copy reads it: the COPY member initializer, the
+  may. Every record copy reads it: a copying member initializer, the
   lowering's `MIRCopy` (`_Lowering.copy_may_raise`), the validator's record copy (`record_copy_ok`,
   shared by record destinations, element writes and member writes), the
-  receiver-initialization rule and `construct_members_ok`. A copy of a
+  receiver-initialization rule and the construct's member check
+  (`member_operand`). A copy of a
   record with a `str` or a `list` field is an exceptional exit, an
   all-scalar record's is not (`duplicate_point`, `duplicate_plain`,
   `duplicate_flat`); a record whose container element runs a copy hook has
@@ -3478,18 +3481,32 @@ and setter and `getter_through_field`; `mir/method_calls`
   container element").
 - **Receiver initialization** (`MIRMemberInits`). A composed member is
   initialized at entry field by field, as the receiver is:
-  `MIRMemberInit(MIRMemberInits(fields), MOVE)`, one initializer per field
-  of the member's layout (a parameter slot or a constant), nested for a
-  composed member of a composed member, raising when some field may. The
-  dump spells `initialize-receiver %0 (move {%1, copy (*%2) may-raise},
-  %1)` (`Built`). A COPY member reads the lent parameter's holder and a
-  MOVE member the `Own[R]` parameter's storage slot (`Line`: `(copy (*%1)
-  may-raise, move %2)`); a container literal stays a `MIRConstruct`, inside
-  a composed member too (`HasListed`). `nodes.member_init_operands` lists
-  the slots entry initialization reads (entry liveness, reachable slots).
-  One recursive validator rule (`validate_member_init`) checks each nested
-  field by its own field's rule, the member layout's movability and
-  copyability and every exit fact (`test_receiver_record_member_validation`).
+  `MIRMemberInit(MIRMemberInits(fields))`, one initializer per field of the
+  member's layout (a value over a parameter or a constant), nested for a
+  composed member of a composed member, raising when some field may
+  (`value_may_raise` recurses through it, an Optional member's over its
+  payload's layout). The receiver's own initialization is one
+  `MIRMemberInits` too. The dump prints each value with the CFG's rvalue
+  printer: `initialize-receiver %0 ({read %1, copy (*%2) may-raise},
+  read %1)` (`Built`). A copy reads the lent parameter's holder and a move
+  the `Own[R]` parameter's storage slot (`Line`: `(copy (*%1) may-raise,
+  move %2)`); a container literal stays a `MIRConstruct`, inside a composed
+  member too (`HasListed`). The one operands walker (`validate.operands`,
+  which recurses through `MIRMemberInits` and skips a literal's constants)
+  lists the slots entry initialization reads (entry liveness, reachable
+  slots), and one line-fact function gives an entry write the facts its
+  method twin's statement has (`collect._line_write`). The entry rule
+  (`validate_member_init`) stays its own: every operand is a whole
+  parameter other than the receiver, or a constant (no projection past a
+  lent parameter's `(*%n)`), and each member class keeps its source
+  predicates and refusal texts -- what a caller's construct can reproduce
+  (`definitions._caller_operands`); it recurses into each nested field by
+  its own field's rule, with the member layout's movability and
+  copyability (`test_receiver_record_member_validation`,
+  `test_the_entry_rule_reads_only_what_a_callers_construct_can_supply`).
+  A move into a base's own copy that the base copies on is a copy of the
+  derived parameter (`definitions._compose`), refused at a caller as any
+  copy of an owned parameter is.
 - **`Own[R]` parameters.** A record handed over at OWN is the body's own
   storage: a PARAMETER slot, owned storage, BODY duration, mutable, fixed owned,
   reached through an unnamed holder borrowed at entry (the parameter's
@@ -3505,7 +3522,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   holds a pointer at the caller's record ("reference type mismatch") or is
   passed at another passing ("call parameter passing differs from its type").
 - **Callers' constructs** (`aggregate_value`'s construct arm, the validator's
-  `construct_members_ok`). An operand follows its constructor parameter's
+  `construct_ok`). An operand follows its constructor parameter's
   passing, never "a temporary moves": a record lent at CONST_REF is copied
   by the member through a holder -- the name's own, one borrowing a member
   place (`Line(ln.a, mk(x))`), or one of a full-expression temporary bound
@@ -3905,21 +3922,23 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   record holding a loan) registers the root object's layout too
   (`lower.held_root`): its loans are keyed on the full member path under
   that object.
-- **BORROW member initializer** (`MIRMemberInitMode.BORROW`,
-  `definitions._view_initializer`). A view member stores the loan of a
+- **View member initializer** (`definitions._view_initializer`; the
+  field's class says it is a loan). A view member stores the loan of a
   `str` / `bytes` parameter the caller lends (CONST_REF or VIEW, read
   through `coerce(%s -> StrView)`), of a view parameter passed by value
   (`definitions.view_parameter`), or a literal's static storage. No
   buffer is copied, so it never raises. The receiver's entry
-  initialization dumps it as `borrow %1` and its line fact is
-  `mir_borrowed(self.s)`. At a caller's construct the view operand is the
-  view holder the argument lowers to (`view_value`: a view, or a borrow of
-  a `str` the body owns or is lent); a literal member is a holder of
-  static storage the construct builds. The validator checks the receiver
-  side ("invalid receiver initializer mode / parameter / constant") and
-  the caller side (`construct_members_ok`: a holder lending an owned leaf
+  initialization spells it as the CFG does -- `borrow (*%1)` of a lent
+  owned-leaf parameter, `alias %1` of a view parameter, the literal's
+  constant -- and its line fact is `mir_borrowed(self.s)`. At a caller's
+  construct the view operand is the view holder the argument lowers to
+  (`view_value`: a view, or a borrow of a `str` the body owns or is lent);
+  a literal member is a holder of static storage the construct builds. The
+  validator checks the receiver side ("invalid receiver initializer /
+  parameter / constant": a parameter the constructor owns never lends) and
+  the caller side (`member_operand`: a holder lending an owned leaf
   of the member's family, `coverage.leaf_borrow`). A base's or member
-  constructor's BORROW initializer composes with the leg that feeds it
+  constructor's view initializer composes with the leg that feeds it
   (`definitions._compose`): a name of the derived constructor's lent
   parameter (`definitions.lends_view`: a view parameter of the member's
   family or an owned-leaf one lent) becomes the initializer a direct
@@ -3930,8 +3949,8 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   and a literal a reference parameter binds (a temporary of the call)
   refuse ("base argument borrow not modeled", "member argument borrow
   not modeled"). An inherited constructor (`using Base::Base`) reuses the
-  base's initializers, BORROW included: its parameters are the base's
-  (`Kid`, `child`). A temporary argument is a `scope_end` conflict where
+  base's initializers, view initializers included: its parameters are the
+  base's (`Kid`, `child`). A temporary argument is a `scope_end` conflict where
   the member is read after the declaration (`derived_temp`, `kid_temp`,
   `shell_temp`); `derived_lent` and `fixed_base` are covered.
 - **Summary endpoint.** A view member of a view result's family is a
@@ -4531,7 +4550,7 @@ Optional record backing filled). One classifier yields every storage
 event of a statement with its kind (`reach.storage_events`: an
 assignment's initialization, a scalar wrapper constructed with its
 default (`CONSTRUCT`), an Optional backing constructed empty
-(`BACKING`), an owned tuple's inline members, a replacement, a scalar
+(`BACKING`), a replacement, a scalar
 wrapper's payload write, an Optional assignment, a call write, a move).
 An assignment without its write fact keeps the kind its destination
 gives it, marked not `known`: an unknown replacement (storage a borrow
@@ -4549,9 +4568,31 @@ skips its own dependency leaves only: a view member of the object it lends
 still retains what the write replaces
 (`BUGS.md#record-view-member-source-replaced`, `element_view_replaced`).
 
-Still separate, each with its reason: `MIRTupleConstruct`,
-`MIRUnionExtract`, `MIRRecordStorageInit` / `MIRRecordStorageKind` and
-`MIRMemberInitMode` (TODO.md "[MIR] FIRST", step (1)).
+One construct: `MIRConstruct` builds a record, a tuple and a container
+literal alike, one operand per member of the target's shape
+(`shapes.construct_members`: a record's fields, a tuple's elements; a
+literal's elements repeat, so only the validator cycles them). Its readers
+key on the target, never on a node class: the validator's one member check
+(`construct_ok` / `member_operand`: a holder member stores its operand's
+loan, a storage member takes a moved temporary or a copy through a
+copyable holder of its type, whatever aggregate holds it), the one
+dependency rule (`dependencies.construct_fill`: member i takes operand i's
+state -- a holder member the loan, a storage member the loans its operand's
+object stores), the summary (a storage target, an owned tuple included,
+moves its temporaries in as transfers; a target of holder and scalar
+members is built from slots the dependency pass tracks) and testutil's
+interpreter. A tuple's record member is built into a temporary of the
+declaration's full expression (`literal_record`) and moved in, which is
+what C++ does (`std::tuple<P, int32_t>{P(1), 2}`); every storage target
+takes one INITIALIZE placement rule (`validate.scoped_initialization`:
+scoped storage in its owning region or a full expression nested in it).
+A constructor entry's member value is one of the CFG's value nodes;
+`MIRMemberInits` stays a second record-construct spelling at entry until
+entry initialization becomes ordinary statements (TODO.md "[MIR] FIRST").
+
+Still separate, each with its reason: `MIRUnionExtract` and
+`MIRRecordStorageInit` / `MIRRecordStorageKind` (TODO.md "[MIR] FIRST",
+step (1)).
 
 #### Origins and write reach
 

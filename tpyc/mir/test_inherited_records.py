@@ -21,7 +21,7 @@ from .definitions import (
     owned_leaf_layout, MIRConstructorDefinition, MIRDefinitions, _verify, constructor_initialization,
 )
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRConstant, MIRFunction, MIRMemberInitMode, MIRNotCovered
+from .nodes import MIRBodyId, MIRConstant, MIRFunction, MIRNotCovered
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .prepare import validate_function
 
@@ -227,8 +227,8 @@ def _definition(program: _Program, name: str) -> MIRConstructorDefinition:
     return definition
 
 
-def _fields(definition: MIRConstructorDefinition) -> list[tuple[str, object, str, bool]]:
-    return [(f"{i.field.id.owner.name}::{i.field.id.name}", i.source, i.mode.name, i.may_raise)
+def _fields(definition: MIRConstructorDefinition) -> list[tuple[str, object, bool, bool]]:
+    return [(f"{i.field.id.owner.name}::{i.field.id.name}", i.source, i.move, i.may_raise)
             for i in definition.initializers]
 
 
@@ -367,19 +367,19 @@ def test_a_shadowed_field_is_spelled_with_its_owner(program: _Program) -> None:
 def test_composition_per_leg(program: _Program) -> None:
     # A lent view (VIEW -> VIEW) keeps the base's copy; a scalar passes through.
     assert _fields(_definition(program, "Sub")) == [
-        ("Base::n", MIRConstant(0), "SCALAR", False), ("Base::name", "name", "COPY", True),
-        ("Sub::k", "k", "SCALAR", False)]
+        ("Base::n", MIRConstant(0), False, False), ("Base::name", "name", False, True),
+        ("Sub::k", "k", False, False)]
     # A constant leg takes the base member's mode.
     assert _fields(_definition(program, "Deep")) == [
-        ("Base::n", MIRConstant(0), "SCALAR", False), ("Base::name", "name", "COPY", True),
-        ("Sub::k", MIRConstant(1), "SCALAR", False), ("Deep::d", MIRConstant(3), "SCALAR", False)]
+        ("Base::n", MIRConstant(0), False, False), ("Base::name", "name", False, True),
+        ("Sub::k", MIRConstant(1), False, False), ("Deep::d", MIRConstant(3), False, False)]
     # CONST_REF -> CONST_REF lends the owned leaves the base copies.
     assert [p.passing.name for p in program.constructors["BigSub"].params] == ["CONST_REF", "CONST_REF"]
-    assert _fields(_definition(program, "BigSub")) == [("Big::v", "v", "COPY", False), ("Big::t", "t", "COPY", True)]
+    assert _fields(_definition(program, "BigSub")) == [("Big::v", "v", False, False), ("Big::t", "t", False, True)]
     # An owned-leaf constant into the base's own copy is materialized there:
     # the body composes it, a caller's construct has no operand for it.
     lit = constructor_initialization(program.constructors["Lit"], program.definitions.records)
-    assert _fields(lit) == [("Holder::s", MIRConstant("x"), "COPY", True)]
+    assert _fields(lit) == [("Holder::s", MIRConstant("x"), False, True)]
     assert program.definitions.records[_record(program, "Lit")] == "constructor owned-leaf constant"
 
 
@@ -396,14 +396,14 @@ def test_composition_of_moves(program: _Program) -> None:
     holder = _record(program, "Holder")
     # MOVE o MOVE: the member takes the caller's storage.
     assert _fields(constructor_initialization(moved, program.definitions.records)) == [
-        ("Holder::s", "s", "MOVE", False)]
+        ("Holder::s", "s", True, False)]
     # MOVE o COPY: the child's storage is moved into the base's own copy,
-    # which the base copies on (and may raise); a caller cannot construct
-    # through it.
+    # which the base copies on: the member takes a copy of the child's
+    # parameter (which may raise), so a caller cannot construct through it.
     ctor = program.constructors["Holder"]
     copying = replace(ctor, mil_inits=(replace(ctor.mil_inits[0], value=ctor.mil_inits[0].value.value),))
     bases = {holder: constructor_initialization(copying)}
-    assert _fields(constructor_initialization(moved, bases)) == [("Holder::s", "s", "MOVE", True)]
+    assert _fields(constructor_initialization(moved, bases)) == [("Holder::s", "s", False, True)]
     with pytest.raises(MIRUnsupported) as refused:
         _verify(moved, bases)
     assert refused.value.reason == "constructor copies an owned parameter"

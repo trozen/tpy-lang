@@ -8,15 +8,18 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..typesys import BOOL, INT32, NominalType
+from ..typesys import BOOL, INT32, STR, STRVIEW, NominalType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRConstant, MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRNotCovered, MIRSlotId, MIRSlotKind,
+    MIRAlias, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInit,
+    MIRMemberInits, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRSlotId, MIRSlotKind, MIRWrap,
 )
-from .value import MIRFieldId, MIRValidationError
-from .testutil import bind_parameters, Reference, execute, reslot
+from .shapes import MIRDeref
+from .validate import value_may_raise
+from .value import MIRFieldId, MIRValidationError, value_shape
+from .testutil import bind_parameters, compiled_definitions, Reference, execute, no_layouts, reslot
 from .prepare import validate_function
 
 
@@ -90,15 +93,15 @@ def test_initialization_precedes_alias_and_scalar_capture(artifacts: Artifacts, 
     fn = lower(constructors["Cell"])
     init = fn.receiver_init
     assert init is not None and init.receiver == fn.slots[0].id
-    assert tuple(member.source for member in init.fields) == (fn.slots[1].id, MIRConstant(0), MIRConstant(False))
-    assert all(member.mode is MIRMemberInitMode.SCALAR and not member.may_raise for member in init.fields)
+    assert tuple(member.value for member in init.members.fields) == (
+        MIRRead(MIRPlace(fn.slots[1].id)), MIRConstant(0), MIRConstant(False))
     heap = {41: {}, 42: {}}
     assert execute(fn, Reference(41), 3, reset, heap=heap) is None
     typ = fn.slots[0].type
     assert heap[41] == {MIRFieldId(typ, "value"): 7 if reset else 3,
                         MIRFieldId(typ, "before"): 3, MIRFieldId(typ, "changed"): reset}
     assert heap[42] == {}
-    assert "initialize-receiver %0 (%1, 0, False)" in dump_function(fn)
+    assert "initialize-receiver %0 (read %1, 0, False)" in dump_function(fn)
 
 
 @pytest.mark.parametrize("ready", [False, True])
@@ -158,16 +161,17 @@ def test_malformed_entry_values_are_rejected(
 ) -> None:
     fn = lower(artifacts[0]["Plain"])
     with pytest.raises(MIRValidationError):
-        validate_function(replace(fn, receiver_init=replace(fn.receiver_init, fields=tuple(
-            MIRMemberInit(source) for source in fields))))
+        validate_function(replace(fn, receiver_init=replace(fn.receiver_init, members=MIRMemberInits(tuple(
+            MIRMemberInit(s if isinstance(s, MIRConstant) else MIRRead(MIRPlace(s))) for s in fields)))))
 
 
 def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["Cell"])
     local = next(s for s in fn.slots if s.kind is MIRSlotKind.TEMPORARY and s.type == INT32)
     with pytest.raises(MIRValidationError, match="initializer parameter"):
-        validate_function(replace(fn, receiver_init=replace(fn.receiver_init,
-            fields=(MIRMemberInit(local.id), MIRMemberInit(MIRConstant(0)), MIRMemberInit(MIRConstant(False))))))
+        validate_function(replace(fn, receiver_init=replace(fn.receiver_init, members=MIRMemberInits((
+            MIRMemberInit(MIRRead(MIRPlace(local.id))), MIRMemberInit(MIRConstant(0)),
+            MIRMemberInit(MIRConstant(False)))))))
     with pytest.raises(MIRValidationError, match="constructor receiver"):
         validate_function(bind_parameters(replace(fn, slots=(reslot(fn.slots[0], readonly=True), *fn.slots[1:]))))
     # Initializing another parameter is not building the receiver.
@@ -240,3 +244,125 @@ def test_initialization_uses_logical_fields_not_cpp_spellings(artifacts: Artifac
     fn = lower_constructor(ctor, MIRBodyId("constructors", "identity"))
     other = lower_constructor(renamed, MIRBodyId("constructors", "identity"))
     assert dump_function(fn) == dump_function(other)
+
+
+ENTRY_SOURCE = """\
+from tpy import Own, StrView, String, int32, readonly
+class P:
+    x: int32
+    def __init__(self, x: int32) -> None:
+        self.x = x
+class Entry:
+    n: int32
+    s: str
+    v: StrView
+    w: StrView
+    p: P
+    q: P
+    r: readonly[P | None]
+    u: String
+    t: str
+    def __init__(self, n: int32, s: str, w: StrView, p: P, q: Own[P], u: String, o: Own[str]) -> None:
+        self.n = n
+        self.s = s
+        self.v = s
+        self.w = w
+        self.p = p
+        self.q = q
+        self.r = None
+        self.u = u
+        self.t = o
+class OwnView:
+    s: StrView
+    def __init__(self, s: Own[str]) -> None:
+        self.s = s
+"""
+
+
+@pytest.fixture(scope="module")
+def entry_program():
+    compiler, modules = _compile(ENTRY_SOURCE)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        ctors = {ctor.record_name: ctor for ctor in ctx.thir_constructors.values()}
+        definitions = compiled_definitions(compiler, tuple(ctors.values()))
+        fn = lower_constructor(ctors["Entry"], MIRBodyId("constructors", "Entry"), definitions=definitions)
+        assert isinstance(fn, MIRFunction), fn
+        return compiler, fn, definitions, ctors
+
+
+@pytest.fixture
+def entry(entry_program):
+    # Field and declared-type checks resolve under the compilation that registered them.
+    compiler, *rest = entry_program
+    with activate_compiler(compiler):
+        yield rest
+
+
+def test_entry_members_are_the_cfg_value_nodes(entry) -> None:
+    fn, _, _ = entry
+    validate_function(fn)
+    name = {s.name: s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER}
+    # An `Own[...]` parameter is its own storage; the body reaches it through a holder.
+    owned = {s.name: s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.shape.is_storage}
+    deref = (MIRDeref(),)
+    assert [m.value for m in fn.receiver_init.members.fields] == [
+        MIRRead(MIRPlace(name["n"])), MIRCopy(MIRPlace(name["s"], deref), True),
+        MIRBorrow(MIRPlace(name["s"], deref)), MIRAlias(name["w"]), MIRCopy(MIRPlace(name["p"], deref)),
+        MIRMove(owned["q"]), MIRWrap(0), MIRCopy(MIRPlace(name["u"], deref), True), MIRMove(owned["o"])]
+
+
+def _entry_member(fn: MIRFunction, field: str, value: object) -> MIRFunction:
+    layout = fn.record_layouts[fn.slots[0].type]
+    members = tuple(replace(m, value=value) if f.id.name == field else m
+                    for m, f in zip(fn.receiver_init.members.fields, layout.fields))
+    return replace(fn, receiver_init=replace(fn.receiver_init, members=MIRMemberInits(members)))
+
+
+def test_the_entry_rule_reads_only_what_a_callers_construct_can_supply(entry) -> None:
+    fn, definitions, ctors = entry
+    name = {s.name: s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and not s.shape.is_storage}
+    owned = {s.name: s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.shape.is_storage}
+    receiver = fn.receiver_init.receiver
+    layout = fn.record_layouts[fn.slots[0].type]
+    field = {f.id.name: f for f in layout.fields}
+    point = next(r for r in fn.records if r.type.name == "P")
+    deref = (MIRDeref(),)
+    refused = [
+        # The receiver's own field: the storage entry builds is never a source.
+        ("s", MIRCopy(MIRPlace(receiver, (*deref, field["t"])), True), "initializer parameter"),
+        # An `Own[R]` parameter's storage is moved, never copied.
+        ("q", MIRCopy(MIRPlace(owned["q"].id)), "initializer parameter"),
+        # A parameter is read whole: no projection past the storage it lends.
+        ("n", MIRRead(MIRPlace(name["p"].id, (*deref, point.fields[0]))), "initializer parameter"),
+        # A view is no owned leaf's source.
+        ("s", MIRCopy(MIRPlace(name["w"].id, deref), True), "initializer parameter"),
+        # A view member stores a lent parameter's loan, never an owned one's.
+        ("v", MIRBorrow(MIRPlace(owned["o"].id)), "initializer parameter"),
+        # A record member is a copy, a move or its own constructor's fields.
+        ("p", MIRConstruct((name["n"].id,)), "invalid receiver initializer$"),
+        # An operation or a call is no member initializer.
+        ("n", MIROp("+", (name["n"].id,), True), "invalid receiver initializer$"),
+        # Refused by its kind, before any summary is read.
+        ("n", MIRCall(None, (name["n"].id,), True), "invalid receiver initializer$"),
+        ("p", MIRCall(None, (name["p"].id,), True), "invalid receiver initializer$"),
+    ]
+    for member, value, message in refused:
+        with pytest.raises(MIRValidationError, match=message):
+            validate_function(_entry_member(fn, member, value))
+    # A record or `String` copy reads through a readonly lend only (a mutable
+    # holder of an owned leaf is no slot at all).
+    for lent, message in (("p", "initializer parameter"), ("u", "mutable loan of a readonly value")):
+        with pytest.raises(MIRValidationError, match=message):
+            validate_function(bind_parameters(replace(fn, slots=tuple(
+                reslot(s, readonly=False) if s.id == name[lent].id else s for s in fn.slots))))
+    # The definition refuses a view member of the constructor's own copy.
+    own_view = ctors["OwnView"].record_layout.type
+    assert definitions.records[own_view] == "constructor view needs a lent parameter"
+
+
+def test_a_constant_raises_only_where_it_is_materialized() -> None:
+    records = no_layouts()
+    assert value_may_raise(MIRConstant("lit"), value_shape(STR), records)
+    assert not value_may_raise(MIRConstant("lit"), value_shape(STRVIEW), records)
+    assert not value_may_raise(MIRConstant(1), value_shape(INT32), records)

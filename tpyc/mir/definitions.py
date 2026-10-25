@@ -24,7 +24,7 @@ from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, WRAPPER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape,
     RecordFields, admitted_members, container_members, loan_field, member_types, value_shape,
 )
-from .nodes import MIRConstant, MIRMemberInitMode, MIRWrap
+from .nodes import MIRConstant, MIRWrap
 
 
 @dataclass(frozen=True)
@@ -39,9 +39,10 @@ class MIRComposedConstruct:
 @dataclass(frozen=True)
 class MIRFieldInitializer:
     """How the member initializer list fills one field: from a constructor
-    parameter (named) or a constant, by value (an inert leaf), by copy or by
-    move (an owned leaf or a record). Decided once here; the constructor
-    body and every caller read it."""
+    parameter (named) or a constant -- by value (an inert leaf), as the loan
+    it holds (a view member: the field's class says so), by copy or by move
+    (an owned leaf or a record). Decided once here; the constructor body and
+    every caller read it."""
     field: MIRField
     # A container field may also be a literal over parameters and leaf
     # constants, one per element (a dict's keys and values alternating),
@@ -50,8 +51,11 @@ class MIRFieldInitializer:
     # field left empty (`MIRWrap(0)`) or engaged with a payload
     # its own constructor builds.
     source: str | MIRConstant | tuple[str | MIRConstant, ...] | MIRComposedConstruct | MIRWrap
-    mode: MIRMemberInitMode
-    # The copy (or a constant's materialization) can exit by exception.
+    # The field takes a parameter's storage by a move, not a copy (an owned
+    # leaf's by-value copy, an `Own[R]` parameter's record).
+    move: bool
+    # The copy (or a constant's materialization) can exit by exception; a
+    # composed member raises where its own initializers do.
     may_raise: bool
     loc: SourceLocation | None = None
 
@@ -278,7 +282,7 @@ def _aggregate_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterB
             require(expr, binding is not None and aggregate_parameter(binding) and not binding.storage
                     and binding.type == typ, "constructor initializer needs parameter")
             require(expr, facts.copyable, "constructor copies a noncopyable record")
-            return MIRFieldInitializer(field, name.name, MIRMemberInitMode.COPY, facts.copy_may_raise, expr.loc)
+            return MIRFieldInitializer(field, name.name, False, facts.copy_may_raise, expr.loc)
         case th.THIRMove():
             plain(expr, {"value"})
             name = expr.value
@@ -288,7 +292,7 @@ def _aggregate_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterB
             require(expr, binding is not None and owned_aggregate_parameter(binding) == typ,
                     "constructor move needs an owned parameter")
             require(expr, facts.movable, "constructor moves a nonmovable record")
-            return MIRFieldInitializer(field, name.name, MIRMemberInitMode.MOVE, False, expr.loc)
+            return MIRFieldInitializer(field, name.name, True, False, expr.loc)
         case th.THIRCtorCall() if not container:
             return _composed_member(expr, params, field, typ, definition)
         case th.THIRContainerLiteral() if container:
@@ -301,7 +305,7 @@ def _aggregate_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterB
                 if value:
                     operands.append(_literal_element(expr.values[i], params, unwrap_readonly(value[0])))
             require(expr, not value or len(expr.values) == len(expr.elements), "constructor field type")
-            return MIRFieldInitializer(field, tuple(operands), MIRMemberInitMode.MOVE, True, expr.loc)
+            return MIRFieldInitializer(field, tuple(operands), False, True, expr.loc)
     raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
 
 
@@ -318,8 +322,7 @@ def _composed_member(expr: th.THIRCtorCall, params: Mapping[str, MIRParameterBin
             "member argument needs matching parameter or literal")
     require(expr, definition.layout.movable, "constructor moves a nonmovable record")
     initializers = _composed(expr, definition, expr.args, params, "member")
-    return MIRFieldInitializer(field, MIRComposedConstruct(tuple(initializers)), MIRMemberInitMode.MOVE,
-                               any(init.may_raise for init in initializers), expr.loc)
+    return MIRFieldInitializer(field, MIRComposedConstruct(tuple(initializers)), False, False, expr.loc)
 
 
 def _optional_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding], field: MIRField,
@@ -347,12 +350,12 @@ def _optional_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBi
                     and value_shape(binding.type, facts=read.layout) == binding.value,
                     "constructor initializer needs parameter")
             require(expr, definition.layout.copyable, "constructor copies a noncopyable record")
-            return MIRFieldInitializer(field, name.name, MIRMemberInitMode.COPY,
+            return MIRFieldInitializer(field, name.name, False,
                                        layout_copy_may_raise(definition.layout, _verified_layout(definitions)), expr.loc)
         case th.THIRLiteral() if expr.value is None:
             plain(expr, {"value", "none_cpp"})
             require(expr, expr.form is th.Form.STORAGE, "constructor initializer form")
-            return MIRFieldInitializer(field, MIRWrap(0), MIRMemberInitMode.SCALAR, False, expr.loc)
+            return MIRFieldInitializer(field, MIRWrap(0), False, False, expr.loc)
         case th.THIRCtorCall():
             return _composed_member(expr, params, field, payload, definition)
     raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
@@ -393,7 +396,7 @@ def _view_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBindin
     """A view member stores the loan its source lends (`_view_loan_source`)."""
     source = _view_loan_source(expr, params, field.type, conversion="constructor view conversion",
                                lent="constructor view needs a lent parameter", literal="constructor literal value")
-    return MIRFieldInitializer(field, source, MIRMemberInitMode.BORROW, False, expr.loc)
+    return MIRFieldInitializer(field, source, False, False, expr.loc)
 
 
 def _initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding],
@@ -410,11 +413,11 @@ def _initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding],
         require(expr, _scalar_initializer(expr, params, member.type) == member.type, "constructor field type")
         literal = expr.expr if isinstance(expr, th.THIRCoerce) else expr
         source = expr.name if isinstance(expr, th.THIRName) else MIRConstant(literal.value)
-        return MIRFieldInitializer(field, source, MIRMemberInitMode.SCALAR, False, expr.loc)
+        return MIRFieldInitializer(field, source, False, False, expr.loc)
     # An owned leaf's member initializer copies or moves the parameter's
     # buffer, or materializes a constant; either allocation may raise.
     may_raise = bool(type_def_of(member.type).copy_may_raise)
-    mode = MIRMemberInitMode.COPY
+    move = False
     match expr:
         case th.THIRName():
             plain(expr, {"name", "is_last_use", "is_movable"})
@@ -424,7 +427,7 @@ def _initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding],
             name = expr.value
             require(expr, isinstance(name, th.THIRName), "constructor move needs parameter")
             plain(name, {"name", "is_last_use", "is_movable"})
-            mode, may_raise = MIRMemberInitMode.MOVE, False
+            move, may_raise = True, False
         case th.THIRFormConvert():
             # A view parameter materialized into the field's owned buffer.
             plain(expr, {"value", "is_const"})
@@ -436,7 +439,7 @@ def _initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding],
             plain(expr, {"value", "int_cpp"} if isinstance(expr, th.THIRLiteral) else {"value"})
             require(expr, expr.result_type == member.type and owned_constant(member.type, expr.value),
                     "constructor literal value")
-            return MIRFieldInitializer(field, MIRConstant(expr.value), mode, may_raise, expr.loc)
+            return MIRFieldInitializer(field, MIRConstant(expr.value), move, may_raise, expr.loc)
         case _:
             raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
     binding = params.get(name.name)
@@ -444,9 +447,9 @@ def _initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBinding],
             and binding.type == member.type == expr.result_type,
             "constructor initializer needs parameter")
     # Only the callee's own copy can be moved from.
-    require(expr, mode is not MIRMemberInitMode.MOVE or binding.passing in OWNING_PASSINGS,
+    require(expr, not move or binding.passing in OWNING_PASSINGS,
             "constructor move needs an owned parameter")
-    return MIRFieldInitializer(field, name.name, mode, may_raise, expr.loc)
+    return MIRFieldInitializer(field, name.name, move, may_raise, expr.loc)
 
 
 @dataclass(frozen=True)
@@ -541,13 +544,13 @@ def _base_leg(arg: th.THIRExpr, target: MIRParameterBinding, params: Mapping[str
 
 def _compose(init: MIRFieldInitializer, legs: Mapping[str, _BaseLeg], role: str = "base") -> MIRFieldInitializer:
     """A base (or member) initializer seen from the constructor passing the
-    arguments: its parameter source replaced by the leg that fed it. A lend
-    or scalar keeps the initializer's mode; a move hands the member the
-    child's storage (moved on, or copied from the callee's own copy, which
-    may raise); a constant is materialized (an owned leaf's by a copy, which
-    may raise); a composed member composes each of its initializers."""
+    arguments: its parameter source replaced by the leg that fed it, copied
+    or moved as the initializer does -- a move into the callee's own copy
+    that the callee copies on is a copy of the child's parameter, which may
+    raise; a constant is materialized (an owned leaf's by a copy, which may
+    raise); a composed member composes each of its initializers."""
     effect = f"{role} argument effect not modeled"
-    if init.mode is MIRMemberInitMode.BORROW:
+    if loan_field(init.field.type):
         # The member stores the loan the leg lends: the child's lent
         # parameter, the initializer a direct member init of it would be, or
         # a literal's static storage. A moved or owning leg dies with the call.
@@ -570,18 +573,14 @@ def _compose(init: MIRFieldInitializer, legs: Mapping[str, _BaseLeg], role: str 
                                               for n in init.source), loc=None)
         case MIRComposedConstruct():
             children = tuple(_compose(child, legs, role) for child in init.source.initializers)
-            return replace(init, source=MIRComposedConstruct(children),
-                           may_raise=any(child.may_raise for child in children), loc=None)
+            return replace(init, source=MIRComposedConstruct(children), loc=None)
     leg = legs[init.source]
     if isinstance(leg.source, MIRConstant):
-        if init.mode is MIRMemberInitMode.SCALAR:
+        if value_class(init.field.type) is MIRClass.LEAF:
             return replace(init, source=leg.source, loc=leg.loc)
         require(init.field, value_class(init.field.type) is MIRClass.OWNED_LEAF, effect)
-        return MIRFieldInitializer(init.field, leg.source, MIRMemberInitMode.COPY,
+        return MIRFieldInitializer(init.field, leg.source, False,
                                    bool(type_def_of(init.field.type).copy_may_raise), leg.loc)
-    if leg.move:
-        return MIRFieldInitializer(init.field, leg.source, MIRMemberInitMode.MOVE,
-                                   init.mode is not MIRMemberInitMode.MOVE, leg.loc)
     return replace(init, source=leg.source, loc=leg.loc)
 
 
@@ -770,7 +769,8 @@ def _caller_operands(ctor: th.THIRConstructor, initializers: tuple[MIRFieldIniti
             require(ctor, not any(isinstance(source, MIRConstant) and owned_leaf(members[i % len(members)])
                                   for i, source in enumerate(init.source)), "constructor owned-leaf constant")
             continue
-        if init.mode in (MIRMemberInitMode.SCALAR, MIRMemberInitMode.BORROW):
+        if value_class(init.field.type) is MIRClass.LEAF or loan_field(init.field.type) or isinstance(
+                init.source, MIRWrap):
             continue
         if isinstance(init.source, MIRComposedConstruct):
             _caller_operands(ctor, init.source.initializers, params)
@@ -779,12 +779,9 @@ def _caller_operands(ctor: th.THIRConstructor, initializers: tuple[MIRFieldIniti
         # copied and moved.
         require(ctor, isinstance(init.source, str), "constructor owned-leaf constant")
         # An Optional record parameter lends its payload through a pointer.
-        require(ctor, init.mode is MIRMemberInitMode.MOVE or params[init.source].passing in BORROWING_PASSINGS
+        # A move into a base's copy is a copy of the parameter (`_compose`).
+        require(ctor, init.move or params[init.source].passing in BORROWING_PASSINGS
                 or optional_parameter(params[init.source]) is not None, "constructor copies an owned parameter")
-        # A move into a base's copy: the caller's operand is moved, and the
-        # base copies its own copy.
-        require(ctor, not (init.mode is MIRMemberInitMode.MOVE and init.may_raise),
-                "constructor copies an owned parameter")
 
 
 def _verify(ctor: th.THIRConstructor, definitions: Definitions = _NO_DEFINITIONS) -> MIRConstructorDefinition:

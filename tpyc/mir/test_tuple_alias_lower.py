@@ -12,7 +12,9 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
-from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRRead, MIRPoint, MIRCopy, MIRStorageWriteMode
+from .nodes import (
+    MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRRead, MIRPoint, MIRCopy, MIRSlotKind, MIRStorageWriteMode,
+)
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .testutil import compiled_definitions, Reference, execute, prepared
@@ -122,16 +124,22 @@ def test_aliases_share_one_backing_initialization_and_end(artifacts: Artifacts) 
         backing, = [slot for slot in body.slots if slot.shape.owned_tuple]
         assert all(slot.name not in ("saved", "chain") for slot in body.slots)
         inventory = analyze_storage(prepared(body))
-        assert len(inventory.member_initializations) == 1
+        slots = {slot.id: slot for slot in body.slots}
+        writes = [(stmt.target, stmt.storage_write.mode) for stmt in inventory.writes.values()]
         # The backing's own initialization, once; no alias writes storage.
-        assert [(stmt.target, stmt.storage_write.mode) for stmt in inventory.writes.values()] == [
+        # Every other is a member temporary the tuple moves from.
+        assert [w for w in writes if w[0].root == backing.id] == [
             (MIRPlace(backing.id), MIRStorageWriteMode.INITIALIZE)]
+        assert all(slots[place.root].kind is MIRSlotKind.TEMPORARY and mode is MIRStorageWriteMode.INITIALIZE
+                   for place, mode in writes if place.root != backing.id)
         assert all(not isinstance(getattr(stmt, "value", None), MIRCopy)
                    for block in body.blocks for stmt in block.statements)
         ends = analyze_scope_ends(prepared(body))
         assert ends.ends
-        assert all(sum(event.storage.root == backing.id for event in events) == 1
-                   for events in ends.ends.values())
+        # The backing ends once where its scope does; a member temporary's
+        # full expression ends without it.
+        counts = [sum(event.storage.root == backing.id for event in events) for events in ends.ends.values()]
+        assert 1 in counts and set(counts) <= {0, 1}
         assert not inspect_scope_lifetimes(prepared(body)).conflicts
         live = prepared(body).liveness
         reads = [(MIRPoint(block.id, i), stmt.value.source) for block in body.blocks

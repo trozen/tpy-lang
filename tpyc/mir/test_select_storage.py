@@ -13,8 +13,8 @@ from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from . import lower as lowering
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRPlace, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRStorageWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRWrap,
+    MIRAssign, MIRBorrow, MIRConstant, MIRPlace, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRStorageWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap,
 )
 from .shapes import MIRTupleIndex, MIRUnionPayload
 from .value import MIRShape
@@ -399,7 +399,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
             shapes = tuple(m if isinstance(m, MIRShape) else leaf_shape(m) for m in members)
             wrapper = MIRSlot(wrapper_id, tuple_shape(TupleType(tuple(m.type for m in shapes)), shapes),
                               MIRSlotKind.LOCAL, residence=holder.residence)
-            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRTupleConstruct(values)))
+            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRConstruct(values)))
             path = MIRPlace(wrapper_id, (MIRTupleIndex(len(members) - 1),))
         elif shape == "optional":
             wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(holder.type), borrowed_shape(holder.type)),

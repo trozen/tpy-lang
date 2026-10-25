@@ -122,7 +122,7 @@ def _place_key(place: MIRPlace) -> tuple[int, int]:
 
 
 def _storage_root(slot: MIRSlot) -> bool:
-    return (slot.shape.is_storage or slot.shape.owned_tuple
+    return (slot.shape.owns_storage
             or slot.kind is MIRSlotKind.LOCAL and slot.shape.scalar_wrapper)
 
 

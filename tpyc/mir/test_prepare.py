@@ -14,7 +14,7 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, analyze_body, enumerate_b
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
     MIRIsAlternative, MIRNotCovered, MIRPlace, MIRRead, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRConstruct, MIRStorageDuration, MIRStorageWrite, MIRStorageWriteMode, MIRTupleConstruct, MIRWrap,
+    MIRSlotKind, MIRStorageDuration, MIRStorageWrite, MIRStorageWriteMode, MIRConstruct, MIRWrap,
 )
 from .prepare import MIRPrepared, prepare, validate_function, validated
 from .shapes import MIRDeref, MIRUnionPayload
@@ -360,7 +360,7 @@ def test_an_owned_tuple_without_its_fact_never_validates() -> None:
                           MIRSlotKind.LOCAL, residence=s.residence, storage_duration=MIRStorageDuration.BODY)
                   if s.id == pair else s for s in fn.slots)
     entry = fn.blocks[0]
-    construct = MIRAssign(MIRPlace(pair), MIRTupleConstruct((value, MIRConstruct((value,)))))
+    construct = MIRAssign(MIRPlace(pair), MIRConstruct((value, value)))
     fn = bind_parameters(replace(fn, slots=slots, blocks=(replace(entry, statements=(
         MIRAssign(MIRPlace(value), MIRConstant(0)), construct, *entry.statements[1:])), *fn.blocks[1:])))
     with pytest.raises(MIRValidationError, match="owned tuple needs initialization fact"):

@@ -10,9 +10,9 @@ from ..typesys import INT32, STR, OptionalType, TupleType
 from .dependencies import _leaves, resolve_referents
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRConstant, MIRConstruct, MIRMove, MIRPlace, MIRSlot, MIRSlotId,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRConstant, MIRMove, MIRPlace, MIRSlot, MIRSlotId,
     MIRRecordStorageInit, MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode,
-    MIRTupleConstruct, MIRWrap,
+    MIRConstruct, MIRWrap,
 )
 from .presence import MIREngagement, _State, _kill_field_facts
 from .prepare import _resolver
@@ -183,20 +183,19 @@ def test_the_classifier_keeps_every_kind_and_replacements_select_from_it() -> No
     assert replacement_events(optional, (), lambda root: True, SLOTS) == ((MIRPlace(OWN), None),)
 
 
-def test_an_owned_tuple_is_initialized_by_its_members_and_needs_its_fact() -> None:
-    pair = MIRSlotId(BODY, 20)
+def test_an_owned_tuple_is_initialized_by_its_construct_and_needs_its_fact() -> None:
+    pair, member = MIRSlotId(BODY, 20), MIRSlotId(BODY, 23)
     slots = {**SLOTS, pair: MIRSlot(pair, tuple_shape(TupleType((INT32, H)), (leaf_shape(INT32), owned_shape(H))),
-                                    MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY)}
-    construct = MIRTupleConstruct((A, MIRConstruct((B,))))
-    stmt = _write(MIRPlace(pair), MIRStorageWriteMode.INITIALIZE, construct)
-    member = MIRPlace(pair, (MIRTupleIndex(1),))
-    assert storage_events(stmt, (), slots) == (MIRStorageEvent(MIRStorageEventKind.INITIALIZE, MIRPlace(pair)),
-                                               MIRStorageEvent(MIRStorageEventKind.MEMBERS, member))
+                                    MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY),
+             member: MIRSlot(member, owned_shape(H), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY)}
+    # The record member is moved in from its own temporary: no event of its own.
+    stmt = _write(MIRPlace(pair), MIRStorageWriteMode.INITIALIZE, MIRConstruct((A, member)))
+    assert storage_events(stmt, (), slots) == (MIRStorageEvent(MIRStorageEventKind.INITIALIZE, MIRPlace(pair)),)
     assert replacement_events(stmt, (), lambda root: True, slots) == ()
     # Without its write fact, what the construction does to storage is unknown.
     missing = replace(stmt, storage_write=None)
-    assert storage_events(missing, (), slots) == (MIRStorageEvent(MIRStorageEventKind.REPLACE, MIRPlace(pair), known=False),
-                                                  MIRStorageEvent(MIRStorageEventKind.MEMBERS, member))
+    assert storage_events(missing, (), slots) == (MIRStorageEvent(MIRStorageEventKind.REPLACE, MIRPlace(pair),
+                                                                  known=False),)
     assert replacement_events(missing, (), lambda root: True, slots) is None
 
 
@@ -237,7 +236,7 @@ def test_the_kill_fails_closed() -> None:
     pair = MIRSlotId(BODY, 21)
     slots = {**SLOTS, pair: MIRSlot(pair, tuple_shape(TupleType((INT32, H)), (leaf_shape(INT32), owned_shape(H))),
                                     MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY)}
-    assert _kill(MIRAssign(MIRPlace(pair), MIRTupleConstruct((A, MIRConstruct((B,))))), fact, slots=slots)
+    assert _kill(MIRAssign(MIRPlace(pair), MIRConstruct((A, B))), fact, slots=slots)
     # A scalar wrapper without its fact replaces no storage a borrow points into.
     wrapper = MIRSlotId(BODY, 22)
     slots = {**SLOTS, wrapper: MIRSlot(wrapper, optional_shape(OptionalType(INT32), leaf_shape(INT32)),

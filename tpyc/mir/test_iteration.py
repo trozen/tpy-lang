@@ -10,7 +10,7 @@ from .dump import dump_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
     MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId, MIRTupleConstruct, MIRWrap,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId, MIRConstruct, MIRWrap,
 )
 from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRDeref, MIRTupleIndex, MIRUnionPayload,
@@ -121,7 +121,7 @@ def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> No
             value, projection = MIRWrap(0, MIRPlace(FIRST)), MIRUnionPayload(0)
         case "tuple":
             slot = MIRSlot(saved, tuple_shape(TupleType((CELL,)), (member,)), MIRSlotKind.LOCAL)
-            value, projection = MIRTupleConstruct((FIRST,)), MIRTupleIndex(0)
+            value, projection = MIRConstruct((FIRST,)), MIRTupleIndex(0)
     blocks = list(fn.blocks)
     first = blocks[1]
     blocks[1] = replace(first, statements=(first.statements[0], assignment(saved, value), first.statements[1]))

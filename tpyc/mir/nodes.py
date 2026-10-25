@@ -243,24 +243,22 @@ class MIRBorrow:
 
 @dataclass(frozen=True)
 class MIRConstruct:
-    """Build a record from one operand per field: an inert leaf by value, an
-    owned leaf copied out of the storage a borrowed holder lends (the
-    constructor's member initializer copies it) or moved out of owned
-    temporary storage the call hands over, or a view member storing the loan
-    a lending holder holds. Into a container layout it is a literal: one
-    operand per element (a dict's keys and values alternate), each by its
-    member's form. A receiver member's literal at entry may take a leaf
-    element's constant, as a composed record member's field does
-    (`MIRMemberInit`): there are no slots before the CFG to hold it."""
+    """Build the target's aggregate from one operand per member of its shape
+    (`shapes.construct_members`): a record's fields, a tuple's elements. An
+    inert leaf by value, an owned leaf copied out of the storage a borrowed
+    holder lends (the constructor's member initializer copies it) or moved
+    out of owned temporary storage the call hands over, a record moved out
+    of temporary storage or copied through a holder, a holder member (a
+    view member, a tuple's pointer) storing the loan its operand holds.
+    Into a container layout it is a literal: one operand per element (a
+    dict's keys and values alternate), each by its member's form. A
+    receiver member's literal at entry may take a leaf element's constant,
+    as a composed record member's field does (`MIRMemberInit`): there are
+    no slots before the CFG to hold it."""
     fields: tuple[MIRSlotId | MIRConstant, ...]
-    # Some owned-leaf member is copied, and that copy can exit by exception
+    # Some member is copied, and that copy can exit by exception
     # (`TypeDef.copy_may_raise`); a container literal allocates, so always.
     may_raise: bool = False
-
-
-@dataclass(frozen=True)
-class MIRTupleConstruct:
-    elements: tuple[MIRSlotId | MIRConstruct, ...]
 
 
 @dataclass(frozen=True)
@@ -358,7 +356,7 @@ class MIRRangeAdvance:
 
 
 MIRRvalue = (MIRConstant | MIRCall | MIRRead | MIRCompare | MIRNot | MIROp | MIRAlias | MIRBorrow
-             | MIRConstruct | MIRCopy | MIRMove | MIRTupleConstruct
+             | MIRConstruct | MIRCopy | MIRMove
              | MIRWrap | MIRIsAlternative | MIRUnionExtract
              | MIRIteratorInit | MIRIteratorHasNext | MIRIteratorRead | MIRIteratorAdvance | MIRRangeAdvance)
 
@@ -478,48 +476,28 @@ class MIRBlock:
     region: MIRRegionId | None = None
 
 
-class MIRMemberInitMode(Enum):
-    # An inert leaf, by value; an Optional record member left empty.
-    SCALAR = auto()
-    # An owned leaf copied from a parameter's storage (borrowed or owned) or
-    # materialized from a constant: an allocation. A record copied through
-    # the record parameter lent readonly: its whole storage, which may
-    # allocate (`definitions.layout_copy_may_raise`).
-    COPY = auto()
-    # An owned leaf moved out of a by-value parameter's storage; a record
-    # moved out of an `Own[R]` parameter's storage, or built by its own
-    # constructor (`MIRMemberInits`) and moved in.
-    MOVE = auto()
-    # A view member storing the loan its source holds: a view parameter's,
-    # an owned-leaf parameter's lent storage, or a literal's static storage.
-    # No buffer is copied, so it never raises.
-    BORROW = auto()
-
-
 @dataclass(frozen=True)
 class MIRMemberInits:
-    """A record member built by its own constructor at entry: initialized
-    exactly as the receiver is, one initializer per field of the member's
-    layout, in layout order. There are no temporaries before the CFG, so
-    each field names its own parameter or constant."""
+    """Record storage built by its constructor at entry -- the receiver, or
+    a record member (an Optional record member's payload) built by its own
+    constructor and moved in -- one initializer per field of its layout, in
+    layout order. There are no temporaries before the CFG, so each field
+    names its own parameter or constant: the second record-construct
+    spelling."""
     fields: tuple['MIRMemberInit', ...]
 
 
 @dataclass(frozen=True)
 class MIRMemberInit:
-    """How one member of the receiver is initialized at entry, in layout order.
-    A container member is copied from a container parameter, or MOVEd from
-    the literal its `MIRConstruct` builds over parameters and constants; a record member
-    built by its own constructor is MOVEd from its `MIRMemberInits`. An
-    Optional record member is left empty (`MIRWrap(0)`), COPYs
-    the payload an Optional record parameter lends, or MOVEs a payload its
-    own constructor builds (`MIRMemberInits`)."""
-    source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits | MIRWrap
-    mode: MIRMemberInitMode = MIRMemberInitMode.SCALAR
-    # The initialization can exit by exception (`TypeDef.copy_may_raise` of a
-    # COPY, a record copy's layout, a literal's allocation, some field of a
-    # `MIRMemberInits`).
-    may_raise: bool = False
+    """How one member of the receiver is initialized at entry, in layout
+    order: the value the CFG spells the same way -- a scalar parameter's
+    read, a constant, a copy or move of a parameter, a borrow of a lent
+    owned-leaf parameter or an alias of a view parameter (a view member's
+    loan), a container member's literal, an Optional member left empty
+    (`MIRWrap(0)`), or a record member built by its own constructor
+    (`MIRMemberInits`). Which values may appear here is the validator's
+    entry rule (`validate_member_init`)."""
+    value: 'MIRRvalue | MIRMemberInits'
     loc: SourceLocation | None = None
 
 
@@ -527,22 +505,7 @@ class MIRMemberInit:
 class MIRReceiverInit:
     """Initialize supplied storage before the CFG can observe the receiver."""
     receiver: MIRSlotId
-    fields: tuple[MIRMemberInit, ...]
-
-
-def member_init_operands(members: tuple[MIRMemberInit, ...]) -> tuple[MIRSlotId, ...]:
-    """The slots entry initialization reads, through literals and nested
-    member initializers."""
-    operands: list[MIRSlotId] = []
-    for member in members:
-        match member.source:
-            case MIRSlotId():
-                operands.append(member.source)
-            case MIRConstruct(fields=fields):
-                operands.extend(f for f in fields if isinstance(f, MIRSlotId))
-            case MIRMemberInits(fields=nested):
-                operands.extend(member_init_operands(nested))
-    return tuple(operands)
+    members: MIRMemberInits
 
 
 @dataclass(frozen=True)

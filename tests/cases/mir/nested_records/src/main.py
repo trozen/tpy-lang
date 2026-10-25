@@ -255,6 +255,28 @@ def adopt_live() -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known
     return held.x > 0
 
 
+class Defaults:
+    name: str
+    label: str
+    p: Point | None
+
+    # constructor: entry members read as their method twins -- a constant is
+    # materialized (owned storage, no copy), a lent parameter is copied, an
+    # empty Optional record member is owned storage
+    def __init__(self, label: str) -> None:  # tpyc: mir(covered)
+        self.name = "none"  # tpyc: mir_owned(self.name)
+        self.label = label  # tpyc: mir_copy(self.label)
+        self.p = None  # tpyc: mir_owned(self.p)
+
+
+# free function: a tuple's record member is built in a temporary of the tuple's
+# full expression and moved in, its own record arguments built the same way;
+# the temporary is unnamed, so nothing aliases what the tuple holds
+def tuple_member(x: int32) -> int32:  # tpyc: mir(covered)
+    t = (Line(Point(x, "a"), Point(2, "b"), 3), 4)  # the member built in a temporary, then moved
+    return t[0].a.x + t[0].b.x + t[1]
+
+
 # module driver: a print beside a writing call evaluates eagerly in an order MIR
 # does not model
 def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
@@ -289,6 +311,9 @@ def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
     print("adopt_live", adopt_live())
     ln.swap()
     print("swap", ln.a.x, ln.b.x)
+    d = Defaults("lbl")
+    print("defaults", d.name, d.label, d.p is None)
+    print("tuple_member", tuple_member(1))
 
 
 main()

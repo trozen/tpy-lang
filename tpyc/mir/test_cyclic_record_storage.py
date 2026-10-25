@@ -12,7 +12,7 @@ from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
     MIRAlias, MIRBodyId, MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRStorageWrite,
-    MIRStorageWriteMode, MIRStorageDuration, MIRTupleConstruct,
+    MIRStorageWriteMode, MIRStorageDuration, MIRConstruct,
 )
 from .shapes import MIRDeref
 from .scope_lifetime import inspect_scope_lifetimes
@@ -175,8 +175,8 @@ def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool
         write = replace(write, value=MIRCopy(MIRPlace(INITIAL)) if operation == "copy" else MIRMove(INITIAL))
     stmts = (*block.statements[:point.index], write, *block.statements[point.index + 3:])
     capture = stmts[-1]
-    value = (replace(capture.value, elements=(CURRENT, *capture.value.elements[1:]))
-             if isinstance(capture.value, MIRTupleConstruct)
+    value = (replace(capture.value, fields=(CURRENT, *capture.value.fields[1:]))
+             if isinstance(capture.value, MIRConstruct)
              else replace(capture.value, source=CURRENT if isinstance(capture.value, MIRAlias) else MIRPlace(CURRENT)))
     stmts = (*stmts[:-1], replace(capture, value=value))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=stmts), *fn.blocks[2:]))
