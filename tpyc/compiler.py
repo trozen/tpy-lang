@@ -235,7 +235,7 @@ class BuildLayout:
             cpp_files: List of C++ source files to compile.
             output: Output binary path. Defaults to self.binary_path().
             opt_flags: Optimization flags (e.g., ["-O3"]).
-            config: Compiler configuration. Defaults to CppCompilerConfig().
+            config: Compiler configuration. Defaults to the config for `g++`.
             extra_objects: Pre-compiled object files to include in the link step.
             extra_include_dirs: Additional include directories (-I flags).
             force_includes: Headers to force-include via -include flag.
@@ -259,7 +259,7 @@ class BuildLayout:
                        itself is per-target -- see `shared_link_flags`).
         """
         if config is None:
-            config = CppCompilerConfig()
+            config = CppCompilerConfig.for_compiler(CppCompilerConfig().compiler)
         if output is None:
             output = self.binary_path()
 

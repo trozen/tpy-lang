@@ -13,6 +13,7 @@ from tpyc.build_cache import (
     write_manifest,
 )
 from tpyc.modules.resolver import ModuleResolver
+from tpyc.toolchain import file_identity
 
 
 @pytest.fixture
@@ -37,11 +38,9 @@ def world(tmp_path: Path):
     files = [file_entry(str(app / "prog.py")),
              file_entry(str(app / "util.py")),
              file_entry(str(lib / "math.py"))]
-    tc_entry = file_entry(str(fake_cxx))
     manifest = BuildManifest(
         options_key={"variant": "debug", "compiler": ["g++"]},
-        toolchain={"resolved": str(fake_cxx), "size": tc_entry["size"],
-                   "mtime_ns": tc_entry["mtime_ns"]},
+        toolchain=toolchain_entry(str(fake_cxx)),
         files=files,
         dir_listings=[dir_listing_entry(pkg, "*.py")],
         resolver={"base_dir": str(app), "extra_dirs": [str(lib)],
@@ -83,6 +82,26 @@ def test_schema_mismatch_misses(world):
     p = manifest_path(world["build"])
     data = json.loads(p.read_text())
     data["schema"] = SCHEMA_VERSION + 1
+    p.write_text(json.dumps(data))
+    assert check(world) is None
+
+
+def test_schema_1_manifest_misses(world):
+    """A manifest an older tpyc wrote, before entries carried an identity."""
+    p = manifest_path(world["build"])
+    data = json.loads(p.read_text())
+
+    def old_entry(entry: dict) -> dict:
+        st = os.stat(entry["path"])
+        return {"path": entry["path"], "size": st.st_size,
+                "mtime_ns": st.st_mtime_ns, "hash": entry["hash"]}
+
+    st = os.stat(data["toolchain"]["resolved"])
+    data.update(schema=1,
+                toolchain={"resolved": data["toolchain"]["resolved"],
+                           "size": st.st_size, "mtime_ns": st.st_mtime_ns},
+                files=[old_entry(e) for e in data["files"]],
+                binary=old_entry(data["binary"]))
     p.write_text(json.dumps(data))
     assert check(world) is None
 
@@ -155,6 +174,80 @@ def test_deleted_binary_misses(world):
 def test_touched_toolchain_misses(world):
     os.utime(world["tmp"] / "g++", ns=(1, 1))
     assert check(world) is None
+
+
+def _replace_back_dated(path: Path, text: str) -> None:
+    """Replace `path` with other contents of the same size and its old
+    mtime, as tar, `cp -p` or a package manager staging a file leave it."""
+    old = path.stat()
+    assert len(text.encode()) == old.st_size
+    staged = path.with_name(path.name + ".staged")
+    staged.write_text(text)
+    os.utime(staged, ns=(old.st_atime_ns, old.st_mtime_ns))
+    os.replace(staged, path)
+    new = path.stat()
+    assert (new.st_size, new.st_mtime_ns) == (old.st_size, old.st_mtime_ns)
+
+
+def test_input_replaced_with_its_old_mtime_misses(world):
+    """Size and mtime match; the identity does not, so the content is
+    re-hashed and the change seen."""
+    src = world["app"] / "util.py"
+    _replace_back_dated(src, src.read_text().replace("f", "g"))
+    assert check(world) is None
+
+
+def test_toolchain_replaced_with_its_old_mtime_misses(world):
+    cxx = world["tmp"] / "g++"
+    _replace_back_dated(cxx, "#!/bin/zz\n")
+    assert check(world) is None
+
+
+def test_untouched_inputs_hit_without_rehashing(world, monkeypatch):
+    from tpyc import build_cache
+
+    def no_hash(path):
+        raise AssertionError(f"re-hashed {path}")
+
+    monkeypatch.setattr(build_cache, "_hash_file", no_hash)
+    assert check(world) is not None
+
+
+def test_same_content_rewrite_is_rehashed_once(world, monkeypatch):
+    """The hit through the hash fallback records the new identity, so a
+    ctime-only change does not re-hash the file on every warm run."""
+    from tpyc import build_cache
+
+    src = world["app"] / "util.py"
+    src.write_text(src.read_text())
+    os.utime(src, ns=(12345, 12345))
+    hashed: list[str] = []
+    real_hash = build_cache._hash_file
+
+    def counting_hash(path):
+        hashed.append(path)
+        return real_hash(path)
+
+    monkeypatch.setattr(build_cache, "_hash_file", counting_hash)
+    assert check(world) is not None
+    assert hashed == [str(src)]
+    assert check(world) is not None
+    assert hashed == [str(src)]
+    assert not list(world["build"].glob("*.tmp"))
+
+
+def test_unwritable_refresh_keeps_the_hit(world, monkeypatch):
+    from tpyc import build_cache
+
+    src = world["app"] / "util.py"
+    src.write_text(src.read_text())
+    os.utime(src, ns=(12345, 12345))
+
+    def fail(path, data):
+        raise OSError("read-only build dir")
+
+    monkeypatch.setattr(build_cache, "_write_manifest_data", fail)
+    assert check(world) is not None
 
 
 def test_corrupt_manifest_misses(world):
@@ -344,7 +437,7 @@ def test_toolchain_entry_resolves_bare_name_and_explicit_path(tmp_path, monkeypa
     cxx.chmod(0o755)
     monkeypatch.setenv("PATH", str(bindir))
     st = os.stat(cxx)
-    expected = {"resolved": str(cxx), "size": st.st_size, "mtime_ns": st.st_mtime_ns}
+    expected = {"resolved": str(cxx), "identity": list(file_identity(st))}
     assert toolchain_entry("fake-c++") == expected
     assert toolchain_entry(str(cxx)) == expected
     assert toolchain_entry("no-such-c++") is None

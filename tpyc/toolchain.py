@@ -468,6 +468,17 @@ def _remove_entry(entry: Path, sweep: CacheSweep, used_after: float) -> bool:
                 if (entry / CACHE_USED_MARK).stat().st_mtime > used_after:
                     return False
             entry.rename(trash)
+            # A lock-free reader (shared_pch's fast path) may have marked and
+            # accepted the entry between the check above and the rename; its
+            # fresh mark sits in the trash now. Not a complete fix: a reader
+            # accepting it between the two renames loses its -include file for
+            # one build, and so does one whose entry another builder recreated
+            # first (the rename back fails and the trash goes; an already
+            # opened .gch survives the unlink).
+            with contextlib.suppress(OSError):
+                if (trash / CACHE_USED_MARK).stat().st_mtime > used_after:
+                    trash.rename(entry)
+                    return False
     except OSError:
         sweep.failed.append(entry.name)
         return False
@@ -485,10 +496,28 @@ def _remove_trash(trash: Path, sweep: CacheSweep) -> bool:
     return True
 
 
+def _remove_orphan_pch_temps(entry: Path, sweep: CacheSweep, written_before: float) -> None:
+    """Temp files a killed builder left in an entry that stays: a ready
+    entry is used lock-free, so no builder under its lock comes along to
+    remove them (`_remove_pch_temp_files`). A live builder's temp is
+    minutes old, never `written_before`."""
+    with contextlib.suppress(OSError):
+        for p in entry.iterdir():
+            if not _PCH_TEMP_NAME.fullmatch(p.name):
+                continue
+            with contextlib.suppress(OSError):
+                st = p.lstat()
+                if stat.S_ISREG(st.st_mode) and st.st_mtime < written_before:
+                    size = _disk_size(p)
+                    p.unlink()
+                    sweep.freed += size
+
+
 def sweep_shared_cache(root: Path | None = None, *, now: float | None = None,
                        force: bool = False) -> CacheSweep | None:
-    """Remove cache entries unused for `cache_max_age()`, and exec-result
-    markers unused for 30 days. Only names the cache itself writes are
+    """Remove cache entries unused for `cache_max_age()`, PCH build temp
+    files older than that in the entries that stay, and exec-result markers
+    unused for 30 days. Only names the cache itself writes are
     touched, whatever else the root holds. At most once per hour per cache
     root (a stamp), by one process at a time (a non-blocking lock); None
     when it did not run. Raises ValueError for a malformed
@@ -524,6 +553,9 @@ def sweep_shared_cache(root: Path | None = None, *, now: float | None = None,
                     if (_expired(entry, read_file, now, max_age)
                             and _remove_entry(entry, sweep, now - max_age)):
                         sweep.removed += 1
+                        continue
+                if kind == PCH_DIR:
+                    _remove_orphan_pch_temps(entry, sweep, now - max_age)
         for marker in sorted((root / EXEC_RESULTS_DIR).glob("*")):
             if not _EXEC_MARKER_NAME.fullmatch(marker.name) or marker.is_symlink():
                 continue
@@ -577,13 +609,30 @@ int main() {
 """
 
 
-def compiler_binary_identity(compiler: list[str]) -> tuple[str, int, int] | None:
-    """(resolved path, size, mtime_ns) of the compiler binary.
+class FileIdentity(NamedTuple):
+    """The one rule by which the build caches tell a file is untouched.
+    mtime alone is not enough: tar, `cp -p` and package managers restore
+    it, while ctime moves on every content change, rename or replacement
+    and no tool can set it back, and a replaced file has a new inode.
+    mtime stays for Windows, where st_ctime is the creation time."""
+    ino: int
+    ctime_ns: int
+    mtime_ns: int
+    size: int
+
+
+def file_identity(st: os.stat_result) -> FileIdentity:
+    return FileIdentity(st.st_ino, st.st_ctime_ns, st.st_mtime_ns, st.st_size)
+
+
+def compiler_binary_identity(
+        compiler: list[str]) -> tuple[str, FileIdentity] | None:
+    """(resolved path, `file_identity`) of the compiler binary.
 
     The one identity notion for the `pch_entry` key, the toolchain probe cache and
-    build_cache.toolchain_entry: a replaced binary at the same path (new
-    size/mtime) is a different compiler; an untouched one never is. None
-    when the binary cannot be resolved at all.
+    build_cache.toolchain_entry: a binary replaced at the same path is a
+    different compiler, even with its old mtime restored; an untouched one
+    never is. None when the binary cannot be resolved at all.
     """
     argv0 = compiler[0]
     if os.path.sep in argv0:
@@ -596,7 +645,7 @@ def compiler_binary_identity(compiler: list[str]) -> tuple[str, int, int] | None
         st = os.stat(resolved)
     except OSError:
         return None
-    return resolved, st.st_size, st.st_mtime_ns
+    return resolved, file_identity(st)
 
 
 def _toolchain_probe_id(compiler: list[str]) -> str | None:
@@ -604,9 +653,9 @@ def _toolchain_probe_id(compiler: list[str]) -> str | None:
     ident = compiler_binary_identity(compiler)
     if ident is None:
         return None
-    resolved, size, mtime_ns = ident
+    resolved, identity = ident
     key = "\0".join(
-        [resolved, str(size), str(mtime_ns), *compiler[1:], _PROBE_SOURCE])
+        [resolved, *map(str, identity), *compiler[1:], _PROBE_SOURCE])
     return hashlib.sha256(key.encode()).hexdigest()[:24]
 
 
@@ -1072,20 +1121,13 @@ def _parse_depfile(text: str) -> list[str]:
 
 
 class _Dep(NamedTuple):
-    """An external dependency's identity: ctime moves on every content
-    change, rename or replacement and no tool can set it back (tar, `cp -p`
-    and package managers restore mtime), and a replaced file has a new
-    inode. mtime stays for Windows, where st_ctime is the creation time."""
-    ino: int
-    ctime_ns: int
-    mtime_ns: int
-    size: int
+    """An external dependency the .gch was built from."""
+    identity: FileIdentity
     path: str
 
     @classmethod
     def of(cls, path: str) -> _Dep:
-        st = os.stat(path)
-        return cls(st.st_ino, st.st_ctime_ns, st.st_mtime_ns, st.st_size, path)
+        return cls(file_identity(os.stat(path)), path)
 
 
 def _external_deps(depfile: Path, runtime_include_dir: Path) -> list[_Dep]:
@@ -1103,15 +1145,17 @@ def _external_deps(depfile: Path, runtime_include_dir: Path) -> list[_Dep]:
 
 
 def _render_deps(deps: list[_Dep]) -> str:
-    return "".join(f"{d.ino} {d.ctime_ns} {d.mtime_ns} {d.size} {d.path}\n" for d in deps)
+    return "".join(f"{' '.join(map(str, d.identity))} {d.path}\n" for d in deps)
 
 
 def _read_deps(entry: Path) -> list[_Dep]:
     """The entry's `deps` list; ValueError on a malformed line."""
     deps = []
     for line in (entry / PCH_DEPS).read_text().splitlines():
-        ino, ctime_ns, mtime_ns, size, path = line.split(" ", 4)
-        deps.append(_Dep(int(ino), int(ctime_ns), int(mtime_ns), int(size), path))
+        *identity, path = line.split(" ", 4)
+        if len(identity) != len(FileIdentity._fields):
+            raise ValueError(f"malformed deps line: {line!r}")
+        deps.append(_Dep(FileIdentity(*map(int, identity)), path))
     return deps
 
 
@@ -1180,7 +1224,8 @@ def _build_pch(config: CppCompilerConfig, runtime_include_dir: Path,
         # The entry's own header was rewritten just before the start and can
         # share its clock tick on a coarse-timestamp filesystem.
         own_header = header.resolve()
-        if any(any(started_ns <= t <= now_ns for t in (dep.ctime_ns, dep.mtime_ns))
+        if any(any(started_ns <= t <= now_ns
+                   for t in (dep.identity.ctime_ns, dep.identity.mtime_ns))
                and Path(dep.path).resolve() != own_header for dep in deps):
             return None
         # No state may pair a .gch with deps that do not describe it, and
@@ -1459,8 +1504,17 @@ class CppCompilerConfig:
                 warn_toolchain_unsupported(compiler)
             else:
                 compiler = _auto_detect_compiler()
-        ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
-        config = cls(compiler=compiler, ccache=ccache)
+        config = cls.for_compiler(compiler)
+        config.ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
+        return config
+
+    @classmethod
+    def for_compiler(cls, compiler: list[str]) -> CppCompilerConfig:
+        """The config for an already resolved compiler command, carrying
+        every flag its target needs on the command itself; the CLI, the
+        harness (both through `from_env`), the REPL and `build_cpp_commands`'
+        default build theirs here."""
+        config = cls(compiler=compiler)
         config.use_compiler([*compiler, *darwin_version_min_flags(
             compiler, config.target_platform)])
         return config

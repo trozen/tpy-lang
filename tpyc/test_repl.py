@@ -157,7 +157,7 @@ def test_repl_plan_cache_resolves_once_per_dep_set():
 
 def test_backend_support_objects_compile_once_and_in_order(monkeypatch, tmp_path):
     # _ensure_support_objects must invoke the compiler once per source per
-    # session (mtime-keyed cache) and return objects in runtime-then-
+    # session (identity-keyed cache) and return objects in runtime-then-
     # third-party order. No real toolchain: subprocess.run is stubbed.
     import subprocess as sp
     from .repl_backends import CompileBackend
@@ -197,6 +197,16 @@ def test_backend_support_objects_compile_once_and_in_order(monkeypatch, tmp_path
     assert err3 == ""
     assert objs3 == objs1
     assert len(calls) == 3, "mtime change did not invalidate the cache"
+
+    # Replaced with its old mtime kept (tar, `cp -p`): still a new source.
+    old = rt.stat()
+    staged = tmp_path / "rt_impl.staged"
+    staged.write_text("// RT")
+    os.utime(staged, ns=(old.st_atime_ns, old.st_mtime_ns))
+    os.replace(staged, rt)
+    objs4, err4 = backend._ensure_support_objects(deps)
+    assert err4 == ""
+    assert len(calls) == 4, "a back-dated replacement did not invalidate the cache"
 
 
 def test_repl_deps_plain_eval_has_no_third_party():

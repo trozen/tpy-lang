@@ -67,11 +67,14 @@ g++ -std=c++23 -g -O0 -I ... -c module.cpp
   only), the compiler binary's identity and, on clang only, the include root.
   Every program built with the same flags reuses one `.gch`.
 - The entry also records a `deps` list: every header the build read outside
-  the runtime (system and toolchain headers) with its inode, ctime and size.
-  The kernel sets ctime on every content change, rename or replacement, and
-  tools that restore mtime (tar, `cp -p`, package managers) cannot set it
-  back. An entry whose `deps` no longer match (a libstdc++ upgrade under an
-  unchanged compiler binary) is rebuilt in place.
+  the runtime (system and toolchain headers) with its inode, ctime, mtime and
+  size (`toolchain.file_identity`). The kernel sets ctime on every content
+  change, rename or replacement, and tools that restore mtime (tar, `cp -p`,
+  package managers) cannot set it back. An entry whose `deps` no longer
+  match (a libstdc++ upgrade under an unchanged compiler binary) is rebuilt
+  in place. The same identity names the compiler binary in the entry key, in
+  the toolchain probe cache and in the whole-run build cache, whose manifest
+  re-hashes an input only when its identity moved.
 - A build runs under the entry's `.lock` (first removing temp files a killed
   build left: every temp the builder writes is `<name>.<pid>.tmp` of a file
   the entry holds) and publishes the `.gch` by one atomic rename, then its
@@ -82,8 +85,11 @@ g++ -std=c++23 -g -O0 -I ... -c module.cpp
   or an unwritable cache root, compiles without a PCH. `tpy --rebuild`
   rebuilds the entry; `tpy --no-pch` skips it. The CLI (after a build) and
   the REPL (at startup) also run the shared-cache sweep, which removes
-  entries unused for `$TPYC_CACHE_MAX_AGE` (see `tests/README.md` "Cache
-  eviction").
+  entries unused for `$TPYC_CACHE_MAX_AGE`, and the temp files of a build
+  killed over a ready entry once they are that old (see `tests/README.md`
+  "Cache eviction"). The REPL builds its compiler config through
+  `CppCompilerConfig.for_compiler`, as `from_env` does for the CLI and the
+  harness, so its compiles and its PCH carry the same macOS deployment pin.
 
 ### 2. Parallel Compilation
 

@@ -104,6 +104,49 @@ def test_an_entry_being_built_stays(root):
     assert (root / "stdlib-objs" / UNUSED / MD).exists()
 
 
+def test_old_builder_temps_go_from_an_entry_that_stays(root):
+    """A forced rebuild killed over a ready entry leaves its temp files; the
+    entry stays in use lock-free, so only the sweep removes them."""
+    entry = root / "pch" / MARKED
+    # The expired entries go first, so the second sweep frees only temps.
+    assert toolchain.sweep_shared_cache(root, now=NOW).removed == 4
+    files = {"orphan": f"{GCH}.123.tmp", "orphan_deps": "deps.d.123.tmp",
+             "live": f"{GCH}.456.tmp", "other": "notes.123.tmp"}
+    for name in files.values():
+        (entry / name).write_text("x" * 5000)
+    for name in (files["orphan"], files["orphan_deps"], files["other"]):
+        _age(entry / name, 10)
+    orphans_size = sum(toolchain._disk_size(entry / files[k]) for k in ("orphan", "orphan_deps"))
+    sweep = toolchain.sweep_shared_cache(root, now=NOW, force=True)
+    left = {p.name for p in entry.iterdir()}
+    assert files["orphan"] not in left and files["orphan_deps"] not in left
+    assert {files["live"], files["other"], GCH} <= left
+    assert sweep.removed == 0
+    assert sweep.freed == orphans_size
+
+
+def test_an_entry_marked_during_its_rename_comes_back(root, monkeypatch):
+    """A lock-free reader marks the entry used between the sweep's under-lock
+    re-check and its rename: the sweep sees the fresh mark in the trash and
+    renames the entry back, whole."""
+    entry = root / "pch" / UNUSED
+    real_rename = Path.rename
+
+    def rename(self, target):
+        moved = real_rename(self, target)
+        if self == entry:
+            (Path(target) / toolchain.CACHE_USED_MARK).touch()  # the reader
+        return moved
+
+    monkeypatch.setattr(Path, "rename", rename)
+    sweep = toolchain.sweep_shared_cache(root, now=NOW)
+    assert (entry / GCH).read_text() == "x" * 5000
+    assert not list((root / "pch").glob(".trash-*"))
+    assert sweep.failed == []
+    assert sweep.removed == 3  # all but this one
+    assert not (root / "stdlib-objs" / UNUSED).exists()  # same name, other kind
+
+
 def test_unmarked_entries_get_the_longer_age(root, monkeypatch):
     monkeypatch.setenv(toolchain.CACHE_MAX_AGE_ENV, "1d")
     toolchain.sweep_shared_cache(root, now=NOW)

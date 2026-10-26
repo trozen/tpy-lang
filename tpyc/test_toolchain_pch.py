@@ -100,7 +100,7 @@ def cxx(monkeypatch, tmp_path, cache):
     monkeypatch.setattr(subprocess, "run", fake)
     monkeypatch.setattr(toolchain, "_detect_compiler_family", lambda cxx: "gcc")
     monkeypatch.setattr(toolchain, "compiler_binary_identity",
-                        lambda cxx: ("/usr/bin/" + cxx[0], 1, 1))
+                        lambda cxx: ("/usr/bin/" + cxx[0], (1, 1, 1, 1)))
     return fake
 
 
@@ -219,7 +219,7 @@ def test_replaced_compiler_binary_keys_the_entry(monkeypatch, tmp_path, cxx):
     root = _root(tmp_path)
     before = shared_pch(GCC, root, [])
     monkeypatch.setattr(toolchain, "compiler_binary_identity",
-                        lambda cxx: ("/usr/bin/g++", 2, 2))
+                        lambda cxx: ("/usr/bin/g++", (2, 2, 2, 2)))
     assert shared_pch(GCC, root, []) != before
     assert len(cxx.calls) == 2
 
@@ -231,8 +231,8 @@ def test_deps_list_only_headers_outside_the_runtime(tmp_path, cxx):
     entry = shared_pch(GCC, root, []).parent
     assert _deps_paths(entry) == [str(entry / PCH_HEADER), str(cxx.external)]
     st = cxx.external.stat()
-    assert toolchain._read_deps(entry)[1] == (
-        st.st_ino, st.st_ctime_ns, st.st_mtime_ns, st.st_size, str(cxx.external))
+    assert toolchain._read_deps(entry)[1] == ((
+        st.st_ino, st.st_ctime_ns, st.st_mtime_ns, st.st_size), str(cxx.external))
 
 
 def _replace_back_dated(path: Path, text: str, like: os.stat_result) -> None:
@@ -281,7 +281,8 @@ def _stamp_deps_at_start(monkeypatch, cxx, name: str, offset_ns: int = 0) -> Non
     real = toolchain._external_deps
 
     def external_deps(depfile, runtime_include_dir):
-        return [d._replace(ctime_ns=start[-1] + offset_ns) if Path(d.path).name == name else d
+        return [d._replace(identity=d.identity._replace(ctime_ns=start[-1] + offset_ns))
+                if Path(d.path).name == name else d
                 for d in real(depfile, runtime_include_dir)]
 
     cxx.during = during
@@ -629,7 +630,7 @@ def test_depfile_paths_keep_dotdot_after_a_symlink(monkeypatch, tmp_path, cxx):
     depfile = tmp_path / "d.d"
     depfile.write_text("out.gch: link/../x.h\n")
     [dep] = toolchain._external_deps(depfile, root)
-    assert dep.ino == real.stat().st_ino
+    assert dep.identity.ino == real.stat().st_ino
 
 
 @pytest.mark.parametrize("line", ["1 2 3 /usr/include/vector", "1x 2 3 4 /p", "1 2x 3 4 /p",
@@ -710,6 +711,34 @@ def test_repl_reuses_a_ready_entry_silently(monkeypatch, tmp_path, cxx):
     assert second._pch_path == backend._pch_path
     assert second._pch_build_time is None
     assert len(cxx.calls) == 1
+
+
+def test_repl_carries_the_darwin_pin_like_the_cli(monkeypatch, tmp_path, cxx):
+    """The REPL's compiles and its PCH target the same macOS deployment
+    version as the CLI's, so the two can share one PCH entry."""
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine",
+                        lambda compiler: "arm64-apple-darwin23.4.0")
+    monkeypatch.setattr(toolchain, "_resolve_compiler", lambda cxx: ["g++"])
+    monkeypatch.setattr(toolchain, "warn_toolchain_unsupported", lambda compiler: None)
+    pin = toolchain.darwin_version_min_flags(["g++"], "darwin")
+    assert pin
+    backend = _repl_backend(monkeypatch, tmp_path)
+    assert backend._config.compiler == CppCompilerConfig.from_env("gcc").compiler
+    assert pin[0] in backend._common_flags()
+    backend._setup_pch()
+    assert pin[0] in cxx.calls[0]
+
+
+def test_build_commands_default_config_carries_the_darwin_pin(monkeypatch, tmp_path):
+    from tpyc.compiler import BuildLayout
+
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine",
+                        lambda compiler: "arm64-apple-darwin23.4.0")
+    pin = toolchain.darwin_version_min_flags(["g++"], "darwin")
+    assert pin
+    layout = BuildLayout(tmp_path, "main")
+    cmds = layout.build_cpp_commands(tmp_path, [tmp_path / "main.cpp"])
+    assert all(pin[0] in cmd for cmd in cmds)
 
 
 def test_repl_pch_is_stale_after_an_external_header_change(monkeypatch, tmp_path, cxx):

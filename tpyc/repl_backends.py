@@ -37,8 +37,9 @@ def _fmt_ms(seconds: float) -> str:
 
 from . import get_runtime_dir
 from .codegen_cpp.context import NATIVE_INIT_NAMESPACE
-from .toolchain import (compile_pool, host_os, pch_entry, pch_ready, set_pch_ccache_sloppiness,
-                        shared_pch, sweep_shared_cache_best_effort)
+from .toolchain import (FileIdentity, compile_pool, file_identity, host_os, pch_entry,
+                        pch_ready, set_pch_ccache_sloppiness, shared_pch,
+                        sweep_shared_cache_best_effort)
 
 
 class BackendResult:
@@ -149,7 +150,7 @@ class CompileBackend(REPLBackend):
         from .compiler import CppCompilerConfig
         self._temp_dir = temp_dir
         self._module_name = module_name
-        self._config = CppCompilerConfig(compiler=compiler)
+        self._config = CppCompilerConfig.for_compiler(compiler)
         self._pch_path: Path | None = None
         self._pch_thread: threading.Thread | None = None
         self._pch_build_time: float | None = None
@@ -163,11 +164,11 @@ class CompileBackend(REPLBackend):
         # Cached .o paths keyed by .cpp path string
         self._obj_cache: dict[str, str] = {}
         # Support objects (runtime impls + bundled third-party sources),
-        # keyed by source path -> (source mtime, .o path). The mtime keeps a
-        # dev editing runtime .cpp mid-session from linking a stale object
-        # (mirrors the PCH cache's staleness check); otherwise each source
-        # compiles once, on the first eval that needs it.
-        self._support_objs: dict[str, tuple[float, str]] = {}
+        # keyed by source path -> (source `file_identity`, .o path). The
+        # identity keeps a dev editing runtime .cpp mid-session from linking
+        # a stale object; otherwise each source compiles once, on the first
+        # eval that needs it.
+        self._support_objs: dict[str, tuple[FileIdentity, str]] = {}
         # Third-party include dirs from the current eval's build plan
         self._extra_include_dirs: list[Path] = []
         self._n_jobs = os.cpu_count() or 1
@@ -255,41 +256,43 @@ class CompileBackend(REPLBackend):
         from .compiler import third_party_source_driver
         runtime_include = get_runtime_dir() / "cpp" / "include"
 
-        def fresh_mtime(src: Path) -> float | None:
-            """The source's current mtime if it needs (re)compiling, else None.
-            Captured pre-compile so an edit racing the compile re-triggers."""
-            mtime = src.stat().st_mtime
+        def stale_identity(src: Path) -> FileIdentity | None:
+            """The source's current identity if it needs (re)compiling, else
+            None. Captured pre-compile so an edit racing the compile
+            re-triggers."""
+            identity = file_identity(src.stat())
             cached = self._support_objs.get(str(src))
-            return None if cached is not None and cached[0] == mtime else mtime
+            return None if cached is not None and cached[0] == identity else identity
 
-        jobs: list[tuple[Path, float, list[str]]] = []
+        jobs: list[tuple[Path, FileIdentity, list[str]]] = []
         for src in deps.runtime_sources:
-            mtime = fresh_mtime(src)
-            if mtime is not None:
+            identity = stale_identity(src)
+            if identity is not None:
                 # warn_flags included to match build_cpp_commands' treatment
                 # of runtime sources (vendored third-party sources below get
                 # only their own flags there too).
-                jobs.append((src, mtime, [
+                jobs.append((src, identity, [
                     *self._config.compiler, f"-std={self._config.std}",
                     *self._config.extra_flags, *self._config.warn_flags,
                     *self._OPT_FLAGS,
                     "-I", str(runtime_include),
                 ]))
         for src, flags in deps.third_party_sources:
-            mtime = fresh_mtime(src)
-            if mtime is not None:
+            identity = stale_identity(src)
+            if identity is not None:
                 driver = third_party_source_driver(
                     src, self._config.compiler, self._config.std)
-                jobs.append((src, mtime, [*driver, *self._OPT_FLAGS, *flags]))
+                jobs.append((src, identity, [*driver, *self._OPT_FLAGS, *flags]))
 
-        def build_one(job: tuple[Path, float, list[str]]) -> tuple[Path, float, str, str]:
-            src, mtime, cmd_prefix = job
+        def build_one(job: tuple[Path, FileIdentity, list[str]]
+                      ) -> tuple[Path, FileIdentity, str, str]:
+            src, identity, cmd_prefix = job
             # Parent dir in the name disambiguates same-stem sources from
             # different libs (e.g. two vendored trees both shipping error.c).
             obj = self._build_dir / f"support_{src.parent.name}_{src.stem}.o"
             cmd = [*cmd_prefix, "-c", "-o", str(obj), str(src)]
             r = subprocess.run(cmd, capture_output=True, text=True)
-            return src, mtime, str(obj), r.stderr if r.returncode != 0 else ""
+            return src, identity, str(obj), r.stderr if r.returncode != 0 else ""
 
         if jobs:
             if self._verbose >= 1:
@@ -297,10 +300,10 @@ class CompileBackend(REPLBackend):
                 print(f"  [build] compiling {len(jobs)} support files: "
                       f"{', '.join(names)}", file=sys.stderr)
             with compile_pool(self._n_jobs) as pool:
-                for src, mtime, obj, err in pool.map(build_one, jobs):
+                for src, identity, obj, err in pool.map(build_one, jobs):
                     if err:
                         return [], err
-                    self._support_objs[str(src)] = (mtime, obj)
+                    self._support_objs[str(src)] = (identity, obj)
 
         wanted = [str(s) for s in deps.runtime_sources]
         wanted += [str(s) for s, _ in deps.third_party_sources]

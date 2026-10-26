@@ -18,6 +18,7 @@ machinery is imported (importing `tpyc.cli`'s full dependency tree costs
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import os
@@ -25,9 +26,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .modules.resolver import ModuleResolver, resolution_drift
-from .toolchain import compiler_binary_identity
+from .toolchain import FileIdentity, compiler_binary_identity, file_identity
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MANIFEST_NAME = "build-manifest.json"
 
 
@@ -51,7 +52,7 @@ def _hash_names(names: list[str]) -> str:
 
 
 def file_entry(path: str) -> dict | None:
-    """Build a (size, mtime_ns, hash) manifest entry for one input file."""
+    """Build a (`file_identity`, hash) manifest entry for one input file."""
     try:
         st = os.stat(path)
     except OSError:
@@ -59,8 +60,7 @@ def file_entry(path: str) -> dict | None:
     digest = _hash_file(path)
     if digest is None:
         return None
-    return {"path": path, "size": st.st_size, "mtime_ns": st.st_mtime_ns,
-            "hash": digest}
+    return {"path": path, "identity": list(file_identity(st)), "hash": digest}
 
 
 def capture_input(entries: dict[str, dict], path: Path | str) -> None:
@@ -80,16 +80,25 @@ def capture_input(entries: dict[str, dict], path: Path | str) -> None:
             entries[key] = entry
 
 
-def _entry_fresh(entry: dict) -> bool:
-    """Hybrid freshness check: trust the hash when (size, mtime) match,
-    re-hash the content otherwise (ccache-style)."""
+def _entry_fresh(entry: dict, refreshed: list[dict]) -> bool:
+    """Hybrid freshness check: trust the hash when the `file_identity`
+    matches, re-hash the content otherwise (ccache-style). An entry whose
+    content matched under a new identity takes that identity and joins
+    `refreshed`: a ctime-only change (chmod, a hardlink, a same-content
+    checkout) would otherwise re-hash the file on every warm run."""
     try:
         st = os.stat(entry["path"])
     except OSError:
         return False
-    if st.st_size == entry["size"] and st.st_mtime_ns == entry["mtime_ns"]:
+    identity = file_identity(st)
+    recorded = FileIdentity(*entry["identity"])
+    if identity == recorded:
         return True
-    return st.st_size == entry["size"] and _hash_file(entry["path"]) == entry["hash"]
+    if identity.size != recorded.size or _hash_file(entry["path"]) != entry["hash"]:
+        return False
+    entry["identity"] = list(identity)
+    refreshed.append(entry)
+    return True
 
 
 def dir_listing_entry(root: Path, pattern: str) -> dict:
@@ -106,7 +115,7 @@ def dir_listing_entry(root: Path, pattern: str) -> dict:
 class BuildManifest:
     """Everything that certifies `binary` as up-to-date."""
     options_key: dict
-    toolchain: dict           # {"argv0", "resolved", "size", "mtime_ns"}
+    toolchain: dict           # toolchain_entry()
     files: list[dict]         # file_entry() dicts
     dir_listings: list[dict]  # dir_listing_entry() dicts
     resolver: dict            # {"base_dir", "extra_dirs", "extra_extensions"}
@@ -118,7 +127,7 @@ class BuildManifest:
 
 
 def toolchain_entry(argv0: str) -> dict | None:
-    """Identity of the C++ compiler binary (resolved path + stat).
+    """Identity of the C++ compiler binary (resolved path + `file_identity`).
 
     Command-list equality is checked separately via the options key (the
     CLI re-runs CppCompilerConfig.from_env on the warm path, so a newly
@@ -129,8 +138,8 @@ def toolchain_entry(argv0: str) -> dict | None:
     ident = compiler_binary_identity([argv0])
     if ident is None:
         return None
-    resolved, size, mtime_ns = ident
-    return {"resolved": resolved, "size": size, "mtime_ns": mtime_ns}
+    resolved, identity = ident
+    return {"resolved": resolved, "identity": list(identity)}
 
 
 def compute_build_dir(output_dir: Path, module_name: str, variant: str,
@@ -151,10 +160,18 @@ def manifest_path(build_dir: Path) -> Path:
 
 def write_manifest(build_dir: Path, manifest: BuildManifest) -> None:
     """Atomically persist the manifest (tmp + rename)."""
+    _write_manifest_data(build_dir, manifest.__dict__)
+
+
+def _write_manifest_data(build_dir: Path, data: dict) -> None:
     target = manifest_path(build_dir)
-    tmp = target.with_suffix(".json.tmp")
-    tmp.write_text(json.dumps(manifest.__dict__, indent=1))
-    os.replace(tmp, target)
+    # Per process: two warm runs may refresh the same manifest at once.
+    tmp = target.with_name(f"{target.name}.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps(data, indent=1))
+        os.replace(tmp, target)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 @dataclass
@@ -182,12 +199,12 @@ def check_up_to_date(build_dir: Path, options_key: dict) -> WarmHit | None:
         # Toolchain binary unchanged in place (command-list equality is part
         # of options_key -- the caller re-resolved it via from_env).
         tc = data["toolchain"]
-        st = os.stat(tc["resolved"])
-        if st.st_size != tc["size"] or st.st_mtime_ns != tc["mtime_ns"]:
+        if file_identity(os.stat(tc["resolved"])) != FileIdentity(*tc["identity"]):
             return None
 
+        refreshed: list[dict] = []
         # Output binary present and untouched.
-        if not _entry_fresh(data["binary"]):
+        if not _entry_fresh(data["binary"], refreshed):
             return None
 
         # Replay module resolution through the real resolver, macro probe
@@ -214,9 +231,13 @@ def check_up_to_date(build_dir: Path, options_key: dict) -> WarmHit | None:
 
         # Every recorded input file unchanged (stat fast path, hash fallback).
         for entry in data["files"]:
-            if not _entry_fresh(entry):
+            if not _entry_fresh(entry, refreshed):
                 return None
 
+        if refreshed:
+            # Best effort: a manifest left as it was only costs the re-hash.
+            with contextlib.suppress(OSError):
+                _write_manifest_data(build_dir, data)
         return WarmHit(binary=data["binary"]["path"],
                        warnings=list(data.get("warnings", [])))
     except (KeyError, TypeError, OSError):

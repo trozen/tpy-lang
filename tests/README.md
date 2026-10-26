@@ -61,7 +61,12 @@ last read (atime) or the entry itself last changed, and is kept for at least
 14 days, so a run with an older harness keeps its entries even where atime
 does not move. Only names the cache writes (sha256 keys, `repl-<key>`, exec
 markers) are touched, whatever else the root holds; an entry whose build
-lock is held is being built and stays. The sweep is `tpyc.toolchain.sweep_shared_cache`, unit-tested in
+lock is held is being built and stays, and one a lock-free reader marks used
+while the sweep renames it away is renamed back (not airtight: a reader that
+accepts it between the two renames, or one whose entry another builder
+recreated meanwhile, loses the PCH for that one build). In a PCH entry that stays,
+builder temp files (`<name>.<pid>.tmp`) older than the max age go: a build
+killed over a ready entry leaves them, and no builder takes its lock again. The sweep is `tpyc.toolchain.sweep_shared_cache`, unit-tested in
 `tpyc/test_cache_sweep.py`; `--clean` still wipes everything.
 
 ## Harness output
