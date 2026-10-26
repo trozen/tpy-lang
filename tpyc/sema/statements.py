@@ -83,10 +83,8 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
 from ..parse.nodes import (
     SourceLocation, VarLinkage, op_spelling, name_path,
 )
-from .arg_binding import (
-    BindReject, CallSource, adopt_temp_call, bind, relayout,
-    source_view, temp_call_args,
-)
+from .arg_binding import source_view
+from .calls import class_callee
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
     MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_operand_keys,
@@ -3031,120 +3029,106 @@ class StatementAnalyzer:
             self.init.mark_terminated()
             return
 
-        # Expression raise (general expression, e.g. raise <expr>)
-        if stmt.raise_expr is not None:
-            self._analyze_raise_expr(stmt)
-            return
+        if stmt.raise_expr is None:
+            if not self.ctx.in_function_body():
+                raise self.ctx.error(
+                    f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
+            record = self._raised_class(stmt.exception_type)
+            if record is not None:
+                self._raise_class(stmt, record, stmt.exception_type, None)
+                return
+            # Not a class: a variable of an exception type.
+            stmt.raise_expr = TpyName(name=stmt.exception_type, loc=stmt.loc)
+            stmt.exception_type = None
+        self._analyze_raise_expr(stmt)
 
+    def _raise_class(self, stmt: TpyRaise, record: 'RecordInfo', spelled: str,
+                     operand: 'TpyExpr | None') -> None:
+        """A raise of the class `record`, spelled `spelled`: the type form
+        (`raise E`, `operand` the dotted path or None) or a construction
+        (`operand` the call). The construction is analyzed as the
+        expression it is; the statement adds only its own rules -- the
+        tier, the `@error_return` match, the exception base, the
+        @virtual_raise dispatch."""
         func = self.ctx.func.current_function
-        if not self.ctx.in_function_body():
-            raise self.ctx.error(
-                f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
-
-        record = self._raised_class(stmt)
-        if not record:
-            # Not a type -- check if it's a variable of exception type
-            self._analyze_raise_name_as_expr(stmt)
-            return
-
-        qualified_exc = self._exception_qname(stmt.exception_type, record)
+        qualified_exc = self._exception_qname(spelled, record)
         is_cf = record.is_return_exception or is_return_exception(qualified_exc)
 
         if is_cf:
             # Return-tier: must be inside @error_return(E) function with matching E
             if func.error_return is None:
                 raise self.ctx.error(
-                    f"'raise {stmt.exception_type}' requires "
-                    f"@error_return({stmt.exception_type}) on the enclosing function",
+                    f"'raise {spelled}' requires "
+                    f"@error_return({spelled}) on the enclosing function",
                     stmt)
             if not error_return_matches(func.error_return, qualified_exc):
                 raise self.ctx.error(
-                    f"'raise {stmt.exception_type}' does not match "
-                    f"@error_return({stmt.exception_type})", stmt)
+                    f"'raise {spelled}' does not match "
+                    f"@error_return({spelled})", stmt)
         else:
             # Throw-tier: must inherit from Exception
             if not is_exception_record(record, self.ctx.registry):
                 raise self.ctx.error(
-                    f"'{stmt.exception_type}' is not an exception type; "
+                    f"'{spelled}' is not an exception type; "
                     f"it must inherit from Exception",
                     stmt)
 
-        # `raise X(args)` constructs `X` as the expression `X(args)` does,
-        # its omitted defaults filled the same way; the checks below keep
-        # the statement's own diagnostics for a single signature.
-        init_overloads = self.ctx.registry.ctor_overloads(record)
-        written = source_view(stmt)
-        if written.positional and len(init_overloads) <= 1:
-            if record.has_init:
-                ctors = self.expr.calls.ctor_signatures(record)
-                bound = bind(written, ctors[0].params if ctors else [],
-                             f"{record.name}()")
-                if isinstance(bound, BindReject) and bound.arity is not None:
-                    min_args, max_args, got = bound.arity
-                    expected = (f"{max_args}" if min_args == max_args
-                                else f"{min_args} to {max_args}")
-                    raise self.ctx.error(
-                        f"'raise {stmt.exception_type}()' expects "
-                        f"{expected} arguments, got {got}",
-                        stmt)
-            elif record.fields:
-                raise self.ctx.error(
-                    f"'{stmt.exception_type}' has data fields but no __init__; "
-                    f"add __init__ to use 'raise {stmt.exception_type}(...)'",
-                    stmt)
-            else:
-                hint = ""
-                if record.is_return_exception and not record.is_native:
-                    # CPython lets a `pass` exception take a message through the
-                    # inherited Exception(message); a return exception is a
-                    # plain value that carries only what it declares.
-                    hint = (f": a return-only exception carries only the fields "
-                            f"it declares; add 'message: str' and an __init__ "
-                            f"to '{stmt.exception_type}' to raise it with one")
-                raise self.ctx.error(
-                    f"'raise {stmt.exception_type}()' does not accept arguments"
-                    f"{hint}",
-                    stmt)
-        if init_overloads:
-            construction = TpyCall(TpyName(record.name, loc=stmt.loc),
-                                   **temp_call_args(stmt), loc=stmt.loc)
-            constructed = self.expr.calls._analyze_record_constructor(
-                construction, record)
-            if (not is_cf and isinstance(constructed, NominalType)
-                    and constructed.type_args):
-                # The class name alone does not spell an instantiation the
-                # arguments inferred (`raise EB(xs)` builds `EB[list[int32]]`):
-                # the constructed value raises as `raise EB[...](xs)` does.
-                self.ctx.set_expr_type(construction, constructed)
-                stmt.raise_expr = construction
-                stmt.exception_type = None
-                relayout(stmt, CallSource(), None)
-                self.init.mark_terminated()
-                return
-            # Carry the resolved __init__ so codegen routes the ctor args
-            # through the same shared arg-lowering loop a normal `X(args)`
-            # construction uses.
-            adopt_temp_call(stmt, construction, type_args=False)
+        # CPython's `raise E` raises `E()`. A class without an `__init__`
+        # raised with nothing written stays the type form, default-built.
+        has_init = bool(self.ctx.registry.ctor_overloads(record))
+        if isinstance(operand, (TpyCall, TpyMethodCall)):
+            written = (source_view(operand).operands or operand.type_args
+                       or operand.type_args_parse_error is not None)
+            construction = operand if written or has_init else None
+        elif has_init:
+            construction = TpyCall(class_callee(record, stmt.loc), [],
+                                   loc=stmt.loc)
+        else:
+            construction = None
+        if construction is None:
+            stmt.raise_expr = None
+            stmt.exception_type = qualified_exc
+            stmt.resolved_type = record_owner(record)
+        else:
+            stmt.raise_expr = construction
+            stmt.exception_type = None
+            stmt.resolved_type = self.expr.analyze_expr(construction)
         # @virtual_raise classes dispatch in their C++ __raise__ (e.g.
         # OSError's ctor-time errno -> subclass mapping); the fresh
         # construction must route through it, not the throw peephole.
         stmt.raise_via_virtual = record.virtual_raise and not is_cf
-        # Propagate qualified name to AST
-        stmt.exception_type = qualified_exc
-        stmt.resolved_type = record_owner(record)
         self.init.mark_terminated()
 
-    def _raised_class(self, stmt: TpyRaise) -> 'RecordInfo | None':
-        """The class a type-form raise names (`raise E`, `raise E(args)`),
-        resolved like any type path; None when the name is not a class. A
-        dotted path arrives resolved (`_analyze_raise_expr`); a raise a macro
-        built from a qualified name alone resolves by that name."""
-        if stmt.resolved_type is not None:
-            return self.ctx.registry.get_record_for_type(stmt.resolved_type)
-        if "." in stmt.exception_type:
-            return self.ctx.registry.find_record_by_qname(stmt.exception_type)
-        ref = self.ctx.type_ref_path([stmt.exception_type])
+    def _raised_class(self, name: str) -> 'RecordInfo | None':
+        """The class a raise names by `name` (`raise E`), resolved like any
+        type path; None when the name is not a class."""
+        ref = self.ctx.type_ref_path([name])
         return ref.info if ref is not None and ref.kind == SymbolKind.RECORD else None
+
+    def _raised_operand_class(self, raised: TpyExpr
+                              ) -> 'tuple[RecordInfo, str] | None':
+        """The class a raise operand constructs (`E(args)`, `Outer.Err(1)`,
+        `m.EB[int32](x)`) or names (`m.Err`), resolved as the callee of
+        that call is, with how it is spelled; None for a value operand."""
+        if isinstance(raised, TpyCall):
+            if not isinstance(raised.func, TpyName):
+                return None
+            ref = self.ctx.class_ref(raised.func)
+            path = [raised.func.name]
+        elif isinstance(raised, TpyMethodCall):
+            if not isinstance(raised.obj, (TpyName, TpyFieldAccess)):
+                return None
+            ref = self.ctx.type_ref(raised.obj, raised.method)
+            head = name_path(raised.obj)
+            path = [*head, raised.method] if head is not None else []
+        elif isinstance(raised, TpyFieldAccess):
+            ref = self.ctx.type_ref(raised)
+            path = name_path(raised) or []
+        else:
+            return None
+        if ref is None or ref.kind != SymbolKind.RECORD:
+            return None
+        return ref.info, ".".join(path)
 
     def _exception_qname(self, spelled: str, record: 'RecordInfo') -> str:
         """The qualified name an exception class is matched by against
@@ -3180,31 +3164,13 @@ class StatementAnalyzer:
         in addition to plain Exception subclasses. Codegen lowers via
         `<expr>.__raise__()` which auto-derefs through Box's vtable.
         """
-        func = self.ctx.func.current_function
         if not self.ctx.in_function_body():
             raise self.ctx.error(
                 "'raise' can only be used inside a function", stmt)
-        # `raise m.Err` / `raise Outer.Err(args)`: a dotted class is the type
-        # form, as the bare name is. The type form takes positional
-        # arguments only; a keyword call raises the constructed value.
-        raised = stmt.raise_expr
-        if isinstance(raised, TpyMethodCall):
-            obj, member = raised.obj, raised.method
-        else:
-            obj, member = raised, None
-        path = name_path(obj) if member is not None or isinstance(obj, TpyFieldAccess) else None
-        ref = self.ctx.type_ref(obj, member) if path is not None else None
-        is_kw_call = (isinstance(raised, TpyMethodCall)
-                      and bool(source_view(raised).keywords))
-        if ref is not None and ref.kind == SymbolKind.RECORD and not is_kw_call:
-            stmt.exception_type = ".".join(path if member is None else [*path, member])
-            stmt.resolved_type = self.ctx.type_of_ref(ref)
-            if isinstance(raised, TpyMethodCall):
-                relayout(stmt, CallSource(source_view(raised).positional),
-                         None)
-                stmt.is_call_form = True
-            stmt.raise_expr = None
-            self._analyze_raise(stmt)
+        found = self._raised_operand_class(stmt.raise_expr)
+        if found is not None:
+            record, spelled = found
+            self._raise_class(stmt, record, spelled, stmt.raise_expr)
             return
         expr_type = self.expr.analyze_expr(stmt.raise_expr)
         # Peel __deref__ until we hit a non-Deref type. Box[Throwable]
@@ -3252,27 +3218,6 @@ class StatementAnalyzer:
                 f"it must inherit from Exception",
                 stmt)
         self.init.mark_terminated()
-
-    def _analyze_raise_name_as_expr(self, stmt: TpyRaise) -> None:
-        """Handle 'raise Name' or 'raise Name(args)' where Name is not a type.
-
-        Converts to expression raise if Name is a variable/call of exception type.
-        """
-        name = stmt.exception_type
-        if stmt.args or stmt.is_call_form:
-            # raise func() or raise func(args) -- convert to call expression
-            call_expr = TpyCall(func=TpyName(name, loc=stmt.loc),
-                                **temp_call_args(stmt), loc=stmt.loc)
-            stmt.raise_expr = call_expr
-            stmt.exception_type = None
-            relayout(stmt, CallSource(), None)
-            self._analyze_raise_expr(stmt)
-            return
-        # raise name -- convert to variable reference
-        name_expr = TpyName(name=name, loc=stmt.loc)
-        stmt.raise_expr = name_expr
-        stmt.exception_type = None
-        self._analyze_raise_expr(stmt)
 
     def _raise_expr_type_name(self, expr_type: TpyType, stmt: TpyRaise) -> str:
         """Extract the type name from a raise expression's type for validation."""

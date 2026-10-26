@@ -1,0 +1,6 @@
+main.py:63: warning: copies P into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 62)
+main.py:70: warning: copies P into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 68)
+main.py:85: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:92: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:74: warning: copies P into argument 'p' of 'Bump(...)'; use copy() to make this explicit
+main.py:80: warning: copies P into argument 'p' of 'Bump(...)'; use copy() to make this explicit

@@ -87,7 +87,7 @@ int64_t describe__str(std::string_view x) {
 //     # A keyword raise constructs the exception as the call `Coded(...)` does.
 //     raise Coded("coded", code=n)
 void raise_coded(int64_t n) {
-    Coded("coded", n).__raise__();
+    throw Coded("coded", n);
 }
 
 // @dispatch

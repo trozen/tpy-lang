@@ -337,7 +337,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "er.bare_return",               # bare `return` -> `return {};`
     "er.void_tail",                 # trailing `return {};` success
     "er.raise",                     # `return make_unexpected(E{})`
-    "er.raise_args",                # `return make_unexpected(E(args))`
+    "er.raise_args",                # `return make_unexpected(<construction>)`
     "er.reraise",                   # bare `raise` in a return-tier handler
     "er.bind",                      # var-decl/assign `__try_tmp_N` block
     "er.bind_ptr_rebind",           # bind line reseats `&*(__slot_N = ..)`
@@ -2199,7 +2199,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the operator flavor of reseat.borrow_call
     "print.hoisted_container_arg",  # ListPrinter((*items)) over a hoisted ptr
     # Raise statements (lowering).
-    "raise.ctor",                   # `raise X(args)` -> `throw <cpp>(...)`
+    "raise.ctor",                   # `raise X(args)` -> `throw <construction>;`
+    "raise.type",                   # `raise X`, built with nothing written -> `throw <cpp>{};`
     "raise.bare",                   # bare re-raise -> `throw;`
     "raise.expr",                   # `raise <expr>` -> `<expr>.__raise__();`
     # dict/set membership (`needle in c` -> `(c.contains(needle))`, the

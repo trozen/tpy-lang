@@ -1,1 +1,1 @@
-main.py:16: error: 'raise Missing()' does not accept arguments: a return-only exception carries only the fields it declares; add 'message: str' and an __init__ to 'Missing' to raise it with one
+main.py:17: error: 'Missing' has no __init__: a return-only exception carries only the fields it declares; add 'message: str' and an __init__ to 'Missing' to construct it with one

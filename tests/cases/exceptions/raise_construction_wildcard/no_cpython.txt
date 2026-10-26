@@ -1,0 +1,1 @@
+A '_' wildcard type argument is TPy syntax; CPython has no name '_' to subscript with.

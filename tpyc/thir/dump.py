@@ -676,11 +676,13 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
             lines.extend(_stmt_lines(s, depth))
         return lines
     if isinstance(stmt, THIRRaise):
-        if stmt.cpp_type is None:
+        if stmt.raise_expr is None and stmt.cpp_type is None:
             return [f"{pad}raise [bare]"]
+        obj = (_expr(stmt.raise_expr) if stmt.raise_expr is not None
+               else f"{stmt.cpp_type}{{}}")
         via = " [virtual]" if stmt.via_virtual else ""
         tier = " [return_tier]" if stmt.return_tier else ""
-        return [f"{pad}raise {stmt.cpp_type}({_exprs(stmt.args)}){via}{tier}"]
+        return [f"{pad}raise {obj}{via}{tier}"]
     if isinstance(stmt, THIRTry):
         lines = [f"{pad}try [{stmt.tier.value}]:"]
         for s in stmt.try_body:

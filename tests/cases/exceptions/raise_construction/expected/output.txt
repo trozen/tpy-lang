@@ -1,0 +1,13 @@
+free 1 t
+method 2 method
+gen-yield 2
+gen 3 gen
+dotted 4
+module 5
+dotted-bare 8
+module-targs-expr 2147483648
+module-targs 7
+generic 2
+find-ok 0
+find 3
+virtual 2

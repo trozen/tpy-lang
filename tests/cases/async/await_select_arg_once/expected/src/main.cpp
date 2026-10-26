@@ -792,7 +792,7 @@ std::string vsink(::tpy::varargs<const std::string> xs, int32_t k) {
     }
     case S_JOIN_21: {
         try {
-            Err(__await_ternary_21, 7).__raise__();
+            throw Err(__await_ternary_21, 7);
         } catch (const Err& e2) {
             std::cout << "raise-kw" << " " << std::string(::tpy::__str__(e2)) << " " << e2.code << "\n" << ::tpy::check_signals;
             __state = S_JOIN_24;

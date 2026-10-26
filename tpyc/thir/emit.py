@@ -2440,6 +2440,30 @@ def _witness_chain(kind: str, state: _EmitState, stop_at: int) -> None:
         _witness(f"try.finally_{kind}")
 
 
+def _emit_raised_object(out: TextIO, indent: str, stmt: THIRRaise,
+                        state: _EmitState) -> None:
+    """A raise of an object (`THIRRaise`): the construction or value, or
+    the type form's default-built class."""
+    # Render the object first (a construction may register arg temps),
+    # then flush the `__tmp_N` decls ahead of the raising line.
+    obj = (_emit_expr(stmt.raise_expr, state)
+           if stmt.raise_expr is not None else f"{stmt.cpp_type}{{}}")
+    state.temps.flush(out, indent)
+    if stmt.return_tier:
+        _witness("er.raise_args" if stmt.raise_expr is not None
+                 else "er.raise")
+        value_cpp = f"::tpy::make_unexpected({obj})"
+        if _staged_exit(stmt.staged, state):
+            _emit_finally_return(out, value_cpp, indent, state)
+        else:
+            out.write(f"{indent}return {value_cpp};\n")
+    elif stmt.via_virtual:
+        chain = ".__deref__()" * stmt.deref_depth
+        out.write(f"{indent}{obj}{chain}.__raise__();\n")
+    else:
+        out.write(f"{indent}throw {obj};\n")
+
+
 def _emit_finally_return(out: TextIO, value_cpp: 'str | None', indent: str,
                          state: _EmitState) -> None:
     # Mirrors _make_return's finally-chain arm: the value lands in a
@@ -4375,55 +4399,23 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         # propagates through the emitted catch(...) arms, which run the
         # finally bodies. The return-tier arms are RETURNS (make_unexpected),
         # so they take the finally-aware return shape like THIRReturn.
-        if stmt.raise_expr is not None:
-            # `raise <expr>` -> `<expr>{.__deref__()*N}.__raise__();` -- render
-            # the source first (a call-result may register arg temps), flush the
-            # `__tmp_N` decls ahead of the line, then the virtual hop.
-            expr = _emit_expr(stmt.raise_expr, state)
-            chain = ".__deref__()" * stmt.deref_depth
-            state.temps.flush(out, indent)
-            out.write(f"{indent}{expr}{chain}.__raise__();\n")
-        elif stmt.return_tier:
-            if stmt.args:
-                args = ", ".join(_emit_expr(a, state) for a in stmt.args)
-                value_cpp = f"::tpy::make_unexpected({stmt.cpp_type}({args}))"
-                _witness("er.raise_args")
+        if stmt.raise_expr is None and stmt.cpp_type is None:
+            if state.in_except_tier is TryTier.RETURN:
+                # Bare re-raise inside a return-tier handler: re-return the
+                # captured error.
+                assert state.try_except_err_opt is not None, \
+                    "return-tier re-raise without a live error capture"
+                _witness("er.reraise")
+                value_cpp = ("::tpy::make_unexpected("
+                             f"std::move(*{state.try_except_err_opt}))")
+                if _staged_exit(stmt.staged, state):
+                    _emit_finally_return(out, value_cpp, indent, state)
+                else:
+                    out.write(f"{indent}return {value_cpp};\n")
             else:
-                value_cpp = f"::tpy::make_unexpected({stmt.cpp_type}{{}})"
-                _witness("er.raise")
-            state.temps.flush(out, indent)
-            if _staged_exit(stmt.staged, state):
-                _emit_finally_return(out, value_cpp, indent, state)
-            else:
-                out.write(f"{indent}return {value_cpp};\n")
-        elif stmt.cpp_type is None and state.in_except_tier is TryTier.RETURN:
-            # Bare re-raise inside a return-tier handler: re-return the
-            # captured error.
-            assert state.try_except_err_opt is not None, \
-                "return-tier re-raise without a live error capture"
-            _witness("er.reraise")
-            value_cpp = ("::tpy::make_unexpected("
-                         f"std::move(*{state.try_except_err_opt}))")
-            if _staged_exit(stmt.staged, state):
-                _emit_finally_return(out, value_cpp, indent, state)
-            else:
-                out.write(f"{indent}return {value_cpp};\n")
-        elif stmt.cpp_type is None:
-            out.write(f"{indent}throw;\n")
-        elif stmt.args:
-            # Render args first so a mutated-ref-slot / Own-copy / union-ctor
-            # arg temp registers, then flush the `__tmp_N` decls ahead of the
-            # throw line -- the per-statement temp flush.
-            args = ", ".join(_emit_expr(a, state) for a in stmt.args)
-            state.temps.flush(out, indent)
-            if stmt.via_virtual:
-                out.write(f"{indent}{stmt.cpp_type}({args}).__raise__();\n")
-            else:
-                out.write(f"{indent}throw {stmt.cpp_type}({args});\n")
-        elif stmt.via_virtual:
-            out.write(f"{indent}{stmt.cpp_type}{{}}.__raise__();\n")
+                out.write(f"{indent}throw;\n")
         else:
-            out.write(f"{indent}throw {stmt.cpp_type}{{}};\n")
+            _emit_raised_object(out, indent, stmt, state)
     elif isinstance(stmt, THIRErrorReturnBind):
         # The bind form: the counter draws BEFORE the call renders, so a
         # nested unwrap in an argument gets the higher number.

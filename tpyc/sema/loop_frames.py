@@ -83,7 +83,7 @@ from ..parse.nodes import (
     TpyArrayLiteral, TpyBytesLiteral, TpyDictComprehension, TpyDictLiteral,
     TpyGeneratorExpression, TpyListComprehension, TpyListRepeat,
     TpySetComprehension, TpySetLiteral, TpySlice, TpyStrLiteral,
-    TpyTupleLiteral, is_property_getter_read, walk_body_stmts,
+    TpyTupleLiteral, is_property_getter_read,
 )
 from ..compilation_context import get_current_compiler
 from ..holders import IterHolder
@@ -1100,7 +1100,7 @@ class _SourceProof(WriteProof):
         self.through: set[str] = set()
 
     def run(self, region: LiveRegion) -> None:
-        walk_body_stmts(list(region.stmts), self.walk, self.stmt)
+        self.walk_body(list(region.stmts))
         for e in region.exprs:
             self.walk(e)
 

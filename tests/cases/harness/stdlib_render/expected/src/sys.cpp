@@ -17,7 +17,7 @@ std::vector<std::string>* argv{};
 // def exit() -> None:
 //     raise SystemExit()
 void exit__noargs() {
-    throw ::tpy::SystemExit{};
+    throw ::tpy::SystemExit();
 }
 
 // @dispatch
@@ -40,7 +40,7 @@ void exit__str(std::string_view code) {
 //     # explicit SystemExit(None).
 //     raise SystemExit()
 void exit__None(std::monostate code) {
-    throw ::tpy::SystemExit{};
+    throw ::tpy::SystemExit();
 }
 
 // @dispatch
@@ -59,7 +59,7 @@ void exit__None_int32_str(const ::tpy::Union<std::monostate, int32_t, std::strin
         const auto& __code = std::get<std::string>(code);
         throw ::tpy::SystemExit(__code);
     }
-    throw ::tpy::SystemExit{};
+    throw ::tpy::SystemExit();
 }
 
 // from tpy.extern import native, native_global

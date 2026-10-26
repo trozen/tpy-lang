@@ -113,6 +113,12 @@ _TEMPLATE_STRING_NODES = frozenset({"TemplateStr", "Interpolation"})
 _EXCERPT_LIMIT = 40
 
 
+class _UnparsedAnnotation(ParseError):
+    """An annotation of no shape the parser knows as a type."""
+    def __init__(self, node: ast.AST) -> None:
+        super().__init__(f"Cannot parse type annotation: {ast.dump(node)}", node)
+
+
 def _validate_fstring_format_spec(spec: str) -> str | None:
     """Validate an f-string format spec against C++ std::format support.
 
@@ -3421,7 +3427,7 @@ class Parser:
             dotted = self._dotted_type_ref_name(node)
             if dotted is not None:
                 return TpyTypeRef(dotted, (), loc)
-            raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+            raise _UnparsedAnnotation(node)
 
         if isinstance(node, ast.Constant) and node.value is None:
             return TpyTypeRef("None", (), loc)
@@ -3455,7 +3461,7 @@ class Parser:
             members = tuple(self._parse_type_ref(arm, type_param_scope) for arm in arms)
             return TpyUnionRef(members, loc)
 
-        raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+        raise _UnparsedAnnotation(node)
 
     def _dotted_type_ref_name(self, node: ast.Attribute) -> str | None:
         """The dotted spelling of an attribute-chain annotation, or None when
@@ -3486,7 +3492,7 @@ class Parser:
             resolved = self._resolve_qualified_type_name(node.value)
             raw_name = self._dotted_type_ref_name(node.value)
         else:
-            raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+            raise _UnparsedAnnotation(node)
 
         # Canonical structural-wrapper names use a `:` separator so they
         # cannot collide with any Python identifier-based name (including
@@ -3532,7 +3538,7 @@ class Parser:
         # canonical one) to keep this pass syntactic.
         name = raw_name if raw_name is not None else (resolved[1] if resolved else None)
         if name is None:
-            raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
+            raise _UnparsedAnnotation(node)
 
         slices = _extract_subscript_slices(node)
         arg_refs: list[ResolverInputNode | int] = []
@@ -3696,7 +3702,12 @@ class Parser:
             # Integer constants are not valid type arguments
             if isinstance(s, ast.Constant) and isinstance(s.value, int):
                 raise ParseError(f"Integer '{s.value}' is not a valid type argument", s)
-            type_args.append(self._parse_type_ref(s))
+            try:
+                type_args.append(self._parse_type_ref(s))
+            except _UnparsedAnnotation:
+                raise ParseError(
+                    f"type argument '{ast.unparse(s)}' is not a type; type "
+                    f"arguments must be static types", s) from None
         return tuple(type_args)
 
     def _parse_comprehension_generators(
@@ -4035,14 +4046,8 @@ class Parser:
         if isinstance(exc, ast.Name):
             name = exc.id
             return TpyRaise(exception_type=name, loc=loc)
-        # raise Name() or raise Name(args...); a keyword call raises the
-        # constructed value (`raise <expr>`)
-        if (isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name)
-                and not exc.keywords):
-            name = exc.func.id
-            args = [self._parse_expr(a) for a in exc.args]
-            return TpyRaise(exception_type=name, args=args, is_call_form=True, loc=loc)
-        # raise <expr> -- general expression (e.g. raise obj.make_err(), raise errors[i])
+        # raise <expr>: a construction `E(args)` as any other operand
+        # (`raise obj.make_err()`, `raise errors[i]`)
         return TpyRaise(raise_expr=self._parse_expr(exc), loc=loc)
 
     def _except_clause_types(self, h: ast.ExceptHandler) -> list[str]:

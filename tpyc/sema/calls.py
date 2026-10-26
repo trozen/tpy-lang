@@ -251,13 +251,17 @@ def construct_type_param_defaults(args: list[TpyExpr], filled: list[int],
         record = ctx.registry.get_record_for_type(bound)
         if record is None:
             continue
-        binding = NameBinding(BindingKind.RECORD, record.name,
-                              record_info=record)
-        args[i] = TpyCall(
-            TpyName(f"<{record.qualified_name()}>",
-                    default_referent=DefaultReferent(ctor=binding),
-                    loc=arg.loc),
-            [], loc=arg.loc)
+        args[i] = TpyCall(class_callee(record, arg.loc), [], loc=arg.loc)
+
+
+def class_callee(record: RecordInfo,
+                 loc: 'SourceLocation | None') -> TpyName:
+    """A callee naming `record` itself, dispatched on its class binding
+    (`DefaultReferent.ctor`) under a spelling no scope can bind: a
+    construction built for a class already resolved."""
+    binding = NameBinding(BindingKind.RECORD, record.name, record_info=record)
+    return TpyName(f"<{record.qualified_name()}>",
+                   default_referent=DefaultReferent(ctor=binding), loc=loc)
 
 
 def _filled_callee(func: TpyExpr, loc: 'SourceLocation | None',
@@ -7289,32 +7293,37 @@ class CallAnalyzer:
 
         written = source_view(expr)
         ctors = self.ctor_signatures(record)
-        if not ctors and (written.keywords or written.double_star is not None):
-            # Nothing to bind a keyword to: the binding says so.
-            self.bind_args(expr, [], f"{record.name}()")
 
-        # Check if this is a generic record instantiation (e.g., Stack[int32]())
-        if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
-            # Validate type arguments
-            if record.is_generic():
-                if not expr.call_type.type_args:
-                    # No explicit type args -- fall through to inference section
-                    expr.call_type = None
-                else:
-                    if len(expr.call_type.type_args) != len(record.type_params):
-                        raise self.ctx.error(
-                            f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
-                            f"got {len(expr.call_type.type_args)}",
-                            expr
-                        )
-                    self.type_ops.validate_record_type_args(
-                        expr.call_type, record, allow_type_param_ref=True,
-                        loc=expr.loc)
-                    bound_error = self.construction_bound_error(
-                        record, record.name,
-                        dict(zip(record.type_params, expr.call_type.type_args)))
-                    if bound_error is not None:
-                        raise self.ctx.error(bound_error, expr)
+        # The type arguments written: a full instantiation (`Stack[int32]()`,
+        # `call_type`) or one with `_` wildcards left to inference
+        # (`type_args`).
+        explicit = (expr.call_type.type_args
+                    if isinstance(expr.call_type, NominalType)
+                    and expr.call_type.is_record else ())
+        if expr.type_args_parse_error and not explicit:
+            # A subscript that spells no type (`E[choose()](7)`).
+            raise self.ctx.error(expr.type_args_parse_error, expr)
+        spelled = explicit or expr.type_args or ()
+        if spelled and len(spelled) != len(record.type_params):
+            raise self.ctx.error(
+                f"Record '{record.name}' expects {len(record.type_params)} "
+                f"type arguments, got {len(spelled)}", expr)
+        if record.is_generic() and isinstance(expr.call_type, NominalType):
+            if not explicit:
+                # No explicit type args -- fall through to inference section
+                expr.call_type = None
+            else:
+                self.type_ops.validate_record_type_args(
+                    expr.call_type, record, allow_type_param_ref=True,
+                    loc=expr.loc)
+                bound_error = self.construction_bound_error(
+                    record, record.name,
+                    dict(zip(record.type_params, explicit)))
+                if bound_error is not None:
+                    raise self.ctx.error(bound_error, expr)
+        # Type-argument errors (count, bounds) report before argument ones.
+        if not ctors and written.operands:
+            raise self.ctx.error(self._no_init_message(record), expr)
         if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
@@ -7329,12 +7338,6 @@ class CallAnalyzer:
         if record.is_generic():
             # Validate _ wildcard type args if present
             if expr.type_args and None in expr.type_args:
-                if len(expr.type_args) != len(record.type_params):
-                    raise self.ctx.error(
-                        f"Record '{record.name}' expects {len(record.type_params)} type arguments, "
-                        f"got {len(expr.type_args)}",
-                        expr
-                    )
                 # Validate non-wildcard entries
                 in_generic = self.ctx.in_generic_scope()
                 for type_arg in expr.type_args:
@@ -7349,18 +7352,7 @@ class CallAnalyzer:
                         self.type_ops.validate_type(
                             type_arg, allow_type_param_ref=in_generic,
                             loc=expr.loc, allow_forward_ref=False)
-            if not record.has_init and written.positional:
-                raise self.ctx.error(
-                    f"'{record.name}' has no __init__; "
-                    f"use @dataclass or define __init__ to accept constructor arguments",
-                    expr)
             return self.infer_generic_construction(expr, record)
-        # Non-generic record
-        if not ctors and written.positional:
-            raise self.ctx.error(
-                f"'{record.name}' has no __init__; "
-                f"use @dataclass or define __init__ to accept constructor arguments",
-                expr)
         cand = self._construct_at(expr, record, ctors, {})
         # NominalType.name is the canonical declaration name (qname disambiguates
         # cross-module same-name records); an import alias here would make the
@@ -7372,6 +7364,27 @@ class CallAnalyzer:
             self._construction_facts(expr, record, cand.declared, cand.binding)
         self._stamp_construction(expr, record, result_type, cand)
         return result_type
+
+    @staticmethod
+    def _no_init_message(record: RecordInfo) -> str:
+        """Why `record(args)` cannot take the arguments: it has no
+        constructor to bind them to."""
+        name = record.name
+        # CPython lets a `pass` exception take a message through the
+        # inherited Exception(message); a return exception is a plain value
+        # that carries only what it declares.
+        reason = (f"'{name}' has no __init__: a return-only exception "
+                  f"carries only the fields it declares")
+        if record.is_return_exception and record.is_native:
+            return reason
+        if record.is_return_exception and not record.fields:
+            return (f"{reason}; add 'message: str' and an __init__ to "
+                    f"'{name}' to construct it with one")
+        if record.is_native:
+            # A binding's class cannot be given an __init__ by the program.
+            return f"'{name}' has no __init__"
+        return (f"'{name}' has no __init__; use @dataclass or define "
+                f"__init__ to accept constructor arguments")
 
     def _construct_at(self, expr: TpyCall, record: RecordInfo,
                       ctors: list[FunctionInfo],
@@ -7392,10 +7405,6 @@ class CallAnalyzer:
             cand = self._ctor_candidate(expr, record, ctors[0], type_subst)
             self.commit_construction(expr, record, cand)
             return cand
-        if source_view(expr).positional:
-            raise self.ctx.error(
-                f"'{record.name}' has no __init__ and cannot be constructed with arguments",
-                expr)
         if not record.has_init:
             self._validate_aggregate_zero_arg(record, expr,
                                               type_subst or None)

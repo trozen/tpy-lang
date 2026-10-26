@@ -1,1 +1,1 @@
-main.py:8: error: 'Box' has no __init__ and cannot be constructed with arguments
+main.py:9: error: 'Box' has no __init__; use @dataclass or define __init__ to accept constructor arguments

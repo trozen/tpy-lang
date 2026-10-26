@@ -872,14 +872,14 @@ void exceptions() {
     }
     {
         try {
-            ::tpyapp::m::Err(::tpy::BigInt(3)).__raise__();
+            throw ::tpyapp::m::Err(::tpy::BigInt(3));
         } catch (const ::tpyapp::m::Err& e) {
             std::cout << "except: keyword" << " " << e.code << "\n" << ::tpy::check_signals;
         }
     }
     {
         try {
-            KErr(::tpy::BigInt(4)).__raise__();
+            throw KErr(::tpy::BigInt(4));
         } catch (const KErr& e) {
             std::cout << "except: bare keyword" << " " << e.code << "\n" << ::tpy::check_signals;
         }

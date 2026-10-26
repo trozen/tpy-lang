@@ -1,0 +1,6 @@
+own-twin 1 10
+own-stmt 1 10
+bump-twin 4 3
+bump-stmt 4 3
+gen-stmt 1 2
+gen-written-stmt 1 2

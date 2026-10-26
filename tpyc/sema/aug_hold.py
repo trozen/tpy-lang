@@ -206,7 +206,7 @@ class _RepeatProof(WriteProof):
         for op in operands:
             self.require(is_inert_type(self.ctx.get_expr_type(op)))
 
-    def visit(self, e: 'TpyExpr') -> bool:
+    def visit(self, e: 'TpyExpr', thrown: 'TpyExpr | None' = None) -> bool:
         if e in self.held:
             # A held comprehension, generator expression or lambda is
             # evaluated by its reader (`_HoldPlan.collect`).
@@ -236,7 +236,7 @@ class _RepeatProof(WriteProof):
             # A body runs its own code (and is held for it); a builtin
             # runs runtime code on its operands.
             self.operation([op for op, _ in self.operands(e)])
-        return super().visit(e)
+        return super().visit(e, thrown)
 
     def key_operation(self, e: 'TpySubscript') -> None:
         """An element access hashes and compares its key (a call that

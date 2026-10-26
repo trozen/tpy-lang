@@ -3864,26 +3864,26 @@ class THIRTry(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRRaise(THIRStmt):
-    """`raise X(args)` -> `throw <cpp>(<args>);` / `raise X` -> `throw <cpp>{};`
-    (the fresh-construction peephole: static and dynamic types coincide,
-    so no `__raise__()` virtual hop); bare `raise` -> `throw;` (a C++ rethrow;
-    sema restricts placement) -- EXCEPT inside a return-tier handler body,
-    where the emit state's in_except_tier makes it re-raise as
-    `return ::tpy::make_unexpected(std::move(*__err_opt_N));` (the bare
-    return-tier arm). `return_tier` marks a `raise E(args)` of a
-    ReturnException inside an @error_return body -- it renders as the
-    finally-aware `return ::tpy::make_unexpected(<cpp>(<args>));` (or `{}`
-    construction when arg-less), never a C++ throw. `cpp_type` pre-renders at
-    lowering (`error_return_to_cpp`); None is the bare form. The expression
-    form (`raise e` / `raise make_error()`) sets `raise_expr` (the lowered
-    source) and emits `<expr>{.__deref__()*deref_depth}.__raise__();` -- the
-    virtual hop is inherent to the expr form (it preserves the dynamic Throwable
-    type through the vtable; a direct `throw expr` would slice a borrow source).
-    `deref_depth` mirrors sema's `.__deref__()` count for a `Box[Throwable]`
-    source. `via_virtual` mirrors sema's `raise_via_virtual` fact (@virtual_raise
-    classes: the peephole doesn't apply; emit `<cpp>(<args>).__raise__();`)."""
+    """A raise. `raise_expr` is the lowered operand: a construction
+    (`raise X(args)`, lowered as any construction is) or a value (`raise e`,
+    `raise make_error()`). `cpp_type` is the type form's class (`raise X` of
+    a class built with nothing written), rendered `<cpp>{}`. Neither set is
+    bare `raise` -> `throw;` (a C++ rethrow; sema restricts placement) --
+    EXCEPT inside a return-tier handler body, where the emit state's
+    in_except_tier makes it re-raise as
+    `return ::tpy::make_unexpected(std::move(*__err_opt_N));`.
+
+    The raised object renders as: `return_tier` (a ReturnException inside an
+    @error_return body) -> the finally-aware
+    `return ::tpy::make_unexpected(<object>);`, never a C++ throw;
+    `via_virtual` -> `<object>{.__deref__()*deref_depth}.__raise__();`, the
+    class's dispatching `__raise__` -- set for a @virtual_raise class and for
+    every value operand, whose dynamic Throwable type the vtable preserves (a
+    direct `throw expr` would slice a borrow source); otherwise
+    `throw <object>;` (a fresh construction: static and dynamic types
+    coincide). `deref_depth` mirrors sema's `.__deref__()` count for a
+    `Box[Throwable]` source."""
     cpp_type: 'str | None' = None
-    args: tuple[THIRExpr, ...] = ()
     via_virtual: bool = False
     return_tier: bool = False
     raise_expr: 'THIRExpr | None' = None

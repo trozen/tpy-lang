@@ -163,8 +163,6 @@ class InertWalk:
                 self.rebind(n, t)
         elif isinstance(s, TpyRaise):
             self.require(not s.raise_via_virtual and s.deref_depth == 0)
-            if s.resolved_ctor_init is not None:
-                self.require(self.admitted(s.resolved_ctor_init))
         elif isinstance(s, TpyForEach):
             # Iterating an inert-typed source (a builtin container, str,
             # bytes, range) is runtime code; a user `__iter__` is not. Its
@@ -285,16 +283,31 @@ class InertWalk:
             return [(a, False) for a in e.args]
         return [(c, False) for c in e.children()]
 
-    def walk(self, e: TpyExpr) -> None:
-        if self.visit(e):
-            self.walk_operands(e, False)
+    def walk_body(self, stmts: 'list[TpyStmt]') -> None:
+        """Every statement of `stmts` and its expressions, nested bodies
+        included (a nested `def` is a body of its own)."""
+        walk_body_stmts(stmts, self.walk, self.stmt,
+                        on_stmt_expr=self._walk_stmt_expr)
 
-    def walk_operands(self, e: TpyExpr, as_place: bool) -> None:
+    def _walk_stmt_expr(self, s: TpyStmt, e: TpyExpr) -> None:
+        # A raised construction is judged by its constructor and its
+        # arguments: the object it builds is thrown, not operated on.
+        self.walk(e, s.raised_construction() if isinstance(s, TpyRaise)
+                  else None)
+
+    def walk(self, e: TpyExpr, thrown: 'TpyExpr | None' = None) -> None:
+        """`thrown`: the construction under `e` that builds the object a
+        `raise` throws (`walk_body`)."""
+        if self.visit(e, thrown):
+            self.walk_operands(e, False, thrown)
+
+    def walk_operands(self, e: TpyExpr, as_place: bool,
+                      thrown: 'TpyExpr | None' = None) -> None:
         for op, op_place in self.operands(e, as_place):
             if op_place:
                 self.place(op)
             else:
-                self.walk(op)
+                self.walk(op, thrown)
 
     def place(self, e: TpyExpr) -> None:
         """A place read through, not used as a value (`operands`)."""
@@ -326,14 +339,14 @@ class InertWalk:
         if e.slice_function_info is not None:
             self.require(self.admitted(e.slice_function_info))
 
-    def visit(self, e: TpyExpr) -> bool:
+    def visit(self, e: TpyExpr, thrown: 'TpyExpr | None' = None) -> bool:
         """Judge one node by itself; True walks its operands (`operands`)."""
         self.on_node(e)
         if isinstance(e, TpyCall):
-            self.call(e)
+            self.call(e, e is thrown)
             return True
         if isinstance(e, TpyMethodCall):
-            self.method_call(e)
+            self.method_call(e, e is thrown)
             return True
         if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                           TpyBytesLiteral, TpyBoolLiteral, TpyNoneLiteral)):
@@ -386,7 +399,7 @@ class InertWalk:
             return True
         raise NotInert
 
-    def call(self, e: TpyCall) -> None:
+    def call(self, e: TpyCall, thrown: bool = False) -> None:
         if e.macro_expansion is not None:
             return
         self.require(isinstance(e.func, TpyName)
@@ -403,10 +416,11 @@ class InertWalk:
             return
         self.require(e.resolved_function_info is not None
                      and self.admitted(e.resolved_function_info))
-        self.typed(e)
+        if not thrown:
+            self.typed(e)
         self.on_call(e)
 
-    def method_call(self, e: TpyMethodCall) -> None:
+    def method_call(self, e: TpyMethodCall, thrown: bool = False) -> None:
         if e.macro_expansion is not None:
             return
         self.require(e.fstr_expansion is None
@@ -418,7 +432,8 @@ class InertWalk:
                      and e.double_star_unpack is None
                      and e.resolved_function_info is not None
                      and self.admitted(e.resolved_function_info))
-        self.typed(e)
+        if not thrown:
+            self.typed(e)
         self.on_call(e)
 
 
@@ -472,7 +487,7 @@ def stamp_may_interrupt(ctx: 'SemanticContext', func: 'TpyFunction',
     # this one as a body of its own, with its own fact.
     body = [s for s in func.body if not is_super_del_call(s)]
     try:
-        walk_body_stmts(body, walk.walk, walk.stmt)
+        walk.walk_body(body)
     except NotInert:
         fi.may_interrupt = True
         return

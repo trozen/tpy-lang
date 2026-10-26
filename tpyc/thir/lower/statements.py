@@ -365,7 +365,7 @@ from .expressions import (
     _param_declared_type, _is_move_source, _node_moves, _lower_call_arg,
     _lower_char_targeted,
     _lower_class_const_write_target, _lower_copy_record, _lower_copy_special,
-    lower_copy_construct, _lower_ctor_call_args, _lower_container_elem,
+    lower_copy_construct, _lower_container_elem,
     _lower_expr, _to_opt_ptr, lower_print_sink, _lower_field_source,
     _lower_lambda, _strip_slot_leaf_deref, _strview_coerce_name,
     _lower_truthy, _cond_mixed_walrus_temps, _lower_borrow_tuple_literal,
@@ -14528,30 +14528,15 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
         loc=loc,
     )
 
-def _raise_inherited_arg_ok(a: TpyExpr, lc: _LowerCtx) -> bool:
-    """A `raise E(msg)` where E inherits its ctor (no own `__init__`, so
-    `resolved_ctor_init` is None) spells the args position-blind: there are no
-    init_params to thread, so each arg renders against no slot.
-    Admit only the plain str/scalar message forms the base Exception ctor takes;
-    a richer inherited signature rejects."""
-    if isinstance(a, TpyStrLiteral):
-        return True
-    t = lc.analyzer.get_expr_type(a)
-    if t is None:
-        return False
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    return (_eligible_scalar(t)
-            or _resolved_str_value(t, lc.analyzer) is not None)
-
 def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
                  loc) -> THIRRaise:
-    """Lower a bare re-raise or the ctor-form raise (see `THIRRaise`). Ctor
-    args lower against the resolved `__init__`'s param slots through the shared
-    `_lower_ctor_call_args` dispatch -- the same per-arg machinery the `X(args)`
-    construction path uses (raise is a flush statement position, so the temp
-    rows are admitted). An inherited ctor (`resolved_ctor_init is None`) spells
-    the args position-blind."""
-    if stmt.raise_expr is not None:
+    """Lower a raise (see `THIRRaise`): a bare re-raise, the type form, a
+    construction -- lowered as the initializer of `e = X(args)` is, a
+    storage use at a flush position -- or a value operand."""
+    if stmt.raise_expr is None and stmt.exception_type is None:
+        _witness("raise.bare")
+        return THIRRaise(staged=lc.exit_staged, loc=loc)
+    if stmt.resolved_type is None:
         # `raise <expr>` (a bound var / call result) emits
         # `<expr>{.__deref__()*N}.__raise__();` (the source read plus the
         # virtual hop). The resumable-frame and @error_return contexts
@@ -14575,45 +14560,28 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
             else _ExprUse(result=_ExprResultUse.RECEIVER,
                           pos=SinkPos.RAISE_OPERAND))
         _witness("raise.expr")
-        return THIRRaise(raise_expr=raised,
-                         deref_depth=getattr(stmt, "deref_depth", 0), loc=loc)
-    if stmt.exception_type is None:
-        _witness("raise.bare")
-        return THIRRaise(staged=lc.exit_staged, loc=loc)
-    raised = lc.analyzer.registry.get_record_for_type(stmt.resolved_type)
-    if raised is None:
+        return THIRRaise(raise_expr=raised, via_virtual=True,
+                         deref_depth=stmt.deref_depth, loc=loc)
+    record = lc.analyzer.registry.get_record_for_type(stmt.resolved_type)
+    if record is None:
         raise ThirUnsupported("stmt.raise")
-    return_tier = raised.is_return_exception
+    return_tier = record.is_return_exception
     if return_tier and lc.error_return_cpp is None:
         # Sema confines a ReturnException raise to @error_return bodies;
         # defensive -- any other context rejects.
         raise ThirUnsupported("stmt.raise")
-    init = stmt.resolved_ctor_init
-    lowered_args: list[THIRExpr] = []
-    if stmt.args:
-        if init is None:
-            for arg in stmt.args:
-                if not _raise_inherited_arg_ok(arg, lc):
-                    raise ThirUnsupported("stmt.raise")
-                lowered_args.append(_lower_call_arg(arg, None, lc, declared))
-        else:
-            if len(stmt.args) > len(init.params):
-                raise ThirUnsupported("stmt.raise")
-            # `raise X(args)` is a flush statement position (the throw-tier
-            # THIRRaise emit flushes arg temps before the throw), so the
-            # mutated-ref-slot / Own-copy / union-ctor temp rows are admitted.
-            lowered_args = _lower_ctor_call_args(
-                stmt.args, init, lc, declared, temp_args=True)
+    if stmt.raise_expr is None:
+        _witness("raise.type")
+        return THIRRaise(
+            cpp_type=exception_record_cpp(record, lc.analyzer.ctx.module_name),
+            via_virtual=stmt.raise_via_virtual, return_tier=return_tier,
+            staged=lc.exit_staged, loc=loc)
+    raised = _lower_expr(
+        stmt.raise_expr, lc, declared,
+        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True))
     _witness("raise.ctor")
-    cpp = exception_record_cpp(raised, lc.analyzer.ctx.module_name)
-    return THIRRaise(
-        cpp_type=cpp,
-        args=tuple(lowered_args),
-        via_virtual=stmt.raise_via_virtual,
-        return_tier=return_tier,
-        staged=lc.exit_staged,
-        loc=loc,
-    )
+    return THIRRaise(raise_expr=raised, via_virtual=stmt.raise_via_virtual,
+                     return_tier=return_tier, staged=lc.exit_staged, loc=loc)
 
 def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 loc, *, in_branch: bool = False,

@@ -17603,58 +17603,6 @@ def _ctor_deep_const_params(fi) -> 'frozenset[int]':
     root = getattr(fi, "root", None) or fi
     return frozenset(getattr(root, "const_borrow_params", None) or ())
 
-def _lower_ctor_call_args(args: list[TpyExpr], fi, lc: '_LowerCtx',
-                          declared: dict[str, TpyType], *,
-                          temp_args: bool) -> list[THIRExpr]:
-    """Lower a resolved user-record ctor's args through the shared per-arg
-    dispatch, used by both the
-    `X(args)` construction path and the `raise X(args)` statement. `temp_args`
-    is set at flush positions (statement level), admitting the mutated-slot /
-    Own-copy / union-lift / protocol temp rows. Raises `ThirUnsupported` for an
-    arg shape not lowered yet (the caller tags the reject)."""
-    analyzer = lc.analyzer
-    use = _ExprUse(allow_temps=temp_args)
-    ctor_mut = fi.mutated_params or frozenset()
-    dcbp = _ctor_deep_const_params(fi)
-    lowered: list[THIRExpr] = []
-    for i, (a, p) in enumerate(zip(args, fi.params)):
-        if not _record_ctor_arg_supported(a, p.type, i, fi, lc, declared, use):
-            note_detail("ctor.arg." + _type_family_tag(p.type, analyzer))
-            raise ThirUnsupported("ctor arg shape")
-        rec = (_record_rvalue_temp_slot(a, p.type, analyzer)
-               if i in ctor_mut else None)
-        if rec is not None:
-            if not temp_args:
-                raise ThirUnsupported(
-                    "ctor mutated-slot rvalue temp outside a flush position")
-            _witness("argtemp.ctor_mut_rvalue")
-            lowered.append(_hoisted(THIRArgTemp(
-                result_type=rec, cpp_type=lc.render_type(rec), movable=unwrap_ref_type(rec).is_movable(),
-                init=_lower_expr(a, lc, declared), form=Form.BORROW,
-                loc=getattr(a, "loc", None)), lc))
-        else:
-            flush_slot = (
-                _own_lvalue_temp_slot(a, p.type, analyzer, declared,
-                                      lc.prescan.param_names) is not None
-                or _union_ctor_temp_arg(a, p.type, analyzer)
-                or _protocol_arg_slot(p.type) is not None
-                # The optional-ptr 'ctor' face's ArgTemp, gate-admitted
-                # under temps_ok (see the construction-site twin).
-                or _optional_ptr_arg_face(
-                    a, p.type, declared, analyzer) == 'ctor')
-            # `nested_temps` rides the statement flush into a call-shaped
-            # arg's OWN args (`Holder(wrap(int32(42)))` -- the inner generic
-            # call's scalar ref-slot temp lands at the pre-statement
-            # flush); the ctor arg's own temp rows stay flush_slot-gated.
-            lowered.append(_lower_call_arg(
-                a, p.type, lc, declared,
-                temp_args=temp_args and flush_slot,
-                nested_temps=temp_args,
-                protocol_slots=True,
-                readonly_target=i in dcbp,
-                callee_fi=fi, arg_index=i, member_shaped=True))
-    return lowered
-
 def _lower_union_arg_lift(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                           declared: dict[str, TpyType], *,
                           readonly_target: bool = False,

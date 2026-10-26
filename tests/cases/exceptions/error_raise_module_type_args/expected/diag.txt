@@ -1,0 +1,1 @@
+main.py:7: error: Record 'Err' expects 0 type arguments, got 1

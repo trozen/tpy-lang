@@ -18,7 +18,7 @@ from ..compilation_context import activate_compiler
 from ..typesys import (BOOL, INT32, NominalType, TupleType, UnionType, VoidType,
                        unwrap_readonly, unwrap_ref_type)
 from .nodes import (Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp,
-    THIRCall, THIRCoerce, THIRComprehensionBlock, THIRCompInsert,
+    THIRCall, THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRCtorCall,
     THIRConstructor, THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
     THIRMilInit, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
     THIRFunction, THIRFunctionLayout, THIRIf, THIRIfExpr, THIRLiteral,
@@ -213,13 +213,18 @@ class TestArgListFlushRight:
                            match="THIRArgTemp outside a call arg"):
             validate_resumable_body("f", body)
 
+    @staticmethod
+    def _raise(*args):
+        return THIRRaise(raise_expr=THIRCtorCall(
+            result_type=NominalType("ValueError"),
+            type_cpp="::tpy::ValueError", args=args, form=Form.STORAGE))
+
     def test_raise_args_grant_the_flush_right(self):
-        # A raise's ctor args ARE a flush position: its temps hoist before the
-        # throw line, so a temp-bearing lift is admitted there and the same
-        # node at a cond seam, which has no flush point, is not.
+        # A raised construction's args ARE a flush position: its temps hoist
+        # before the throw line, so a temp-bearing lift is admitted there and
+        # the same node at a cond seam, which has no flush point, is not.
         body = THIRResumableBody(
-            leaves={1: THIRRaise(cpp_type="::tpy::ValueError",
-                                 args=(self._lift(),))},
+            leaves={1: self._raise(self._lift())},
             conds={}, await_args={}, return_values={})
         validate_resumable_body("f", body)
 
@@ -228,8 +233,7 @@ class TestArgListFlushRight:
                              init=THIRLiteral(result_type=INT32, value=1),
                              cpp_type="int32_t")
         body = THIRResumableBody(
-            leaves={1: THIRRaise(cpp_type="::tpy::ValueError",
-                                 args=(self._lift(value=nested),))},
+            leaves={1: self._raise(self._lift(value=nested))},
             conds={}, await_args={}, return_values={})
         with pytest.raises(THIRValidationError,
                            match="THIRArgTemp outside a call arg"):

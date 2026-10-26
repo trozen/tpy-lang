@@ -498,9 +498,9 @@ def f(p: A) -> None:
     fn = next(f for f in ast.functions
               if isinstance(f, TpyFunction) and f.name == "f")
     raised = [s for s in fn.body if isinstance(s, TpyRaise)]
-    assert len(raised) == 1 and raised[0].resolved_ctor_init is not None
-    assert str(unwrap_ref_type(
-        raised[0].resolved_ctor_init.params[0].type)) == "A | B"
+    ctor = raised[0].raised_construction().resolved_function_info
+    assert len(raised) == 1 and ctor is not None
+    assert str(unwrap_ref_type(ctor.params[0].type)) == "A | B"
 
 
 def test_union_variant_argument_renders_at_the_union():

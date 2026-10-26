@@ -1,0 +1,1 @@
+NativeErr is a @native class bound to the C++ struct in native_types.hpp; it has no CPython implementation.

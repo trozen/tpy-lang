@@ -2780,7 +2780,7 @@ inline ::tpystd::tpy::Poll<T> _WaitForFuture<T>::__poll__(::tpystd::coro::Waker 
             return this->_inner.get().__poll__(waker);
         } catch (const ::tpy::CancelledError&) {
             if (this->_timed_out) {
-                throw ::tpy::TimeoutError{};
+                throw ::tpy::TimeoutError();
             }
             throw;
         }

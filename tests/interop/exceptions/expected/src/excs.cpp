@@ -39,7 +39,7 @@ int64_t exit_str() {
 }
 
 int64_t exit_bare() {
-    throw ::tpy::SystemExit{};
+    throw ::tpy::SystemExit();
 }
 
 int64_t exit_none() {

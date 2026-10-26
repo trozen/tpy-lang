@@ -1,0 +1,1 @@
+main.py:18: error: type argument 'choose()' is not a type; type arguments must be static types

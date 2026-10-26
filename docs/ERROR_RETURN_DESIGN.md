@@ -161,8 +161,10 @@ What follows from "plain value, never thrown":
   return-only exception. To hand the error to code that wants an `Exception`,
   build one: `RuntimeError(str(e))`.
 
-Exception types can have data fields. `raise E(args)` passes constructor arguments,
-and `except E as e` binds the error value for field access. See `EXCEPTION_DESIGN.md` E6.
+Exception types can have data fields. `raise E(args)` returns the construction
+`E(args)`, analyzed as that expression is (keyword arguments included:
+`raise E(code=3)` renders `return ::tpy::make_unexpected(E(3));`), and
+`except E as e` binds the error value for field access. See `EXCEPTION_DESIGN.md` E6.
 
 ### `@error_return(E)` Decorator
 
@@ -527,7 +529,7 @@ never sees it -- no stub needed for that case.
 | Subclassing a return exception (marker or not) | `'Sub' cannot subclass 'E': a return-only exception (ReturnException) is handled by exact type and cannot be subclassed` |
 | Return exception passed as `Exception` / `BaseException` / `Throwable` | `'E' is a return-only exception (ReturnException) and cannot be used as 'Exception'` |
 | `e.clone()` / `e.__raise__()` on a return exception | `'E' is a return-only exception (ReturnException): ... it has no 'clone()'` |
-| `raise E("why")` on a class that declares no message | `'raise E()' does not accept arguments: a return-only exception carries only the fields it declares` |
+| `raise E("why")` on a class that declares no message | `'E' has no __init__: a return-only exception carries only the fields it declares; add 'message: str' and an __init__ to 'E' to construct it with one` (the expression `E("why")` gives the same) |
 | `super().__init__(msg)` on a class that declares no `message` | `'E' is a return-only exception (ReturnException): ... stores a message argument in a declared 'message: str' field, which 'E' does not declare` |
 | Reading `e.message` when the class declares none | `Record 'E' has no field 'message': a return-only exception (ReturnException) carries only the fields it declares` |
 | `message` declared with a type other than `str` | `Field 'message' of return-only exception 'E' must be 'str'` |

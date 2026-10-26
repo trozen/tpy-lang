@@ -6,4 +6,4 @@ def first[T](items: list[T]) -> T:
 
 
 nums = [1, 2, 3]
-first[int + str](nums)  # tpyc: error(/Cannot parse type annotation/)
+first[int + str](nums)  # tpyc: error(/type argument 'int \+ str' is not a type/)

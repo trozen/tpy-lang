@@ -1,0 +1,1 @@
+The warned copy is the raised object's own: a write to the source after the raise is not seen through it, by design (CPython raises the very object, so the outputs differ).

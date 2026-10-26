@@ -24,7 +24,7 @@ void main() {
     }
     {
         try {
-            throw MyError{};
+            throw MyError();
         } catch (const MyError& e) {
             std::cout << "empty:" << " " << e.msg << "\n" << ::tpy::check_signals;
         }

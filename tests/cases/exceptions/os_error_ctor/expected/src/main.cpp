@@ -203,7 +203,7 @@ void main() {
     }
     {
         try {
-            ::tpy::OSError{}.__raise__();
+            ::tpy::OSError().__raise__();
         } catch (const ::tpy::OSError& exc) {
             std::cout << "zero-arg plain:" << " " << ::tpy::print_bool((std::string(::tpy::__str__(exc)) == "")) << "\n" << ::tpy::check_signals;
         }

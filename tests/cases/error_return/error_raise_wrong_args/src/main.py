@@ -1,4 +1,5 @@
-# Wrong number of arguments to raise
+# Wrong number of arguments to raise: the statement and the expression
+# MyError(args) give one message.
 from tpy import int32, error_return, ReturnException
 
 class MyError(Exception, ReturnException):
@@ -12,4 +13,4 @@ class MyError(Exception, ReturnException):
 
 @error_return(MyError)
 def foo() -> int32:
-    raise MyError(1)  # tpyc: error(/expects 2 arguments, got 1/)
+    raise MyError(1)  # tpyc: error(/'MyError\(\)' expects 2 argument\(s\), got 1/)

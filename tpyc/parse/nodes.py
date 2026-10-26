@@ -462,7 +462,7 @@ class ResultForm(Enum):
 
 
 def _relaid_deepcopy(self, memo):
-    """A deep copy of a call (or `raise X(...)`) is a new analysis site: it
+    """A deep copy of a call is a new analysis site: it
     is written with what the call was written with, never with a layout an
     analysis committed (`relaid_copy`)."""
     # Lazy: sema imports this module; the copy reads the call's binding.
@@ -1607,35 +1607,35 @@ class TpyNonlocal(TpyStmt):
 
 @dataclass
 class TpyRaise(TpyStmt):
-    """raise E, raise E(args), raise <expr>, or bare raise (re-raise in except block)."""
-    exception_type: str | None = None  # type-constructor form (set by parser, qualified by sema)
-    args: list[TpyExpr] = field(default_factory=list)  # constructor arguments
-    raise_expr: TpyExpr | None = None  # expression form: raise <expr> (throw-tier only)
-    is_call_form: bool = False  # raise Name() vs raise Name (set by parser)
+    """raise E, raise <expr>, or bare raise (re-raise in except block).
+
+    `raise X(args)` is the expression form: its operand is the call as
+    written, a construction sema analyzes as any other."""
+    exception_type: str | None = None  # type form `raise E` (set by parser, qualified by sema)
+    raise_expr: TpyExpr | None = None  # expression form: raise <expr>
     deref_depth: int = 0  # Set by sema: __deref__ steps to peel before calling __raise__ (Phase 20)
-    # Set by sema on the type form: the class raised (its record's type), so
-    # the raise-tier and C++ spelling read the class, not its name.
+    # Set by sema: the class raised -- the type form's (its record's type),
+    # or the instantiation a construction operand builds -- so the raise
+    # tier and C++ spelling read the class, not its name. None for a value
+    # operand (`raise e`), whose dynamic class `__raise__()` dispatches on.
     resolved_type: Optional[TpyType] = None
-    # The exception's __init__, so codegen lowers each ctor arg through the same
-    # shared arg-lowering loop a normal `X(args)` construction uses (protocol /
-    # covariant / optional-ptr / union / mutated-temp dispatch, not just the
-    # plain coercion fallback). mutated_params is read finalized at codegen via
-    # this live reference.
-    resolved_ctor_init: 'FunctionInfo | None' = None
     # Set by sema when the raised class is @virtual_raise: codegen emits
     # `X(args).__raise__();` so the class's dispatching __raise__ applies.
     raise_via_virtual: bool = False
-    # The constructor's argument binding (`TpyCallLike.binding`).
-    binding: 'ArgBinding | None' = field(default=None, compare=False,
-                                         repr=False)
-
-    __deepcopy__ = _relaid_deepcopy
 
     def exprs(self) -> list[TpyExpr]:
-        result = list(self.args)
-        if self.raise_expr is not None:
-            result.append(self.raise_expr)
-        return result
+        return [self.raise_expr] if self.raise_expr is not None else []
+
+    def raised_construction(self) -> TpyExpr | None:
+        """The construction the operand is, when it raises a fresh object of
+        the class sema resolved (`resolved_type`): the call node that
+        builds it (a dotted callee's expansion)."""
+        if self.raise_expr is None or self.resolved_type is None:
+            return None
+        node = self.raise_expr
+        while getattr(node, "macro_expansion", None) is not None:
+            node = node.macro_expansion
+        return node
 
 
 @dataclass
@@ -3043,16 +3043,23 @@ def walk_body_stmts(
     stmts: list[TpyStmt],
     on_expr: Callable[[TpyExpr], None],
     on_stmt: Callable[[TpyStmt], None],
+    *,
+    on_stmt_expr: Callable[[TpyStmt, TpyExpr], None] | None = None,
 ) -> None:
-    """Walk statements calling on_expr/on_stmt. Does NOT recurse into TpyNestedDef."""
+    """Walk statements calling on_expr/on_stmt. Does NOT recurse into
+    TpyNestedDef. `on_stmt_expr`, when given, takes each expression in
+    place of on_expr, with the statement that holds it."""
     for stmt in stmts:
         on_stmt(stmt)
         if isinstance(stmt, TpyNestedDef):
             continue  # separate scope
         for expr in stmt.exprs():
-            on_expr(expr)
+            if on_stmt_expr is None:
+                on_expr(expr)
+            else:
+                on_stmt_expr(stmt, expr)
         for body in stmt.sub_bodies():
-            walk_body_stmts(body, on_expr, on_stmt)
+            walk_body_stmts(body, on_expr, on_stmt, on_stmt_expr=on_stmt_expr)
 
 
 def value_capture_lambdas(stmts: list[TpyStmt], *, nested: bool = False

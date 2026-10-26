@@ -177,7 +177,7 @@ def relaid_copy(call, copy_operand: Callable[['TpyExpr'], 'TpyExpr'],
 def temp_call_args(outer, *, drop_receiver: bool = False) -> dict:
     """The argument fields of a call node sema builds to analyze `outer`
     through another route (a module function, a dotted constructor,
-    `Base.m(self, ...)`, an object's `__call__`, `raise X(...)`): what
+    `Base.m(self, ...)`, an object's `__call__`): what
     `outer` was written with (`source_view`), so analyzing `outer` again
     binds from the source. `drop_receiver`: `outer`'s first positional is
     the receiver."""
@@ -193,8 +193,7 @@ def adopt_temp_call(outer, temp, *, resolution: bool = True,
     """`outer` takes the arguments the temp call built by `temp_call_args`
     analyzed -- its argument list and binding (`relayout`) -- and, with
     `resolution`, the callee it resolved to, with `type_args` the type
-    arguments that callee was instantiated at. A `raise X(...)` statement
-    takes only what it has fields for. `receiver`: the explicit receiver
+    arguments that callee was instantiated at. `receiver`: the explicit receiver
     `temp_call_args` dropped, which stays `outer`'s first written
     positional."""
     binding = temp.binding
@@ -209,10 +208,7 @@ def adopt_temp_call(outer, temp, *, resolution: bool = True,
             tuple(temp.args), tuple((temp.kwargs or {}).items()),
             temp.double_star_unpack), binding)
     if resolution:
-        if hasattr(outer, "resolved_function_info"):
-            outer.resolved_function_info = temp.resolved_function_info
-        else:
-            outer.resolved_ctor_init = temp.resolved_function_info
+        outer.resolved_function_info = temp.resolved_function_info
     if type_args:
         outer.inferred_type_args = temp.inferred_type_args
         outer.representational_subst_params = (
@@ -542,10 +538,8 @@ def candidate_of(written: CallSource, binding: ArgBinding,
 @dataclass(frozen=True)
 class BindReject:
     """Why a call's arguments do not bind to a callee, as the diagnostic
-    says it. `arity`: (min, max, got) when the reason is the argument count
-    alone, for a caller that words it its own way (`raise X(...)`)."""
+    says it."""
     message: str
-    arity: tuple[int, int, int] | None = None
 
 
 def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
@@ -625,8 +619,7 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
         takes = (f"{len(fixed_pos)} positional argument(s)"
                  if min_args == len(fixed_pos)
                  else f"{min_args} to {len(fixed_pos)} positional arguments")
-        return BindReject(f"'{name}' takes {takes}, got {n}",
-                          arity=(min_args, len(fixed_pos), n))
+        return BindReject(f"'{name}' takes {takes}, got {n}")
 
     if not regular:
         for i in kwonly:
@@ -712,8 +705,7 @@ def bind(written: CallSource, params: Sequence['ParamInfo'],
     max_args = (2**31 if va is not None
                 else len(params) - (1 if kw_param is not None else 0))
     if count < min_args or count > max_args:
-        return BindReject(arity_error_msg(name, min_args, max_args, count),
-                          arity=(min_args, max_args, count))
+        return BindReject(arity_error_msg(name, min_args, max_args, count))
 
     return ArgBinding(params, tuple(slots), tuple(positions), length,
                       keywords=tuple(k for k, _ in written.keywords),

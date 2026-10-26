@@ -281,7 +281,7 @@ void main() {
     pb2.push(2);
     {
         try {
-            ::nb::GEx<int32_t>(3, 5).__raise__();
+            throw ::nb::GEx<int32_t>(3, 5);
         } catch (const ::tpy::Exception& gx) {
             std::cout << "generic-raise" << " " << std::string(::tpy::__str__(gx)) << "\n" << ::tpy::check_signals;
         }

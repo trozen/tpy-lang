@@ -1407,10 +1407,10 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
                   argtemp_ok=part.kind is DeferredPartKind.TEMP)
         return
     if isinstance(node, THIRRaise):
-        # `raise X(args)` flushes its ctor arg temps before the throw line, so
-        # the args are a flush position exactly like a call's. (They are the
-        # ctor's directly -- no intermediate THIRCtorCall node carries them.)
-        _walk_arg_list(owner, node.args, return_type, argtemp_ok=True)
+        # The raised object's temps flush before the raising line, so it is
+        # a flush position exactly like a return value.
+        if node.raise_expr is not None:
+            _walk(owner, node.raise_expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRComprehensionBlock):
         # Every statement of the body flushes its own temps inside the

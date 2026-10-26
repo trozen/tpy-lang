@@ -212,13 +212,14 @@ def _extract_proto_param_forwarding(
 
 
 def _body_has_raise(stmts: list[TpyStmt], exception_type: str) -> bool:
-    """Return True if any path in *stmts* contains ``raise <exception_type>``.
-
-    Called after body analysis, so TpyRaise.exception_type is already
-    qualified (e.g. 'builtins.StopIteration').
+    """Return True if any path in *stmts* raises the class *exception_type*
+    names (qualified, e.g. 'builtins.StopIteration'), by the type form or a
+    construction. Called after body analysis, which resolved each raise.
     """
     for stmt in stmts:
-        if isinstance(stmt, TpyRaise) and stmt.exception_type == exception_type:
+        if (isinstance(stmt, TpyRaise)
+                and isinstance(stmt.resolved_type, NominalType)
+                and stmt.resolved_type.qualified_name() == exception_type):
             return True
         if isinstance(stmt, TpyIf):
             if _body_has_raise(stmt.then_body, exception_type) or _body_has_raise(stmt.else_body, exception_type):

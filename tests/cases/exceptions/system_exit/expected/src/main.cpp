@@ -173,7 +173,7 @@ void codes() {
     }
     {
         try {
-            throw ::tpy::SystemExit{};
+            throw ::tpy::SystemExit();
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes SystemExit()", e);
         }

@@ -1161,9 +1161,10 @@ class MethodAnalyzer:
             result = self.calls._analyze_enum_from_value(call, ref.info)
         else:
             record = ref.info
-            if expr.type_args:
+            if expr.type_args and None not in expr.type_args:
                 # Explicit type arguments are the instantiation, as
-                # `Box[int](3)` spells it.
+                # `Box[int](3)` spells it; with a `_` wildcard they stay
+                # the call's type arguments, which inference completes.
                 call.call_type = NominalType(
                     record.name, tuple(expr.type_args),
                     _module_qname=record.qualified_name())
@@ -1183,8 +1184,11 @@ class MethodAnalyzer:
         member of a module (`m.Rec(...)`, `pkg.sub.Rec(...)`, `tpy.int32(...)`):
         that keeps the module-call constructor route (`user_module_call` /
         `builtin_module_call`), whose call node the lowering's statement
-        arms (`async with m.Gate()`) admit."""
-        if ref.kind != SymbolKind.RECORD or ref.info.type_params:
+        arms (`async with m.Gate()`) admit. Written type arguments take the
+        type-call route, which checks them against the class."""
+        if (ref.kind != SymbolKind.RECORD or ref.info.type_params
+                or expr.type_args
+                or expr.type_args_parse_error is not None):
             return False
         module_name = self.ctx.module_named_by(expr.obj)
         if module_name is None:

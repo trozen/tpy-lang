@@ -301,7 +301,7 @@ void main() {
     }
     {
         try {
-            throw Thrown{};
+            throw Thrown();
         } catch (const Thrown& t) {
             std::cout << "thrown-subclass" << " " << ::tpy::repr_of(std::string(::tpy::__str__(t))) << "\n" << ::tpy::check_signals;
         }
@@ -336,7 +336,7 @@ void main() {
     std::cout << "method-two-level-parent" << " " << le.via_super() << " " << le.via_named() << "\n" << ::tpy::check_signals;
     {
         try {
-            EB<std::vector<int32_t>>(std::vector<int32_t>{1, 2}).__raise__();
+            throw EB<std::vector<int32_t>>(std::vector<int32_t>{1, 2});
         } catch (const ::tpy::Exception& eb) {
             std::cout << "raise-generic-inferred" << " " << ::tpy::repr_of(std::string(::tpy::__str__(eb))) << "\n" << ::tpy::check_signals;
         }

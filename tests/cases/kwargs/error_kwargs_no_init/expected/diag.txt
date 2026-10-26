@@ -1,1 +1,1 @@
-main.py:8: error: 'Bare()' got unexpected keyword argument 'x'
+main.py:9: error: 'Bare' has no __init__; use @dataclass or define __init__ to accept constructor arguments

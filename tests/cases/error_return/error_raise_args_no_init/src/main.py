@@ -1,4 +1,5 @@
-# raise E(args) without __init__ is an error when E has data fields
+# A return exception without __init__ takes no constructor arguments
+# (ERROR_RETURN_DESIGN.md "Exception Type"); CPython accepts `MyError(1, "oops")`.
 from tpy import int32, error_return, ReturnException
 
 class MyError(Exception, ReturnException):
@@ -7,4 +8,4 @@ class MyError(Exception, ReturnException):
 
 @error_return(MyError)
 def foo() -> int32:
-    raise MyError(1, "oops")  # tpyc: error(/has data fields but no __init__/)
+    raise MyError(1, "oops")  # tpyc: error(/'MyError' has no __init__; use @dataclass or define __init__/)

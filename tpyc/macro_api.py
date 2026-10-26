@@ -1902,9 +1902,18 @@ class AstBuilder:
                           is_tuple_unpack=is_tuple_unpack)
 
     def raise_(self, exception_type: str, args: list[Expr] | None = None) -> Stmt:
-        if args:
-            return TpyRaise(exception_type=exception_type, args=args, is_call_form=True)
-        return TpyRaise(exception_type=exception_type)
+        # The raise a user writes: a dotted name is the attribute chain, so
+        # the class resolves through the scope as `raise m.E` /
+        # `raise m.E(args)` does.
+        callee = self.name(exception_type)
+        if not args:
+            if isinstance(callee, TpyFieldAccess):
+                return TpyRaise(raise_expr=callee)
+            return TpyRaise(exception_type=exception_type)
+        if isinstance(callee, TpyFieldAccess):
+            return TpyRaise(raise_expr=TpyMethodCall(
+                obj=callee.obj, method=callee.field, args=args))
+        return TpyRaise(raise_expr=TpyCall(func=callee, args=args))
 
     def assert_(self, condition: Expr, message: Expr | None = None) -> Stmt:
         return TpyAssert(condition=condition, message=message)

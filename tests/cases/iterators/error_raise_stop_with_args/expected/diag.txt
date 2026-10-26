@@ -1,1 +1,1 @@
-main.py:9: error: 'raise StopIteration()' does not accept arguments
+main.py:11: error: 'StopIteration' has no __init__: a return-only exception carries only the fields it declares

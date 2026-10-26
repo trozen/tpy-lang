@@ -1,0 +1,1 @@
+Function macro: @raise_e / @raise_d are compile-time decorators, not valid Python at runtime.
