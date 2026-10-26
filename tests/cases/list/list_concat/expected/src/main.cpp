@@ -26,7 +26,7 @@ void test_add() {
 void test_iadd() {
     std::vector<::tpy::BigInt> a = {10, 20};
     std::vector<::tpy::BigInt> b = {30, 40};
-    ::tpy::list_extend(a, b);
+    ::tpy::list_extend(a, ::tpy::own_iter(std::move(b)));
     std::cout << ::tpy::ListPrinter(a) << "\n" << ::tpy::check_signals;
 }
 

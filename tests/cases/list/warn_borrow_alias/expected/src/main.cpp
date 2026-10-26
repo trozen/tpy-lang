@@ -81,7 +81,7 @@ void test_alias_aug_assign() {
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point& v = ::tpy::__getitem__(items, 0);
     std::vector<Point>& alias = items;
-    ::tpy::list_extend(alias, std::vector<Point>{Point(5, 6)});
+    ::tpy::list_extend(alias, ::tpy::own_iter(std::vector<Point>{Point(5, 6)}));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 

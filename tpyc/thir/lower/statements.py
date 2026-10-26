@@ -215,7 +215,7 @@ from ..nodes import (HoistDecl, THIRStoragePlacement, THIRHoistedBinding,
     THIRFoldedIfChain, THIRFrameNestedDef, THIRFrameSlotWrite,
     THIRCoroHandleMove, THIRMatch, THIRImportInit, THIRNoOpStmt,
     THIROptViewArg, THIRPrint, THIRExceptHandler, THIRPrintArg,
-    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRRaise, THIRInplaceContainerOp,
+    THIRPtrLocalDecl, THIRPtrLocalRebind, THIRRaise,
     THIRResumableReturn, THIRReturn, THIRFinallyDeferredReturn,
     DeferredPartKind, DeferredTuplePart, THIRTupleLiteral,
     THIRTupleStorageAlias, THIRSelf, THIRSetItem, THIRSubscript,
@@ -225,7 +225,7 @@ from ..nodes import (HoistDecl, THIRStoragePlacement, THIRHoistedBinding,
     WithTargetArm)
 from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _own_storage_tuple_return, _own_wrapper_return, _record_storage_return,
-    _value_tuple_return, _viewfam_return_slots, _bytes_param_view_slot,
+    _value_tuple_return, _viewfam_return_slots,
     _alias_call_source_ok, overload_if_fold, _call_storage_optional_return,
     receiver_is_const, _expr_is_const_source, _call_arm_variant, copy_call_arg,
     _storage_family_ok, _narrow_alias_name, _fresh_narrow_local,
@@ -269,7 +269,7 @@ from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _value_opt_callable, _value_opt_tuple, _value_opt_tuple_inner,
     _value_opt_tuple_copyable, _value_opt_owned_view,
     _peel_stale_view_owned_coerce, _reassert_bump_info, _resolve_pending_view,
-    _resolve_plain_alias, _resolved_bytes_value, _resolved_scalar,
+    _resolve_plain_alias, _resolved_bytes_value,
     _resolved_str_value, _bytes_view_family_value, _coerce_disposition,
     _resolved_viewfam_value, _view_inner_value_opt, _value_opt_view,
     _is_range_call, _runtime_bigint, _narrow_key_type, _range_object_value,
@@ -327,7 +327,7 @@ from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
     _container_literal_decl_ok, _container_literal_shape_ok, _bytearray_recv,
     _bytearray_value_slot_init, _container_setitem_ok, _storage_decl_src,
     _deref_coerce_borrow_slot, _opt_ptr_addr_of_record_source,
-    _record_setitem_own_value_slot, _user_record_setitem_ok,
+    _user_record_setitem_ok,
     _expr_evaluation_inert, _print_kwarg_token, _record_slice_upcast_ok,
     _setitem_widened_elem_ok, _setitem_widened_family_ok,
     _tuple_elem_slots_ptr_optional, _field_over_call_ok, _is_builtin_print,
@@ -352,7 +352,7 @@ from .convert import (
     layout_tuple, open_param_result, spelled, store_slot, to_local,
     view_to_owned)
 from .expressions import (
-    _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
+    _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
     _select_result,
     _subscript_yields_borrow_ptr,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
@@ -374,7 +374,7 @@ from .expressions import (
     _lower_slice_bound, _slot_literal_retype, _value_opt_scalar_binding,
     _value_opt_binding_kind, _value_opt_view_binding,
     _record_key, _lower_call_receiver,
-    _record_receiver, _pinned_literal_arg, _operator_receiver_pinned,
+    _record_receiver, _operator_receiver_pinned,
 )
 from . import bindings as _bindings
 from . import comprehensions as _comprehensions
@@ -6463,71 +6463,6 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
     )
 
 
-def _list_inplace_extend(stmt: TpyAugAssign, lc: _LowerCtx,
-                         declared: dict[str, TpyType]) -> 'THIRStmt | None':
-    """`c += v` on a list resolved to the mutating `__iadd__` dunder ->
-    `::tpy::list_extend(c, v)` (the resolved-inplace arm). Restricted to a
-    bare list NAME target with a @native free-function
-    dunder, so the receiver renders bare. A non-empty array-literal RHS gets
-    the std::vector<E>{...} type prefix the two-parameter template needs.
-    Returns None (not a reject) when the shape is outside this arm, so the
-    generic aug-assign gate below runs."""
-    analyzer = lc.analyzer
-    inplace = stmt.resolved_inplace
-    if inplace is None:
-        return None
-    method = inplace.method
-    if not (method.native_function and method.native_name):
-        return None
-    if (isinstance(stmt.target, TpyName)
-            and stmt.target.name in declared
-            and not lc.binding(stmt.target.name).pointer):
-        recv_t = declared[stmt.target.name]
-    elif (isinstance(stmt.target, TpyFieldAccess)
-          and _field_markers_clean(stmt.target)
-          and _field_receiver_ok(stmt.target, declared, analyzer)):
-        # A list FIELD target (`self.items += [..]` ->
-        # `::tpy::list_extend(this->items, ..)`) -- the member lvalue
-        # renders through the field arm like any receiver.
-        recv_t = analyzer.get_expr_type(stmt.target)
-    else:
-        return None
-    recv_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
-    if not is_list(recv_bare):
-        return None
-    loc = getattr(stmt, "loc", None)
-    # `xs += <it>`: the extend reads the source INSIDE the statement, so the
-    # OPERAND row's transient verdict is the one that applies.
-    value = _lower_expr(
-        stmt.value, lc, declared,
-        use=_ExprUse(result=_ExprResultUse.STORAGE, allow_temps=True,
-                     pos=SinkPos.OPERAND, forms=_LEND_OK))
-    # The array-literal vector prefix keys on the RAW target type
-    # (`is_list(get_expr_type(target))`), so an inferred (still-pending) list
-    # binding gets no prefix while an annotated `list[T]` local does
-    # (whole-list type_to_cpp, no non-empty guard).
-    target_type = analyzer.get_expr_type(stmt.target)
-    value_vector_cpp = None
-    if isinstance(stmt.value, TpyArrayLiteral) and is_list(target_type):
-        value_vector_cpp = lc.render_type(target_type)
-    _witness("aug.container_inplace")
-    if isinstance(stmt.target, TpyName):
-        receiver: THIRExpr = THIRName(result_type=recv_t,
-                                      name=stmt.target.name, loc=loc)
-    else:
-        receiver = _lower_expr(
-            stmt.target, lc, declared,
-            use=_ExprUse(result=_ExprResultUse.RECEIVER),
-            field_prechecked=True)
-    return THIRInplaceContainerOp(
-        receiver=receiver,
-        native_name=method.native_name,
-        value=value,
-        value_vector_cpp=value_vector_cpp,
-        loc=loc,
-    )
-
-
 def _leaf_finally_crossing_loop(stmt: TpyTry) -> bool:
     """Whether a leaf try/finally contains a `break`/`continue`: RETURN
     crossings ride the leaf finally bridge (the emit records the frame on
@@ -12023,17 +11958,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     lc, loc)
             if record_like(elem_t, analyzer) and isinstance(v, TpyName):
                 if not _is_move_source(v, lc):
-                    if _record_setitem_own_value_slot(stmt.target, analyzer):
-                        # An `Own[...]` value slot is a `V&&` sink: a
-                        # copy-shaped name has no binding there, and the
-                        # bare forward does not compile. Sema warns the
-                        # copy and then lets it through, so the write
-                        # rejects here rather than emitting it.
-                        note_detail("setitem.record_own_copy")
-                        raise ThirUnsupported(stmt_reject_reason(stmt))
-                    # A plain `T` value slot binds `const T&`: the
-                    # copy-shaped name forwards bare through the STORAGE
-                    # lowering below, carrying sema's copy warning.
+                    # A copy-shaped name takes the argument body below: an
+                    # `Own[...]` value slot gets its copy temp, a plain `T`
+                    # slot binds `const T&`; sema warns the copy.
+                    pass
                 else:
                     # A record element slot fed by the last use of an owned
                     # local moves in
@@ -12048,24 +11976,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             setitem = _call_arm_variant(stmt.target, SubscriptDunder.SET,
                                         analyzer)
             assert setitem is not None
-            # The value is the setter's argument: a literal is pinned to
-            # its parameter's own type, so C++ binds that variant
-            # (`_pinned_literal_arg`), as the key is.
-            value = _pinned_literal_arg(stmt.value, setitem.params[-1].type,
-                                        setitem, lc, declared)
-            if value is None:
-                # The value lands in `__setitem__`'s PARAM, so a bytes
-                # value is read through the view there.
-                value = _slot_literal_retype(
-                    _flush_witness(
-                        "flush.assign",
-                        _lower_expr(stmt.value, lc, declared,
-                                    use=_ExprUse(
-                                        result=_ExprResultUse.STORAGE,
-                                        allow_temps=True,
-                                        slot_target=_bytes_param_view_slot(
-                                            setitem.root.params[-1].type)))),
-                    elem_t, lc)
+            # The value is the explicit `recv.__setitem__(key, v)` call's
+            # last argument, as the key is its first.
+            value = _dunder_arg(
+                stmt.target.obj, [stmt.target.index, stmt.value],
+                len(setitem.params) - 1, setitem, lc, declared,
+                temp_args=True)
             _witness("setitem.user_record")
             return _store_item(stmt, target, value, lc, loc)
         if isinstance(stmt.target, TpySubscript):
@@ -12550,9 +12466,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         if (isinstance(stmt.target, TpyName)
                 and stmt.target.name in narrowed):
             raise ThirUnsupported("stmt.aug_assign")
-        inplace = _list_inplace_extend(stmt, lc, declared)
-        if inplace is not None:
-            return inplace
         if isinstance(stmt.target, TpySubscript):
             # A typed-dict subscript target is a FIELD lvalue: it rides the
             # generic `target = (target OP value)` tail as a THIRAssign
@@ -12582,64 +12495,28 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                       or _bytes_aug_concat_ok(
                           stmt, declared, lc.prescan, analyzer))
         if not aug_ok and stmt.resolved_inplace is not None:
-            # An IN-PLACE dunder aug-assign (`b += 10` on Atomic ->
-            # `b.__iadd__(10);`, `s |= {3}` -> `::tpy::set_update(s, ..)`):
-            # a call over the resolved inplace method, through
-            # THIRMethodCall's three arms. Bare non-pointer NAME receivers
-            # and scalar / set-literal values only (an ArrayLiteral value is
-            # the list-extend arm's, handled above; indirect receivers
-            # compose a deref this row does not carry).
+            # An IN-PLACE dunder aug-assign: a call over the resolved
+            # in-place method through THIRMethodCall's three arms -- a
+            # @native free function renders `<native>(c, v)`
+            # (`::tpy::list_extend(xs, v)`, `::tpy::bytearray_iadd(ba, v)`,
+            # `::tpy::set_update(s, v)`), a method `c.__iadd__(v)`. A NAME
+            # (a pointer-form one is written through) or a FIELD target; the
+            # field arm's own receiver gates apply during lowering.
             _inp_fi = stmt.resolved_inplace.method
-            _inp_vt = analyzer.get_expr_type(stmt.value)
             _inp_target_ok = (
                 (isinstance(stmt.target, TpyName)
-                 and stmt.target.name in declared
-                 and not lc.binding(stmt.target.name).pointer)
-                # A FIELD target (`a.get().n += 5` ->
-                # `a.get().n.__iadd__(5);`): the field arm's own receiver
-                # gates apply during lowering and reject unroutable chains.
+                 and stmt.target.name in declared)
                 or (isinstance(stmt.target, TpyFieldAccess)
                     and _field_markers_clean(stmt.target)))
-            _inp_tt = analyzer.get_expr_type(stmt.target)
-            if (_inp_target_ok
-                    and _inp_fi is not None
-                    and (_resolved_scalar(_inp_vt, analyzer)
-                         or (isinstance(stmt.value, TpySetLiteral)
-                             and _container_literal_shape_ok(
-                                 stmt.value,
-                                 unwrap_readonly(unwrap_ref_type(
-                                     unwrap_send_sync(_inp_vt))),
-                                 analyzer))
-                         # A record RVALUE value (`v += Vec2(3, 4)` ->
-                         # `v.__iadd__(Vec2(3, 4));`): the ctor / by-value
-                         # free-call render lands bare in the dunder's slot,
-                         # exactly as the same-typed NAME leg below does for
-                         # an lvalue operand.
-                         or _record_rvalue_source_shape(stmt.value, analyzer)
-                         # A SAME-typed container NAME value binds bare
-                         # (`e |= b` -> `::tpy::set_update(e, b)`).
-                         or (isinstance(stmt.value, TpyName)
-                             and stmt.value.name in declared
-                             and not lc.binding(stmt.value.name).pointer
-                             and stmt.value.name not in narrowed
-                             and _inp_vt is not None
-                             and _inp_tt is not None
-                             and unwrap_readonly(unwrap_ref_type(
-                                 unwrap_send_sync(_inp_vt))).to_cpp()
-                             == unwrap_readonly(unwrap_ref_type(
-                                 unwrap_send_sync(_inp_tt))).to_cpp()))):
+            if _inp_target_ok and _inp_fi is not None and _inp_fi.params:
                 _witness("aug.inplace_dunder")
-                recv = _lower_expr(
+                recv = _deref_loop_source(_lower_expr(
                     stmt.target, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.RECEIVER))
-                _, val = _operator_literal_pins(
-                    stmt.resolved_inplace, None, stmt.value, lc, declared)
-                val = val or _flush_witness(
-                    "flush.assign",
-                    _lower_expr(stmt.value, lc, declared,
-                                use=_ExprUse(
-                                    result=_ExprResultUse.STORAGE,
-                                    allow_temps=True)))
+                    use=_ExprUse(result=_ExprResultUse.RECEIVER)), lc)
+                # The operand is the explicit `c.__iadd__(v)` call's
+                # argument, converted to what the dunder's parameter takes.
+                val = _dunder_arg(stmt.target, [stmt.value], 0, _inp_fi, lc,
+                                  declared, temp_args=True)
                 _inp_bc = _bound_call_of(_inp_fi, _inp_fi.name)
                 recv, _ = _operator_receiver_pinned(stmt.resolved_inplace,
                                                     recv, val, lc)

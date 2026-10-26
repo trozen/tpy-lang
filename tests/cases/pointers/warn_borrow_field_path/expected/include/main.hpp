@@ -145,7 +145,7 @@ inline void Container::safe_subscript_assign() {
 //     print(len(self.items))
 inline void Container::aug_assign_field_container() {
     Point* ptr = &::tpy::__getitem__(this->items, 0);
-    ::tpy::list_extend(this->items, std::vector<Point>{Point(5, 6)});
+    ::tpy::list_extend(this->items, ::tpy::own_iter(std::vector<Point>{Point(5, 6)}));
     std::cout << ::tpy::__len__(this->items) << "\n" << ::tpy::check_signals;
 }
 

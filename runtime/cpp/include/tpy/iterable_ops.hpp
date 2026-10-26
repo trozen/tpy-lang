@@ -37,10 +37,11 @@ namespace tpy {
 
 template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
-void list_extend(std::vector<T>& v, Container&& other) {
+std::vector<T>& list_extend(std::vector<T>& v, Container&& other) {
     auto&& r = ::tpy::iter_range(other);
     auto end = r.end();
     for (auto it = r.begin(); it != end; ++it) v.push_back(take_elem(it));
+    return v;
 }
 
 // -- list_set_slice for non-range iterables ---------------------------------

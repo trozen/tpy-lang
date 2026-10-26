@@ -1,0 +1,1 @@
+main.py:17: error: Integer literal 300 is outside int8 range [-128, 127] in '+=' operand

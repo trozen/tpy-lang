@@ -52,7 +52,7 @@ void stream_content_length() {
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
             std::cout << "chunk:" << " " << ::tpy::bytes_decode(chunk) << "\n" << ::tpy::check_signals;
-            got = ::tpy::bytearray_concat(got, chunk);
+            ::tpy::bytearray_iadd(got, chunk);
         }
     }
     std::cout << "full:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
@@ -99,7 +99,7 @@ void stream_chunked() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-            got = ::tpy::bytearray_concat(got, chunk);
+            ::tpy::bytearray_iadd(got, chunk);
         }
     }
     std::cout << "chunked:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
@@ -195,7 +195,7 @@ void stream_context_manager() {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
                 ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-                got = ::tpy::bytearray_concat(got, chunk);
+                ::tpy::bytearray_iadd(got, chunk);
             }
         }
         std::cout << "ctx body:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;
@@ -300,7 +300,7 @@ void non_streamed_iter_content() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             ::tpy::BytesView chunk = ::tpy::unwrap_ref(*__r_1);
-            got = ::tpy::bytearray_concat(got, chunk);
+            ::tpy::bytearray_iadd(got, chunk);
         }
     }
     std::cout << "non-stream iter_content:" << " " << ::tpy::bytes_decode(::tpy::Bytes(got)) << "\n" << ::tpy::check_signals;

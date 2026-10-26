@@ -2,10 +2,8 @@
 (`CallAnalyzer.commit_facts`): the mutation it makes of its
 receiver and of its operand reaches the caller's parameters. Pinned on the
 facts, since the program does not build yet: the operator's C++ wrapper is
-still const (BUGS.md#mutating-dunder-const-wrapper), a record's in-place
-operator over a record operand does not lower
-(BUGS.md#inplace-dunder-record-operand-unlowered), nor does a record's slice
-store."""
+still const (BUGS.md#mutating-dunder-const-wrapper), and a record's slice
+store does not lower."""
 
 from tpyc import get_lib_dir
 from tpyc.compiler import Compiler

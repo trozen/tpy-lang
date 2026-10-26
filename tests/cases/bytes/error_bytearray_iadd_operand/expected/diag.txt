@@ -1,0 +1,1 @@
+main.py:5: error: Type mismatch in '+=' operand: expected bytes or readonly[bytearray] or BytesView, got int

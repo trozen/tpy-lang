@@ -10,7 +10,6 @@ user_param: 3
 str_call: abc
 truthy: yes
 field_thru: 7
-augassign: 3
 augassign_str: zabc
 dict_read: 1
 dict_write: 2

@@ -736,12 +736,10 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # list_set_slice / list_set_stepped_slice
     "aug.inplace_dunder",           # resolved inplace method (`b += 10` on
                                     # Atomic -> `b.__iadd__(10);`, `s |= {3}`
-                                    # -> set_update)
+                                    # -> set_update, `xs += ys` -> list_extend)
     "aug.record_binop",             # `a += b` on a record with no __iadd__:
                                     # the synthetic `a = (a) + (b);` off the
                                     # Own-returning __add__ fallback
-    "aug.container_inplace",        # `c OP= v` -> mutating dunder native
-                                    # free-function (list_extend, ...)
     "setitem.checked",              # `::tpy::__setitem__(c, k, v);`
     "setitem.bounds_safe",          # `c[static_cast<std::size_t>(k)] = v;`
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair

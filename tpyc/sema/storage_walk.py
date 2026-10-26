@@ -1018,6 +1018,24 @@ def loan_key(expr: TpyExpr) -> LoanKey | Unkeyed:
     return _loan_key(trace(expr))
 
 
+def prefix_loan_key(expr: TpyExpr, type_of: ExprTypeOf,
+                    policy: 'CallPolicy') -> LoanKey | None:
+    """For a path `loan_key` cannot key (`o.inner.xs`, a chain deeper than
+    one hop), the key of its longest keyable prefix: the storage that holds
+    what the path reaches. None for any other shape, and for a path that
+    reaches its end through a handle (`self._p.first` over a `Ptr` member):
+    by the POINTEE rule, what a handle points at is not its holder's."""
+    t = trace(expr)
+    if _loan_key(t) is not Unkeyed.UNPLACEABLE:
+        return None
+    roots = storage_roots(expr, Use.POINTEE, type_of, policy).names
+    for i in range(t.skip(), len(t.steps)):
+        lk = _loan_key(Trace(t.steps[i + 1:], t.end, t.arms))
+        if isinstance(lk, LoanKey):
+            return lk if lk.key.root in roots else None
+    return None
+
+
 def borrow_key(expr: TpyExpr) -> StorageKey | None:
     """`loan_key`'s key, None where it names none."""
     lk = loan_key(expr)

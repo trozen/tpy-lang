@@ -81,7 +81,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
+from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
@@ -4993,13 +4993,10 @@ class ExpressionAnalyzer:
                     warn_value_call_binding(self.ctx, expr.value, f"local '{name}'")
                 else:
                     record_stmt_borrow_binding(self.ctx, name, resolved, expr.value)
-                    register_binding_borrow(self.ctx, name, expr.value)
-                    val_inner = (expr.value.expr
-                                 if isinstance(expr.value, TpyCoerce)
-                                 else expr.value)
                     # Local import: statements imports this module.
-                    from .statements import _register_call_result_borrow
-                    _register_call_result_borrow(self.ctx, name, val_inner)
+                    from .statements import register_binding_loans
+                    register_binding_loans(self.ctx, name, expr.value,
+                                           resolved)
             result_type = _walrus_result_type(resolved, value_type,
                                               declared=declared)
 
@@ -5030,9 +5027,8 @@ class ExpressionAnalyzer:
             bt = self.ctx.func.borrow_tracker
             bt.rebind_borrower(name, expr.value)
             # Local import avoids the statements <-> expressions cycle.
-            from .statements import _register_tuple_binding_borrows
-            _register_tuple_binding_borrows(
-                self.ctx, name, expr.value, facts_type)
+            from .statements import register_binding_loans
+            register_binding_loans(self.ctx, name, expr.value, facts_type)
         # An alias of an ephemeral borrow is the same stale-slot borrow under
         # another name (mirrors the VarDecl _update_ephemeral_alias_fact).
         eph = self.ctx.func.ephemeral_borrow_vars

@@ -2999,15 +2999,7 @@ def _bytes_aug_concat_ok(stmt: TpyAugAssign, declared: dict[str, TpyType],
     tt = analyzer.get_expr_type(target)
     bt = _resolved_bytes_value(tt, analyzer)
     if bt is None or not is_bytes_type(bt):
-        # A BYTEARRAY target (`got += chunk` in a stream-read loop) takes
-        # the same resolved-binop concat-and-assign render -- the vector
-        # target reassigns from the concat's fresh vector, so the param
-        # dangling-span concern above does not translate; the local-only
-        # condition is kept anyway (no param witness).
-        ttu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt)))
-               if tt is not None else None)
-        if not is_bytearray_type(ttu):
-            return False
+        return False
     vt = analyzer.get_expr_type(stmt.value)
     return (_bytes_concat_operand(stmt.value, vt, analyzer))
 
@@ -3257,20 +3249,6 @@ def _container_setitem_ok(
             stmt.target, declared, pointers, narrowed, analyzer):
         return False
     return True
-
-
-def _record_setitem_own_value_slot(sub: TpySubscript, analyzer) -> bool:
-    """Whether the record's `__setitem__` value param is an `Own[...]` slot
-    (`ArrayList.__setitem__(self, index, value: Own[T])`, a `V&&` sink).
-    A copy-shaped record NAME cannot bind such a slot, so only a move source
-    or an rvalue is emittable there; a plain `T` slot binds `const T&` and
-    copies like any other param."""
-    setitem = _call_arm_variant(sub, SubscriptDunder.SET, analyzer)
-    if setitem is None:
-        return False
-    v = setitem.root.params[-1].type
-    return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(v))),
-                      OwnType)
 
 
 def _record_setitem_record_source(v: TpyExpr, elem_t: 'TpyType',
@@ -10752,7 +10730,24 @@ def _container_method_call_supported(
             or note_detail("method.ret_type"))
 
 
-def _borrow_form_at_storage_slot(e: TpyMethodCall, index: int,
+class MethodCallFacts(NamedTuple):
+    """What a method-shaped argument's lowering reads off its call: the
+    receiver, the method name, the variant sema resolved, and whether the
+    call carries none of the special-emit markers (`plain`). An explicit
+    call states them (`of`); a call the source spells as an operator or a
+    subscript (`c += v`, `r[k]`) states them directly."""
+    recv: TpyExpr
+    method: str
+    fi: 'FunctionInfo | None'
+    plain: bool
+
+    @classmethod
+    def of(cls, e: TpyMethodCall) -> 'MethodCallFacts':
+        return cls(e.obj, e.method, e.resolved_function_info,
+                   _plain_member_call_markers_ok(e, targs_ok=True))
+
+
+def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
                                  ptype: 'TpyType | None') -> bool:
     """Whether argument `index` of a bodyless binding lands in a slot whose
     C++ is the receiver's STORAGE type while every argument the rows admit
@@ -10763,7 +10758,6 @@ def _borrow_form_at_storage_slot(e: TpyMethodCall, index: int,
     `Union<A*, B*>` argument (`None`, a `P | None` name) cannot construct
     that storage. A parameter the binding declares it lends is exempt: the
     declaration says the runtime takes it as a borrow."""
-    fi = e.resolved_function_info
     root = fi.root if fi is not None else None
     if (root is None or not is_bodyless_binding(root)
             or not 0 <= index < len(root.params)
@@ -10778,7 +10772,7 @@ def _borrow_form_at_storage_slot(e: TpyMethodCall, index: int,
 
 
 def _method_call_arg_ok(
-        e: TpyMethodCall, a: TpyExpr, ptype: 'TpyType | None', index: int,
+        call: MethodCallFacts, a: TpyExpr, ptype: 'TpyType | None', index: int,
         locals_: dict[str, TpyType], analyzer, *, temps_ok: bool,
         narrowed: 'set[str] | frozenset[str]',
         param_names: 'set[str] | frozenset[str]',
@@ -10791,20 +10785,20 @@ def _method_call_arg_ok(
         # position-blind); the genexpr's own lowering gates the source
         # shapes, so a bad shape still rejects.
         return True
-    if not _plain_member_call_markers_ok(e, targs_ok=True):
+    if not call.plain:
         # A marker call's arguments take the free call's path
         # (`_lower_marker_method_arg`); none reaches the receiver families.
         return False
-    if _borrow_form_at_storage_slot(e, index, ptype):
+    if _borrow_form_at_storage_slot(call.fi, index, ptype):
         return note_detail("method.arg_shape")
 
-    recv_type = _method_receiver_type(e.obj, locals_, analyzer)
-    fam = _method_recv_family(recv_type, analyzer, tparam_bounds, e.method)
+    recv_type = _method_receiver_type(call.recv, locals_, analyzer)
+    fam = _method_recv_family(recv_type, analyzer, tparam_bounds, call.method)
     if fam is not None:
         return fam.arg_ok(a, ptype, locals_, analyzer,
                           param_names=param_names, narrowed=narrowed,
                           temps_ok=temps_ok, index=index,
-                          overload=e.resolved_function_info,
+                          overload=call.fi,
                           movable_locals=movable_locals, func_name=func_name)
 
     if recv_type is not None and recv_type.is_pointer():
@@ -10821,24 +10815,24 @@ def _method_call_arg_ok(
     opt_recv = _optional_ptr_borrow(recv, analyzer)
     if opt_recv is not None:
         recv = unwrap_readonly(opt_recv.inner)
-    if isinstance(recv, OptionalType) and isinstance(e.obj, TpyName):
+    if isinstance(recv, OptionalType) and isinstance(call.recv, TpyName):
         # The NARROWED storage-optional receiver's arg-gate half (`m.group(1)`
         # on `m: Own[Match] | None`): the shape gate resolves the same deref
         # receiver to the inner record, and without this the registry lookup
         # below misses and every ARGUMENT silently rejects.
         _so = _storage_optional_return_type(recv, analyzer)
-        _so_occ = analyzer.get_expr_type(e.obj)
+        _so_occ = analyzer.get_expr_type(call.recv)
         if (_so is not None and _so_occ is not None
                 and not isinstance(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(_so_occ))), OptionalType)):
             recv = unwrap_readonly(_unwrap_own(unwrap_readonly(_so.inner)))
-    recv = _enum_receiver(e.obj, analyzer) or recv
-    if (isinstance(recv, UnionType) and isinstance(e.obj, TpyName)
-            and e.obj.name not in narrowed):
+    recv = _enum_receiver(call.recv, analyzer) or recv
+    if (isinstance(recv, UnionType) and isinstance(call.recv, TpyName)
+            and call.recv.name not in narrowed):
         # The assign-narrowed union receiver's arg-gate half: dispatch the
         # args on the member sema retyped the read to (the shape gate's
         # twin resolution).
-        _anu_occ = analyzer.get_expr_type(e.obj)
+        _anu_occ = analyzer.get_expr_type(call.recv)
         _anu_b = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             _anu_occ))) if _anu_occ is not None else None)
         if (_anu_b is not None
@@ -10854,17 +10848,17 @@ def _method_call_arg_ok(
         # unwrap above was found exactly that way).
         return note_detail("method.arg_recv_unresolved")
     overloads = analyzer.registry.get_method_overloads_with_parents(
-        ri, e.method)
+        ri, call.method)
     if not overloads:
         # A property SETTER call has a synthetic method name (`set_value`) --
         # the accessor is registered under the property name, so the registry
         # lookup misses; the resolved setter fi supplies the arg-temp slot.
-        setter_fi = e.resolved_function_info
+        setter_fi = call.fi
         if setter_fi is not None and setter_fi.is_property_setter:
             overloads = [setter_fi]
         else:
             return False
-    mfi = e.resolved_function_info
+    mfi = call.fi
     bound = bound_method_overload(overloads, mfi)
     if bound is None:
         return note_detail("method.arg_unbound_overload")
@@ -12828,6 +12822,9 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # the member read binds the template bare like the NAME row.
         _ArgRow("native_iterable_field", _r_native_iterable_field),
         _ArgRow("native_iterable_call", _r_native_iterable_call),
+        _ArgRow("native_iterable_range", _r_native_iterable_range),
+        _ArgRow("native_iterable_iterator_call",
+                _r_native_iterable_iterator_call),
         # ... and the COMPREHENSION source at the same structural slot
         # (`primes.extend([i for i in xs if p(i)])`): the stmt-expr renders
         # INLINE into the template slot, target-typed by the comprehension's
@@ -14938,15 +14935,17 @@ def _raw_record_overloads(t: 'TpyType | None', method_name: str,
     return analyzer.registry.get_method_overloads_with_parents(ri, method_name)
 
 
-def _raw_record_method_fi(e: TpyMethodCall, locals_: dict[str, TpyType],
+def _raw_record_method_fi(call: MethodCallFacts,
+                          locals_: dict[str, TpyType],
                           analyzer) -> 'FunctionInfo | None':
     """The raw registry entry of the variant the call binds
     (`bound_method_overload`). `_tparam_slot_temp_arg` keys its temp
     decision on the RAW param being a bare T."""
     return bound_method_overload(
-        _raw_record_overloads(_method_receiver_type(e.obj, locals_, analyzer),
-                              e.method, analyzer),
-        e.resolved_function_info)
+        _raw_record_overloads(_method_receiver_type(call.recv, locals_,
+                                                    analyzer),
+                              call.method, analyzer),
+        call.fi)
 
 
 def _raw_record_ctor_fi(rtype: 'TpyType | None',

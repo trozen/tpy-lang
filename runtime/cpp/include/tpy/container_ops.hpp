@@ -428,16 +428,19 @@ void list_remove(std::vector<T>& v, const U& value) {
  *
  * Extends vector with elements from another container.
  * Overloads handle both iterator-based containers and initializer_list.
+ * Returns `v`, the object `list.__iadd__` hands back.
  */
 template<typename T, typename Container>
     requires std::ranges::input_range<std::remove_cvref_t<Container>>
-void list_extend(std::vector<T>& v, Container&& other) {
+std::vector<T>& list_extend(std::vector<T>& v, Container&& other) {
     v.insert(v.end(), other.begin(), other.end());
+    return v;
 }
 
 template<typename T>
-void list_extend(std::vector<T>& v, std::initializer_list<T> other) {
+std::vector<T>& list_extend(std::vector<T>& v, std::initializer_list<T> other) {
     v.insert(v.end(), other);
+    return v;
 }
 
 /**

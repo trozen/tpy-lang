@@ -213,7 +213,7 @@ void stores() {
     ::tpy::BigInt m = ::tpy::__getitem__(vs, 0);
     ::tpy::list_extend(vs, std::array<::tpy::BigInt, 1>{static_cast<int64_t>(5000000000)});
     std::vector<::tpy::BigInt> ws = {1};
-    ::tpy::list_extend(ws, std::vector<::tpy::BigInt>{::tpy::BigInt(static_cast<int64_t>(5000000000LL))});
+    ::tpy::list_extend(ws, std::array<::tpy::BigInt, 1>{static_cast<int64_t>(5000000000)});
     std::cout << "fn.insert" << " " << ::tpy::ListPrinter(ys) << " " << n << "\n" << ::tpy::check_signals;
     std::cout << "fn.rebind" << " " << ::tpy::ListPrinter((*zs)) << " " << k << "\n" << ::tpy::check_signals;
     std::cout << "fn.extend" << " " << ::tpy::ListPrinter(vs) << " " << m << " " << ::tpy::ListPrinter(ws) << " " << ((::tpy::__getitem__(ws, 1)) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;

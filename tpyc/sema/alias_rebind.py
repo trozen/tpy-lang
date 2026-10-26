@@ -41,7 +41,7 @@ from enum import Enum
 from typing import (TYPE_CHECKING, Callable, Container, Iterable, Iterator,
                     Mapping, NamedTuple, Protocol)
 
-from ..holders import Holder, IterHolder
+from ..holders import External, Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse import (
     TpyAssign, TpyAwait, TpyBreak, TpyCall, TpyCoerce, TpyContinue, TpyDelVar,
@@ -95,16 +95,6 @@ FOREIGN = -1
 UNBOUND = -2
 
 
-class _Sink(Enum):
-    # Holder of every pointer that left through a call argument: never dies.
-    # The replay's own; the borrow tracker never holds it.
-    ESCAPED = "escaped"
-
-
-_ESCAPED = _Sink.ESCAPED
-
-# What holds loans in the replay: the tracker's holders and the sink.
-_ReplayHolder = Holder | _Sink
 
 class _Loan(NamedTuple):
     """One loan a holder carries: the root it is on, its kind, the origins
@@ -1472,7 +1462,7 @@ def global_write_facts(
 @dataclass
 class _State:
     origins: dict[str, frozenset[int]] = field(default_factory=dict)
-    loans: dict[_ReplayHolder, frozenset[_Loan]] = field(default_factory=dict)
+    loans: dict[Holder, frozenset[_Loan]] = field(default_factory=dict)
 
     def copy(self) -> '_State':
         return _State(dict(self.origins), dict(self.loans))
@@ -2107,7 +2097,8 @@ class _Replay:
         if bound is None or e not in bound:
             for name in _ptr_escape_roots(self.ctx, e):
                 root = StorageKey.of_name(name)
-                st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
+                st.loans[External.ESCAPED] = st.loans.get(
+                    External.ESCAPED, frozenset()) | {
                     _Loan(root, BorrowKind.PTR, self.origins_of(root, st))}
         # A generator or coroutine handed over to an owning parameter
         # (`create_task(consume(g))`) outlives the statement, and so do its
@@ -2121,7 +2112,8 @@ class _Replay:
                 # The generator or coroutine object itself changes hands.
                 roots.append(StorageKey.of_name(arg.name))
             for root in roots:
-                st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
+                st.loans[External.ESCAPED] = st.loans.get(
+                    External.ESCAPED, frozenset()) | {
                     _Loan(root, BorrowKind.OPAQUE, self.origins_of(root, st))}
         # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for child in inner.children():
@@ -2273,7 +2265,7 @@ class _Replay:
             own_elems = (self.owned_at(var_type, frozenset((site_id,)))
                          if is_tuple and site_id is not None else set())
             # The holders whose loan points into what the name holds here.
-            own_by: set[_ReplayHolder] = set()
+            own_by: set[Holder] = set()
             clobbered: dict[Holder, BorrowKind] = {}
             for holder, loans in st.loans.items():
                 # A loop's iterator is live where its loop can pull from it
@@ -2294,7 +2286,7 @@ class _Replay:
                     # escaped holder (a pointer handed out through a call, a
                     # frame consumed by a call) has no liveness to consult:
                     # it is too coarse for a warning.
-                    if not (read_again and holder is not _ESCAPED
+                    if not (read_again and holder is not External.ESCAPED
                             and site_id in lorigins
                             and not (kind is BorrowKind.ALIAS
                                      and (holder, name) in escape_warned)):

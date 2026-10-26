@@ -28,7 +28,7 @@ namespace tpyapp::main {
 //     print(len(ba))
 //
 //     grown = bytearray()
-//     grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
+//     grown += b"xy"  # tpyc: ok -- extends in place (`__iadd__`)
 //     print(bytes(grown).decode())
 void main() {
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("\x01\x02\x03", 3));
@@ -47,7 +47,7 @@ void main() {
     std::cout << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(ba) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray grown = ::tpy::ByteArray();
-    grown = ::tpy::bytearray_concat(grown, ::tpy::bytes_literal("xy", 2));
+    ::tpy::bytearray_iadd(grown, ::tpy::bytes_literal("xy", 2));
     std::cout << ::tpy::bytes_decode(::tpy::Bytes(grown)) << "\n" << ::tpy::check_signals;
 }
 

@@ -2883,22 +2883,6 @@ class THIRSliceAssign(THIRStmt):
 
 
 @dataclass(frozen=True)
-class THIRInplaceContainerOp(THIRStmt):
-    """An in-place container aug-assign `c OP= v` resolved to a mutating dunder
-    (`__iadd__` -> `::tpy::list_extend`, ...) -- the @native free-function over
-    the receiver and the RHS (the `resolved_inplace` arm). `receiver` is a
-    bare list name; `value` is the lowered RHS. A non-empty array-literal RHS
-    takes the `std::vector<E>{...}` type prefix (`value_vector_cpp`) that the
-    two-parameter template needs to deduce its Range (a bare brace-init
-    deduces nothing). `native_name` is the unqualified stub name, qualified
-    at emit."""
-    receiver: THIRExpr
-    native_name: str
-    value: THIRExpr
-    value_vector_cpp: str | None = None
-
-
-@dataclass(frozen=True)
 class THIRFrameSlotWrite(THIRStmt):
     """A write to a resumable frame_slot local -- `name.emplace(value);` (R1c).
 

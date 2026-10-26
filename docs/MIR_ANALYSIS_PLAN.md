@@ -2449,8 +2449,9 @@ as the corpus grows).
   leaf lent readonly, view by value; an element argument at OWN passing is
   copied or moved into the container). A protocol, callable or
   `Iterable[...]` parameter keeps "stub declares no contract", so `extend`
-  refuses; `xs += ys` (a `THIRInplaceContainerOp`) and slice assignment are
-  statements, not method calls, and refuse as "unsupported statement". A
+  refuses, and so does `xs += ys` (the in-place `__iadd__` call over the same
+  `list_extend` binding); slice assignment is a statement, not a method call,
+  and refuses as "unsupported statement". A
   method whose type
   parameter carries a protocol bound (`sort`, `remove`, `index`, `count`)
   is admitted only when the bound argument is an inert or owned leaf. A

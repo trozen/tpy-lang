@@ -168,9 +168,9 @@ std::string _escape_header_param(std::string_view value) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             std::tuple<std::string, std::string> kv = *__beg_0;
-            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
-            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(std::get<0>(kv))))), ::tpy::bytes_literal("\"\r\n\r\n", 5))));
-            body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(::tpy::bytes_from_str(std::get<1>(kv)), ::tpy::bytes_literal("\r\n", 2))));
+            ::tpy::bytearray_iadd(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
+            ::tpy::bytearray_iadd(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(std::get<0>(kv))))), ::tpy::bytes_literal("\"\r\n\r\n", 5))));
+            ::tpy::bytearray_iadd(body, (::tpy::bytes_concat(::tpy::bytes_from_str(std::get<1>(kv)), ::tpy::bytes_literal("\r\n", 2))));
         }
     }
     auto& __obj_1 = files;
@@ -179,12 +179,12 @@ std::string _escape_header_param(std::string_view value) {
     for (; __beg_1 != __end_1; ++__beg_1) {
         std::string k = *__beg_1;
         const FileField& f = ::tpy::__getitem__(files, k);
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(k)))), ::tpy::bytes_literal("\"; filename=\"", 13))), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(f.filename)))), ::tpy::bytes_literal("\"\r\n", 3))));
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Type: ", 14), ::tpy::bytes_from_str(f.content_type))), ::tpy::bytes_literal("\r\n\r\n", 4))));
-        body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(f.content, ::tpy::bytes_literal("\r\n", 2))));
+        ::tpy::bytearray_iadd(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
+        ::tpy::bytearray_iadd(body, (::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(k)))), ::tpy::bytes_literal("\"; filename=\"", 13))), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(f.filename)))), ::tpy::bytes_literal("\"\r\n", 3))));
+        ::tpy::bytearray_iadd(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Type: ", 14), ::tpy::bytes_from_str(f.content_type))), ::tpy::bytes_literal("\r\n\r\n", 4))));
+        ::tpy::bytearray_iadd(body, (::tpy::bytes_concat(f.content, ::tpy::bytes_literal("\r\n", 2))));
     }
-    body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("--\r\n", 4))));
+    ::tpy::bytearray_iadd(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("--\r\n", 4))));
     return ::tpy::Bytes(body);
 }
 
@@ -1012,7 +1012,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
             }
         }
         chunk = ::tpy::unwrap_ref(*(*__for_r_0));
-        (*pending) = ::tpy::bytearray_concat((*pending), chunk);
+        ::tpy::bytearray_iadd((*pending), chunk);
         buf = ::tpy::Bytes((*pending));
         nl = ::tpy::bytes_find(buf, ::tpy::bytes_literal("\n", 1));
         __state = S_JOIN_1;

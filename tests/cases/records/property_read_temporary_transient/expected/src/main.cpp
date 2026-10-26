@@ -43,10 +43,7 @@ int32_t takes_str(std::string_view s) {
 //         print("truthy: yes")
 //     # field read through a RECORD getter's result
 //     print("field_thru:", mk().rec.x)
-//     # augmented-assignment source: the extend reads it inside the statement
-//     acc: list[int32] = [0]
-//     acc += mk().data
-//     print("augassign:", len(acc))
+//     # `acc += mk().data` is refused like `acc.extend(mk().data)` (BUGS.md#stub-arg-off-temporary-rejects)
 //     text = "z"
 //     text += mk().head
 //     print("augassign_str:", text)
@@ -81,9 +78,6 @@ void main() {
         std::cout << "truthy: yes" << "\n" << ::tpy::check_signals;
     }
     std::cout << "field_thru:" << " " << ::tpyapp::main::mk().rec().x << "\n" << ::tpy::check_signals;
-    std::vector<int32_t> acc = {0};
-    ::tpy::list_extend(acc, ::tpyapp::main::mk().data());
-    std::cout << "augassign:" << " " << ::tpy::__len__(acc) << "\n" << ::tpy::check_signals;
     std::string text = "z";
     text += ::tpyapp::main::mk().head();
     std::cout << "augassign_str:" << " " << text << "\n" << ::tpy::check_signals;

@@ -22,7 +22,7 @@ def main() -> None:
     print(len(ba))
 
     grown = bytearray()
-    grown += b"xy"  # tpyc: ok -- a LOCAL bytearray target admits the concat
+    grown += b"xy"  # tpyc: ok -- extends in place (`__iadd__`)
     print(bytes(grown).decode())
 
 main()

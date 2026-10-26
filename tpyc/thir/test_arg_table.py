@@ -244,7 +244,7 @@ class TestMethodArgSinkShape:
     # a stub can never reach sits in the leading half anyway: the hoisting
     # `container_literal` cell has to follow its inline sibling immediately,
     # or a row between the two would claim the literal first.
-    STUB_ROWS = 50
+    STUB_ROWS = 52
 
     def test_row_order_is_pinned(self):
         # Order is load-bearing: `_witness` fires during the walk, so a
@@ -280,6 +280,8 @@ class TestMethodArgSinkShape:
             "native_iterable_container",
             "native_iterable_field",
             "native_iterable_call",
+            "native_iterable_range",
+            "native_iterable_iterator_call",
             "native_iterable_comp",
             "own_iter_special",
             "own_container_literal",
@@ -369,8 +371,8 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 107
-        assert len(rows[:self.STUB_ROWS]) == 50
+        assert len(rows) == 109
+        assert len(rows[:self.STUB_ROWS]) == 52
         assert rows[self.STUB_ROWS] == "lambda"
 
     def test_str_owned_slot_precedes_own_lvalue(self):
@@ -593,7 +595,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 56
+        assert len([r for r in rows if r in others]) == 58
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",

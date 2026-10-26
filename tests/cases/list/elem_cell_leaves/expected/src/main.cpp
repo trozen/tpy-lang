@@ -489,7 +489,7 @@ void empty_seed_pos() {
 void extend_pos() {
     std::vector<std::tuple<int64_t, int32_t>> xs = {std::tuple<int64_t, int32_t>{1, 2}};
     ::tpy::list_extend(xs, std::array<std::tuple<int64_t, int32_t>, 2>{std::tuple<int64_t, int32_t>{::tpyapp::main::wide(), 3}, std::tuple<int64_t, int32_t>{4, 5}});
-    ::tpy::list_extend(xs, std::vector<std::tuple<int64_t, int32_t>>{std::tuple<int64_t, int32_t>{6, 7}});
+    ::tpy::list_extend(xs, std::array<std::tuple<int64_t, int32_t>, 1>{std::tuple<int64_t, int32_t>{6, 7}});
     std::cout << "extend:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 
@@ -555,7 +555,7 @@ void row_rebind_pos() {
 //     print("row_iadd:", g)
 void row_iadd_pos() {
     std::vector<std::array<int64_t, 1>> g = {{1}};
-    ::tpy::list_extend(g, std::vector<std::array<int64_t, 1>>{{{::tpyapp::main::wide()}}});
+    ::tpy::list_extend(g, ::tpy::own_iter(std::array<std::array<int64_t, 1>, 1>{{{::tpyapp::main::wide()}}}));
     std::cout << "row_iadd:" << " " << ::tpy::ListPrinter(g) << "\n" << ::tpy::check_signals;
 }
 

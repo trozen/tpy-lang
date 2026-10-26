@@ -1,6 +1,6 @@
 """Loan holders: a binding is a name, the running iterator of one loop or
-comprehension clause an `IterHolder`, and no spelling turns one into the
-other."""
+comprehension clause an `IterHolder`, a holder outside the function
+`External`, and no spelling turns one into another."""
 
 from copy import copy, deepcopy
 from types import SimpleNamespace
@@ -15,6 +15,7 @@ from .sema.alias_rebind import _Replay
 from .sema.context import (
     BorrowKind, BorrowTracker, IndexRelation, element_loan_mutation_warning)
 from .sema.storage_walk import StorageKey
+from .codegen_cpp.context import ThirRejectError
 from .thir.testutil import _compile
 
 
@@ -149,3 +150,75 @@ def test_element_hop_loan_picks_strongest(
     # A flow join rebuilds the loans from a frozenset, in no set order.
     bt.restore_from_frozen(bt.freeze())
     check()
+
+
+def _effective_loans(monkeypatch: pytest.MonkeyPatch, source: str
+                     ) -> list[tuple[StorageKey, object, BorrowKind]]:
+    """Each loan a compile of `source` files, as the tracker holds it right
+    after the filing (a merged loan shows the merge's kind). A later
+    lowering refusal does not matter here: the loans are sema's."""
+    seen: list[tuple[StorageKey, object, BorrowKind]] = []
+    add = BorrowTracker.add_borrow
+
+    def record(self: BorrowTracker, storage: StorageKey, borrower: Holder,
+               *args: Any, **kwargs: Any) -> None:
+        add(self, storage, borrower, *args, **kwargs)
+        seen.append((storage, borrower, self.loans[storage][borrower].kind))
+
+    monkeypatch.setattr(BorrowTracker, "add_borrow", record)
+    try:
+        _compile(source)
+    except ThirRejectError:
+        pass
+    return seen
+
+
+_DEEP = (
+    "from tpy import int32, Ptr\n"
+    "class Inner:\n"
+    "    xs: list[int32]\n"
+    "    def __init__(self) -> None:\n"
+    "        self.xs = [1, 2]\n"
+    "class Outer:\n"
+    "    inner: Inner\n"
+    "    def __init__(self) -> None:\n"
+    "        self.inner = Inner()\n")
+
+
+def test_a_deep_path_loans_its_keyable_prefix(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    loans = _effective_loans(monkeypatch, _DEEP + (
+        "def f() -> None:\n"
+        "    o = Outer()\n"
+        "    b = o.inner.xs\n"
+        "    print(b)\n"
+        "f()\n"))
+    assert (StorageKey("o", ("inner",)), "b", BorrowKind.FIELD) in loans
+
+
+def test_a_prefix_loan_merges_into_a_stronger_one(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    loans = _effective_loans(monkeypatch, _DEEP + (
+        "def f() -> None:\n"
+        "    xs = [Inner(), Inner()]\n"
+        "    t: tuple[Inner, list[int32]] = (xs[0], xs[1].xs)\n"
+        "    print(len(t[1]))\n"
+        "f()\n"))
+    on_xs = [kind for key, holder, kind in loans
+             if key == StorageKey.of_name("xs") and holder == "t"]
+    assert on_xs and on_xs[-1] is BorrowKind.ELEMENT
+
+
+def test_a_prefix_stops_at_a_pointer_hop(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    loans = _effective_loans(monkeypatch, _DEEP + (
+        "class M:\n"
+        "    _p: Ptr[Outer]\n"
+        "    def __init__(self, p: Outer) -> None:\n"
+        "        self._p = p\n"
+        "    def peek(self) -> None:\n"
+        "        it = self._p.inner\n"
+        "        print(len(it.xs))\n"
+        "M(Outer()).peek()\n"))
+    assert not [key for key, holder, _ in loans
+                if holder == "it" and key.root == "self"]

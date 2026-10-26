@@ -62,7 +62,7 @@ from .nodes import (THIRRebindSlot, THIRStoragePlacement, Form, PrintForm,
     THIRPrint, THIRPrintChain, THIRPrintArg, THIRPtrLocalDecl,
     THIRPtrLocalRebind, THIRRaise, THIRResumableReturn, THIRReturn,
     THIRFinallyDeferredReturn, DeferredPartKind, THIRStmtSeq, THIRSetItem,
-    THIRSelf, THIRSliceAssign, THIRInplaceContainerOp, THIRStmt,
+    THIRSelf, THIRSliceAssign, THIRStmt,
     THIRCoroHandleMove, THIRFrameSlotWrite, THIRStrAppend, THIRStrLiteral,
     THIRStrSlice, THIRSubscript, THIRBoundCall, THIRTry, THIRRecordCopy,
     THIRBorrowTupleLiteral, THIRTupleLiteral, THIRTupleUnpack, TupleElemBind,
@@ -4218,18 +4218,6 @@ def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
         state.temps.flush(out, indent)
         out.write(f"{indent}{qualify_native_name(stmt.native_name)}"
                   f"({recv_cpp}, {slice_arg}, {value_cpp});\n")
-    elif isinstance(stmt, THIRInplaceContainerOp):
-        # The resolved_inplace arm: the mutating dunder's @native
-        # free-function (list_extend, ...) over the receiver
-        # and the RHS. A non-empty array-literal RHS wears the std::vector<E>{...}
-        # type prefix the two-parameter template needs to deduce its Range.
-        recv_cpp = _emit_expr(stmt.receiver, state)
-        value_cpp = _emit_expr(stmt.value, state)
-        if stmt.value_vector_cpp is not None:
-            value_cpp = f"{stmt.value_vector_cpp}{value_cpp}"
-        state.temps.flush(out, indent)
-        out.write(f"{indent}{qualify_native_name(stmt.native_name)}"
-                  f"({recv_cpp}, {value_cpp});\n")
     elif isinstance(stmt, THIRStrAppend):
         # `t += v;` -- the str in-place append (the `+=` statement and the
         # `x = x + y` peephole share the emit). A str-FIELD append renders its

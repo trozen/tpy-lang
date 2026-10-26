@@ -383,12 +383,12 @@ void loop_pos() {
 void extend_pos(std::vector<int64_t>& typed) {
     std::vector<int64_t> vs = std::vector<int64_t>{};
     ::tpy::list_extend(vs, std::array<int64_t, 2>{1, 2});
-    ::tpy::list_extend(vs, std::vector<int64_t>{3});
+    ::tpy::list_extend(vs, std::array<int64_t, 1>{3});
     vs.push_back(::tpyapp::main::wide());
     std::cout << "extend_lit:" << " " << ::tpy::ListPrinter(vs) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> ws = std::vector<int64_t>{};
     ::tpy::list_extend(ws, typed);
-    ::tpy::list_extend(ws, std::vector<int64_t>{15});
+    ::tpy::list_extend(ws, std::array<int64_t, 1>{15});
     std::cout << "extend_typed:" << " " << ::tpy::ListPrinter(ws) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> src = {16};
     std::vector<int32_t> xs = std::vector<int32_t>{};

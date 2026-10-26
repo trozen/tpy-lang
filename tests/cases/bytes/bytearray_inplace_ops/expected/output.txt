@@ -1,0 +1,35 @@
+free bytearray(b'abcdmk')
+alias bytearray(b'xy') bytearray(b'xy') True
+imul 2 bytearray(b'abab')
+imul 1 bytearray(b'ab')
+imul 0 bytearray(b'')
+imul -1 bytearray(b'')
+param bytearray(b'qP')
+method b'f!f!'
+gen 1 bytearray(b'g')
+gen 2 bytearray(b'gg')
+async 6 bytearray(b'asasas')
+try bytearray(b'try')
+loop bytearray(b'LLL')
+pending bytearray(b'pend') b'end'
+concat bytearray(b'--B\r\n')
+rebound bytearray(b'rb') bytearray(b'rb') [1, 2] [1, 2]
+rebound bytearray(b'rb') bytearray(b'new') [1, 2] [9]
+rebound_more {2} {2} 7 7
+rebound_more {2} {7} 6 10
+overlap bytearray(b'abcdbcabcdbc')
+gen_rebound bytearray(b'g1')
+gen_rebound bytearray(b'g12')
+gen_rebound bytearray(b'g1')
+gen_rebound bytearray(b'n2')
+gen_record_rebound 3
+gen_record_rebound 3
+gen_record_rebound 1
+gen_record_rebound 12
+imul_rebound bytearray(b'ababab') bytearray(b'ababab')
+imul_rebound bytearray(b'ab') bytearray(b'zzz')
+direct iadd bytearray(b'dy') True
+direct imul bytearray(b'mm') True
+direct list [1, 2, 3] True
+readonly bytearray(b'oR')
+global bytearray(b'G!G!')

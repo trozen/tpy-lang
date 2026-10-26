@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <concepts>
 #include <cstdint>
+#include <functional>
 #include <iostream>
 #include <ranges>
 #include <span>
@@ -542,6 +543,48 @@ void bytearray_set_stepped_slice(ByteArray& b, Slice sl, const Range& values) {
         return;
     }
     detail::set_extended_slice(b, start, stop, step, values, true, "bytes");
+}
+
+/// `b += other`. `other` may view `b`'s own buffer (`b += b`): inserting a
+/// vector's own range is undefined and growing it invalidates the view, so
+/// that case copies from the source's offset after the resize. Returns `b`,
+/// the object `__iadd__` hands back.
+inline ByteArray& bytearray_iadd(ByteArray& b, BytesView other) {
+    const size_t old = b.size();
+    const size_t n = other.size();
+    const std::less<const uint8_t*> before;
+    const uint8_t* base = b.data();
+    if (n == 0 || before(other.data(), base) || !before(other.data(), base + old)) {
+        b.insert(b.end(), other.begin(), other.end());
+        return b;
+    }
+    const size_t offset = static_cast<size_t>(other.data() - base);
+    b.resize(old + n);
+    std::copy_n(b.data() + offset, n, b.data() + old);
+    return b;
+}
+
+/// `b *= n` in place: CPython empties `b` for n <= 0, else repeats its bytes
+/// (MemoryError when the repeated size is not representable). Returns `b`.
+inline ByteArray& bytearray_irepeat(ByteArray& b, int32_t n) {
+    if (n <= 0) {
+        b.clear();
+        return b;
+    }
+    const size_t len = b.size();
+    const size_t count = static_cast<size_t>(n);
+    if (len != 0 && count > b.max_size() / len) raise_memory_error("");
+    if (len == 1) {
+        // assign() may not take a reference into b itself.
+        const uint8_t byte = b[0];
+        b.assign(count, byte);
+        return b;
+    }
+    b.resize(len * count);
+    for (size_t i = 1; i < count; ++i) {
+        std::copy_n(b.data(), len, b.data() + len * i);
+    }
+    return b;
 }
 
 inline uint8_t bytearray_pop(ByteArray& b) {

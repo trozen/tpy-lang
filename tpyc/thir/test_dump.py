@@ -174,9 +174,9 @@ _CONSTRUCTS = [
     ("setitem",
      "def f(d: dict[int32, int32]) -> None:\n    d[1] = 2\n",
      " = "),
-    ("inplace_container",
+    ("inplace_dunder",
      "def f(xs: list[int32], ys: list[int32]) -> None:\n    xs += ys\n",
-     "inplace["),
+     "native tpy::list_extend"),
 ]
 
 

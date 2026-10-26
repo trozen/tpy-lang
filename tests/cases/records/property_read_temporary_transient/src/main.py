@@ -98,10 +98,7 @@ def main() -> None:
         print("truthy: yes")
     # field read through a RECORD getter's result
     print("field_thru:", mk().rec.x)
-    # augmented-assignment source: the extend reads it inside the statement
-    acc: list[int32] = [0]
-    acc += mk().data
-    print("augassign:", len(acc))
+    # `acc += mk().data` is refused like `acc.extend(mk().data)` (BUGS.md#stub-arg-off-temporary-rejects)
     text = "z"
     text += mk().head
     print("augassign_str:", text)

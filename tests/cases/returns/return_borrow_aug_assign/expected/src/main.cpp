@@ -25,7 +25,7 @@ std::vector<Point>& get_list(std::vector<Point>& items) {
 void test_aug_assign_warns() {
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     Point& first = ::tpyapp::main::get_first(data);
-    ::tpy::list_extend(data, {Point(5, 6)});
+    ::tpy::list_extend(data, ::tpy::own_iter(std::array<Point, 1>{Point(5, 6)}));
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 
@@ -43,7 +43,7 @@ void test_iter_aug_assign_warns() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        ::tpy::list_extend(data, {Point(5, 6)});
+        ::tpy::list_extend(data, ::tpy::own_iter(std::array<Point, 1>{Point(5, 6)}));
         break;
     }
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
@@ -56,7 +56,7 @@ void test_iter_aug_assign_warns() {
 //     print(len(data))               # 3
 void test_no_borrow_no_warn() {
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
-    ::tpy::list_extend(data, std::vector<Point>{Point(5, 6)});
+    ::tpy::list_extend(data, ::tpy::own_iter(std::vector<Point>{Point(5, 6)}));
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 
@@ -72,7 +72,7 @@ void test_borrow_cleared_no_warn() {
     Point* first = &(::tpyapp::main::get_first(data));
     std::optional<Point> __slot_1;
     first = &*(__slot_1 = Point(9, 9));
-    ::tpy::list_extend(data, {Point(5, 6)});
+    ::tpy::list_extend(data, ::tpy::own_iter(std::array<Point, 1>{Point(5, 6)}));
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;
 }
 

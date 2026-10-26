@@ -108,7 +108,6 @@ from .nodes import (
     THIRFrameSlotWrite,
     THIRFunction,
     THIRGenExpr,
-    THIRInplaceContainerOp,
     THIRLambda,
     THIRListRepeat,
     THIRMembership,
@@ -708,11 +707,6 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         hi = "" if stmt.upper is None else _expr(stmt.upper)
         return [f"{pad}{_expr(stmt.receiver)}[{lo}:{hi}] = "
                 f"{_expr(stmt.value)} [{stmt.native_name}]"]
-    if isinstance(stmt, THIRInplaceContainerOp):
-        # The native symbol is a call, not an operator -- `x tpy::list_extend= y`
-        # read as though it were one.
-        return [f"{pad}inplace[{stmt.native_name}]({_expr(stmt.receiver)}, "
-                f"{_expr(stmt.value)})"]
     if isinstance(stmt, THIRParamCopy):
         return [f"{pad}param_copy %{stmt.name}: {stmt.cpp_type}"]
     if isinstance(stmt, THIROverloadDefault):

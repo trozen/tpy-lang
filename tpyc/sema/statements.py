@@ -9,7 +9,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
-from ..holders import IterHolder
+from ..holders import Holder, IterHolder
 from ..typesys import (pointer_repr_optional, pointer_variant_union,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
@@ -240,7 +240,8 @@ def _needs_provenance_tracking(t: TpyType) -> bool:
             or isinstance(t, PendingViewType))
 
 
-def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyExpr) -> None:
+def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
+                                 expr: TpyExpr) -> None:
     """File the loans a binding of a call's result takes (`call_loans`
     under MAY): through each call the value is, or is a field / element /
     select arm of, on each operand its result may point into. A guess about
@@ -315,7 +316,7 @@ def _temp_arg_warning(fi: FunctionInfo, idx: int) -> str:
 
 
 def _register_tuple_binding_borrows(
-        ctx: SemanticContext, borrower: str, value: TpyExpr,
+        ctx: SemanticContext, borrower: Holder, value: TpyExpr,
         target_type: TpyType) -> None:
     """Keep the loans carried by a local tuple's selected borrow payload."""
     bare = unwrap_readonly(target_type)
@@ -333,7 +334,8 @@ def _register_tuple_binding_borrows(
             if isinstance(slot, TupleType):
                 # A borrow-form tuple VALUE at a nested slot copies its
                 # element pointers along.
-                _register_tuple_binding_borrows(ctx, borrower, leaf.elem, slot)
+                _register_tuple_binding_borrows(
+                    ctx, borrower, leaf.elem, slot)
                 continue
             # A view element files no loan here, as a scalar view local
             # does not (`v = mk().name` is quiet): its borrow is the view's.
@@ -348,8 +350,7 @@ def _register_tuple_binding_borrows(
             if (capture is TupleElemCapture.VALUE
                     and not isinstance(slot, TypeParamRef)):
                 continue
-            register_binding_borrow(ctx, borrower, leaf.elem)
-            _register_call_result_borrow(ctx, borrower, leaf.elem)
+            register_binding_loans(ctx, borrower, leaf.elem, leaf.slot)
     elif isinstance(inner, TpyIfExpr):
         _register_tuple_binding_borrows(ctx, borrower, inner.then_expr, bare)
         _register_tuple_binding_borrows(ctx, borrower, inner.else_expr, bare)
@@ -357,6 +358,27 @@ def _register_tuple_binding_borrows(
         if isinstance(inner, (TpyName, TpySubscript, TpyFieldAccess)):
             register_binding_borrow(ctx, borrower, inner)
         _register_call_result_borrow(ctx, borrower, inner)
+
+
+def register_binding_loans(ctx: SemanticContext, holder: Holder,
+                           value: TpyExpr,
+                           bound_type: 'TpyType | None') -> None:
+    """The loans a binding of `value` at type `bound_type` files for
+    `holder` -- a local, a walrus target, a tuple leaf's binding: the
+    tuple's borrowed elements, the place a reference value aliases (whole
+    object ALIAS, field FIELD, element ELEMENT), and the operands a call
+    result may point into (a borrowing view's too). An inferred str/bytes view (`PendingViewType`)
+    files no call-result loan: every write to what it views owns it."""
+    if bound_type is None:
+        return
+    _register_tuple_binding_borrows(ctx, holder, value, bound_type)
+    if not bound_type.is_value_type():
+        register_binding_borrow(ctx, holder, value)
+    bare = unwrap_readonly(bound_type)
+    if isinstance(bare, PendingViewType):
+        return
+    if not bound_type.is_value_type() or is_borrowing_view_type(bare):
+        _register_call_result_borrow(ctx, holder, peel_coerce(value))
 
 
 def _format_aug_target(target: TpyExpr) -> str:
@@ -6761,12 +6783,7 @@ class StatementAnalyzer:
         # retarget logic above keeps the chain valid across reassignments.
         if (stmt.init is not None
                 and var_type is not None):
-            _register_tuple_binding_borrows(
-                self.ctx, stmt.name, stmt.init, var_type)
-            if not var_type.is_value_type():
-                # Non-value lvalue: y = x, v = items[i], v = obj.field
-                register_binding_borrow(self.ctx, stmt.name, stmt.init)
-            elif isinstance(var_type, PtrType):
+            if var_type.is_value_type() and isinstance(var_type, PtrType):
                 # take_ptr(x) / Ptr(x) borrows x's storage even though Ptr is a value type
                 init_inner = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
                 ctor_arg = borrowing_ctor_arg(init_inner)
@@ -6846,12 +6863,13 @@ class StatementAnalyzer:
             warn_value_call_binding(
                 self.ctx, stmt.init.expr if isinstance(stmt.init, TpyCoerce)
                 else stmt.init, f"local '{stmt.name}'")
+        if stmt.init is not None and var_type is not None:
+            register_binding_loans(self.ctx, stmt.name, stmt.init, var_type)
         if (stmt.init is not None
                 and borrow_storage is not None
                 and (not borrow_storage.is_value_type()
                      or is_borrowing_view_type(unwrap_readonly(borrow_storage)))):
             init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-            _register_call_result_borrow(self.ctx, stmt.name, init_unwrapped)
             warn_value_call_binding(self.ctx, init_unwrapped, f"local '{stmt.name}'")
         if (stmt.init is not None
                 and stmt.name in self.ctx.func.current_reassigned_vars
@@ -8874,7 +8892,7 @@ class StatementAnalyzer:
         is_numeric_target = is_any_int_type(target_type) or is_float_type(target_type)
         is_str_target = (is_str_type(target_type) or is_string_type(target_type)
                          or isinstance(target_type, PendingStrType))
-        is_bytes_target = (is_bytes_type(target_type) or is_bytearray_type(target_type)
+        is_bytes_target = (is_bytes_type(target_type)
                            or isinstance(target_type, PendingBytesType))
         # PendingViewType += promotes to owned
         if isinstance(target_type, PendingViewType) and isinstance(stmt.target, TpyName):
@@ -8923,10 +8941,12 @@ class StatementAnalyzer:
             elif expected_params and not any(
                     self.compat.is_type_compatible(value_type, p)
                     for p in expected_params):
-                expected_str = " or ".join(str(p) for p in expected_params)
+                expected_str = " or ".join(user_type_name(unwrap_ref_type(p))
+                                           for p in expected_params)
                 raise self.ctx.error(
                     f"Type mismatch in '{op_spelling(stmt.op)}=' operand: "
-                    f"expected {expected_str}, got {value_type}", stmt)
+                    f"expected {expected_str}, got {user_type_name(value_type)}",
+                    stmt)
             if result := self.expr.decide_operator(operators.resolve_binop(
                     target_type, stmt.op, value_type, loc_node=stmt), stmt):
                 # A borrow-returning fallback dunder is rejected: the emitted

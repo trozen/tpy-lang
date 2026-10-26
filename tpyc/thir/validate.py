@@ -78,7 +78,7 @@ from .nodes import (FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign,
     THIRFieldAccess, THIRFieldIdentity, THIRFormConvert, THIRBinOp, THIRExpr,
     THIRForIterProto, THIRFunction, THIRIf, THIRIfExpr, THIRMethodCall,
     declared_param_type, effective_params, THIRNode, THIRName,
-    THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus,
+    THIRParam, THIRWhile, THIRModuleVar, THIRWalrus,
     THIRGlobalBinding, THIRPrint, THIRRaise, THIRReturn, THIRSetItem,
     THIRSliceAssign, THIRFinallyDeferredReturn, DeferredPartKind,
     THIRSubscript, THIRTempRead, BOUND_SOURCE_READ, THIRTupleUnpack,
@@ -1387,10 +1387,6 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
     if isinstance(node, THIRFrameSlotWrite):
         # `name.emplace(value);` -- a statement, so the value's arg temps
         # hoist before the emplace line exactly like a THIRAssign value.
-        _walk(owner, node.value, return_type, argtemp_ok=True)
-        return
-    if isinstance(node, THIRInplaceContainerOp):
-        _walk(owner, node.receiver, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRReturn):

@@ -5,3 +5,23 @@ int 11 1
 str abc ab
 String abc ab
 valuetype 11 1
+operand_record 53 50
+operand_list_literal 7
+operand_own 7 7
+operand_rebound 4
+operand_rebound 3
+operand_narrowed 5
+operand_narrowed 1
+operand_method 4
+operand_gen 3
+operand_gen 13
+yield_iadd [1, 2]
+yield_iadd [0, 1, 2]
+yield_branch 1 7
+yield_records [1]
+yield_records [1]
+operand_narrow_int 4
+iterable_operands [0, 0, 1, 2, 0, 1, 7, 7] [0, 2, 1, 2, 1] 7
+setitem_own 5 5
+setitem_arraylist 2 2
+setitem_list [7, 8] [7, 8]

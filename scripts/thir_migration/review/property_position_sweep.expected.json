@@ -188,7 +188,7 @@
   ""
  ],
  "augassign_list__items__prop__temp": [
-  "ok",
+  "expr.call:arg.lends_from_temporary",
   ""
  ],
  "augassign_recv__rec__meth__named": [

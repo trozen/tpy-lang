@@ -1,7 +1,9 @@
-"""Who holds a loan: a binding, by its name, or a running iterator.
+"""Who holds a loan: a binding, by its name, a running iterator, or a
+holder outside the function.
 
-A loan's holder is a binding name (`str`) or an `IterHolder`, the running
-iterator of ONE `for` statement or ONE comprehension clause. The kind of a
+A loan's holder is a binding name (`str`), an `IterHolder`, the running
+iterator of ONE `for` statement or ONE comprehension clause, or `External`,
+a holder the function does not see end. The kind of a
 synthetic holder is its type, never decoded from a spelling, so no program
 name can stand for an iterator and two loops never share one. A binding
 holder stays a name because the borrow tracker's chain walks read a binding
@@ -11,6 +13,8 @@ A leaf module: liveness and sema both key on the same holders.
 """
 
 from __future__ import annotations
+
+from enum import Enum
 
 
 class IterHolder:
@@ -59,5 +63,14 @@ class IterHolder:
         return f"IterHolder({type(self._node).__name__} at {where})"
 
 
+class External(Enum):
+    """A holder outside the function, which keeps what it holds for as long
+    as it likes: nothing in the body ends its loans -- no loop exit, no
+    rebind, no scope. One holder for every such escape, so no escape is told
+    apart from another by the code that asks whether a loan is live."""
+    # A pointer that left through a call argument (the alias-rebind replay).
+    ESCAPED = "escaped"
+
+
 # Who holds a loan in the borrow tracker, and what a live set holds.
-Holder = str | IterHolder
+Holder = str | IterHolder | External

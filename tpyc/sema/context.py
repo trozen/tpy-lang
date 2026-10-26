@@ -75,7 +75,7 @@ from .call_lends import (
 from .storage_walk import (
     EscapePosition, KeyShape, LoanKey, MarkRequest, Roots, Unkeyed,
     Use, element_index_key, holder_root, loan_key,
-    mark_roots, path_key, reads_static_only,
+    mark_roots, path_key, prefix_loan_key, reads_static_only,
     StorageKey, select_arm_keys, slot_lent_roots, storage_key,
     storage_roots, ternary_operands,
 )
@@ -1047,7 +1047,7 @@ def ephemeral_borrow_root(ephemeral_vars: 'dict[str, EphemeralKind]',
     return None
 
 
-def register_binding_borrow(ctx: 'SemanticContext', name: str,
+def register_binding_borrow(ctx: 'SemanticContext', name: Holder,
                             init_expr: TpyExpr) -> None:
     """Register `name` as a borrower of `init_expr`'s storage root, with the
     kind and the eager-vs-deferred mutation mark taken from the init shape
@@ -1076,7 +1076,7 @@ def register_capture_alias_borrow(ctx: 'SemanticContext', name: str,
     _register_source_borrow(ctx, name, subject_expr, kind=BorrowKind.OPAQUE)
 
 
-def _register_source_borrow(ctx: 'SemanticContext', name: str,
+def _register_source_borrow(ctx: 'SemanticContext', name: Holder,
                             source_expr: TpyExpr,
                             kind: BorrowKind | None) -> None:
     """Register `name` as a borrower of `source_expr`'s storage root.
@@ -1134,6 +1134,13 @@ def _register_source_borrow(ctx: 'SemanticContext', name: str,
         mark_roots(ctx, storage_roots(source_expr, Use.PLACE,
                                       ctx.get_expr_type, MayLend(ctx)),
                    MarkRequest())
+        # A path too deep to key (`o.inner.xs`) still borrows its longest
+        # keyable prefix: a later move or write of the prefix must see it.
+        prefix = prefix_loan_key(source_expr, ctx.get_expr_type,
+                                 MayLend(ctx))
+        if prefix is not None and prefix.key.as_name() != name:
+            bt.add_borrow(prefix.key, name, kind or BorrowKind.FIELD,
+                          merge=True)
         return
     if lk.key.as_name() == name:
         return

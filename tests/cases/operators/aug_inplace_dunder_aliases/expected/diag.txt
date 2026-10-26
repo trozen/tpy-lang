@@ -1,0 +1,8 @@
+main.py:200: warning: copies Bump elements; use copy_iter() to make this explicit
+main.py:203: warning: copies Bump elements; use copy_iter() to make this explicit
+main.py:206: warning: copies Bump into owned storage; use copy() to make this explicit
+main.py:207: warning: copies Bump into owned storage; use copy() to make this explicit
+main.py:226: warning: copies Bump into container; use copy() to make this explicit
+main.py:259: warning: copies Bump into owned storage; use copy() to make this explicit
+main.py:304: warning: copies Row into container; use copy() to make this explicit
+main.py:309: warning: copies list[int32] into container; use copy() to make this explicit

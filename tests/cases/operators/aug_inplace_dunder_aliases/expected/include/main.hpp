@@ -4,13 +4,30 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/tplib.hpp"
+#include "tpystd/tplib/array_list.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::array_list::ArrayList;
+
 struct A;
 struct P;
+struct Bump;
+struct Acc;
+struct Small;
+struct Holder;
+struct Cell;
+struct Slots;
+struct Row;
+struct ListSlots;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_operand_gen;
+struct __gen_yield_then_iadd;
+struct __gen_yield_or_move;
+struct __gen_yield_then_move_records;
 
 // def record_iadd() -> None:
 void record_iadd();
@@ -26,6 +43,36 @@ void str_iadd();
 void string_iadd();
 // def valuetype_add() -> None:
 void valuetype_add();
+// def operand_gen(b: Bump) -> Iterator[int32]:
+__gen_operand_gen operand_gen(Bump& b);
+// def yield_then_iadd() -> Iterator[list[int32]]:
+__gen_yield_then_iadd yield_then_iadd();
+// def yield_or_move(flag: bool) -> Iterator[list[Cell]]:
+__gen_yield_or_move yield_or_move(bool flag);
+// def yield_then_move_records() -> Iterator[list[Bump]]:
+__gen_yield_then_move_records yield_then_move_records();
+// def yield_sections() -> None:
+void yield_sections();
+// def make_list(b: Own[Bump]) -> Own[list[int32]]:
+std::vector<int32_t> make_list(Bump&& b);
+// def iterable_operands() -> None:
+void iterable_operands();
+// def setitem_own_value() -> None:
+void setitem_own_value();
+// def operand_narrow_int() -> None:
+void operand_narrow_int();
+// def operand_record() -> None:
+void operand_record();
+// def operand_list_literal() -> None:
+void operand_list_literal();
+// def operand_own() -> None:
+void operand_own();
+// def operand_rebound(flag: bool) -> None:
+void operand_rebound(bool flag);
+// def operand_narrowed(flag: bool) -> None:
+void operand_narrowed(bool flag);
+// def setitem_copies() -> None:
+void setitem_copies();
 // def main() -> None:
 void main();
 
@@ -77,6 +124,263 @@ template<> struct tpy::is_value_type<::tpyapp::main::P> : std::true_type {};
 namespace tpyapp::main {
 
 
+// class Bump:
+struct Bump {
+    // self.k = k
+    int32_t k;
+
+    // def __init__(self, k: int32) -> None:
+    Bump() = default;
+    explicit Bump(int32_t k);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bump";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bump& obj) {
+    ::tpy::print_object_default(os, "Bump", obj);
+    return os;
+}
+
+// class Acc:
+struct Acc {
+    // self.n = n
+    int32_t n;
+    // kept: list[Bump]
+    std::vector<Bump> kept;
+
+    // def __init__(self, n: int32) -> None:
+    Acc() = default;
+    explicit Acc(int32_t n);
+
+    // @dispatch
+    // def __iadd__(self, b: Bump) -> "Acc":
+    Acc& __iadd__(const Bump& b);
+
+    // @dispatch
+    // def __iadd__(self, b: bool) -> "Acc":
+    Acc& __iadd__(bool b);
+
+    // def __isub__(self, xs: list[int32]) -> "Acc":
+    Acc& __isub__(const std::vector<int32_t>& xs);
+
+    // def __imul__(self, b: Own[Bump]) -> "Acc":
+    Acc& __imul__(Bump&& b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Acc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Acc& obj) {
+    ::tpy::print_object_default(os, "Acc", obj);
+    return os;
+}
+
+// class Small:
+struct Small {
+    // self.n = n
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Small() = default;
+    explicit Small(int32_t n);
+
+    // def __iadd__(self, k: int8) -> "Small":
+    Small& __iadd__(int8_t k);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Small";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Small& obj) {
+    ::tpy::print_object_default(os, "Small", obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+    // acc: Acc
+    Acc acc;
+
+    // def __init__(self) -> None:
+    Holder();
+
+    // def add(self, b: Bump) -> None:
+    void add(const Bump& b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// @nocopy
+// class Cell:
+struct Cell {
+    // self.n = n
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Cell() = default;
+    explicit Cell(int32_t n);
+    // non-copyable (@nocopy)
+    Cell(const Cell&) = delete;
+    Cell& operator=(const Cell&) = delete;
+    Cell(Cell&&) = default;
+    Cell& operator=(Cell&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
+    ::tpy::print_object_default(os, "Cell", obj);
+    return os;
+}
+
+// class Slots:
+struct Slots {
+    // items: list[Bump]
+    std::vector<Bump> items;
+
+    // def __init__(self) -> None:
+    Slots();
+
+    // def __setitem__(self, i: int32, v: Own[Bump]) -> None:
+    void __setitem__(int32_t i, Bump&& v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Slots";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Slots& obj) {
+    ::tpy::print_object_default(os, "Slots", obj);
+    return os;
+}
+
+// class Row:
+struct Row {
+    // self.x = x
+    int32_t x;
+
+    // def __init__(self, x: int32) -> None:
+    Row() = default;
+    explicit Row(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Row";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Row& obj) {
+    ::tpy::print_object_default(os, "Row", obj);
+    return os;
+}
+
+// class ListSlots:
+struct ListSlots {
+    // data: list[list[int32]]
+    std::vector<std::vector<int32_t>> data;
+
+    // def __init__(self) -> None:
+    ListSlots();
+
+    // def __setitem__(self, i: int32, v: Own[list[int32]]) -> None:
+    void __setitem__(int32_t i, std::vector<int32_t>&& v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ListSlots";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ListSlots& obj) {
+    ::tpy::print_object_default(os, "ListSlots", obj);
+    return os;
+}
+
+// def operand_gen(b: Bump) -> Iterator[int32]:
+struct __gen_operand_gen : public ::tpy::next_iter_mixin<__gen_operand_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Bump& b;
+    ::tpy::frame_slot<Acc> a;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_operand_gen(Bump& b)
+        : __state(S_INITIAL),
+          b(b) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_operand_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_operand_gen&) {
+        return os << "<generator operand_gen>";
+    }
+};
+
+// def yield_then_iadd() -> Iterator[list[int32]]:
+struct __gen_yield_then_iadd : public ::tpy::next_iter_mixin<__gen_yield_then_iadd, ::tpy::val_or_ref<std::vector<int32_t>>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::vector<int32_t>> xs;
+    ::tpy::frame_slot<std::vector<int32_t>> a;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_yield_then_iadd() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::val_or_ref<std::vector<int32_t>>, ::tpy::StopIteration> __next__();
+    __gen_yield_then_iadd& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_yield_then_iadd&) {
+        return os << "<generator yield_then_iadd>";
+    }
+};
+
+// def yield_or_move(flag: bool) -> Iterator[list[Cell]]:
+struct __gen_yield_or_move : public ::tpy::next_iter_mixin<__gen_yield_or_move, ::tpy::val_or_ref<std::vector<Cell>>> {
+    ::tpy::frame_state __state;
+    bool flag;
+    ::tpy::frame_slot<std::vector<Cell>> xs;
+    ::tpy::frame_slot<std::vector<Cell>> a;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_yield_or_move(bool flag_)
+        : __state(S_INITIAL),
+          flag(std::move(flag_)) {}
+
+    std::expected<::tpy::val_or_ref<std::vector<Cell>>, ::tpy::StopIteration> __next__();
+    __gen_yield_or_move& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_yield_or_move&) {
+        return os << "<generator yield_or_move>";
+    }
+};
+
+// def yield_then_move_records() -> Iterator[list[Bump]]:
+struct __gen_yield_then_move_records : public ::tpy::next_iter_mixin<__gen_yield_then_move_records, ::tpy::val_or_ref<std::vector<Bump>>> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<std::vector<Bump>> bs;
+    ::tpy::frame_slot<std::vector<Bump>> out;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_yield_then_move_records() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::val_or_ref<std::vector<Bump>>, ::tpy::StopIteration> __next__();
+    __gen_yield_then_move_records& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_yield_then_move_records&) {
+        return os << "<generator yield_then_move_records>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -98,6 +402,104 @@ inline P::P(int32_t n) : n(n) {}
 //     return P(self.n + k)
 inline P P::__add__(int32_t k) const {
     return P((::tpy::add_check<int32_t>(this->n, k)));
+}
+
+// def __init__(self, k: int32) -> None:
+//     self.k = k
+inline Bump::Bump(int32_t k) : k(k) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+//     self.kept = []
+inline Acc::Acc(int32_t n)
+    : n(n),
+      kept(std::vector<Bump>{}) {}
+
+// @dispatch
+// def __iadd__(self, b: Bump) -> "Acc":
+//     self.n += b.k
+//     return self
+inline Acc& Acc::__iadd__(const Bump& b) {
+    this->n = ::tpy::add_check<int32_t>(this->n, b.k);
+    return (*this);
+}
+
+// @dispatch
+// def __iadd__(self, b: bool) -> "Acc":
+//     self.n += 100
+//     return self
+inline Acc& Acc::__iadd__(bool b) {
+    this->n = ::tpy::add_check<int32_t>(this->n, 100);
+    return (*this);
+}
+
+// def __isub__(self, xs: list[int32]) -> "Acc":
+//     self.n -= len(xs)
+//     return self
+inline Acc& Acc::__isub__(const std::vector<int32_t>& xs) {
+    this->n = ::tpy::sub_check<int32_t>(this->n, ::tpy::__len__(xs));
+    return (*this);
+}
+
+// def __imul__(self, b: Own[Bump]) -> "Acc":
+//     self.kept.append(b)
+//     return self
+inline Acc& Acc::__imul__(Bump&& b) {
+    this->kept.push_back(std::move(b));
+    return (*this);
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Small::Small(int32_t n) : n(n) {}
+
+// def __iadd__(self, k: int8) -> "Small":
+//     self.n += k
+//     return self
+inline Small& Small::__iadd__(int8_t k) {
+    this->n = ::tpy::add_check<int32_t>(this->n, static_cast<int32_t>(k));
+    return (*this);
+}
+
+// def __init__(self) -> None:
+//     self.acc = Acc(0)
+inline Holder::Holder() : acc(Acc(0)) {}
+
+// def add(self, b: Bump) -> None:
+//     # a record operand in a method body, on a field target
+//     self.acc += b  # tpyc: ok
+//     print("operand_method", self.acc.n)
+inline void Holder::add(const Bump& b) {
+    this->acc.__iadd__(b);
+    std::cout << "operand_method" << " " << this->acc.n << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Cell::Cell(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+//     self.items = [Bump(0)]
+inline Slots::Slots() : items(std::vector<Bump>{Bump(0)}) {}
+
+// def __setitem__(self, i: int32, v: Own[Bump]) -> None:
+//     self.items[i] = v
+inline void Slots::__setitem__(int32_t i, Bump&& v) {
+    ::tpy::__setitem__(this->items, i, std::move(v));
+}
+
+// def __init__(self, x: int32) -> None:
+//     self.x = x
+inline Row::Row(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+//     self.data = [[0]]
+inline ListSlots::ListSlots() : data(std::vector<std::vector<int32_t>>{{0}}) {}
+
+// def __setitem__(self, i: int32, v: Own[list[int32]]) -> None:
+//     self.data[i] = v
+inline void ListSlots::__setitem__(int32_t i, std::vector<int32_t>&& v) {
+    ::tpy::__setitem__(this->data, i, std::move(v));
 }
 void __tpy_init();
 } // namespace tpyapp::main

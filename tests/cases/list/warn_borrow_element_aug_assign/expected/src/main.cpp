@@ -18,7 +18,7 @@ void test_list_aug_assign() {
     Point& v = ::tpy::__getitem__(items, 0);
     v.x = 50;
     std::cout << ::tpy::__getitem__(items, 0).x << "\n" << ::tpy::check_signals;
-    ::tpy::list_extend(items, std::vector<Point>{Point(3)});
+    ::tpy::list_extend(items, ::tpy::own_iter(std::vector<Point>{Point(3)}));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 
@@ -65,7 +65,7 @@ void test_iter_borrow_aug_assign() {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& p = *__beg_0;
-        ::tpy::list_extend(items, std::vector<Point>{Point(3)});
+        ::tpy::list_extend(items, ::tpy::own_iter(std::vector<Point>{Point(3)}));
         break;
     }
 }
@@ -82,7 +82,7 @@ void test_reassign_borrower_clears() {
     Point* v = &(::tpy::__getitem__(items, 0));
     std::optional<Point> __slot_1;
     v = &*(__slot_1 = Point(9));
-    ::tpy::list_extend(items, std::vector<Point>{Point(2)});
+    ::tpy::list_extend(items, ::tpy::own_iter(std::vector<Point>{Point(2)}));
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;
 }
 

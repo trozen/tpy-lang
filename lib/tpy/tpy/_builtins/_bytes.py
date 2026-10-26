@@ -347,6 +347,21 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __mul__(self, n: int32) -> Own[bytearray]: ...
 
+    # A @native class carries no TPy bodies, so the in-place forms are runtime
+    # helpers.
+    @dispatch
+    @native("tpy::bytearray_iadd", function=True)
+    def __iadd__(self, other: bytes) -> bytearray: ...
+    @dispatch
+    @native("tpy::bytearray_iadd", function=True)
+    def __iadd__(self, other: readonly[bytearray]) -> bytearray: ...
+    @dispatch
+    @native("tpy::bytearray_iadd", function=True)
+    def __iadd__(self, other: BytesView) -> bytearray: ...
+
+    @native("tpy::bytearray_irepeat", function=True)
+    def __imul__(self, n: int32) -> bytearray: ...
+
     @dispatch
     @native("push_back")
     def append(self, item: uint8, /) -> None: ...
