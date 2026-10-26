@@ -12,6 +12,7 @@ struct Lit;
 struct R;
 struct Buf;
 struct Child;
+struct Tag;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -73,6 +74,8 @@ int32_t deferred(std::string_view name, bool flag);
 int32_t selected(Tok& owner, std::string_view a, bool flag);
 // def branch(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 void branch(int32_t k, bool flag);
+// def refill_two(k: int32, flag: bool) -> int32:  # tpyc: mir(covered)
+int32_t refill_two(int32_t k, bool flag);
 // def child(s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t child(std::string_view s);
 // def main() -> None:
@@ -151,6 +154,30 @@ inline std::ostream& operator<<(std::ostream& os, const Buf& obj) {
     return os;
 }
 
+// @nocopy
+// class Tag:
+struct Tag {
+    // s: StrView
+    std::string_view s;
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, s: str, n: int32) -> None:
+    Tag() = default;
+    explicit Tag(std::string_view s, int32_t n);
+    // non-copyable (@nocopy)
+    Tag(const Tag&) = delete;
+    Tag& operator=(const Tag&) = delete;
+    Tag(Tag&&) = default;
+    Tag& operator=(Tag&&) = default;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
+    ::tpy::print_object_default(os, "Tag", obj);
+    return os;
+}
+
 // class Child(Tok):
 struct Child : Tok {
 
@@ -197,5 +224,12 @@ inline R::R(std::string_view b, std::string_view s)
 // def __init__(self, buf: str) -> None:
 //     self.buf = buf
 inline Buf::Buf(std::string_view buf) : buf(buf) {}
+
+// def __init__(self, s: str, n: int32) -> None:
+//     self.s = s
+//     self.n = n
+inline Tag::Tag(std::string_view s, int32_t n)
+    : s(s),
+      n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -35,17 +35,17 @@ from .dependencies import (
     MIRDependencies, MIRReferent, _leaves, feasible_returns, live_holders, resolve_referents,
 )
 from .nodes import (
-    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRStorageWrite,
-    MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, source_order,
+    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint,
+    MIRReturn, MIRSlotId, MIRSlotKind, source_order,
 )
 from .shapes import MIRUnionPayload
 from .value import MIRValidationError
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .retention import analyze_retention
-from .scope_lifetime import MIRScopeEndKind, _scope_conflicts, _scope_ends
+from .scope_lifetime import _scope_conflicts, _scope_ends
 from .storage import analyze_storage
 from .prepare import MIRPrepared
-from .reach import MATERIALIZES, fields_past_origin, storage_events
+from .reach import BEGINS, MIRStorageEventKind, fields_past_origin, storage_events
 
 
 class MIRStorageVerdict(Enum):
@@ -121,9 +121,15 @@ def _place_key(place: MIRPlace) -> tuple[int, int]:
     return place.root.index, len(place.projections)
 
 
-def _storage_root(slot: MIRSlot) -> bool:
-    return (slot.shape.owns_storage
-            or slot.kind is MIRSlotKind.LOCAL and slot.shape.scalar_wrapper)
+def _may_be_selected(key: MIRPlace, selected: dict, domains: Mapping) -> bool:
+    """Whether every sum payload a stored-loan key lies under may be selected
+    at the point (an unselected payload stores no loan)."""
+    for depth, projection in enumerate(key.projections):
+        if isinstance(projection, MIRUnionPayload):
+            wrapper = MIRPlace(key.root, key.projections[:depth])
+            if projection.alternative not in selected.get(wrapper, domains.get(wrapper, frozenset({projection.alternative}))):
+                return False
+    return True
 
 
 def certify_storage_origins(prepared: MIRPrepared, required: frozenset[MIRSlotId],
@@ -190,7 +196,7 @@ def _borrow_evidence(prepared: MIRPrepared, operations: frozenset[MIRPoint], exp
         origins[point] = refs
         for ref in refs:
             if not ref.external:
-                if ref.place.root not in slots or not _storage_root(slots[ref.place.root]):
+                if ref.place.root not in slots or not slots[ref.place.root].lifetime_root:
                     gap("borrow operation reaches an unrepresented storage origin", operation.loc)
                 else:
                     required.add(ref.place.root)
@@ -222,7 +228,7 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
     slots = {s.id: s for s in fn.slots}
     blocks = {b.id: b for b in fn.blocks}
     for root in required:
-        if root not in slots or not _storage_root(slots[root]):
+        if root not in slots or not slots[root].lifetime_root:
             raise MIRValidationError("required origin is not storage of this MIR body")
     conflicts: list[MIRStorageConflict] = []
     gaps: list[MIRNotCovered] = []
@@ -243,28 +249,33 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
         return block.statements[point.index].loc if point.index < len(block.statements) else block.terminator.loc
 
     for slot in fn.slots:
-        members = ((slot.type,) if slot.shape.is_storage else
-                   tuple(m.type for m in slot.shape.elements if m.is_storage)
-                   if slot.shape.owned_tuple else ())
-        for typ in members:
+        # An owned tuple's or sum's storage members are checked directly: a
+        # whole copy of one has no temporary of its own to be checked through.
+        members = ((slot.shape,) if slot.shape.is_storage else
+                   tuple(m for m in slot.shape.members if m is not None and m.is_storage)
+                   if slot.shape.owned_tuple or slot.shape.owned_sum else ())
+        for member in members:
             try:
-                definition = definitions.get(slot, typ)
+                definition = definitions.get(slot, member.type)
             except MIRUnsupported as failure:
                 gap(f"storage record without verified hook-free definition: {failure.reason}")
                 continue
             # Owned container storage answers its container layout (whose
             # record elements its definition verified); records their layout.
-            if (definition.members != slot.shape.members if slot.shape.cls is MIRClass.CONTAINER
+            if (definition.members != member.members if member.cls is MIRClass.CONTAINER
                     else definition.layout not in fn.records):
                 gap("storage record layout differs from its definition")
 
-    # A root's storage materialized on a feasible path (`MATERIALIZES`).
+    # A root's storage materialized on a feasible path (`BEGINS`).
+    # A construction materializes the place its event names: none for an
+    # owned sum built empty.
     materialized = {event.place.root for block in fn.blocks for index, stmt in enumerate(block.statements)
                     if MIRPoint(block.id, index) in presence.points
                     for event in storage_events(stmt, (), slots)
-                    if event.kind in MATERIALIZES and event.known and not event.place.projections}
+                    if event.kind in BEGINS and event.known and not event.place.projections
+                    and (event.kind is not MIRStorageEventKind.CONSTRUCT or event.materialized is not None)}
     # A by-value parameter's storage is materialized by the caller, before entry.
-    materialized.update(s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and _storage_root(s))
+    materialized.update(s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.lifetime_root)
     for root in sorted(required - materialized, key=lambda s: s.index):
         gap(f"required origin %{root.index} is never materialized on a feasible path", slot=root)
 
@@ -299,7 +310,8 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
                     if ref.place.root not in slots or fields_past_origin(ref.place) is None:
                         continue
                     for key in dependencies.objects[ref.place.root]:
-                        if key.projections[:len(prefix)] == prefix and not state.get(key):
+                        if (key.projections[:len(prefix)] == prefix and not state.get(key)
+                                and _may_be_selected(key, selected, presence.domains)):
                             gap(f"live record %{ref.place.root.index} has unknown stored loans", point_loc(point),
                                 ref.place.root)
             for sid in sorted(liveness.points[point], key=lambda s: s.index):
@@ -317,12 +329,6 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
     if isinstance(ends, MIRNotCovered):
         gaps.append(ends)
     else:
-        for edge, events in ends.ends.items():
-            engagement = dict(presence.edge_engagement.get(edge, frozenset()))
-            for event in events:
-                if event.kind is MIRScopeEndKind.RECORD_WRAPPER and not engagement.get(event.storage.root):
-                    gap(f"optional backing %{event.storage.root.index} ends without an engagement fact",
-                        blocks[edge.source].terminator.loc, event.storage.root)
         scoped = _scope_conflicts(prepared, ends)
         if isinstance(scoped, MIRNotCovered):
             gaps.append(scoped)
@@ -349,14 +355,6 @@ def _check_storage(prepared: MIRPrepared, required: frozenset[MIRSlotId], defini
         events = analyze_storage(prepared)
         if isinstance(events, MIRNotCovered):
             gaps.append(events)
-        else:
-            for point, stmt in events.writes.items():
-                fact = stmt.storage_write
-                if (isinstance(fact, MIRStorageWrite) and fact.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
-                        and point in presence.points
-                        and not dict(presence.engagement.get(point, frozenset())).get(stmt.target.root)):
-                    gap(f"optional backing %{stmt.target.root.index} replaced without an engagement fact",
-                        stmt.loc, stmt.target.root)
         retention = analyze_retention(prepared)
         if isinstance(retention, MIRNotCovered):
             gaps.append(retention)

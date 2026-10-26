@@ -13,7 +13,8 @@ from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from . import lower as lowering
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRPlace, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRStorageInit, MIRWrap,
+    MIRAssign, MIRBorrow, MIRConstant, MIRPlace, MIRRead,
     MIRStorageWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap,
 )
 from .shapes import MIRTupleIndex, MIRUnionPayload
@@ -149,14 +150,14 @@ def test_select_uses_actual_optional_backing(artifacts: Artifacts, name: str) ->
         place = result.backings[backing.node]
         placement = source.temp_plan.placement(backing.node)
         slot = slots[place.root]
-        assert not place.projections and slot.record_storage is MIRRecordStorageKind.OPTIONAL
+        assert place.projections == (MIRUnionPayload(1),) and slot.shape.owned_sum
         assert not slot.readonly
         assert place.root in result.evidence.explicit_roots
         assert placement is backing.placement and placement.initialization is backing.node
-        assert any(isinstance(s, MIRRecordStorageInit) and s.target == place for s in statements)
-        write, = (s for s in statements if isinstance(s, MIRAssign) and s.target == place)
-        assert isinstance(write.value, MIRConstruct)
-        assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
+        assert any(isinstance(s, MIRStorageInit) and s.target == MIRPlace(place.root) for s in statements)
+        write, = (s for s in statements if isinstance(s, MIRAssign) and s.target == MIRPlace(place.root))
+        assert isinstance(write.value, MIRWrap)
+        assert write.storage_write.mode is MIRStorageWriteMode.IN_PLACE
         assert any(isinstance(s, MIRAssign) and isinstance(s.value, MIRBorrow) and s.value.source == place
                    for s in statements)
         assert replace(backing.node) not in result.backings
@@ -197,7 +198,8 @@ def test_branch_local_alias_escape_is_a_conflict(artifacts: Artifacts) -> None:
     assert result.verdict is MIRStorageVerdict.CONFLICT, (result.gaps, result.evidence)
     assert not result.gaps and not result.evidence.gaps
     place, = result.backings.values()
-    assert any(c.kind is MIRStorageConflictKind.SCOPE_END and c.origin == place
+    # The sum's scope end ends the slot itself, which reaches the backing payload.
+    assert any(c.kind is MIRStorageConflictKind.SCOPE_END and c.origin == MIRPlace(place.root)
                for c in result.evidence.conflicts)
     assert not result.certifies(request, source, result.function)
 
@@ -428,7 +430,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
         function = replace(function, slots=(*function.slots, wrapper, *extra_slots), blocks=tuple(blocks))
     evidence = certify_storage_origins(prepared(function), frozenset((backing.root,)), artifacts[2])
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
-    assert any(c.kind is MIRStorageConflictKind.SCOPE_END and c.origin == backing and c.holder == path
+    assert any(c.kind is MIRStorageConflictKind.SCOPE_END and c.origin == MIRPlace(backing.root) and c.holder == path
                for c in evidence.conflicts)
 
 

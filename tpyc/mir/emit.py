@@ -6,7 +6,7 @@ body is complete; assembly (`assemble`, `_Assembly`) fixes them and
 numbers the body canonically."""
 
 from collections.abc import Callable, Iterator, Mapping
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass, field, fields, is_dataclass, replace
 
 from ..typesys import BOOL, Representation, TpyType
@@ -15,7 +15,7 @@ from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
     MIRGoto, MIRNot, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
-    MIRRecordStorageKind, MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot,
+    MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot, MIRWrap,
     MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
     source_order, statement_target, place_shape,
 )
@@ -24,7 +24,7 @@ from .value import (
     NO_FIELDS, MIRRecordLayout, MIRRecords, MIRRole, MIRShape, MIRValidationError, Published, holder_form, loan_access,
     value_shape,
 )
-from .shapes import Projection, object_prefix
+from .shapes import MIRUnionPayload, Projection, object_prefix
 from .validate import body_may_raise, operands, reaches_element, statement_reads, successors
 from .prepare import _FirstPhase, first_phase
 
@@ -124,7 +124,6 @@ class _SlotRecord:
     global_id: object = None
     storage_duration: object = None
     residence: RegionHandle | None = None
-    record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
     writable: bool | None = None
     loc: object = None
 
@@ -260,13 +259,12 @@ class Fragment:
     def record(self, shape: MIRShape, kind: MIRSlotKind = MIRSlotKind.TEMPORARY, name: str | None = None, *,
                loc: object = None, alias_source: MIRPlace | None = None, global_id: object = None,
                storage_duration: object = None,
-               record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT,
                writable: bool | None = None) -> MIRSlotId:
         """A slot of the body, not yet placed: `adopt` places it."""
         root = self.root
         sid = MIRSlotId(self.body, len(root.records))
         root.records[sid] = _SlotRecord(sid, shape, kind, name, alias_source=alias_source, global_id=global_id,
-                                        storage_duration=storage_duration, record_storage=record_storage,
+                                        storage_duration=storage_duration,
                                         writable=writable, loc=loc)
         return sid
 
@@ -280,7 +278,7 @@ class Fragment:
                 storage_duration = record.storage_duration = self.scope_storage(self.region)
             record.residence = (self.root.body_region if storage_duration is MIRStorageDuration.BODY
                                 else storage_duration
-                                if record.shape.is_storage and isinstance(storage_duration, RegionHandle)
+                                if record.shape.owns_storage and isinstance(storage_duration, RegionHandle)
                                 else self.region)
         self.slots.append(record)
         return sid
@@ -646,14 +644,28 @@ class Fragment:
         a full expression of its own, its region ending after it."""
         for temporary in temporaries:
             # Decided in the scope the storage lives in, outside the initializer's region.
-            write = MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN if temporary.optional
-                                    else MIRStorageWriteMode.INITIALIZE)
-            if nested:
-                with self.full_expression(temporary.value):
+            write = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+            with self.full_expression(temporary.value) if nested else nullcontext():
+                if temporary.optional:
+                    # The record is built in storage of the current scope, then
+                    # moved into the sum the temporary plan placed.
+                    shape = self.root.records[temporary.storage].shape.payload
+                    built = self.slot(shape, storage_duration=self.scoped_duration())
+                    self.write(built, self.splice(temporary.value), temporary.loc, write)
+                    lent = self.fill_sum(temporary.storage, built, temporary.loc)
+                else:
                     self.write(temporary.storage, self.splice(temporary.value), temporary.loc, write)
-            else:
-                self.write(temporary.storage, self.splice(temporary.value), temporary.loc, write)
-            self.write(temporary.holder, MIRBorrow(MIRPlace(temporary.storage)), temporary.loc)
+                    lent = MIRPlace(temporary.storage)
+            self.write(temporary.holder, MIRBorrow(lent), temporary.loc)
+
+    def fill_sum(self, storage: MIRSlotId, built: MIRSlotId, loc: object) -> MIRPlace:
+        """The value temporary storage holds (`built`) moved into the sum
+        `storage` holds inline, selecting its payload alternative (C++
+        `opt = P(..)` / `opt.emplace(P(..))`); the payload's place."""
+        payload = MIRUnionPayload(1)
+        self.write(storage, MIRWrap(payload.alternative, MIRPlace(built)), loc,
+                   MIRStorageWrite(MIRStorageWriteMode.IN_PLACE))
+        return MIRPlace(storage, (payload,))
 
 
 def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, callees: tuple[object, ...],
@@ -835,8 +847,7 @@ class _Assembly:
         return MIRSlot(self.slot_ids[record.id], shape, record.kind, record.name,
                        alias_source=self.remap(record.alias_source), global_id=record.global_id,
                        storage_duration=self.duration(record.storage_duration),
-                       residence=self.region(record.residence) if record.residence is not None else None,
-                       record_storage=record.record_storage)
+                       residence=self.region(record.residence) if record.residence is not None else None)
 
     # --- the function ------------------------------------------------------
 

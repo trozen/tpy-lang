@@ -117,13 +117,15 @@ The two implemented steps follow the approved batch:
 2. **Bounded MIR consumer and evidence.** Mixed plain-record ternaries lower
    through the existing borrowed-expression CFG, using verified hook-free
    bool/int32-field constructors and stable scalar constructor operands.
-   Optional backing is allocated at the planned scope and initialized empty
-   with `MIRRecordStorageInit`; the selected operand fills it through the
-   existing `OPTIONAL_ASSIGN` contract and borrows the actual root. Emplacement
-   requires the constructor/layout's move eligibility. Readonly holder access
-   remains independent of mutable backing. The existing adapter connects the
-   exact node, retaining inventory, request identity, engagement, scope-end,
-   replacement and escape checks.
+   The fresh arm's storage is an owned sum slot (MIR_ANALYSIS_PLAN.md
+   "Owned sum slots"), allocated at the planned scope and initialized empty
+   with `MIRStorageInit`; the selected operand builds its record in a
+   temporary of its full expression, moves it into the sum (`MIRWrap`) and
+   borrows the payload. Emplacement requires the constructor/layout's move
+   eligibility. Readonly holder access remains independent of mutable
+   storage. The existing adapter connects the exact node, retaining
+   inventory, request identity, sum selection, scope-end, replacement and
+   escape checks.
 
 Declaration lookup permits multiple scopes for one statement. Exact producer
 identity and per-channel ordering checks remain necessary: the emitter can drain
@@ -187,7 +189,7 @@ Pitfalls: preserve aliasing and warn/copy behavior by unchanged emission;
 check tuple/scalar retained-origin symmetry internally; share the producer
 across positions while keeping unsupported routes explicit; preserve lazy
 evaluation and source order restrictions; require positive type/constructor,
-placement and engagement facts. No allocations, view conversions, runtime
+placement and sum selection facts. No allocations, view conversions, runtime
 templates, numeric rules, loop constness, diagnostics or source rejections
 change. Generic twins remain coverage boundaries rather than inferred facts.
 Generated-code checks include slot naming, order and scopes, not only output.

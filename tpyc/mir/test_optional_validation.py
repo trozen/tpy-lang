@@ -7,7 +7,8 @@ import pytest
 from ..typesys import BOOL, INT32, OptionalType, ReadonlyType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap, MIRIsAlternative, MIRCopy,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap, MIRIsAlternative, MIRCopy, MIRStorageWrite,
+    MIRStorageWriteMode,
 )
 from .shapes import MIRUnionPayload
 from .value import MIRHolding, MIRValidationError
@@ -32,9 +33,13 @@ SLOTS = (
     MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
     MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
 )
-CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)))
+# A whole write of an inline sum carries its storage write fact: the first
+# initializes the local, the rest replace its value in place.
+INIT = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+ASSIGN = MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
+CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)), storage_write=INIT)
 TEST = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (1,)))
-CLEAR = MIRAssign(MIRPlace(CURRENT), MIRWrap(0))
+CLEAR = MIRAssign(MIRPlace(CURRENT), MIRWrap(0), storage_write=ASSIGN)
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(CURRENT, (MIRUnionPayload(1),))))
 FALLBACK = MIRBlock(NO, (), MIRReturn(VALUE))
 
@@ -45,7 +50,7 @@ def function(*blocks: MIRBlock) -> MIRFunction:
 
 @pytest.mark.parametrize("mutation", [
     CLEAR,
-    MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM))),
+    MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)), storage_write=ASSIGN),
     MIRAssign(MIRPlace(GUARD), MIRConstant(True)),
     MIRAssign(MIRPlace(GUARD), MIRRead(MIRPlace(FLAG))),
 ])
@@ -100,10 +105,10 @@ def test_loop_backedge_requires_a_new_test(fresh: bool) -> None:
 
 @pytest.mark.parametrize("self_copy", [False, True])
 def test_construction_and_copy_establish_presence(self_copy: bool) -> None:
-    build = MIRAssign(MIRPlace(CURRENT), MIRWrap(1, MIRPlace(VALUE)))
-    save = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(CURRENT)))
+    build = MIRAssign(MIRPlace(CURRENT), MIRWrap(1, MIRPlace(VALUE)), storage_write=INIT)
+    save = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(CURRENT)), storage_write=INIT)
     read = replace(READ, value=MIRRead(MIRPlace(SAVED, (MIRUnionPayload(1),))))
-    overwrite = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(SAVED))) if self_copy else CLEAR
+    overwrite = MIRAssign(MIRPlace(SAVED), MIRCopy(MIRPlace(SAVED)), storage_write=ASSIGN) if self_copy else CLEAR
     fn = function(MIRBlock(ENTRY, (build, save, overwrite, read), MIRReturn(RESULT)))
     validate_function(fn)
     assert execute(fn, optional_value(None), 0, False) == 0
@@ -128,13 +133,13 @@ def test_malformed_optional_layout_is_rejected(bad: MIRSlot) -> None:
         validate_function(replace(fn, slots=(bad, *fn.slots[1:])))
 
 
-def test_a_slot_payload_is_never_inline_storage() -> None:
-    # A slot's payload is an inert leaf or a pointer at a record; a record
-    # stored inline is an Optional field's, never a slot's.
+def test_an_inline_record_payload_is_a_locals_own_storage() -> None:
+    # A parameter's payload is an inert leaf or a pointer at a record; a
+    # record stored inline is an Optional field's or a local owned sum's.
     cell = hand_record("Cell", "optional_validation.Cell")
     inline = reslot(SLOTS[0], type=OptionalType(cell), members=(None, owned_shape(cell)))
     fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
-    with pytest.raises(MIRValidationError, match="unsupported optional record holding"):
+    with pytest.raises(MIRValidationError, match="inline record sum needs local storage"):
         validate_function(replace(fn, slots=(inline, *fn.slots[1:])))
 
 

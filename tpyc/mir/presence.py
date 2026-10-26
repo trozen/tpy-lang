@@ -12,7 +12,7 @@ from .coverage import call_write_places
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
     statement_call, statement_target, MIRSlot, MIRNot, MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIREdge, MIRReturn,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRStorageWrite, MIRStorageWriteMode, MIRIsAlternative,
+    MIRAssign, MIRIsAlternative,
     MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape, MIRWrap,
     MIRCall, MIRPresentCall, present_effects,
 )
@@ -26,15 +26,6 @@ Facts = frozenset[tuple[MIRPlace, frozenset[int]]]
 # None means this boolean outcome is impossible, not that its facts are unknown.
 Outcomes = tuple[Facts | None, Facts | None]
 EMPTY: Facts = frozenset()
-
-
-class MIREngagement(Enum):
-    EMPTY = auto()
-    ENGAGED = auto()
-
-
-EngagementFacts = frozenset[tuple[MIRSlotId, frozenset[MIREngagement]]]
-DISENGAGED = frozenset({MIREngagement.EMPTY})
 
 
 class MIRPresenceIssueKind(Enum):
@@ -74,8 +65,6 @@ class MIRPresence:
     domains: Mapping[MIRPlace, frozenset[int]]
     issues: tuple[MIRPresenceIssue, ...]
     edges: Mapping[MIREdge, Facts]
-    engagement: Mapping[MIRPoint, EngagementFacts]
-    edge_engagement: Mapping[MIREdge, EngagementFacts]
     # Every call as presence sees it (`present_call`), at its point.
     calls: Mapping[MIRPoint, MIRPresentCall] = MappingProxyType({})
 
@@ -85,7 +74,6 @@ class _State:
     present: Facts = EMPTY
     conditions: dict[MIRSlotId, Outcomes] = field(default_factory=dict)
     valid_aliases: frozenset[MIRSlotId] = frozenset()
-    engagement: EngagementFacts = frozenset()
 
 
 def _combine(left: Facts, right: Facts | None) -> Facts | None:
@@ -137,10 +125,7 @@ def _join(states: list[_State]) -> _State:
             possible = [facts for s in states if (facts := _outcome(s, slot, truth)) is not None]
             outcomes.append(_join_facts(possible) if possible else None)
         _remember(conditions, slot, (outcomes[0], outcomes[1]), present)
-    engagement = [dict(s.engagement) for s in states]
-    joined = frozenset((slot, frozenset.union(*(m.get(slot, DISENGAGED) for m in engagement)))
-                       for slot in set().union(*(m.keys() for m in engagement)))
-    return _State(present, conditions, frozenset.intersection(*(s.valid_aliases for s in states)), joined)
+    return _State(present, conditions, frozenset.intersection(*(s.valid_aliases for s in states)))
 
 
 # The referents a place resolves to before the statement at a point; None
@@ -155,8 +140,8 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots:
     statement retargets its place -- a write of the place or of a prefix
     of it under its root (`_under`): which object the place names changes,
     not a reach question -- or where storage the statement replaces
-    (`replacement_events`, a call's writes as this state sees the call,
-    an Optional assignment by this state's engagement) reaches the
+    (`replacement_events`, a call's writes as this state sees the call)
+    reaches the
     wrapper's storage: `reaches` over the referents of both, across
     distinct external origins by `declared_containment`. Fail closed: a
     statement whose write fact is missing, a written place or the wrapper
@@ -169,10 +154,9 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots:
         return state
     target = statement_target(stmt)
     call = statement_call(stmt)
-    engagement = dict(state.engagement)
+    selection = dict(state.present)
     events = replacement_events(
-        stmt, present_call(call, state.present, slots).writes if call is not None else (),
-        lambda root: MIREngagement.ENGAGED in engagement.get(root, frozenset()), slots)
+        stmt, present_call(call, state.present, slots).writes if call is not None else (), selection.get, slots)
     written = None if events is None else [(place, resolve(point, place)) for place, _owner in events]
 
     def dead(fact_place: MIRPlace) -> bool:
@@ -204,7 +188,7 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots:
     for slot, outcomes in state.conditions.items():
         kept = tuple(None if facts is None else frozenset(f for f in facts if not dead(f[0])) for facts in outcomes)
         _remember(conditions, slot, (kept[0], kept[1]), present)
-    return _State(present, conditions, state.valid_aliases, state.engagement)
+    return _State(present, conditions, state.valid_aliases)
 
 
 def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
@@ -230,19 +214,8 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
             known = (frozenset({stmt.value.alternative}) if isinstance(stmt.value, MIRWrap)
                      else dict(state.present).get(stmt.value.source))
             if known is not None:
-                return _State(state.present | {(place, known)}, state.conditions, state.valid_aliases,
-                              state.engagement)
+                return _State(state.present | {(place, known)}, state.conditions, state.valid_aliases)
         return state
-    match stmt:
-        case MIRRecordStorageInit():
-            engaged = DISENGAGED
-        case MIRAssign(storage_write=MIRStorageWrite(mode=MIRStorageWriteMode.OPTIONAL_ASSIGN)):
-            engaged = frozenset({MIREngagement.ENGAGED})
-        case _:
-            engaged = None
-    if engaged is not None:
-        facts = frozenset(f for f in state.engagement if f[0] != stmt.target.root)
-        return _State(state.present, state.conditions, state.valid_aliases, facts | {(stmt.target.root, engaged)})
     target, value = stmt.target.root, stmt.value
     written = stmt.target
     present, conditions = state.present, state.conditions.copy()
@@ -296,7 +269,7 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
         _remember(conditions, target, (outcomes[0], outcomes[1]), present)
     if isinstance(value, MIRUnionExtract) and target in (aliases or {}).get(_wrapper(value.source), frozenset()):
         valid |= {target}
-    return _State(present, conditions, valid, state.engagement)
+    return _State(present, conditions, valid)
 
 
 def _missing(place: MIRPlace, state: _State, alias_slots: set[MIRSlotId], point: MIRPoint,
@@ -326,8 +299,6 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
     edge_facts: dict[MIREdge, Facts] = {}
-    edge_engagement: dict[MIREdge, EngagementFacts] = {}
-    optional_records = {s.id for s in fn.slots if s.record_storage is MIRRecordStorageKind.OPTIONAL}
     booleans = {s.id for s in fn.slots if s.type == BOOL and s.shape.is_scalar}
     slots = {s.id: s for s in fn.slots}
     domains: dict[MIRPlace, frozenset[int]] = {}
@@ -373,7 +344,6 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
         match term:
             case MIRReturn():
                 edge_facts[MIREdge(bid)] = state.present
-                edge_engagement[MIREdge(bid)] = state.engagement
             case MIRGoto():
                 outgoing.append((term.target, None, state))
             case MIRBranch():
@@ -384,16 +354,14 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
                         conditions = state.conditions.copy()
                         _remember(conditions, term.condition,
                                   (None, facts) if truth else (facts, None), facts)
-                        branch = _State(facts, conditions, state.valid_aliases, state.engagement)
+                        branch = _State(facts, conditions, state.valid_aliases)
                     outgoing.append((target, truth, branch))
         for target, truth, branch in outgoing:
             edge = MIREdge(bid, int(truth is False))
             if branch is None:
                 edge_facts.pop(edge, None)
-                edge_engagement.pop(edge, None)
             else:
                 edge_facts[edge] = branch.present
-                edge_engagement[edge] = branch.engagement
                 transition = regions.edges[edge]
                 forgotten = transition.reset | transition.ended
                 if forgotten:
@@ -406,8 +374,7 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
                                          for facts in outcomes)
                             _remember(conditions, slot, (kept[0], kept[1]), present)
                     stale = frozenset().union(*(ids for wrapper, ids in aliases.items() if wrapper.root in forgotten))
-                    engagement = frozenset(f for f in branch.engagement if f[0] not in transition.ended)
-                    branch = _State(present, conditions, branch.valid_aliases - stale - forgotten, engagement)
+                    branch = _State(present, conditions, branch.valid_aliases - stale - forgotten)
             key = (bid, target, truth)
             predecessors[target].add(key)
             if edges.get(key) != branch:
@@ -419,7 +386,6 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
                     queued.add(target)
                     work.append(target)
     points: dict[MIRPoint, Facts] = {}
-    engagement: dict[MIRPoint, EngagementFacts] = {}
     issues: list[MIRPresenceIssue] = []
     calls: dict[MIRPoint, MIRPresentCall] = {}
     for bid, state in incoming.items():
@@ -428,7 +394,6 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
             points[point] = state.present
             if (call := statement_call(stmt)) is not None:
                 calls[point] = present_call(call, state.present, slots)
-            engagement[point] = state.engagement
             if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRIteratorRead, MIRIteratorAdvance))
                     and dict(state.present).get(MIRPlace(stmt.value.source)) != frozenset({1})):
                 issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
@@ -439,13 +404,8 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
                 places.append(stmt.value.source)
             for place in places:
                 issues.extend(_missing(place, state, alias_slots, point, fields))
-                if (place.root in optional_records
-                        and dict(state.engagement).get(place.root) != frozenset({MIREngagement.ENGAGED})):
-                    issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
-                                                   "record access without engagement proof"))
             state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts, kill_at(point), fields)
         points[MIRPoint(bid, len(blocks[bid].statements))] = state.present
-        engagement[MIRPoint(bid, len(blocks[bid].statements))] = state.engagement
     for block in fn.blocks:
         if block.id in incoming:
             continue
@@ -458,5 +418,5 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
             state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts,
                               kill_at(MIRPoint(block.id, index)), fields)
     return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues),
-                       MappingProxyType(edge_facts), MappingProxyType(engagement), MappingProxyType(edge_engagement),
+                       MappingProxyType(edge_facts),
                        MappingProxyType(calls))

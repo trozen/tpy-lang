@@ -12,11 +12,13 @@ from ..typesys import BOOL
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
+    MIRPlace,
+    MIRStorageInit,
     MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite, MIRStorageWriteMode,
+    MIRStorageWrite, MIRStorageWriteMode,
     MIRRegionId, MIRStorageDuration,
 )
-from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
+from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .testutil import compiled_definitions, Reference, execute, prepared
 
 
@@ -152,7 +154,7 @@ def artifacts(compiled) -> Artifacts:
                                                      definitions=definitions)
         for name, fn in bodies.items():
             assert isinstance(fn, MIRFunction), (name, fn)
-            assert any(isinstance(s, MIRRecordStorageInit) for b in fn.blocks for s in b.statements), name
+            assert any(isinstance(s, MIRStorageInit) for b in fn.blocks for s in b.statements), name
         return functions, bodies, definitions, cpp
 
 
@@ -177,11 +179,14 @@ def test_nested_empty_and_engaged_exits(artifacts: Artifacts, choose: bool, skip
     fn = artifacts[1]["nested"]
     assert execute(fn, True, choose, skip, stop) == (5 if choose and not (skip or stop) else 0)
     assert execute(fn, False, choose, skip, stop) == 0
-    backing, = [s for s in fn.slots if s.record_storage is MIRRecordStorageKind.OPTIONAL]
+    backing, = [s for s in fn.slots if s.shape.owned_sum]
     assert isinstance(backing.storage_duration, MIRRegionId)
-    exits = list(analyze_scope_ends(prepared(fn)).ends.values())
-    assert any([e.kind for e in events] == [MIRScopeEndKind.RECORD_WRAPPER] for events in exits)
-    assert any([e.kind for e in events] == [MIRScopeEndKind.RECORD_WRAPPER, MIRScopeEndKind.OBJECT] for events in exits)
+    # The sum ends at each exit of its region, empty on one and holding its record on another.
+    ready = prepared(fn)
+    held = {dict(ready.presence.edges[edge]).get(MIRPlace(backing.id))
+            for edge, events in analyze_scope_ends(ready).ends.items()
+            if any(e.storage == MIRPlace(backing.id) for e in events)}
+    assert frozenset({0}) in held and any(s is not None and 1 in s for s in held)
     assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
 
@@ -194,12 +199,12 @@ def test_producer_and_mir_agree_with_the_existing_optional_assignment(artifacts:
         assert fact.physical_default is None and fact.optional_layout is None
         assert fact.initially_assigned is False
         body = bodies[name]
-        backing, = [s for s in body.slots if s.record_storage is MIRRecordStorageKind.OPTIONAL]
+        backing, = [s for s in body.slots if s.shape.owned_sum]
         assert backing.storage_duration is MIRStorageDuration.BODY
         writes = [s for b in body.blocks for s in b.statements
                   if isinstance(s, MIRAssign) and s.target.root == backing.id]
         assert len(writes) == 1
-        assert writes[0].storage_write == MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN)
+        assert writes[0].storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
         emitted = cpp[cpp.index(f" {name}("):]
         emitted = emitted.split("\n}\n", 1)[0]
         assert emitted.index(f"std::optional<{fact.type}> cell;") < emitted.index("cell =")

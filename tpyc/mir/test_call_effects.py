@@ -250,7 +250,6 @@ def test_call_statements_are_real_uses_without_storage_ends(artifacts: Artifacts
             after = MIRPoint(point.block, point.index + 1)
             assert deps.referents[point] == deps.referents[after]
             assert presence.points[point] == presence.points[after]
-            assert presence.engagement[point] == presence.engagement[after]
     assert not any(isinstance(s.type, VoidType) for s in fn.slots)
 
 

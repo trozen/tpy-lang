@@ -20,14 +20,17 @@ from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
+    MIRStorageInit, MIRConstant,
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall, MIRCopy, MIRFunction,
-    MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind, MIRNotCovered, MIRRecordStorageInit, MIRRecordStorageKind, MIRReturn,
+    MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind, MIRNotCovered, MIRReturn,
     MIRStorageDuration, MIRPlace, MIRStorageWrite, MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRConstruct,
     MIRWrap,
 )
 from .region_flow import MIRRegionFlow
+from .shapes import MIRUnionPayload
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .testutil import (
+    placed_storage,
     compiled_definitions, borrowed_shape, leaf_shape, optional_shape, tuple_shape, union_shape, prepared,
     workspace_functions,
 )
@@ -164,7 +167,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def _storage(body: MIRFunction) -> list[MIRSlot]:
-    return [slot for slot in body.slots if slot.shape.is_storage]
+    return placed_storage(body)
 
 
 @pytest.mark.parametrize("name", ["eager", "lazy", "multiple", "branches", "loop", "lazy_loop",
@@ -197,8 +200,8 @@ def test_storage_survives_eager_statement_and_first_if_join(artifacts: Artifacts
 def test_lazy_wrapper_is_declared_before_branch_and_payload_is_conditional(artifacts: Artifacts) -> None:
     body = _body(artifacts, "lazy")
     storage, = _storage(body)
-    assert storage.record_storage is MIRRecordStorageKind.OPTIONAL
-    declaration = next(block for block in body.blocks if any(isinstance(stmt, MIRRecordStorageInit)
+    assert storage.shape.owned_sum
+    declaration = next(block for block in body.blocks if any(isinstance(stmt, MIRStorageInit)
                                                              for stmt in block.statements))
     construction = next(block for block in body.blocks if any(isinstance(stmt, MIRAssign)
         and isinstance(stmt.value, MIRConstruct) for stmt in block.statements))
@@ -447,17 +450,27 @@ def test_retained_holders_observe_named_backing_scope_end(
             other = NominalType("Other", _module_qname="main.Other")
             shape = union_shape(UnionType((storage.type, other)), (member, borrowed_shape(other, True)))
             capture, copy = MIRWrap(0, MIRPlace(source)), MIRCopy(MIRPlace(holder))
+    built = MIRSlotId(fn.id, len(fn.slots) + 2)
+    lent = MIRPlace(storage.id, (MIRUnionPayload(1),) if optional_backing else ())
     slots = tuple(replace(slot, storage_duration=child, residence=child,
-                          record_storage=MIRRecordStorageKind.OPTIONAL if optional_backing
-                          else MIRRecordStorageKind.DIRECT) if slot.id == storage.id
+                          shape=optional_shape(OptionalType(storage.type), storage.shape) if optional_backing
+                          else slot.shape) if slot.id == storage.id
                   else replace(slot, residence=child) if slot.id == borrowed.id else slot for slot in fn.slots)
     slots += tuple(MIRSlot(sid, shape, MIRSlotKind.LOCAL, residence=root) for sid in (holder, copied))
-    statements = tuple(replace(stmt, storage_write=MIRStorageWrite(
-        MIRStorageWriteMode.OPTIONAL_ASSIGN if optional_backing else MIRStorageWriteMode.INITIALIZE))
-        if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) else stmt
-        for stmt in original.statements)
     if optional_backing:
-        statements = (MIRRecordStorageInit(MIRPlace(storage.id)), *statements)
+        slots += (MIRSlot(built, storage.shape, MIRSlotKind.TEMPORARY, storage_duration=child, residence=child),)
+
+    def folded(stmt):
+        if not (isinstance(stmt, MIRAssign) and stmt.target == MIRPlace(storage.id)):
+            return (replace(stmt, value=MIRBorrow(lent)) if stmt is borrow else stmt,)
+        if not optional_backing:
+            return (replace(stmt, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),)
+        return (replace(stmt, target=MIRPlace(built), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+                MIRAssign(MIRPlace(storage.id), MIRWrap(1, MIRPlace(built)),
+                          storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
+    statements = tuple(out for stmt in original.statements for out in folded(stmt))
+    if optional_backing:
+        statements = (MIRStorageInit(MIRPlace(storage.id), 0, MIRConstant(None)), *statements)
     fn = replace(fn, slots=slots, regions=(MIRRegion(root, None, entry), MIRRegion(child, root, inside)),
                  blocks=(MIRBlock(entry, (), MIRGoto(inside), root),
                          MIRBlock(inside, (*statements, MIRAssign(MIRPlace(holder), capture)), MIRGoto(after), child),
@@ -465,5 +478,6 @@ def test_retained_holders_observe_named_backing_scope_end(
     result = inspect_scope_lifetimes(prepared(fn))
     assert not result.freshness
     assert len(result.conflicts) == 1
+    # The owned sum's scope end ends the slot itself, reaching its payload's holder.
     assert result.conflicts[0].ended == MIRPlace(storage.id)
     assert result.conflicts[0].holder.root == holder

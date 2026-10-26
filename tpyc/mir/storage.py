@@ -25,8 +25,8 @@ class MIRStorageEvents:
     # A move out of owned storage empties the source place: a replacement
     # event on it, at the move.
     moves: Mapping[MIRPoint, MIRPlace] = MappingProxyType({})
-    # A wrapper constructed without an assignment: a scalar wrapper with its
-    # default (`CONSTRUCT`) or an Optional record backing left empty (`BACKING`).
+    # A wrapper constructed with its default, without an assignment
+    # (`CONSTRUCT`): a scalar wrapper's, or a sum storing a record inline left empty.
     constructions: Mapping[MIRPoint, MIRStorageEvent] = MappingProxyType({})
     # A scalar wrapper's value replaced in place: its inline payload ends.
     payload_writes: Mapping[MIRPoint, MIRAssign] = MappingProxyType({})
@@ -60,14 +60,14 @@ def analyze_storage(prepared: MIRPrepared) -> MIRStorageEvents | MIRNotCovered:
                         calls[point] = (*calls.get(point, ()), event.place)
                     case MIRStorageEventKind.MOVE:
                         moves[point] = event.place
-                    case MIRStorageEventKind.CONSTRUCT | MIRStorageEventKind.BACKING:
+                    case MIRStorageEventKind.CONSTRUCT:
                         constructions[point] = event
-                    case MIRStorageEventKind.PAYLOAD if event.known:
-                        assert isinstance(stmt, MIRAssign)
-                        payloads[point] = stmt
                     case MIRStorageEventKind.PAYLOAD:
-                        # Its fact missing: payload_lifetime refuses it.
-                        pass
+                        # Never without its fact: the validator demands it on
+                        # a whole write of an inline sum (every scalar wrapper
+                        # is one) and refuses a write into a payload.
+                        assert isinstance(stmt, MIRAssign) and event.known
+                        payloads[point] = stmt
                     case _:
                         assert isinstance(stmt, MIRAssign)
                         writes[point] = stmt
@@ -95,8 +95,8 @@ def dump_storage(result: MIRStorageEvents | MIRNotCovered) -> str:
         lines.append(f"  bb{point.block.index} before {point.index}: move-out {_place(place)}{_location(loc)}")
     for point, event in result.constructions.items():
         loc = blocks[point.block].statements[point.index].loc
-        kind = "construct-backing" if event.kind is MIRStorageEventKind.BACKING else "construct-wrapper"
-        lines.append(f"  bb{point.block.index} before {point.index}: {kind} {_place(event.place)}{_location(loc)}")
+        lines.append(f"  bb{point.block.index} before {point.index}: construct-wrapper {_place(event.place)}"
+                     f"{_location(loc)}")
     for point, stmt in result.payload_writes.items():
         lines.append(f"  bb{point.block.index} before {point.index}: payload-write {_place(stmt.target)}"
                      f"{_location(stmt.loc)}")

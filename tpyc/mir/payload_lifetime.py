@@ -5,14 +5,10 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from .place_text import _location, _place
-from .nodes import (
-    MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, place_shape,
-    MIRWrap, MIRCopy,
-)
-from .shapes import MIRUnionPayload
+from .nodes import MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint
 from .presence import MIRPresenceIssue
 from .prepare import MIRPrepared, validated_presence
-from .reach import MIRStorageEventKind, storage_events
+from .reach import storage_events, sum_payload_ends
 from .value import MIRValidationError
 
 
@@ -32,39 +28,24 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
     if presence.function is not fn:
         raise MIRValidationError("selection facts belong to a different MIR function")
     slots = {s.id: s for s in fn.slots}
-    records = fn.record_layouts
     ends: dict[MIRPoint, frozenset[MIRPlace]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
-            # A scalar wrapper's payload write (`storage_events`), compared by its tag operation.
-            payload = [event for event in storage_events(stmt, (), slots)
-                       if event.kind is MIRStorageEventKind.PAYLOAD]
-            if not payload:
+            # A whole sum write's scalar payloads (`storage_events`), weighed
+            # by the one rule replacement reads too (`sum_payload_ends`).
+            written = [event for event in storage_events(stmt, (), slots) if event.payloads]
+            if not written:
                 continue
-            if not all(event.known for event in payload):
-                return MIRNotCovered(fn.id, "payload ends", "missing payload write fact", stmt.loc)
             assert isinstance(stmt, MIRAssign)
-            value = stmt.value
+            # The validator demands the fact on every whole write of an inline sum.
+            if not all(event.known for event in written):
+                raise MIRValidationError("inline sum write without its storage write fact")
             point = MIRPoint(block.id, index)
-            if not isinstance(value, (MIRWrap, MIRCopy)) or point not in presence.points:
+            if point not in presence.points:
                 continue
-            wrapper = stmt.target
             incoming = dict(presence.points[point])
-            old = incoming.get(wrapper, presence.domains[wrapper])
-            match value:
-                case MIRWrap(alternative=alternative):
-                    new = frozenset({alternative})
-                case MIRCopy(source=source):
-                    if source == wrapper:
-                        continue
-                    new = incoming.get(source, presence.domains[source])
-            layout = place_shape(wrapper, slots, records)
-            payloads: set[MIRPlace] = set()
-            for alternative in old:
-                if not new - {alternative}:
-                    continue
-                if layout.alternatives[alternative] is not None:
-                    payloads.add(MIRPlace(wrapper.root, (*wrapper.projections, MIRUnionPayload(alternative))))
+            payloads = {place for event in written
+                        for place, owns in sum_payload_ends(event, stmt.value, incoming.get) if not owns}
             if payloads:
                 ends[point] = frozenset(payloads)
     return MIRPayloadEnds(fn, MappingProxyType(ends))

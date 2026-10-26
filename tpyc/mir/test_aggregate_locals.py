@@ -18,9 +18,9 @@ from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .lower import lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWrite,
-    MIRStorageWriteMode, MIRSlotKind,
+    MIRStorageWriteMode, MIRSlotKind, MIRWrap,
 )
-from .shapes import MIRContainerElements, MIRDeref
+from .shapes import MIRContainerElements, MIRDeref, MIRUnionPayload
 from .value import MIRField
 
 SOURCE = '''\
@@ -502,10 +502,13 @@ def test_a_container_bound_to_a_temporary_owns_it(program: _Program) -> None:
     items = next(s.id for s in fn.slots if s.name == "items")
     writes = [stmt for b in fn.blocks for stmt in b.statements if isinstance(stmt, MIRAssign)]
     built = [stmt for stmt in writes if isinstance(stmt.value, MIRConstruct)]
-    assert [stmt.storage_write.mode for stmt in built] == [MIRStorageWriteMode.INITIALIZE,
-                                                           MIRStorageWriteMode.OWN_SITE]
+    assert [stmt.storage_write.mode for stmt in built] == [MIRStorageWriteMode.INITIALIZE] * 2
+    # The new list moves into the rebind's own sum, whose payload the holder takes.
+    fill, = (stmt for stmt in writes if isinstance(stmt.value, MIRWrap))
+    assert fill.value.source == MIRPlace(built[1].target.root)
+    assert fill.storage_write.mode is MIRStorageWriteMode.IN_PLACE
     assert [stmt.value.source for stmt in writes if stmt.target == MIRPlace(items)] == [
-        MIRPlace(stmt.target.root) for stmt in built]
+        MIRPlace(built[0].target.root), MIRPlace(fill.target.root, (MIRUnionPayload(1),))]
     assert verdict.conflicts == ()
 
 

@@ -110,12 +110,12 @@ MIR consumes the effective replacement verdict and retains presence checks.
 Their layouts contain only scalar-leaf fields and have no custom special members; construction
 requires a complete, pure constructor definition. `MIRDefinitions` indexes and
 checks the emitted `THIRConstructor` and `THIRInheritedConstructor` artifacts and their logical layout/member
-facts, without reaching back into sema. Each OWN replacement site has distinct
-storage; repeated execution reuses that site's body-hoisted backing. IN_PLACE
-replacements preserve referent identity. Positive MIR record-write facts
-distinguish initial construction, reusable OWN sites and in-place replacement.
-Verified scalar-field record construction, copy and move can write reusable
-OWN sites, optional backing and IN_PLACE referents in CFG cycles. Fresh scoped
+facts, without reaching back into sema. Each replacement site has distinct
+storage, an owned sum slot built empty at the body level; repeated execution
+refills that site's sum. IN_PLACE replacements preserve referent identity.
+Positive MIR record-write facts distinguish initial construction from in-place
+replacement. Verified scalar-field record construction, copy and move can
+fill owned sum slots and write IN_PLACE referents in CFG cycles. Fresh scoped
 backing uses region initialization; body initialization in a cycle remains
 uncovered. Source eligibility and retained aliases are checked independently.
 The debug dump exposes write events and possible retained-object conflicts,
@@ -200,7 +200,7 @@ M4.3/M4.4 add typed parameter-relative scalar-field may-writes and void setters
 aliases at their program points; call-site inspection and forwarding summaries
 share that substitution. `MIRCallStmt` represents void calls without a result
 slot. Their arguments stay live, while scalar-field writes preserve holder
-dependencies and storage engagement. Eager operand order and named-argument
+dependencies and sum selections. Eager operand order and named-argument
 materialization retain conservative effect-aware gates. Layouts and mutable
 access are checked before these richer summaries can be consumed.
 
@@ -264,12 +264,14 @@ points and explicit backing roots, resolving dead destinations too. It adds
 reached local storage to the whole-body checks; parameter-only operations
 need neither new backing nor a temporary plan. Storage-only evidence retains
 its separate nonempty-root contract. Scope ends, replacement, payload ends and explicit returned origins
-must all be supported and free of conflicts. Unknown origins or engagement
-withhold certification. Covered inline
+must all be supported and free of conflicts. Unknown origins withhold
+certification. Covered inline
 constructor temporaries map to their actual MIR roots and use the existing
 full-expression lifetime; this correspondence needs no named-argument plan.
-Mixed plain-record ternaries use planned optional backing, initialized empty
-at declaration and filled at the exact selected operand with `OPTIONAL_ASSIGN`.
+Mixed plain-record ternaries hold the fresh arm in an owned sum slot (a
+by-value `std::optional<T>`), initialized empty at declaration and filled at
+the exact selected operand from a record its full expression built
+(`MIR_ANALYSIS_PLAN.md` "Owned sum slots").
 They share the existing borrowed-expression CFG and lifetime evidence, with
 hook-free movable scalar-leaf-field constructors and stable scalar operands.
 Readonly holders retain readonly access to mutable backing. This consumer
@@ -292,8 +294,9 @@ synthetic elif scopes and fresh while-condition activations. An outer-region
 backedge bridge ends one activation before the next begins. Ordinary range
 and native loops also map planned body/else scopes to existing MIR regions;
 range counter scope remains the body's parent, while native iterator storage
-keeps its outer residence (`MIR_FOR_ARGUMENT_STORAGE_PLAN.md`). Optional lazy
-backing uses existing engagement facts. Unknown producers leave the body
+keeps its outer residence (`MIR_FOR_ARGUMENT_STORAGE_PLAN.md`). An argument
+temporary under a lazy operand is an owned sum slot, its fill read from
+presence's selection like any other sum's. Unknown producers leave the body
 unplanned; no C++ names, strings or emission logs supply MIR storage facts.
 
 `mir/liveness.py` computes backward may-liveness over validated MIR with a

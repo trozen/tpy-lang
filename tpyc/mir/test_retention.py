@@ -10,7 +10,8 @@ from .liveness import MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction,
     MIRGoto, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap, MIRIsAlternative, MIRCopy,
+    MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap, MIRIsAlternative, MIRCopy, MIRRegion, MIRRegionId,
+    MIRStorageInit,
 )
 from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -29,7 +30,8 @@ from .reach import reaches
 
 
 B = MIRBodyId("retention", "loop")
-N, FLAG, INITIAL, SITE, CURRENT, TEMP, SAVED, COPIED, OUT = (MIRSlotId(B, i) for i in range(9))
+N, FLAG, INITIAL, SITE, CURRENT, TEMP, SAVED, COPIED, OUT, BUILT = (MIRSlotId(B, i) for i in range(10))
+ROOT_R, LOOP_R = MIRRegionId(B, 0), MIRRegionId(B, 1)
 A, LOOP, AGAIN, END = (MIRBlockId(B, i) for i in range(4))
 CELL = hand_record("Cell", "retention.Cell", value=INT32)
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
@@ -75,11 +77,16 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
             raise AssertionError(shape)
     current = (MIRSlot(CURRENT, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
                if optional_owner else reference(CURRENT))
-    storage = MIRSlot(INITIAL, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY)
+    storage = MIRSlot(INITIAL, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY,
+                      residence=ROOT_R)
+    site = MIRSlot(SITE, optional_shape(OptionalType(CELL), owned_shape(CELL)), MIRSlotKind.LOCAL,
+                   storage_duration=MIRStorageDuration.BODY, residence=ROOT_R)
+    built = MIRSlot(BUILT, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=LOOP_R, residence=LOOP_R)
     slots = (MIRSlot(N, leaf_shape(INT32), MIRSlotKind.PARAMETER),
              MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
-             storage, replace(storage, id=SITE), current, reference(TEMP), holder,
-             replace(holder, id=COPIED), MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
+             storage, site, replace(current, residence=ROOT_R), replace(reference(TEMP), residence=ROOT_R),
+             replace(holder, residence=ROOT_R), replace(holder, id=COPIED, residence=ROOT_R),
+             MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT_R), built)
     initial = MIRAssign(MIRPlace(INITIAL), MIRConstruct((N,)),
                         storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     borrow = MIRAssign(MIRPlace(TEMP), MIRBorrow(MIRPlace(INITIAL)))
@@ -88,18 +95,22 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
     copy_holder = MIRAssign(MIRPlace(COPIED), copy)
     observed = MIRPlace(COPIED if copied else SAVED, path)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(observed.root, (*path, MIRDeref(), FIELD))))
-    write = MIRAssign(MIRPlace(SITE), MIRConstruct((N,)), storage_write=MIRStorageWrite(MIRStorageWriteMode.OWN_SITE))
-    replacement = (write, replace(borrow, value=MIRBorrow(MIRPlace(SITE))), set_current)
+    write = (MIRAssign(MIRPlace(BUILT), MIRConstruct((N,)), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+             MIRAssign(MIRPlace(SITE), MIRWrap(1, MIRPlace(BUILT)), storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
+    replacement = (*write, replace(borrow, value=MIRBorrow(MIRPlace(SITE, (MIRUnionPayload(1),)))), set_current)
     reads = (read,) if not safe else ()
     captures = (capture, copy_holder) if copied else (capture,)
     statements = ((read,) if safe else ()) + replacement + reads + captures
     fn = bind_parameters(MIRFunction(B, INT32, slots, (
-        MIRBlock(A, (initial, borrow, set_current, capture, copy_holder), MIRGoto(LOOP)),
-        MIRBlock(LOOP, statements, MIRBranch(FLAG, AGAIN, END)),
-        MIRBlock(AGAIN, (MIRAssign(MIRPlace(FLAG), MIRConstant(False)), MIRAssign(MIRPlace(N), MIRConstant(2))), MIRGoto(LOOP)),
-        MIRBlock(END, (), MIRReturn(OUT)),
-    ), A, (LAYOUT,)))
-    return fn, MIRPoint(LOOP, 1 if safe else 0), observed
+        MIRBlock(A, (MIRStorageInit(MIRPlace(SITE), 0, MIRConstant(None)), initial, borrow, set_current, capture,
+                     copy_holder), MIRGoto(LOOP), ROOT_R),
+        MIRBlock(LOOP, statements, MIRBranch(FLAG, AGAIN, END), LOOP_R),
+        MIRBlock(AGAIN, (MIRAssign(MIRPlace(FLAG), MIRConstant(False)), MIRAssign(MIRPlace(N), MIRConstant(2))),
+                 MIRGoto(LOOP), ROOT_R),
+        MIRBlock(END, (), MIRReturn(OUT), ROOT_R),
+    ), A, (LAYOUT,), regions=(MIRRegion(ROOT_R, None, A), MIRRegion(LOOP_R, ROOT_R, LOOP))))
+    # The wrap of the site is the replacing statement: one after the built record.
+    return fn, MIRPoint(LOOP, 2 if safe else 1), observed
 
 
 @pytest.mark.parametrize("shape", ["record", "singleton", "mixed", "optional", "union"])
@@ -108,8 +119,8 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
 def test_all_holder_shapes_keep_the_old_object(shape: str, safe: bool, copied: bool) -> None:
     fn, point, holder = loop_function(shape, safe=safe, copied=copied)
     result = analyze(fn)
-    expected = () if safe else (MIRRetentionConflict(point, MIRReferent(MIRPlace(SITE)), holder,
-                                                    MIRReferent(MIRPlace(SITE))),)
+    expected = () if safe else (MIRRetentionConflict(point, MIRReferent(MIRPlace(SITE, (MIRUnionPayload(1),))),
+                                                    holder, MIRReferent(MIRPlace(SITE, (MIRUnionPayload(1),)))),)
     assert result.conflicts == expected
     assert execute(fn, 1, True) == (1 if safe else 2)
     assert result == analyze(fn)
@@ -272,16 +283,22 @@ def test_unreachable_replacement_does_not_create_a_conflict() -> None:
 def test_branch_join_reports_possible_retention_without_merging_private_roots() -> None:
     fn, _, _ = loop_function("record")
     entry = fn.blocks[0]
-    initial_site = MIRAssign(MIRPlace(SITE), MIRConstruct((N,)),
-                             storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+    # The site's sum filled once, outside any loop: its record built in body storage.
+    initial_site = (MIRAssign(MIRPlace(BUILT), MIRConstruct((N,)),
+                              storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+                    MIRAssign(MIRPlace(SITE), MIRWrap(1, MIRPlace(BUILT)),
+                              storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
     write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((N,)),
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, CURRENT))
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
-    fn = replace(fn, blocks=(
-        replace(entry, statements=(*entry.statements, initial_site), terminator=MIRBranch(FLAG, LOOP, AGAIN)),
-        MIRBlock(LOOP, (MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT)),), MIRGoto(END)),
-        MIRBlock(AGAIN, (MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(SITE))),), MIRGoto(END)),
-        MIRBlock(END, (write, read), MIRReturn(OUT)),
+    fn = replace(fn, slots=tuple(replace(s, storage_duration=MIRStorageDuration.BODY, residence=ROOT_R)
+                                 if s.id == BUILT else s for s in fn.slots),
+                 regions=fn.regions[:1], blocks=(
+        replace(entry, statements=(*entry.statements, *initial_site), terminator=MIRBranch(FLAG, LOOP, AGAIN)),
+        MIRBlock(LOOP, (MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT)),), MIRGoto(END), ROOT_R),
+        MIRBlock(AGAIN, (MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(SITE, (MIRUnionPayload(1),)))),), MIRGoto(END),
+                 ROOT_R),
+        MIRBlock(END, (write, read), MIRReturn(OUT), ROOT_R),
     ))
     assert analyze(fn).conflicts == (MIRRetentionConflict(
         MIRPoint(END, 0), MIRReferent(MIRPlace(INITIAL)), MIRPlace(SAVED), MIRReferent(MIRPlace(INITIAL))),)
@@ -359,16 +376,24 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
     for _ in range(10):
         block = blocks[bid]
         for index, stmt in enumerate(block.statements):
+            if isinstance(stmt, MIRStorageInit):
+                continue
             before = values.copy()
             replaced = None
             match stmt.value:
+                case MIRWrap(source=source) if source is not None and slots[stmt.target.root].shape.owned_sum:
+                    # The built record moves into the sum's payload: a refill replaces it.
+                    root = stmt.target.root
+                    replaced = root if root in heap else None
+                    heap[root] = heap[source.root]
+                    value = _Object(root)
                 case MIRConstruct(fields=(operand,)) if slots[stmt.target.root].shape.is_storage:
                     root = stmt.target.root
                     replaced = root if root in heap else None
                     heap[root] = values[operand]
                     value = _Object(root)
                 case MIRBorrow(source=source):
-                    assert not source.projections
+                    assert not source.projections or slots[source.root].shape.owned_sum
                     value = values[source.root]
                 case MIRAlias(source=source):
                     value = values[source]
@@ -436,7 +461,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
         if replaced is None:
             continue
         for root, value in before.items():
-            if slots[root].shape.is_storage or not used_before_overwrite(root, trace[index + 1:]):
+            if slots[root].shape.owns_storage or not used_before_overwrite(root, trace[index + 1:]):
                 continue
             if isinstance(value, _Object):
                 leaves = [(MIRPlace(root), value)]

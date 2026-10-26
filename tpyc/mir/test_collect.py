@@ -79,7 +79,7 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     assert "entry bb0" in out
     assert "owned-storage" in out
     assert "storage events (logical replacement; no physical lifetime-end verdict)" in out
-    assert "own_site" in out
+    assert "in_place" in out
     assert "retention (possible logical-object conflicts; no lifetime-safety verdict)" in out
     assert "payload ends (possible inline scalar lifetime ends; no safety verdict)" in out
     assert "payload retention (possible conflicts at static places; no lifetime-safety verdict)" in out
@@ -207,7 +207,7 @@ def contradictory(flag: bool) -> int32:
     return cell.value
 ''')
     assert re.search(r"fn .*::contradictory@[^\n]+ -> int32", out), out
-    assert "optional_assign" in out
+    assert "in_place" in out
     assert "no conflicts in covered replacement events" in out
 
 
@@ -585,6 +585,13 @@ class Entry:
         self.name = "none"
         self.label = label
         self.q = None
+
+def refill_append() -> int32:
+    r = L()
+    q = r
+    r = L()
+    r.items.append(2)
+    return len(q.items) + len(r.items)
 """
 
 
@@ -655,11 +662,17 @@ def test_a_reassigned_str_parameter_has_two_spellings(facts) -> None:
 def test_unnamed_storage_takes_its_binding_name(facts) -> None:
     # `r = P(1)` constructs a temporary that `r` borrows; `q = r` aliases it.
     assert _borrows(facts["alias_live"], 31, "q") == [(0, {"r"})]
-    # Rebinding `r` to fresh storage names two objects: the binding line splits them.
+    # Rebinding `r` fills a slot of its own and borrows its payload: the
+    # name names two objects, and the binding line splits them.
     rebind = facts["rebind"]
-    assert _borrows(rebind, 39, "q") == [(0, {"r@35"})]
-    assert _borrows(rebind, 39, "r") == [(0, {"r@38"})]
-    assert rebind.events[(38, "r@38")] == ("own_site",)
+    assert _borrows(rebind, 39, "q") == [(2, {"r@35"})]
+    assert _borrows(rebind, 39, "r") == [(2, {"r@38"})]
+    # Its first fill replaces nothing a named storage holds.
+    assert not any(line == 38 for line, _ in rebind.events)
+    # A call writing the refilled payload spells it as a borrow of it does.
+    refill = facts["refill_append"]
+    assert _borrows(refill, 91, "r") == [(4, {"r@90"})]
+    assert refill.events == {(91, "r@90.items[structure]"): ("call",)}
 
 
 def test_borrows_are_per_block_and_join_at_merges(facts) -> None:

@@ -322,22 +322,21 @@ def _outcomes(fn: MIRFunction) -> tuple[str, ...]:
     try:
         validate_function(fn)
         ready = prepare(fn)
-    except MIRPresenceError as error:
+    except MIRValidationError as error:
         return (f"refused: {error}",)
     return tuple(outcome(lambda read=read: read(ready)) for read in (
         analyze_storage, analyze_retention, analyze_scope_ends, analyze_payload_ends))
 
 
 SELECTION = "refused: payload access without current presence proof"
+MISSING_SUM_FACT = "inline aggregate whole write needs its storage write fact"
 
 
 @pytest.mark.parametrize(("name", "kind", "inside", "expected"), [
-    # A scalar wrapper replaces no storage a borrow points into: only its
-    # payload is unknown (payload ends), and a scope root's write (a local).
-    ("temporary", MIRSlotKind.TEMPORARY, True,
-     ("ok", "ok", "ok", "not covered: missing payload write fact")),
-    ("local", MIRSlotKind.LOCAL, True,
-     ("ok", "ok", "not covered: missing storage initialization/write fact", "not covered: missing payload write fact")),
+    # A whole write of a scalar wrapper (an inline sum) without its fact
+    # never validates, a temporary's or a local's, so no reader weighs it.
+    ("temporary", MIRSlotKind.TEMPORARY, True, ("refused: " + MISSING_SUM_FACT,)),
+    ("local", MIRSlotKind.LOCAL, True, ("refused: " + MISSING_SUM_FACT,)),
     # A whole-record construction through a borrowed holder may replace what
     # any external holder points into: storage and retention refuse it, the
     # scope ends do not track it, and a field proof it may reach dies
@@ -363,5 +362,5 @@ def test_an_owned_tuple_without_its_fact_never_validates() -> None:
     construct = MIRAssign(MIRPlace(pair), MIRConstruct((value, value)))
     fn = bind_parameters(replace(fn, slots=slots, blocks=(replace(entry, statements=(
         MIRAssign(MIRPlace(value), MIRConstant(0)), construct, *entry.statements[1:])), *fn.blocks[1:])))
-    with pytest.raises(MIRValidationError, match="owned tuple needs initialization fact"):
+    with pytest.raises(MIRValidationError, match="inline aggregate whole write needs its storage write fact"):
         validate_function(fn)

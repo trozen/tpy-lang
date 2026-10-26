@@ -33,7 +33,7 @@ from .nodes import (
     MIRConstruct, MIRFunction, MIRGlobalId, MIRGoto, MIRIsAlternative, MIRIteratorAdvance, MIRIteratorHasNext,
     MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInits, MIRMove, MIRNot, MIRNotCovered,
     MIROp, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRReceiverInit,
-    MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRStorageWrite, MIRReturn, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRStorageInit, MIRUnionExtract, function_body_kind, MIRWrap, MIRCopy,
 )
 from .value import (
@@ -162,6 +162,15 @@ def _loan(fact: th.THIRBorrowedRecord) -> MIRShape:
     """A holder of the storage a borrow fact names, at the access the fact
     carries (decided where its source is named, `loan_access`)."""
     return value_shape(fact.type, access=fact.readonly, role=MIRRole.LOAN)
+
+
+def _owned_optional(typ: TpyType) -> MIRShape:
+    """An Optional storing a record of `typ` inline: storage that starts
+    empty and that each fill selects (C++ `std::optional<T>`)."""
+    if value_class(typ) is MIRClass.RECORD:
+        return value_shape(OptionalType(typ), facts=th.THIROptionalLayout(th.THIROwnedRecord(typ)))
+    # A container held inline: its own storage shape as the payload.
+    return MIRShape(OptionalType(typ), MIRClass.OPTIONAL, MIRHolding.VALUE, False, (None, value_shape(typ)))
 
 
 @dataclass(frozen=True, eq=False)
@@ -297,6 +306,13 @@ class _Lowering:
         self.containers: set[NominalType] = set()
         # The body's root fragment: every slot and block is built into it.
         self.mir = Fragment(body=body, layouts=self.layouts, copy_may_raise=self.copy_may_raise)
+        # The owned sums of hoisted pointer locals, built empty at the body's
+        # top where C++ declares them (`site_backing`).
+        self.entry_backings: list[MIRSlotId] = []
+        # The owned sum of each THIR rebind slot a reseat fills, built empty
+        # at the body-level statement THIR anchors it at (`anchored_slots`).
+        self.rebind_slots: dict[th.THIRRebindSlot, MIRSlotId] = {}
+        self.unanchored: set[MIRSlotId] = set()
         # The targets a `continue` and a `break` jump to, innermost loop last.
         self.loops: list[tuple[MIRBlockId, MIRBlockId]] = []
         # The borrowed result the body returns: a record, a container or a view.
@@ -354,12 +370,10 @@ class _Lowering:
 
     def bind(self, name: str, shape: MIRShape, backing: MIRShape | None = None, *, loc: object = None,
              backing_kind: MIRSlotKind = MIRSlotKind.TEMPORARY,
-             backing_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT,
              alias_source: MIRPlace | None = None) -> _Bound:
         """A local's slot (and the record storage it owns), placed where its
         declaration is built."""
-        storage = (self.mir.record(backing, backing_kind, record_storage=backing_storage, loc=loc)
-                   if backing is not None else None)
+        storage = self.mir.record(backing, backing_kind, loc=loc) if backing is not None else None
         bound = _Bound(self.mir.record(shape, MIRSlotKind.LOCAL, name, loc=loc, alias_source=alias_source), storage)
         self.scope[name] = bound
         return bound
@@ -942,12 +956,56 @@ class _Lowering:
         """A record in storage the temporary plan places, lent through a
         holder of it (of shape `holder`); the statement declaring it places
         both slots."""
-        storage = self.mir.record(value_shape(holder.type), MIRSlotKind.LOCAL, loc=node.loc,
-                                  record_storage=(MIRRecordStorageKind.OPTIONAL if placement.optional
-                                                  else MIRRecordStorageKind.DIRECT))
+        shape = _owned_optional(holder.type) if placement.optional else value_shape(holder.type)
+        problem = shape_problem(shape, shape.type, producer=True) if placement.optional else None
+        _require(node, problem is None, problem)
+        storage = self.mir.record(shape, MIRSlotKind.LOCAL, loc=node.loc)
         holder = self.mir.record(holder, loc=node.loc)
         return _Temporary(node, node.loc, placement.index, placement.scope, placement.optional, storage, holder,
                           value)
+
+    def site_backing(self, node: th.THIRStmt, typ: TpyType, *, hoisted: bool = False) -> MIRSlotId:
+        """The `std::optional<T>` slot a reseat (its THIR rebind slot,
+        `own_slot`) or a hoisted pointer local fills: an owned sum, built
+        empty where C++ declares it -- at the statement THIR anchors the
+        rebind slot at, or the body's top for a hoisted local -- and filled at
+        the site, each loop pass."""
+        shape = _owned_optional(typ)
+        problem = shape_problem(shape, shape.type, producer=True)
+        _require(node, problem is None, problem)
+        if hoisted:
+            sid = self.mir.record(shape, MIRSlotKind.LOCAL, loc=node.loc)
+            self.entry_backings.append(sid)
+            return sid
+        own = getattr(node, "own_slot", None)
+        _require(node, own is not None, "reseat without its rebind slot")
+        if own not in self.rebind_slots:
+            sid = self.rebind_slots[own] = self.mir.record(shape, MIRSlotKind.LOCAL, loc=node.loc)
+            self.unanchored.add(sid)
+        sid = self.rebind_slots[own]
+        _require(node, self.mir.records[sid].shape == shape, "rebind slot type mismatch")
+        return sid
+
+    def anchor_slots(self, stmt: th.THIRStmt) -> Fragment | None:
+        """The rebind slots a body-level statement anchors, each built empty
+        before it (`StorageSlots.anchor`); the slots of writes MIR does not
+        lower as a fill are not MIR's."""
+        found = [self.rebind_slots[s] for s in stmt.anchored_slots if s in self.rebind_slots]
+        if not found:
+            return None
+        f = self.fragment()
+        for sid in found:
+            self.unanchored.discard(sid)
+            f.adopt(sid, MIRStorageDuration.BODY)
+            # A declaration C++ adds before the statement: no source line of its own.
+            f.append(MIRStorageInit(MIRPlace(sid), 0, MIRConstant(None), None))
+        return f
+
+    def site_fill(self, expr: th.THIRExpr, typ: NominalType, *, call: bool = False) -> Fragment:
+        """The value a fill of an owned sum moves into its payload, built
+        into a temporary of its own full expression (`aggregate_temporary`)."""
+        return self.full_expression(
+            expr, check=lambda: self.aggregate_temporary(expr, self.aggregate_value(expr, typ, call=call)))
 
     def initializer(self, node: th.THIRArgTemp | th.THIRSlotEmplace, build: Callable[[], Fragment]) -> Fragment:
         """A placed temporary's initializer, built with temporaries of its
@@ -1099,7 +1157,9 @@ class _Lowering:
         raised against `node`: a container's members (`register_container`),
         an owned leaf's opaque layout, a tuple's inline records
         (`tuple_members`, an owning tuple only where `allow_owned`), record
-        storage's verified definition."""
+        storage's verified definition. A sum storing a record inline is a
+        producer's slot (`_owned_optional`), never a value laid out here."""
+        _require(node, not shape.owned_sum, f"unsupported {shape.cls.name.lower()} record holding")
         match shape.cls:
             case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW:
                 self.register_container(node, shape.type)
@@ -1212,7 +1272,12 @@ class _Lowering:
             self.bound_parameter(sid, binding)
             self.scope[p.name] = _Bound(sid)
             names[p.name] = sid
-        self.sequence(mir, self.declarations(fn.body, 0))
+        plans = self.declarations(fn.body, 0, top=True)
+        _require(fn, not self.unanchored, "rebind slot without anchor")
+        for backing in self.entry_backings:
+            mir.adopt(backing, MIRStorageDuration.BODY)
+            mir.append(MIRStorageInit(MIRPlace(backing), 0, MIRConstant(None), None))
+        self.sequence(mir, plans)
         if self.planned:
             _require(fn, len(self.argument_temporaries) + len(self.select_temporaries) == len(fn.temp_plan.placements),
                      "temporary plan contains unsupported record storage")
@@ -1302,7 +1367,7 @@ class _Lowering:
         for slot, backing, default in hoists:
             if backing is not None:
                 storage = f.adopt(backing, f.scoped_duration())
-                f.append(MIRRecordStorageInit(MIRPlace(storage), loc))
+                f.append(MIRStorageInit(MIRPlace(storage), 0, MIRConstant(None), loc))
                 f.adopt(slot)
                 continue
             dest = f.adopt(slot, f.scoped_duration() if default is not None else None)
@@ -1363,14 +1428,14 @@ class _Lowering:
         return f
 
     def put_optional_assign(self, loc: object, slot: MIRSlotId, value: Fragment,
-                            backing: tuple[object, MIRShape, MIRShape] | None, in_place: bool,
+                            backing: MIRSlotId | None, in_place: bool,
                             inline_payload: bool) -> Fragment:
         """An Optional local's value replaced: from its source, or a record
-        built into new backing or into its payload in place."""
+        built into its site's owned sum (lent by `optional_to_ptr`, a sum
+        copy) or into its payload in place."""
         f = self.fragment()
         if backing is not None:
-            f.write(slot, self.record_backing(f, backing, value, MIRStorageWrite(MIRStorageWriteMode.OWN_SITE),
-                                              MIRStorageDuration.BODY), loc)
+            self.fill_site(f, loc, slot, backing, value)
         elif in_place:
             f.write(MIRPlace(slot, sole_object(self.mir.records[slot].shape)), f.splice(value), loc,
                     MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
@@ -1379,39 +1444,43 @@ class _Lowering:
         return f
 
     def put_owned_declare(self, loc: object, slot: MIRSlotId, storage: MIRSlotId, value: Fragment,
-                          placement: bool | None, own_site: bool, missing: object | None) -> Fragment:
+                          placement: bool | None, hoisted: bool, missing: object | None) -> Fragment:
         """A local owning its record or container storage, reached through its holder;
         storage of a hoisted backing is initialized at its own site."""
         f = self.fragment()
+        if hoisted:
+            # The site's owned sum, built empty at the body's top, filled here.
+            self.fill_site(f, loc, f.adopt(slot), storage, value)
+            return f
         f.adopt(storage, self.declared_storage(f, placement, missing))
-        write = MIRStorageWrite(MIRStorageWriteMode.OWN_SITE if own_site else MIRStorageWriteMode.INITIALIZE)
         with f.full_expression(value):
-            f.write(storage, f.splice(value), loc, write)
+            f.write(storage, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         f.write(f.adopt(slot), MIRBorrow(MIRPlace(storage)), loc)
         return f
 
-    def put_optional_record_assign(self, loc: object, slot: MIRSlotId, storage: MIRSlotId,
-                                   value: Fragment) -> Fragment:
-        """A hoisted Optional record backing filled and its holder repointed."""
-        f = self.fragment()
-        f.write(storage, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN))
-        f.write(slot, MIRBorrow(MIRPlace(storage)), loc)
-        return f
-
-    def put_replacement(self, loc: object, slot: MIRSlotId, value: Fragment, storage: MIRShape | None) -> Fragment:
+    def put_replacement(self, loc: object, slot: MIRSlotId, value: Fragment, storage: MIRSlotId | None) -> Fragment:
         """A record holder's referent replaced: built into new storage
         (`storage`) or into the referent in place."""
         f = self.fragment()
+        if storage is not None:
+            self.fill_site(f, loc, slot, storage, value)
+            return f
         with f.full_expression(value):
-            written = f.splice(value)
-            if storage is not None:
-                backing = f.slot(storage, storage_duration=MIRStorageDuration.BODY)
-                f.write(backing, written, loc, MIRStorageWrite(MIRStorageWriteMode.OWN_SITE))
-                f.write(slot, MIRBorrow(MIRPlace(backing)), loc)
-            else:
-                f.write(MIRPlace(slot, sole_object(self.mir.records[slot].shape)), written, loc,
-                        MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
+            f.write(MIRPlace(slot, sole_object(self.mir.records[slot].shape)), f.splice(value), loc,
+                    MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, slot))
         return f
+
+    def fill_site(self, f: Fragment, loc: object, slot: MIRSlotId, storage: MIRSlotId, value: Fragment) -> None:
+        """A site's owned sum filled from the record its value built
+        (`site_fill`), and the holder rebound by its shape: a record holder
+        borrows the payload, an Optional holder takes `optional_to_ptr` of
+        the sum (a `wrapper_copy`). The holder is rebound within the full
+        expression, so the line rebinds it where it fills the sum."""
+        holder = self.mir.records[slot].shape
+        with f.full_expression(value):
+            lent = f.fill_sum(storage, f.splice(value), loc)
+            f.write(slot, self.wrapper_copy(MIRPlace(storage), holder) if holder.cls is MIRClass.OPTIONAL
+                    else MIRBorrow(lent), loc)
 
     def put_borrow_binding(self, loc: object, slot: MIRSlotId, declare: bool, source: Fragment, deref: bool,
                            operation: object) -> Fragment:
@@ -1495,16 +1564,18 @@ class _Lowering:
         f.end(MIRGoto(self.loops[-1][0 if head else 1], loc))
         return f
 
-    def declarations(self, stmts: tuple[th.THIRStmt, ...], loops: int) -> list[Fragment]:
+    def declarations(self, stmts: tuple[th.THIRStmt, ...], loops: int, *, top: bool = False) -> list[Fragment]:
         """The fragments of a statement list: each statement's, after the
         temporaries it declares and initializes (an if or a while carries
-        its own)."""
+        its own), and at the body's level after the rebind slots it anchors."""
         plans: list[Fragment] = []
         for stmt in stmts:
             if isinstance(stmt, (th.THIRVarDecl, th.THIRPtrLocalDecl)):
                 plan = self.declaration(stmt, loops)
             else:
                 plan = self.stmt(stmt, loops)
+            if top and (anchored := self.anchor_slots(stmt)) is not None:
+                plans.append(anchored)
             if not isinstance(stmt, (th.THIRIf, th.THIRWhile)):
                 temporaries = self.statement_temporaries(stmt)
                 if temporaries is not None:
@@ -1525,10 +1596,10 @@ class _Lowering:
             if temporary is None or temporary.scope != self.temp_now:
                 continue
             f.adopt(temporary.storage, f.scoped_duration())
-            f.publish(temporary.key, MIRPlace(temporary.storage))
+            f.publish(temporary.key, MIRPlace(temporary.storage, (MIRUnionPayload(1),) if temporary.optional else ()))
             f.adopt(temporary.holder)
             if temporary.optional:
-                f.append(MIRRecordStorageInit(MIRPlace(temporary.storage), temporary.loc))
+                f.append(MIRStorageInit(MIRPlace(temporary.storage), 0, MIRConstant(None), temporary.loc))
         f.initialize(tuple(t for t in map(self.temporary_of, (p.node for p in plan.initializations.get(stmt, ())))
                            if t is not None), nested=True)
         return f
@@ -2569,12 +2640,15 @@ class _Lowering:
 
         # A constructor argument may need a temporary (an owned leaf built for
         # it), which the declaration's full expression owns.
-        value = self.full_expression(stmt.init, check=lambda: self.aggregate_value(stmt.init, holder.type, call=True))
         hoisted = placement is True
+        value = (self.site_fill(stmt.init, holder.type, call=True) if hoisted else
+                 self.full_expression(stmt.init, check=lambda: self.aggregate_value(stmt.init, holder.type, call=True)))
         if hoisted:
             _require(stmt, self.movable(holder.type), "hoisted backing needs movable record")
         self.owned_locals.add(stmt.name)
-        bound = self.bind(stmt.name, holder, value_shape(holder.type), loc=stmt.loc)
+        bound = self.bind(stmt.name, holder, None if hoisted else value_shape(holder.type), loc=stmt.loc)
+        if hoisted:
+            bound = self.scope[stmt.name] = _Bound(bound.slot, self.site_backing(stmt, holder.type, hoisted=True))
         # The C++ slot is the storage itself: never reseated, assigned in place.
         if (isinstance(stmt, th.THIRVarDecl) and stmt.form in (th.Form.VALUE, th.Form.STORAGE)
                 and stmt.name not in self.fn.layout.reassigned_locals):
@@ -2605,8 +2679,10 @@ class _Lowering:
         _require(stmt, mode in (RebindStorage.OWN, RebindStorage.IN_PLACE), "unsupported replacement storage")
         _require(stmt, mode is not RebindStorage.IN_PLACE or not shape.readonly, "readonly in-place replacement")
         typ = shape.type
-        # Its argument temporaries end with the replacing full expression.
-        replacing = self.full_expression(stmt.value, check=lambda: self.aggregate_value(stmt.value, typ, call=True))
+        # Its argument temporaries end with the replacing full expression; a
+        # fill of a slot of its own builds the value into a temporary of it.
+        replacing = (self.site_fill(stmt.value, typ, call=True) if mode is RebindStorage.OWN else
+                     self.full_expression(stmt.value, check=lambda: self.aggregate_value(stmt.value, typ, call=True)))
         _require(stmt, self.movable(typ), "replacement needs movable record")
         # A STORAGE-form local is one sema never rebinds (a rebound local is a
         # rebind-slot pointer local), so `fixed_owned` is a whole-body fact; a
@@ -2614,7 +2690,7 @@ class _Lowering:
         _require(stmt, mode is not RebindStorage.OWN or name not in self.fixed_owned, "fixed owned local reseated")
         # OWN builds the new referent into storage of its own, IN_PLACE into the old one.
         return self.put_replacement(stmt.loc, self.slot_of(name), replacing,
-                                    value_shape(typ) if mode is RebindStorage.OWN else None)
+                                    self.site_backing(stmt, typ) if mode is RebindStorage.OWN else None)
 
     def member_write(self, stmt: th.THIRAssign) -> Fragment:
         """`ln.a = v`, `self.items = data`: an inline record or container
@@ -3077,7 +3153,8 @@ class _Lowering:
         _require(node, not isinstance(fact, str), fact)
         if fact is None:
             return None
-        shape = fact_shape(typ, fact)
+        # An owning tuple's position is its producer's slot.
+        shape = fact_shape(typ, fact, producer=allow_owned)
         _require(node, isinstance(shape, MIRShape), shape)
         self.register(node, shape, allow_owned=allow_owned)
         return shape
@@ -3296,9 +3373,10 @@ class _Lowering:
             _require(expr, self.wraps(expr.name, MIRClass.TUPLE), "tuple needs local payload")
             bound = self.bound(expr.name)
             layout = bound.members
-            problem = shape_problem(bound, expr.result_type)
-            _require(expr, problem is None, problem)
+            # An owning tuple is read only at an owning position, its producer's slot.
             self.tuple_members(expr, bound, allow_owned=allow_owned)
+            problem = shape_problem(bound, expr.result_type, producer=allow_owned)
+            _require(expr, problem is None, problem)
             # A copy of the binding's value, held as a fresh tuple at a tuple's own access.
             holder = replace(bound, readonly=loan_access(bound.type, MIRClass.TUPLE, None))
         else:
@@ -3834,13 +3912,13 @@ class _Lowering:
                 name = stmt.target.name
                 bound = self.scope.get(name)
                 backing = self.mir.records[bound.backing] if bound is not None and bound.backing is not None else None
-                _require(stmt, backing is not None and backing.record_storage is MIRRecordStorageKind.OPTIONAL
+                _require(stmt, backing is not None and backing.shape.owned_sum
                          and self.holds(name, fact)
                          and self.bound(name).type == stmt.target.result_type == fact.type,
                          "optional record backing mismatch")
-                value = self.aggregate_value(stmt.value, fact.type)
+                value = self.site_fill(stmt.value, fact.type)
                 _require(stmt, self.movable(fact.type), "optional backing needs movable record")
-                return self.put_optional_record_assign(stmt.loc, bound.slot, bound.backing, value)
+                return self.put_replacement(stmt.loc, bound.slot, value, bound.backing)
             # A union or Optional reseat: the destination binding's class picks
             # the operation, as a declaration's laid-out class does (a name
             # bound as neither is the Optional's to refuse); its fact must lay
@@ -4171,10 +4249,10 @@ class _Lowering:
                      "unsupported optional replacement storage")
             _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE or not member.readonly,
                      "readonly in-place replacement")
-            value = self.aggregate_value(stmt.value, member.type)
-            _require(stmt, self.movable(member.type), "replacement needs movable record")
             own = stmt.rebind_storage is RebindStorage.OWN
-            backing = (stmt.value.loc, value_shape(member.type), _loan(member)) if own else None
+            value = self.site_fill(stmt.value, member.type) if own else self.aggregate_value(stmt.value, member.type)
+            _require(stmt, self.movable(member.type), "replacement needs movable record")
+            backing = self.site_backing(stmt, member.type) if own else None
             return self.put_optional_assign(stmt.loc, self.slot_of(name), value, backing, not own,
                                    self.bound(name).scalar_wrapper)
         _require(stmt, not isinstance(stmt, th.THIRAssign) or stmt.slot_cpp is None,
@@ -4543,18 +4621,16 @@ class _Lowering:
                 reference = fact.optional_record_storage
                 problem = lent_shape_problem(fact.type, reference)
                 _require(stmt, problem is None, problem)
-                # The storage backs an Optional's payload: one an Optional of the record holds.
-                optional = OptionalType(reference.type)
-                problem = shape_problem(value_shape(optional, facts=th.THIROptionalLayout(reference)), optional)
-                _require(stmt, problem is None, problem)
                 # The body's own backing storage, which assignments engage, and
                 # its holder: at the storage's own access, never readonly.
                 _require(stmt, not reference.readonly, "optional record backing must be mutable")
                 definition = self.definitions.get(stmt, reference.type)
                 _require(stmt, definition.layout.movable, "optional backing needs movable record")
                 self.records[reference.type] = definition
-                backing = value_shape(reference.type)
-                shape = value_shape(reference.type, access=backing.readonly, role=MIRRole.LOAN)
+                backing = _owned_optional(reference.type)
+                problem = shape_problem(backing, backing.type, producer=True)
+                _require(stmt, problem is None, problem)
+                shape = value_shape(reference.type, access=False, role=MIRRole.LOAN)
             elif fact.borrowed_record is not None:
                 # A hoisted aggregate holder: of its declared type, at the
                 # access THIR decided for it, as any local's.
@@ -4585,8 +4661,7 @@ class _Lowering:
             else:
                 _require(stmt, default is None, "physical default on non-wrapper hoist")
             # An Optional record's backing, empty until a branch assigns it.
-            bound = self.bind(fact.name, shape, backing, loc=stmt.loc, backing_kind=MIRSlotKind.LOCAL,
-                              backing_storage=MIRRecordStorageKind.OPTIONAL)
+            bound = self.bind(fact.name, shape, backing, loc=stmt.loc, backing_kind=MIRSlotKind.LOCAL)
             hoisted.append((bound.slot, bound.backing,
                                   (default.alternative, default.value) if default is not None else None))
         return tuple(hoisted)

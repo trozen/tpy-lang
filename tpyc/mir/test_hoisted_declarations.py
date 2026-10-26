@@ -12,7 +12,8 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRStorageDuration,
+    MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRReturn,
+    MIRStorageDuration, MIRWrap,
 )
 from .value import MIRHolding
 from .scope_lifetime import inspect_scope_lifetimes
@@ -311,17 +312,20 @@ def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoi
     _, bodies, _, cpp = hoists
     for name in ("record", "nested", "escaped_loop"):
         fn = bodies[name]
+        # Each fill of a site's owned sum.
         writes = [(s, stmt) for b in fn.blocks for stmt in b.statements
-                  if isinstance(stmt.storage_write, MIRStorageWrite)
-                  and stmt.storage_write.mode is MIRStorageWriteMode.OWN_SITE
-                  for s in fn.slots if s.id == stmt.target.root]
+                  if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRWrap)
+                  for s in fn.slots if s.id == stmt.target.root and s.shape.owned_sum]
         assert writes
         for backing, _ in writes:
             assert backing.storage_duration is MIRStorageDuration.BODY
             assert backing.residence.index == 0
         inspection = inspect_scope_lifetimes(prepared(fn))
         blocks = {b.id: b for b in fn.blocks}
-        assert all(isinstance(blocks[edge.source].terminator, MIRReturn) for edge in inspection.ends.ends)
+        # The sums end with the body; only a fill's built record ends earlier, with its full expression.
+        sums = {backing.id for backing, _ in writes}
+        assert all(isinstance(blocks[edge.source].terminator, MIRReturn) for edge, events in inspection.ends.ends.items()
+                   if any(e.storage.root in sums for e in events))
     local = next(s for s in bodies["escaped_loop"].slots if s.name == "local")
     assert local.shape.holding is MIRHolding.POINTER and local.residence.index != 0
     assert "Cell* value;" in cpp and "std::optional<Cell>" in cpp
@@ -404,8 +408,9 @@ def reuse(n: int32) -> int32:
 '''
     fn = source_function(source)
     modes = [s.storage_write.mode for b in fn.blocks for s in b.statements
-             if isinstance(s.storage_write, MIRStorageWrite)]
-    assert modes == [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE]
+             if isinstance(s, MIRAssign) and isinstance(s.storage_write, MIRStorageWrite)]
+    # The loop's record is built in its pass, then moved into the site's one sum.
+    assert modes == [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE]
     holder = next(s for s in fn.slots if s.name == "current")
     assert holder.residence.index != 0
     heap = {}

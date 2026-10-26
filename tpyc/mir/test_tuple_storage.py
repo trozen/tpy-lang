@@ -157,7 +157,7 @@ def test_skipped_initialization_and_repeated_scope_activation() -> None:
 
 
 @pytest.mark.parametrize("statements, message", [
-    ((*BUILD, replace(TUPLE_INIT, storage_write=None)), "initialization fact"),
+    ((*BUILD, replace(TUPLE_INIT, storage_write=None)), "inline aggregate whole write needs its storage write fact"),
     ((*BUILD, replace(TUPLE_INIT, value=MIRCopy(MIRPlace(PAIR)))), "tuple construction"),
     ((*BUILD, replace(TUPLE_INIT, value=MIRConstruct((VALUE, TEMPS[1], EXTERNAL, VALUE)))), "payload type"),
     ((*BUILD, replace(TUPLE_INIT, value=MIRConstruct((TEMPS[0], EXTERNAL, VALUE)))), "payload type"),

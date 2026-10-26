@@ -7,7 +7,7 @@ from .call_contract import MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint,
     MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
-    MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRMemberInits, MIRRegionId, MIRStorageInit,
     MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIRWrap,
 )
@@ -168,8 +168,6 @@ def dump_function(fn: MIRFunction) -> str:
                     else f" duration={slot.storage_duration.name.lower()}" if slot.storage_duration is not None else "")
         if slot.residence is not None:
             duration += f" residence=r{slot.residence.index}"
-        if slot.record_storage is MIRRecordStorageKind.OPTIONAL:
-            duration += " optional-backing"
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
     if fn.receiver_init is not None:
         init = fn.receiver_init
@@ -187,9 +185,6 @@ def dump_function(fn: MIRFunction) -> str:
             if isinstance(stmt, MIRPrint):
                 arguments = ", ".join(f"%{s.index}" for s in stmt.arguments)
                 lines.append(f"  print ({arguments}){_location(stmt.loc)}")
-                continue
-            if isinstance(stmt, MIRRecordStorageInit):
-                lines.append(f"  initialize-record-wrapper {_place(stmt.target)} empty{_location(stmt.loc)}")
                 continue
             if isinstance(stmt, MIRStorageInit):
                 lines.append(f"  initialize-storage {_place(stmt.target)} alternative={stmt.alternative} "

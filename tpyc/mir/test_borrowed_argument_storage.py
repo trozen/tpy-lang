@@ -15,15 +15,17 @@ from ..thir.storage_facts import collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL
-from .testutil import compiled_definitions, prepared, workspace_functions
+from .testutil import compiled_definitions, placed_storage, prepared, workspace_functions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRCall, MIRConstruct,
-    MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRRecordStorageInit,
-    MIRRecordStorageKind, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRWrap,
+    MIRStorageInit,
+    MIRAlias, MIRAssign, MIRBodyId, MIRCall,
+    MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import inspect_scope_lifetimes
@@ -177,7 +179,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def _storage(body: MIRFunction) -> list[MIRSlot]:
-    return [slot for slot in body.slots if slot.shape.is_storage]
+    return placed_storage(body)
 
 
 @pytest.mark.parametrize("name", ["eager", "lazy", "mixed", "unreturned", "loop", "ranges", "method", "Caller"])
@@ -225,12 +227,13 @@ def test_return_origins_substitute_only_selected_arguments(artifacts: Artifacts,
 def test_lazy_backing_initializes_in_each_selected_arm(artifacts: Artifacts) -> None:
     body = _lazy(artifacts)
     backing = _storage(body)
-    assert len(backing) == 2 and all(slot.record_storage is MIRRecordStorageKind.OPTIONAL for slot in backing)
+    assert len(backing) == 2 and all(slot.shape.owned_sum for slot in backing)
     declarations = [block.id for block in body.blocks for stmt in block.statements
-                    if isinstance(stmt, MIRRecordStorageInit)]
+                    if isinstance(stmt, MIRStorageInit)]
     assert declarations == [body.entry, body.entry]
+    # Each arm builds its record and moves it into its sum.
     constructions = [(block.id, stmt.target.root) for block in body.blocks for stmt in block.statements
-                     if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct)]
+                     if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRWrap)]
     assert len({block for block, _ in constructions}) == 2
     assert all(block != body.entry for block, _ in constructions)
     assert {slot for _, slot in constructions} == {slot.id for slot in backing}

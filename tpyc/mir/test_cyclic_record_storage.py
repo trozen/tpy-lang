@@ -168,12 +168,14 @@ def test_transfer_does_not_bypass_activation_rules(move: bool, fault: str, reaso
 def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool, operation: str) -> None:
     fn, point, holder = loop_function(shape, safe=safe)
     block = fn.blocks[1]
-    # Replace through current without the OWN-site reseat: prior aliases now overlap the write.
-    write = replace(block.statements[point.index], target=MIRPlace(CURRENT, (MIRDeref(),)),
+    # Replace through current without the site's fill (the built record, its
+    # wrap, the borrow and the reseat): prior aliases now overlap the write.
+    build = point.index - 1
+    write = replace(block.statements[build], target=MIRPlace(CURRENT, (MIRDeref(),)),
                     storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, CURRENT))
     if operation != "construct":
         write = replace(write, value=MIRCopy(MIRPlace(INITIAL)) if operation == "copy" else MIRMove(INITIAL))
-    stmts = (*block.statements[:point.index], write, *block.statements[point.index + 3:])
+    stmts = (*block.statements[:build], write, *block.statements[point.index + 3:])
     capture = stmts[-1]
     value = (replace(capture.value, fields=(CURRENT, *capture.value.fields[1:]))
              if isinstance(capture.value, MIRConstruct)

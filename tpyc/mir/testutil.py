@@ -12,9 +12,9 @@ from ..type_def_registry import TypeCategory, TypeDef, _type_defs, int_traits_of
 from ..typesys import INT32_MIN, INT32_MAX, FieldInfo, NominalType, RecordInfo
 
 from .nodes import (
-    MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
+    MIRSlot, MIRAlias, MIRAssign, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
-    MIRStorageWrite, MIRStorageWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageInit,
+    MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
     MIREdge, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap, MIRNotCovered, MIRBodyId,
 )
@@ -449,10 +449,6 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 if output is not None:
                     output.append(printed)
                 continue
-            if isinstance(stmt, MIRRecordStorageInit):
-                physical[stmt.target.root] = optional_value()
-                values.pop(stmt.target.root, None)
-                continue
             if isinstance(stmt, MIRStorageInit):
                 physical[stmt.target.root] = UnionValue(stmt.alternative, stmt.value.value)
                 values.pop(stmt.target.root, None)
@@ -461,12 +457,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 "source read before assignment"
             if (isinstance(stmt.storage_write, MIRStorageWrite)
                     and stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE
-                    and not stmt.target.projections and slots[stmt.target.root].shape.scalar_wrapper):
+                    and not stmt.target.projections and slots[stmt.target.root].shape.inline_sum):
                 assert stmt.target.root in physical, "assignment before storage initialization"
             rhs = stmt.value
-            if (not stmt.target.projections
-                    and slots[stmt.target.root].record_storage is MIRRecordStorageKind.OPTIONAL):
-                assert stmt.target.root in physical, "record assignment before wrapper initialization"
             match rhs:
                 case MIRRangeAdvance():
                     value = values[rhs.source] + rhs.step
@@ -524,7 +517,27 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                             assert isinstance(source, UnionValue)
                             value = UnionValue(source.alternative, source.payload)
                 case MIRWrap():
-                    value = UnionValue(rhs.alternative, read(rhs.source) if rhs.source is not None else None)
+                    payload = read(rhs.source) if rhs.source is not None else None
+                    target_shape = place_shape(stmt.target, slots, records)
+                    member = target_shape.alternatives[rhs.alternative]
+                    if (isinstance(payload, Reference) and not stmt.target.projections
+                            and member is not None and member.owns_storage):
+                        # The temporary's record moves into the sum's own inline
+                        # object, as a construct moves a tuple's record member;
+                        # a refill of the same alternative keeps that object.
+                        moved = record(payload).copy()
+                        objects.pop(payload.identity, None)
+                        current = physical.get(stmt.target.root)
+                        if (isinstance(current, UnionValue) and current.alternative == rhs.alternative
+                                and isinstance(current.payload, Reference)):
+                            record(current.payload).clear()
+                            record(current.payload).update(moved)
+                            payload = current.payload
+                        else:
+                            objects[next_identity] = moved
+                            payload = Reference(next_identity)
+                            next_identity += 1
+                    value = UnionValue(rhs.alternative, payload)
                 case MIRIsAlternative():
                     source = read(rhs.source)
                     assert isinstance(source, UnionValue)
@@ -610,6 +623,15 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         for sid in regions.edges[edge].ended:
             physical.pop(sid, None)
     raise AssertionError("unexpected nontermination")
+
+
+def placed_storage(fn: MIRFunction) -> list[MIRSlot]:
+    """The storage a body places, in slot order: a record a fill builds and
+    moves into an owned sum is that sum's, not storage of its own."""
+    moved = {stmt.value.source.root for block in fn.blocks for stmt in block.statements
+             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRWrap) and stmt.value.source is not None
+             and not stmt.target.projections and next(s for s in fn.slots if s.id == stmt.target.root).shape.owned_sum}
+    return [s for s in fn.slots if s.shape.owns_storage and s.id not in moved]
 
 
 def prepared(fn: MIRFunction) -> MIRPrepared | MIRNotCovered:

@@ -175,7 +175,7 @@ def test_defaults_require_exact_layout_placement_and_single_site(shape: str, dam
     elif damage == "parameter":
         fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], kind=MIRSlotKind.PARAMETER, residence=None,
                                       storage_duration=None), *fn.slots[1:])))
-        message = "physical initialization needs local scalar wrapper"
+        message = "physical initialization needs local inline sum"
     if damage in ("alternative", "type", "value"):
         fn = replace(fn, blocks=(replace(fn.blocks[0], statements=(init,)),))
     with pytest.raises(MIRValidationError, match=message):

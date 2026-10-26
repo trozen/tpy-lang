@@ -144,15 +144,16 @@ def test_branch_selection_limits_ends_and_omits_infeasible_points(optional: bool
 
 @pytest.mark.parametrize("optional", [False, True])
 @pytest.mark.parametrize("unreachable", [False, True])
-def test_missing_fact_is_uncovered_even_on_unreachable_write(optional: bool, unreachable: bool) -> None:
+def test_a_missing_fact_never_validates_even_on_an_unreachable_write(optional: bool, unreachable: bool) -> None:
+    # Payload ends are weighed from the write's fact, so the validator
+    # demands it on every whole write of an inline sum, reachable or not.
     initial = write(optional, PARAM, fact=None)
     blocks = (MIRBlock(ENTRY, (initial, write(optional, 0)), MIRReturn(VALUE)),)
     if unreachable:
         blocks = (MIRBlock(ENTRY, (), MIRReturn(VALUE)), MIRBlock(YES, (initial,), MIRReturn(VALUE)))
     fn = wrapper_function(optional, *blocks)
-    validate_function(fn)
-    result = analyze_payload_ends(prepared(fn))
-    assert isinstance(result, MIRNotCovered) and result.reason == "missing payload write fact"
+    with pytest.raises(MIRValidationError, match="inline aggregate whole write needs its storage write fact"):
+        validate_function(fn)
 
 
 @pytest.mark.parametrize("optional", [False, True])

@@ -11,16 +11,18 @@ from ..thir import nodes as th
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.test_for_temp_plan import SOURCE
 from ..thir.testutil import _compile, _entry
-from .testutil import compiled_definitions, prepared, workspace_functions
+from .testutil import compiled_definitions, placed_storage, prepared, workspace_functions
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .dump import _write_step
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBranch, MIRCall, MIRConstruct,
+    MIRWrap,
+    MIRStorageInit,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBranch, MIRCall,
     MIRCopy, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorInit, MIRNotCovered,
-    MIRPlace, MIRRangeAdvance, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRPlace, MIRRangeAdvance,
     MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .region_flow import MIRRegionFlow
@@ -75,7 +77,7 @@ def _dump_path(write) -> str:
 
 
 def storage(fn: MIRFunction) -> list[MIRSlot]:
-    return [s for s in fn.slots if s.shape.is_storage]
+    return placed_storage(fn)
 
 
 @pytest.mark.parametrize("name", ["ranges", "descending", "written", "native", "records",
@@ -166,11 +168,12 @@ def test_range_break_ends_counter_and_backing_but_zero_trip_skips_body(artifacts
 def test_lazy_backing_exists_before_selection_but_payload_does_not(artifacts: Artifacts, name: str) -> None:
     fn = body(artifacts, name)
     backing = storage(fn)[0]
-    assert backing.record_storage is MIRRecordStorageKind.OPTIONAL
-    declaration = next(b for b in fn.blocks if any(isinstance(s, MIRRecordStorageInit)
+    assert backing.shape.owned_sum
+    declaration = next(b for b in fn.blocks if any(isinstance(s, MIRStorageInit)
                        and s.target.root == backing.id for s in b.statements))
+    # The fill that moves the built record into the sum.
     initialization = next(b for b in fn.blocks if any(isinstance(s, MIRAssign)
-                          and s.target.root == backing.id and isinstance(s.value, MIRConstruct)
+                          and s.target.root == backing.id and isinstance(s.value, MIRWrap)
                           for s in b.statements))
     assert declaration.region == initialization.region == backing.residence
     assert isinstance(declaration.terminator, MIRBranch)

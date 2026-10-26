@@ -1,6 +1,6 @@
 # MIR over records with StrView members: a view member stores its source's loan in the record object.
 # A conflict section replaces the source only on a path the run does not take (`flag` is False).
-from tpy import Own, StrView, int32
+from tpy import Own, StrView, int32, nocopy
 
 
 class Tok:
@@ -45,6 +45,16 @@ class Buf:
 
 class Child(Tok):
     pass
+
+
+@nocopy
+class Tag:
+    s: StrView
+    n: int32
+
+    def __init__(self, s: str, n: int32) -> None:
+        self.s = s
+        self.n = n
 
 
 def mk(k: int32) -> str:
@@ -264,6 +274,30 @@ def branch(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
     print("branch", t.s)
 
 
+# loop body: one hoisted record slot refilled on each pass through a view of `a` or `b`
+def refill_two(k: int32, flag: bool) -> int32:  # tpyc: mir(covered)
+    total = 0
+    i = 0
+    a = mk(1)
+    b = mk(2)
+    src: StrView = a
+    while True:
+        t = Tag(src, i)
+        alias = t  # tpyc: mir_borrows(alias.s, a|b)
+        alias.n = 2
+        total += len(alias.s) + t.n
+        if flag:
+            src = b
+        else:
+            src = a
+        flag = not flag
+        i += 1
+        if i < k:
+            continue
+        break
+    return total + t.n
+
+
 # free function: an inherited constructor reuses the base's stored loan
 def child(s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
     c = Child(s, 1)
@@ -303,6 +337,7 @@ def main() -> None:
     print("selected", selected(t, "e", True), selected(t, "e", False))
     print("child", child("c"))
     branch(9, False)
+    print("refill_two", refill_two(3, True))
 
 
 main()

@@ -11,10 +11,10 @@ from .dependencies import _leaves, resolve_referents
 from .liveness import MIRPoint
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRConstant, MIRMove, MIRPlace, MIRSlot, MIRSlotId,
-    MIRRecordStorageInit, MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode,
+    MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode,
     MIRConstruct, MIRWrap,
 )
-from .presence import MIREngagement, _State, _kill_field_facts
+from .presence import _State, _kill_field_facts
 from .prepare import _resolver
 from .reach import (
     MIRReferent, MIRStorageEvent, MIRStorageEventKind, declared_containment, origin, reaches,
@@ -36,11 +36,14 @@ HO = MIRField(MIRFieldId(H, "o"), OptionalType(PS))
 NAME = MIRField(MIRFieldId(PS, "name"), STR)
 EXTRA = MIRField(MIRFieldId(SUB, "extra"), OptionalType(P))
 BODY = MIRBodyId("reach", "example")
-A, B, OWN, TUP, GLOBAL, BASE, SUBP = (MIRSlotId(BODY, i) for i in range(7))
+A, B, OWN, TUP, GLOBAL, BASE, SUBP, SUM, BUILT = (MIRSlotId(BODY, i) for i in range(9))
 SLOTS = {s.id: s for s in (
     MIRSlot(A, borrowed_shape(H), MIRSlotKind.PARAMETER),
     MIRSlot(B, borrowed_shape(H), MIRSlotKind.PARAMETER),
     MIRSlot(OWN, owned_shape(H), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY),
+    MIRSlot(SUM, optional_shape(OptionalType(H), owned_shape(H)), MIRSlotKind.LOCAL,
+            storage_duration=MIRStorageDuration.BODY),
+    MIRSlot(BUILT, owned_shape(H), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY),
     MIRSlot(TUP, tuple_shape(TupleType((H, H)), (borrowed_shape(H), borrowed_shape(H))), MIRSlotKind.PARAMETER),
     MIRSlot(GLOBAL, owned_shape(H), MIRSlotKind.GLOBAL),
     MIRSlot(BASE, borrowed_shape(H), MIRSlotKind.PARAMETER),
@@ -60,6 +63,10 @@ def _any(written: MIRReferent, target: MIRReferent) -> bool:
 
 def _none(written: MIRReferent, target: MIRReferent) -> bool:
     return False
+
+
+def _any_selection(place: MIRPlace) -> None:
+    return None
 
 
 def ref(root: MIRSlotId, *path: object, external: bool = True, **flags: bool) -> MIRReferent:
@@ -162,9 +169,7 @@ def _write(target: MIRPlace, mode: MIRStorageWriteMode | None, value: object = M
 def test_the_classifier_keeps_every_kind_and_replacements_select_from_it() -> None:
     field = MIRPlace(A, (MIRDeref(), HP))
     for mode, kind in ((MIRStorageWriteMode.INITIALIZE, MIRStorageEventKind.INITIALIZE),
-                       (MIRStorageWriteMode.IN_PLACE, MIRStorageEventKind.REPLACE),
-                       (MIRStorageWriteMode.OWN_SITE, MIRStorageEventKind.REPLACE),
-                       (MIRStorageWriteMode.OPTIONAL_ASSIGN, MIRStorageEventKind.OPTIONAL_ASSIGN)):
+                       (MIRStorageWriteMode.IN_PLACE, MIRStorageEventKind.REPLACE)):
         stmt = _write(MIRPlace(OWN), mode, owner=A)
         assert storage_events(stmt, (), SLOTS) == (MIRStorageEvent(kind, MIRPlace(OWN), A),)
     # A scalar field is overwritten: no storage a borrow points into.
@@ -175,12 +180,20 @@ def test_the_classifier_keeps_every_kind_and_replacements_select_from_it() -> No
     assert storage_events(moved, (field, MIRPlace(A)), SLOTS) == (
         MIRStorageEvent(MIRStorageEventKind.CALL_WRITE, field),
         MIRStorageEvent(MIRStorageEventKind.MOVE, MIRPlace(OWN)))
-    # Replacements: no initialization, an Optional assignment only when engaged.
+    # Replacements: no initialization; an owned sum's fill only of a payload
+    # its old selection may hold -- the same alternative included, none on
+    # a first fill.
     init = _write(MIRPlace(OWN), MIRStorageWriteMode.INITIALIZE)
-    assert replacement_events(init, (field,), lambda root: True, SLOTS) == ((field, None),)
-    optional = _write(MIRPlace(OWN), MIRStorageWriteMode.OPTIONAL_ASSIGN)
-    assert replacement_events(optional, (), lambda root: False, SLOTS) == ()
-    assert replacement_events(optional, (), lambda root: True, SLOTS) == ((MIRPlace(OWN), None),)
+    assert replacement_events(init, (field,), _any_selection, SLOTS) == ((field, None),)
+    fill = _write(MIRPlace(SUM), MIRStorageWriteMode.IN_PLACE, MIRWrap(1, MIRPlace(BUILT)))
+    payload = MIRPlace(SUM, (MIRUnionPayload(1),))
+    assert storage_events(fill, (), SLOTS) == (MIRStorageEvent(MIRStorageEventKind.REPLACE, MIRPlace(SUM),
+                                                               payloads=((1, True),)),)
+    assert replacement_events(fill, (), lambda place: frozenset({0}), SLOTS) == ()
+    for old in (frozenset({1}), frozenset({0, 1}), None):
+        assert replacement_events(fill, (), lambda place: old, SLOTS) == ((payload, None),)
+    empty = _write(MIRPlace(SUM), MIRStorageWriteMode.IN_PLACE, MIRWrap(0))
+    assert replacement_events(empty, (), lambda place: frozenset({1}), SLOTS) == ((payload, None),)
 
 
 def test_an_owned_tuple_is_initialized_by_its_construct_and_needs_its_fact() -> None:
@@ -191,12 +204,12 @@ def test_an_owned_tuple_is_initialized_by_its_construct_and_needs_its_fact() -> 
     # The record member is moved in from its own temporary: no event of its own.
     stmt = _write(MIRPlace(pair), MIRStorageWriteMode.INITIALIZE, MIRConstruct((A, member)))
     assert storage_events(stmt, (), slots) == (MIRStorageEvent(MIRStorageEventKind.INITIALIZE, MIRPlace(pair)),)
-    assert replacement_events(stmt, (), lambda root: True, slots) == ()
+    assert replacement_events(stmt, (), _any_selection, slots) == ()
     # Without its write fact, what the construction does to storage is unknown.
     missing = replace(stmt, storage_write=None)
     assert storage_events(missing, (), slots) == (MIRStorageEvent(MIRStorageEventKind.REPLACE, MIRPlace(pair),
                                                                   known=False),)
-    assert replacement_events(missing, (), lambda root: True, slots) is None
+    assert replacement_events(missing, (), _any_selection, slots) is None
 
 
 # --- the presence field kill --------------------------------------------------------------
@@ -264,20 +277,20 @@ def test_a_storage_write_strictly_below_the_fact_keeps_it() -> None:
     assert _kill(_write(MIRPlace(A, (MIRDeref(), HO)), MIRStorageWriteMode.IN_PLACE, MIRWrap(0)), fact)
 
 
-def test_an_initialization_or_an_unengaged_optional_assignment_keeps_a_field_fact() -> None:
-    # Resolved here to the very wrapper the fact names, so only the event's
-    # kind keeps the fact: an initialization replaces nothing a holder points
-    # into, an Optional assignment replaces only an engaged backing.
+def test_an_initialization_or_a_first_fill_keeps_a_field_fact() -> None:
+    # Resolved here to the very wrapper the fact names, so only the event
+    # keeps the fact: an initialization replaces nothing a holder points
+    # into, an owned sum's fill replaces only a payload it may hold.
     fact = MIRPlace(A, (MIRDeref(), HP))
     same = (lambda point, place: frozenset({ref(A, HP)}))
     assert not _kill(_write(MIRPlace(OWN), MIRStorageWriteMode.INITIALIZE), fact, same)
     assert _kill(_write(MIRPlace(OWN), MIRStorageWriteMode.IN_PLACE), fact, same)
-    optional = _write(MIRPlace(OWN), MIRStorageWriteMode.OPTIONAL_ASSIGN)
+    fill = _write(MIRPlace(SUM), MIRStorageWriteMode.IN_PLACE, MIRWrap(1, MIRPlace(BUILT)))
     records = _records()
-    for engagement, killed in ((frozenset(), False), (frozenset({(OWN, frozenset({MIREngagement.ENGAGED}))}), True)):
-        state = _State(frozenset({(fact, frozenset({1}))}), engagement=engagement)
-        after = _kill_field_facts(state, optional, MIRPoint(None, 0), SLOTS, records, same)
-        assert (not after.present) is killed
+    for selected, killed in ((frozenset({0}), False), (frozenset({1}), True), (frozenset({0, 1}), True)):
+        state = _State(frozenset({(fact, frozenset({1})), (MIRPlace(SUM), selected)}))
+        after = _kill_field_facts(state, fill, MIRPoint(None, 0), SLOTS, records, same)
+        assert (fact not in dict(after.present)) is killed
 
 
 def test_a_root_fact_on_a_condition_outcome_survives_a_field_kill() -> None:
@@ -300,20 +313,23 @@ def test_the_classifier_takes_wrapper_constructions_and_payload_writes() -> None
     slots = {**SLOTS, wrapper: MIRSlot(wrapper, optional_shape(OptionalType(INT32), leaf_shape(INT32)),
                                        MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY)}
     place = MIRPlace(wrapper)
+    # A scalar wrapper is its own storage; an owned sum built empty materializes nothing.
     assert storage_events(MIRStorageInit(place, 0, MIRConstant(None)), (), slots) == (
-        MIRStorageEvent(MIRStorageEventKind.CONSTRUCT, place),)
-    assert storage_events(MIRRecordStorageInit(MIRPlace(OWN)), (), slots) == (
-        MIRStorageEvent(MIRStorageEventKind.BACKING, MIRPlace(OWN)),)
+        MIRStorageEvent(MIRStorageEventKind.CONSTRUCT, place, materialized=place),)
+    assert storage_events(MIRStorageInit(MIRPlace(SUM), 0, MIRConstant(None)), (), slots) == (
+        MIRStorageEvent(MIRStorageEventKind.CONSTRUCT, MIRPlace(SUM)),)
     # A scalar wrapper's value replaced in place ends its payload, never storage a borrow points into.
     payload = _write(place, MIRStorageWriteMode.IN_PLACE, MIRWrap(0))
-    assert storage_events(payload, (), slots) == (MIRStorageEvent(MIRStorageEventKind.PAYLOAD, place),)
-    assert replacement_events(payload, (), lambda root: True, slots) == ()
+    assert storage_events(payload, (), slots) == (MIRStorageEvent(MIRStorageEventKind.PAYLOAD, place,
+                                                                  payloads=((1, False),)),)
+    assert replacement_events(payload, (), _any_selection, slots) == ()
     # Its missing fact is its own event, but no storage a borrow points into is unknown.
     missing = replace(payload, storage_write=None)
-    assert storage_events(missing, (), slots) == (MIRStorageEvent(MIRStorageEventKind.PAYLOAD, place, known=False),)
-    assert replacement_events(missing, (), lambda root: True, slots) == ()
-    for construction in (MIRStorageInit(place, 0, MIRConstant(None)), MIRRecordStorageInit(MIRPlace(OWN))):
-        assert replacement_events(construction, (), lambda root: True, slots) == ()
+    assert storage_events(missing, (), slots) == (MIRStorageEvent(MIRStorageEventKind.PAYLOAD, place, known=False,
+                                                                  payloads=((1, False),)),)
+    assert replacement_events(missing, (), _any_selection, slots) == ()
+    for construction in (MIRStorageInit(place, 0, MIRConstant(None)), MIRStorageInit(MIRPlace(SUM), 0, MIRConstant(None))):
+        assert replacement_events(construction, (), _any_selection, slots) == ()
 
 
 def test_a_projected_place_inside_a_scalar_wrapper_is_a_payload_write() -> None:
@@ -327,4 +343,4 @@ def test_a_projected_place_inside_a_scalar_wrapper_is_a_payload_write() -> None:
     assert storage_events(write, (), slots) == (MIRStorageEvent(MIRStorageEventKind.PAYLOAD, inside),)
     missing = replace(write, storage_write=None)
     assert storage_events(missing, (), slots) == (MIRStorageEvent(MIRStorageEventKind.PAYLOAD, inside, known=False),)
-    assert replacement_events(missing, (), lambda root: True, slots) == ()
+    assert replacement_events(missing, (), _any_selection, slots) == ()

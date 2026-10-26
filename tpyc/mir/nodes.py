@@ -92,11 +92,6 @@ class MIRStorageDuration(Enum):
     CALLER = auto()
 
 
-class MIRRecordStorageKind(Enum):
-    DIRECT = auto()
-    OPTIONAL = auto()
-
-
 @dataclass(frozen=True)
 class MIRSlot:
     id: MIRSlotId
@@ -107,7 +102,6 @@ class MIRSlot:
     global_id: MIRGlobalId | None = None
     storage_duration: MIRStorageDuration | MIRRegionId | None = None
     residence: MIRRegionId | None = None
-    record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
 
     @property
     def type(self) -> TpyType:
@@ -120,6 +114,22 @@ class MIRSlot:
     @property
     def form(self) -> Form:
         return self.shape.form
+
+    @property
+    def lifetime_root(self) -> bool:
+        """Storage whose activation a scope ends: storage the slot owns, or
+        a local's inline sum -- a scalar one included (`int32 | None`),
+        whose payload lies in the local itself."""
+        return self.shape.owns_storage or self.kind is MIRSlotKind.LOCAL and self.shape.inline_sum
+
+    @property
+    def producer(self) -> bool:
+        """A producer's slot: a placed local owning its storage, which a
+        construct or a wrap of this body fills (an owned tuple local, an
+        owned sum) -- the only slot whose inline records' stored loans the
+        body keys (`dependencies.object_keys`)."""
+        return (self.kind is MIRSlotKind.LOCAL and self.storage_duration is not None
+                and self.shape.owns_storage)
 
 
 @dataclass(frozen=True)
@@ -365,14 +375,8 @@ class MIRStorageWriteMode(Enum):
     # No old value: once per lifetime of the target slot's storage (the
     # body, or each entry of its region -- `MIRSlot.storage_duration`).
     INITIALIZE = auto()
-    # A holder's designated backing site written (it may be revisited, each
-    # loop pass) and the holder repointed to it; the former referent may
-    # stay observable.
-    OWN_SITE = auto()
     # The current value replaced in its storage: every alias sees it.
     IN_PLACE = auto()
-    # An Optional record backing filled: a replacement only if engaged.
-    OPTIONAL_ASSIGN = auto()
 
 
 @dataclass(frozen=True)
@@ -401,13 +405,6 @@ class MIRStorageInit:
 
 
 @dataclass(frozen=True)
-class MIRRecordStorageInit:
-    """Construct an empty backing wrapper, without constructing a record."""
-    target: MIRPlace
-    loc: SourceLocation | None = None
-
-
-@dataclass(frozen=True)
 class MIRCallStmt:
     call: MIRCall
     loc: SourceLocation | None = None
@@ -422,12 +419,12 @@ class MIRPrint:
     loc: SourceLocation | None = None
 
 
-MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit | MIRCallStmt | MIRPrint
+MIRStatement = MIRAssign | MIRStorageInit | MIRCallStmt | MIRPrint
 
 
 def statement_target(stmt: MIRStatement) -> MIRPlace | None:
     match stmt:
-        case MIRAssign(target=target) | MIRStorageInit(target=target) | MIRRecordStorageInit(target=target):
+        case MIRAssign(target=target) | MIRStorageInit(target=target):
             return target
         case MIRCallStmt() | MIRPrint():
             return None
@@ -439,7 +436,7 @@ def statement_call(stmt: MIRStatement) -> MIRCall | None:
     match stmt:
         case MIRAssign(value=MIRCall() as call) | MIRCallStmt(call=call):
             return call
-        case MIRAssign() | MIRStorageInit() | MIRRecordStorageInit() | MIRPrint():
+        case MIRAssign() | MIRStorageInit() | MIRPrint():
             return None
         case _:
             raise TypeError("unknown MIR statement")

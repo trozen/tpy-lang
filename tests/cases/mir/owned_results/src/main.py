@@ -110,7 +110,7 @@ def spawn_temp(pool: Pool) -> int32:  # tpyc: mir(certified)
 # free function: a reseat of a local by a second call, into a slot of its own
 def reseat(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
     p = make(n)
-    p = make(n + 1)  # tpyc: mir_borrowed(p) mir_write(p@113)
+    p = make(n + 1)  # tpyc: mir_borrowed(p)
     return p.x
 
 

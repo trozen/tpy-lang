@@ -15,12 +15,13 @@ from .definitions import MIRDefinitions
 from .dependencies import _dependencies
 from .lower import lower_constructor, lower_function
 from .nodes import (
+    MIRStorageInit,
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
-    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind, MIRStorageWrite,
+    MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRStorageWrite,
     MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRWrap, MIRIsAlternative,
 )
-from .shapes import MIRDeref
+from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage_evidence import (
@@ -213,7 +214,7 @@ def artifacts(compiled) -> Artifacts:
 
 
 def _storage(fn: MIRFunction) -> frozenset[MIRSlotId]:
-    return frozenset(s.id for s in fn.slots if s.shape.is_storage)
+    return frozenset(s.id for s in fn.slots if s.shape.owns_storage)
 
 
 def _named(fn: MIRFunction, sid: MIRSlotId) -> str | None:
@@ -233,8 +234,6 @@ def _source(artifacts: Artifacts, name: str) -> tuple[MIRFunction, MIRStorageEvi
     ("chain_escape", MIRStorageConflictKind.SCOPE_END, "saved"),
     # Reseating `saved` does not erase the dependency `outer` already copied.
     ("reseat_escape", MIRStorageConflictKind.SCOPE_END, "outer"),
-    # The hoisted site is replaced while `earlier` still holds the old object.
-    ("loop_replaced", MIRStorageConflictKind.REPLACEMENT, "earlier"),
     ("escape", MIRStorageConflictKind.SCOPE_END, "saved"),
     ("Observer", MIRStorageConflictKind.SCOPE_END, "saved"),
 ])
@@ -247,6 +246,15 @@ def test_escaping_dependencies_conflict(artifacts: Artifacts, name: str,
     assert {_named(fn, c.holder.root) for c in evidence.conflicts} == {holder}
     assert all(c.origin.root in evidence.required and c.loc is not None for c in evidence.conflicts)
     assert not evidence.certifies(fn, evidence.required)
+
+
+def test_infeasible_second_pass_refills_nothing(artifacts: Artifacts) -> None:
+    # `loop_replaced`'s loop sets `flag = False` on its only pass, so the
+    # hoisted site's fill is always a first fill of an empty sum: it
+    # replaces nothing `earlier` holds (presence proves the second pass
+    # infeasible; the fill's old selection is empty).
+    fn, evidence = _source(artifacts, "loop_replaced")
+    assert evidence.verdict is MIRStorageVerdict.CERTIFIED, (evidence.conflicts, evidence.gaps)
 
 
 @pytest.mark.parametrize("name", ["dead_alias", "reseat_safe", "durable", "loop_reread",
@@ -300,13 +308,23 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     """Each iteration constructs a fresh region activation of one static backing."""
     cell, layout = _cell(definitions)
     field = layout.fields[0]
-    backing = MIRSlot(BACKING, owned_shape(cell), MIRSlotKind.LOCAL, storage_duration=INNER, residence=INNER,
-                      record_storage=MIRRecordStorageKind.OPTIONAL if optional else MIRRecordStorageKind.DIRECT)
+    backing = MIRSlot(BACKING, optional_shape(OptionalType(cell), owned_shape(cell)) if optional
+                      else owned_shape(cell), MIRSlotKind.LOCAL, storage_duration=INNER, residence=INNER)
+    built = MIRSlot(MIRSlotId(LOOP, 7), owned_shape(cell), MIRSlotKind.TEMPORARY, storage_duration=INNER,
+                    residence=INNER)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), field))))
-    construct = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)), storage_write=MIRStorageWrite(
-        MIRStorageWriteMode.OPTIONAL_ASSIGN if optional else MIRStorageWriteMode.INITIALIZE))
-    iteration = ((MIRRecordStorageInit(MIRPlace(BACKING)),) if optional else ()) + (
-        construct, MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))), read)
+    if optional:
+        lent = MIRPlace(BACKING, (MIRUnionPayload(1),))
+        iteration = (MIRStorageInit(MIRPlace(BACKING), 0, MIRConstant(None)),
+                     MIRAssign(MIRPlace(built.id), MIRConstruct((VALUE,)),
+                               storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+                     MIRAssign(MIRPlace(BACKING), MIRWrap(1, MIRPlace(built.id)),
+                               storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)),
+                     MIRAssign(MIRPlace(SAVED), MIRBorrow(lent)), read)
+    else:
+        construct = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)),
+                              storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+        iteration = (construct, MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))), read)
     if not retain:
         iteration += (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)),)
     return bind_parameters(MIRFunction(LOOP, INT32, (
@@ -314,7 +332,7 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
         _ref(OWNER, cell, MIRSlotKind.PARAMETER),
         MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
         _ref(SAVED, cell, MIRSlotKind.LOCAL, ROOT), backing,
-        MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)), (
+        MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)) + ((built,) if optional else ()), (
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)), MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(VALUE)))),
                  MIRGoto(HEADER), ROOT),
         MIRBlock(HEADER, (), MIRBranch(FLAG, ITERATION, AFTER), ROOT),
@@ -338,31 +356,32 @@ def test_loop_activation_checks_each_end_before_the_backedge(artifacts: Artifact
     assert safe.verdict is MIRStorageVerdict.CERTIFIED, (safe.conflicts, safe.gaps)
 
 
-def _without_engagement(prepared, *, edge: MIREdge | None = None, point: MIRPoint | None = None):
+def _without_selection(prepared, *, edge: MIREdge | None = None, point: MIRPoint | None = None):
+    """The preparation with the sum's selection fact dropped at an edge or a point."""
     presence = prepared.presence
 
     def drop(facts: frozenset) -> frozenset:
-        return frozenset(f for f in facts if f[0] != BACKING)
+        return frozenset(f for f in facts if f[0] != MIRPlace(BACKING))
 
     if edge is not None:
-        presence = replace(presence, edge_engagement=MappingProxyType(
-            {e: drop(f) if e == edge else f for e, f in presence.edge_engagement.items()}))
+        presence = replace(presence, edges=MappingProxyType(
+            {e: drop(f) if e == edge else f for e, f in presence.edges.items()}))
     if point is not None:
-        presence = replace(presence, engagement=MappingProxyType(
-            {p: drop(f) if p == point else f for p, f in presence.engagement.items()}))
+        presence = replace(presence, points=MappingProxyType(
+            {p: drop(f) if p == point else f for p, f in presence.points.items()}))
     return replace(prepared, presence=presence)
 
 
 @pytest.mark.parametrize("retain", [False, True])
-def test_missing_end_engagement_is_not_a_clean_skip(artifacts: Artifacts, retain: bool) -> None:
+def test_missing_end_selection_still_ends_the_sum(artifacts: Artifacts, retain: bool) -> None:
+    # An owned sum's scope end ends the slot whatever it may hold: a missing
+    # selection fact neither drops the end nor its conflict.
     definitions = artifacts[1]
     fn = activation(definitions, retain=retain, optional=True)
-    ready = _without_engagement(prepared(fn), edge=MIREdge(ITERATION))
+    ready = _without_selection(prepared(fn), edge=MIREdge(ITERATION))
     evidence = _storage_evidence(ready, frozenset({BACKING}), definitions)
-    # The object end (and its conflict) disappears with the fact; the wrapper end remains.
-    assert not evidence.conflicts
-    assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
-    assert any("ends without an engagement fact" in g.reason for g in evidence.gaps)
+    assert evidence.verdict is (MIRStorageVerdict.CONFLICT if retain else MIRStorageVerdict.CERTIFIED)
+    assert {c.site for c in evidence.conflicts} == ({MIREdge(ITERATION)} if retain else set())
 
 
 def reused(definitions: MIRDefinitions, *, retain: bool) -> MIRFunction:
@@ -372,18 +391,22 @@ def reused(definitions: MIRDefinitions, *, retain: bool) -> MIRFunction:
     fn = activation(definitions, retain=False, optional=True)
     slots = tuple(replace(s, storage_duration=MIRStorageDuration.BODY, residence=ROOT) if s.id == BACKING else s
                   for s in fn.slots) + (_ref(EARLIER, cell, MIRSlotKind.LOCAL, ROOT),)
-    replace_site = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)),
-                             storage_write=MIRStorageWrite(MIRStorageWriteMode.OPTIONAL_ASSIGN))
+    built = MIRSlotId(LOOP, 7)
+    replace_site = (MIRAssign(MIRPlace(built), MIRConstruct((VALUE,)),
+                              storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+                    MIRAssign(MIRPlace(BACKING), MIRWrap(1, MIRPlace(built)),
+                              storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
     read_earlier = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(EARLIER, (MIRDeref(), field))))
     iteration = ((MIRAssign(MIRPlace(EARLIER), MIRAlias(SAVED)),) if retain else ()) + (
-        replace_site, *((read_earlier,) if retain else ()), MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))))
+        *replace_site, *((read_earlier,) if retain else ()),
+        MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING, (MIRUnionPayload(1),)))))
     entry, header, _, after = fn.blocks
-    return replace(fn, slots=slots, regions=(fn.regions[0],), blocks=(
-        replace(entry, statements=(MIRRecordStorageInit(MIRPlace(BACKING)), *entry.statements)), header,
-        MIRBlock(ITERATION, iteration, MIRGoto(HEADER), ROOT), after))
+    return replace(fn, slots=slots, blocks=(
+        replace(entry, statements=(MIRStorageInit(MIRPlace(BACKING), 0, MIRConstant(None)), *entry.statements)),
+        header, MIRBlock(ITERATION, iteration, MIRGoto(HEADER), INNER), after))
 
 
-def test_reassigned_backing_keeps_prior_alias_and_needs_engagement(artifacts: Artifacts) -> None:
+def test_reassigned_backing_keeps_prior_alias(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
     unsafe = certify_storage_origins(prepared(reused(definitions, retain=True)), frozenset({BACKING}), definitions)
     assert unsafe.verdict is MIRStorageVerdict.CONFLICT
@@ -391,36 +414,23 @@ def test_reassigned_backing_keeps_prior_alias_and_needs_engagement(artifacts: Ar
     assert conflict.kind is MIRStorageConflictKind.REPLACEMENT and conflict.holder == MIRPlace(EARLIER)
     fn = reused(definitions, retain=False)
     assert certify_storage_origins(prepared(fn), frozenset({BACKING}), definitions).verdict is MIRStorageVerdict.CERTIFIED
-    ready = _without_engagement(prepared(fn), point=MIRPoint(ITERATION, 0))
+    # Without its selection fact the refill replaces every storage alternative:
+    # still nothing a live holder retains.
+    ready = _without_selection(prepared(fn), point=MIRPoint(ITERATION, 1))
     evidence = _storage_evidence(ready, frozenset({BACKING}), definitions)
-    assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
-    assert any("replaced without an engagement fact" in g.reason for g in evidence.gaps)
+    assert evidence.verdict is MIRStorageVerdict.CERTIFIED, (evidence.conflicts, evidence.gaps)
 
 
-def test_missing_entire_engagement_point_is_not_a_clean_skip(artifacts: Artifacts) -> None:
+def test_infeasible_refill_replaces_nothing(artifacts: Artifacts) -> None:
     definitions = artifacts[1]
-    fn = reused(definitions, retain=False)
-    ready = prepared(fn)
-    point = MIRPoint(ITERATION, 0)
-    assert point in ready.presence.points
-    presence = replace(ready.presence, engagement=MappingProxyType({
-        p: facts for p, facts in ready.presence.engagement.items() if p != point}))
-    evidence = _storage_evidence(replace(ready, presence=presence), frozenset({BACKING}), definitions)
-    assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
-    assert any("replaced without an engagement fact" in g.reason for g in evidence.gaps)
-
-
-def test_infeasible_replacement_needs_no_engagement_fact(artifacts: Artifacts) -> None:
-    definitions = artifacts[1]
-    fn = reused(definitions, retain=False)
+    fn = reused(definitions, retain=True)
     entry = fn.blocks[0]
     fn = replace(fn, blocks=(replace(entry, statements=(
         *entry.statements, MIRAssign(MIRPlace(FLAG), MIRConstant(False)))), *fn.blocks[1:]))
     ready = prepared(fn)
-    point = MIRPoint(ITERATION, 0)
-    assert point not in ready.presence.points and point not in ready.presence.engagement
-    evidence = certify_storage_origins(prepared(fn), frozenset({BACKING}), definitions)
-    assert not any("replaced without an engagement fact" in g.reason for g in evidence.gaps)
+    assert MIRPoint(ITERATION, 1) not in ready.presence.points
+    evidence = certify_storage_origins(ready, frozenset({BACKING}), definitions)
+    assert not evidence.conflicts
 
 
 def _drop_origins(deps, holder: MIRPlace):

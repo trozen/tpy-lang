@@ -142,13 +142,13 @@ Do not create a dummy result slot or accept a void call in a value position.
 
 All statement consumers must classify this new statement before accessing
 `.target` or `.value`: validation/definite assignment, operand inventory,
-liveness, dependencies, presence, engagement, storage/payload/scope ends,
+liveness, dependencies, presence (sum selection), storage/payload/scope ends,
 retention, summary extraction and dumps. A no-result call defines no binding
 and uses all arguments, including write-only borrowed arguments.
 
 For this bounded contract, scalar-field writes preserve referent edges,
-wrapper selection and storage engagement. They create no replacement or
-payload-end event and no borrow conflict merely for mutation. No current MIR
+wrapper and sum selection. They create no replacement or payload-end
+event and no borrow conflict merely for mutation. No current MIR
 analysis caches scalar field values. A local snapshot such as `old = cell.flag`
 retains its old value; subsequent field reads observe the changed storage.
 Do not add a scalar solver or indiscriminately clear unrelated holder facts.

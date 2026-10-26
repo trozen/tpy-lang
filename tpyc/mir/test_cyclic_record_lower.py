@@ -348,7 +348,7 @@ def moved(flag: bool) -> int32:
                             definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
     assert isinstance(result, MIRFunction), result
     write, = (s for s in analyze_storage(prepared(result)).writes.values() if isinstance(s.value, MIRMove))
-    assert write.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
+    assert write.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     assignment, = (n for n in nodes(function) if isinstance(n, th.THIRAssign) and isinstance(n.value, th.THIRMove))
     assert assignment.optional_record_assignment is not None
     assert assignment.value.form is assignment.value.value.form

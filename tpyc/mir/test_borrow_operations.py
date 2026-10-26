@@ -15,7 +15,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRRegion, MIRRegionId, MIRReturn,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRStorageWrite, MIRStorageWriteMode,
 )
-from .shapes import MIRDeref, MIRTupleIndex
+from .shapes import MIRUnionPayload, MIRDeref, MIRTupleIndex
 from .value import MIRHolding, MIRValidationError
 from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, _borrow_evidence,
@@ -125,7 +125,9 @@ def test_reached_local_storage_checks_each_loop_activation(definitions: MIRDefin
     evidence = certify_borrow_operations(prepared(fn), operations(fn), frozenset(), definitions)
     assert evidence.required == frozenset({BACKING})
     assert evidence.explicit_roots == frozenset()
-    assert MIRReferent(MIRPlace(BACKING)) in set().union(*evidence.origins.values())
+    # An owned sum lends its payload, a record its whole storage.
+    lent = MIRPlace(BACKING, (MIRUnionPayload(1),) if optional else ())
+    assert MIRReferent(lent) in set().union(*evidence.origins.values())
     if retain:
         assert evidence.verdict is MIRStorageVerdict.CONFLICT
         assert {c.kind for c in evidence.conflicts} == {MIRStorageConflictKind.SCOPE_END}

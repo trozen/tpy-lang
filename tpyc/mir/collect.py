@@ -43,7 +43,7 @@ from .retention import (
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .shapes import (
     MIRContainerElements, MIRContainerStructure, MIRTupleIndex, MIRUnionPayload, object_prefix,
-    optional_payload,
+    optional_payload, sole_payload,
 )
 from .reach import storage_destination
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
@@ -580,15 +580,22 @@ class _Spelling:
         return next((names[field.name] for names in self.shadowed.values()
                      if field.owner.name in names.get(field.name, ())), ())
 
-    def __call__(self, place: MIRPlace, roots: Mapping[MIRSlotId, str]) -> str | None:
-        root = roots.get(place.root)
+    def __call__(self, place: MIRPlace, names: Mapping[MIRPlace, str]) -> str | None:
+        """`place` spelled from the name `names` gives the storage it lies
+        in: its root slot's, or an owned sum payload's (`r` for the record a
+        rebind of `r` filled)."""
+        slot = self.slots.get(place.root)
+        holder: TpyType | None = slot.type if slot is not None else None
+        projections = place.projections
+        root = names.get(MIRPlace(place.root))
+        if sole_payload(place.projections[:1]) and (name := names.get(MIRPlace(place.root, projections[:1]))):
+            root, projections = name, projections[1:]
+            holder = slot.shape.members[place.projections[0].alternative].type
         if root is None:
             return None
         text = bare = root
         alternatives = [root]
-        slot = self.slots.get(place.root)
-        holder: TpyType | None = slot.type if slot is not None else None
-        for projection in place.projections:
+        for projection in projections:
             match projection:
                 case MIRField(id=field):
                     owners = self.owners(holder, field)
@@ -622,7 +629,7 @@ class _Spelling:
 def _value_write(shape: MIRShape) -> MIRWriteKind | None:
     """What a write of a value of `shape` lands in: owned storage, a holder
     of storage elsewhere (a pointer, a container view), an inert leaf."""
-    if shape.is_storage:
+    if shape.owns_storage:
         return MIRWriteKind.OWNED
     if shape.borrow_holder:
         return MIRWriteKind.BORROWED
@@ -673,22 +680,27 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
     named = {sid: names[name][selector]
              for name, selectors in by_name.items() for selector, ids in selectors.items() for sid in ids}
     # Unnamed storage takes the name of the first named holder borrowing it,
-    # first in the source, never by block number.
-    candidates: dict[MIRSlotId, list[tuple[tuple[int, int, int], str, int | None]]] = {}
+    # first in the source, never by block number: the whole storage, or the
+    # payload of an owned sum (the record a fill moved in).
+    candidates: dict[MIRPlace, list[tuple[tuple[int, int, int], str, int | None]]] = {}
     for block in fn.blocks:
         for stmt in block.statements:
-            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow)
-                    and not stmt.value.source.projections and not stmt.target.projections
-                    and stmt.target.root in named and stmt.value.source.root not in named):
-                candidates.setdefault(stmt.value.source.root, []).append(
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow) and not stmt.target.projections
+                    and stmt.target.root in named and (source := stmt.value.source).root not in named
+                    and (not source.projections
+                         or sole_payload(source.projections) and slots[source.root].shape.owned_sum)):
+                candidates.setdefault(source, []).append(
                     (source_order(stmt.loc), named[stmt.target.root], stmt.loc.line if stmt.loc else None))
-    bindings: dict[MIRSlotId, tuple[str, int | None]] = {
-        root: min(found)[1:] for root, found in candidates.items()}
+    bindings: dict[MIRPlace, tuple[str, int | None]] = {
+        place: min(found)[1:] for place, found in candidates.items()}
     bound = [name for name, _line in bindings.values()]
-    storage = dict(named)
-    for root, (name, line) in bindings.items():
+    holders = {MIRPlace(sid): name for sid, name in named.items()}
+    # Every storage's one name, a holder's own or a binding's: a write event
+    # and a borrow of the same storage spell it alike.
+    storage = dict(holders)
+    for place, (name, line) in bindings.items():
         # A name rebound to fresh storage names several objects; the binding line tells them apart.
-        storage[root] = name if bound.count(name) == 1 else f"{name}@{line}"
+        storage[place] = name if bound.count(name) == 1 else f"{name}@{line}"
 
     def referent(ref: MIRReferent) -> str:
         if static_referent(ref):
@@ -713,7 +725,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             target = statement_target(stmt)
             if target is None:
                 continue
-            if (spelled := _spell(target, named)) is not None:
+            if (spelled := _spell(target, holders)) is not None:
                 writes.setdefault((line, spelled), []).append(_line_write(
                     block.id, target, stmt.value if isinstance(stmt, MIRAssign) else None, slots, records))
             mode = modes.get(MIRPoint(block.id, index))
@@ -750,7 +762,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                     continue
                 lines.add(member.loc.line)
                 place = MIRPlace(receiver.id, (*object_prefix(receiver.shape), field))
-                writes.setdefault((member.loc.line, _spell(place, named)), []).append(
+                writes.setdefault((member.loc.line, _spell(place, holders)), []).append(
                     _line_write(fn.entry, place, member.value, slots, records))
 
     dependencies = analyses.dependencies
@@ -767,11 +779,11 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             for leaf in _leaves(slot, slots):
                 leaves.setdefault(named[slot.id], []).append(leaf)
                 if leaf.projections:
-                    leaves.setdefault(_spell(leaf, named), []).append(leaf)
+                    leaves.setdefault(_spell(leaf, holders), []).append(leaf)
             if slot.shape.borrowed_aggregate:
                 for member in view_members(layouts.get(slot.type)):
                     place = MIRPlace(slot.id, (*object_prefix(slot.shape), member))
-                    members[_spell(place, named)] = place
+                    members[_spell(place, holders)] = place
         for (line, block_id), index in last.items():
             state = dependencies.referents.get(MIRPoint(block_id, index + 1))
             if state is None:

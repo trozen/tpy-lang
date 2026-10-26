@@ -13,7 +13,7 @@ from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsAlternative, MIRNot,
     MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRConstruct, MIRStorageDuration,
-    MIRWrap, MIRCopy,
+    MIRWrap, MIRCopy, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
@@ -43,13 +43,18 @@ SLOTS = (
     MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
     MIRSlot(ALIAS, alias_shape(INT32, readonly=True), MIRSlotKind.LOCAL, alias_source=PAYLOAD),
 )
-CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)))
+# A whole write of an inline sum carries its storage write fact: the first
+# initializes the local, the rest replace its value in place.
+INIT = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+ASSIGN = MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
+CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)), storage_write=INIT)
 TEST = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (2,)))
-CLEAR = MIRAssign(MIRPlace(CURRENT), MIRWrap(0))
+CLEAR = MIRAssign(MIRPlace(CURRENT), MIRWrap(0), storage_write=ASSIGN)
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(PAYLOAD))
 EXTRACT = MIRAssign(MIRPlace(ALIAS), MIRUnionExtract(PAYLOAD))
 ALIAS_READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(ALIAS)))
-BUILD = MIRAssign(MIRPlace(CURRENT), MIRWrap(2, MIRPlace(VALUE)))
+BUILD = MIRAssign(MIRPlace(CURRENT), MIRWrap(2, MIRPlace(VALUE)), storage_write=ASSIGN)
+FIRST_BUILD = replace(BUILD, storage_write=INIT)
 FALLBACK = MIRBlock(NO, (), MIRReturn(VALUE))
 
 
@@ -58,7 +63,7 @@ def function(*blocks: MIRBlock) -> MIRFunction:
 
 
 @pytest.mark.parametrize("mutation", [
-    CLEAR, MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM))),
+    CLEAR, MIRAssign(MIRPlace(CURRENT), MIRCopy(MIRPlace(PARAM)), storage_write=ASSIGN),
     MIRAssign(MIRPlace(GUARD), MIRConstant(True)),
     MIRAssign(MIRPlace(GUARD), MIRRead(MIRPlace(FLAG))),
 ])
@@ -159,13 +164,13 @@ def test_scalar_alias_recreated_each_loop_entry() -> None:
 
 
 def test_scalar_alias_is_a_place_not_a_snapshot() -> None:
-    fn = function(MIRBlock(ENTRY, (BUILD, EXTRACT, ALIAS_READ), MIRReturn(RESULT)))
+    fn = function(MIRBlock(ENTRY, (FIRST_BUILD, EXTRACT, ALIAS_READ), MIRReturn(RESULT)))
     validated(fn)
     assert execute(fn, UnionValue(0), 7, False) == 7
     # The interpreter deliberately follows the alias's place. Validation is
     # what excludes this replacement; a captured scalar would return stale 7.
     changed = replace(fn, blocks=(replace(fn.blocks[0], statements=(
-        BUILD, EXTRACT, MIRAssign(MIRPlace(VALUE), MIRConstant(11)), BUILD, ALIAS_READ)),))
+        FIRST_BUILD, EXTRACT, MIRAssign(MIRPlace(VALUE), MIRConstant(11)), BUILD, ALIAS_READ)),))
     assert execute(changed, UnionValue(0), 7, False) == 11
     with pytest.raises(MIRPresenceError):
         validated(changed)
@@ -179,7 +184,7 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
     slot = MIRSlot(storage, owned_shape(record), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY)
     # A checked read before replacement snapshots a scalar; the alias itself
     # cannot bypass that read by appearing directly in a constructor operand.
-    statements = (BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
+    statements = (FIRST_BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
         CLEAR, MIRAssign(MIRPlace(storage), MIRConstruct((RESULT if checked_read else ALIAS,))))
     fn = bind_parameters(replace(function(MIRBlock(ENTRY, statements, MIRReturn(VALUE))),
                  slots=(*SLOTS, slot), records=(MIRRecordLayout(record, (field,), True, True),)))
@@ -254,7 +259,7 @@ def test_each_parameter_slot_holds_its_binding() -> None:
 ])
 def test_malformed_union_operations(stmt: MIRAssign) -> None:
     with pytest.raises(MIRValidationError):
-        validated(function(MIRBlock(ENTRY, (BUILD, stmt), MIRReturn(VALUE))))
+        validated(function(MIRBlock(ENTRY, (FIRST_BUILD, stmt), MIRReturn(VALUE))))
 
 
 def reference_function(source_const: bool = False, dest_const: bool = False) -> MIRFunction:
@@ -279,7 +284,9 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
     mutate = MIRAssign(MIRPlace(FLAG, (MIRDeref(), field)), MIRRead(MIRPlace(VALUE)))
     read = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(ALIAS, (MIRDeref(), field))))
     return bind_parameters(MIRFunction(BODY, INT32, ref_slots, (
-        MIRBlock(ENTRY, (CAPTURE, replace(TEST, value=MIRIsAlternative(MIRPlace(CURRENT), (0,)))), MIRBranch(GUARD, YES, NO)),
+        # A union of records points at its payloads: no inline storage, no write fact.
+        MIRBlock(ENTRY, (replace(CAPTURE, storage_write=None),
+                         replace(TEST, value=MIRIsAlternative(MIRPlace(CURRENT), (0,)))), MIRBranch(GUARD, YES, NO)),
         MIRBlock(YES, (bind, overwrite, mutate, read), MIRReturn(RESULT)), FALLBACK,
     ), ENTRY))
 

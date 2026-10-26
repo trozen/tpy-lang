@@ -9,7 +9,7 @@ from .dependencies import MIRReferent
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRConstant, MIREdge, MIRFunction,
     MIRGoto, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, MIRBorrow,
 )
 from .scope_lifetime import (
     MIRScopeEnds, _scope_conflicts, _scope_ends, analyze_scope_ends,
@@ -17,23 +17,32 @@ from .scope_lifetime import (
 )
 from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_function
 from .test_payload_lifetime import CURRENT, FLAG
-from .test_retention import AGAIN, END, LOOP, SITE, loop_function
+from .test_retention import AGAIN, BUILT, CELL, END, LOOP, SITE, loop_function
 from .test_scope_lifetime import Artifacts, artifacts, compiled  # noqa: F401 -- fixtures
 from .validate import MIRPresenceError
 from .value import MIRValidationError
-from .testutil import bind_parameters, leaf_shape, prepared
+from .testutil import bind_parameters, leaf_shape, owned_shape, prepared
 from .prepare import validate_function
 
 
 def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction, MIRPlace]:
+    """The loop with its site as record storage of its own iteration
+    region, constructed once per activation (no sum to refill)."""
     fn, _point, observed = loop_function(shape)
     root, iteration = MIRRegionId(fn.id, 0), MIRRegionId(fn.id, 1)
-    slots = tuple(replace(s, residence=None if s.kind is MIRSlotKind.PARAMETER else
+    slots = tuple(replace(s, shape=owned_shape(CELL) if s.id == SITE else s.shape,
+                          residence=None if s.kind is MIRSlotKind.PARAMETER else
                           iteration if s.id == SITE else root,
-                          storage_duration=iteration if s.id == SITE else s.storage_duration) for s in fn.slots)
+                          storage_duration=iteration if s.id == SITE else s.storage_duration)
+                  for s in fn.slots if s.id != BUILT)
     body = fn.blocks[1]
-    initialize, borrow, current, read, capture = body.statements
-    initialize = replace(initialize, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+    build, _wrap, borrow, current, read, capture = body.statements
+    initialize = replace(build, target=MIRPlace(SITE))
+    borrow = replace(borrow, value=MIRBorrow(MIRPlace(SITE)))
+    entry = fn.blocks[0]
+    fn = replace(fn, blocks=(replace(entry, statements=tuple(s for s in entry.statements
+                                                              if not isinstance(s, MIRStorageInit))),
+                             *fn.blocks[1:]))
     statements = (initialize, borrow, current, capture, read) if reseat_first else (
         initialize, borrow, current, read, capture)
     return bind_parameters(replace(fn, slots=slots, blocks=tuple(

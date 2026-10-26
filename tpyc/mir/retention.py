@@ -10,7 +10,6 @@ from .liveness import MIRPoint
 from .nodes import MIRFunction, MIRNotCovered, MIRPlace, MIRPresentCall, MIRSlot, MIRSlotId, MIRSlotKind, call_place
 from .value import MIRRecords, MIRValidationError
 from .prepare import MIRPrepared, validated_presence
-from .presence import MIREngagement
 from .reach import DistinctExternal, _origin, parameter_object, reaches, replacement_events, storage_exclusions
 from .shapes import distinct_lent_objects
 from .validate import reachable_blocks
@@ -39,6 +38,10 @@ def static_referent(ref: MIRReferent) -> bool:
     return ref.static
 
 
+def _nothing_selected(place: MIRPlace) -> frozenset[int]:
+    return frozenset()
+
+
 def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
     fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
     presence = validated_presence(prepared)
@@ -56,18 +59,18 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
     exclusions = storage_exclusions(slots, records)
     conflicts: list[MIRRetentionConflict] = []
     # The storage each reachable statement replaces (`replacement_events`),
-    # at its point, the call's writes and engagement as the presence sees them.
+    # at its point, the call's writes as the presence sees them.
     reached = reachable_blocks(fn)
     replaced: list[tuple[MIRPoint, MIRPlace, MIRSlotId | None]] = []
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
             point = MIRPoint(block.id, index)
             called = presence.calls.get(point)
-            engagement = presence.engagement.get(point)
-            found = replacement_events(
-                stmt, called.writes if called is not None else (),
-                lambda root: engagement is not None and MIREngagement.ENGAGED in dict(engagement).get(root, frozenset()),
-                slots)
+            # No feasible path reaches a point without selection facts: no
+            # sum write there ends a payload.
+            facts = presence.points.get(point)
+            selected = dict(facts).get if facts is not None else _nothing_selected
+            found = replacement_events(stmt, called.writes if called is not None else (), selected, slots)
             if found is None:
                 return MIRNotCovered(fn.id, "retention", "storage: missing storage write fact", stmt.loc)
             if block.id in reached:
@@ -85,8 +88,9 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
         holders = dependencies.live(incoming, live_after)
         for leaf, refs in dependencies.live(outgoing, live_after).items():
             holders[leaf] = holders.get(leaf, frozenset()) | refs
-        if not target.projections:
-            for key in dependencies.objects[target.root]:
+        # The stored loans of the replaced object: a root's, or those under a replaced member place.
+        for key in dependencies.objects[target.root]:
+            if key.projections[:len(target.projections)] == target.projections:
                 holders[key] = holders.get(key, frozenset()) | outgoing.get(key, frozenset())
         # The rebinding holder itself repoints to the new value; any other
         # holder rooted at its slot (a view member of the record it lends)

@@ -20,6 +20,7 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
+    MIRWrap,
     MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
 from .value import MIRFieldId
@@ -171,14 +172,15 @@ def test_storage_identity_and_mutation(artifacts: Artifacts, name: str, expected
     assert isinstance(events, MIRStorageEvents)
     expected_modes = {
         "shared": [MIRStorageWriteMode.INITIALIZE],
-        "replaced": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE],
+        # The new record is built, then moved into the reseat's own sum.
+        "replaced": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
         "in_place": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
         "copied": [MIRStorageWriteMode.INITIALIZE] * 2,
         "moved": [MIRStorageWriteMode.INITIALIZE] * 2,
     }
     assert [s.storage_write.mode for s in events.writes.values()] == expected_modes[name]
     for stmt in events.writes.values():
-        if stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE:
+        if stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE and not isinstance(stmt.value, MIRWrap):
             assert stmt.storage_write.rebind_owner == stmt.target.root
 
 

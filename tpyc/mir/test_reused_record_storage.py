@@ -13,12 +13,12 @@ from .definitions import MIRDefinitions
 from .liveness import MIRPoint
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRMove,
+    MIRAssign, MIRBlock, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRGoto,
+    MIRMove, MIRRegion,
     MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRStorageDuration,
 )
 from .shapes import MIRDeref
-from .presence import MIREngagement
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import INITIAL, analyze, loop_function
@@ -33,9 +33,11 @@ from .prepare import validate_function
 def test_reused_site_keeps_previous_holder_dependencies(move: bool, shape: str, safe: bool) -> None:
     fn, point, observed = loop_function(shape, safe=safe)
     block = fn.blocks[1]
-    write = replace(block.statements[point.index], value=MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL)))
+    # The site's record built by a transfer instead of a construct.
+    build = point.index - 1
+    write = replace(block.statements[build], value=MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL)))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(
-        *block.statements[:point.index], write, *block.statements[point.index + 1:])), *fn.blocks[2:]))
+        *block.statements[:build], write, *block.statements[build + 1:])), *fn.blocks[2:]))
     assert {c.holder for c in analyze(fn).conflicts} == (set() if safe else {observed})
     heap = {}
     assert execute(fn, 3, True, heap=heap) == 3
@@ -50,26 +52,27 @@ def optional_transfers(fn: MIRFunction, move: bool) -> MIRFunction:
                    residence=optional.ROOT)
     init = MIRAssign(MIRPlace(source), MIRConstruct((optional.VALUE,)),
                      storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+    # Each fill's record is built by a transfer of `source`.
+    built = {MIRPlace(b) for b in optional.BUILT}
     blocks = tuple(replace(block, statements=tuple(
         replace(stmt, value=MIRMove(source) if move else MIRCopy(MIRPlace(source)))
-        if isinstance(stmt, MIRAssign) and stmt.target == optional.WRITE.target else stmt
+        if isinstance(stmt, MIRAssign) and stmt.target in built else stmt
         for stmt in block.statements)) for block in fn.blocks)
     entry = replace(blocks[0], statements=(init, *blocks[0].statements))
     return replace(fn, slots=(*fn.slots, slot), blocks=(entry, *blocks[1:]))
 
 
 @pytest.mark.parametrize("move", [False, True])
-def test_optional_transfer_joins_empty_and_engaged_backing(move: bool) -> None:
+def test_optional_transfer_joins_empty_and_filled_sum(move: bool) -> None:
     fn = optional.function(
         MIRBlock(optional.ENTRY, (optional.INIT,), MIRBranch(optional.FLAG, optional.YES, optional.NO), optional.ROOT),
-        MIRBlock(optional.YES, (optional.WRITE,), MIRGoto(optional.JOIN), optional.ROOT),
+        MIRBlock(optional.YES, optional.WRITE, MIRGoto(optional.JOIN), optional.ROOT),
         MIRBlock(optional.NO, (), MIRGoto(optional.JOIN), optional.ROOT),
-        MIRBlock(optional.JOIN, (optional.WRITE, optional.BIND, optional.SAVE, optional.MUTATE, optional.READ),
+        MIRBlock(optional.JOIN, (*optional.write(1), optional.BIND, optional.SAVE, optional.MUTATE, optional.READ),
                  MIRReturn(optional.RESULT), optional.ROOT))
     fn = optional_transfers(fn, move)
     assert execute(fn, 3, False) == execute(fn, 3, True) == 9
-    engagement = dict(prepared(fn).presence.engagement[MIRPoint(optional.JOIN, 0)])
-    assert engagement[optional.BACKING] == frozenset(MIREngagement)
+    assert optional.selection(fn, MIRPoint(optional.JOIN, 1)) == frozenset({0, 1})
     assert analyze(fn).conflicts == ()
     assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
 
@@ -77,28 +80,31 @@ def test_optional_transfer_joins_empty_and_engaged_backing(move: bool) -> None:
 @pytest.mark.parametrize("move", [False, True])
 def test_optional_transfer_preserves_identity_and_live_alias(move: bool) -> None:
     fn = optional.function(MIRBlock(optional.ENTRY, (
-        optional.INIT, optional.WRITE, optional.BIND, optional.SAVE,
-        optional.WRITE, optional.BIND, optional.MUTATE, optional.READ),
+        optional.INIT, *optional.WRITE, optional.BIND, optional.SAVE,
+        *optional.write(1), optional.BIND, optional.MUTATE, optional.READ),
         MIRReturn(optional.RESULT), optional.ROOT))
     fn = optional_transfers(fn, move)
     heap = {}
     assert execute(fn, 3, False, heap=heap) == 9
+    # The source and the sum's one inline record, refilled in place.
     assert len(heap) == 2
     assert sorted(next(iter(fields.values())) for fields in heap.values()) == [3, 9]
+    # The second fill (after the source's initialization) replaces the record SAVED holds.
     assert {(c.point, c.holder) for c in analyze(fn).conflicts} == {
-        (MIRPoint(optional.ENTRY, 5), MIRPlace(optional.SAVED))}
+        (MIRPoint(optional.ENTRY, 7), MIRPlace(optional.SAVED))}
 
 
 @pytest.mark.parametrize("move", [False, True])
-def test_optional_transfer_backedge_does_not_reinitialize_wrapper(move: bool) -> None:
+def test_optional_transfer_backedge_does_not_reinitialize_the_sum(move: bool) -> None:
     fn = optional.function(
         MIRBlock(optional.ENTRY, (optional.INIT,), MIRGoto(optional.YES), optional.ROOT),
-        MIRBlock(optional.YES, (optional.WRITE, optional.BIND),
-                 MIRBranch(optional.FLAG, optional.NO, optional.JOIN), optional.ROOT),
-        MIRBlock(optional.NO, (MIRAssign(MIRPlace(optional.FLAG), MIRConstant(False)),),
+        MIRBlock(optional.YES, (*optional.WRITE, optional.BIND), MIRGoto(optional.NO), optional.CHILD),
+        MIRBlock(optional.NO, (), MIRBranch(optional.FLAG, optional.ENTRY_AGAIN, optional.JOIN), optional.ROOT),
+        MIRBlock(optional.ENTRY_AGAIN, (MIRAssign(MIRPlace(optional.FLAG), MIRConstant(False)),),
                  MIRGoto(optional.YES), optional.ROOT),
         MIRBlock(optional.JOIN, (optional.SAVE, optional.MUTATE, optional.READ),
-                 MIRReturn(optional.RESULT), optional.ROOT))
+                 MIRReturn(optional.RESULT), optional.ROOT), built=optional.CHILD)
+    fn = replace(fn, regions=(*fn.regions, MIRRegion(optional.CHILD, optional.ROOT, optional.YES)))
     fn = optional_transfers(fn, move)
     heap = {}
     assert execute(fn, 3, True, heap=heap) == 9
@@ -112,13 +118,15 @@ def test_optional_transfer_backedge_does_not_reinitialize_wrapper(move: bool) ->
 def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool, readonly_alias: bool) -> None:
     read = optional.READ if live_alias else replace(optional.READ, value=MIRRead(
         MIRPlace(optional.CURRENT, (MIRDeref(), optional.FIELD))))
-    # CURRENT and SAVED both point at BACKING; root-ID inequality is not referent disjointness.
-    value = MIRMove(optional.BACKING) if move else MIRCopy(MIRPlace(optional.SAVED, (MIRDeref(),)))
+    # CURRENT and SAVED both point at one record's storage (`BUILT[0]`);
+    # root-ID inequality is not referent disjointness.
+    owned = optional.BUILT[0]
+    value = MIRMove(owned) if move else MIRCopy(MIRPlace(optional.SAVED, (MIRDeref(),)))
     write = MIRAssign(MIRPlace(optional.CURRENT, (MIRDeref(),)), value,
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, optional.CURRENT))
     fn = optional.function(MIRBlock(optional.ENTRY, (
-        optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, read),
-        MIRReturn(optional.RESULT), optional.ROOT))
+        optional.WRITE[0], MIRAssign(MIRPlace(optional.CURRENT), MIRBorrow(MIRPlace(owned))), optional.SAVE, write,
+        read), MIRReturn(optional.RESULT), optional.ROOT))
     if readonly_alias:
         fn = replace(fn, slots=tuple(reslot(s, readonly=True) if s.id == optional.SAVED else s for s in fn.slots))
     assert execute(fn, 7, False) == 7
@@ -128,21 +136,21 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool,
                 else {MIRPlace(optional.CURRENT)} if move else set())
     assert {c.holder for c in analyze(fn).conflicts} == expected
     if not move:
-        assert optional.SAVED in prepared(fn).liveness.points[MIRPoint(optional.ENTRY, 4)]
+        assert optional.SAVED in prepared(fn).liveness.points[MIRPoint(optional.ENTRY, 3)]
 
 
 @pytest.mark.parametrize("move", [False, True])
 @pytest.mark.parametrize("mode,reason", [
     (None, "unsupported record replacement"),
-    (MIRStorageWriteMode.OWN_SITE, "backing write needs private body storage"),
-    (MIRStorageWriteMode.OPTIONAL_ASSIGN, "invalid optional backing assignment"),
+    (MIRStorageWriteMode.INITIALIZE, "backing write needs private body storage"),
 ])
 def test_projected_transfer_requires_in_place_fact(move: bool, mode: MIRStorageWriteMode | None, reason: str) -> None:
+    source = optional.BUILT[1]
     write = MIRAssign(MIRPlace(optional.CURRENT, (MIRDeref(),)),
-                      MIRMove(optional.BACKING) if move else MIRCopy(MIRPlace(optional.BACKING)),
+                      MIRMove(source) if move else MIRCopy(MIRPlace(source)),
                       storage_write=MIRStorageWrite(mode) if mode is not None else None)
     fn = optional.function(MIRBlock(optional.ENTRY, (
-        optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, optional.READ),
+        optional.INIT, *optional.WRITE, optional.BIND, optional.SAVE, optional.write(1)[0], write, optional.READ),
         MIRReturn(optional.RESULT), optional.ROOT))
     with pytest.raises(MIRValidationError, match=reason):
         validate_function(fn)
@@ -151,7 +159,7 @@ def test_projected_transfer_requires_in_place_fact(move: bool, mode: MIRStorageW
 @pytest.mark.parametrize("move", [False, True])
 @pytest.mark.parametrize("fault", ["uninitialized", "readonly", "ineligible"])
 def test_optional_transfer_keeps_source_eligibility(move: bool, fault: str) -> None:
-    fn = optional_transfers(optional.straight(optional.INIT, optional.WRITE), move)
+    fn = optional_transfers(optional.straight(optional.INIT, *optional.WRITE), move)
     if fault == "uninitialized":
         fn = replace(fn, blocks=(replace(fn.blocks[0], statements=fn.blocks[0].statements[1:]),))
         reason = "read before definite assignment"
@@ -161,7 +169,7 @@ def test_optional_transfer_keeps_source_eligibility(move: bool, fault: str) -> N
         reason = "readonly owned storage"
     else:
         fn = replace(fn, records=(replace(fn.records[0], **({"movable": False} if move else {"copyable": False})),))
-        reason = "movable record|copy source or eligibility"
+        reason = "record (move|copy) source or eligibility"
     with pytest.raises(MIRValidationError, match=reason):
         validate_function(fn)
 
@@ -211,7 +219,8 @@ def test_internal_hoisted_transfer_preserves_source_read_form(hoist: tuple[th.TH
     assert isinstance(result, MIRFunction), result
     assert execute(result, False) == 0 and execute(result, True) == 3
     transfer, = (s for s in analyze_storage(prepared(result)).writes.values() if isinstance(s.value, (MIRCopy, MIRMove)))
-    assert transfer.storage_write.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN
+    # The transfer builds the record the fill then moves into the sum.
+    assert transfer.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     bad = replace(changed, value=replace(value, form=th.Form.VALUE))
     with pytest.raises(THIRValidationError, match="invalid optional record assignment fact"):
         validate_thir(replace(fn, body=(fn.body[0], replace(branch, then_body=(bad,)), *fn.body[2:])))

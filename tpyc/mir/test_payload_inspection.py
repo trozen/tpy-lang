@@ -111,22 +111,26 @@ def test_inspection_does_not_skip_structure_or_definite_assignment() -> None:
         inspect_payload_lifetimes(prepared(replace(fn, blocks=())))
 
 
-@pytest.mark.parametrize("missing", ["write", "duration"])
+@pytest.mark.parametrize("missing", ["dependencies", "duration"])
 def test_uncovered_inputs_do_not_erase_freshness_issues(missing: str) -> None:
-    fn = alias_function(EXTRACT, write(False, 0, fact=None if missing == "write" else ASSIGN), READ)
-    if missing == "duration":
-        fn = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == CURRENT else s for s in fn.slots))
-        # The first dependency run refuses the body: its preparation is that
-        # refusal, and the freshness issue still refuses validation.
-        assert isinstance(prepared(fn), MIRNotCovered)
-        with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
-            validated(fn)
+    fn = alias_function(EXTRACT, write(False, 0, fact=ASSIGN), READ)
+    if missing == "dependencies":
+        # The dependency run over the final presence refuses: inspection
+        # reports conflicts not covered and still lists the freshness issue.
+        refused = MIRNotCovered(fn.id, "dependencies", "refused")
+        result = inspect_payload_lifetimes(replace(prepared(fn), dependencies=refused))
+        assert isinstance(result.conflicts, MIRNotCovered)
+        assert result.freshness
+        out = dump_payload_inspection(result)
+        assert "not covered: dependencies: refused" in out
+        assert "no conflicts" not in out
         return
-    result = inspect_payload_lifetimes(prepared(fn))
-    assert isinstance(result.conflicts, MIRNotCovered)
-    assert result.freshness
-    assert "not covered:" in dump_payload_inspection(result)
-    assert "no conflicts" not in dump_payload_inspection(result)
+    fn = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == CURRENT else s for s in fn.slots))
+    # The first dependency run refuses the body: its preparation is that
+    # refusal, and the freshness issue still refuses validation.
+    assert isinstance(prepared(fn), MIRNotCovered)
+    with pytest.raises(MIRPresenceError, match="alias used after holder replacement"):
+        validated(fn)
 
 
 @pytest.mark.parametrize("wrong", ["presence", "liveness", "dependencies", "ends"])

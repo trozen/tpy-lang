@@ -174,14 +174,15 @@ def test_optional_storage_identity(artifacts: Artifacts, name: str, expected: in
     events = analyze_storage(prepared(fn))
     assert isinstance(events, MIRStorageEvents)
     expected_modes = {
-        "retained": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.OWN_SITE],
+        # A reseat's record is built, then moved into its site's own sum.
+        "retained": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
         "cleared": [MIRStorageWriteMode.INITIALIZE],
         "in_place": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
-        "from_none": [MIRStorageWriteMode.OWN_SITE],
+        "from_none": [MIRStorageWriteMode.INITIALIZE, MIRStorageWriteMode.IN_PLACE],
     }
     assert [s.storage_write.mode for s in events.writes.values()] == expected_modes[name]
     for stmt in events.writes.values():
-        if stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE:
+        if stmt.storage_write.mode is MIRStorageWriteMode.IN_PLACE and not isinstance(stmt.value, MIRWrap):
             assert stmt.storage_write.rebind_owner == stmt.target.root
 
 

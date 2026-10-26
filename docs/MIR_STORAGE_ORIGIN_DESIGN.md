@@ -138,11 +138,12 @@ callee keeps are the published view-member transfers (`MIRLoanTransfer`);
 absence of a summary must never be interpreted the same way.
 
 Completeness is checked before interpreting empty conflict lists. Every live,
-engaged borrowed leaf must have known non-empty origins; an absent payload is
+selected borrowed leaf must have known non-empty origins; an absent payload is
 established by explicit selection facts, not a missing map entry. Every ending
-optional backing and every replacement requiring engagement must have an
-explicit engagement fact. Missing engagement cannot silently suppress an end
-or replacement check. Any applicable freshness issue prevents certification.
+owned sum payload and every replacement of one is weighed by the sum's
+selection, which presence derives; an unknown selection counts every
+alternative, so it cannot silently suppress an end or replacement check.
+Any applicable freshness issue prevents certification.
 These requirements strengthen the current advisory APIs, which sometimes
 omit events when evidence is missing.
 
@@ -327,8 +328,9 @@ decision: source admission cannot expand before its production checker exists.
      lowering reports that bounded proof failure as Not covered; malformed
      hand-built MIR still fails validation.
    - Scope, replacement, payload and explicit return escapes compose the
-     existing analyses. Missing engagement at a feasible write (including an
-     entirely missing point) blocks certification. Freshness issues also
+     existing analyses. A sum write's payload ends follow the selection
+     presence derives; a feasible write with no selection known (including
+     an entirely missing point) counts every alternative. Freshness issues also
      block certification; they can currently hide a more specific conflict
      behind Not covered because strict replacement/effect passes cannot run.
 3. **Production gate and covered source forms.** Buffer and certify through

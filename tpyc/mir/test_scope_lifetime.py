@@ -19,7 +19,7 @@ from .nodes import (
 from .shapes import MIRUnionPayload
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
 from .value import MIRValidationError
-from .testutil import compiled_definitions, bind_parameters, leaf_shape, optional_shape, prepared
+from .testutil import placed_storage, compiled_definitions, bind_parameters, leaf_shape, optional_shape, prepared
 from .prepare import validate_function
 
 
@@ -216,11 +216,14 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
     assert body.index("if (") < body.index("Cell local = Cell(1);")
     fn = bodies["own"]
     assert isinstance(fn, MIRFunction)
-    roots = {s.id for s in fn.slots if s.shape.is_storage}
+    # The body's storage and the reseat's own sum live for the body; only a
+    # fill's built record ends earlier, with its full expression.
+    roots = {s.id for s in placed_storage(fn)}
     assert all(s.storage_duration is MIRStorageDuration.BODY for s in fn.slots if s.id in roots)
     ends = analyze_scope_ends(prepared(fn))
     blocks = {b.id: b for b in fn.blocks}
-    assert all(isinstance(blocks[e.source].terminator, MIRReturn) for e in ends.ends)
+    assert all(isinstance(blocks[e.source].terminator, MIRReturn) for e, events in ends.ends.items()
+               if any(end.storage.root in roots for end in events))
     body = cpp[cpp.index(" own("):].split("\n}\n", 1)[0]
     assert body.index("std::optional<Cell>") < body.index("while (")
 

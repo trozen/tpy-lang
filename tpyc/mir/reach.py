@@ -11,11 +11,11 @@ from enum import Enum, auto
 from ..thir.scalar_leaves import MIRClass, inline_member_type, value_class
 from ..typesys import OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
 from .nodes import (
-    MIRAssign, MIRMove, MIRPlace, MIRRecordStorageInit, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
-    MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, place_shape,
+    MIRAssign, MIRCopy, MIRMove, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
+    MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, place_shape,
 )
 from .shapes import (
-    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRWalk, Projection,
+    REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRUnionPayload, MIRWalk, Projection,
     lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
 from .value import (
@@ -268,38 +268,31 @@ def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> 
     destination, whatever produces the value; a scalar field is
     overwritten, never a storage a borrow can point into."""
     if not place.projections:
-        return slots[place.root].shape.is_storage
+        return slots[place.root].shape.owns_storage
     return isinstance(place.projections[-1], MIRDeref) or replacement_reach(place.projections) is not None
 
 
 class MIRStorageEventKind(Enum):
     # Storage created by an assignment (its INITIALIZE write fact).
     INITIALIZE = auto()
-    # A scalar wrapper constructed with its default, no assignment
-    # (`MIRStorageInit`).
+    # A wrapper constructed with its default, no assignment
+    # (`MIRStorageInit`): a sum storing a record inline begins empty.
     CONSTRUCT = auto()
-    # An Optional record backing constructed empty (`MIRRecordStorageInit`):
-    # its wrapper begins, no record in it.
-    BACKING = auto()
-    # The current value replaced (IN_PLACE, OWN_SITE).
+    # The current value replaced (IN_PLACE; a whole write of an inline sum).
     REPLACE = auto()
     # A scalar wrapper's value replaced: its inline payload ends
     # (payload_lifetime weighs it), no storage a borrow points into.
     PAYLOAD = auto()
-    # An Optional record backing filled: a replacement only if engaged.
-    OPTIONAL_ASSIGN = auto()
     # A place a call's summary may write that is a storage destination.
     CALL_WRITE = auto()
     # Owned storage a move empties.
     MOVE = auto()
 
 
-# The kinds that begin or replace a root's own storage, the target's.
-BEGINS = frozenset({MIRStorageEventKind.INITIALIZE, MIRStorageEventKind.CONSTRUCT, MIRStorageEventKind.BACKING,
-                    MIRStorageEventKind.REPLACE, MIRStorageEventKind.PAYLOAD, MIRStorageEventKind.OPTIONAL_ASSIGN})
-# The kinds that materialize the value a root holds (when `known`): an
-# Optional backing constructed empty holds no record yet.
-MATERIALIZES = BEGINS - {MIRStorageEventKind.BACKING}
+# The kinds that begin or replace a root's own storage, the target's: what
+# materializes the value a root holds (when `known`).
+BEGINS = frozenset({MIRStorageEventKind.INITIALIZE, MIRStorageEventKind.CONSTRUCT,
+                    MIRStorageEventKind.REPLACE, MIRStorageEventKind.PAYLOAD})
 
 
 @dataclass(frozen=True)
@@ -313,6 +306,12 @@ class MIRStorageEvent:
     # can point into, or a scalar wrapper's payload write), what it does
     # there is unknown.
     known: bool = True
+    # A whole write of an inline sum: each alternative with a payload, and
+    # whether that payload owns storage (`sum_payload_ends` weighs them
+    # against the old selection); a construction's: the payload place it
+    # materializes, if any. Empty for any other event.
+    payloads: tuple[tuple[int, bool], ...] = ()
+    materialized: MIRPlace | None = None
 
     @property
     def unknown_replacement(self) -> bool:
@@ -323,26 +322,35 @@ class MIRStorageEvent:
 def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
                    slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRStorageEvent, ...]:
     """Every storage event of a statement, with its kind: a wrapper's
-    physical construction (`MIRStorageInit`, `MIRRecordStorageInit`); an
-    assignment by its storage write fact to a storage destination, to an
-    owned tuple's root (no `is_storage` destination: its members moved in
-    from temporaries of their own) or to a place in a
+    physical construction (`MIRStorageInit`, with the payload it
+    materializes); an assignment by its storage write fact to a storage
+    destination, to an owned tuple's root (no `is_storage` destination: its
+    members moved in from temporaries of their own) or to a place in a
     scalar wrapper (its payload storage) -- without its fact, the kind the
-    destination gives (a replacement, a payload write), not `known`;
-    each place of `call_writes` (the call as its caller's presence sees
-    it) that is a storage destination; and owned storage a move empties.
-    The guards a reader that skips initializations relies on are named at
+    destination gives (a replacement, a payload write), not `known`; a whole
+    write of an inline sum carries its per-alternative payload list; each
+    place of `call_writes` (the call as its caller's presence sees it) that
+    is a storage destination; and owned storage a move empties. The guards
+    a reader that skips initializations relies on are named at
     `replacement_events`."""
     match stmt:
-        case MIRStorageInit(target=target):
-            return (MIRStorageEvent(MIRStorageEventKind.CONSTRUCT, target),)
-        case MIRRecordStorageInit(target=target):
-            return (MIRStorageEvent(MIRStorageEventKind.BACKING, target),)
+        case MIRStorageInit(target=target, alternative=alternative):
+            # A scalar wrapper is its own storage; an owned sum materializes
+            # only a selected alternative that owns storage.
+            shape = slots[target.root].shape
+            member = shape.members[alternative] if shape.owned_sum and not target.projections else None
+            held = (target if not shape.owned_sum
+                    else MIRPlace(target.root, (MIRUnionPayload(alternative),))
+                    if member is not None and member.owns_storage else None)
+            return (MIRStorageEvent(MIRStorageEventKind.CONSTRUCT, target, materialized=held),)
     events: list[MIRStorageEvent] = []
     if isinstance(stmt, MIRAssign):
         target = stmt.target
-        owned_tuple = not target.projections and slots[target.root].shape.owned_tuple
-        wrapper = slots[target.root].shape.scalar_wrapper
+        root = slots[target.root].shape
+        owned_tuple = not target.projections and root.owned_tuple
+        wrapper = root.scalar_wrapper
+        payloads = (tuple((k, m.owns_storage) for k, m in enumerate(root.members) if m is not None)
+                    if not target.projections and root.inline_sum else ())
         if owned_tuple or wrapper or storage_destination(target, slots):
             fact = stmt.storage_write
             known = isinstance(fact, MIRStorageWrite)
@@ -350,16 +358,42 @@ def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
                 kind = MIRStorageEventKind.INITIALIZE
             elif wrapper:
                 kind = MIRStorageEventKind.PAYLOAD
-            elif known and fact.mode is MIRStorageWriteMode.OPTIONAL_ASSIGN:
-                kind = MIRStorageEventKind.OPTIONAL_ASSIGN
             else:
                 kind = MIRStorageEventKind.REPLACE
-            events.append(MIRStorageEvent(kind, target, fact.rebind_owner if known else None, known))
+            events.append(MIRStorageEvent(kind, target, fact.rebind_owner if known else None, known,
+                                          payloads if kind is not MIRStorageEventKind.INITIALIZE else ()))
     events.extend(MIRStorageEvent(MIRStorageEventKind.CALL_WRITE, place)
                   for place in call_writes if storage_destination(place, slots))
-    if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and slots[stmt.value.source].shape.is_storage:
+    if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and slots[stmt.value.source].shape.owns_storage:
         events.append(MIRStorageEvent(MIRStorageEventKind.MOVE, MIRPlace(stmt.value.source)))
     return tuple(events)
+
+
+def sum_payload_ends(event: MIRStorageEvent, value: object,
+                     selected: Callable[[MIRPlace], frozenset[int] | None]) -> tuple[tuple[MIRPlace, bool], ...]:
+    """The old payloads a whole write of an inline sum ends (`event`, of
+    `storage_events`), each with whether it owns storage, by what its member
+    holds: only an alternative the old selection (`selected`, None for
+    unknown: any) may hold ends; a storage payload ends whatever is written
+    (a record has identity, so a refill of the same alternative replaces
+    it), a scalar payload only when a sum construction or copy may select
+    another alternative (a same-tag write ends nothing)."""
+    old = selected(event.place)
+    match value:
+        case MIRWrap(alternative=alternative):
+            new: frozenset[int] | None = frozenset({alternative})
+        case MIRCopy(source=source) if source != event.place:
+            new = selected(source)
+        case _:
+            new = frozenset()
+    ends: list[tuple[MIRPlace, bool]] = []
+    for alternative, owns in event.payloads:
+        if old is not None and alternative not in old:
+            continue
+        if not owns and new is not None and not new - {alternative}:
+            continue
+        ends.append((MIRPlace(event.place.root, (*event.place.projections, MIRUnionPayload(alternative))), owns))
+    return tuple(ends)
 
 
 # One replacement: the place whose storage the statement replaces, and the
@@ -368,15 +402,17 @@ Replacement = tuple[MIRPlace, MIRSlotId | None]
 _REPLACING = frozenset({MIRStorageEventKind.REPLACE, MIRStorageEventKind.CALL_WRITE, MIRStorageEventKind.MOVE})
 
 
-def replacement_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...], engaged: Callable[[MIRSlotId], bool],
+def replacement_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
+                       selected: Callable[[MIRPlace], frozenset[int] | None],
                        slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[Replacement, ...] | None:
     """The storage a statement replaces, of its `storage_events`: a
-    replacement, a call write, a move, and an Optional assignment only
-    when its backing is engaged before it (`engaged`, the caller's own
-    engagement state) -- never an initialization or an empty backing, nor
-    a scalar wrapper's payload write (payload_lifetime's). None when a
-    write fact is missing where storage a borrow can point into may be
-    replaced (`MIRStorageEvent.unknown_replacement`).
+    replacement, a call write, a move -- never an initialization, nor a
+    scalar payload (payload_lifetime's). A whole write of an owned sum
+    replaces the storage payloads `sum_payload_ends` weighs against the
+    incoming selection (`selected`) -- a first fill of an empty slot
+    replaces nothing. None when a write fact is missing where storage a
+    borrow can point into may be replaced
+    (`MIRStorageEvent.unknown_replacement`).
 
     Skipping initializations relies on an initialization never writing
     storage a live holder points into: the validator rejects a repeated
@@ -386,13 +422,18 @@ def replacement_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...], en
     an owning region and placement for each, and refuses an owning
     operation in a cycle; a region-scoped storage initialized again each
     loop iteration is fresh after the region's reset, and scope_lifetime
-    reports a holder outliving that region. An unengaged Optional
-    assignment is skipped because a backing is disengaged only at its
-    declaration (`MIRRecordStorageInit` at the hoist), before any holder
-    can point into it."""
+    reports a holder outliving that region."""
     events = storage_events(stmt, call_writes, slots)
     if any(event.unknown_replacement for event in events):
         return None
-    return tuple((event.place, event.rebind_owner) for event in events
-                 if event.kind in _REPLACING
-                 or event.kind is MIRStorageEventKind.OPTIONAL_ASSIGN and engaged(event.place.root))
+    found: list[Replacement] = []
+    for event in events:
+        if event.kind not in _REPLACING:
+            continue
+        if not event.payloads:
+            found.append((event.place, event.rebind_owner))
+            continue
+        assert isinstance(stmt, MIRAssign)
+        found.extend((place, event.rebind_owner) for place, owns in sum_payload_ends(event, stmt.value, selected)
+                     if owns)
+    return tuple(found)

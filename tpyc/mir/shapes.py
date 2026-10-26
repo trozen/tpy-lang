@@ -56,6 +56,11 @@ def optional_payload(holder: MIRClass | None, projection: Projection) -> bool:
     return holder is MIRClass.OPTIONAL and projection == OPTIONAL_PAYLOAD
 
 
+def sole_payload(projections: tuple[Projection, ...]) -> bool:
+    """Whether `projections` is exactly one sum payload selection (`o[payload]`)."""
+    return len(projections) == 1 and isinstance(projections[0], MIRUnionPayload)
+
+
 REGION_END = "summary regions are analysis places, not direct element accesses"
 
 

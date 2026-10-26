@@ -14,7 +14,7 @@ from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy,
     MIRFunction, MIRGoto, MIRIsAlternative, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRUnionExtract, MIRWrap,
+    MIRSlotKind, MIRStorageDuration, MIRStorageWrite, MIRStorageWriteMode, MIRConstruct, MIRUnionExtract, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
@@ -228,7 +228,8 @@ def test_scalar_union_alias_depends_on_wrapper_but_scalar_copy_does_not(local: b
     prefix = ()
     if local:
         slots += (replace(wrapper, id=Q, kind=MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY),)
-        prefix = (MIRAssign(MIRPlace(Q), MIRCopy(MIRPlace(P))),)
+        prefix = (MIRAssign(MIRPlace(Q), MIRCopy(MIRPlace(P)),
+                            storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),)
     fn = bind_parameters(MIRFunction(B, INT32, slots, (
         MIRBlock(A, (*prefix, MIRAssign(MIRPlace(FLAG), MIRIsAlternative(MIRPlace(source), (0,)))), MIRBranch(FLAG, C, D)),
         MIRBlock(C, (MIRAssign(MIRPlace(X), MIRUnionExtract(payload)),
@@ -352,8 +353,10 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
             if fn.receiver_init is not None:
                 assert result.entry_active == {MIRPlace(fn.receiver_init.receiver): external(fn.receiver_init.receiver)}
         retained = bodies["retained"]
-        roots = [s for s in retained.slots if s.shape.is_storage]
-        assert len(roots) == 2 and all(s.storage_duration is MIRStorageDuration.BODY for s in roots)
+        # The initial record and the reseat's own sum live for the body; the
+        # reseat's record is built in its full expression, then moved in.
+        roots = [s for s in retained.slots if s.shape.owns_storage and s.storage_duration is MIRStorageDuration.BODY]
+        assert len(roots) == 2 and roots[1].shape.owned_sum
         # Branch OWN backing must be hoisted before the conditional, not scoped to it.
         body = source[source.index(" retained("):].split("\n}\n", 1)[0]
         before_branch = body[:body.index("if (")]
@@ -420,12 +423,14 @@ def test_a_construct_fills_each_member_from_its_operand() -> None:
         rebind = bodies["rebind"]
         assert isinstance(rebind, MIRFunction), rebind
         slots = {s.name: s.id for s in rebind.slots if s.name is not None}
-        first, second = (s.id for s in rebind.slots if s.shape.is_storage)
+        first, = (s.id for s in rebind.slots if s.shape.is_storage and s.storage_duration is MIRStorageDuration.BODY)
+        site, = (s.id for s in rebind.slots if s.shape.owned_sum)
         state = analyze(rebind).referents
         held = {refs for point, live in state.items() for leaf, refs in live.items()
                 if leaf == MIRPlace(slots["t"], (MIRTupleIndex(0),))}
         assert held == {frozenset({MIRReferent(MIRPlace(first))})}
-        assert any(live.get(MIRPlace(slots["a"])) == {MIRReferent(MIRPlace(second))} for live in state.values())
+        assert any(live.get(MIRPlace(slots["a"])) == {MIRReferent(MIRPlace(site, (MIRUnionPayload(1),)))}
+                   for live in state.values())
         # A storage member moved in from a temporary carries the loans its
         # object stores: `w.t.s` holds the buffer the `*` operation built.
         rec_tmp = bodies["rec_tmp"]

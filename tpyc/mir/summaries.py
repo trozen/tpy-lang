@@ -15,7 +15,8 @@ from .call_contract import (
 )
 from .call_effects import resolve_call_writes
 from .shapes import (
-    REGION_STEPS, SELECTORS, MIRDeref, MIRContainerElements, construct_members, object_prefix,
+    REGION_STEPS, SELECTORS, MIRDeref, MIRContainerElements, MIRTupleIndex, MIRUnionPayload, construct_members,
+    object_prefix,
 )
 from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
@@ -28,7 +29,7 @@ from .reach import parameter_objects
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct, MIRCopy,
     MIRFunction, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
-    MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
+    MIRNotCovered, MIROp, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRStorageInit, MIRReturn, MIRPlace,
     MIRSlot, MIRSlotKind, MIRSlotId, statement_call, place_walk, under_object, view_member, MIRWrap, MIRIsAlternative,
     place_shape, MIRUnionExtract,
 )
@@ -66,8 +67,7 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     scope end, or by the caller for a parameter handed over at OWN -- so
     its definition must still be hook-free."""
     slots = {s.id: s for s in body.slots}
-    records = {s.id for s in body.slots
-               if s.shape.is_storage and s.shape.cls in AGGREGATE_CLASSES}
+    records = {s.id for s in body.slots if _aggregate_storage(s.shape)}
     excluded: set[MIRSlotId] = set()
     foreign: set[MIRSlotId] = set()
     transfers: list[tuple[MIRSlotId, MIRPoint]] = []
@@ -78,8 +78,9 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
         for index, stmt in enumerate(block.statements):
             point = MIRPoint(block.id, index)
             reads = statement_reads(stmt)
-            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow) and not stmt.value.source.projections:
-                # The holder's borrow of the whole storage: tracked by the dependency pass.
+            if isinstance(stmt, MIRAssign) and _lends_private(stmt, slots, body.record_layouts):
+                # The holder's borrow of the whole storage, or of a record a
+                # tuple or a sum stores inline: tracked by the dependency pass.
                 continue
             # A slot can occur in one statement in several roles, so a use outside
             # the kept rule is recorded at the role that makes it one.
@@ -138,6 +139,33 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
         if any(not ref.external and ref.place.root == slot and owners for ref, owners in held.items()):
             excluded.add(slot)
     return frozenset((handed_over - excluded) | (records - handed_over - foreign))
+
+
+def _lends_private(stmt: MIRAssign, slots: dict[MIRSlotId, MIRSlot], layouts: MIRRecords) -> bool:
+    """A borrow of a slot's whole storage or of an object an owned slot
+    stores inline (`_object_root`), or a copy of an owned sum into a holder
+    of its payload (`optional_to_ptr`: every member of the target holds)."""
+    match stmt.value:
+        case MIRBorrow(source=source):
+            return not source.projections or _object_root(source, slots)
+        case MIRCopy(source=source):
+            target = place_shape(stmt.target, slots, layouts)
+            return (not source.projections and slots[source.root].shape.owned_sum
+                    and target.cls in SUM_CLASSES and all(m is None or m.is_holder for m in target.members))
+    return False
+
+
+def _object_root(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot]) -> bool:
+    """An object an owned slot stores inline, named by its one selector
+    (`slot.alternative[k]`, `t[i]`, no step after it)."""
+    return (len(place.projections) == 1 and slots[place.root].shape.owns_storage
+            and isinstance(place.projections[0], (MIRUnionPayload, MIRTupleIndex)))
+
+
+def _aggregate_storage(shape: MIRShape) -> bool:
+    """Record or container storage held here: whole, or inline in a tuple
+    or a sum (`owns_storage`)."""
+    return shape.owns_storage and (shape.cls in AGGREGATE_CLASSES or shape.cls in WRAPPER_CLASSES)
 
 
 def _member_records(shape: MIRShape) -> tuple[TpyType, ...] | None:
@@ -334,15 +362,22 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
             # A handle the body only reads; a write refuses at its statement.
             global_reads.add(slot.global_id)
         shape = slot.shape
-        if shape.is_storage and shape.cls in AGGREGATE_CLASSES:
+        if _aggregate_storage(shape):
             if slot.id not in private_records():
                 return MIRSummaryResult.opaque("summary storage or value shape")
             # Storage private to the body (`_private_records`): whoever
             # destroys it -- the body, a callee or container it is handed
             # to, or the caller it is returned to -- runs no hook, so its
-            # definition (a container's: its record elements') must be
-            # hook-free.
-            records: tuple[TpyType, ...] | None = (slot.type,)
+            # definition (a container's: its record elements'; a wrapper's:
+            # its inline records') must be hook-free.
+            records: tuple[TpyType, ...] | None = (
+                (slot.type,) if shape.cls in AGGREGATE_CLASSES
+                else tuple(m.type for m in shape.members if m is not None and m.is_storage))
+            for m in shape.members if shape.cls in WRAPPER_CLASSES else ():
+                held = () if m is None or m.is_storage else _member_records(m)
+                if held is None:
+                    return MIRSummaryResult.opaque("summary storage or value shape")
+                records += held
         elif shape.cls in WRAPPER_CLASSES:
             # A wrapper holds what its members hold, each admitted alike.
             members = [_member_records(m) for m in shape.members if m is not None]
@@ -365,7 +400,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
         if origins is None:
             return "summary missing write origin"
         for origin in origins:
-            if not origin.external and slots[origin.place.root].shape.is_storage:
+            if not origin.external and slots[origin.place.root].shape.owns_storage:
                 # A write into the body's own storage: nothing the caller can observe.
                 continue
             if not origin.external or origin.place.root not in parameters:
@@ -423,9 +458,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     return MIRSummaryResult.opaque(problem)
             if isinstance(stmt, MIRCallStmt):
                 continue
-            if (isinstance(stmt, MIRRecordStorageInit) and not stmt.target.projections
+            if (isinstance(stmt, MIRStorageInit) and not stmt.target.projections
                     and stmt.target.root in private_records()):
-                # The empty backing of a lazily built private record: it holds no record yet.
+                # Private storage built empty: it holds no record yet.
                 continue
             if isinstance(stmt, MIRPrint):
                 # Output is an effect outside every parameter-rooted summary.
@@ -446,7 +481,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                        else frozenset())
             # A whole record replaced through a holder of the body's private storage (a reseat).
             private_target = (stmt.target.projections == object_prefix(target.shape) and bool(origins)
-                              and all(not o.external and not o.place.projections
+                              and all(not o.external and (not o.place.projections or _object_root(o.place, slots))
                                       and o.place.root in private_records() for o in origins))
             # An inline record member replaced whole: published as a write of
             # the member under a parameter, nothing under private storage.
@@ -469,9 +504,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                     pass
                 case MIRConstant() | MIRCompare() | MIRNot() | MIROp() | MIRRangeAdvance():
                     pass
-                case MIRBorrow(source=source) if (not source.projections and source.root in private_records()
-                                                  and target.shape.is_pointer):
-                    # A record holder of the body's private storage.
+                case MIRBorrow(source=source) if ((not source.projections or _object_root(source, slots))
+                                                  and source.root in private_records() and target.shape.is_pointer):
+                    # A record holder of the body's private storage, or of an object it stores inline.
                     pass
                 case MIRBorrow(source=source) if (target.shape.is_pointer
                                                   and slots[source.root].shape.cls in WRAPPER_CLASSES

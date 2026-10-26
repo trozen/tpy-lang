@@ -3234,8 +3234,9 @@ call on a call result.
   (`return p;`, NRVO), and the terminal return has no live successor. An
   owned record local outside `fixed_owned` refuses "reassigned local
   returned": a REBIND_SLOT local whose reseat (`RebindStorage.OWN`)
-  retargets the holder at a new backing while `storage[p]` keeps the first,
-  so its backing would be stale. A STORAGE-form declaration is one sema
+  fills its site's owned sum and retargets the holder at that sum's payload
+  ("Owned sum slots") while `storage[p]` keeps the first, so its backing
+  would be stale. A STORAGE-form declaration is one sema
   never rebinds (a rebound local is a rebind-slot pointer local), so
   `fixed_owned` membership is a whole-body fact, not statement order.
   The check reads MIR's own `owned_records`
@@ -3295,8 +3296,8 @@ call on a call result.
   `MIRBorrow` of it, a `MIRCopy` into it, a scalar field read of it, a
   whole-record write through a holder whose every referent is private
   storage (a reseat: an `IN_PLACE` `MIRCall`, `MIRConstruct`, `MIRCopy` or
-  `MIRMove`), and the empty backing of a lazily built temporary
-  (`MIRRecordStorageInit`). Whoever destroys private storage -- the body
+  `MIRMove`), and the empty owned sum of a lazily built temporary
+  (its `MIRStorageInit`). Whoever destroys private storage -- the body
   at scope end, a callee or container it is handed to, the caller it is
   returned to -- runs no hook, so its definition must be hook-free. Every
   covered caller of the case summarizes KNOWN (`use_result`, `use_temp`,
@@ -3320,7 +3321,8 @@ call on a call result.
   another operand that reads it refuses "order-sensitive eager operands"
   (`stamped`: `[stamp(c), stamp(c)]`). The arm is reached at an owned
   declaration (`p = make(n)`, `INITIALIZE`, body duration), a reseat of a
-  REBIND_SLOT local (`p = make(n + 1)`, `IN_PLACE` / `OWN_SITE`, now
+  REBIND_SLOT local (`p = make(n + 1)`, `IN_PLACE`, or a fill of the
+  site's owned sum, now
   inside a full-expression boundary, so a CONSTRUCTOR reseat whose
   arguments need temporaries is covered too), an element write (`ps[0] =
   make(n)`, `IN_PLACE`), a container-literal element and an argument handed
@@ -4240,7 +4242,7 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   root: `presence._under`) or where storage the statement replaces reaches
   the wrapper's storage: `reach.reaches` over the referents of each written
   place of `reach.replacement_events` (the call's writes as this state sees
-  the call, an Optional assignment by its engagement) and of the fact's
+  the call, an owned sum's fill by the slot's selection) and of the fact's
   place, which the first dependency run gives (see "Pass order" below).
   Across distinct external origins presence's oracle decides
   (`reach.declared_containment`): a written referent naming a whole object
@@ -4543,24 +4545,83 @@ access of the source.
 
 `MIRStorageWrite` modes: `INITIALIZE` (no old value; once per lifetime of
 the target slot's storage, the body or each entry of its region, read off
-`MIRSlot.storage_duration`), `OWN_SITE` (a holder's backing site written,
-possibly revisited, and the holder repointed), `IN_PLACE` (the value
-replaced in its storage; every alias sees it) and `OPTIONAL_ASSIGN` (an
-Optional record backing filled). One classifier yields every storage
-event of a statement with its kind (`reach.storage_events`: an
-assignment's initialization, a scalar wrapper constructed with its
-default (`CONSTRUCT`), an Optional backing constructed empty
-(`BACKING`), a replacement, a scalar
-wrapper's payload write, an Optional assignment, a call write, a move).
-An assignment without its write fact keeps the kind its destination
-gives it, marked not `known`: an unknown replacement (storage a borrow
-can point into) fails the replacement readers closed (presence's kill,
-retention, the storage inventory), an unknown payload write refuses the
-payload ends, scope_lifetime refuses one on a root it tracks, and the
+`MIRSlot.storage_duration`) and `IN_PLACE` (the value replaced in its
+storage; every alias sees it). One classifier yields every storage event
+of a statement with its kind (`reach.storage_events`: an assignment's
+initialization, a wrapper constructed with its default (`CONSTRUCT`,
+carrying the place it materializes: a scalar wrapper itself, an owned
+sum's selected storage alternative, nothing for an owned sum built
+empty), a replacement, a scalar wrapper's payload write, a call write, a
+move). A whole write of an inline sum carries ONE per-alternative list of
+its payloads, each marked by whether it owns storage, and one rule weighs
+it against the old selection (`reach.sum_payload_ends`): a payload ends
+only where the old selection may hold it; a storage payload ends whatever
+is written (a record has identity, so a refill of the same alternative
+replaces it, and a first fill of an empty sum replaces nothing); a scalar
+payload only where the write may select another alternative. Replacement
+reads its storage entries, payload_lifetime its scalar ones; a point no
+feasible path reaches ends none. A field's Optional payload stays an
+unconditional replacement (two holders may alias the record around it).
+
+#### Owned sum slots
+
+A C++ object held by value that is either empty or holds a value --
+`std::optional<T>` -- is one MIR slot: an owned sum (`MIRShape.owned_sum`:
+a sum held by value with an alternative that owns its storage, a record or
+a container held inline), the two-alternative sum an Optional parameter or
+field already is. Its one fact is presence's selection. Every lowered
+producer builds one: a record local hoisted out of a branch or a loop exit
+(`if flag: cell = Cell(1) else: return 0` -> `std::optional<Cell> cell;`),
+a select's fresh arm and an argument temporary under a lazy operand (the
+temporary plan's optional placements), a per-site reseat slot (`p =
+make(n + 1)` -> `std::optional<P> __slot_N`), a hoisted pointer local
+(`P* p = &*(__slot_1 = P(1))`) and a list reseat. Its lifecycle:
+
+- built empty by `MIRStorageInit(slot, 0, None)` where C++ declares it:
+  before the branch for a hoist, before the statement for a temporary-plan
+  placement, at the body-level statement THIR anchors a reseat's rebind
+  slot at (`THIRStmt.anchored_slots`, the `own_slot` of the rebind; a
+  slot MIR cannot anchor refuses the body), at the body's top for a
+  hoisted pointer local (its storage placement `BODY`);
+- filled by `slot = wrap[1] temp` (`IN_PLACE`) from a record built in a
+  temporary of the fill's full expression (`lower.site_fill`, through
+  `aggregate_temporary`), the holder rebound within it by its shape: a
+  record holder borrows `slot.alternative[1]`, an Optional holder takes
+  `optional_to_ptr` of the slot (a `wrapper_copy`);
+- ended with its region: the scope end ends the slot itself, which reaches
+  every holder of its payload;
+- a root by `MIRSlot.lifetime_root` (owned storage, or a local inline sum,
+  a scalar one included), the one predicate scope roots and the storage
+  evidence read; `inline_sum` (every alternative inline, never a
+  pointer) answers the duration fact and the physical-initialization
+  checks; `scalar_wrapper` only picks the payload event and THIR-form
+  decisions.
+
+A by-value member of an owned slot -- a sum's payload, an owned tuple
+local's member -- keys its stored loans under the member's place
+(`slot.alternative[1].s`, `t[0].s`; `dependencies.object_keys`). A wrap
+is a one-member construct: its payload takes the loans its operand's
+object stores (`dependencies.member_fill`, the member step of
+`construct_fill`); a whole copy or move carries the source's entries
+alternative by alternative where the source holds some; the root write
+replaces every entry of the slot. The storage evidence asks for a
+payload's stored loans only where the payload may be selected. A key is
+live while its slot is, so a dead member of a live tuple keeps a false
+conflict (filed). An Optional-of-record value outside such a slot keeps
+its refusal (`lower.register`). The validator checks a root wrap as a
+field write's: a defined, movable payload moved once from a temporary;
+a root write of any inline sum, a scalar one included, needs its write
+fact. Every scalar wrapper is an inline sum and a write into a payload
+is refused, so no payload write reaches a pass without its fact: the
+storage inventory and payload_lifetime assert it. Any other assignment without its write fact keeps the kind its
+destination gives it, marked not `known`: an unknown replacement (storage
+a borrow can point into) fails the replacement readers closed (presence's
+kill, retention, the storage inventory), scope_lifetime refuses one on a
+root it tracks, and the
 storage evidence counts no materialization from it. The storage
 inventory keeps every kind, scope_lifetime reads which roots a block
 begins, the storage evidence which roots are materialized
-(`reach.MATERIALIZES`), payload_lifetime which writes replace a scalar
+(`reach.BEGINS`), payload_lifetime which writes replace a scalar
 wrapper's payload, and retention and presence read the replacements
 `reach.replacement_events` selects.
 Payload ends take the writes to a scalar sum. An in-place write's rebinding holder repoints, so retention
@@ -4590,8 +4651,7 @@ A constructor entry's member value is one of the CFG's value nodes;
 `MIRMemberInits` stays a second record-construct spelling at entry until
 entry initialization becomes ordinary statements (TODO.md "[MIR] FIRST").
 
-Still separate, each with its reason: `MIRUnionExtract` and
-`MIRRecordStorageInit` / `MIRRecordStorageKind` (TODO.md "[MIR] FIRST",
+Still separate, with its reason: `MIRUnionExtract` (TODO.md "[MIR] FIRST",
 step (1)).
 
 #### Origins and write reach

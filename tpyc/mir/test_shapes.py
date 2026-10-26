@@ -361,10 +361,11 @@ def test_the_shape_check_refuses_each_forgery_by_its_rule(program: _Program) -> 
     ]
     for shape, declared, reason in cases:
         assert shape_problem(shape, declared) == reason, (shape, declared)
-    # A slot's Optional record payload is a pointer, a field's stored inline.
+    # A field stores its Optional record payload inline; a slot points at it
+    # or, as a producer's own owned sum (`std::optional<T>`), stores it inline.
     maybe = program.fields["H.p"]
     inline = MIRShape(maybe, MIRClass.OPTIONAL, members=(None, storage))
-    assert shape_problem(inline, maybe) == "unsupported optional record holding"
+    assert shape_problem(inline, maybe) is None
     assert shape_problem(inline, maybe, MIRPosition.FIELD) is None
     # A field stores its record: no loan of it, and no scalar payload.
     assert shape_problem(pointer, p, MIRPosition.FIELD) == "invalid holding"

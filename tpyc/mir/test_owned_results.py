@@ -17,8 +17,9 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
+    MIRStorageInit,
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRCopy, MIRFunction, MIRMove,
-    MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRRecordStorageInit, MIRStorageWriteMode, MIRReturn, MIRSlot,
+    MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref
@@ -672,8 +673,8 @@ def test_a_reseat_through_a_holder_needs_private_referents(active, through: str)
 
 def test_a_lazy_backing_init_needs_private_storage(active, monkeypatch) -> None:
     fn = _lowered(active, "lazy_lend")
-    storage, = _owned_records(fn)
-    assert any(isinstance(s, MIRRecordStorageInit) and s.target == MIRPlace(storage.id)
+    storage, = (s for s in fn.slots if s.shape.owned_sum)
+    assert any(isinstance(s, MIRStorageInit) and s.target == MIRPlace(storage.id)
                for b in fn.blocks for s in b.statements)
     assert _summary(active, "lazy_lend").state is MIRSummaryState.KNOWN
     # The same body with its backing not private: the slot itself refuses
