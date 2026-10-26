@@ -62,7 +62,7 @@ from . import (
 from .toolchain import (
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
     list_compilers, shared_pch, set_pch_ccache_sloppiness, sweep_shared_cache_best_effort,
-    compile_pool,
+    compile_pool, run_build_step,
 )
 
 
@@ -195,10 +195,11 @@ class ProgressPrinter:
         sys.stderr.flush()
 
 
-def _timed_run(cmd: list[str]) -> tuple[subprocess.CompletedProcess[str], float]:
-    """Run a command and return (result, elapsed_seconds)."""
+def _timed_run(cmd: list[str], base_dir: Path, shares_build_dir: bool,
+               ) -> tuple[subprocess.CompletedProcess[str], float]:
+    """Run a build step and return (result, elapsed_seconds)."""
     t = time.monotonic()
-    r = subprocess.run(cmd, capture_output=True, text=True)
+    r = run_build_step(cmd, base_dir, shares_build_dir=shares_build_dir)
     return r, time.monotonic() - t
 
 
@@ -1142,7 +1143,8 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                     if args.verbose >= 1:
                         print(f"  $ {' '.join(cmd)}", file=sys.stderr)
                     t_step = time.monotonic()
-                    result = subprocess.run(cmd, capture_output=True, text=True)
+                    result = run_build_step(
+                        cmd, layout.base_dir, shares_build_dir=cpp_config.shares_build_dir)
                     if result.returncode != 0:
                         print(f"C++ compilation failed:", file=sys.stderr)
                         print(result.stderr, file=sys.stderr)
@@ -1155,7 +1157,8 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                 failed_stderr = ""
                 with compile_pool(n_jobs) as pool:
                     futures = {
-                        pool.submit(_timed_run, cmd): cmd
+                        pool.submit(_timed_run, cmd, layout.base_dir,
+                                    cpp_config.shares_build_dir): cmd
                         for cmd in compile_steps
                     }
                     for future in as_completed(futures):
@@ -1173,7 +1176,8 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             if args.verbose >= 1:
                 print(f"  $ {' '.join(link_step)}", file=sys.stderr)
             t_link = time.monotonic()
-            result = subprocess.run(link_step, capture_output=True, text=True)
+            result = run_build_step(
+                link_step, layout.base_dir, shares_build_dir=cpp_config.shares_build_dir)
             if result.returncode != 0:
                 print(f"C++ link failed:", file=sys.stderr)
                 print(result.stderr, file=sys.stderr)

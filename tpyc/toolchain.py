@@ -212,7 +212,10 @@ def darwin_version_min_flags(compiler: list[str], target: str) -> list[str]:
         return []
     if target != "darwin":
         return []
-    return [f"-mmacosx-version-min={MACOS_VERSION_MIN}"]
+    return [_DARWIN_VERSION_MIN_FLAG]
+
+
+_DARWIN_VERSION_MIN_FLAG = f"-mmacosx-version-min={MACOS_VERSION_MIN}"
 
 
 def darwin_cross_ld_flags(compiler: list[str], target: str) -> list[str]:
@@ -341,6 +344,35 @@ def _auto_detect_compiler() -> list[str]:
 
 def _is_zig(compiler: list[str]) -> bool:
     return "zig" in os.path.basename(compiler[0])
+
+
+# Search-path variables the compiler driver and linker read relative to
+# their cwd.
+_BUILD_PATH_ENV = ("CPATH", "CPLUS_INCLUDE_PATH", "C_INCLUDE_PATH", "LIBRARY_PATH")
+
+
+def _shares_build_dir(compiler: list[str], extra_flags: list[str]) -> bool:
+    """True when nothing in the compiler command, `extra_flags` or the
+    search-path environment came from the user: a bare compiler name PATH
+    resolves to an absolute path, or an absolute one, followed only by the
+    words tpyc itself adds (zig's `c++`, the darwin version pin). The
+    user's settings are never parsed; any of them opts out."""
+    if not compiler or extra_flags:
+        return False
+    if any(os.environ.get(name) for name in _BUILD_PATH_ENV):
+        return False
+    head, *rest = compiler
+    if os.sep in head and not os.path.isabs(head):
+        return False
+    if os.sep not in head:
+        # A relative PATH element (`.`, an empty one) finds a bare name
+        # relative to the cwd.
+        found = shutil.which(head)
+        if found is None or not os.path.isabs(found):
+            return False
+    if _is_zig(compiler) and rest[:1] == ["c++"]:
+        rest = rest[1:]
+    return rest in ([], [_DARWIN_VERSION_MIN_FLAG])
 
 
 def shared_cache_root() -> Path:
@@ -1030,6 +1062,13 @@ _INCLUDE_PATH_FLAGS = tuple(sorted(
 _INCLUDE_PATH_ENV = ("CPATH", "CPLUS_INCLUDE_PATH")
 
 
+def absolute_path(path: str | Path) -> str:
+    """`path` made absolute against the cwd, with its `..` kept: the kernel
+    follows a symlink before `..`, so collapsing `link/..` lexically
+    (`os.path.abspath`) names another directory."""
+    return str(Path(path).absolute())
+
+
 def _resolve_include_path(path: str) -> str:
     # resolve(), not abspath(): the compiler follows a symlink before `..`,
     # so `link/../inc` names a directory beside the link's target.
@@ -1311,6 +1350,25 @@ def set_pch_ccache_sloppiness(config: CppCompilerConfig) -> None:
     os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
 
 
+def run_build_step(cmd: list[str], base_dir: Path, *,
+                   shares_build_dir: bool) -> subprocess.CompletedProcess[str]:
+    """Run a C/C++ compile or link command: from `base_dir`, with
+    CCACHE_BASEDIR set to it, when `shares_build_dir`
+    (`CppCompilerConfig.shares_build_dir`); otherwise from the caller's cwd
+    with the environment untouched.
+
+    ccache rewrites the paths under CCACHE_BASEDIR relative to the working
+    directory before hashing, so builds rooted at different paths (two
+    programs' build dirs, two checkouts) hash the same generated or runtime
+    TU alike and share its cache entry. `base_dir` must be absolute (ccache
+    ignores a relative one) and hold every path specific to this build.
+    """
+    if not shares_build_dir:
+        return subprocess.run(cmd, capture_output=True, text=True)
+    env = {**os.environ, "CCACHE_BASEDIR": str(base_dir)}
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=base_dir, env=env)
+
+
 @contextlib.contextmanager
 def compile_pool(n_jobs: int) -> Iterator[ThreadPoolExecutor]:
     """A thread pool for C++ compiles. A Ctrl-C inside the block drops the
@@ -1468,13 +1526,26 @@ class CppCompilerConfig:
     # link flags) reads it.
     target_platform: str = field(init=False)
 
+    # Whether build steps run from the build dir with CCACHE_BASEDIR set to
+    # it (`run_build_step`), so builds at different paths share ccache
+    # entries. Only when the user supplied no compiler settings of their
+    # own: a path in them (`-include x.h`, `@file`, a relative compiler, a
+    # relative CPATH element) is relative to the caller's cwd, and the
+    # spellings that carry one are too many to rewrite, so such a build runs
+    # from the caller's cwd and shares nothing. `extra_flags` count as the
+    # caller's at construction only; tpyc appends its own defines later.
+    shares_build_dir: bool = field(init=False)
+
     def __post_init__(self) -> None:
         self.target_platform = compiler_target_os(tuple(self.compiler))
+        self.shares_build_dir = _shares_build_dir(self.compiler, self.extra_flags)
 
     def use_compiler(self, compiler: list[str]) -> None:
-        """Replace the compiler command, re-deciding the target with it."""
+        """Replace the compiler command, re-deciding the target and
+        `shares_build_dir` with it."""
         self.compiler = compiler
         self.target_platform = compiler_target_os(tuple(compiler))
+        self.shares_build_dir = _shares_build_dir(compiler, self.extra_flags)
 
     @property
     def compiler_name(self) -> str:

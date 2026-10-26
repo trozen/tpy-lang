@@ -120,6 +120,56 @@ Only recompile changed modules. The per-TU object file split (ccache path)
 already provides the foundation -- would need content hashing or timestamp
 tracking to skip unchanged TUs.
 
+### ccache across programs and checkouts
+
+Every compile and link step of a program build -- in the CLI, the REPL and
+the test harness -- runs through
+`toolchain.run_build_step(cmd, base_dir, shares_build_dir=...)`. When it
+shares, the step runs with `base_dir` as its cwd and as `CCACHE_BASEDIR`, so
+ccache rewrites the paths under it relative to the cwd before hashing. The
+CLI's base dir is the program's build dir (`BuildLayout.base_dir`, the
+`<prog>.d/` that holds `src/`, `include/` and the per-variant object dirs);
+the REPL's is its session dir; the harness's is the checkout root, where it
+always runs. The shared PCH build and the toolchain probes run outside it on
+purpose: their commands are the same for every program. Every path tpyc puts
+in a command is absolute (`build_cpp_commands`, joined onto the cwd without
+collapsing `..`, which the kernel resolves after a symlink), so the commands
+run from any cwd.
+
+The user's compiler settings are never parsed or rewritten: a path in them
+(`-include x.h` found through `-I`, `-I=` under `--sysroot`, a path inside
+an `@file`, a relative compiler, a relative `CPATH` element) means something
+relative to the caller's cwd, in more spellings than a rewrite can follow. So
+a CLI or REPL build shares only when the user supplied none
+(`CppCompilerConfig.shares_build_dir`, decided where the config is built): the
+compiler is a bare name `PATH` resolves to an absolute path, or an absolute
+path, followed only by the words tpyc adds itself (zig's `c++`, the darwin
+version pin); no extra flags were given; and `CPATH`, `CPLUS_INCLUDE_PATH`,
+`C_INCLUDE_PATH` and `LIBRARY_PATH` are unset or empty. Otherwise its steps
+run from the caller's cwd with the environment untouched and share nothing
+across programs.
+
+- Generated stdlib C++ is byte-identical across programs, so a second
+  program in another directory hits every stdlib TU the first one stored
+  (measured: a `print("hi")` program's second copy builds in ~0.1s instead of
+  ~5.6s; a json/re/datetime/os program's in ~0.1s instead of ~17s).
+- The TPy-owned runtime TUs (`runtime/cpp/src/**/*.cpp`) include only runtime
+  headers, so they compile without the program's `-I <prog>.d/include` and
+  without the PCH force-include: their commands are the same in every program,
+  and they skip parsing the whole PCH (`socket_impl.cpp`: 2.5s -> 0.2s).
+- `-g` builds (`--debug`) do not share across directories: ccache hashes the
+  cwd of a debug compile, and the debug info keeps the absolute source paths
+  so a debugger finds the sources from any directory. A
+  `-fdebug-prefix-map=<build dir>=.` would let them share but record sources
+  relative to `.`, which a debugger started elsewhere cannot find.
+- Third-party TUs carry no program path and hit as well.
+
+Current limitation: other settings the compiler driver or ccache resolve
+against the cwd are not part of that check -- a relative `COMPILER_PATH` or
+`GCC_EXEC_PREFIX`, a relative `CCACHE_CONFIGPATH` / `CCACHE_DIR`, a relative
+or empty element in `PATH` -- so in a sharing build they resolve against the
+build dir instead of the caller's cwd. Spell them as absolute paths.
+
 ## Alternative Backends Considered
 
 ### LLVM IR

@@ -64,8 +64,9 @@ from tpyc.compiler import (
     strict_warn_flags, list_compilers, CompilerNotFoundError,
 )
 from tpyc.toolchain import (
-    hash_files, host_os, mark_cache_entry_used, set_pch_ccache_sloppiness, shared_pch,
-    shared_cache_root, sweep_shared_cache_best_effort, third_party_source_driver, CACHE_DIRS,
+    hash_files, host_os, mark_cache_entry_used, run_build_step, set_pch_ccache_sloppiness,
+    shared_pch, shared_cache_root, sweep_shared_cache_best_effort, third_party_source_driver,
+    CACHE_DIRS,
     EXEC_RESULTS_DIR, STDLIB_OBJS_DIR,
 )
 from tpyc.build.third_party import (
@@ -146,9 +147,11 @@ def _run_cxx(cmd: list[str]) -> subprocess.CompletedProcess:
     ccache rewrites the paths under CCACHE_BASEDIR relative to the working
     directory before hashing, so every checkout hashes `runtime/...` and
     `tests/cases/...` alike and worktrees at different paths share entries.
+    Regardless of `CPP_CONFIG.shares_build_dir`: the harness has always run
+    its steps from the checkout root, so a relative path in $CXX or in a
+    search-path variable already means one under the checkout root here.
     """
-    env = {**os.environ, "CCACHE_BASEDIR": str(PROJECT_ROOT)}
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT, env=env)
+    return run_build_step(cmd, PROJECT_ROOT, shares_build_dir=True)
 
 
 FAST_LINKERS = ("lld", "mold")

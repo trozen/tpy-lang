@@ -8,6 +8,8 @@ import errno
 import readline
 from pathlib import Path
 
+import pytest
+
 from . import get_lib_dir
 from .compilation_context import activate_compiler
 from .codegen_cpp.context import module_to_include_path
@@ -207,6 +209,62 @@ def test_backend_support_objects_compile_once_and_in_order(monkeypatch, tmp_path
     objs4, err4 = backend._ensure_support_objects(deps)
     assert err4 == ""
     assert len(calls) == 4, "a back-dated replacement did not invalidate the cache"
+
+
+@pytest.mark.parametrize("compiler", [["cxx"], ["cxx", "-Iinc"]])
+def test_backend_build_steps_run_from_the_session_dir(monkeypatch, tmp_path, compiler):
+    # Every compile, support compile and link goes through the one build-step
+    # runner, with absolute paths even when the session dir was given
+    # relative; rooted at the session dir unless the compiler carries the
+    # user's own words (CppCompilerConfig.shares_build_dir).
+    import os
+    import subprocess as sp
+    from .repl_backends import CompileBackend
+
+    runs: list[tuple[list[str], dict]] = []
+
+    def fake_run(cmd, **kwargs):
+        runs.append((cmd, kwargs))
+        return sp.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr("tpyc.repl_backends.subprocess.run", fake_run)
+    monkeypatch.setattr("tpyc.toolchain.compiler_dumpmachine", lambda compiler: "")
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / "bin").mkdir()
+    (tmp_path / "bin" / "cxx").write_text("#!/bin/sh\n")
+    (tmp_path / "bin" / "cxx").chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(tmp_path / "bin"), os.environ["PATH"]]))
+    for var in ("CPATH", "CPLUS_INCLUDE_PATH", "C_INCLUDE_PATH", "LIBRARY_PATH"):
+        monkeypatch.delenv(var, raising=False)
+    (tmp_path / "session").mkdir()
+    backend = CompileBackend(compiler, Path("session"), "repl")
+    monkeypatch.setattr(backend, "_run_binary",
+                        lambda t_build, build_cached: BackendResult(True))
+    (tmp_path / "vendor").mkdir()
+    rt = Path("vendor/rt_impl.cpp")
+    tp = Path("vendor/lib.c")
+    rt.write_text("// rt")
+    tp.write_text("// tp")
+    deps = ReplBuildDeps(runtime_sources=[rt], third_party_sources=[(tp, ["-DX"])],
+                         include_dirs=[Path("vendor/include")])
+    result = backend.execute(["// h"], ["// c"], [Path("session/repl.hpp")],
+                             [Path("session/repl.cpp")], deps)
+    assert result.success
+    session = tmp_path / "session"
+    # The two support sources compile in a pool, in either order.
+    assert {cmd[-1] for cmd, _ in runs[:2]} == {
+        str(tmp_path / "vendor" / "rt_impl.cpp"), str(tmp_path / "vendor" / "lib.c")}
+    assert runs[2][0][-1] == str(session / "repl.cpp")
+    assert "-c" not in runs[3][0], "the last step is the link"
+    for cmd, kwargs in runs:
+        if compiler == ["cxx"]:
+            assert kwargs["cwd"] == session
+            assert kwargs["env"]["CCACHE_BASEDIR"] == str(session)
+        else:
+            assert "cwd" not in kwargs and "env" not in kwargs
+            assert cmd[:2] == compiler
+        assert all(os.path.isabs(arg) for arg in cmd if "/" in arg and not arg.startswith("-"))
+    assert str(tmp_path / "vendor" / "include") in runs[2][0]
 
 
 def test_repl_deps_plain_eval_has_no_third_party():

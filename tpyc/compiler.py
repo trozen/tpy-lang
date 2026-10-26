@@ -69,7 +69,7 @@ from .toolchain import (  # noqa: F401 -- re-exported: external callers import t
     list_compilers,
     strict_warn_flags, discover_runtime_cpp_sources,
     third_party_source_driver, darwin_cross_ld_flags, shared_link_flags,
-    PLATFORMS, platform_matches,
+    absolute_path, PLATFORMS, platform_matches,
     _derive_c_compiler, _is_zig,
     _find_all_versioned, _find_best_versioned, _find_all_zig, _find_zig,
     _resolve_compiler, _auto_detect_compiler, _cxx_aliases,
@@ -157,6 +157,14 @@ class BuildLayout:
         self.src_dir = self.root_dir / "src"
         self.build_variant = build_variant
         self.build_dir = self.root_dir / build_variant if build_variant else self.root_dir
+
+    @property
+    def base_dir(self) -> Path:
+        """The absolute dir holding every program-specific path of the
+        build commands (sources, headers, objects, output): the cwd and
+        CCACHE_BASEDIR the CLI runs them with when its config shares the
+        build dir (`run_build_step`)."""
+        return self.root_dir.absolute()
 
     def hpp_path(self, module_name: str) -> Path:
         """Path to the generated header for a module."""
@@ -263,21 +271,29 @@ class BuildLayout:
         if output is None:
             output = self.binary_path()
 
-        extra_flags: list[str] = []
-        for d in (extra_include_dirs or []):
-            extra_flags += ["-I", str(d)]
-        for h in (force_includes or []):
-            extra_flags += ["-include", str(h)]
+        # Absolute so the commands run from any cwd (`run_build_step`).
+        ap = absolute_path
 
-        common = [
+        extra_includes: list[str] = []
+        for d in (extra_include_dirs or []):
+            extra_includes += ["-I", ap(d)]
+        force_include_flags: list[str] = []
+        for h in (force_includes or []):
+            force_include_flags += ["-include", ap(h)]
+
+        toolchain_flags = [
             *config.compiler, f"-std={config.std}",
             *(opt_flags or []),
             *(["-fPIC"] if shared else []),
             *config.extra_flags,
             *config.warn_flags,
-            "-I", str(runtime_include_dir),
-            "-I", str(self.include_dir),
-            *extra_flags,
+            "-I", ap(runtime_include_dir),
+        ]
+        common = [
+            *toolchain_flags,
+            "-I", ap(self.include_dir),
+            *extra_includes,
+            *force_include_flags,
         ]
 
         self.build_dir.mkdir(parents=True, exist_ok=True)
@@ -294,11 +310,11 @@ class BuildLayout:
             except ValueError:
                 obj_name = cpp.stem + ".o"
             obj = self.build_dir / obj_name
-            obj_files.append(str(obj))
+            obj_files.append(ap(obj))
             prefix = ["ccache"] if config.ccache else []
             cmds.append([
                 *prefix, *common,
-                "-c", "-o", str(obj), str(cpp),
+                "-c", "-o", ap(obj), ap(cpp),
             ])
 
         # Bundled third-party source files (e.g. PCRE2, Hinnant date in
@@ -308,7 +324,7 @@ class BuildLayout:
             third_party_dir.mkdir(parents=True, exist_ok=True)
             for c_file, c_extra_flags in c_sources:
                 obj = third_party_dir / (c_file.stem + ".o")
-                obj_files.append(str(obj))
+                obj_files.append(ap(obj))
                 prefix = ["ccache"] if config.ccache else []
                 driver = third_party_source_driver(
                     c_file, config.compiler, config.std)
@@ -320,13 +336,15 @@ class BuildLayout:
                     # doesn't use common).
                     *(["-fPIC"] if shared else []),
                     *c_extra_flags,
-                    "-c", "-o", str(obj), str(c_file),
+                    "-c", "-o", ap(obj), ap(c_file),
                 ])
 
-        # TPy-owned runtime .cpp files. Same C++ toolchain + include paths
-        # as user code. Object names derive from the path relative to
-        # runtime/cpp/src/ to avoid collisions with user modules whose
-        # .cpp happens to share a stem.
+        # TPy-owned runtime .cpp files. Same C++ toolchain as user code,
+        # but neither the program's headers nor the PCH: they include only
+        # runtime headers, so their commands stay the same in every program
+        # (one ccache entry) and they skip parsing the whole PCH. Object
+        # names derive from the path relative to runtime/cpp/src/ to avoid
+        # collisions with user modules whose .cpp happens to share a stem.
         if runtime_cpp_sources:
             rt_src_root = runtime_include_dir.parent / "src"
             rt_obj_dir = self.build_dir / "runtime"
@@ -338,11 +356,11 @@ class BuildLayout:
                 except ValueError:
                     obj_name = "rt_" + rt_cpp.stem + ".o"
                 obj = rt_obj_dir / obj_name
-                obj_files.append(str(obj))
+                obj_files.append(ap(obj))
                 prefix = ["ccache"] if config.ccache else []
                 cmds.append([
-                    *prefix, *common,
-                    "-c", "-o", str(obj), str(rt_cpp),
+                    *prefix, *toolchain_flags, *extra_includes,
+                    "-c", "-o", ap(obj), ap(rt_cpp),
                 ])
 
         cmds.append([
@@ -352,7 +370,7 @@ class BuildLayout:
             # compiles); the link is the single place it belongs.
             *darwin_cross_ld_flags(config.compiler, config.target_platform),
             *(shared_link_flags(config.target_platform) if shared else []),
-            "-o", str(output),
+            "-o", ap(output),
             *obj_files,
             *(extra_objects or []),
             *config.link_flags,

@@ -37,9 +37,9 @@ def _fmt_ms(seconds: float) -> str:
 
 from . import get_runtime_dir
 from .codegen_cpp.context import NATIVE_INIT_NAMESPACE
-from .toolchain import (FileIdentity, compile_pool, file_identity, host_os, pch_entry,
-                        pch_ready, set_pch_ccache_sloppiness, shared_pch,
-                        sweep_shared_cache_best_effort)
+from .toolchain import (FileIdentity, absolute_path, compile_pool, file_identity, host_os,
+                        pch_entry, pch_ready, run_build_step, set_pch_ccache_sloppiness,
+                        shared_pch, sweep_shared_cache_best_effort)
 
 
 class BackendResult:
@@ -148,15 +148,16 @@ class CompileBackend(REPLBackend):
     def __init__(self, compiler: list[str], temp_dir: Path, module_name: str,
                  verbose: int = 0):
         from .compiler import CppCompilerConfig
-        self._temp_dir = temp_dir
+        # Absolute: the build steps run from it (`run_build_step`).
+        self._temp_dir = Path(absolute_path(temp_dir))
         self._module_name = module_name
         self._config = CppCompilerConfig.for_compiler(compiler)
         self._pch_path: Path | None = None
         self._pch_thread: threading.Thread | None = None
         self._pch_build_time: float | None = None
         self._pch_needs_build = False
-        self._binary_path = temp_dir / module_name
-        self._build_dir = temp_dir / "build"
+        self._binary_path = self._temp_dir / module_name
+        self._build_dir = self._temp_dir / "build"
         self._build_dir.mkdir(exist_ok=True)
         self._verbose = verbose
         # Track content of each .cpp to detect changes
@@ -222,12 +223,13 @@ class CompileBackend(REPLBackend):
             "-I", str(self._temp_dir),
         ]
         for d in self._extra_include_dirs:
-            flags += ["-I", str(d)]
+            flags += ["-I", absolute_path(d)]
         if self._pch_path:
             flags += ["-include", str(self._pch_path)]
         return flags
 
     def _obj_path(self, cpp_path: Path) -> Path:
+        cpp_path = Path(absolute_path(cpp_path))
         try:
             rel = cpp_path.relative_to(self._temp_dir)
             obj_name = str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
@@ -235,10 +237,14 @@ class CompileBackend(REPLBackend):
             obj_name = cpp_path.stem + ".o"
         return self._build_dir / obj_name
 
+    def _run_step(self, cmd: list[str]) -> subprocess.CompletedProcess[str]:
+        return run_build_step(cmd, self._temp_dir,
+                              shares_build_dir=self._config.shares_build_dir)
+
     def _compile_one(self, cpp_path: Path) -> subprocess.CompletedProcess[str]:
         obj = self._obj_path(cpp_path)
-        cmd = [*self._common_flags(), "-c", "-o", str(obj), str(cpp_path)]
-        return subprocess.run(cmd, capture_output=True, text=True)
+        cmd = [*self._common_flags(), "-c", "-o", str(obj), absolute_path(cpp_path)]
+        return self._run_step(cmd)
 
     def _ensure_support_objects(
         self, deps: ReplBuildDeps | None,
@@ -290,8 +296,8 @@ class CompileBackend(REPLBackend):
             # Parent dir in the name disambiguates same-stem sources from
             # different libs (e.g. two vendored trees both shipping error.c).
             obj = self._build_dir / f"support_{src.parent.name}_{src.stem}.o"
-            cmd = [*cmd_prefix, "-c", "-o", str(obj), str(src)]
-            r = subprocess.run(cmd, capture_output=True, text=True)
+            cmd = [*cmd_prefix, "-c", "-o", str(obj), absolute_path(src)]
+            r = self._run_step(cmd)
             return src, identity, str(obj), r.stderr if r.returncode != 0 else ""
 
         if jobs:
@@ -384,7 +390,7 @@ class CompileBackend(REPLBackend):
             *self._config.link_flags,
             *(deps.link_flags if deps else []),
         ]
-        result = subprocess.run(link_cmd, capture_output=True, text=True)
+        result = self._run_step(link_cmd)
         t_build = time.monotonic() - t_build_start
 
         if result.returncode != 0:

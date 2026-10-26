@@ -787,11 +787,34 @@ def test_repl_startup_sweeps_and_reports_a_malformed_max_age(monkeypatch, tmp_pa
 
 # -- the CLI ---------------------------------------------------------------
 
+def _isolate_build_settings(monkeypatch, tmp_path) -> Path:
+    """A fake `cxx` (and `zig`) on an absolute PATH entry, and none of the
+    search-path variables set: the default settings that share the build
+    dir. Returns the bin dir."""
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir(parents=True, exist_ok=True)
+    for name in ("cxx", "zig"):
+        (bin_dir / name).write_text("#!/bin/sh\n")
+        (bin_dir / name).chmod(0o755)
+    monkeypatch.setenv("PATH", os.pathsep.join([str(bin_dir), os.environ.get("PATH", "")]))
+    for name in BUILD_PATH_ENV:
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine", lambda compiler: "")
+    return bin_dir
+
+
+BUILD_PATH_ENV = ("CPATH", "CPLUS_INCLUDE_PATH", "C_INCLUDE_PATH", "LIBRARY_PATH")
+
+
+def _plain_config() -> CppCompilerConfig:
+    return CppCompilerConfig(compiler=["cxx"])
+
+
 class _CliBuild:
     """`tpyc prog.py --build` with the toolchain faked: the compile and link
     steps create their outputs, `shared_pch` and the sweep are recorded."""
 
-    def __init__(self, monkeypatch, tmp_path, *, pch_builds: bool):
+    def __init__(self, monkeypatch, tmp_path, *, pch_builds: bool, config=None):
         from tpyc import cli
         self.events: list[str] = []
         self.pch_kwargs: list[dict] = []
@@ -808,7 +831,10 @@ class _CliBuild:
                 kwargs["on_build"]()
             return header
 
+        self.runs: list[tuple[list[str], dict]] = []
+
         def fake_run(cmd, *args, **kwargs):
+            self.runs.append((cmd, kwargs))
             self.events.append("link" if "-c" not in cmd else "compile")
             if "-o" in cmd:
                 out = Path(cmd[cmd.index("-o") + 1])
@@ -820,13 +846,15 @@ class _CliBuild:
         monkeypatch.setattr(cli, "sweep_shared_cache_best_effort",
                             lambda report: self.events.append("sweep"))
         monkeypatch.setattr(subprocess, "run", fake_run)
+        _isolate_build_settings(monkeypatch, tmp_path)
         monkeypatch.setattr(cli, "_resolve_cpp_config",
-                            lambda args: CppCompilerConfig(compiler=["g++"]))
+                            lambda args: (config or _plain_config)())
         monkeypatch.setattr(cli.ProgressPrinter, "pch",
                             lambda printer, elapsed: self.pch_lines.append(elapsed))
 
     def run(self, *extra: str) -> int:
         from tpyc import cli
+        self.tmp_path.mkdir(parents=True, exist_ok=True)
         prog = self.tmp_path / "prog.py"
         prog.write_text("print(1)\n")
         self.monkeypatch.setattr(sys, "argv", [
@@ -849,11 +877,9 @@ def test_cli_plain_build_does_not_force_the_pch(monkeypatch, tmp_path):
 
 def test_cli_reports_the_pch_only_when_it_was_built(monkeypatch, tmp_path):
     built = _CliBuild(monkeypatch, tmp_path / "built", pch_builds=True)
-    (tmp_path / "built").mkdir()
     assert built.run() == 0
     assert len(built.pch_lines) == 1
     reused = _CliBuild(monkeypatch, tmp_path / "reused", pch_builds=False)
-    (tmp_path / "reused").mkdir()
     assert reused.run() == 0
     assert reused.pch_lines == []
 
@@ -874,3 +900,236 @@ def test_cli_reports_a_malformed_max_age(monkeypatch, tmp_path, capsys):
     monkeypatch.setenv(toolchain.CACHE_MAX_AGE_ENV, "a week")
     assert build.run() == 0
     assert "warning: cache sweep skipped" in capsys.readouterr().err
+
+
+# -- build steps share ccache entries across programs ------------------------
+
+def _record_runs(monkeypatch) -> list[tuple[list[str], dict]]:
+    runs: list[tuple[list[str], dict]] = []
+
+    def fake_run(cmd, **kwargs):
+        runs.append((cmd, kwargs))
+        return subprocess.CompletedProcess(cmd, 0, "", "")
+
+    monkeypatch.setattr(subprocess, "run", fake_run)
+    return runs
+
+
+def test_build_step_runs_from_its_base_dir_only_when_it_shares(monkeypatch, tmp_path):
+    runs = _record_runs(monkeypatch)
+    monkeypatch.setenv("CCACHE_SLOPPINESS", "pch_defines")
+    toolchain.run_build_step(["ccache", "g++", "-c", "x.cpp"], tmp_path, shares_build_dir=True)
+    [(_, shared)] = runs
+    assert shared["cwd"] == tmp_path
+    assert shared["env"]["CCACHE_BASEDIR"] == str(tmp_path)
+    assert shared["env"]["CCACHE_SLOPPINESS"] == "pch_defines"
+    runs.clear()
+    toolchain.run_build_step(["g++", "-c", "x.cpp"], tmp_path, shares_build_dir=False)
+    # The caller's cwd and environment, as a plain subprocess.run has them.
+    [(_, own)] = runs
+    assert "cwd" not in own and "env" not in own
+
+
+# Each kind of setting the user can give, as the config it yields: a word
+# in the compiler command ($CXX), a relative compiler (--cxx or $CXX), a
+# bare name a relative PATH element finds, construction-time extra flags.
+_USER_SETTING_CONFIGS = {
+    "cxx-word": lambda: CppCompilerConfig.for_compiler(["cxx", "-Iinc", "-include", "probe.h"]),
+    "cxx-response-file": lambda: CppCompilerConfig.for_compiler(["cxx", "@opts"]),
+    "relative-compiler": lambda: CppCompilerConfig.for_compiler(["bin/cxx"]),
+    "dot-compiler": lambda: CppCompilerConfig.for_compiler(["./bin/cxx"]),
+    "extra-flags": lambda: CppCompilerConfig(compiler=["cxx"], extra_flags=["-Iinc"]),
+}
+
+
+@pytest.mark.parametrize("kind", sorted(_USER_SETTING_CONFIGS))
+def test_user_compiler_settings_do_not_share_the_build_dir(monkeypatch, tmp_path, kind):
+    _isolate_build_settings(monkeypatch, tmp_path)
+    monkeypatch.chdir(tmp_path)
+    config = _USER_SETTING_CONFIGS[kind]()
+    assert not config.shares_build_dir
+
+
+@pytest.mark.parametrize("var", BUILD_PATH_ENV)
+def test_a_search_path_variable_does_not_share_the_build_dir(monkeypatch, tmp_path, var):
+    _isolate_build_settings(monkeypatch, tmp_path)
+    monkeypatch.setenv(var, "")
+    assert _plain_config().shares_build_dir, "an empty variable names nothing"
+    monkeypatch.setenv(var, "inc")
+    assert not _plain_config().shares_build_dir
+
+
+def test_a_relative_path_element_finding_the_compiler_does_not_share(monkeypatch, tmp_path):
+    _isolate_build_settings(monkeypatch, tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("PATH", "bin")
+    assert not _plain_config().shares_build_dir
+
+
+def test_tpycs_own_compiler_command_shares_the_build_dir(monkeypatch, tmp_path):
+    bin_dir = _isolate_build_settings(monkeypatch, tmp_path)
+    assert _plain_config().shares_build_dir
+    assert CppCompilerConfig(compiler=[str(bin_dir / "cxx")]).shares_build_dir
+    # zig's subcommand and the darwin pin are tpyc's own words.
+    assert CppCompilerConfig.for_compiler([str(bin_dir / "zig"), "c++"]).shares_build_dir
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine",
+                        lambda compiler: "arm64-apple-darwin23.0.0")
+    darwin = CppCompilerConfig.for_compiler(["cxx"])
+    assert darwin.compiler == ["cxx", f"-mmacosx-version-min={toolchain.MACOS_VERSION_MIN}"]
+    assert darwin.shares_build_dir
+    assert not CppCompilerConfig.for_compiler(["cxx", "-DX"]).shares_build_dir
+    # Re-decided with the command that replaces it.
+    darwin.use_compiler(["cxx", "-Iinc"])
+    assert not darwin.shares_build_dir
+
+
+def test_cxx_from_the_environment_or_a_relative_path_is_not_rewritten(monkeypatch, tmp_path):
+    _isolate_build_settings(monkeypatch, tmp_path)
+    monkeypatch.setattr(toolchain, "warn_toolchain_unsupported", lambda compiler: None)
+    monkeypatch.chdir(tmp_path)
+    relative = CppCompilerConfig.from_env("bin/cxx")
+    assert relative.compiler == ["bin/cxx"] and not relative.shares_build_dir
+    monkeypatch.setenv("CXX", "cxx -Iinc @opts")
+    from_env = CppCompilerConfig.from_env()
+    assert from_env.compiler == ["cxx", "-Iinc", "@opts"] and not from_env.shares_build_dir
+    monkeypatch.setenv("CXX", "cxx")
+    assert CppCompilerConfig.from_env().shares_build_dir
+
+
+_USER_WORDS = ["-Iinc", "-include", "probe.h", "@opts"]
+
+
+@pytest.mark.parametrize("kind", ["cxx-word", "extra-flags", "relative-compiler",
+                                  *BUILD_PATH_ENV])
+@pytest.mark.parametrize("jobs", ["1", "2"])
+def test_cli_with_user_settings_runs_from_the_callers_cwd(monkeypatch, tmp_path, kind, jobs):
+    configs = {
+        "cxx-word": lambda: CppCompilerConfig.for_compiler(["cxx", *_USER_WORDS]),
+        "extra-flags": lambda: CppCompilerConfig(compiler=["cxx"], extra_flags=_USER_WORDS),
+        "relative-compiler": lambda: CppCompilerConfig.for_compiler(["bin/cxx"]),
+    }
+    build = _CliBuild(monkeypatch, tmp_path, pch_builds=False, config=configs.get(kind))
+    if kind in BUILD_PATH_ENV:
+        monkeypatch.setenv(kind, "inc")
+    monkeypatch.chdir(tmp_path)
+    assert build.run("-j", jobs) == 0
+    assert build.runs
+    for cmd, kwargs in build.runs:
+        assert "cwd" not in kwargs and "env" not in kwargs
+    compiles = [cmd for cmd, _ in build.runs if "-c" in cmd]
+    if kind == "cxx-word":
+        assert all(cmd[:5] == ["cxx", *_USER_WORDS] for cmd in compiles)
+    elif kind == "extra-flags":
+        assert all(any(cmd[i:i + 4] == _USER_WORDS for i in range(len(cmd)))
+                   for cmd in compiles if not cmd[-1].endswith(".c"))
+    elif kind == "relative-compiler":
+        assert all(cmd[0] == "bin/cxx" for cmd, _ in build.runs)
+
+
+def _runtime_step(cmd: list[str]) -> bool:
+    return "-c" in cmd and os.sep + "rt_" in cmd[cmd.index("-o") + 1]
+
+
+@pytest.mark.parametrize("extra", [(), ("--debug",), ("-j", "2")])
+def test_cli_build_steps_run_from_the_program_build_dir(monkeypatch, tmp_path, extra):
+    from tpyc import cli
+    build = _CliBuild(monkeypatch, tmp_path, pch_builds=False)
+    timed = []
+    real_timed_run = cli._timed_run
+
+    def timed_run(cmd, base_dir, shares_build_dir):
+        timed.append(cmd)
+        return real_timed_run(cmd, base_dir, shares_build_dir)
+
+    monkeypatch.setattr(cli, "_timed_run", timed_run)
+    assert build.run(*extra) == 0
+    base = tmp_path / "out"
+    assert {"compile", "link"} <= set(build.events)
+    for _, kwargs in build.runs:
+        assert kwargs["cwd"] == base
+        assert kwargs["env"]["CCACHE_BASEDIR"] == str(base)
+    compiles = [cmd for cmd, _ in build.runs if "-c" in cmd]
+    # -j 2 compiles through the pool, the others one by one.
+    assert len(timed) == (len(compiles) if "-j" in extra else 0) and len(compiles) > 1
+    if "--debug" in extra:
+        # Debug info keeps absolute source paths, so a debugger finds them
+        # from any directory.
+        assert all("-g" in cmd for cmd in compiles)
+        assert not any(arg.startswith("-fdebug-prefix-map")
+                       for cmd, _ in build.runs for arg in cmd)
+
+
+def test_cli_runtime_tus_take_neither_the_program_headers_nor_the_pch(monkeypatch, tmp_path):
+    build = _CliBuild(monkeypatch, tmp_path, pch_builds=False)
+    assert build.run() == 0
+    base = str(tmp_path / "out")
+    pch = str(tmp_path / "entry" / PCH_HEADER)
+    runtime = [cmd for cmd, _ in build.runs if _runtime_step(cmd)]
+    assert runtime
+    for cmd in runtime:
+        assert "-include" not in cmd and pch not in cmd
+        assert os.path.join(base, "include") not in cmd
+    generated = [cmd for cmd, _ in build.runs if "-c" in cmd and not _runtime_step(cmd)]
+    assert generated and all(pch in cmd for cmd in generated)
+
+
+def test_cli_build_steps_are_the_same_relative_to_the_build_dir(monkeypatch, tmp_path):
+    # ccache rewrites only the paths under CCACHE_BASEDIR: identical steps
+    # after that rewrite are what lets a second program hit every stdlib and
+    # runtime entry the first one stored.
+    steps = []
+    for name in ("a", "b"):
+        build = _CliBuild(monkeypatch, tmp_path / name, pch_builds=False)
+        assert build.run() == 0
+        # The fake PCH sits next to each program; the real one is shared.
+        pch_dir = str(tmp_path / name / "entry")
+        base = str(tmp_path / name / "out")
+        steps.append([[arg.replace(base, "<BASE>").replace(pch_dir, "<PCH>") for arg in cmd]
+                      for cmd, _ in build.runs])
+    assert steps[0] == steps[1]
+    assert any("<BASE>/src/" in arg for cmd in steps[0] for arg in cmd)
+
+
+def test_build_commands_are_absolute_for_relative_inputs(monkeypatch, tmp_path):
+    from tpyc.compiler import BuildLayout
+
+    monkeypatch.chdir(tmp_path)
+    layout = BuildLayout(Path("rel"), "main")
+    cmds = layout.build_cpp_commands(
+        Path("rt/include"), [Path("rel/main.d/src/main.cpp")],
+        extra_include_dirs=[Path("tp/include")], force_includes=[Path("pre/pch.hpp")],
+        c_sources=[(Path("tp/src/vendor.c"), ["-DV"])],
+        runtime_cpp_sources=[Path("rt/src/x.cpp")])
+    assert layout.base_dir == tmp_path / "rel" / "main.d"
+    for cmd in cmds:
+        paths = [a for a in cmd if "/" in a]
+        assert paths and all(os.path.isabs(p) for p in paths)
+    tp_include = ["-I", str(tmp_path / "tp" / "include")]
+    pre = ["-include", str(tmp_path / "pre" / "pch.hpp")]
+
+    def has(cmd, pair):
+        return any(cmd[i:i + 2] == pair for i in range(len(cmd)))
+
+    [vendor] = [cmd for cmd in cmds if cmd[-1].endswith("vendor.c")]
+    assert vendor[-1] == str(tmp_path / "tp" / "src" / "vendor.c")
+    [runtime] = [cmd for cmd in cmds if cmd[-1].endswith("x.cpp")]
+    assert has(runtime, tp_include) and not has(runtime, pre)
+    [generated] = [cmd for cmd in cmds if cmd[-1].endswith("main.cpp")]
+    assert has(generated, tp_include) and has(generated, pre)
+
+
+def test_build_commands_keep_dotdot_after_a_symlinked_output_dir(monkeypatch, tmp_path):
+    # `-o alias/../out` with `alias` a symlink names `out` beside the link's
+    # target; a lexically collapsed `./out` is another directory.
+    from tpyc.compiler import BuildLayout
+
+    (tmp_path / "elsewhere" / "child").mkdir(parents=True)
+    (tmp_path / "alias").symlink_to(tmp_path / "elsewhere" / "child")
+    monkeypatch.chdir(tmp_path)
+    layout = BuildLayout(Path("alias/../out"), "main", "release")
+    cmds = layout.build_cpp_commands(Path("rt/include"), [layout.src_dir / "main.cpp"])
+    real_build_dir = tmp_path / "elsewhere" / "out" / "main.d" / "release"
+    assert real_build_dir.is_dir() and not (tmp_path / "out").exists()
+    assert layout.base_dir.resolve() == real_build_dir.parent
+    outputs = [Path(cmd[cmd.index("-o") + 1]) for cmd in cmds]
+    assert outputs and all(o.parent.resolve() == real_build_dir for o in outputs)
