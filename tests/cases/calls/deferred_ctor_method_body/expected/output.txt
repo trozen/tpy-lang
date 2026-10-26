@@ -1,0 +1,27 @@
+init 1
+field 1
+method [1]
+gen 1
+stat ['s']
+clsm [2.5]
+cls local 1
+cls ranked 10
+nested [3]
+ar 1
+genm 1
+co 1
+self2 1
+comp [10, 10] [0, 7, 7]
+disp 10 [1, 7]
+alias [6]
+reexported 4
+alias typed 0 [2]
+bounded 1
+borrow 1 0
+int param 2
+alias named T 1
+try [8]
+try done
+mutated inside [5, 7, 9] 1
+mutated caller [5, 7, 9]
+explicit [1]

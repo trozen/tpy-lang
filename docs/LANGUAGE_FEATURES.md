@@ -5639,7 +5639,15 @@ consume(c)           # T = int32, resolved from parameter type
 
 The pending type is eagerly resolved the moment all type parameters are
 constrained. While pending, field access is rejected with clear diagnostics.
-Works for all generic records (user-defined and library types).
+Works for all generic records (user-defined and library types), in every
+function body: a free function, a method of any kind (static, class, generic,
+`@auto_readonly`, generator, async), a nested def (one completing an instance
+of its enclosing body is refused:
+BUGS.md#nested-def-completes-pending-local-crash) and module-level code (a
+function reading a module-level instance does not lower yet:
+BUGS.md#module-pending-generic-global-read-rejects). The
+class may be spelled through an import alias or as `cls` in a classmethod; the
+instance has the class's own type either way.
 See `docs/LOCAL_TYPE_DEDUCTION.md` Phase 7a.
 
 **Not yet supported**: inference from field assignment targets (`self.field = expr`)
@@ -7026,7 +7034,7 @@ Inside a function a bare write to a name binds a fresh **local** for the whole b
 - `from mod import func, Record, Protocol` - import specific items. `from mod import Cls` makes `Cls(...)` and `Cls.staticmethod(...)` (incl. inherited via MRO and method-level type args) work; also `Cls.field` for class constants and `Cls.Inner` for nested types
 - `from mod import *` - star import; respects `__all__` if defined (see the dedicated star-import bullet above for `__all__` literal forms and known limitations)
 - `import mod` then `mod.func()` / `mod.CONST` / `mod.Record` - module-qualified access (calls, variables, types). Three-level chains through a module-namespace variable (`mod.Cls.staticmethod(...)`, `mod.Cls.CONST`) also work
-- `from mod import X as Y` - import with alias; `Y(...)` and `Y.staticmethod(...)` route to the same record as the un-aliased form
+- `from mod import X as Y` - import with alias; `Y(...)` and `Y.staticmethod(...)` route to the same record as the un-aliased form, and a generic `Y(...)` builds a value of `X`'s own type (`Y[int32]` and `X[int32]` are one type). The header keeps the name as `using Y = ::ns::X;`, or an alias template (`template<typename T> using Y = ::ns::X<T>;`) for a generic class, re-exports included
 - `from pkg import submod` - bind submodule as namespace (`submod.fn()`, `submod.Type` annotations, `submod.Cls.staticmethod(...)`)
 - `import pkg.sub` - dotted import; `pkg.sub.fn()`, `pkg.sub.CONST`, and `pkg.sub.Cls.staticmethod(...)` all work
 

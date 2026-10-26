@@ -1,0 +1,1 @@
+main.py:8: error: Cannot infer type argument T for 's'; add explicit type args (e.g., Sack[T]()) or call a method that constrains the type parameters

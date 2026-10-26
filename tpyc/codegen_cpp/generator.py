@@ -2432,8 +2432,24 @@ class CodeGenerator:
             if skip(info, original_name):
                 continue
             qualified = qualified_cpp_name(source_module, original_name)
+            params = (list(info.type_params)
+                      if isinstance(info, RecordInfo) else [])
+            # A parameter named like the alias would shadow it in its own
+            # declaration (`template<typename T> using T = ...`).
+            for i, tp in enumerate(params):
+                while tp == local_name or tp in params[:i] + params[i + 1:]:
+                    tp += "_"
+                params[i] = tp
             if local_name == original_name:
                 hpp.write(f"using {qualified};\n")
+            elif params:
+                # A class template's alias is an alias template; its bounds
+                # stay on the class, checked where it is instantiated.
+                parts = self.protocols.gen_record_template_parts(
+                    params, {}, info.type_param_kinds)
+                hpp.write(f"template<{', '.join(parts)}>\n"
+                          f"using {local_name} = "
+                          f"{qualified}<{', '.join(params)}>;\n")
             else:
                 hpp.write(f"using {local_name} = {qualified};\n")
             any_written = True

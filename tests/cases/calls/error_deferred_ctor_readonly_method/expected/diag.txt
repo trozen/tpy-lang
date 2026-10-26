@@ -1,0 +1,1 @@
+main.py:32: error: Cannot pass readonly[list[Sink]] as mutable list[Sink] in argument 'xs'

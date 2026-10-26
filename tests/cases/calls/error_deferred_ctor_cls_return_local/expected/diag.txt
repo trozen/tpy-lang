@@ -1,0 +1,1 @@
+main.py:19: error: Cannot return local or temporary as reference. Reference type 'W[int32]' is returned by reference. Use Own[W[int32]] to return by value.

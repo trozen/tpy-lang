@@ -1,0 +1,1 @@
+main.py:21: error: Cannot infer type arguments for 'Bag'. Please specify explicitly: Bag[T](...)

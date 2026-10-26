@@ -7571,19 +7571,9 @@ class ExpressionAnalyzer:
     def _names_class(self, expr: TpyExpr) -> bool:
         """Whether `expr` names a class a call constructs: a class or enum
         the type-path resolver reaches (`C`, `m.Outer.Inner`). A function,
-        module, protocol, variable or type form (`Fn`, `Own`) is not."""
-        if isinstance(expr, TpyName):
-            ns = self.ctx.func.current_ns
-            binding = ns.lookup(expr.name) if ns else None
-            # `cls` in a classmethod is the class as a value, which needs
-            # `type[T]`; its own diagnostic says so.
-            if (binding is not None and binding.kind == BindingKind.RECORD
-                    and binding.is_sema_alias):
-                return False
-        ref = self.ctx.type_ref(expr)
-        if ref is None:
-            return False
-        return ref.kind == SymbolKind.ENUM or not ref.info.is_keyword_stub
+        module, protocol, variable or type form (`Fn`, `Own`) is not, nor
+        is `cls` in a classmethod (`SemanticContext.class_ref`)."""
+        return self.ctx.class_ref(expr) is not None
 
     def _try_class_factory(self, expr: 'TpyName | TpyFieldAccess',
                            hint: SlotHint) -> CallableType | None:

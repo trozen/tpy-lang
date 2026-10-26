@@ -1448,20 +1448,6 @@ class CallAnalyzer:
                     if subst else ctor)
         return resolved, subst
 
-    def _ctor_type_name(self, expr: TpyCall, record: RecordInfo) -> str:
-        """The name a construction's result type carries.
-
-        Normally the callee's local name, so an aliased import (`from m import
-        Box as B`) keeps rendering through its C++ `using` alias. A binding
-        sema introduced as an alias has no such spelling (`cls` in a
-        @classmethod), so that names the record itself.
-        """
-        ns = self.ctx.func.current_ns
-        binding = ns.lookup(expr.func_name) if ns is not None else None
-        if binding is not None and binding.is_sema_alias:
-            return record.name
-        return expr.func_name
-
     def _callee_binding(self, expr: TpyCall) -> 'NameBinding | None':
         """What a call's callee name binds: in the scope being analyzed,
         or, for a filled parameter default's constructor, where the
@@ -7508,7 +7494,7 @@ class CallAnalyzer:
                 if region is not None:
                     pending.kwargs_region = region
             return PendingGenericInstanceType(
-                record_name=pending.record_name,
+                record_name=record.name,
                 instance_id=pending.instance_id)
         # Inference failed -- try deferred resolution (Phase 7a)
         if self._can_defer_generic_inference(record, expr):
@@ -7588,7 +7574,7 @@ class CallAnalyzer:
         """The type construction `expr` of generic `record` builds at the
         type arguments `subst`, checked against the bounds and stamped."""
         resolved = NominalType(
-            self._ctor_type_name(expr, record),
+            record.name,
             tuple(subst[p] for p in record.type_params),
             _module_qname=record.qualified_name())
         bound_error = self.construction_bound_error(record, resolved.name,
@@ -7712,11 +7698,9 @@ class CallAnalyzer:
 
     def _can_defer_generic_inference(self, record: RecordInfo, expr: TpyCall) -> bool:
         """Check whether a generic constructor can use deferred type inference."""
-        # Only in function bodies (resolve_all runs there)
+        # Keeps non-function scopes out: a class-level initializer's type
+        # must be concrete where it is written.
         if not isinstance(self.ctx.func.current_function, TpyFunction):
-            return False
-        # Not inside a class body (field types must be concrete)
-        if self.ctx.record_ctx.record is not None:
             return False
         # A construction with arguments binds them to its constructor
         # (`infer_generic_construction`), which checks their count.
@@ -7767,14 +7751,14 @@ class CallAnalyzer:
             instance_id=instance_id,
             variable_name=expr.func_name,
             record_info=record,
-            record_name=expr.func_name,
             type_params=list(record.type_params),
             inferred=inferred,
             expr=expr,
             kwargs_region=region,
         )
         self.ctx.func.pending_generic_instances[instance_id] = info
-        return PendingGenericInstanceType(record_name=expr.func_name, instance_id=instance_id)
+        return PendingGenericInstanceType(record_name=record.name,
+                                          instance_id=instance_id)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
         """Analyze a legacy function call (fallback path): committed as a

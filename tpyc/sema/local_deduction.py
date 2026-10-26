@@ -13,9 +13,10 @@ from typing import TYPE_CHECKING, Callable
 
 from ..coercions import CoercionContext
 from ..parse import TpyExpr, TpyStmt, TpyName, TpyCall, TpyMethodCall, TpyCoerce, TpyFunction, TpyListRepeat, TpyAugAssign
-from ..parse.nodes import (TpyStrLiteral, TpySubscript, TpyArrayLiteral,
+from ..parse.nodes import (name_path, TpyStrLiteral, TpySubscript, TpyArrayLiteral,
                            TpyVarDecl, TpyNoneLiteral, TpyTupleLiteral, TpySlice)
 from ..typesys import (
+    PendingGenericInstanceInfo, RecordInfo,
     contains_pending_num,
 
     collapse_tuple_own_elements,
@@ -2387,6 +2388,20 @@ class LocalTypeDeduction:
             f"add a type annotation (e.g., {name}: T | None = None)"
         )
 
+    def _writable_class_name(self, info: PendingGenericInstanceInfo) -> str:
+        """A name the user can write at the construction for the class
+        pending instance `info` builds: the callee as written when it names
+        that class in scope (an import alias), else the class's own name
+        (`cls` in a classmethod is no type)."""
+        ref = self.ctx.class_ref(info.expr.func)
+        path = name_path(info.expr.func)
+        if (ref is not None and path is not None
+                and isinstance(ref.info, RecordInfo)
+                and ref.info.qualified_name()
+                == info.record_info.qualified_name()):
+            return ".".join(path)
+        return info.record_info.name
+
     def _check_unresolved_pending_generics(self) -> None:
         """Reject pending generic instances that were never fully resolved."""
         if not self.ctx.func.pending_generic_instances:
@@ -2397,7 +2412,7 @@ class LocalTypeDeduction:
         raise self.ctx.error(
             f"Cannot infer type argument{'s' if len(unresolved) != 1 else ''} "
             f"{', '.join(unresolved)} for '{info.variable_name}'; "
-            f"add explicit type args (e.g., {info.record_name}"
+            f"add explicit type args (e.g., {self._writable_class_name(info)}"
             f"[{', '.join(info.type_params)}]()) "
             f"or call a method that constrains the type parameters",
             info.expr,

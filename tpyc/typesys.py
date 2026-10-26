@@ -6842,7 +6842,6 @@ class PendingGenericInstanceInfo:
     instance_id: int
     variable_name: str
     record_info: 'RecordInfo'
-    record_name: str
     type_params: list[str]
     inferred: dict[str, 'TpyType']
     expr: 'TpyCall'

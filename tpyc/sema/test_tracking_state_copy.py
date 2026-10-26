@@ -144,7 +144,7 @@ def _populated() -> FunctionTrackingState:
         # annotation of a node type announces.
         pending_generic_instances={1: PendingGenericInstanceInfo(
             instance_id=1, variable_name="g",
-            record_info=RecordInfo(name="R", fields=[]), record_name="R",
+            record_info=RecordInfo(name="R", fields=[]),
             type_params=[], inferred={},
             expr=N.TpyCall(N.TpyName("R"), []))},
         current_ns=_namespace_with_function(),

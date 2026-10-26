@@ -1,0 +1,1 @@
+main.py:17: error: Cannot infer type argument T for 'b'; add explicit type args (e.g., W[T]()) or call a method that constrains the type parameters

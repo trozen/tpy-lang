@@ -61,7 +61,7 @@ from ..type_def_registry import (
 from ..typesys import (
     ConcreteFrameType, FunctionInfo, LiteralType, NominalType, OptionalType,
     OwnType,
-    PendingNumType, PendingViewType, PtrType,
+    PendingGenericInstanceType, PendingNumType, PendingViewType, PtrType,
     ReadonlyType, RecordInfo, TpyType, TupleType, UnionType,
     contains_type_param, declares_no_writes, held_whole_borrow_sources, is_bufferless_scalar,
     is_dyn_protocol, is_open_type_param_return, is_owned_leaf, is_protocol_type,
@@ -911,8 +911,9 @@ def call_result_is_fresh(ctx: 'SemanticContext', call: TpyExpr, *,
         if is_borrowing_view_type(ct):
             return not proof and not call.args
         return True
-    if (isinstance(call, TpyCall) and isinstance(call.func, TpyName)
-            and call.func_name in ctx.registry.records):
+    # A generic construction a later use completes is typed pending until
+    # then, however the callee is spelled (`cls(xs)`, an import alias).
+    if isinstance(ctx.get_expr_type(call), PendingGenericInstanceType):
         return True
     if lend.kind is CalleeFact.UNRESOLVED:
         return False

@@ -1634,8 +1634,15 @@ class MethodAnalyzer:
         """
         info = self.ctx.func.pending_generic_instances.get(obj_type.instance_id)
         if info is None:
+            # An instance another body holds pending (a nested def's
+            # capture, BUGS.md#nested-def-completes-pending-local-crash) is
+            # not completed here: refused as an uninferred construction.
+            name = obj_type.record_name
+            record = self.ctx.registry.get_record(name)
+            params = ", ".join(record.type_params) if record else "T"
             raise self.ctx.error(
-                f"Internal error: pending generic instance {obj_type.instance_id} not found", expr)
+                f"Cannot infer type arguments for '{name}'. "
+                f"Please specify explicitly: {name}[{params}](...)", expr)
 
         record = info.record_info
         overloads = record.get_method_overloads(expr.method)
@@ -1798,7 +1805,7 @@ class MethodAnalyzer:
         inferred = dict(info.inferred)
         # Build pattern with TypeParamRefs for unresolved params
         pattern = NominalType(
-            info.record_name,
+            info.record_info.name,
             tuple(inferred.get(tp, TypeParamRef(tp)) for tp in info.type_params),
             _module_qname=info.record_info.qualified_name(),
         )
@@ -1811,7 +1818,7 @@ class MethodAnalyzer:
                         and isinstance(expected_arg, TpyType)
                         and info.inferred[tp] != expected_arg):
                     raise SemanticError(
-                        f"Conflicting type for '{tp}' in '{info.record_name}': "
+                        f"Conflicting type for '{tp}' in '{info.record_info.name}': "
                         f"previously inferred as '{info.inferred[tp]}', "
                         f"but expected type requires '{expected_arg}'",
                         loc,
@@ -1840,7 +1847,7 @@ class MethodAnalyzer:
                               inferred: dict[str, TpyType]) -> NominalType:
         """The type a pending generic instance resolves to at `inferred`."""
         return NominalType(
-            info.record_name,
+            info.record_info.name,
             tuple(inferred[tp] for tp in info.type_params),
             _module_qname=info.record_info.qualified_name(),
         )

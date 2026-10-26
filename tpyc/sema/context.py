@@ -3286,6 +3286,23 @@ class SemanticContext:
             path.append(member)
         return self.type_ref_path(path)
 
+    def class_ref(self, expr: TpyExpr) -> SymbolBinding | None:
+        """The class or enum `expr` names as one a call constructs (`C`,
+        `m.Outer.Inner`), or None. A function, module, protocol, variable
+        or type form (`Fn`, `Own`) is not, and neither is `cls` in a
+        classmethod: the class as a value, which needs `type[T]`."""
+        if isinstance(expr, TpyName):
+            ns = self.func.current_ns
+            binding = ns.lookup(expr.name) if ns else None
+            if (binding is not None and binding.kind == BindingKind.RECORD
+                    and binding.is_sema_alias):
+                return None
+        ref = self.type_ref(expr)
+        if ref is None or (ref.kind != SymbolKind.ENUM
+                           and ref.info.is_keyword_stub):
+            return None
+        return ref
+
     def type_ref_path(self, path: 'list[str]') -> SymbolBinding | None:
         """`type_ref` over the names of a dotted path (`["m", "Outer",
         "Err"]`), for a position that holds the names rather than an
