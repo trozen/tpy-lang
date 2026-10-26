@@ -1,5 +1,4 @@
-COPY 5
-COPY 1
+joined_swapped copies [1, 5]
 joined_swapped 1 1
 COPY 0
 borrowed_arm 1 2

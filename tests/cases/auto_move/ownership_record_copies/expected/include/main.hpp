@@ -17,6 +17,8 @@ struct Wrap;
 struct Holder;
 struct K;
 
+extern std::vector<bool>* recording;
+extern std::vector<int32_t>* recorded;
 extern A* mb;
 extern std::vector<A>* mout;
 inline constexpr std::string_view __name__ = "__main__";
@@ -328,10 +330,17 @@ inline A& A::operator=(const A& other) {
 }
 
 // def __copy__(self) -> Own[Self]:
-//     print("COPY", self.items[0])
+//     if recording[0]:
+//         recorded.append(self.items[0])
+//     else:
+//         print("COPY", self.items[0])
 //     return A(self.items[0])
 inline A A::__copy__() const {
-    std::cout << "COPY" << " " << ::tpy::__getitem__(this->items, 0) << "\n" << ::tpy::check_signals;
+    if (::tpy::__getitem__((*recording), 0)) {
+        recorded->push_back(::tpy::__getitem__(this->items, 0));
+    } else {
+        std::cout << "COPY" << " " << ::tpy::__getitem__(this->items, 0) << "\n" << ::tpy::check_signals;
+    }
     return A(::tpy::__getitem__(this->items, 0));
 }
 

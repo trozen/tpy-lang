@@ -4,6 +4,12 @@ import asyncio
 from typing import Any, Callable, Iterator, Self
 from tpy import int32, Own, Fn, copy
 
+# While `recording[0]` is set, copies are collected in `recorded` instead of
+# printed: a tuple built with several copies constructs its elements in the
+# C++ standard library's member order, which differs between toolchains.
+recording = [False]
+recorded: list[int32] = []
+
 
 class A:
     items: list[int32]
@@ -12,7 +18,10 @@ class A:
         self.items = [n]
 
     def __copy__(self) -> Own[Self]:
-        print("COPY", self.items[0])
+        if recording[0]:
+            recorded.append(self.items[0])
+        else:
+            print("COPY", self.items[0])
         return A(self.items[0])
 
 
@@ -335,7 +344,10 @@ def mk() -> Iterator[Own[A]]:
 def main() -> None:
     h = H()
     a = A(5)
+    recording[0] = True
     joined_swapped(h, a, True)
+    recording[0] = False
+    print("joined_swapped copies", sorted(recorded))
     a.items.append(9)
     t0, t1 = h.t
     print("joined_swapped", len(t0.items), len(t1.items))

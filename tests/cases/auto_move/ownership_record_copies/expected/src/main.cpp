@@ -6,6 +6,8 @@
 
 namespace tpyapp::main {
 
+std::vector<bool>* recording{};
+std::vector<int32_t>* recorded{};
 A* mb{};
 std::vector<A>* mout{};
 
@@ -511,7 +513,10 @@ __gen_mk mk() {
 // def main() -> None:
 //     h = H()
 //     a = A(5)
+//     recording[0] = True
 //     joined_swapped(h, a, True)
+//     recording[0] = False
+//     print("joined_swapped copies", sorted(recorded))
 //     a.items.append(9)
 //     t0, t1 = h.t
 //     print("joined_swapped", len(t0.items), len(t1.items))
@@ -628,7 +633,10 @@ __gen_mk mk() {
 void main() {
     H h = H();
     A a = A(5);
+    ::tpy::__setitem__((*recording), 0, true);
     ::tpyapp::main::joined_swapped(h, a, true);
+    ::tpy::__setitem__((*recording), 0, false);
+    std::cout << "joined_swapped copies" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*recorded))) << "\n" << ::tpy::check_signals;
     a.items.push_back(9);
     A& t0 = std::get<0>(h.t);
     A& t1 = std::get<1>(h.t);
@@ -754,6 +762,12 @@ void main() {
 // # each copy, and each section mutates the original after the boundary.
 // import asyncio
 //
+// # While `recording[0]` is set, copies are collected in `recorded` instead of
+// # printed: a tuple built with several copies constructs its elements in the
+// # C++ standard library's member order, which differs between toolchains.
+// recording = [False]
+// recorded: list[int32] = []
+//
 // main()
 // # module level: the loop variable rebound to existing storage copies, warned
 // # with the binding inside the loop, as the function twin is
@@ -770,11 +784,15 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
+    static std::vector<bool> __global_slot_1 = {false};
+    recording = &__global_slot_1;
+    static std::vector<int32_t> __global_slot_2 = std::vector<int32_t>{};
+    recorded = &__global_slot_2;
     ::tpyapp::main::main();
-    static A __global_slot_1 = A(13);
-    mb = &__global_slot_1;
-    static std::vector<A> __global_slot_2 = std::vector<A>{};
-    mout = &__global_slot_2;
+    static A __global_slot_3 = A(13);
+    mb = &__global_slot_3;
+    static std::vector<A> __global_slot_4 = std::vector<A>{};
+    mout = &__global_slot_4;
     {
         auto __src_0 = ::tpyapp::main::mk();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
