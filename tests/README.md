@@ -48,8 +48,14 @@ and at configure time one process per machine, at most once an hour, removes
 the entries unused for `$TPYC_CACHE_MAX_AGE` (`"<n>d"`, default `3d`, `0`
 turns it off) and the exec-result markers unused for 30 days or that age,
 whichever is longer (a hit refreshes a marker). Remote workers sweep their
-own host's cache the same way. The REPL's PCH lives in the same `pch/`
-directory (`repl-<key>`). One `tpy| cache sweep:` line reports what went.
+own host's cache the same way. The PCH cache is shared with `tpy` and the
+REPL: one builder, `tpyc.toolchain.shared_pch`, keys an entry on the runtime
+headers' content and the PCH build command (opt flags included), so the
+harness, a CLI release build, a CLI `--debug` build and the REPL each use
+their own entry under `pch/`, and both `tpy` (after a build) and the REPL (at
+startup) sweep as well (`docs/BUILD_PIPELINE.md` "Precompiled Headers").
+Leftover `repl-<key>` entries from older REPLs age out like the rest. One
+`tpy| cache sweep:` line reports what went.
 An entry no session has marked yet counts as used when its loader file was
 last read (atime) or the entry itself last changed, and is kept for at least
 14 days, so a run with an older harness keeps its entries even where atime

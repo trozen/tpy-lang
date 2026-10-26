@@ -179,3 +179,19 @@ def test_mark_is_best_effort(tmp_path):
     assert not (tmp_path / "absent").exists()
     toolchain.mark_cache_entry_used(tmp_path)
     assert (tmp_path / toolchain.CACHE_USED_MARK).exists()
+
+
+def test_best_effort_sweep_reports_only_a_malformed_max_age(tmp_path, monkeypatch):
+    """A cache root the sweep cannot write (here its lock path is a
+    directory) must not warn on every build; a malformed max age is the
+    user's to fix and is reported."""
+    monkeypatch.delenv(toolchain.CACHE_MAX_AGE_ENV, raising=False)
+    (tmp_path / ".sweep.lock").mkdir()
+    with pytest.raises(OSError):
+        toolchain.sweep_shared_cache(tmp_path)
+    reports: list[str] = []
+    assert toolchain.sweep_shared_cache_best_effort(reports.append, tmp_path) is None
+    assert reports == []
+    monkeypatch.setenv(toolchain.CACHE_MAX_AGE_ENV, "a week")
+    assert toolchain.sweep_shared_cache_best_effort(reports.append, tmp_path) is None
+    assert len(reports) == 1 and "TPYC_CACHE_MAX_AGE" in reports[0]

@@ -22,9 +22,10 @@ import subprocess
 import sys
 import tempfile
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NamedTuple
 
 try:
     import fcntl
@@ -377,13 +378,13 @@ CACHE_USED_MARK = ".used"
 # entry kind: its directory under the root, and a file the loader reads on
 # every use, whose atime covers entries no session marked.
 STDLIB_OBJS_DIR = "stdlib-objs"
-PCH_DIR = "pch"  # the test harness's per-key PCHs and the REPL's (`repl-<key>`)
+PCH_DIR = "pch"  # shared_pch's per-key entries, for the CLI, the REPL and the harness
 EXEC_RESULTS_DIR = "exec-results"
 CACHE_ENTRY_KINDS = ((STDLIB_OBJS_DIR, "metadata.json"), (PCH_DIR, "tpy_pch.hpp.gch"))
 CACHE_DIRS = (STDLIB_OBJS_DIR, PCH_DIR, EXEC_RESULTS_DIR)
 UNMARKED_MIN_AGE = 14 * 86400
-# The names the producers write: sha256 keys, the REPL's `repl-<md5[:12]>`,
-# exec markers (and their pid-tagged temp files); anything else under the
+# The names the producers write: sha256 keys, the REPL's former
+# `repl-<md5[:12]>` (kept so leftover ones age out), exec markers (and their pid-tagged temp files); anything else under the
 # root is not the cache's to remove.
 _CACHE_ENTRY_NAME = re.compile(r"[0-9a-f]{64}|repl-[0-9a-f]{12}")
 _CACHE_TRASH_NAME = re.compile(r"\.trash-(?:[0-9a-f]{64}|repl-[0-9a-f]{12})-[0-9]+")
@@ -451,16 +452,21 @@ def _tree_size(path: Path) -> int:
     return size
 
 
-def _remove_entry(entry: Path, sweep: CacheSweep) -> bool:
+def _remove_entry(entry: Path, sweep: CacheSweep, used_after: float) -> bool:
     """Rename right after the age check, so a reader sees the entry whole or
-    not at all and the window for one revived meanwhile stays small; an entry
-    whose build lock is held is being built and stays. A trash dir an
-    interrupted sweep left behind goes on the next one."""
+    not at all; an entry whose build lock is held is being built and stays,
+    and one marked used after `used_after` (since the age check) is revived
+    and stays. A trash dir an interrupted sweep left behind goes on the next
+    one."""
     trash = entry.with_name(f".trash-{entry.name}-{os.getpid()}")
     try:
         with open(entry / ".lock", "a") as lock:
             if fcntl is not None:
                 fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            # Only the mark: creating .lock just moved the entry's own mtime.
+            with contextlib.suppress(OSError):
+                if (entry / CACHE_USED_MARK).stat().st_mtime > used_after:
+                    return False
             entry.rename(trash)
     except OSError:
         sweep.failed.append(entry.name)
@@ -515,7 +521,8 @@ def sweep_shared_cache(root: Path | None = None, *, now: float | None = None,
                 if not _CACHE_ENTRY_NAME.fullmatch(entry.name):
                     continue
                 with contextlib.suppress(OSError):
-                    if _expired(entry, read_file, now, max_age) and _remove_entry(entry, sweep):
+                    if (_expired(entry, read_file, now, max_age)
+                            and _remove_entry(entry, sweep, now - max_age)):
                         sweep.removed += 1
         for marker in sorted((root / EXEC_RESULTS_DIR).glob("*")):
             if not _EXEC_MARKER_NAME.fullmatch(marker.name) or marker.is_symlink():
@@ -528,6 +535,21 @@ def sweep_shared_cache(root: Path | None = None, *, now: float | None = None,
                     sweep.markers += 1
                     sweep.freed += size
         return sweep
+
+
+def sweep_shared_cache_best_effort(report: Callable[[str], None],
+                                   root: Path | None = None) -> CacheSweep | None:
+    """`sweep_shared_cache` for a caller that must never fail or wait on it:
+    a malformed `$TPYC_CACHE_MAX_AGE` is passed to `report` as one line and
+    the sweep is skipped. An OSError skips it silently: a read-only cache
+    root would otherwise warn on every build."""
+    try:
+        return sweep_shared_cache(root)
+    except ValueError as exc:
+        report(f"cache sweep skipped: {exc}")
+    except OSError:
+        pass
+    return None
 
 
 # Known force-enable for clang < 19 + libstdc++ (compile-verified):
@@ -558,7 +580,7 @@ int main() {
 def compiler_binary_identity(compiler: list[str]) -> tuple[str, int, int] | None:
     """(resolved path, size, mtime_ns) of the compiler binary.
 
-    The one identity notion for the PCH stamp, the toolchain probe cache and
+    The one identity notion for the `pch_entry` key, the toolchain probe cache and
     build_cache.toolchain_entry: a replaced binary at the same path (new
     size/mtime) is a different compiler; an untouched one never is. None
     when the binary cannot be resolved at all.
@@ -900,88 +922,348 @@ def _pch_family_flags(config: CppCompilerConfig) -> list[str]:
     return []
 
 
-def _pch_build_flags(config: CppCompilerConfig, runtime_include_dir: Path,
-                     opt_flags: list[str]) -> list[str]:
-    """The PCH compile command up to (excluding) the input/output paths."""
+def _pch_build_flags(config: CppCompilerConfig, opt_flags: list[str]) -> list[str]:
+    """The PCH compile command up to (excluding) the include root and the
+    input/output paths."""
     return [
         *config.compiler, f"-std={config.std}",
         *config.extra_flags,
         *config.warn_flags,
         *opt_flags,
         *_pch_family_flags(config),
-        "-I", str(runtime_include_dir),
     ]
 
 
-def _pch_stamp(config: CppCompilerConfig, runtime_include_dir: Path,
-               opt_flags: list[str]) -> str:
-    """Everything a .gch is only valid for: the exact build command (compiler,
-    -std, flags, include root) plus the compiler binary's identity and the
-    resolved include root. Stored next to the .gch; a mismatch means the .gch
-    belongs to another checkout or configuration and must not be consumed."""
-    return repr((
-        _pch_build_flags(config, runtime_include_dir, opt_flags),
-        compiler_binary_identity(config.compiler),
-        str(runtime_include_dir.resolve()),
-    ))
+PCH_HEADER = "tpy_pch.hpp"
+PCH_GCH = PCH_HEADER + ".gch"
+PCH_DEPS = "deps"
+PCH_DEPFILE = "deps.d"  # the compiler's make-style depfile, only ever a temp
+_PCH_HEADER_TEXT = "#include <tpy/tpy.hpp>\n"
 
 
-def pch_is_current(
-    config: CppCompilerConfig,
-    runtime_include_dir: Path,
-    opt_flags: list[str],
-    pch_dir: Path,
-) -> bool:
-    """True when pch_dir holds a .gch built for exactly this configuration
-    and include root, and no runtime header changed since."""
-    pch_gch = pch_dir / "tpy_pch.hpp.gch"
-    stamp_path = pch_dir / "tpy_pch.stamp"
-    if not (pch_gch.exists() and (pch_dir / "tpy_pch.hpp").exists()):
-        return False
-    try:
-        if stamp_path.read_text() != _pch_stamp(config, runtime_include_dir, opt_flags):
-            return False
-    except OSError:
-        return False
-    pch_mtime = pch_gch.stat().st_mtime
-    runtime_tpy = runtime_include_dir / "tpy"
-    return not any(h.stat().st_mtime > pch_mtime
-                   for h in runtime_tpy.glob("**/*.hpp"))
+def hash_files(paths: list[Path], root: Path) -> str:
+    """Hash a sequence of files by (root-relative path, content).
 
-
-def get_or_build_pch(
-    config: CppCompilerConfig,
-    runtime_include_dir: Path,
-    opt_flags: list[str],
-    pch_dir: Path,
-    force: bool = False,
-) -> Path | None:
-    """Return path to cached PCH header (with .gch next to it), or None on failure.
-
-    The PCH is stored in pch_dir (typically inside the build output directory).
-    Reused only when pch_is_current(); `force` rebuilds unconditionally.
+    Paths are made relative to *root* so the hash is stable across worktrees
+    / clone locations. Files outside it (rare) fall back to their absolute
+    path.
     """
-    pch_dir.mkdir(parents=True, exist_ok=True)
-    pch_header = pch_dir / "tpy_pch.hpp"
-    pch_gch = pch_dir / "tpy_pch.hpp.gch"
-    stamp_path = pch_dir / "tpy_pch.stamp"
+    h = hashlib.sha256()
+    for p in paths:
+        try:
+            key = str(p.relative_to(root))
+        except ValueError:
+            key = str(p)
+        h.update(key.encode())
+        h.update(b"\0")
+        h.update(p.read_bytes())
+        h.update(b"\0")
+    return h.hexdigest()
 
-    if not force and pch_is_current(config, runtime_include_dir, opt_flags, pch_dir):
-        return pch_header
 
-    # A failed build must not leave a stamp certifying a stale .gch.
-    stamp_path.unlink(missing_ok=True)
-    pch_header.write_text('#include <tpy/tpy.hpp>\n')
-    cmd = [
-        *_pch_build_flags(config, runtime_include_dir, opt_flags),
-        "-x", "c++-header",
-        str(pch_header), "-o", str(pch_gch),
-    ]
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    if result.returncode == 0:
-        stamp_path.write_text(_pch_stamp(config, runtime_include_dir, opt_flags))
-        return pch_header
+def _runtime_headers_hash(runtime_include_dir: Path) -> str:
+    # Editor droppings (`.#x.hpp` lock links, `#x.hpp#` autosaves) match the
+    # suffix but are never included.
+    files = sorted(p for p in runtime_include_dir.rglob("*")
+                   if p.suffix in (".hpp", ".h") and p.is_file()
+                   and not p.name.startswith((".", "#")))
+    return hash_files(files, runtime_include_dir)
+
+
+# Flags naming a header or a header-search path, joined (`-Iinc`) or
+# separate (`-I inc`); `--sysroot` joins with `=` only. Longest first, so a
+# flag is never read as a shorter one joined to its path.
+_INCLUDE_PATH_FLAGS = tuple(sorted(
+    ("-idirafter", "-isystem", "-include", "-imacros", "-iquote", "-iframework",
+     "-isysroot", "-I", "-F", "--sysroot=", "--sysroot"),
+    key=len, reverse=True))
+# C_INCLUDE_PATH is read by C compiles only.
+_INCLUDE_PATH_ENV = ("CPATH", "CPLUS_INCLUDE_PATH")
+
+
+def _resolve_include_path(path: str) -> str:
+    # resolve(), not abspath(): the compiler follows a symlink before `..`,
+    # so `link/../inc` names a directory beside the link's target.
+    return str(Path(path).resolve())
+
+
+def _abs_include_flags(flags: list[str]) -> list[str]:
+    """`flags` with every include-search path resolved against the cwd: the
+    PCH compile resolves them there, so the same spelling in another
+    directory names other headers."""
+    out: list[str] = []
+    expect_path = False
+    for arg in flags:
+        if expect_path:
+            out.append(_resolve_include_path(arg))
+            expect_path = False
+            continue
+        flag = next((f for f in _INCLUDE_PATH_FLAGS if arg.startswith(f)), None)
+        if flag is None:
+            out.append(arg)
+        elif arg == flag and not flag.endswith("="):
+            out.append(arg)
+            expect_path = True
+        else:
+            out.append(flag + _resolve_include_path(arg[len(flag):]))
+    return out
+
+
+def _include_path_env() -> list[tuple[str, list[str]]]:
+    """The set include-search environment variables, elements resolved
+    against the cwd (an empty element names the cwd)."""
+    return [(name, [_resolve_include_path(p) for p in os.environ[name].split(os.pathsep)])
+            for name in _INCLUDE_PATH_ENV if name in os.environ]
+
+
+def _pch_entry_for(config: CppCompilerConfig, runtime_include_dir: Path,
+                   opt_flags: list[str], headers_hash: str) -> Path:
+    h = hashlib.sha256()
+    h.update(repr((
+        headers_hash,
+        _abs_include_flags(_pch_build_flags(config, opt_flags)),
+        _include_path_env(),
+        compiler_binary_identity(config.compiler),
+        # A clang .gch only works from the -I root it was built against
+        # (pch_is_path_sensitive); a GCC one is shared across checkouts.
+        str(runtime_include_dir.resolve()) if pch_is_path_sensitive(config) else None,
+    )).encode())
+    return shared_cache_root() / PCH_DIR / h.hexdigest()
+
+
+def pch_entry(config: CppCompilerConfig, runtime_include_dir: Path,
+              opt_flags: list[str]) -> Path:
+    """The shared-cache dir holding the PCH for this configuration: keyed on
+    the runtime headers' content, the PCH build command, the compiler binary
+    and, where the .gch is path-sensitive, the include root."""
+    return _pch_entry_for(config, runtime_include_dir, opt_flags,
+                          _runtime_headers_hash(runtime_include_dir))
+
+
+def _parse_depfile(text: str) -> list[str]:
+    """The prerequisites of a make-style depfile (`-MD -MF`)."""
+    text = text.replace("\\\r\n", " ").replace("\\\n", " ")
+    _, sep, rest = text.partition(": ")
+    if not sep:
+        return []
+    deps: list[str] = []
+    cur: list[str] = []
+    i = 0
+    while i < len(rest):
+        c = rest[i]
+        if c == "\\" and i + 1 < len(rest) and rest[i + 1] in " #":
+            cur.append(rest[i + 1])
+            i += 2
+            continue
+        if c == "$" and rest.startswith("$$", i):
+            cur.append("$")
+            i += 2
+            continue
+        if c.isspace():
+            if cur:
+                deps.append("".join(cur))
+                cur = []
+        else:
+            cur.append(c)
+        i += 1
+    if cur:
+        deps.append("".join(cur))
+    return deps
+
+
+class _Dep(NamedTuple):
+    """An external dependency's identity: ctime moves on every content
+    change, rename or replacement and no tool can set it back (tar, `cp -p`
+    and package managers restore mtime), and a replaced file has a new
+    inode. mtime stays for Windows, where st_ctime is the creation time."""
+    ino: int
+    ctime_ns: int
+    mtime_ns: int
+    size: int
+    path: str
+
+    @classmethod
+    def of(cls, path: str) -> _Dep:
+        st = os.stat(path)
+        return cls(st.st_ino, st.st_ctime_ns, st.st_mtime_ns, st.st_size, path)
+
+
+def _external_deps(depfile: Path, runtime_include_dir: Path) -> list[_Dep]:
+    """Every dependency outside the runtime headers, which the key already
+    covers by content."""
+    root = runtime_include_dir.resolve()
+    deps = []
+    for dep in dict.fromkeys(_parse_depfile(depfile.read_text())):
+        # Joined, not normalized: `..` after a symlink is the kernel's to resolve.
+        path = os.path.join(os.getcwd(), dep)
+        if Path(path).resolve().is_relative_to(root):
+            continue
+        deps.append(_Dep.of(path))
+    return deps
+
+
+def _render_deps(deps: list[_Dep]) -> str:
+    return "".join(f"{d.ino} {d.ctime_ns} {d.mtime_ns} {d.size} {d.path}\n" for d in deps)
+
+
+def _read_deps(entry: Path) -> list[_Dep]:
+    """The entry's `deps` list; ValueError on a malformed line."""
+    deps = []
+    for line in (entry / PCH_DEPS).read_text().splitlines():
+        ino, ctime_ns, mtime_ns, size, path = line.split(" ", 4)
+        deps.append(_Dep(int(ino), int(ctime_ns), int(mtime_ns), int(size), path))
+    return deps
+
+
+def pch_ready(entry: Path) -> bool:
+    """The entry holds a published .gch and no header outside the runtime
+    changed since it was built: a system or toolchain header upgrade under
+    an unchanged compiler binary would otherwise be consumed stale."""
+    try:
+        if not ((entry / PCH_GCH).is_file() and (entry / PCH_HEADER).is_file()):
+            return False
+        return all(_Dep.of(dep.path) == dep for dep in _read_deps(entry))
+    except (OSError, ValueError):
+        return False
+
+
+def _temp_path(path: Path) -> Path:
+    """The one name of a temp file written to replace `path`: matched by
+    `_PCH_TEMP_NAME`."""
+    return path.with_name(f"{path.name}.{os.getpid()}.tmp")
+
+
+def _replace_text(path: Path, text: str) -> None:
+    tmp = _temp_path(path)
+    try:
+        tmp.write_text(text)
+        os.replace(tmp, path)
+    finally:
+        tmp.unlink(missing_ok=True)
+
+
+def _build_pch(config: CppCompilerConfig, runtime_include_dir: Path,
+               opt_flags: list[str], entry: Path, headers_hash: str) -> Path | None:
+    header = entry / PCH_HEADER
+    try:
+        current = header.read_text()
+    except OSError:
+        current = None
+    # Rewritten only when it differs: readers may be force-including it now.
+    if current != _PCH_HEADER_TEXT:
+        _replace_text(header, _PCH_HEADER_TEXT)
+    gch_tmp = _temp_path(entry / PCH_GCH)
+    depfile_tmp = _temp_path(entry / PCH_DEPFILE)
+    try:
+        # The build's start on the kernel's own file clock, which can lag
+        # time.time_ns() by a tick: a header changed after this has a ctime
+        # at or after it.
+        depfile_tmp.write_text("")
+        started_ns = depfile_tmp.stat().st_ctime_ns
+        cmd = [
+            *_pch_build_flags(config, opt_flags),
+            "-I", str(runtime_include_dir),
+            "-x", "c++-header", str(header), "-o", str(gch_tmp),
+            "-MD", "-MF", str(depfile_tmp),
+        ]
+        if subprocess.run(cmd, capture_output=True, text=True).returncode != 0:
+            return None
+        # The key names the headers hashed before the build; a .gch built
+        # from headers edited meanwhile must not be published under it.
+        if _runtime_headers_hash(runtime_include_dir) != headers_hash:
+            return None
+        deps = _external_deps(depfile_tmp, runtime_include_dir)
+        # The same for an external header changed during the build: its stat
+        # would certify contents the compiler may not have read. A ctime past
+        # now is clock skew, not a change, and must not refuse every build.
+        now_ns = time.time_ns()
+        # The entry's own header was rewritten just before the start and can
+        # share its clock tick on a coarse-timestamp filesystem.
+        own_header = header.resolve()
+        if any(any(started_ns <= t <= now_ns for t in (dep.ctime_ns, dep.mtime_ns))
+               and Path(dep.path).resolve() != own_header for dep in deps):
+            return None
+        # No state may pair a .gch with deps that do not describe it, and
+        # pch_ready requires deps: drop the old deps, publish the .gch, then
+        # its deps. A failure in between leaves an entry that is not ready.
+        (entry / PCH_DEPS).unlink(missing_ok=True)
+        os.replace(gch_tmp, entry / PCH_GCH)
+        _replace_text(entry / PCH_DEPS, _render_deps(deps))
+        return header
+    finally:
+        gch_tmp.unlink(missing_ok=True)
+        depfile_tmp.unlink(missing_ok=True)
+
+
+# Every temp file the builder writes in an entry: `_temp_path` of a file the
+# entry holds.
+_PCH_TEMP_NAME = re.compile(
+    "(?:" + "|".join(map(re.escape, (PCH_GCH, PCH_HEADER, PCH_DEPS, PCH_DEPFILE)))
+    + r")\.[0-9]+\.tmp")
+
+
+def _remove_pch_temp_files(entry: Path) -> None:
+    """Temp files a builder killed mid-build left behind. Only the holder of
+    the entry lock writes them, so under the lock none is live."""
+    for p in entry.iterdir():
+        if _PCH_TEMP_NAME.fullmatch(p.name):
+            with contextlib.suppress(OSError):
+                p.unlink()
+
+
+def shared_pch(config: CppCompilerConfig, runtime_include_dir: Path,
+               opt_flags: list[str], *, force: bool = False,
+               on_build: Callable[[], None] | None = None) -> Path | None:
+    """The precompiled runtime header for this configuration, from the
+    shared cache (`pch_entry`), built there first when missing or stale.
+    Returns the header to force-include (the .gch sits next to it), or None
+    when it cannot be had -- a failed build, an unwritable cache root --
+    and the caller compiles without a PCH. `force` rebuilds a ready entry;
+    `on_build` runs just before a build starts."""
+    try:
+        headers_hash = _runtime_headers_hash(runtime_include_dir)
+        entry = _pch_entry_for(config, runtime_include_dir, opt_flags, headers_hash)
+        # The sweep renames an expired entry away under its lock; meeting
+        # that once means the entry is recreated, never twice.
+        for _ in range(2):
+            mark_cache_entry_used(entry)
+            if not force and pch_ready(entry):
+                return entry / PCH_HEADER
+            entry.mkdir(parents=True, exist_ok=True)
+            mark_cache_entry_used(entry)
+            lock_path = entry / ".lock"
+            # "a": a lock file that turns out to be a link must not lose its target's contents
+            with open(lock_path, "a") as lock:
+                if fcntl is not None:
+                    fcntl.flock(lock.fileno(), fcntl.LOCK_EX)
+                held = os.fstat(lock.fileno())
+                try:
+                    current = os.stat(lock_path)
+                except FileNotFoundError:
+                    continue
+                if (held.st_dev, held.st_ino) != (current.st_dev, current.st_ino):
+                    continue
+                if fcntl is not None:
+                    _remove_pch_temp_files(entry)
+                if not force and pch_ready(entry):
+                    return entry / PCH_HEADER
+                if on_build is not None:
+                    on_build()
+                return _build_pch(config, runtime_include_dir, opt_flags, entry, headers_hash)
+    except OSError:
+        pass
     return None
+
+
+def set_pch_ccache_sloppiness(config: CppCompilerConfig) -> None:
+    """Let ccache hit on PCH-using compiles: without these it treats every
+    one as a miss."""
+    if not config.ccache:
+        return
+    slop = os.environ.get("CCACHE_SLOPPINESS", "")
+    parts = {s.strip() for s in slop.split(",") if s.strip()}
+    parts.update(("pch_defines", "time_macros"))
+    os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
 
 
 @contextlib.contextmanager

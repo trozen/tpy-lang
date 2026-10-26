@@ -67,7 +67,7 @@ from . import DEFAULT_INT_CHOICES  # noqa: F401 -- canonical home is tpyc/__init
 from .toolchain import (  # noqa: F401 -- re-exported: external callers import these via tpyc.compiler
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
     list_compilers,
-    strict_warn_flags, get_or_build_pch, discover_runtime_cpp_sources,
+    strict_warn_flags, discover_runtime_cpp_sources,
     third_party_source_driver, darwin_cross_ld_flags, shared_link_flags,
     PLATFORMS, platform_matches,
     _derive_c_compiler, _is_zig,

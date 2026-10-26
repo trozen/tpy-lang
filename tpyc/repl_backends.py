@@ -13,7 +13,6 @@ from __future__ import annotations
 import abc
 from concurrent.futures import as_completed
 import difflib
-import hashlib
 import os
 import re
 import shutil
@@ -38,8 +37,8 @@ def _fmt_ms(seconds: float) -> str:
 
 from . import get_runtime_dir
 from .codegen_cpp.context import NATIVE_INIT_NAMESPACE
-from .toolchain import (PCH_DIR, compile_pool, get_or_build_pch, host_os, mark_cache_entry_used,
-                        pch_is_current, shared_cache_root)
+from .toolchain import (compile_pool, host_os, pch_entry, pch_ready, set_pch_ccache_sloppiness,
+                        shared_pch, sweep_shared_cache_best_effort)
 
 
 class BackendResult:
@@ -183,9 +182,13 @@ class CompileBackend(REPLBackend):
 
     @property
     def pch_cache_dir(self) -> Path:
-        return self._get_pch_cache_dir()
+        return self._pch_entry()
 
     def startup(self) -> None:
+        # Best effort and at most hourly: the REPL is the only cache user a
+        # machine without the test suite may have.
+        sweep_shared_cache_best_effort(
+            lambda msg: print(f"warning: {msg}", file=sys.stderr))
         # Check if PCH needs building before spawning the thread,
         # so we can print the message from the main thread cleanly
         self._pch_needs_build = self._pch_is_stale()
@@ -408,33 +411,27 @@ class CompileBackend(REPLBackend):
 
     # -- PCH management --
 
-    def _get_pch_cache_dir(self) -> Path:
-        runtime_dir = get_runtime_dir()
-        opt = " ".join(self._OPT_FLAGS)
-        key_data = f"{self._config.compiler_name}:{self._config.std}:{opt}:{runtime_dir}"
-        key = hashlib.md5(key_data.encode()).hexdigest()[:12]
-        cache_dir = shared_cache_root() / PCH_DIR / f"repl-{key}"
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        mark_cache_entry_used(cache_dir)
-        return cache_dir
+    def _pch_entry(self) -> Path:
+        return pch_entry(self._config, get_runtime_dir() / "cpp" / "include",
+                         list(self._OPT_FLAGS))
 
     def _pch_is_stale(self) -> bool:
-        return not pch_is_current(
-            self._config, get_runtime_dir() / "cpp" / "include",
-            list(self._OPT_FLAGS), self._get_pch_cache_dir())
+        try:
+            return not pch_ready(self._pch_entry())
+        except OSError:
+            return True
 
     def _setup_pch(self) -> None:
-        cache_dir = self._get_pch_cache_dir()
-        if not self._pch_needs_build:
-            self._pch_path = cache_dir / "tpy_pch.hpp"
-            return
-
+        built: list[bool] = []
         t0 = time.monotonic()
-        self._pch_path = get_or_build_pch(
+        self._pch_path = shared_pch(
             self._config, get_runtime_dir() / "cpp" / "include",
-            list(self._OPT_FLAGS), cache_dir)
-        elapsed = time.monotonic() - t0
-        self._pch_build_time = elapsed if self._pch_path is not None else -1.0
+            list(self._OPT_FLAGS), on_build=lambda: built.append(True))
+        if self._pch_path is not None:
+            set_pch_ccache_sloppiness(self._config)
+        if built or self._pch_needs_build:
+            elapsed = time.monotonic() - t0
+            self._pch_build_time = elapsed if self._pch_path is not None else -1.0
 
 
 # ---------------------------------------------------------------------------

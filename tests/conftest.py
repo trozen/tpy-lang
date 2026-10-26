@@ -61,12 +61,12 @@ from tpyc.sema import (SemanticAnalyzer, SemanticError, Diagnostic,
                        DiagnosticLevel, format_diagnostics)
 from tpyc.compiler import (
     Compiler, CompiledModule, CompileError, BuildLayout, CppCompilerConfig, ModuleSources,
-    strict_warn_flags, get_or_build_pch, list_compilers, CompilerNotFoundError,
+    strict_warn_flags, list_compilers, CompilerNotFoundError,
 )
 from tpyc.toolchain import (
-    host_os, mark_cache_entry_used, pch_is_path_sensitive,
-    shared_cache_root, sweep_shared_cache, third_party_source_driver, CACHE_DIRS,
-    EXEC_RESULTS_DIR, PCH_DIR, STDLIB_OBJS_DIR,
+    hash_files, host_os, mark_cache_entry_used, set_pch_ccache_sloppiness, shared_pch,
+    shared_cache_root, sweep_shared_cache_best_effort, third_party_source_driver, CACHE_DIRS,
+    EXEC_RESULTS_DIR, STDLIB_OBJS_DIR,
 )
 from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
@@ -447,7 +447,7 @@ def _shared_cache_root() -> Path:
 def _libtpy_hash() -> str:
     """Hash of all .py files under lib/tpy/ (the stdlib source). Session-cached."""
     files = sorted(TPY_LIB_DIR.rglob("*.py"))
-    return _hash_files(files)
+    return hash_files(files, PROJECT_ROOT)
 
 
 @functools.cache
@@ -461,7 +461,7 @@ def _tpyc_hash() -> str:
     and break linking against newly-compiled test mains.
     """
     files = sorted(TPYC_DIR.rglob("*.py"))
-    return _hash_files(files)
+    return hash_files(files, PROJECT_ROOT)
 
 
 def _stdlib_output_hash(gen_files: list[Path], build_dir: Path,
@@ -471,7 +471,7 @@ def _stdlib_output_hash(gen_files: list[Path], build_dir: Path,
     .o set, over build-dir- and checkout-relative paths, so the same set
     hashes the same in any cache dir or worktree."""
     h = hashlib.sha256()
-    h.update(_hash_files(sorted(gen_files), root=build_dir).encode())
+    h.update(hash_files(sorted(gen_files), build_dir).encode())
     # The commands carry what no generated C++ does: flags and source lists
     # from tpyc/build/ and this harness, and the runtime .cpp selection.
     # Source contents outside the build dir are in _runtime_hash.
@@ -631,100 +631,41 @@ _pch_path: Path | None = None
 _pch_initialized: bool = False
 
 
-@functools.cache
-def _pch_cache_key() -> str:
-    """Content-addressed key for the PCH cache (runtime headers + compiler config).
-
-    opt_flags is intentionally NOT in the key: tests always invoke
-    build_cpp_commands without opt_flags, so the PCH is always built with
-    opt_flags=[] and is valid for any test compile. If a future test variant
-    starts passing opt_flags, this key must grow or PCHs will be incompatible.
-    """
-    h = hashlib.sha256()
-    h.update(_runtime_hash().encode())
-    h.update(b"\0")
-    h.update(repr((
-        CPP_CONFIG.compiler,
-        CPP_CONFIG.target_platform,
-        CPP_CONFIG.std,
-        CPP_CONFIG.extra_flags,
-        CPP_CONFIG.warn_flags,
-    )).encode())
-    # This cache root is machine-wide, so byte-identical runtime headers in two
-    # checkouts hash the same -- but on clang the .gch is only usable from the
-    # -I root it was built against (see pch_is_path_sensitive). Give each
-    # checkout its own key there; on GCC the .gch stays shared across worktrees.
-    if pch_is_path_sensitive(CPP_CONFIG):
-        h.update(b"\0runtime-root:")
-        h.update(str(RUNTIME_DIR.resolve()).encode())
-    return h.hexdigest()
-
-
-def _set_pch_ccache_sloppiness() -> None:
-    """Set CCACHE_SLOPPINESS to allow PCH-using compiles to hit the cache.
-
-    Without these flags ccache treats every PCH-using compile as a miss
-    (cli.py:478 does the same when building with PCH).
-    """
-    if not CPP_CONFIG.ccache:
-        return
-    slop = os.environ.get("CCACHE_SLOPPINESS", "")
-    parts = {s.strip() for s in slop.split(",") if s.strip()}
-    parts.update(("pch_defines", "time_macros"))
-    os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
-
-
 def get_pch_header() -> Path | None:
     """Return path to the cached PCH header for tests, building or reusing as needed.
 
     The .gch file lives next to the .hpp; passing the .hpp via -include lets
-    the compiler discover the .gch automatically. Persists across pytest
-    invocations under $TPYC_SHARED_CACHE_DIR/pch/<key>/. Returns None if
-    PCH building fails or the shared cache root is unwritable -- per-case
-    compiles then fall back to parsing the runtime headers from scratch.
+    the compiler discover the .gch automatically. Shared with the CLI and the
+    REPL through `shared_pch` (an entry per flag set under
+    $TPYC_SHARED_CACHE_DIR/pch/<key>/). Returns None if PCH building fails or
+    the shared cache root is unwritable -- per-case compiles then fall back
+    to parsing the runtime headers from scratch.
     """
     global _pch_path, _pch_initialized
     if _pch_initialized:
         return _pch_path
     _pch_initialized = True
 
+    built: list[float] = []  # the build's start, when one ran
+
+    def on_build() -> None:
+        built.append(time.monotonic())
+        _log("PCH: building tpy_pch.hpp.gch (once per toolchain and runtime)...")
+
     try:
-        pch_dir = _shared_cache_root() / PCH_DIR / _pch_cache_key()
-        pch_header = pch_dir / "tpy_pch.hpp"
-        pch_gch = pch_dir / "tpy_pch.hpp.gch"
-        mark_cache_entry_used(pch_dir)
-
-        # Fast path: PCH already built for this content key. Skip locking
-        # entirely so warm-cache workers don't queue on LOCK_EX at startup.
-        if pch_gch.exists() and pch_header.exists():
-            _pch_path = pch_header
-            _set_pch_ccache_sloppiness()
-            return _pch_path
-
-        pch_dir.mkdir(parents=True, exist_ok=True)
-        lock_path = pch_dir / ".lock"
-        with open(lock_path, "w") as lf:
-            fcntl.flock(lf.fileno(), fcntl.LOCK_EX)
-            # Re-check after acquiring the lock: another worker may have
-            # built the PCH while we waited.
-            if pch_gch.exists() and pch_header.exists():
-                _pch_path = pch_header
-            else:
-                _log("PCH: building tpy_pch.hpp.gch (once per toolchain and runtime)...")
-                t0 = time.monotonic()
-                _pch_path = get_or_build_pch(
-                    CPP_CONFIG, RUNTIME_DIR, opt_flags=[], pch_dir=pch_dir,
-                )
-                if _pch_path is not None:
-                    _log(f"PCH: built tpy_pch.hpp.gch ({time.monotonic() - t0:.1f}s)")
-            if _pch_path is not None:
-                _set_pch_ccache_sloppiness()
+        _pch_path = shared_pch(CPP_CONFIG, RUNTIME_DIR, [], on_build=on_build)
     except Exception as exc:
         # Catch broadly (matches get_stdlib_cache): a PCH failure must not
         # abort the worker -- per-case compiles will fall back to parsing
         # the runtime headers from scratch.
         _log(f"WARNING: PCH cache unavailable ({exc}); compiling without PCH", err=True)
         _pch_path = None
+    if _pch_path is not None:
+        if built:
+            _log(f"PCH: built tpy_pch.hpp.gch ({time.monotonic() - built[0]:.1f}s)")
+        set_pch_ccache_sloppiness(CPP_CONFIG)
+    elif built:
+        _log("WARNING: PCH build failed; compiling without PCH", err=True)
     return _pch_path
 
 
@@ -1695,12 +1636,9 @@ def resolve_update_flag(config, *, is_master: bool, env_set: bool) -> bool:
 
 
 def _sweep_shared_cache() -> None:
-    """Best effort: a sweep that fails is reported and the run goes on."""
-    try:
-        sweep = sweep_shared_cache(_shared_cache_root())
-    except (OSError, ValueError) as exc:
-        _log(f"cache sweep skipped: {exc}", err=True)
-        return
+    """Best effort: the run goes on whether or not the sweep could run."""
+    sweep = sweep_shared_cache_best_effort(lambda msg: _log(msg, err=True),
+                                           _shared_cache_root())
     if sweep is None:
         return
     if sweep.removed or sweep.markers:
@@ -1762,7 +1700,6 @@ def pytest_configure(config):
         # The cache-key memoizers read CPP_CONFIG; drop any value computed
         # against the pre-mutation toolchain so the new --cxx re-keys cleanly.
         _stdlib_cache_key.cache_clear()
-        _pch_cache_key.cache_clear()
         fast_linker_flags.cache_clear()
 
     # Every process, so a remote worker sweeps its own host's cache; the
@@ -1978,26 +1915,6 @@ _FINGERPRINT_FILE = ".fingerprints"
 SESSION_FINGERPRINT_FILE = TESTS_DIR / ".session_fingerprints.json"
 
 
-def _hash_files(paths: list[Path], root: Path = PROJECT_ROOT) -> str:
-    """Hash a sequence of files by (root-relative path, content).
-
-    Paths are made relative to *root* (default PROJECT_ROOT) so the hash is
-    stable across worktrees / clone locations. Files outside it (rare) fall
-    back to their absolute path.
-    """
-    h = hashlib.sha256()
-    for p in paths:
-        try:
-            key = str(p.relative_to(root))
-        except ValueError:
-            key = str(p)
-        h.update(key.encode())
-        h.update(b"\0")
-        h.update(p.read_bytes())
-        h.update(b"\0")
-    return h.hexdigest()
-
-
 @functools.cache
 def _runtime_hash() -> str:
     """Hash of all runtime headers under runtime/cpp/include/, TPy-owned
@@ -2016,7 +1933,7 @@ def _runtime_hash() -> str:
     third_party_dir = RUNTIME_DIR.parent / "third_party"
     if third_party_dir.is_dir():
         files += sorted(p for p in third_party_dir.rglob("*") if p.is_file())
-    return _hash_files(files)
+    return hash_files(files, PROJECT_ROOT)
 
 
 @functools.cache
@@ -2026,7 +1943,7 @@ def _cpy_stubs_hash() -> str:
     to either must re-key the cpy fingerprints."""
     stubs = sorted((CPY_LIB_DIR / "tpy").rglob("*.py"))
     stubs += sorted(CPY_LIB_DIR.glob("*.py"))
-    return _hash_files(stubs)
+    return hash_files(stubs, PROJECT_ROOT)
 
 
 def compute_session_fingerprints() -> dict[str, str]:
@@ -2070,7 +1987,7 @@ def compute_extra_src_fingerprint(case_dir: Path) -> str | None:
     if not inputs:
         return None
     inputs.sort()
-    return _hash_files(inputs)
+    return hash_files(inputs, PROJECT_ROOT)
 
 
 def compute_main_fingerprint(main_src: Path) -> str:
@@ -2228,7 +2145,7 @@ def compute_exec_fingerprint(
             if p is not None and p.exists():
                 gen_files.append(p)
     gen_files.sort()
-    h.update(_hash_files(gen_files).encode())
+    h.update(hash_files(gen_files, PROJECT_ROOT).encode())
     h.update(b"\0")
     h.update((compute_extra_src_fingerprint(case_dir) or "").encode())
     h.update(b"\0")
@@ -2330,9 +2247,9 @@ def compute_ext_exec_fingerprint(
         CPP_CONFIG.extra_flags, CPP_CONFIG.warn_flags,
     )).encode())
     h.update(b"\0")
-    h.update(_hash_files(sorted(p for p in gen_cpp_files if p.exists())).encode())
+    h.update(hash_files(sorted(p for p in gen_cpp_files if p.exists()), PROJECT_ROOT).encode())
     h.update(b"\0")
-    h.update(_hash_files(sorted(p for p in companion_files if p.exists())).encode())
+    h.update(hash_files(sorted(p for p in companion_files if p.exists()), PROJECT_ROOT).encode())
     return h.hexdigest()
 
 

@@ -53,10 +53,37 @@ g++ -std=c++23 -g -O0 -I ... -c module.cpp
   GCC compares contents instead, so its `.gch` travels between checkouts.
   Any cache that shares a `.gch` machine-wide must key on the include root
   (`toolchain.pch_is_path_sensitive`).
-- `toolchain.get_or_build_pch` writes a `tpy_pch.stamp` next to the `.gch`
-  (include root, compiler command and binary identity, `-std`, flags) and
-  rebuilds on any mismatch, so a per-program `__tpyc__/.../pch/` dir survives
-  switching compiler checkouts or toolchains. `tpy --rebuild` forces it.
+- One builder, `toolchain.shared_pch`, serves the CLI, the REPL and the test
+  harness. Its `.gch` lives in the shared cache, `~/.cache/tpyc/pch/<key>/`
+  (`$TPYC_SHARED_CACHE_DIR` overrides the root), never in a program's
+  `__tpyc__/` dir; the key (`toolchain.pch_entry`) hashes the runtime headers'
+  content, the PCH build command (compiler command, `-std`, extra/warn flags,
+  opt flags -- so debug and release, and each consumer's flag set, get their
+  own entry; every header or search path in it -- `-I`, `-isystem`,
+  `-iquote`, `-idirafter`, `-include`, `-imacros`, `-iframework`, `-F`,
+  `-isysroot`, `--sysroot` -- counts resolved against the cwd, symlinks
+  followed as the compiler does), the `CPATH` / `CPLUS_INCLUDE_PATH`
+  environment (resolved the same way; `C_INCLUDE_PATH` is read by C compiles
+  only), the compiler binary's identity and, on clang only, the include root.
+  Every program built with the same flags reuses one `.gch`.
+- The entry also records a `deps` list: every header the build read outside
+  the runtime (system and toolchain headers) with its inode, ctime and size.
+  The kernel sets ctime on every content change, rename or replacement, and
+  tools that restore mtime (tar, `cp -p`, package managers) cannot set it
+  back. An entry whose `deps` no longer match (a libstdc++ upgrade under an
+  unchanged compiler binary) is rebuilt in place.
+- A build runs under the entry's `.lock` (first removing temp files a killed
+  build left: every temp the builder writes is `<name>.<pid>.tmp` of a file
+  the entry holds) and publishes the `.gch` by one atomic rename, then its
+  `deps`; an entry without `deps` is not ready, so a reader never pairs a
+  `.gch` with another build's `deps`. A build during which a runtime header
+  changed, or an external one's ctime moved (at or after the build's start,
+  as the kernel stamps a temp file it creates), publishes nothing. A failed build,
+  or an unwritable cache root, compiles without a PCH. `tpy --rebuild`
+  rebuilds the entry; `tpy --no-pch` skips it. The CLI (after a build) and
+  the REPL (at startup) also run the shared-cache sweep, which removes
+  entries unused for `$TPYC_CACHE_MAX_AGE` (see `tests/README.md` "Cache
+  eviction").
 
 ### 2. Parallel Compilation
 

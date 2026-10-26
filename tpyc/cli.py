@@ -61,7 +61,8 @@ from . import (
 )
 from .toolchain import (
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
-    list_compilers, get_or_build_pch, compile_pool,
+    list_compilers, shared_pch, set_pch_ccache_sloppiness, sweep_shared_cache_best_effort,
+    compile_pool,
 )
 
 
@@ -276,8 +277,8 @@ class _VersionAction(argparse.Action):
 
 
 def _build_variant(args: argparse.Namespace) -> str:
-    """Name of the build flavor: keys the per-variant output dir, the PCH
-    dir and the whole-run cache manifest, so the two never clobber."""
+    """Name of the build flavor: keys the per-variant output dir and the
+    whole-run cache manifest, so the two never clobber."""
     return "debug" if args.debug else "release"
 
 
@@ -308,7 +309,7 @@ def _compile_definitions(args: argparse.Namespace) -> list[str]:
 
 def _resolve_cpp_config(args: argparse.Namespace) -> CppCompilerConfig:
     """The toolchain config of this run, with the options that reach every
-    C++ compile folded in. `extra_flags` feeds the PCH stamp and the
+    C++ compile folded in. `extra_flags` feeds the PCH cache key and the
     whole-run cache key, so the defines key both."""
     config = CppCompilerConfig.from_env(cxx=args.cxx)
     if args.ccache is not None:
@@ -1099,20 +1100,17 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             pch_includes: list[Path] = []
             if args.pch and not ext_module_build:
                 t_pch_start = time.monotonic()
-                pch_path = get_or_build_pch(
+                pch_built: list[bool] = []
+                pch_path = shared_pch(
                     cpp_config, runtime_dir / "cpp" / "include", opt_flags,
-                    pch_dir=layout.build_dir / "pch", force=args.rebuild,
+                    force=args.rebuild, on_build=lambda: pch_built.append(True),
                 )
                 t_pch = time.monotonic() - t_pch_start
                 if pch_path:
                     pch_includes.append(pch_path)
-                    progress.pch(t_pch)
-                    # ccache needs these sloppiness flags for PCH support
-                    if cpp_config.ccache:
-                        slop = os.environ.get("CCACHE_SLOPPINESS", "")
-                        parts = {s.strip() for s in slop.split(",") if s.strip()}
-                        parts.update(("pch_defines", "time_macros"))
-                        os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
+                    if pch_built:
+                        progress.pch(t_pch)
+                    set_pch_ccache_sloppiness(cpp_config)
 
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
@@ -1182,6 +1180,10 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                 return 1
             progress.linked(module_name, time.monotonic() - t_link)
             t_build = time.monotonic() - t_build_start
+            # Ages out unused shared-cache entries, at most hourly (the
+            # sweep's own stamp); never on the warm path.
+            sweep_shared_cache_best_effort(
+                lambda msg: print(f"warning: {msg}", file=sys.stderr))
 
             progress.summary(n_py, t_compile, t_codegen, t_build)
 
