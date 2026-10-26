@@ -6,7 +6,7 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
-from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
+from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
@@ -83,6 +83,12 @@ def nested(pair: tuple[Outer]) -> int32:
 def owned(pair: Own[tuple[Cell]]) -> int32:
     return pair[0].value
 def owned_element(pair: tuple[Own[Cell]]) -> int32:
+    return pair[0].value
+def reseated(pair: tuple[Cell], other: Cell) -> int32:
+    saved = pair[0]
+    saved.value = 27
+    saved = other
+    saved.value = 28
     return pair[0].value
 """
 
@@ -225,9 +231,12 @@ def test_empty_tuple_parameter_at_internal_boundary() -> None:
     assert execute(lower(fn), TupleValue(())) == 1
 
 
-@pytest.mark.parametrize("body", [
-    "def sample(pair: tuple[Cell], other: Cell) -> int32:\n    saved = pair[0]\n    saved = other\n    return saved.value\n",
-])
-def test_existing_reseated_capture_gates_remain(body: str) -> None:
-    _, reasons = _strict_reject(SOURCE + body)
-    _assert_rejects_at(reasons, "body:stmt.var_decl", shape="decl.slot_type")
+def test_rebound_tuple_element_not_yet_mir_covered(artifacts: Artifacts) -> None:
+    # A rebound element capture is the scalar's reseatable pointer over the
+    # raw element (`Cell* saved = std::get<0>(pair);`), which MIR's tuple
+    # capture does not read yet (TODO.md "MIR coverage of a rebound
+    # tuple-element local"); once it does, execute it as the siblings do.
+    functions, _ = artifacts
+    result = lower_function(functions["reseated"], MIRBodyId("tuples", "reseated"))
+    assert isinstance(result, MIRNotCovered)
+    assert result.reason == "tuple capture needs dereferenced element"

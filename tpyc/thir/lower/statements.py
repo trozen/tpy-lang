@@ -9780,6 +9780,17 @@ _FIRST_DECL_BUILDERS: dict[BindingConstruct, _DeclBuilder] = {
 }
 
 
+def _reseat_const_ok(name: str, lc: _LowerCtx) -> bool:
+    """Whether a reseat of pointer slot `name` may take its source's const:
+    a slot with a const source re-points only as a const pointer (the
+    planner's slot verdict; a frame pointer field's own const)."""
+    rec = lc.declaring(name)
+    return (not rec.const_source or rec.const
+            or ((lc.frame_local(name, FrameLocalClass.ALIAS_PTR)
+                 or lc.frame_local(name, FrameLocalClass.REBIND_PTR))
+                and lc.binding(name).frame_const))
+
+
 def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                          deferred_tuple_eager: bool = False) -> THIRStmt:
     lc = scope.lc
@@ -10920,10 +10931,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 elif (isinstance(stmt.init, TpySubscript)
                       and stmt.init.slice_function_info is None
                       and not isinstance(stmt.init.index, TpySlice)
-                      and not isinstance(
-                          unwrap_ref_type(unwrap_send_sync(
-                              analyzer.get_expr_type(stmt.init.obj)
-                              or vtype)), ReadonlyType)
+                      and _reseat_const_ok(stmt.name, lc)
                       and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                           analyzer.get_expr_type(stmt.init) or vtype)))
                       == pointee):
@@ -11039,15 +11047,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                   and not lc.binding(stmt.init.name).rebind_slot
                   and not lc.binding(stmt.init.name).optional_storage
                   and stmt.init.name not in lc.narrow.narrowed
-                  # A slot with a const source re-points only as a const
-                  # pointer (the planner's slot verdict; a frame pointer
-                  # field's own const).
-                  and (not lc.declaring(stmt.name).const_source
-                       or lc.declaring(stmt.name).const
-                       or ((lc.frame_local(stmt.name, FrameLocalClass.ALIAS_PTR)
-                            or lc.frame_local(stmt.name,
-                                              FrameLocalClass.REBIND_PTR))
-                           and lc.binding(stmt.name).frame_const))
+                  and _reseat_const_ok(stmt.name, lc)
                   and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(declared[stmt.init.name]))))
                   and analyzer.registry.is_subclass_of_or_equal(
@@ -11107,10 +11107,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             elif (isinstance(stmt.init, TpySubscript)
                   and stmt.init.slice_function_info is None
                   and not isinstance(stmt.init.index, TpySlice)
-                  and not isinstance(
-                      unwrap_ref_type(unwrap_send_sync(
-                          analyzer.get_expr_type(stmt.init.obj)
-                          or vtype)), ReadonlyType)
+                  and _reseat_const_ok(stmt.name, lc)
                   and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                       analyzer.get_expr_type(stmt.init) or vtype)))
                   == unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -11121,8 +11118,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # `p = &(::tpy::__getitem__(points, 0));`): the same
                 # address-of catch-all over the element read. RECEIVER use:
                 # the record-elem read is admitted for address-of inners
-                # there (a value use would copy the borrow). Readonly
-                # receivers (const elements) stay on the const rung.
+                # there (a value use would copy the borrow). A readonly
+                # receiver's element re-points only a const slot.
                 _witness("reseat.subscript_elem")
                 return THIRPtrLocalRebind(
                     name=stmt.name, kind=PtrSlotKind.PTR_ADDR,
@@ -13390,11 +13387,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     closes.append(escape_cpp_name(name))
                     continue
                 if lc.binding(name).pointer:
-                    # A pointer-local that borrows -- alias-born, or a frame
-                    # field the planner classes as borrowing -- points at
-                    # storage another binding owns, so it is skipped.
-                    if (name in lc.prescan.alias_born
-                            or lc.binding(name).frame_borrowed):
+                    # Only a pointer local every binding of which is fresh
+                    # always points at storage it owns; any other may point
+                    # at another binding's storage, so `del` only unbinds it
+                    # and a slot it owns dies at scope end.
+                    if not lc.binding(name).fresh_only:
                         continue
                     sinks.append((escape_cpp_name(name), True))
                     continue

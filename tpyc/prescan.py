@@ -48,10 +48,6 @@ class ScanResult:
     # chain (a = o.inner, n = xs[0]): the borrowers INTO the root's storage
     # that last-use liveness models.
     chain_alias_sources: dict[str, str] = field(default_factory=dict)
-    # Variables initially aliased from another name (before reassignment cleanup).
-    # Used by del codegen to avoid destroying through a pointer that may
-    # still point at the source variable's storage.
-    initial_alias_names: set[str] = field(default_factory=set)
     # name -> location of its first binding in the body (params excluded).
     first_bind_loc: dict[str, SourceLocation | None] = field(default_factory=dict)
     # Bindings whose scope is narrower than the body (comprehension and
@@ -396,7 +392,6 @@ def scan_reassigned_vars(stmts: list[TpyStmt],
         result.literal_locals = scan_pending_num_locals(
             stmts, params, result.first_bindings)
     _scan_stmts(stmts, declared, result, frozenset(declared))
-    result.initial_alias_names = set(result.alias_sources.keys())
     # Reassigned vars become T* pointers, not T& refs -- remove from alias map
     for name in result.reassigned:
         result.alias_sources.pop(name, None)

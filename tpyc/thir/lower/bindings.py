@@ -18,7 +18,8 @@ table are listed in TODO.md ("STILL OUTSIDE THE TABLE").
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, Mapping, Set as AbstractSet
+from collections.abc import (Callable, Iterable, Iterator, Mapping,
+                             Set as AbstractSet)
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, NamedTuple
@@ -37,21 +38,25 @@ from ...parse.nodes import (RebindStorage, TpyArrayLiteral,
                             TpyAssign, TpyAwait, TpyCall, TpyCapturePattern,
                             TpyClassPattern, TpyCoerce,
                             TpyComprehensionGenerator, TpyDictComprehension,
-                            TpyDictLiteral, TpyExpr, TpyFieldAccess,
+                            TpyDelVar, TpyDictLiteral, TpyExpr, TpyFieldAccess,
                             TpyForEach, TpyFunction, TpyGeneratorExpression,
+                            TpyGlobal,
                             TpyIf, TpyIfExpr, TpyLambda, TpyListComprehension,
                             TpyListRepeat, TpyLiteralPattern, TpyMatch,
                             TpyMatchCase, TpyMethodCall, TpyName, TpyNestedDef,
-                            TpyNoneLiteral, TpyOrPattern, TpySetComprehension,
+                            TpyNoneLiteral, TpyNonlocal, TpyOrPattern,
+                            TpySetComprehension,
                             TpySetLiteral, TpySlice, TpyStmt, TpySubscript,
                             TpyTry, TpyTupleLiteral, TpyTupleUnpack,
                             TpyVarDecl, TpyWhile, TpyWildcardPattern, TpyWith,
                             TpyWithItem,
                             TpyYield, TupleElemCapture,
                             iter_capture_bindings, program_names,
-                            walk_body_stmts, walk_expr_tree, walrus_bindings)
+                            walk_body_stmts, walk_expr_tree, walrus_bindings,
+                            written_names)
 from ...prescan import scan_first_bindings, scope_bound_names
-from ...sema.alias_rebind import (final_pointer_tuple_names, leaf_paths,
+from ...sema.alias_rebind import (BindKind, bind_kind_of,
+                                  final_pointer_tuple_names, leaf_paths,
                                   pointer_tuple_owned, tuple_name_bindings)
 from ...sema.binding_ownership import (NOT_OWNED, Acquired, BindingOwnership,
                                        by_value_optional,
@@ -109,6 +114,7 @@ from .predicates import (_bytes_name_form, _is_borrow_form_name,
 from .storage import tuple_layout
 
 if TYPE_CHECKING:
+    from ...sema.analyzer import SemanticAnalyzer
     from .resumable import FrameLoopFacts
 # statements, expressions, comprehensions, match and resumable import this
 # module (they lower under the table it plans), so the planner imports what
@@ -1009,6 +1015,14 @@ def _seeded_form(f: dict) -> F:
     return F.NONE
 
 
+def _except_row(site, name, typ, inp: PlanInputs, visible):
+    """An `except` target: the handler's `const E&` alias of the caught
+    exception, which holds nothing of its own."""
+    return BindingRepr(name=name, site=site.node, type=typ, form=F.NONE,
+                       site_kind=site.kind, ref_alias=True,
+                       move_exception=_no_move(typ))
+
+
 def _receiver_row(site, name, typ, inp: PlanInputs, visible):
     """The method receiver: const for a readonly method (functions.py,
     resumable.py), movable for a consuming one (context.py)."""
@@ -1078,8 +1092,6 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
         kind = _frame_value_opt(name, inp)
         if kind is not None:
             f["value_opt"] = kind
-    if name in ff.borrowed:
-        f["frame_borrowed"] = True
     own = site.ownership
     if own and own.acquired.from_iteration:
         # A field only loops bind moves out of the step it owns; a copied
@@ -3097,6 +3109,7 @@ _ROWS: dict[str, tuple] = {
     "match": (_copied_value(_match_row),),
     "nested_param": (_nested_param_row,),
     "lambda": (_excepted(_lambda_param_row, M.LAMBDA_PARAM),),
+    "except": (_except_row,),
 }
 
 
@@ -3136,6 +3149,8 @@ class _Planner:
         # The for statement whose head unpack is being planned: a
         # suspending loop's head binds the frame's own fields.
         self.loop: TpyForEach | None = None
+        # Each planned scope's `_non_fresh_names`, by function.
+        self.non_fresh: IdentityMap = IdentityMap()
 
     def _site(self, kind: str, node=None, init=None) -> _Site:
         return _Site(kind, node, init, in_branch=self.in_branch,
@@ -3144,9 +3159,25 @@ class _Planner:
 
     def _record(self, site: _Site, name: str, typ, node: ScopeNode
                 ) -> BindingRepr:
-        rec = classify_binding(site, name, typ, self.inp, node.lookup)
+        rec = self._fresh(classify_binding(site, name, typ, self.inp,
+                                           node.lookup), site.func)
         self._key(site.node, rec)
         return rec
+
+    def _fresh(self, rec: BindingRepr, func: TpyFunction | None
+               ) -> BindingRepr:
+        """`rec` with `fresh_only` from the scope of `func` that binds it
+        (`_non_fresh_names`, once per function)."""
+        if rec.site_kind in ("comp", "lambda"):
+            # A comprehension clause's or a lambda's own scope: never the
+            # target of a `del`.
+            return rec
+        func = func or self.inp.func
+        names = self.non_fresh.get(func)
+        if names is None:
+            names = self.non_fresh[func] = _non_fresh_names(func,
+                                                            self.analyzer)
+        return rec if rec.name in names else replace(rec, fresh_only=True)
 
     def _key(self, key: object, rec: BindingRepr) -> None:
         """Key `rec` at the one site that declares it: two records of a
@@ -3839,6 +3870,13 @@ def _mark_const(table: BindingTable, fix: _ConstFix, an) -> None:
             new[id(rec)] = got
         return got
 
+    _swap_records(table, swap)
+
+
+def _swap_records(table: BindingTable,
+                  swap: Callable[[BindingRepr], BindingRepr]) -> None:
+    """Replace every record by `swap(record)`, in every scope node and
+    site entry that holds it."""
     seen: set[int] = set()
     nodes = [table.root, *table.scope_at.values(),
              *table.stmt_expr_scope.values()]
@@ -3853,6 +3891,46 @@ def _mark_const(table: BindingTable, fix: _ConstFix, an) -> None:
         nodes.append(node.parent)
     for site in list(table.sites):
         table.sites[site] = tuple(swap(r) for r in table.sites[site])
+
+
+def _non_fresh_names(func: TpyFunction, an: 'SemanticAnalyzer'
+                     ) -> frozenset[str]:
+    """The names of `func`'s own scope some binding of which is not a fresh
+    value (`BindingRepr.fresh_only`): every name a statement of the body
+    binds (`written_names`) other than at a declaration or assignment
+    whose bind kind is RVALUE, a walrus target that is not, a parameter,
+    a `global` / `nonlocal` name and a name a nested def rebinds through
+    `nonlocal` (sema's `nonlocal_names`, any depth). A nested def's body
+    is a scope of its own. Read off the whole body, so the order of the
+    bindings does not matter."""
+    out: set[str] = {n for n, _t in func.params}
+
+    def fresh(binder: object, value: TpyExpr | None) -> bool:
+        owned = an.ctx.tuple_elem_owned.get(binder)
+        return bind_kind_of(an.ctx, value, owned) is BindKind.RVALUE
+
+    def on_stmt(s: TpyStmt) -> None:
+        if isinstance(s, TpyNestedDef):
+            out.add(s.func.name)
+            out.update(s.nonlocal_names)
+            return
+        if isinstance(s, (TpyGlobal, TpyNonlocal)):
+            out.update(s.names)
+        elif isinstance(s, TpyVarDecl):
+            # A bare annotation binds nothing.
+            if s.init is not None and not fresh(s, s.init):
+                out.add(s.name)
+        elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+            if not fresh(s, s.value):
+                out.add(s.target.name)
+        elif not isinstance(s, TpyDelVar):
+            out.update(written_names(s, walrus=False))
+        for w in walrus_bindings(s):
+            if not fresh(w, w.value):
+                out.add(w.target)
+
+    walk_body_stmts(func.body, lambda e: None, on_stmt)
+    return frozenset(out)
 
 
 def _plan_once(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
@@ -3892,9 +3970,13 @@ def _plan_once(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
                 root_recs[nd.func.name] = classify_binding(
                     _Site("def", nd), nd.func.name, None, inp, root.lookup)
     table = BindingTable(root, inp)
+    planner = _Planner(inp, table)
+    for name, rec in root_recs.items():
+        if rec.site_kind != "receiver":
+            root_recs[name] = planner._fresh(rec, inp.func)
     table.frame_members = tuple(n for n, rec in root_recs.items()
                                 if rec.frame_class is not None)
-    _Planner(inp, table).block(body, root, branch=False, top_level=True)
+    planner.block(body, root, branch=False, top_level=True)
     return table
 
 

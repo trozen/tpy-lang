@@ -1635,10 +1635,9 @@ class CodeGenContext:
 
     # --- Reference-bound locals (T& aliases -- del must not move-sink) ---
     # ref_bound_locals grows during codegen as T& decls are emitted -> in LocalScopeSnap.
-    # aliased_vars/alias_names are set once per function from prescan -> NOT in LocalScopeSnap.
+    # aliased_vars is set once per function from prescan -> NOT in LocalScopeSnap.
     ref_bound_locals: set[str] = field(default_factory=set)
     aliased_vars: set[str] = field(default_factory=set)
-    alias_names: set[str] = field(default_factory=set)
 
     # --- Move-through vars (lvalue alias promoted to owned via std::move) ---
     move_through_vars: set[str] = field(default_factory=set)
@@ -1977,7 +1976,6 @@ class CodeGenContext:
         self.lvalue_reassigned_vars = set()
         self.ref_bound_locals = set()
         self.aliased_vars = set()
-        self.alias_names = set()
         self.move_through_vars = set()
         self.hoisted_vars = set()
         self.branch_hoisted_vars = set()

@@ -317,9 +317,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
     (a local literal or a call source) and warns the element copy since the
     tuple-literal member walker; moving the element at the root's last use
     is a perf item, not a reject
-  - [ ] an element alias off a tuple local: `a = t[0]` [`decl.slot_type`],
+  - [x] an element alias off a tuple local: `a = t[0]` [`decl.slot_type`],
     and `a = p[0]; a = q` off a borrow-tuple param [`decl.slot_type`] where
-    the scalar `a = p; a = q` compiles (found 2026-09-22)
+    the scalar `a = p; a = q` compiles (found 2026-09-22) -- the rebound
+    element local takes the scalar's reseatable pointer (branch
+    elem-alias-rebind, `tests/cases/tuple/elem_alias_rebind`)
   - [x] a tuple-unpack for head over pre-bound names: `k, v = ...` then
     `for k, v in make_pairs()` -- compiles since the per-target for head
     (S3, 2026-10-25): each target is the scalar write `k = <element 0>`

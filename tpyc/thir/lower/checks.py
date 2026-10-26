@@ -2113,9 +2113,11 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                                                      analyzer, pointers)):
             return binding
         # A pointer-repr record element off a tuple name (`b = p[1]`,
-        # `a = t[0]`) binds the `T&` alias of the element referent.
-        # REF_ALIAS only -- a reassigned sibling's reseat is unwitnessed.
-        if (binding is LocalBinding.REF_ALIAS
+        # `a = t[0]`) binds the `T&` alias of the element referent or,
+        # reassigned, the reseatable `Box* a = std::get<0>(p);` (`&()` over
+        # an inline element) -- the record-element rungs' two flavors, the
+        # later reseats the existing pointer arms'.
+        if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and record_like(target_type, analyzer)
                 and _tuple_name_elem_subscript(stmt.init, declared, analyzer)):
             return binding

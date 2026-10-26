@@ -1282,7 +1282,7 @@ class _Prescan:
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "nonlocal_names",
                  "hoisted", "escape_hoisted", "move_through",
-                 "alias_sources", "alias_born", "owned_viewfam_params",
+                 "alias_sources", "owned_viewfam_params",
                  "value_opt_params", "param_names", "bound_names",
                  "module_global_names",
                  "own_tuple_params",
@@ -1364,12 +1364,9 @@ class _Prescan:
             func, set())
         self.move_through = analyzer.function_move_through_vars.get(
             func, set())
-        # Alias facts for the `del x` move-sink skips: names some alias binds
-        # to (codegen's `ctx.aliased_vars` -- moving from them would gut the
-        # alias) and names whose FIRST binding was an alias (`ctx.alias_names`
-        # -- such a pointer-local may point at another local's storage).
+        # The `del x` move-sink skip: names some alias binds to (codegen's
+        # `ctx.aliased_vars` -- moving from them would gut the alias).
         self.alias_sources = set(scan.alias_sources.values()) if scan else set()
-        self.alias_born = scan.initial_alias_names if scan else set()
 
     def binds_global(self, name: str) -> bool:
         """Does `name` read as a module GLOBAL in this body? The seeding
@@ -1706,7 +1703,7 @@ _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
 _SHADOWED_PRESCAN_FACTS = _ParamFacts._fields + (
     "reassigned", "rvalue_reassigned", "hoisted", "escape_hoisted",
     "move_through",
-    "alias_sources", "alias_born",
+    "alias_sources",
     "global_seeded", "global_readonly", "global_cpp", "global_write_cpp",
     "global_slots", "native_globals",
 )

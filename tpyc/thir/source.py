@@ -312,6 +312,13 @@ class BindingRepr:
     # `T*`: a read without a deref is the raw pointer, which only a whole
     # lift consumes.
     pointer: bool = False
+    # Every binding of the name in its function puts a fresh value of its
+    # own there (sema's `BindKind.RVALUE`), so a pointer local always points
+    # at storage it owns; a name any other binding reaches (a place, an
+    # unpack / loop / match / with / except target, a parameter, an
+    # augmented or nonlocal rebind) may point at storage another binding
+    # owns. Order-free: the planner reads every binding of the body.
+    fresh_only: bool = False
     # A rebound reference local held as a pointer over storage of its own
     # (the storage policy, `first_binding_storage`): a rebind re-points it.
     rebind_slot: bool = False
@@ -390,9 +397,6 @@ class BindingRepr:
     # `const_frame_bindings`: const-borrow captures, a `@readonly` receiver,
     # const alias fields, loop holders).
     frame_const: bool = False
-    # A frame pointer field that borrows its pointee (a loop variable, an
-    # unpack target, a statement alias): the frame owns nothing behind it.
-    frame_borrowed: bool = False
     # A frame loop's pointer-form variable over an ITERATOR source: it
     # points into the step result, whose members may themselves be
     # references or pointers (a proxy tuple), so targets unpacked off it

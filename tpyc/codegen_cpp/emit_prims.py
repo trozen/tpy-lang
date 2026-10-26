@@ -802,13 +802,11 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
         ctx.rvalue_reassigned_vars = scan.rvalue_reassigned - ctx.global_declared_vars
         ctx.lvalue_reassigned_vars = scan.lvalue_reassigned - ctx.global_declared_vars
         ctx.aliased_vars = set(scan.alias_sources.values())
-        ctx.alias_names = scan.initial_alias_names
     else:
         ctx.reassigned_vars = set()
         ctx.rvalue_reassigned_vars = set()
         ctx.lvalue_reassigned_vars = set()
         ctx.aliased_vars = set()
-        ctx.alias_names = set()
     ctx.hoisted_vars = ctx.analyzer.function_hoisted_vars.get(func, set())
     ctx.move_through_vars = ctx.analyzer.function_move_through_vars.get(func, set())
     ctx.sema_ever_owned_locals = ctx.analyzer.function_ever_owned_locals.get(func, set())
