@@ -5195,7 +5195,8 @@ def _open_t_tuple_storage_decl(t: TpyType | None, rec, analyzer) -> bool:
 
 def _own_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A STORAGE tuple with per-element `Own[record]` ownership
-    (`tuple[Own[A], Own[B]]` -- `std::tuple<A, B>`), or None: the record
+    (`tuple[Own[A], Own[B]]` -- `std::tuple<A, B>`; an `Own[A] | None`
+    element is the `std::optional<A>` that owns it), or None: the record
     elements are owned by value, so borrow and storage coincide at the
     tuple level and a decl / call result is the plain spelled copy
     (`std::tuple<Counter, Counter> t = make_pair();`). At least one
@@ -5209,9 +5210,9 @@ def _own_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
         return None
     own_rec = False
     for e in t.element_types:
-        eu = unwrap_readonly(unwrap_send_sync(e))
-        if (isinstance(eu, OwnType)
-                and _f1_record(unwrap_readonly(eu.wrapped), analyzer)):
+        own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(e)))
+        if (own is not None
+                and _f1_record(unwrap_readonly(own.wrapped), analyzer)):
             own_rec = True
             continue
         # NESTED own-record tuple elements stay OUT until the
@@ -5368,12 +5369,14 @@ def _value_tuple_return_element_ok(e: TpyType, analyzer) -> bool:
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(e)))
     if isinstance(inner, TupleType):
         return _value_tuple_return(inner, analyzer) is not None
-    if isinstance(inner, OwnType):
+    own = unwrap_optional_own(inner)
+    if own is not None:
         # An Own[genrec] element is the same by-value slot as Own[record]
         # (`std::tuple<Tree<int32_t>, ...>`); its literal source takes the
-        # ru-instance spelled render.
-        return (_f1_record(inner.wrapped, analyzer)
-                or isinstance(unwrap_readonly(inner.wrapped),
+        # ru-instance spelled render. `Own[record] | None` is its
+        # `std::optional`.
+        return (_f1_record(own.wrapped, analyzer)
+                or isinstance(unwrap_readonly(own.wrapped),
                               RecursiveAliasInstanceType))
     return (_value_opt_scalar(e, analyzer) is not None
             or _value_opt_view(e, analyzer) is not None)
@@ -8831,11 +8834,11 @@ def _own_opt_storage_binding(t: 'TpyType | None') -> bool:
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
     if not (isinstance(tu, OptionalType) and not tu.uses_pointer_repr()):
         return False
-    ou = unwrap_readonly(tu.inner)
+    ou = unwrap_optional_own(tu)
     # A value-type Own is a no-op spelling (`Own[int32] | None` is the
     # plain value-opt SCALAR family) -- only a reference-type payload
     # makes this the storage-form record binding.
-    return isinstance(ou, OwnType) and not ou.wrapped.is_value_type()
+    return ou is not None and not ou.wrapped.is_value_type()
 
 
 def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
@@ -9338,14 +9341,16 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ret)))
     if not isinstance(t, TupleType):
         return None
-    if not any(isinstance(e, OwnType) for e in t.element_types):
+    if not t.has_own_element():
         return None
     for e in t.element_types:
-        if isinstance(e, OwnType):
+        own = unwrap_optional_own(e)
+        if own is not None:
             # The Own[genrec] element moves out of the capture exactly like
-            # an Own[record] one (`Tree<T> t = std::move(std::get<i>(..));`).
-            ew = unwrap_readonly(e.wrapped)
-            if not (_f1_record(e.wrapped, analyzer)
+            # an Own[record] one (`Tree<T> t = std::move(std::get<i>(..));`),
+            # and an `Own[record] | None` one as its storage optional.
+            ew = unwrap_readonly(own.wrapped)
+            if not (_f1_record(own.wrapped, analyzer)
                     or isinstance(ew, RecursiveAliasInstanceType)
                     # The Own[P | None] element (`pair() ->
                     # tuple[Own[P|None], int32]`): a storage-optional

@@ -1292,7 +1292,8 @@ class NonOwningBind:
 
 def note_nonowning_bind(ctx: 'SemanticContext', name: str,
                         at: 'TpyExpr | TpyStmt | None',
-                        elems: 'frozenset[ElemPath] | None' = None) -> None:
+                        elems: 'frozenset[ElemPath] | None' = None, *,
+                        source_path: 'ElemPath | None' = None) -> None:
     """The one writer of the ownership fact: a binding of `name`, noted at
     node `at`, that makes it refer to storage that already exists, wholly
     (`elems` None) or at those tuple element paths. Every such binding is
@@ -1300,23 +1301,32 @@ def note_nonowning_bind(ctx: 'SemanticContext', name: str,
     own body. A function LOCAL's entry folds them as they come, for the
     whole function (`FunctionTrackingState.nonowning_bind`); a module's
     names and a parameter are no LOCAL (a parameter's ownership is its
-    declared type, never a binding's)."""
+    declared type, never a binding's). `source_path`: the element of the
+    source value at `at` the binding refers to (an unpack target's)."""
     func = ctx.func.current_function
     entry = ctx.func.nonowning_sites.setdefault(name, NonOwningNotes())
-    entry.notes.append((at, elems))
+    entry.notes.append(NonOwningNote(at, elems, source_path or ()))
     if (ctx.in_function_body()
             and not any(p == name for p, _ in func.params)):
         entry.local = fold_nonowning(entry.local, at, elems)
 
 
+class NonOwningNote(NamedTuple):
+    """One binding of a name to storage that already exists: its node
+    (`at`, the source value's), the element paths of the name it borrows
+    (None: the whole value) and the element of the source value it refers
+    to (`source`; `()`, the whole value)."""
+    at: object
+    elems: 'frozenset[ElemPath] | None'
+    source: ElemPath
+
+
 @dataclass(slots=True)
 class NonOwningNotes:
     """The bindings of one name to storage that already exists
-    (`note_nonowning_bind`): each one's node and the element paths it
-    borrows (None: the whole value), and what the LOCAL ones add up to
-    (`local`; None for no LOCAL binding)."""
-    notes: list[tuple[object, 'frozenset[ElemPath] | None']] = field(
-        default_factory=list)
+    (`note_nonowning_bind`), and what the LOCAL ones add up to (`local`;
+    None for no LOCAL binding)."""
+    notes: list[NonOwningNote] = field(default_factory=list)
     local: NonOwningBind | None = None
 
 
@@ -2766,6 +2776,9 @@ class SemanticContext:
     # exit discards before the outermost body ends.
     pointer_tuples_by_func: IdentityMap = field(default_factory=IdentityMap)
     pointer_tuple_seeds: IdentityMap = field(default_factory=IdentityMap)
+    # Each analyzed body's function state, kept for the checks run after
+    # its enclosing body (`_refuse_outliving_captures`).
+    function_states: IdentityMap = field(default_factory=IdentityMap)
     pending_pointer_tuple_rebinds: IdentityMap = field(
         default_factory=IdentityMap)
     # The and/or and ternary nodes whose value is only tested for truth (a

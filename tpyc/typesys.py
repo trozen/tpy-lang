@@ -4281,12 +4281,45 @@ def final_type_str_to_strview(t: 'TpyType') -> 'TpyType':
 
 
 def unwrap_optional_own(t: 'TpyType') -> 'OwnType | None':
-    """Extract OwnType from Own[T] or Own[T] | None."""
+    """Extract OwnType from Own[T] or Own[T] | None. Inside the Optional a
+    `readonly` or Send/Sync wrapper over the `Own` is looked through. The
+    bare `readonly[Own[T]]` / `Send[Own[T]]` tuple element is not looked
+    through (its value form is not OWN), so there the nullable spelling owns
+    where the bare one does not -- the bare side's defect,
+    BUGS.md#send-own-tuple-element-not-owned."""
     if isinstance(t, OwnType):
         return t
-    if isinstance(t, OptionalType) and isinstance(t.inner, OwnType):
-        return t.inner
+    if isinstance(t, OptionalType):
+        inner = t.inner
+        while isinstance(inner, (ReadonlyType, _MarkerType)):
+            inner = inner.wrapped
+        if isinstance(inner, OwnType):
+            return inner
     return None
+
+
+def owned_payload(t: 'TpyType') -> 'TpyType | None':
+    """What an `Own[P]` or `Own[P] | None` slot owns (`P`, its readonly
+    peeled); None for a slot that owns nothing."""
+    own = unwrap_optional_own(t)
+    return unwrap_readonly(own.wrapped) if own is not None else None
+
+
+def drop_own_marker(t: 'TpyType') -> 'TpyType':
+    """`t` with its ownership marker removed and its nullability kept:
+    `Own[P]` -> `P`, `Own[P] | None` -> `P | None` (a `readonly` or
+    Send/Sync wrapper inside the Optional stays). Anything else is `t`."""
+    if isinstance(t, OwnType):
+        return t.wrapped
+    if not isinstance(t, OptionalType) or unwrap_optional_own(t) is None:
+        return t
+
+    def peel(x: 'TpyType') -> 'TpyType':
+        if isinstance(x, OwnType):
+            return x.wrapped
+        return x.with_inner_types((peel(x.wrapped),))
+
+    return t.with_inner(peel(t.inner))
 
 
 def param_takes_ownership(ptype: 'TpyType') -> bool:
@@ -4377,13 +4410,14 @@ def global_tuple_binding_type(t: 'TpyType') -> 'TpyType':
         return t
 
     def strip(e: 'TpyType') -> 'TpyType':
-        if isinstance(e, OwnType):
-            return strip(e.wrapped)
-        if isinstance(e, OptionalType) and isinstance(e.inner, OwnType):
-            return e.with_inner(strip(e.inner.wrapped))
         if isinstance(e, TupleType):
             return TupleType(tuple(strip(x) for x in e.element_types))
-        return e
+        d = drop_own_marker(e)
+        if d is e:
+            return e
+        if isinstance(d, OptionalType):
+            return d.with_inner(strip(d.inner))
+        return strip(d)
 
     stripped = strip(bare)
     if stripped == bare:
@@ -4428,13 +4462,12 @@ def collapse_tuple_own_elements(var_type: 'TpyType') -> 'TpyType':
         return ReadonlyType(rewrapped) if isinstance(var_type, ReadonlyType) else rewrapped
     if not isinstance(inner, TupleType):
         return var_type
-    if not any(isinstance(et, OwnType) for et in inner.element_types):
+    if not inner.has_own_element():
         return var_type
     if inner.is_mixed_own():
         return var_type
     collapsed = TupleType(tuple(
-        et.wrapped if isinstance(et, OwnType) else et
-        for et in inner.element_types))
+        drop_own_marker(et) for et in inner.element_types))
     return ReadonlyType(collapsed) if isinstance(var_type, ReadonlyType) else collapsed
 
 
@@ -4742,7 +4775,10 @@ class OptionalType(TpyType):
         # Keyed on the C++ shape (uses_pointer_repr), NOT is_value_type: a
         # force_pointer_repr Optional over a value inner is value-semantics but
         # lowers to T* / std::optional<T>, so it is PTR_OPTIONAL. A non-pointer
-        # (value-inner) Optional is a plain value.
+        # (value-inner) Optional is a plain value. `Own[T] | None` owns its
+        # payload exactly as `Own[T]` does, so it shares that form.
+        if unwrap_optional_own(self) is not None:
+            return ValueForm.OWN
         return ValueForm.PTR_OPTIONAL if self.uses_pointer_repr() else ValueForm.VALUE
 
     def to_cpp_return(self) -> str:
@@ -5403,19 +5439,27 @@ class TupleType(TpyType):
         )
 
     def has_own_element(self) -> bool:
-        # An OWN element is stored by value in storage form (e.g. `socket` for
-        # `Own[socket]`), so a frame field of this tuple owns that storage and
-        # may be non-default-constructible -- it needs frame_slot wrapping, not
-        # a raw field, even though `is_value_type()` reports the tuple True.
+        # An OWN element (`Own[T]`, `Own[T] | None`) owns its payload, so the
+        # tuple takes ownership transfer even though `is_value_type()`
+        # reports it True.
         return any(e.value_form() is ValueForm.OWN for e in self.element_types)
 
     def owned_elements(self) -> list[tuple[int, 'TpyType']]:
         """(index, payload) of each OWN element -- the elements
         `has_own_element` counts -- the payload read under its `Own` and
         any `readonly` there."""
-        return [(i, unwrap_readonly(unwrap_own(e)))
+        return [(i, unwrap_readonly(owned.wrapped))
                 for i, e in enumerate(self.element_types)
-                if e.value_form() is ValueForm.OWN]
+                if e.value_form() is ValueForm.OWN
+                and (owned := unwrap_optional_own(e)) is not None]
+
+    def needs_frame_slot(self) -> bool:
+        """Whether a frame field of this tuple may hold storage that is not
+        default-constructible: an OWN element held by value. An
+        `Own[T] | None` element is a `std::optional`, which always is."""
+        return any(e.value_form() is ValueForm.OWN
+                   and not isinstance(e, OptionalType)
+                   for e in self.element_types)
 
     def has_nested_element(self, pred: 'Callable[[TpyType], bool]') -> bool:
         """Depth-first over the element tree: True if `pred` holds at any

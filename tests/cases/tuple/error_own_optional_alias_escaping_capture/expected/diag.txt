@@ -1,0 +1,2 @@
+main.py:27: warning: Escaping closure 'g' may keep its own copy of local 'b', which aliases storage it does not own; use copy() to make the copy explicit
+main.py:27: error: a closure that outlives 'f' captures 'b', which refers to an object in storage of 'f' itself; capturing it is not yet supported here; narrow it and bind a copy (`if b is not None: b0 = copy(b)`, with `copy` from `tpy`) and capture that

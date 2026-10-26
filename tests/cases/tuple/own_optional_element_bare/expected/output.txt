@@ -1,0 +1,32 @@
+consume 100
+borrow same True
+borrow 99
+ret_after 99
+in_loop 200
+field 99
+in_match 99
+mixed 100 99
+two_owned alias 99 True
+two_owned 99
+rebind_fresh 9 5
+rebind_consumed_fresh 10
+dropped 2
+forward_mixed 100 99
+forward_mixed_again 199 99
+ro 4 6
+forward 2
+make 3 3
+literal 4 2
+make_named 5 5
+make_finally 99 3
+make_from 6 1 6
+with_nocopy 99 8
+nonescaping 101
+shadowed 15
+escaping_copy 7
+marked
+call last 100
+call fresh 100
+call copy 100 3
+call borrowed 7
+call borrowed 7

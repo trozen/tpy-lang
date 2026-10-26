@@ -60,8 +60,9 @@ from ..storage_trace import StepKind, Trace, is_unbound_field, trace
 from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
-    OwnType, ReadonlyType, TpyType, TupleType, TypeParamRef,
-    make_readonly, unwrap_own, unwrap_readonly,
+    OptionalType, OwnType, ReadonlyType, TpyType, TupleType, TypeParamRef,
+    drop_own_marker, make_readonly, owned_payload, pointer_repr_optional, unwrap_optional_own, unwrap_own,
+    unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
 )
 from ..value_category import (binds_owned_value, call_operands,
@@ -85,7 +86,7 @@ from .loop_frames import (
 
 if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
-    from .context import SemanticContext
+    from .context import FunctionTrackingState, SemanticContext
 
 
 # Origins that are not a statement of the body: storage the name does not
@@ -167,7 +168,10 @@ def _leaves_at(et: TpyType, path: ElemPath
         for i, sub in enumerate(e.element_types):
             yield from _leaves_at(sub, path + (i,))
     else:
-        yield path, e
+        # An `Own[T] | None` leaf owns its payload `T` as an `Own[T]` leaf
+        # does; only nullability tells them apart.
+        payload = owned_payload(e)
+        yield path, (peel_slot(payload) if payload is not None else e)
 
 
 def leaf_paths(slot: TpyType | None,
@@ -219,7 +223,7 @@ def _declared_borrowed(declared: TpyType, slot: TpyType,
     answers per member, anything else lends every path of the slot there
     (`paths_at`: its reference paths, or every leaf path)."""
     d = unwrap_readonly(unwrap_send_sync(declared))
-    if isinstance(d, OwnType):
+    if unwrap_optional_own(d) is not None:
         return frozenset()
     dt, st = bare_tuple(d), bare_tuple(slot)
     if (dt is None or st is None
@@ -498,6 +502,9 @@ def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
     for i, elem_type in enumerate(source.element_types):
         if handed is not None:
             bare = unwrap_readonly(unwrap_own(elem_type))
+            payload = owned_payload(bare)
+            if payload is not None:
+                bare = payload
             # A nested value tuple holding a reference is handed over too,
             # but binds as a value; an open T is one body for every
             # instantiation, a value one included, so it neither aliases
@@ -505,7 +512,7 @@ def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
             owned = (handed[i] and not bare.is_value_type()
                      and not isinstance(bare, TypeParamRef))
         else:
-            owned = (isinstance(elem_type, OwnType) and consumed
+            owned = (unwrap_optional_own(elem_type) is not None and consumed
                      and i not in borrowed)
         if readonly:
             # Asked before the Own is peeled: readonly over an owned element
@@ -514,6 +521,18 @@ def unpack_target_records(ctx: SemanticContext, value: TpyExpr,
             elem_type = make_readonly(elem_type)
         if isinstance(elem_type, OwnType):
             elem_type = elem_type.wrapped
+        elif not owned and (own := unwrap_optional_own(elem_type)) is not None:
+            # An `Own[P] | None` element the target does not take is read in
+            # the borrow form of `P | None`, as an unmarked Optional element
+            # is; a readonly payload makes it `readonly[P | None]`, as it
+            # makes the bare element `readonly[P]` (a readonly tuple
+            # protects neither: the body owns both).
+            opt = drop_own_marker(elem_type)
+            assert isinstance(opt, OptionalType)
+            elem_type = opt
+            if isinstance(own.wrapped, ReadonlyType):
+                elem_type = make_readonly(
+                    opt.with_inner(unwrap_readonly(opt.inner)))
         ref = (not owned and not elem_type.is_value_type()
                and not isinstance(elem_type, TypeParamRef))
         out.append(UnpackTarget(owned, ref, elem_type))
@@ -1029,6 +1048,7 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
     excluded = frozenset(f.current_param_names | f.current_nonlocal_names)
     owners = _owners(ctx, func, f.current_reassigned_vars, excluded)
     ctx.pointer_tuple_seeds[func] = (owners, excluded)
+    ctx.function_states[func] = f
     if nested:
         return
     closure = _alias_closure(ctx, func, owners, excluded)
@@ -1074,6 +1094,9 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
     for _, c in sets:
         _refuse_mixed_bindings(ctx, c)
     _refuse_outliving_captures(ctx, [(fn, c.names) for fn, c in sets], defs)
+    # The check above is the states' last reader.
+    for fn, _c in sets:
+        ctx.function_states.pop(fn, None)
 
 
 def _loop_shown(loop: TpyForEach) -> str:
@@ -1164,16 +1187,21 @@ def _refuse_outliving_captures(
         ctx: 'SemanticContext',
         sets: 'list[tuple[TpyFunction, dict[str, PointerTupleOwner]]]',
         defs: 'list[TpyNestedDef]') -> None:
-    """A closure that can outlive the body whose pointer tuple it captures
-    would keep pointers into that body's own storage
-    (BUGS.md#escaping-closure-pointer-local-capture): a nested def that
-    escapes, and any lambda that copies its captures (a `Callable` value;
-    no fact says whether one escapes, so every such lambda counts) at any
-    depth. One located error per closure, after the body, so the order of
-    the closure and the rebinds does not matter."""
+    """A closure that can outlive the body would keep a pointer into that
+    body's own storage when it captures a name pointing there
+    (BUGS.md#escaping-closure-pointer-local-capture): a pointer tuple, or a
+    local whose capture copies a pointer (`capture_holds_pointer`) to an
+    object the body owns (`_borrows_own_storage`). The closures are a nested
+    def that escapes, and any lambda that copies its captures (a `Callable`
+    value; no fact says whether one escapes, so every such lambda counts) at
+    any depth. One located error per closure, after the body, so the order
+    of the closure and the bindings does not matter."""
+    # binding_ownership and capture_copies build on this module.
+    from .capture_copies import (capture_holds_pointer, capture_type,
+                                 closure_bindings)
 
-    def refuse(node: 'TpyLambda | TpyNestedDef', name: str,
-               owner: PointerTupleOwner) -> None:
+    def refuse_tuple(node: 'TpyLambda | TpyNestedDef', name: str,
+                     owner: PointerTupleOwner) -> None:
         ctx.emit_error(
             f"a closure that outlives '{owner.home}' captures '{name}', "
             f"{_holds(name, owner)}; capturing it is not yet supported "
@@ -1181,20 +1209,104 @@ def _refuse_outliving_captures(
             f"(`{name}0 = copy({name}[0])`, with `copy` from `tpy`) and "
             f"capture those", node)
 
+    def refuse_borrow(node: 'TpyLambda | TpyNestedDef', home: str,
+                      name: str, ctype: 'TpyType | None') -> None:
+        remedy = (f"narrow it and bind a copy (`if {name} is not None: "
+                  f"{name}0 = copy({name})`"
+                  if isinstance(ctype, TpyType)
+                  and pointer_repr_optional(ctype) is not None
+                  else f"bind a copy (`{name}0 = copy({name})`")
+        ctx.emit_error(
+            f"a closure that outlives '{home}' captures '{name}', which "
+            f"refers to an object in storage of '{home}' itself; capturing "
+            f"it is not yet supported here; {remedy}, with `copy` from "
+            f"`tpy`) and capture that", node)
+
+    def refused(closure: 'TpyLambda | TpyNestedDef', captured: 'Iterable[str]',
+                fn: TpyFunction,
+                tuples: 'Mapping[str, PointerTupleOwner]') -> bool:
+        names = sorted(set(captured))
+        hit = [n for n in names if n in tuples]
+        if hit:
+            refuse_tuple(closure, hit[0], tuples[hit[0]])
+            return True
+        fs = ctx.function_states.get(fn)
+        if fs is None:
+            return False
+        reads = closure_bindings(ctx, closure)
+        for name in names:
+            read = reads.bindings.get(name)
+            ctype = capture_type(closure, name, read)
+            if (capture_holds_pointer(fs, name, ctype, read)
+                    and _borrows_own_storage(ctx, fs, name)):
+                refuse_borrow(closure, fn.name, name, ctype)
+                return True
+        return False
+
     for fn, names in sets:
-        refused: set[int] = set()
+        done: set[int] = set()
         for lam, chain in value_capture_lambdas(fn.body, nested=True):
-            if any(id(c) in refused for c in chain):
+            if any(id(c) in done for c in chain):
                 continue
-            hit = sorted(set(lam.body_captures) & set(names))
-            if hit:
-                refused.add(id(lam))
-                refuse(lam, hit[0], names[hit[0]])
-    top = sets[0][1]
+            if refused(lam, lam.body_captures, fn, names):
+                done.add(id(lam))
+    top_fn, top = sets[0]
     for nd in defs:
-        hit = sorted(set(nd.captured_names) & set(top))
-        if nd.escapes and hit:
-            refuse(nd, hit[0], top[hit[0]])
+        if nd.escapes:
+            refused(nd, nd.captured_names, top_fn, top)
+
+
+def _place_base(ctx: 'SemanticContext', e: object
+                ) -> 'tuple[TpyName | None, ElemPath]':
+    """The name a place is read off over the one climb (`trace`) and its
+    tuple element path there (`tuple_subscript_index`, as
+    `storage_walk._Roots.place` builds it): a field, a getter or any other
+    subscript makes the read part of its base's whole value. None for a
+    climb with no single named base (a select, a call, an unbound
+    `Base.f`)."""
+    if not isinstance(e, TpyExpr):
+        return None, ()
+    t = trace(e)
+    path: ElemPath = ()
+    for step in t.steps:
+        if is_unbound_field(step):
+            return None, ()
+        if step.kind in (StepKind.FIELD, StepKind.INDEX, StepKind.GETTER):
+            index = tuple_subscript_index(step.node, ctx.get_expr_type)
+            path = (index,) + path if index is not None else ()
+    if t.arms or not isinstance(t.end, TpyName):
+        return None, ()
+    return t.end, path
+
+
+def _borrows_own_storage(ctx: 'SemanticContext',
+                         fs: 'FunctionTrackingState', name: str) -> bool:
+    """Whether local `name` refers to an object its body owns: a binding
+    of it borrows a place whose ROOT -- followed through the locals that
+    borrow in turn -- owns the borrowed element (`BindingOwnership.owns`).
+    Read off the whole body's notes, so the order of the bindings does not
+    matter."""
+    from .binding_ownership import read_ownership
+
+    def roots_owned(n: str, path: ElemPath, seen: frozenset[str]) -> bool:
+        entry = fs.nonowning_sites.get(n)
+        if entry is None or fs.nonowning_bind(n) is None:
+            return False
+        for note in entry.notes:
+            base, prefix = _place_base(ctx, note.at)
+            read = ctx.read_bindings.get(base) if base is not None else None
+            if read is None:
+                continue
+            full = prefix + note.source + path
+            if read_ownership(ctx, read).owns(ctx.get_expr_type(base),
+                                              (full,)):
+                return True
+            if (base.name not in seen
+                    and roots_owned(base.name, full, seen | {base.name})):
+                return True
+        return False
+
+    return roots_owned(name, (), frozenset({name}))
 
 
 def bind_kind_of(ctx: 'SemanticContext', value: TpyExpr | None,

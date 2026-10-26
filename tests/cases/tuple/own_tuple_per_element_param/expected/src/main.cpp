@@ -20,9 +20,9 @@ int32_t take(std::tuple<P, P>&& t) {
 //     if a is not None:
 //         return a.x
 //     return int32(0)
-int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t) {
-    std::optional<P> a = std::get<0>(t);
-    std::optional<P> b = std::get<1>(t);
+int32_t take_opt(std::tuple<std::optional<P>, std::optional<P>>&& t) {
+    std::optional<P> a = std::move(std::get<0>(t));
+    std::optional<P> b = std::move(std::get<1>(t));
     if (((a.has_value()) && (b.has_value()))) {
         return (::tpy::add_check<int32_t>((*a).x, (*b).x));
     }
@@ -65,7 +65,7 @@ void test_record_elements_explicit_copy() {
 void test_optional_elements_last_use() {
     P a = P(7);
     P b = P(8);
-    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, b}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{std::move(a), std::move(b)}) << "\n" << ::tpy::check_signals;
 }
 
 // def test_optional_elements_with_none() -> None:
@@ -74,7 +74,7 @@ void test_optional_elements_last_use() {
 //     print(take_opt((None, None)))
 void test_optional_elements_with_none() {
     P a = P(9);
-    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{a, std::nullopt}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{std::move(a), std::nullopt}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::take_opt(std::tuple<std::optional<P>, std::optional<P>>{std::nullopt, std::nullopt}) << "\n" << ::tpy::check_signals;
 }
 

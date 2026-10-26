@@ -30,6 +30,7 @@ from ...typesys import (
     UnionType,
     VoidType,
     param_takes_ownership,
+    unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
@@ -733,19 +734,23 @@ def storage_type(t: 'TpyType | None') -> 'TpyType | None':
     `std::optional<T>` a `T | None` field holds) and on tuple elements."""
     if t is None:
         return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    t = _own_peeled(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))))
+    if isinstance(t, TupleType):
+        elems = tuple(_own_peeled(unwrap_readonly(e)) for e in t.element_types)
+        if any(n is not unwrap_readonly(e)
+               for n, e in zip(elems, t.element_types)):
+            t = replace(t, element_types=elems)
+    return t
+
+
+def _own_peeled(t: 'TpyType') -> 'TpyType':
+    """`t` with its `Own` peeled, under an Optional too."""
     if isinstance(t, OwnType):
-        t = unwrap_readonly(t.wrapped)
+        return unwrap_readonly(t.wrapped)
     if isinstance(t, OptionalType):
-        inner = unwrap_readonly(t.inner)
-        if isinstance(inner, OwnType):
-            t = replace(t, inner=unwrap_readonly(inner.wrapped))
-    if isinstance(t, TupleType) and any(
-            isinstance(unwrap_readonly(e), OwnType) for e in t.element_types):
-        elems = [unwrap_readonly(e) for e in t.element_types]
-        t = replace(t, element_types=tuple(
-            unwrap_readonly(e.wrapped) if isinstance(e, OwnType) else e
-            for e in elems))
+        own = unwrap_optional_own(t)
+        if own is not None:
+            return replace(t, inner=unwrap_readonly(own.wrapped))
     return t
 
 

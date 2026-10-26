@@ -10,8 +10,9 @@ where is_value_type() and uses_pointer_repr() disagree.
 from .typesys import (
     ValueForm, TupleType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
     RefType, NominalType, ReadonlyType, UnionType, INT32, INT64, BOOL, STR,
-    CHAR, BIGINT,
+    CHAR, BIGINT, SendType, drop_own_marker,
 )
+from .thir.lower.predicates import _own_opt_storage_binding
 
 RECORD = NominalType("Point")  # unregistered nominal -> non-value
 
@@ -247,3 +248,45 @@ class TestCopyFreeBorrowForm:
         assert not TupleType((RECORD, t)).has_copy_free_borrow_form()
         assert not TupleType((RECORD, t, INT32)).has_copy_free_borrow_form()
         assert not TupleType((t, STR)).has_copy_free_borrow_form()
+
+
+class TestOptionalOwnElement:
+    """`Own[T] | None` owns its payload as `Own[T]` does; only the frame-slot
+    question tells the two apart (a `std::optional` default-constructs)."""
+
+    def test_optional_own_is_own(self):
+        assert OptionalType(OwnType(RECORD)).value_form() is ValueForm.OWN
+        assert OptionalType(OwnType(ReadonlyType(RECORD))).value_form() is ValueForm.OWN
+        assert OptionalType(ReadonlyType(OwnType(RECORD))).value_form() is ValueForm.OWN
+        assert OptionalType(SendType(OwnType(TypeParamRef("T")))).value_form() is ValueForm.OWN
+
+    def test_owned_elements_payload(self):
+        tt = TupleType((OptionalType(OwnType(RECORD)), INT32, OwnType(RECORD)))
+        assert tt.has_own_element()
+        assert tt.owned_elements() == [(0, RECORD), (2, RECORD)]
+        assert not tt.is_mixed_own()
+
+    def test_needs_frame_slot(self):
+        assert TupleType((OwnType(RECORD), INT32)).needs_frame_slot()
+        assert not TupleType((OptionalType(OwnType(RECORD)), INT32)).needs_frame_slot()
+        assert TupleType((OptionalType(OwnType(RECORD)), OwnType(RECORD))).needs_frame_slot()
+        assert not TupleType((RECORD, INT32)).needs_frame_slot()
+
+    def test_drop_own_marker_keeps_nullability(self):
+        assert drop_own_marker(OwnType(RECORD)) == RECORD
+        assert drop_own_marker(OptionalType(OwnType(RECORD))) == OptionalType(RECORD)
+        assert (drop_own_marker(OptionalType(ReadonlyType(OwnType(RECORD))))
+                == OptionalType(ReadonlyType(RECORD)))
+        assert drop_own_marker(OptionalType(RECORD)) == OptionalType(RECORD)
+        assert drop_own_marker(INT32) == INT32
+
+    def test_storage_binding_agrees_with_the_owned_fact(self):
+        # The lowering's storage-optional predicate finds the `Own` exactly
+        # where `unwrap_optional_own` does, Send/Sync and readonly included.
+        t = TypeParamRef("T")
+        for opt in (OptionalType(OwnType(RECORD)),
+                    OptionalType(ReadonlyType(OwnType(RECORD))),
+                    OptionalType(SendType(OwnType(t)))):
+            assert _own_opt_storage_binding(opt)
+        assert not _own_opt_storage_binding(OptionalType(RECORD))
+        assert not _own_opt_storage_binding(OptionalType(OwnType(INT32)))

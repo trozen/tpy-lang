@@ -1,0 +1,1 @@
+main.py:25: error: a closure that outlives 'f' captures 'a', which refers to an object in storage of 'f' itself; capturing it is not yet supported here; narrow it and bind a copy (`if a is not None: a0 = copy(a)`, with `copy` from `tpy`) and capture that

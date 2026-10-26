@@ -37,7 +37,7 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
-    is_bufferless_scalar, unwrap_send_sync, unwrap_optional_own,
+    is_bufferless_scalar, unwrap_send_sync, unwrap_optional_own, owned_payload,
     is_float_type, is_any_float_type, is_polymorphic_subclass_fact,
     resolve_int_literals,
     yield_uses_borrow_slot, yield_always_borrows, GenExprType,
@@ -1533,8 +1533,9 @@ class StatementAnalyzer:
             slot = self._tuple_slot_at(exp, path)
             if slot is None:
                 continue
-            owned = whole_owned or isinstance(slot, OwnType)
-            slot_t = unwrap_readonly(unwrap_own(slot))
+            payload = owned_payload(slot)
+            owned = whole_owned or payload is not None
+            slot_t = payload if payload is not None else unwrap_readonly(slot)
             if not owned or slot_t.is_value_type():
                 continue
             leaf_t = self.ctx.get_expr_type(leaf)
@@ -1573,8 +1574,8 @@ class StatementAnalyzer:
         if not isinstance(exp, TupleType):
             return False
         if not (whole_owned or any(
-                isinstance(et, OwnType)
-                and not unwrap_readonly(et.wrapped).is_value_type()
+                (payload := owned_payload(et)) is not None
+                and not payload.is_value_type()
                 for et in exp.element_types)):
             return False
         if not (value in self.ctx.finally_return_candidates
@@ -1589,7 +1590,7 @@ class StatementAnalyzer:
         stmt.finally_deferred_capture = True
         owned = (None if whole_owned else frozenset(
             i for i, et in enumerate(exp.element_types)
-            if isinstance(et, OwnType)))
+            if unwrap_optional_own(et) is not None))
         self.compat.record_owning_read(FinallyCapture(
             value.name, value, stmt, (), restored_last_use=restored,
             owned_elements=owned))
@@ -7104,7 +7105,8 @@ class StatementAnalyzer:
         # str/bytes member a VIEW target dangles into once it outlives the temp
         # (e.g. a loop-reassigned `head, tail = split(head)`) -- flag it owned
         # below, the chokepoint the scalar `s = owned()` reassign uses.
-        has_owned_elem = any(isinstance(et, OwnType) for et in rhs_type.element_types)
+        has_owned_elem = any(unwrap_optional_own(et) is not None
+                             for et in rhs_type.element_types)
         source_binds_by_ref = isinstance(stmt.value, TpyName) and not has_owned_elem
 
         # An `Own` element is MOVED out only when the unpack consumes its
@@ -7135,7 +7137,8 @@ class StatementAnalyzer:
         else:
             # Unpacking an owned-element tuple by NAME consumes the whole
             # source: the targets take the elements it owns.
-            takes = any(isinstance(et, OwnType) and i not in borrowed_elems
+            takes = any(unwrap_optional_own(et) is not None
+                        and i not in borrowed_elems
                         for i, et in enumerate(rhs_type.element_types))
             if takes:
                 # The targets own the elements the source hands over where
@@ -7166,7 +7169,8 @@ class StatementAnalyzer:
                     and not isinstance(stmt.value, TpyTupleLiteral)):
                 # The target refers to the source's element (a literal's is
                 # copied in, see below).
-                note_nonowning_bind(self.ctx, name, stmt.value)
+                note_nonowning_bind(self.ctx, name, stmt.value,
+                                    source_path=(i,))
             stmt.is_rebound.append(
                 is_ref and name is not None
                 and name in (stmt.loop_body_rebinds if stmt.is_loop_head

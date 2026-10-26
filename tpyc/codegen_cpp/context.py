@@ -3003,8 +3003,8 @@ class CodeGenContext:
         owning: dict[str, 'TpyType | None'] = {}
 
         # Type/provenance-driven owning tuple locals:
-        #  - a tuple with an OWN element owns its storage regardless of how it
-        #    is bound;
+        #  - a tuple with an OWN element held by value owns its storage
+        #    regardless of how it is bound;
         #  - an `__await_lift_*` temp is ALWAYS an owned result, so even a
         #    reference-element tuple (e.g. `tuple[list[T], int]`) needs owning
         #    `frame_slot<std::tuple<...>>` rather than the borrow-form
@@ -3014,7 +3014,7 @@ class CodeGenContext:
             inner = unwrap_ref_type(ltype)
             if not (isinstance(inner, TupleType) and lname not in reassigned):
                 continue
-            if (inner.has_own_element()
+            if (inner.needs_frame_slot()
                     or (lname in one_shot and inner.has_pointer_repr_element())):
                 owning[lname] = None
 

@@ -97,6 +97,7 @@ from ...typesys import (
     is_void_like_type,
     polymorphic_subclass_into_optional,
     resolve_int_literals,
+    drop_own_marker,
     unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
@@ -7043,7 +7044,7 @@ def _own_tuple_shape_match_facts(
                     == _unwrap_own(unwrap_readonly(pe))
                     for ae, pe in zip(au.element_types, pu.element_types))):
         return None
-    if not any(isinstance(unwrap_readonly(et), OwnType)
+    if not any(unwrap_optional_own(unwrap_readonly(et)) is not None
                for et in pu.element_types):
         return None
     # A MIXED slot holds its borrowed elements as pointers, so only a
@@ -7145,7 +7146,7 @@ def mixed_slot_btuple_name(a: TpyExpr, ptype: 'TpyType | None',
             and len(au.element_types) == len(pu.element_types)):
         return False
     for ae, pe in zip(au.element_types, pu.element_types):
-        pe_bare = _unwrap_own(unwrap_readonly(pe))
+        pe_bare = drop_own_marker(unwrap_readonly(pe))
         if unwrap_readonly(ae) != unwrap_readonly(pe_bare):
             return False
         # A readonly element lifts only into a readonly slot: the mutable

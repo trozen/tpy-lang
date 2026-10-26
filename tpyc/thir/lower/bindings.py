@@ -2725,9 +2725,11 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
         # target keeps its slot: it points at the element in place.
         shape = _TargetShape(F.POINTER, elem_pointer=True)
         f.update(pointer=True, rebind_slot=True)
-    elif shape.elem_pointer and shape.form is F.REFERENCE and storage.pointer:
+    elif (shape.elem_pointer and shape.form in (F.REFERENCE, F.POINTER)
+          and storage.pointer):
         # A reassigned name rebinds: an alias would write the new value
-        # through into the element's referent.
+        # through into the element's referent, and a fresh value needs a
+        # slot of its own to point at.
         shape = shape._replace(form=F.POINTER)
         f.update(pointer=True, rebind_slot=True)
     acq = site.ownership.acquired
@@ -2755,7 +2757,9 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
         # The target holds the element in place as an owned loop step
         # does: one move at a consuming read, none at a read-only one.
         f["loop_binding"] = LoopBinding.OWNED
-    elif not is_ref:
+    if not (is_ref or f.get("pointer") or f.get("ptr_variant")):
+        # A value-repr Optional is read through its value wherever the
+        # target holds it.
         vo = _declared_value_opt_kind(typ, an)
         if vo is not None:
             f["value_opt"] = vo
@@ -2785,7 +2789,8 @@ def _unpack_target_shape(stmt: TpyTupleUnpack, i: int, tt, an
     reference into it (a pointer-repr Optional element as its nullable
     pointer); an owned element by taking its object (an `Own[P | None]`
     as the pointer into the holder's storage optional, an `Own[A | B]` as
-    the pointer variant); a value element by copy, or by const reference
+    the pointer variant, an `Own[P] | None` element as its storage
+    optional); a value element by copy, or by const reference
     where sema says the target never takes its own copy. No shape: the
     unpack refuses the target."""
     flag = (lambda xs: bool(xs[i]) if i < len(xs) else False)
@@ -2808,16 +2813,15 @@ def _unpack_target_shape(stmt: TpyTupleUnpack, i: int, tt, an
             return _TargetShape(F.POINTER_UNION)
         if (_p.record_like(tt, an)
                 or isinstance(unwrap_readonly(tt), RecursiveAliasInstanceType)
-                or _p._owned_container_slot(tt)):
+                or _p._owned_container_slot(tt)
+                or _own_opt_storage_binding(tt)):
             return _TargetShape(F.VALUE, owned=True)
         return _NO_SHAPE
-    # A nested value tuple and an `Own[P] | None` element (storage form)
-    # copy like a scalar; any value element of a loop's step does, as the
-    # step's own element.
+    # A nested value tuple copies like a scalar; any value element of a
+    # loop's step does, as the step's own element.
     from . import statements as _st
     if not (stmt.is_loop_head or _st._scalar_or_str_unpack_elem(tt, an)
-            or _p._value_tuple_global(tt, an) is not None
-            or _own_opt_storage_binding(tt)):
+            or _p._value_tuple_global(tt, an) is not None):
         return _NO_SHAPE
     # A target sema stamps as taking its own copy copies.
     if flag(stmt.is_const_ref) and not flag(stmt.target_copies):

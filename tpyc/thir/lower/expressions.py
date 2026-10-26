@@ -62,6 +62,7 @@ from ...parse.nodes import (
 from ...typesys import binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import make_readonly, param_takes_ownership
 from ...typesys import (
+    owned_payload,
     ConcreteFrameType,
     AliasRef,
     RecursiveAliasInstanceType,
@@ -12824,6 +12825,19 @@ def _lower_ru_elem(x: TpyExpr, ut: 'UnionType', lc: '_LowerCtx',
     return lowered
 
 
+def _ptr_opt_lift(a: TpyExpr, po_opt: 'OptionalType | None',
+                  lc: '_LowerCtx', declared: dict[str, TpyType]) -> THIRExpr:
+    """A ptr-repr Optional NAME at its movable last use into a by-value
+    `std::optional<T>` slot: owning storage rebuilt with the move lift
+    (`::tpy::ptr_to_optional_move(tmp)`)."""
+    assert po_opt is not None
+    _witness("move.opt_own_ptr_lift")
+    return THIRFormConvert(
+        result_type=po_opt,
+        value=_lower_expr(a, lc, declared, allow_unrouted_name=True),
+        form=Form.STORAGE, move=True, loc=getattr(a, "loc", None))
+
+
 def _lower_container_elem(e: TpyExpr, slot: TpyType | None,
                           lc: '_LowerCtx', declared: dict[str, TpyType],
                           **kwargs) -> THIRExpr:
@@ -16040,6 +16054,11 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 # the Own-storage-tuple RETURN arm's arg twin, same
                 # storage-direct member rules (a non-value member must be
                 # an rvalue or a movable last-use name).
+                def ptr_opt_member(i: int) -> 'OptionalType | None':
+                    return _opt_own_ptr_opt_name_arg(
+                        a.elements[i], pslot.element_types[i], declared,
+                        lc.analyzer)
+
                 own_elems_ok = True
                 for i, sub in enumerate(a.elements):
                     mslot = _unwrap_own(pslot.element_types[i])
@@ -16048,21 +16067,24 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     if (verdict(lc.analyzer.ctx, sub).disposition
                             is Disposition.COPY):
                         # A borrowed member sema declared a copy of: it
-                        # builds exactly as its explicit `copy(p)` would.
-                        if own_element_copy_type(sub, lc.analyzer) != mbare:
+                        # builds exactly as its explicit `copy(p)` would,
+                        # of the payload an owned element holds.
+                        payload = owned_payload(pslot.element_types[i])
+                        if payload is None:
+                            payload = mbare
+                        if own_element_copy_type(sub, lc.analyzer) != payload:
                             note_detail("arg.own_element_copy_source")
                             own_elems_ok = False
                             break
                         continue
+                    if ptr_opt_member(i) is not None:
+                        # A nullable pointer member takes the scalar
+                        # `Own[P] | None` argument's lift, never a deref.
+                        if not _is_move_source(sub, lc):
+                            own_elems_ok = False
+                            break
+                        continue
                     if (not mbare.is_value_type()
-                            # An `Own[P] | None` slot takes the element by
-                            # VALUE, with copy-vs-move decided off sema's
-                            # movability -- a
-                            # borrowed lvalue is a legitimate copy here, so
-                            # the storage-direct rvalue/last-use rule (which
-                            # exists to keep an Own slot from silently
-                            # copying) does not apply.
-                            and not _own_opt_storage_binding(mslot)
                             and not is_rvalue_source(lc.analyzer, sub)
                             and not (isinstance(sub, TpyName)
                                      and _is_move_source(sub, lc))):
@@ -16085,17 +16107,13 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                 declared, getattr(a.elements[i], "loc", None))
                             if (verdict(lc.analyzer.ctx, a.elements[i])
                                 .disposition is Disposition.COPY)
+                            else _ptr_opt_lift(a.elements[i],
+                                               ptr_opt_member(i), lc, declared)
+                            if ptr_opt_member(i) is not None
                             else _lower_container_elem(
                                 a.elements[i],
                                 _unwrap_own(pslot.element_types[i]),
-                                lc, declared, tuple_elem=True,
-                                # An `Own[P] | None` slot resolves to the
-                                # REF capture mode, so the slot_owned test
-                                # is False there and the element renders
-                                # a plain copy -- unlike
-                                # the VALUE-mode `Own[P]` slot next to it.
-                                suppress_move=_own_opt_storage_binding(
-                                    pslot.element_types[i]))
+                                lc, declared, tuple_elem=True)
                             for i in range(len(a.elements))),
                         loc=getattr(a, "loc", None))
             raise ThirUnsupported("expr.tuple_literal")
@@ -17132,14 +17150,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                            use=_ExprUse(result=_ExprResultUse.STORAGE))
     po_opt = _opt_own_ptr_opt_name_arg(a, ptype, declared, lc.analyzer)
     if po_opt is not None and _is_move_source(a, lc):
-        # A ptr-repr Optional NAME at the by-value `std::optional<T>` slot:
-        # rebuild owning storage with the move lift
-        # (`::tpy::ptr_to_optional_move(tmp)`).
-        _witness("move.opt_own_ptr_lift")
-        return THIRFormConvert(
-            result_type=po_opt,
-            value=_lower_expr(a, lc, declared, allow_unrouted_name=True),
-            form=Form.STORAGE, move=True, loc=getattr(a, "loc", None))
+        return _ptr_opt_lift(a, po_opt, lc, declared)
     ow_opt = _opt_own_record_name_arg(a, ptype, declared, lc.analyzer)
     if ow_opt is not None:
         # A same-nominal record NAME into an `Optional[Own[T]]` slot: the

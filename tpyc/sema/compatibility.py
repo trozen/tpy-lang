@@ -23,7 +23,7 @@ from ..typesys import (
     LiteralType, LiteralValue, LiteralTag, FLOAT, make_list, make_dict, make_set,
     OwnType, ReadonlyType, VoidType, PtrType, is_readonly_ptr, TupleType,
     NominalType, AliasRef, RecursiveAliasInstanceType, TypeParamRef, TypeParamKind, NoneType, AnyType, OptionalType, UnionType,
-    is_protocol_type, is_dyn_protocol, unwrap_own, strip_own_type_args, unwrap_readonly, unwrap_optional_own,
+    is_protocol_type, is_dyn_protocol, unwrap_own, strip_own_type_args, unwrap_readonly, unwrap_optional_own, owned_payload, drop_own_marker,
     contains_type_param,
     is_any_str_type, get_covariant_params, PendingGenericInstanceType,
     CallableType, is_fn_type, RefType, unwrap_ref_type,
@@ -443,7 +443,9 @@ def literal_member_storage_copy(sink: 'TupleSink | None', owned: bool,
     call's at a LOCAL."""
     if sink is None or own_slot_member(sink, owned):
         return False
-    payload = unwrap_own(member_t)
+    payload = owned_payload(member_t)
+    if payload is None:
+        payload = member_t
     if payload.is_value_type() or open_tuple_leaf(payload):
         return False
     return (owned or sink not in _BORROW_FORM_SINKS
@@ -2116,6 +2118,10 @@ class TypeCompatibility:
                             f"{a_in}, which {e_in} does not hold every value "
                             f"of; convert the elements: ({parts})", loc)
                 sub = members[i] if members is not None else source_expr
+                # An `Own[T] | None` element is the owning slot of `T | None`,
+                # checked as an `Own[T]` element is.
+                if isinstance(e, OptionalType) and unwrap_optional_own(e):
+                    e = OwnType(drop_own_marker(e))
                 # A tuple ELEMENT is an owning storage slot whatever position
                 # the tuple itself sits at: the tuple holds its elements by
                 # value, so a borrowing tuple parameter still owns each one.
@@ -4079,7 +4085,7 @@ class TypeCompatibility:
         if not 0 <= idx < len(tt.element_types):
             return None
         et = unwrap_readonly(tt.element_types[idx])
-        if (not values and not isinstance(et, OwnType)
+        if (not values and unwrap_optional_own(et) is None
                 and unwrap_ref_type(et).is_value_type()):
             return None
         return expr.obj.name, idx
@@ -5779,7 +5785,7 @@ class TypeCompatibility:
         the storage rule. A nested literal's members are checked at
         `nested_member_sink`; an `Own`-marked tuple member's other sources
         lend per leaf. Returns whether the member copies."""
-        owned = isinstance(et, OwnType)
+        owned = unwrap_optional_own(et) is not None
         own: 'tuple[str, str] | None' = None
         if own_slot_member(sink, owned):
             own = ((f"tuple element {path}", "return")
@@ -5795,9 +5801,10 @@ class TypeCompatibility:
                                           last_use_moves=False)
         if nested is None:
             if own is not None:
-                assert isinstance(et, OwnType)
+                own_et = unwrap_optional_own(et)
+                assert own_et is not None
                 return self.check_own_lvalue_into_own(
-                    et, m, own[0], action=own[1], whole_slot=False)
+                    own_et, m, own[0], action=own[1], whole_slot=False)
             return (literal_member_storage_copy(sink, owned, et, m)
                     and self.check_member_read(
                         m, unwrap_own(et), dest, path,
@@ -6833,7 +6840,7 @@ class TypeCompatibility:
         reference leaf as its tuple path -- with the binding that makes the
         name non-owning there; its record decides whether it stands."""
         i, et = path[0], tt.element_types[path[0]]
-        if len(path) == 1 and isinstance(et, OwnType):
+        if len(path) == 1 and unwrap_optional_own(et) is not None:
             self._warn_tuple_path_copies(
                 tt, (path,), "owned storage", expr, source=expr,
                 hedge_open=True, nocopy_hint=self.nocopy_hint(expr, i, note=""),

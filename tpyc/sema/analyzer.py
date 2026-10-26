@@ -1531,6 +1531,12 @@ class SemanticAnalyzer:
         # about Own being the only way to pass them.)
         return self.ctx.is_type_nocopy(payload)
 
+    @staticmethod
+    def _optional_own_exempt(t: TpyType) -> bool:
+        # An `Own[T] | None` slot's None branch has nothing to consume, which
+        # makes the flow-sensitive consume intersection unreliable.
+        return isinstance(unwrap_readonly(unwrap_send_sync(t)), OptionalType)
+
     def _warn_unconsumed_owned_tuple(self, func: TpyFunction, pname: str,
                                      tuple_type: TupleType) -> None:
         """An owned-element tuple param is an ownership-transfer param (the
@@ -1550,8 +1556,12 @@ class SemanticAnalyzer:
                                    for i, _ in owned):
             # Never taken apart (unpacked into element locals, or an element
             # moved out on its own): the whole tuple is the unit, and a
-            # @nocopy element makes consume-by-drop legitimate.
+            # @nocopy element makes consume-by-drop legitimate. An optional
+            # element is exempt on its own and never exempts a sibling.
             if any(self.ctx.is_type_nocopy(t) or t.is_value_type() for _, t in owned):
+                return
+            if all(self._optional_own_exempt(tuple_type.element_types[i])
+                   for i, _ in owned):
                 return
             self.ctx.warning(
                 f"owned tuple param '{pname}' is never consumed "
@@ -1560,7 +1570,8 @@ class SemanticAnalyzer:
             )
             return
         for i, payload in owned:
-            if OwnSlot(pname, i) in consumed or self._own_payload_exempt(payload):
+            if (OwnSlot(pname, i) in consumed or self._own_payload_exempt(payload)
+                    or self._optional_own_exempt(tuple_type.element_types[i])):
                 continue
             local = targets.get(i)
             via = (f"unpacked into '{local}', which is not" if local is not None
@@ -1602,9 +1613,7 @@ class SemanticAnalyzer:
                 continue
             if OwnSlot(pname) in self.ctx.func.current_consumed_own_params:
                 continue
-            # Optional[Own[T]]: None branch has nothing to consume, making
-            # flow-sensitive intersection unreliable
-            if isinstance(unwrap_readonly(ptype), OptionalType):
+            if self._optional_own_exempt(ptype):
                 continue
             if self._own_payload_exempt(own.wrapped):
                 continue

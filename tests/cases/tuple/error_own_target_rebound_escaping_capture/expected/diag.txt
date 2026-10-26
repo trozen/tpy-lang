@@ -1,0 +1,2 @@
+main.py:20: error: a closure that outlives 'f' captures 'a', which refers to an object in storage of 'f' itself; capturing it is not yet supported here; bind a copy (`a0 = copy(a)`, with `copy` from `tpy`) and capture that
+main.py:14: warning: owned tuple param 't' is never consumed (not moved out by an unpack, stored, forwarded, or returned)

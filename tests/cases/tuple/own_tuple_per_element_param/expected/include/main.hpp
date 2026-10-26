@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def take(t: tuple[Own[P], Own[P]]) -> int32:
 int32_t take(std::tuple<P, P>&& t);
 // def take_opt(t: tuple[Own[P] | None, Own[P] | None]) -> int32:
-int32_t take_opt(const std::tuple<std::optional<P>, std::optional<P>>& t);
+int32_t take_opt(std::tuple<std::optional<P>, std::optional<P>>&& t);
 // def test_record_elements_last_use() -> None:
 void test_record_elements_last_use();
 // def test_record_elements_fresh_rvalues() -> None:

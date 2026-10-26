@@ -698,6 +698,11 @@ concrete one bound in a block, rebound from a parameter or hoisted. Sema and
 the return route keep `has_pointer_repr_element()`. See `LANGUAGE_FEATURES.md`
 "Borrow Form vs Storage Form" for the user-facing semantics and
 `IR_DESIGN.md` Open Questions item 9 for the planned IR-level form fact.
+`Own[T] | None` is `OWN` too: `unwrap_optional_own` normalizes it (looking
+through `readonly` / Send-Sync inside the Optional) and `owned_payload`
+names what it owns, so it is owned exactly where `Own[T]` is; whether a
+frame field of the tuple needs `frame_slot` wrapping (an OWN element held by
+value, never a `std::optional`) is the separate `needs_frame_slot()`.
 Unit-tested in `tpyc/test_value_form.py`.
 
 ### Default construction

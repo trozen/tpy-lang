@@ -697,7 +697,7 @@ class _BodyWalk:
         line of the first of them."""
         inside: NonOwningBind | None = None
         entry = self.fs.nonowning_sites.get(name)
-        for at, elems in entry.notes if entry is not None else ():
+        for at, elems, _source in entry.notes if entry is not None else ():
             within = self.within.get(at, ()) if at is not None else ()
             if any(loop is lp for lp in within):
                 inside = fold_nonowning(inside, at, elems)

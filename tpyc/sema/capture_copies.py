@@ -44,7 +44,7 @@ from .binding_ownership import ReadBinding, ReadKind
 from .own_copy import contains_reference_type, type_param_names
 
 if TYPE_CHECKING:
-    from .context import SemanticContext
+    from .context import FunctionTrackingState, SemanticContext
 
 Closure = TpyLambda | TpyNestedDef
 
@@ -170,13 +170,38 @@ def classify_capture(ctx: 'SemanticContext', name: str,
         return CaptureCopy.NONE
     if (contains_reference_type(bare, open_params_as_values=True,
                                 held_only=True)
-            and pointer_repr_optional(typ) is None
-            and not is_ptr_variant_union(typ)
+            and not capture_holds_pointer(ctx.func, name, ctype, binding)
             and not type_param_names(bare)
             and not is_dyn_protocol(bare)
             and _holds_by_value(ctx, name, binding, bare)):
         return CaptureCopy.DEFINITE
     return CaptureCopy.HEDGED
+
+
+def _held_as_pointer(typ: TpyType) -> bool:
+    """A type whose borrow form is a pointer to its object: a capture
+    of a binding of it copies the pointer."""
+    return pointer_repr_optional(typ) is not None or is_ptr_variant_union(typ)
+
+
+def capture_holds_pointer(fs: 'FunctionTrackingState', name: str,
+                          ctype: TpyType | None,
+                          binding: ReadBinding | None) -> bool:
+    """THE capture-form fact: whether a by-value capture of local `name`
+    (of type `ctype`, in the body whose function state is `fs`) copies a
+    pointer rather than the object it refers to -- its type's borrow form is
+    a pointer, or the body's local (`binding`; a lambda parameter and a
+    comprehension variable are scopes of their own) is held in a slot its
+    binds re-point. The copy verdict (`classify_capture`) and the
+    escaping-capture refusal both read it."""
+    if not isinstance(ctype, TpyType):
+        return False
+    if _held_as_pointer(unwrap_send_sync(unwrap_ref_type(ctype))):
+        return True
+    own_scope = binding is not None and (
+        binding.kind is ReadKind.LAMBDA
+        or isinstance(binding.node, TpyComprehensionGenerator))
+    return not own_scope and _slot_bound(fs, name)
 
 
 def _copies_expensive(t: TpyType) -> bool:
@@ -219,7 +244,8 @@ def _holds_by_value(ctx: 'SemanticContext', name: str,
     variable; an enclosing lambda's parameter. A tuple holds its reference
     elements by value only as an element of a container that stores them
     (an iteration step, a comprehension variable); any other tuple may be
-    the borrow form, a tuple of pointers."""
+    the borrow form, a tuple of pointers. A local held in a slot its binds
+    re-point is `capture_holds_pointer`'s, asked before this."""
     if binding is None:
         return False
     fs = ctx.func
@@ -228,8 +254,7 @@ def _holds_by_value(ctx: 'SemanticContext', name: str,
     if kind is ReadKind.LAMBDA:
         return not is_tuple
     if kind in (ReadKind.LOCAL, ReadKind.PARAM):
-        if (is_tuple or binding.node is not fs.current_function
-                or _slot_bound(fs, name)):
+        if is_tuple or binding.node is not fs.current_function:
             return False
         if kind is ReadKind.PARAM:
             return name not in fs.current_rebound_params
@@ -241,10 +266,9 @@ def _holds_by_value(ctx: 'SemanticContext', name: str,
         if isinstance(node, TpyComprehensionGenerator):
             return not is_tuple or _stores_elements(ctx, node.iterable)
         if isinstance(node, TpyForEach):
-            return not _slot_bound(fs, name) and (
-                not is_tuple or _stores_elements(ctx, node.iterable))
+            return not is_tuple or _stores_elements(ctx, node.iterable)
         if isinstance(node, TpyTupleUnpack) and node.is_loop_head:
-            return not _slot_bound(fs, name) and not is_tuple
+            return not is_tuple
     return False
 
 
@@ -259,7 +283,7 @@ def _stores_elements(ctx: 'SemanticContext', container: TpyExpr) -> bool:
     return not isinstance(bare, TupleType) and bare.subscript_borrows()
 
 
-def _slot_bound(fs: object, name: str) -> bool:
+def _slot_bound(fs: 'FunctionTrackingState', name: str) -> bool:
     """A local held in a slot its binds re-point (rebound or hoisted): its
     capture may copy the pointer. Read off the function state, since the
     ownership table is written after the closure pass."""
