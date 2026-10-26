@@ -41,7 +41,7 @@ from ..typesys import (
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR, try_unwrap_class_constant,
     is_void_like_type,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
-    STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, TupleType, final_type_str_to_strview,
+    STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, VOID, TupleType, final_type_str_to_strview,
     make_awaitable, unwrap_send_sync,
     make_cancellable,
     register_return_exception, is_return_exception,
@@ -1942,6 +1942,12 @@ class TypeRegistrar:
             for fld in record.fields:
                 default = fld.default_expr if record.is_total_false else None
                 init_params.append((fld.name, fld.type, default))
+        field_ctor = (FunctionInfo(
+            name=record.name,
+            params=[ParamInfo(name, ptype, default_expr=default)
+                    for name, ptype, default in init_params],
+            return_type=VOID, is_method=True)
+            if record.init_method is None and init_params else None)
 
         # Build the Self type for this record (used to substitute SelfType in methods)
         record_self_type = receiver_self_type(record, self.ctx.registry)
@@ -2645,6 +2651,7 @@ class TypeRegistrar:
             fields=record.fields,
             has_init=record.init_method is not None or record.is_typed_dict,
             init_params=init_params,
+            field_ctor=field_ctor,
             methods=methods,
             properties=properties,
             class_constants=class_constants,

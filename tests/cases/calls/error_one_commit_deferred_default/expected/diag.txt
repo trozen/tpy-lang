@@ -1,0 +1,1 @@
+main.py:17: error: Default value for 'v' is incompatible with type 'str' (resolved from generic '__init__')

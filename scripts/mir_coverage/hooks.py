@@ -195,10 +195,10 @@ def install() -> None:
 
     orig_bac = calls.CallAnalyzer._check_borrow_arg_conflicts
 
-    def _check_borrow_arg_conflicts(self, expr):
+    def _check_borrow_arg_conflicts(self, expr, ops=None):
         if self.ctx.func.borrow_tracker.loans:
             _record(self.ctx.func.current_function, "check:arg_conflict_with_live_loans")
-        return orig_bac(self, expr)
+        return orig_bac(self, expr, ops)
     calls.CallAnalyzer._check_borrow_arg_conflicts = _check_borrow_arg_conflicts
 
     orig_rcl = receiver_calls.check_receiver_call_loans

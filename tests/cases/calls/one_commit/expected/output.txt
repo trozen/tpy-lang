@@ -1,0 +1,35 @@
+ctor kwonly: 1 2
+ctor kwonly default: 0
+ctor kwonly list: 2 [7, 1]
+setitem operand: 4
+deferred default: 0 [1]
+pending receiver method: [1, 9]
+deferred borrow: 1 0 [5]
+deferred borrow kw gap: 1 1
+deferred borrow operand: 1 0 1
+deferred borrow loop: 1 0
+deferred borrow loop: 1 0
+pending borrow: 1 0
+pending error_return: 3 7 [7]
+pending error_return propagated
+deferred param: 0
+kw gap param: 1 1
+kw gap call: 2 2
+routed keyword: 4 3
+region borrow: 1 1
+region operand: 1 1 1
+region gen: 2
+region async: 2
+region closure: 2
+region loop: 1 1
+region loop: 1 1
+region late borrow: 1 1
+dstar late borrow: 1 1
+generic method lambda: 6
+generic ctor kwonly: x 3
+ctor kwargs: 3
+generic ctor lambda: 6
+generic ctor fn: 10
+generic ctor fixed lambda: 6:1
+method body: 6
+generator body: 5

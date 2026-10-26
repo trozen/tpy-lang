@@ -15,7 +15,7 @@ void read_header_derived() {
     std::string_view data = "name,age,city\nAlice,30,NYC\nBob,25,LA\n";
     {
         ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::nullopt, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -39,7 +39,7 @@ void read_explicit_fieldnames() {
     std::vector<std::string> fn = {"name", "age"};
     {
         ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::move(fn));
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::move(fn), ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -58,7 +58,7 @@ void read_quoted() {
     std::string_view data = "name,note\nAlice,\"says, hi\"\nBob,\"line\nbreak\"\n";
     {
         ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::nullopt, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -81,7 +81,7 @@ void read_short_row() {
     std::string_view data = "a,b,c\n1,2\n";
     {
         ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::nullopt, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -103,7 +103,7 @@ void read_long_row() {
     std::string_view data = "a,b\n1,2,3,4\n";
     {
         ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(data);
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::nullopt, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -123,7 +123,7 @@ void read_long_row() {
 //     print(repr(out.getvalue()))
 void write_basic() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"}, "", ",", "\"", true, "\r\n");
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"age", "30"}}));
     w.writerows({::tpy::ordered_map<std::string, std::string>({{"name", "Bob"}, {"age", "25"}}), ::tpy::ordered_map<std::string, std::string>({{"name", "Cy"}, {"age", "40"}})});
@@ -138,7 +138,7 @@ void write_basic() {
 //     print(repr(out.getvalue()))
 void write_quoting() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"k", "v"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"k", "v"}, "", ",", "\"", true, "\r\n");
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"k", "x"}, {"v", "has,comma"}}));
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
@@ -152,7 +152,7 @@ void write_quoting() {
 //     print(repr(out.getvalue()))
 void write_missing_key() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "age"}, "", ",", "\"", true, "\r\n");
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}}));
     std::cout << ::tpy::repr_of(out.getvalue()) << "\n" << ::tpy::check_signals;
 }
@@ -168,7 +168,7 @@ void write_missing_key() {
 //         print("got ValueError")
 void write_extra_key_raises() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name"}, "", ",", "\"", true, "\r\n");
     {
         try {
             w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"extra", "x"}}));
@@ -188,12 +188,12 @@ void write_extra_key_raises() {
 //         print(row["name"], "->", row["note"])
 void roundtrip() {
     ::tpystd::io::StringIO out = ::tpystd::io::StringIO();
-    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "note"});
+    ::tpystd::csv::DictWriter<::tpystd::io::StringIO> w = ::tpystd::csv::DictWriter<::tpystd::io::StringIO>(out, std::vector<std::string>{"name", "note"}, "", ",", "\"", true, "\r\n");
     w.writeheader();
     w.writerow(::tpy::ordered_map<std::string, std::string>({{"name", "Alice"}, {"note", "says, hi"}}));
     {
         ::tpystd::io::StringIO __tmp_1 = ::tpystd::io::StringIO(out.getvalue());
-        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1);
+        auto __src_0 = ::tpystd::csv::DictReader<::tpystd::io::StringIO>(__tmp_1, std::nullopt, ",", "\"", true, false);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

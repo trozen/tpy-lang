@@ -1,0 +1,1 @@
+The warned copy of the `Own[list]` argument is TPy's; CPython stores the caller's list itself, so the outputs differ by design.

@@ -1,1 +1,1 @@
-main.py:14: error: in function 'make': this construct is not yet supported by C++ code generation (expr.call)
+main.py:14: error: constructing 'Bag' through its *args parameter is not supported yet

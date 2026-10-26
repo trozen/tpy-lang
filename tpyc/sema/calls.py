@@ -56,8 +56,8 @@ from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
                               walk_attribute_chain)
 from .arg_binding import (
-    ArgBinding, BindReject, CallSource, bind, committed, init_param_infos,
-    adopt_temp_call, positional_param_index, relaid_copy,
+    ArgBinding, BindReject, CallSource, Candidate, bind, candidate_of,
+    committed, adopt_temp_call, positional_param_index, relaid_copy,
     relayout, source_view, temp_call_args,
 )
 from .call_lends import (
@@ -84,7 +84,7 @@ from .overloads import (
     call_resolves_param, call_resolves_params,
     CallRanking, CallShape, call_ranking, pins_const_receiver,
     declared_readonly, shape_of, structural_matches, bound_evidence,
-    operand_param_type, typed_source,
+    operand_param_type, typed_source, filter_receiver_overloads,
 )
 from .list_elem import without_mutable_twins
 from .context import CallOperands
@@ -92,7 +92,9 @@ from .int_narrowing import proven_cast, site_value_range
 from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
                            path_key, pointee_root, receiver_leaves,
                            storage_roots)
-from .receiver_calls import (call_mutates_receiver, record_receiver_edges,
+from .receiver_calls import (call_mutates_receiver,
+                             credit_implicit_receiver_call,
+                             record_receiver_edges,
                              record_truth_calls)
 from .narrowing import truthy_operands
 from .scope_tracker import lend_places
@@ -519,6 +521,12 @@ class ResolveResult:
     enriched: CallSource
     contextual_callable_used: bool = False
     first_contextual_error: SemanticError | None = None
+    # The call's binding to the winner, as the ranking placed its
+    # arguments (`OverloadPick.binding`).
+    binding: ArgBinding | None = None
+    # The winner bound to the call as written, with the substitution the
+    # ranking instantiated it at: what the commit commits.
+    candidate: Candidate | None = None
 
     @property
     def arg_types(self) -> list[TpyType]:
@@ -570,7 +578,9 @@ def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType)
         case TpyTypeParamConstruct():
             return True
         case TpyNoneLiteral():
-            return isinstance(resolved_type, OptionalType)
+            return (isinstance(resolved_type, OptionalType)
+                    or (isinstance(resolved_type, UnionType)
+                        and resolved_type.has_none_member()))
         case TpyBoolLiteral():
             return is_bool_type(resolved_type) or _is_numeric_or_int_literal(resolved_type)
         case TpyIntLiteral():
@@ -586,6 +596,14 @@ def _default_compatible_with_type(default_expr: TpyExpr, resolved_type: TpyType)
         case _:
             # Unknown expression type: allow (parser ensures only const exprs reach here)
             return True
+
+
+class _RegionNotBuilt:
+    """The `**kwargs` region of a call no earlier step built: its commit
+    builds it (`CallAnalyzer.kwargs_region_arg`)."""
+
+
+REGION_NOT_BUILT = _RegionNotBuilt()
 
 
 class ArgLayout(NamedTuple):
@@ -1061,11 +1079,15 @@ class CallAnalyzer:
                     analyze: bool, fill: bool = True,
                     kwargs_arg: TpyExpr | None = None,
                     exprs: 'dict[int, TpyExpr] | None' = None,
-                    src: CallSource | None = None) -> ArgLayout:
+                    src: CallSource | None = None,
+                    receive: 'Callable[[ArgLayout], None] | None' = None,
+                    ) -> ArgLayout:
         """Lay `call`'s argument list out from `binding` -- bound to what
         the call was written with (`source_view`, or `src`) -- against its
         resolved `callee` at the type arguments `subst` (`lay_out_args`),
         and store it with the binding committed to it on the call.
+        `receive`: the step that receives the laid-out operands in place,
+        run on the detached layout before it is stored (`commit_winner`).
         `analyze`: the filled arguments are analyzed and received at their
         slots, for a call site whose written arguments are already.
 
@@ -1078,6 +1100,8 @@ class CallAnalyzer:
             source_view(call) if src is None else src, callee, binding,
             subst, call.loc, fill=fill, filling=commits,
             kwargs_arg=kwargs_arg, exprs=exprs)
+        if receive is not None:
+            receive(layout)
         if not commits:
             return layout
         relayout(call, layout.args, layout.binding)
@@ -1133,9 +1157,10 @@ class CallAnalyzer:
             else:
                 start = end = next((k for k, o in enumerate(owners)
                                     if o is not None and o > va), len(args))
-            span = unwrap_ref_type(callee.params[va].type)
-            pack = TpyVarargPack(args=args[start:end],
-                                 element_type=span.type_args[0], loc=loc)
+            pack = TpyVarargPack(
+                args=args[start:end],
+                element_type=binding.vararg_element_type(callee.params),
+                loc=loc)
             args[start:end] = [pack]
             owners[start:end] = [va]
         if kwargs_arg is not None:
@@ -1212,9 +1237,8 @@ class CallAnalyzer:
 
     def _build_td_call(self, record: RecordInfo, td_kwargs: dict, func_name: str, expr) -> TpyCall:
         """Build a TypedDict constructor call from kwargs, with type-checking."""
-        params = init_param_infos(
-            [(fld.name, fld.type, fld.default_expr) for fld in record.fields],
-            keyword_only=True)
+        params = [ParamInfo(fld.name, fld.type, default_expr=fld.default_expr,
+                            keyword_only=True) for fld in record.fields]
         td_type = NominalType(record.name, _module_qname=record.qualified_name())
         td_call = TpyCall(TpyName(record.name, loc=expr.loc), [], loc=expr.loc)
         binding = self.bind_args(
@@ -1289,17 +1313,99 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"{name}() takes no keyword arguments", expr)
 
-    def _set_record_constructor_info(
+    def ctor_signatures(self, record: RecordInfo) -> list[FunctionInfo]:
+        """The constructors `record(...)` binds against: its `__init__`
+        overloads, own or inherited (`ctor_overloads`), else the one it
+        builds from its fields (`RecordInfo.field_ctor`); none for a
+        record with neither."""
+        ctors = self.ctx.registry.ctor_overloads(record)
+        if ctors:
+            return ctors
+        return [record.field_ctor] if record.field_ctor is not None else []
+
+    def _ctor_view(self, record: RecordInfo, ctor: FunctionInfo,
+                   type_subst: 'dict[str, TpyType | int]',
+                   ) -> 'tuple[FunctionInfo, dict[str, TpyType | int]]':
+        """Constructor `ctor` of `record` at a construction at the record's
+        type arguments `type_subst` (`_ctor_at`); a field constructor is
+        spelled in the record's own type parameters."""
+        if ctor is record.field_ctor:
+            subst = dict(type_subst)
+            return ((self.type_ops.substitute_method_type_params(ctor, subst)
+                     if subst else ctor), subst)
+        return self._ctor_at(record, ctor, type_subst)
+
+    def _own_ctor_view(self, record: RecordInfo,
+                       ctor: FunctionInfo) -> FunctionInfo:
+        """`ctor` spelled in `record`'s own type parameters, which it is
+        generic over: the signature a construction's type arguments are
+        inferred from."""
+        own = {tp: TypeParamRef(tp) for tp in record.type_params}
+        view, _ = self._ctor_view(record, ctor, own)
+        return dc_replace(view, type_params=list(record.type_params),
+                          type_param_bounds=dict(record.type_param_bounds),
+                          return_type=self.type_ops.record_pattern(record))
+
+    def _ctor_candidate(self, expr: TpyCall, record: RecordInfo,
+                        ctor: FunctionInfo,
+                        type_subst: 'dict[str, TpyType | int]',
+                        binding: ArgBinding | None = None) -> Candidate:
+        """Construction `expr` of `record` bound to its one constructor
+        `ctor` at the record's type arguments `type_subst`; `binding`: the
+        binding its type arguments were inferred by, whose parameters are
+        `ctor`'s."""
+        matched, subst = self._ctor_view(record, ctor, type_subst)
+        written = source_view(expr)
+        if binding is None:
+            binding = self.bind_args(expr, matched.params,
+                                     f"{record.name}()", src=written)
+        self._refuse_varargs_ctor(expr, record, matched)
+        return candidate_of(written, binding, matched, ctor, subst,
+                            ctor if subst else None)
+
+    def _refuse_varargs_ctor(self, expr: TpyCall, record: RecordInfo,
+                             ctor: FunctionInfo) -> None:
+        """A construction through an `__init__`'s `*args` parameter has no
+        C++ rendering yet (BUGS.md#ctor-varargs-construction-unlowered)."""
+        if ctor.has_variadic:
+            raise self.ctx.error(
+                f"constructing '{record.name}' through its *args parameter "
+                f"is not supported yet", expr)
+
+    def commit_construction(self, expr: TpyCall, record: RecordInfo,
+                            cand: Candidate, *,
+                            scope: OpenCallArgs | None = None,
+                            kwargs_arg: 'TpyExpr | None | _RegionNotBuilt'
+                            = REGION_NOT_BUILT) -> None:
+        """Commit construction `expr` of `record` to its constructor
+        candidate `cand` (`commit_winner`): every argument received at the
+        constructor's parameter, as the callee declares it there."""
+        declared = cand.declared
+        own = (self._own_ctor_view(record, declared)
+               if record.is_generic() and declared is not None else None)
+        self.commit_winner(
+            expr, cand, f"{record.name}()", scope=scope, kwargs_arg=kwargs_arg,
+            declared_types=([p.type for p in own.params]
+                            if own is not None else None))
+
+    def _stamp_construction(
         self,
         expr: TpyCall,
         record: RecordInfo,
         return_type: TpyType,
-        type_subst: dict[str, TpyType] | None = None,
-        commit: bool = True,
+        cand: Candidate | None,
+        type_subst: 'dict[str, TpyType | int] | None' = None,
+        commit: bool | None = None,
     ) -> None:
-        """Attach resolved constructor metadata for readonly/effect checks;
-        the records a committed construction owns only where it `commit`s
-        (`complete_construction`)."""
+        """What construction `expr` of `record` resolves to: a constructor
+        taking the parameters of the `__init__` it binds (`cand`), or none
+        for a record without one; and the records a committed construction
+        owns -- only where it `commit`s (by default
+        `SemanticContext.slot_step_commits`; a construction completed at a
+        use says, `complete_construction`). What its arguments pass is
+        `_construction_facts`'."""
+        if commit is None:
+            commit = self.ctx.slot_step_commits()
         # The one funnel every constructor resolution reaches, and the only
         # place that sees a generic record's INFERRED args: `Box(1)` binds
         # `Box[int32]` here and nowhere else, so a program that only ever
@@ -1308,88 +1414,17 @@ class CallAnalyzer:
         if type_subst and commit:
             self.ctx.record_own_copy_instantiation(record, type_subst,
                                                    is_record=True)
-        init_overloads = self.ctx.registry.ctor_overloads(record)
-        if init_overloads:
-            ctor = init_overloads[0]
-            resolved_ctor, _ = self._ctor_at(record, ctor, type_subst or {})
-            expr.resolved_function_info = FunctionInfo(
-                name=record.name,
-                params=resolved_ctor.params,
-                return_type=return_type,
-                is_readonly=False,
-                is_constructor=True,
-                canonical_fi=ctor.root,
-            )
-            if commit:
-                self._check_borrow_arg_conflicts(expr)
-                self._record_mutation_call_edges(expr)
-            return
-
-        # Implicit default constructor (no user __init__)
+        has_init = (cand is not None and cand.declared is not None
+                    and cand.declared is not record.field_ctor)
         expr.resolved_function_info = FunctionInfo(
             name=record.name,
-            params=[],
+            params=cand.matched.params if has_init else [],
             return_type=return_type,
             is_readonly=False,
             is_constructor=True,
+            canonical_fi=cand.declared.root if has_init else None,
         )
 
-    def _fill_ctor_defaults(self, expr: TpyCall, record: RecordInfo,
-                            ctor: FunctionInfo | None,
-                            binding: ArgBinding | None,
-                            type_subst: 'dict[str, TpyType | int]', *,
-                            analyze: bool,
-                            exprs: 'dict[int, TpyExpr] | None' = None
-                            ) -> ArgLayout | None:
-        """`commit_args` for a construction of `record` bound to its sole
-        `ctor` (None: one synthesized from its init_params) by `binding`
-        (`ctor_binding`) at the record's type arguments `type_subst`; None
-        when it binds to no sole signature."""
-        if binding is None:
-            return None
-        if ctor is None:
-            callee = FunctionInfo(name=record.name,
-                                  params=init_param_infos(record.init_params),
-                                  return_type=VOID, is_method=True)
-            subst = dict(type_subst)
-        else:
-            callee, subst = self._ctor_at(record, ctor, type_subst)
-        return self.commit_args(expr, callee, binding, subst,
-                                analyze=analyze, exprs=exprs)
-
-    def ctor_binding(self, expr: TpyCall,
-                     record: RecordInfo) -> ArgBinding | None:
-        """What construction `expr` of `record` was written with, bound to
-        its sole signature, its init_params; None for an overload group,
-        bound to its winner (`_resolve_ctor_overload_group`), or a record
-        with none."""
-        if (not record.init_params
-                or self._constructs_against_group(expr, record)):
-            return None
-        return self.bind_args(
-            expr, init_param_infos(record.init_params,
-                                   ctor=self._sole_ctor(expr, record)),
-            f"{record.name}()")
-
-    def _receive_ctor_args(self, expr: TpyCall, record: RecordInfo,
-                           layout: ArgLayout | None,
-                           type_subst: 'dict[str, TpyType | int] | None'
-                           ) -> None:
-        """Receive the arguments of construction `expr` of `record`, laid
-        out as `layout` (`_fill_ctor_defaults`), at its init_params
-        substituted by `type_subst` -- from its `__init__`, or synthesized
-        from the fields of a native record."""
-        if layout is None:
-            return
-        order = layout.binding.param_order()
-        params = [record.init_params[i] for i in order]
-        self.receive_winner_args(
-            None, layout.args, None,
-            [(pname, self.type_ops.substitute_param_type(ptype, type_subst)
-              if type_subst else ptype) for pname, ptype, _ in params],
-            None, call=expr,
-            declared_types=([ptype for _, ptype, _ in params]
-                            if type_subst is not None else None))
 
     def _ctor_at(self, record: RecordInfo, ctor: FunctionInfo,
                  type_subst: 'dict[str, TpyType | int]',
@@ -1679,20 +1714,16 @@ class CallAnalyzer:
                 typed = written.mapped(
                     lambda at, arg: self.expr.analyze_expr_with_hint(
                         arg, arg_hints[at]))
-                if written.addresses or written.double_star is not None:
-                    self._validate_generic_constructor(expr, written, typed)
+                picked = (self._validate_generic_constructor(expr, written, typed)
+                          if written.addresses or written.double_star is not None
+                          else None)
                 if isinstance(expr.call_type, PtrType) and expr.args:
                     self._validate_ptr_constructor(expr)
-                    # Set resolved constructor for codegen (the &{0} template)
-                    td = find_factory_by_simple_name(expr.func_name)
-                    if td is not None:
-                        rec = self.ctx.registry.get_builtin_record(td.qname)
-                        if rec:
-                            for ctor in rec.get_method_overloads("__init__"):
-                                if (CallShape(len(expr.args)).binding(ctor) is not None
-                                        and (ctor.cpp_template or ctor.native_function)):
-                                    expr.resolved_function_info = ctor
-                                    break
+                    # The ranked constructor renders it (the &{0} template).
+                    if (expr.resolved_function_info is None
+                            and picked is not None
+                            and (picked.cpp_template or picked.native_function)):
+                        expr.resolved_function_info = picked
                     self._validate_lvalue_params(expr)
                 # Builtin type constructors -- not readonly (constructor calls
                 # are not allowed in readonly contexts; see READONLY_DESIGN.md)
@@ -3844,9 +3875,10 @@ class CallAnalyzer:
         return make_list(elem)
 
     def _validate_generic_constructor(self, expr: TpyCall, written: CallSource,
-                                      typed: CallSource) -> None:
+                                      typed: CallSource) -> FunctionInfo | None:
         """Validate and resolve generic type constructor calls, written with
-        `written` (`source_view`), its arguments typed as `typed`.
+        `written` (`source_view`), its arguments typed as `typed`; returns
+        the `__init__` variant picked, if any.
 
         When call_type is set (e.g., list[int](iterable)), checks that the
         arguments conform to the constructor parameters they bind and sets
@@ -3868,11 +3900,11 @@ class CallAnalyzer:
                     lookup_qname = qname
         record_info = self.ctx.registry.get_builtin_record(lookup_qname) if lookup_qname else None
         if not record_info:
-            return
+            return None
         init_overloads = record_info.get_method_overloads("__init__")
         if not init_overloads:
             self._refuse_unbound_ctor(expr, record_info, written, typed)
-            return
+            return None
         inferred = extract_type_params(expr.call_type) if expr.call_type else {}
         accepted: list[tuple[FunctionInfo, bool]] = []
         for ctor in init_overloads:
@@ -3933,18 +3965,19 @@ class CallAnalyzer:
             if fully_checked and (ctor.cpp_template or ctor.native_function):
                 expr.resolved_function_info = _resolve_cpp_template_type_params(
                     ctor, inferred, result_type=expr.call_type, ctx=self.ctx)
-            return
+            return ctor
         self._refuse_unbound_ctor(expr, record_info, written, typed)
         arg_types = list(typed.positional)
         # Arg type compatible with target (e.g. dict[K,V]({...}), list[T](other_list))
         if len(arg_types) == 1 and self.compat.is_type_compatible(arg_types[0], expr.call_type):
-            return
+            return None
         # No constructor matched -- emit error for single-arg case
         if len(arg_types) == 1:
             raise self.ctx.error(
                 f"{expr.func_name}() cannot be constructed from {arg_types[0]}",
                 expr
             )
+        return None
 
     def _pick_generic_ctor(
         self, expr: TpyCall, record: RecordInfo,
@@ -4030,8 +4063,32 @@ class CallAnalyzer:
                         f"or container element (not a temporary or expression)", expr)
                 self.compat._mark_addr_taken(expr.args[i])
 
-    def _check_borrow_arg_conflicts(self, expr: TpyCall | TpyMethodCall) -> None:
-        """Warn when a borrowed container is passed to a non-readonly parameter.
+    @staticmethod
+    def committed_operands(expr: 'TpyCallLike') -> CallOperands | None:
+        """What committed call `expr` passes, read through its binding
+        (`ArgBinding.at`): its callee, and the operand of each parameter
+        the layout holds, by parameter index; None when it resolved to no
+        callee. A call its step did not commit holds what was written; the
+        ones that reach this uncommitted (a callable value's, a generator
+        expression's frame creation) are positional and keep no binding."""
+        fi = expr.resolved_function_info
+        if fi is None:
+            return None
+        if not committed(expr):
+            # Positionals alone: a keyword or an unpacking here would land
+            # on a positional index.
+            assert not getattr(expr, "kwargs", None) and not getattr(
+                expr, "double_star_unpack", None) and not any(
+                isinstance(a, TpyStarUnpack) for a in expr.args), (
+                "an uncommitted call with keywords or unpacking")
+            return CallOperands(fi, None, list(expr.args))
+        return CallOperands(fi, None, expr.binding.operands(args=expr.args))
+
+    def _check_borrow_arg_conflicts(
+            self, expr: 'TpyExpr', ops: CallOperands | None = None) -> None:
+        """Warn when a borrowed container is passed to a non-readonly
+        parameter by call `expr`, whose operands are `ops` (by default its
+        `committed_operands`; an operator or subscript hands its own).
 
         A non-pure, non-readonly function receiving a container by mutable
         reference could structurally mutate it, invalidating element borrows.
@@ -4047,7 +4104,9 @@ class CallAnalyzer:
         the receiver of `self.m()` -- (transitive mutation possible), we defer
         the check until Phase 2 resolves the final facts.
         """
-        fi = expr.resolved_function_info
+        if ops is None:
+            ops = self.committed_operands(expr)
+        fi = ops.fi if ops is not None else None
         if fi is None or fi.is_pure or declares_no_writes(fi):
             return
         # Use structural_mutated_params when available (precise); fall back to mutated_params.
@@ -4059,11 +4118,12 @@ class CallAnalyzer:
                             if fi.direct_structural_mutated_params is not None
                             else fi.direct_mutated_params)
         for i, param in enumerate(fi.params):
-            if i >= len(expr.args):
+            if i >= len(ops.args):
                 break
-            arg = expr.args[i]
-            # readonly[T] param -- function promises not to mutate
-            if isinstance(param.type, ReadonlyType):
+            arg = ops.args[i]
+            # readonly[T] param -- function promises not to mutate; a
+            # parameter the call leaves to its default is passed nothing.
+            if arg is None or isinstance(param.type, ReadonlyType):
                 continue
             reached = _edges_reach_param(fi, i)
             # A generator expression's frame is analyzed where it is written,
@@ -4160,10 +4220,16 @@ class CallAnalyzer:
                 MarkRequest(loop_vars=True, through_field=True,
                             handle_bindings=False))
 
-    def _record_mutation_call_edges(self, expr: TpyCall | TpyMethodCall) -> None:
-        """Record parameter flow through calls for Phase 2 mutation propagation."""
+    def _record_mutation_call_edges(
+            self, expr: 'TpyExpr', ops: CallOperands | None = None) -> None:
+        """Record parameter flow through call `expr` for Phase 2 mutation
+        propagation, its operands `ops` (by default its
+        `committed_operands`; an operator or subscript hands its own, and
+        credits its receiver itself)."""
         self.ctx.assert_slot_effect("a mutation call edge")
-        fi = expr.resolved_function_info
+        if ops is None:
+            ops = self.committed_operands(expr)
+        fi = ops.fi if ops is not None else None
         if fi is None or fi.is_pure:
             return
         # Without the declaration the unknown-callee leg would conservatively
@@ -4254,9 +4320,10 @@ class CallAnalyzer:
                 else:
                     extra_param_edges.append((i, caller_idx, True))
         for i, callee_param in enumerate(fi.params):
-            if i >= len(expr.args):
+            if i >= len(ops.args):
                 break
-            if isinstance(callee_param.type, ReadonlyType):
+            if (ops.args[i] is None
+                    or isinstance(callee_param.type, ReadonlyType)):
                 continue
             # Vararg slot: walk the TpyVarargPack and record one (va_idx ->
             # caller_idx) entry per distinct arg root. A readonly vararg slot
@@ -4267,7 +4334,7 @@ class CallAnalyzer:
                     continue
                 if isinstance(bare_va.type_args[0], ReadonlyType):
                     continue
-                pack = expr.args[i]
+                pack = ops.args[i]
                 if not isinstance(pack, TpyVarargPack):
                     continue
                 seen_callers: set[int] = set()
@@ -4295,7 +4362,7 @@ class CallAnalyzer:
             # non-readonly elements DO need edges so transitive mutation
             # through them propagates.
             sources = call_lend_sources(
-                CallOperands(fi, None, list(expr.args)), frozenset((i,)),
+                CallOperands(fi, None, list(ops.args)), frozenset((i,)),
                 expr_type=self.ctx.get_expr_type)
             # An open-`T` slot (the param, or a tuple param's element) renders
             # a MUTABLE borrow at every reference instantiation, so whatever
@@ -4882,45 +4949,50 @@ class CallAnalyzer:
         # as its positional twin.
         if len(shapes) >= 2:
             with self.ctx.probe_slot_scope(True):
-                return self._resolve_regime_c(
+                return self._with_candidate(expr, self._resolve_regime_c(
                     expr, src, fn_bearing_supplied, func_infos,
+                    {id(f): b for f, b in bound},
                     explicit_type_args=explicit_type_args,
                     strip_ref_own=strip_ref_own,
                     resolve_pending_view=resolve_pending_view,
-                )
+                ))
 
         # Regime A (0) or B (1): single fn_generic candidate (or none).
         fn_generic = fn_bearing_supplied[0][0] if fn_bearing_supplied else None
 
-        if fn_generic is not None:
-            # Seed Fn-bearing candidate with the LHS hint so nested-generic args
-            # see the seeded ptype on first analysis (matches the non-overloaded
-            # path in `_analyze_generic_function_call`). Explicit positional
-            # type args override the seed at their positions
-            # (`ReturnSeed.with_explicit`), as in
-            # `_analyze_generic_function_call`; wildcards and short lists
-            # keep the seed. Validation of over-long lists happens elsewhere.
+        named = [p.type for f in func_infos for p in f.params]
+        bindings = {id(f): b for f, b in bound}
+
+        def typed_for(func: FunctionInfo) -> CallSource:
+            """The arguments typed for generic candidate `func`, at the
+            parameters its binding gives them (`_infer_arg_types`, the one
+            argument step of every generic inference)."""
             seed = self.type_ops.seed_subst_from_return_hint(
-                fn_generic, self.expr.slot_hint_for(expr),
-            ).with_explicit(fn_generic.type_params, expr.type_args)
-            generic_binding = next(b for f, b in bound if f is fn_generic)
-            addressed = generic_binding.addresses()
+                func, self.expr.slot_hint_for(expr),
+            ).with_explicit(func.type_params, expr.type_args)
+            addressed = bindings[id(func)].addresses()
             # An operand the candidate's binding leaves out (a `**kwargs`
             # field) is typed unhinted at no parameter.
             ats = [at for _, at in addressed]
             ats += [at for at in src.addresses if at not in ats]
             slots = [i for i, _ in addressed] + [None] * (len(ats) - len(addressed))
             types = self._infer_arg_types(
-                fn_generic, [(slot, src.at(at)) for slot, at in zip(slots, ats)],
+                func, [(slot, src.at(at)) for slot, at in zip(slots, ats)],
                 seed, overloads=func_infos, shape=shape, ats=ats)
-            named = [p.type for f in func_infos for p in f.params]
             by_at = dict(zip(ats, self.ranked_arg_types(types, named)))
-            typed = src.mapped(lambda at, _: by_at[at])
+            out = src.mapped(lambda at, _: by_at[at])
+            if strip_ref_own:
+                out = out.mapped(lambda _, t: unwrap_own(unwrap_ref_type(t)))
+            return out
+
+        if fn_generic is not None:
+            # The Fn-bearing candidate types the arguments the ranking
+            # reads: a lambda takes its callable parameter as its hint.
+            typed = typed_for(fn_generic)
         else:
             _, typed = self.probe_overload_args(expr, src, func_infos)
-
-        if strip_ref_own:
-            typed = typed.mapped(lambda _, t: unwrap_own(unwrap_ref_type(t)))
+            if strip_ref_own:
+                typed = typed.mapped(lambda _, t: unwrap_own(unwrap_ref_type(t)))
 
         # Build the unified candidate pool. Its order decides no winner
         # (a tie is ambiguous), only the order an ambiguity names them in.
@@ -4937,8 +5009,16 @@ class CallAnalyzer:
         for func in iter_funcs:
             if is_generic_for_pool(func):
                 # Every argument is evidence at the parameter it binds,
-                # keywords and keyword-only ones included.
-                evidence = bound_evidence(func, typed)
+                # keywords and keyword-only ones included, typed for it.
+                if id(func) not in bindings:
+                    continue
+                try:
+                    ftyped = typed if func is fn_generic else typed_for(func)
+                except SemanticError:
+                    # Its arguments do not type at its parameters (a lambda
+                    # its callable parameter refuses): not applicable.
+                    continue
+                evidence = bindings[id(func)].evidence(ftyped)
                 if isinstance(evidence, BindReject):
                     continue
                 type_subst = self.type_ops.infer_type_params_for_function(
@@ -4960,12 +5040,18 @@ class CallAnalyzer:
 
         enriched = enriched_source(typed, src, candidates)
         try:
-            matched = self.ranking().resolve(candidates, enriched)
+            # Each candidate ranked at the binding the call made to it.
+            pick = rank_overload_candidates(
+                [OverloadCandidate(c, enriched, bindings.get(id(
+                    generic_originals[id(c)][0] if id(c) in generic_originals
+                    else c))) for c in candidates], self.ranking())
         except OverloadAmbiguityError as e:
             # Named as declared: two substitutions may read alike.
             raise OverloadAmbiguityError(
                 tuple(generic_originals[id(c)][0] if id(c) in generic_originals
                       else c for c in e.candidates), e.converted) from None
+        matched = (candidates[pick.winner] if pick.winner is not None
+                   else None)
 
         matched_origin = generic_originals.get(id(matched)) if matched is not None else None
 
@@ -4981,13 +5067,32 @@ class CallAnalyzer:
                     for s in slots)
         )
 
-        return ResolveResult(
+        return self._with_candidate(expr, ResolveResult(
             matched=matched,
             matched_origin=matched_origin,
             typed=typed,
             enriched=enriched,
             contextual_callable_used=contextual,
-        )
+            binding=pick.binding,
+        ))
+
+    @staticmethod
+    def _with_candidate(expr: TpyCall, result: ResolveResult
+                        ) -> ResolveResult:
+        """`result` with its winner's `Candidate`: the binding the ranking
+        placed its arguments by (`OverloadPick.binding`), the substitution
+        it ranked the winner at."""
+        if result.matched is None:
+            return result
+        declared = result.declared
+        binding = result.binding
+        assert binding is not None
+        origin, subst = (result.matched_origin
+                         if result.matched_origin is not None else (None, {}))
+        result.candidate = candidate_of(source_view(expr), binding,
+                                        result.matched, declared, subst,
+                                        origin)
+        return result
 
     def _probe_candidate_args(self, call: TpyExpr, args: list[TpyExpr],
                               func_infos: list[FunctionInfo]) -> list[TpyType]:
@@ -5006,7 +5111,7 @@ class CallAnalyzer:
         arguments take that candidate's hints, so a nested generic call or
         record construction sees them on its FIRST analysis: its type is
         cached then, and the post-selection pass reads the cache back
-        (`_analyze_generic_function_call`, `_analyze_record_constructor`).
+        (`_generic_candidate`, `_analyze_record_constructor`).
         Under an INFERRED LHS a non-generic candidate does not pick itself:
         its arguments are analyzed exactly as in a fresh binding, and its
         declared parameter types only fill what nothing else types in them
@@ -5107,6 +5212,7 @@ class CallAnalyzer:
         src: CallSource,
         fn_bearing_supplied: list[tuple[FunctionInfo, list[SuppliedFnSlot]]],
         func_infos: list[FunctionInfo],
+        bindings: 'dict[int, ArgBinding]',
         *,
         explicit_type_args: tuple[TpyType, ...] | None,
         strip_ref_own: bool,
@@ -5180,7 +5286,8 @@ class CallAnalyzer:
         for func, fn_slots in fn_bearing_supplied:
             try:
                 evidence = self._build_regime_c_evidence(
-                    expr, src, func, fn_slots, baseline=baseline,
+                    expr, src, func, fn_slots, bindings[id(func)],
+                    baseline=baseline,
                     explicit_type_args=explicit_type_args,
                     resolve_pending_view=resolve_pending_view,
                 )
@@ -5195,8 +5302,9 @@ class CallAnalyzer:
         # Each candidate carries its own argument types, so the ranking
         # takes them per candidate rather than through `CallRanking.resolve`.
         pick = rank_overload_candidates(
-            [OverloadCandidate(substituted, typed)
-             for substituted, typed, _ in candidate_evidences],
+            [OverloadCandidate(substituted, typed,
+                               bindings[id(origin[0] if origin else substituted)])
+             for substituted, typed, origin in candidate_evidences],
             self.ranking())
 
         matched: FunctionInfo | None = None
@@ -5228,6 +5336,7 @@ class CallAnalyzer:
             enriched=enriched_source(display, src, pool_for_enrich),
             contextual_callable_used=contextual_callable_used,
             first_contextual_error=first_contextual_error,
+            binding=pick.binding,
         )
 
     def _build_regime_c_evidence(
@@ -5236,6 +5345,7 @@ class CallAnalyzer:
         src: CallSource,
         func: FunctionInfo,
         fn_slots: list[SuppliedFnSlot],
+        bound: ArgBinding,
         *,
         baseline: 'dict[int | str, TpyType]',
         explicit_type_args: tuple[TpyType, ...] | None,
@@ -5252,11 +5362,8 @@ class CallAnalyzer:
         substituted hint has unresolved param TPRs). May raise
         ``SemanticError`` for ambiguity / generic-rejection on a
         function-ref dry match -- caller stashes and treats as
-        candidate rejection.
+        candidate rejection. `bound`: the call's binding to `func`.
         """
-        bound = bind(src, func.params, func.name)
-        if isinstance(bound, BindReject):
-            return None
         # Reject early when this candidate would need a non-Fn-slot
         # arg whose baseline analysis failed (saved_unhinted_error path).
         # After this check every non-Fn-slot operand has a real
@@ -5313,18 +5420,13 @@ class CallAnalyzer:
                 if len(arg.param_names) != len(hint.param_types):
                     return None
                 # An unresolved return TPR after partial inference is pinned
-                # via a body-analysis trial under ``trial_scope`` -- the
-                # winner is re-analyzed by _analyze_single_function_call so
-                # the trial commits no state. The context-pinnable shortcut
-                # skips the trial when downstream cross-arg inference can
-                # pin the TPR from the call-site hint alone.
-                needs_body_trial = (
-                    isinstance(hint.return_type, TypeParamRef)
-                    and not self._return_tpr_pinnable_from_context(func, hint.return_type)
-                )
+                # by the call's expected type where that pins it, else via a
+                # body-analysis trial under ``trial_scope``, which commits
+                # no state: the winner's commit analyzes the lambda.
+                pinned = self._context_pinned(func, hint)
                 slot_type: TpyType = (
-                    self._lambda_body_dry_run(arg, hint) if needs_body_trial else hint
-                )
+                    pinned if pinned is not None
+                    else self._lambda_body_dry_run(arg, hint))
             elif (isinstance(arg, (TpyName, TpyFieldAccess))
                     and self.expr._names_class(arg)):
                 # A class name stands for `lambda *a: C(*a)`: this
@@ -5383,26 +5485,27 @@ class CallAnalyzer:
 
         return substituted, typed, origin
 
-    def _return_tpr_pinnable_from_context(
-        self, func: FunctionInfo, return_tpr: TypeParamRef,
-    ) -> bool:
-        """Heuristic: would `ctx.expr_type_hint` pin `return_tpr` via
-        cross-arg inference downstream?
-
-        True if the call site has an expected return type and matching
-        ``func.return_type`` against it would resolve ``return_tpr``.
-        Used by Regime C to decide whether to keep a candidate whose
-        Fn-slot hint has an unresolved return TPR after partial
-        inference -- if context can pin it, we don't need lambda body
-        analysis.
-        """
-        hint = self.expr.type_hint_here()
-        if hint is None:
-            return False
+    def _context_pinned(self, func: FunctionInfo,
+                        hint: CallableType) -> CallableType | None:
+        """Callable slot `hint` of generic `func`, its return type
+        parameter pinned by the call's expected type (matching
+        `func.return_type` against it): the candidate is instantiated at
+        it, as the commit receives the lambda there. `hint` itself when
+        its return names no type parameter; None when the expected type
+        does not pin it."""
+        if not isinstance(hint.return_type, TypeParamRef):
+            return hint
+        expected = self.expr.type_hint_here()
+        if expected is None:
+            return None
         trial: dict[str, TpyType] = {}
-        if not self.type_ops.match_type_with_inference(func.return_type, hint, trial):
-            return False
-        return return_tpr.name in trial
+        if not self.type_ops.match_type_with_inference(func.return_type,
+                                                       expected, trial):
+            return None
+        pinned = trial.get(hint.return_type.name)
+        if not isinstance(pinned, TpyType):
+            return None
+        return dc_replace(hint, return_type=pinned)
 
     def _lambda_body_dry_run(
         self, lambda_expr: TpyLambda, hint: 'CallableType',
@@ -5595,29 +5698,34 @@ class CallAnalyzer:
             args: 'CallSource | list[TpyExpr | None]',
             loc: 'TpyExpr | TpyStmt', *, readonly_receiver: bool,
             consuming_receiver: bool = False,
-    ) -> tuple[FunctionInfo | None, bool]:
+    ) -> tuple[Candidate | None, bool]:
         """The variant of an overloaded method a call with `arg_types` (as
         written: positionals and keywords; a list is positionals) runs
         (`views`, substituted at the receiver), ranked over the complete
         call with the receiver's kind as the first component -- the
-        explicit `xs.m(a)` and the dunder call a subscript is alike -- and
-        whether the call passes the receiver const so C++ runs it
-        (`pins_const_receiver`); None when no variant takes the call. A tie
-        at the top is the call's ambiguity error at `loc`. `args`: the
-        operands as written, by which a literal ranks as itself."""
+        explicit `xs.m(a)` and the dunder call a subscript is alike --
+        bound to the call (its `Candidate`), and whether the call passes
+        the receiver const so C++ runs it (`pins_const_receiver`); None
+        when no variant takes the call. A tie at the top is the call's
+        ambiguity error at `loc`. `args`: the operands as written, by which
+        a literal ranks as itself."""
         typed = typed_source(arg_types)
         src = (args if isinstance(args, CallSource) else CallSource(
             tuple(args) + (None,) * (len(typed.positional) - len(args))))
         enriched = enriched_source(typed, src, views)
+        takers = filter_receiver_overloads(views, consuming_receiver)
         try:
-            winner = self.ranking().resolve(
-                views, enriched, is_readonly_receiver=readonly_receiver,
-                is_consuming_receiver=consuming_receiver)
+            pick = self.ranking().rank(takers, enriched,
+                                       is_readonly_receiver=readonly_receiver)
         except OverloadAmbiguityError as e:
             raise self.ctx.error(self.compat.ambiguous_overload_text(
                 name, e.candidates), loc)
-        return winner, (winner is not None and pins_const_receiver(
-            winner, views, readonly_receiver))
+        if pick.winner is None:
+            return None, False
+        winner = takers[pick.winner]
+        assert pick.binding is not None
+        return (candidate_of(src, pick.binding, winner, winner, pick.subst),
+                pins_const_receiver(winner, views, readonly_receiver))
 
     def no_match_hint(self, views: list[FunctionInfo],
                       arg_types: CallSource, args: CallSource) -> str:
@@ -5904,46 +6012,115 @@ class CallAnalyzer:
                     scope.receiving = saved
         return out
 
-    def commit_overload_winner(
-            self, expr: TpyCall, scope: OpenCallArgs | None,
-            matched: FunctionInfo, declared: FunctionInfo | None,
-            subst: 'dict[str, TpyType | int]', name: str, *,
+    def commit_winner(
+            self, expr: 'TpyCallLike', cand: Candidate, name: str, *,
+            stamp: FunctionInfo | None = None,
+            scope: OpenCallArgs | None = None,
+            fill: bool = True,
+            params: 'Mapping[int, ParamInfo | tuple[str, TpyType]] | None' = None,
+            declared_types: 'Sequence[TpyType] | None' = None,
+            decided: 'Mapping[int, TpyType] | None' = None,
+            inferred_slots: 'Mapping[int, InferredSlot] | None' = None,
+            fresh_own: str = "keep",
+            char_literal_init: bool = False,
             builtin_form: bool = False,
             feeds: 'tuple[list[ParamInfo], CallSource] | None' = None,
-    ) -> ArgBinding:
-        """Commit the winner `matched` (as `declared`) of an overload
-        ranking of call `expr` to `name`: bind the call as written to it,
-        receive each written argument at the parameter it binds (`scope`,
-        the call's open arguments), and lay the call out with the received
-        operands, and its `**kwargs` region, at the type arguments `subst`
-        (`commit_args`). `feeds`: the generic declaration's params and the
-        ranked argument types as written, for `check_own_callback_feeds`.
-        Returns the binding."""
-        written = source_view(expr)
-        binding = self.bind_args(expr, matched.params, name, src=written)
-        evidence = binding.evidence(written)
-        operands = [a for _, a in evidence]
+            kwargs_arg: 'TpyExpr | None | _RegionNotBuilt' = REGION_NOT_BUILT,
+    ) -> ArgLayout:
+        """Commit candidate `cand` of call `expr` to `name`, the one commit
+        of every ranked call and every one-signature call: the `**kwargs`
+        region and the layout of `cand.binding` (`lay_out_args`, its
+        defaults filled where the step commits, unless `fill` is off: a
+        call whose written arguments stand as its list), each laid-out
+        operand received once at its parameter (`_receive_layout`), the
+        defaults left to C++ checked at the substitution
+        (`validate_generic_defaults`), then the layout stored on the call
+        (`commit_args`). `stamp` is what the call resolves to, set before
+        the receive reads it.
+
+        The receive flags are the kind's (`receive_winner_args`); `params`,
+        `declared_types`, `decided` and `inferred_slots` are by parameter
+        index: a parameter received at another type than `cand.matched`
+        spells, the parameters as the callee declares them, a type the
+        call's preparation decided, a slot an earlier call inferred.
+        `feeds`: the generic declaration's params and the ranked argument
+        types as written, for `check_own_callback_feeds`. `kwargs_arg`: the
+        `**kwargs` region an earlier step of the call built (None: the
+        callee takes none), unless `REGION_NOT_BUILT`, built here."""
+        matched, binding = cand.matched, cand.binding
         fed: dict[int, TpyType] = {}
         if feeds is not None:
             decl, typed = feeds
             fed = self.check_own_callback_feeds(
                 [(i, decl[i], a, t) for (i, a), (_, t)
-                 in zip(evidence, binding.evidence(typed))])
-        self.receive_winner_args(scope, operands, None,
-                                 [matched.params[i] for i, _ in evidence],
-                                 declared, call=expr,
-                                 builtin_form=builtin_form,
-                                 param_indices=[i for i, _ in evidence])
-        kwargs_arg = self.kwargs_region_arg(expr, matched, binding, name)
-        self.commit_args(expr, matched, binding, subst, analyze=True,
-                         kwargs_arg=kwargs_arg,
-                         src=binding.received(written, operands))
+                 in zip(cand.evidence, binding.evidence(typed))])
+        if stamp is not None:
+            expr.resolved_function_info = stamp
+        if isinstance(kwargs_arg, _RegionNotBuilt):
+            kwargs_arg = self.kwargs_region_arg(expr, matched, binding, name)
+
+        def receive(layout: ArgLayout) -> None:
+            self._receive_layout(
+                expr, cand, layout, scope=scope, params=params,
+                declared_types=declared_types, decided=decided,
+                inferred_slots=inferred_slots, fresh_own=fresh_own,
+                char_literal_init=char_literal_init,
+                builtin_form=builtin_form)
+            if cand.origin is not None:
+                validate_generic_defaults(
+                    binding, cand.origin, cand.subst, self.type_ops,
+                    lambda msg: self.ctx.error(msg, expr), layout.filled)
+
+        layout = self.commit_args(
+            expr, matched, binding,
+            {k: self._resolve_inferred_type_arg(v)
+             for k, v in cand.subst.items()},
+            analyze=False, fill=fill, kwargs_arg=kwargs_arg,
+            receive=receive)
         if fed and committed(expr):
             # The lowering reads each by where the layout puts its argument.
             at = expr.binding.at
             self.ctx.own_callback_feeds[expr] = {
                 at[i]: slot for i, slot in fed.items() if at[i] is not None}
-        return binding
+        return layout
+
+    def _receive_layout(
+            self, expr: 'TpyCallLike', cand: Candidate, layout: ArgLayout, *,
+            scope: OpenCallArgs | None,
+            params: 'Mapping[int, ParamInfo | tuple[str, TpyType]] | None',
+            declared_types: 'Sequence[TpyType] | None',
+            decided: 'Mapping[int, TpyType] | None',
+            inferred_slots: 'Mapping[int, InferredSlot] | None',
+            fresh_own: str, char_literal_init: bool,
+            builtin_form: bool) -> None:
+        """`commit_winner`'s receive: each operand of `layout` at its
+        parameter of `cand.matched` (`receive_winner_args`), a `*args`
+        pack's elements at its element type (`_analyze_and_pack_varargs`)."""
+        matched = cand.matched
+        if matched.has_variadic:
+            self._analyze_and_pack_varargs(expr, matched, layout)
+            return
+        for arg in layout.args:
+            if isinstance(arg, TpyStarUnpack):
+                raise self.ctx.error(
+                    f"Cannot use *unpacking: '{matched.name}' does not "
+                    f"accept *args", arg)
+        order = layout.binding.param_order()
+        self.receive_winner_args(
+            scope if scope is not None else self.args_scope(layout.args),
+            layout.args,
+            [decided.get(i) for i in order] if decided else None,
+            [params[i] if params is not None and i in params
+             else matched.params[i] for i in order],
+            cand.declared, call=expr,
+            declared_types=([declared_types[i] for i in order]
+                            if declared_types is not None else None),
+            fresh_own=fresh_own, char_literal_init=char_literal_init,
+            builtin_form=builtin_form,
+            inferred_slots=({j: inferred_slots[i] for j, i in enumerate(order)
+                             if i in inferred_slots}
+                            if inferred_slots else None),
+            param_indices=order)
 
     def _receive_arg(self, i: int, args: list[TpyExpr],
                      given: TpyType | None,
@@ -6082,11 +6259,7 @@ class CallAnalyzer:
         matched = result.matched
 
         if matched is not None:
-            expr.resolved_function_info = matched
-            self._validate_lvalue_params(expr)
-            self._check_error_return_handled(expr, matched)
-            if self.ctx.slot_step_commits():
-                self._record_mutation_call_edges(expr)
+            cand = result.candidate
             feeds = None
             subst: dict[str, TpyType | int] = {}
             if result.matched_origin is not None:
@@ -6099,12 +6272,13 @@ class CallAnalyzer:
                     for p in overload.type_params)
                 subst = dict(zip(overload.type_params,
                                  expr.inferred_type_args))
-            binding = self.commit_overload_winner(
-                expr, scope, matched, result.declared, subst, expr.func_name,
-                builtin_form=True, feeds=feeds)
+            self.commit_winner(expr, cand, expr.func_name, stamp=matched,
+                               scope=scope, builtin_form=True, feeds=feeds)
+            self._validate_lvalue_params(expr)
+            self.commit_facts(expr, matched)
             key = next((i for i, p in enumerate(matched.params)
                         if p.name == "key"), None)
-            self._mark_key_lambda(binding.expr(key, src)
+            self._mark_key_lambda(cand.binding.expr(key, src)
                                   if key is not None else None)
             if result.matched_origin is not None:
                 expr.representational_subst_params = (
@@ -6313,11 +6487,12 @@ class CallAnalyzer:
 
     def _winner_past_ranking(
             self, expr: TpyCall, name: str, candidates: list[FunctionInfo],
-            result: ResolveResult, *, generic_ok: bool) -> FunctionInfo | None:
+            result: ResolveResult, *, generic_ok: bool,
+    ) -> 'FunctionInfo | Candidate | None':
         """The overload of `candidates` call `expr` binds to when the
-        ranking `result` named no winner, for the caller to commit; None
-        when none takes it. `generic_ok`: the caller can commit a generic
-        pick, inferring its type arguments.
+        ranking `result` named no winner, for the caller to commit -- a
+        validated generic pick as its `Candidate`; None when none takes
+        it. `generic_ok`: the caller can commit a generic pick.
 
         A non-generic candidate the structural match takes comes first: the
         pool scored it through the undecided-container arm, and one it
@@ -6349,14 +6524,14 @@ class CallAnalyzer:
         failed: list[SemanticError] = []
         shaped = structural_matches(candidates, result.enriched)
         if generic_ok:
-            validated: list[tuple[FunctionInfo, FunctionInfo]] = []
+            validated: list[tuple[Candidate, FunctionInfo]] = []
             shaped_ids = {id(f) for f in shaped}
             for func in candidates:
-                if not func.is_generic():
+                if not func.is_generic() or func.inline_body is not None:
                     continue
                 found = self._validated(expr, func)
-                if isinstance(found, FunctionInfo):
-                    validated.append((func, found))
+                if isinstance(found, Candidate):
+                    validated.append((found, found.matched))
                 elif id(func) in shaped_ids:
                     failed.append(found)
             if len(validated) == 1:
@@ -6368,7 +6543,7 @@ class CallAnalyzer:
                          for _, sub in validated], self.ranking())
                 except OverloadAmbiguityError as e:
                     # Named as declared: two substitutions may read alike.
-                    declared = {id(sub): func for func, sub in validated}
+                    declared = {id(sub): c.origin for c, sub in validated}
                     raise self._ambiguous_overload_error(
                         expr, name, OverloadAmbiguityError(
                             tuple(declared.get(id(c), c)
@@ -6376,7 +6551,7 @@ class CallAnalyzer:
                 if pick.winner is None:
                     raise self._ambiguous_overload_error(
                         expr, name, OverloadAmbiguityError(
-                            tuple(func for func, _ in validated)))
+                            tuple(c.origin for c, _ in validated)))
                 return validated[pick.winner][0]
         if len({tuple(p.type for p in f.params) for f in shaped}) == 1:
             return shaped[0]
@@ -6388,23 +6563,27 @@ class CallAnalyzer:
         return None
 
     def _validated(self, expr: TpyCall,
-                   func: FunctionInfo) -> 'FunctionInfo | SemanticError':
-        """Generic candidate `func` at the substitution it takes call `expr`
-        with, else why it does not: checked at an overload probe's slot,
+                   func: FunctionInfo) -> 'Candidate | SemanticError':
+        """Generic candidate `func` of call `expr`, bound and instantiated
+        (`_generic_candidate`), else why it does not take the call. Its
+        commit is the applicability check: run at an overload probe's slot,
         which decides types only, inside a trial that rolls back what the
-        check analyzed -- only the candidate picked is committed."""
+        check analyzed. The pick is
+        committed as this candidate: a binding and a substitution, which the
+        rollback leaves valid; its commit receives the arguments anew."""
         saved = expr.resolved_function_info
         try:
             with self.ctx.trial_scope(), \
                     self.ctx.probe_slot_scope(ProbeSlot.QUERY):
-                self._analyze_single_function_call(expr, func)
-                resolved = expr.resolved_function_info
+                with self._adaptive_list_args(expr, [func]):
+                    cand = self._generic_candidate(expr, func)
+                    self._commit_generic_call(expr, cand)
         except SemanticError as e:
             return e
         finally:
             self.expr._peel_step_coercions(expr)
             expr.resolved_function_info = saved
-        return resolved if resolved is not None else func
+        return cand
 
     def _analyze_user_function_call(
         self, expr: TpyCall, func_infos: list[FunctionInfo],
@@ -6434,14 +6613,16 @@ class CallAnalyzer:
                     )
                 except OverloadAmbiguityError as e:
                     raise self._ambiguous_overload_error(expr, expr.func_name, e)
-                if result.declared is not None:
-                    # The single-function call receives every argument at
-                    # the winner's slots.
+                if result.candidate is not None:
+                    # The winner as the ranking bound and instantiated it.
                     return self._analyze_single_function_call(
-                        expr, result.declared)
+                        expr, result.declared, result.candidate)
 
                 winner = self._winner_past_ranking(
                     expr, expr.func_name, func_infos, result, generic_ok=True)
+                if isinstance(winner, Candidate):
+                    return self._analyze_single_function_call(
+                        expr, winner.origin, winner)
                 if winner is not None:
                     return self._analyze_single_function_call(expr, winner)
             self.raise_no_match(expr.func_name, func_infos, result.typed,
@@ -6570,15 +6751,20 @@ class CallAnalyzer:
                 expr.args[i] = operands[i]
         return operands
 
-    def _analyze_single_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
-        """Analyze a call to a single user-defined function."""
+    def _analyze_single_function_call(self, expr: TpyCall, func: FunctionInfo,
+                                      cand: Candidate | None = None) -> TpyType:
+        """Analyze a call to a single user-defined function `func`, or to
+        the winner of its overload set the ranking bound as `cand`."""
         # @inline: clone body and substitute at call site
         if func.inline_body is not None:
             return self._inline_function_call(expr, func)
 
         # Handle generic functions
         if func.is_generic():
-            return self._analyze_generic_function_call(expr, func)
+            with self._adaptive_list_args(expr, [func]):
+                if cand is None:
+                    cand = self._generic_candidate(expr, func)
+                return self._commit_generic_call(expr, cand)
 
         # Reject type args on non-generic functions
         if expr.type_args or expr.type_args_parse_error:
@@ -6587,22 +6773,13 @@ class CallAnalyzer:
                 expr,
             )
 
-        binding = self.bind_args(expr, func.params, expr.func_name)
-        kwargs_arg = self.kwargs_region_arg(expr, func, binding, func.name)
-        layout = self.commit_args(expr, func, binding, {}, analyze=False,
-                                  kwargs_arg=kwargs_arg)
-        expr.resolved_function_info = func
-
-        # Pack variadic args if function has *args
-        if func.has_variadic:
-            self._analyze_and_pack_varargs(expr, func, layout)
-        else:
-            self._typecheck_call_args(expr, func, layout)
-
-        if self.ctx.slot_step_commits():
-            self._check_borrow_arg_conflicts(expr)
-            self._record_mutation_call_edges(expr)
-        self._check_error_return_handled(expr, func)
+        if cand is None:
+            cand = candidate_of(
+                source_view(expr),
+                self.bind_args(expr, func.params, expr.func_name), func, func)
+        self.commit_winner(expr, cand, func.name, stamp=func,
+                           fresh_own="reject_coro", char_literal_init=True)
+        self.commit_facts(expr, func)
         return func.return_type
 
     def _maybe_coerce_empty_list_to_protocol(
@@ -6646,23 +6823,6 @@ class CallAnalyzer:
         if info is not None and info.coerced_element_type is None:
             self.ctx.assert_slot_effect("an empty list's protocol element")
             info.coerced_element_type = elem_type
-
-    def _typecheck_call_args(self, expr: TpyCall, func: FunctionInfo,
-                             layout: ArgLayout) -> None:
-        """Receive the arguments of call `expr` to non-variadic `func`, laid
-        out as `layout` (`commit_args`), at their parameters."""
-        args = layout.args
-        # Reject *unpacking on non-variadic functions
-        for arg in args:
-            if isinstance(arg, TpyStarUnpack):
-                raise self.ctx.error(
-                    f"Cannot use *unpacking: '{func.name}' does not accept *args", arg)
-        order = layout.binding.param_order()
-        self.receive_winner_args(
-            self.args_scope(args), args, None,
-            [func.params[i] for i in order], func,
-            call=expr, fresh_own="reject_coro", char_literal_init=True,
-            param_indices=order)
 
     def _typecheck_and_coerce_arg(
         self, arg: TpyExpr, pname: str, ptype: TpyType,
@@ -6791,6 +6951,30 @@ class CallAnalyzer:
                                                      func)
         pack.element_type = elem_type
 
+    def commit_facts(self, site: 'TpyExpr | TpyStmt',
+                     func: FunctionInfo | None,
+                     ops: CallOperands | None = None, *,
+                     receiver: TpyExpr | None = None,
+                     receiver_type: TpyType | None = None) -> None:
+        """The facts a committed call `site` records once, at the step
+        that commits it: the borrow conflicts and mutation edges of its
+        operands `ops` (by default its `committed_operands`; an operator
+        or subscript dunder answering as its explicit call hands its own),
+        with `receiver` the receiver's own call effects
+        (`credit_implicit_receiver_call`) for a site that does not credit
+        them itself; and the `@error_return` duty of its callee `func`."""
+        if self.ctx.slot_step_commits():
+            self._check_borrow_arg_conflicts(site, ops)
+            self._record_mutation_call_edges(site, ops)
+            if receiver is not None and func is not None:
+                # The operator node is the call its walkers read; it
+                # records no implicit call beside it.
+                credit_implicit_receiver_call(
+                    self.ctx, receiver, receiver_type, func.root, func.name,
+                    site, record=False)
+        if func is not None:
+            self._check_error_return_handled(site, func)
+
     def _check_error_return_handled(self, expr: TpyCall | TpyMethodCall, func: FunctionInfo) -> None:
         """Check that calls to @error_return functions are inside matching try/except."""
         if func.error_return_type is None:
@@ -6820,13 +7004,11 @@ class CallAnalyzer:
             expr,
         )
 
-    def _analyze_generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
-        """Analyze a call to a generic function."""
-        with self._adaptive_list_args(expr, [func]):
-            return self._generic_function_call(expr, func)
-
-    def _generic_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
-
+    def _generic_candidate(self, expr: TpyCall,
+                           func: FunctionInfo) -> Candidate:
+        """The one signature of generic `func` that call `expr` binds,
+        bound and instantiated at the type arguments written or inferred
+        from its arguments and its slot (`_infer_arg_types`)."""
         # Check for invalid type arguments (e.g., first[123](x) or first[var](x))
         if expr.type_args_parse_error:
             raise self.ctx.error(expr.type_args_parse_error, expr)
@@ -6834,8 +7016,10 @@ class CallAnalyzer:
         # The omitted defaults wait for the type arguments, at which a
         # filled `T()` constructs; inference reads the written arguments
         # each parameter binds.
-        binding = self.bind_args(expr, func.params, expr.func_name)
-        evidence = binding.evidence(source_view(expr))
+        written = source_view(expr)
+        binding = self.bind_args(expr, func.params, expr.func_name,
+                                 src=written)
+        evidence = binding.evidence(written)
         slots = [slot for slot, _ in evidence]
 
         # Get type substitution from explicit args or inference. The LHS-hint
@@ -6899,7 +7083,17 @@ class CallAnalyzer:
                     f"Specify explicitly: {func.name}[{', '.join(func.type_params)}](...)",
                     expr
                 )
+        return candidate_of(
+            written, binding,
+            self.type_ops.substitute_method_type_params(func, type_subst),
+            func, type_subst, func)
 
+    def _commit_generic_call(self, expr: TpyCall, cand: Candidate) -> TpyType:
+        """Commit call `expr` to the generic function candidate `cand`
+        instantiates (`commit_winner`)."""
+        func = cand.origin
+        assert func is not None
+        type_subst = cand.subst
         # type_subst keeps literal-marked types for per-arg coercion below;
         # codegen needs them resolved so they don't reach C++ as template args.
         self.expr.set_step_route(expr, GenericCallRoute(builtin=False))
@@ -6911,17 +7105,7 @@ class CallAnalyzer:
             self.type_ops.compute_representational_subst_params(
                 func, expr.inferred_type_args))
 
-        # Validate defaults for generic params not covered by explicit args
-        kwargs_arg = self.kwargs_region_arg(expr, func, binding, func.name)
-        layout = self.commit_args(expr, func, binding, final_subst,
-                                  analyze=False, kwargs_arg=kwargs_arg)
-        validate_generic_defaults(
-            binding, func, type_subst, self.type_ops,
-            lambda msg: self.ctx.error(msg, expr), layout.filled)
-
-        # Resolve and check parameters
-        resolved_func = self.type_ops.substitute_method_type_params(func, type_subst)
-
+        resolved_func = cand.matched
         # TODO: replace qualified_name check with @compiler_check decorator
         if (func.qualified_name == "tpy.unsafe.unsafe_cast"
                 and is_readonly_ptr(resolved_func.return_type)
@@ -6931,38 +7115,18 @@ class CallAnalyzer:
                 "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
             )
 
-        expr.resolved_function_info = resolved_func
-
-        # Pack variadic args or type-check normally
-        if resolved_func.has_variadic:
-            self._analyze_and_pack_varargs(expr, resolved_func, layout)
-        else:
-            # `*unpack` is only valid at a variadic param position; a
-            # non-variadic generic function must reject it cleanly (mirrors
-            # the non-generic guard in _typecheck_call_args). Inference may
-            # have element-extracted the unpack as evidence, so this gate is
-            # what actually rejects the misuse.
-            for arg in layout.args:
-                if isinstance(arg, TpyStarUnpack):
-                    raise self.ctx.error(
-                        f"Cannot use *unpacking: '{func.name}' "
-                        f"does not accept *args", arg)
-            # A callable parameter's signature spells the argument's own
-            # parameters, which are slots and never literals, so it takes the
-            # finalized bindings; every other parameter keeps the markers its
-            # literal argument coerces against.
-            order = layout.binding.param_order()
-            resolved_params = [
-                (p.name, self.type_ops.substitute_param_type(
-                    p.type, final_subst if _is_fn_slot_param(p.type)
-                    else type_subst))
-                for p in (func.params[i] for i in order)]
-            self.receive_winner_args(
-                self.args_scope(layout.args), layout.args, None,
-                resolved_params, func, call=expr,
-                declared_types=[func.params[i].type for i in order],
-                fresh_own="note_lend", char_literal_init=True,
-                param_indices=order)
+        # A callable parameter's signature spells the argument's own
+        # parameters, which are slots and never literals, so it takes the
+        # finalized bindings; every other parameter keeps the markers its
+        # literal argument coerces against.
+        fn_slots = {i: (p.name, self.type_ops.substitute_param_type(
+                        p.type, final_subst))
+                    for i, p in enumerate(func.params)
+                    if _is_fn_slot_param(p.type)}
+        self.commit_winner(
+            expr, cand, func.name, stamp=resolved_func, params=fn_slots,
+            declared_types=[p.type for p in func.params],
+            fresh_own="note_lend", char_literal_init=True)
 
         # Resolve return type
         resolved_return = self.type_ops.substitute_type_params(
@@ -6989,9 +7153,7 @@ class CallAnalyzer:
             # After the arguments were received: a candidate the @dispatch
             # fallback refuses leaves no instantiation behind.
             self.ctx.record_own_copy_instantiation(func.root, type_subst)
-            self._check_borrow_arg_conflicts(expr)
-            self._record_mutation_call_edges(expr)
-        self._check_error_return_handled(expr, func)
+        self.commit_facts(expr, func)
         return resolved_return
 
     def _analyze_recursive_union_constructor(
@@ -7018,83 +7180,66 @@ class CallAnalyzer:
         )
         return union_type
 
-    def _resolve_ctor_overload_group(self, expr: TpyCall, record: RecordInfo) -> FunctionInfo | None:
-        """Resolve construction against an __init__ overload GROUP, own or
-        inherited.
+    def _ctor_group_candidate(
+            self, expr: TpyCall, record: RecordInfo,
+            overloads: list[FunctionInfo],
+            type_subst: 'dict[str, TpyType | int] | None',
+            scope: OpenCallArgs) -> Candidate:
+        """Construction `expr` of `record` ranked over its `__init__`
+        overload group, own or inherited, as a function's overloads are,
+        and bound to the winner. `type_subst`: the record's type arguments
+        where they are known (an explicit instantiation, a plain record);
+        None ranks each constructor generic over the record's type
+        parameters, which the winner's substitution then gives.
 
         A record with its own multi-stub group (the builtin exception
         family) has an init_params copy that mirrors only the FIRST stub; a
         record with no own __init__ emits `using Base::Base` and inherits
-        every base ctor. Both construct against the full overload set.
-        Returns the winning overload after coercing args, or None when the
-        record has a single (or no) ctor signature -- the init_params path
-        applies there.
-        """
-        if not self._constructs_against_group(expr, record):
-            return None
-        overloads = self.ctx.registry.ctor_overloads(record)
+        every base ctor. Both construct against the full overload set."""
+        if type_subst is None:
+            views = [self._own_ctor_view(record, c) for c in overloads]
+        else:
+            views = [self._ctor_view(record, c, type_subst)[0]
+                     for c in overloads]
         written = source_view(expr)
-        with self.open_call_args(expr, written.operands, record.name,
-                                 scored=True) as scope:
-            # Ranked as a function's overloads are: a lambda or function
-            # reference takes each candidate's callable parameter as its hint.
-            try:
-                result = self._resolve_call_overloads(
-                    expr, overloads,
-                    is_generic_for_pool=lambda f: f.is_generic(),
-                    src=written)
-            except OverloadAmbiguityError as e:
-                raise self._ambiguous_overload_error(expr, f"{record.name}.__init__", e)
-            winner = result.matched
-            if winner is None:
-                # The commit takes the ranking's substitution, so a generic
-                # candidate the ranking did not pick is no winner here.
-                winner = self._winner_past_ranking(
-                    expr, record.name, overloads, result, generic_ok=False)
-            if winner is None:
-                self.raise_no_match(record.name, overloads, result.typed,
-                                    written, expr)
-            # The winner's own binding places each written argument -- a
-            # keyword at the winner's slot, not the first stub's.
-            self.commit_overload_winner(
-                expr, scope, winner, winner,
-                result.matched_origin[1] if result.matched_origin else {},
-                f"{record.name}()")
-        return winner
-
-    def _sole_ctor(self, expr: TpyCall,
-                   record: RecordInfo) -> FunctionInfo | None:
-        """The one `__init__` construction `expr` of `record` binds to;
-        None for an overload group, or a record with no declared one."""
-        if self._constructs_against_group(expr, record):
-            return None
-        ctors = self.ctx.registry.ctor_overloads(record)
-        return ctors[0] if ctors else None
-
-    def _constructs_against_group(self, expr: TpyCall,
-                                  record: RecordInfo) -> bool:
-        """Whether `record(...)` resolves against an `__init__` overload
-        group (`_resolve_ctor_overload_group`) rather than one signature."""
-        return (not record.is_generic()
-                and len(self.ctx.registry.ctor_overloads(record)) > 1)
-
-    def _attach_ctor_overload_info(
-        self, expr: TpyCall, record: RecordInfo, return_type: TpyType,
-        winner: FunctionInfo,
-    ) -> None:
-        """`_set_record_constructor_info` for a resolved inherited-overload
-        ctor: attach the WINNING overload's params (not the first stub's) so
-        borrow/effect checks see the actual signature."""
-        expr.resolved_function_info = FunctionInfo(
-            name=record.name,
-            params=winner.params,
-            return_type=return_type,
-            is_readonly=False,
-            is_constructor=True,
-            canonical_fi=winner.root,
-        )
-        self._check_borrow_arg_conflicts(expr)
-        self._record_mutation_call_edges(expr)
+        # Ranked as a function's overloads are: a lambda or function
+        # reference takes each candidate's callable parameter as its hint.
+        try:
+            result = self._resolve_call_overloads(
+                expr, views,
+                is_generic_for_pool=lambda f: f.is_generic(),
+                src=written)
+        except OverloadAmbiguityError as e:
+            originals = {id(v): c for v, c in zip(views, overloads)}
+            raise self._ambiguous_overload_error(
+                expr, f"{record.name}.__init__", OverloadAmbiguityError(
+                    tuple(originals.get(id(c), c) for c in e.candidates),
+                    e.converted))
+        cand = result.candidate
+        if cand is None and type_subst is not None:
+            # The commit takes the ranking's substitution, so a generic
+            # candidate the ranking did not pick is no winner here.
+            winner = self._winner_past_ranking(
+                expr, record.name, views, result, generic_ok=False)
+            if winner is not None:
+                cand = candidate_of(
+                    written, self.bind_args(expr, winner.params,
+                                            f"{record.name}()", src=written),
+                    winner, winner)
+        if cand is None:
+            self.raise_no_match(record.name, views, result.typed,
+                                written, expr)
+        declared = overloads[next(i for i, v in enumerate(views)
+                                  if v is cand.declared)]
+        subst = cand.subst if type_subst is None else dict(type_subst)
+        if type_subst is None:
+            matched, _ = self._ctor_view(
+                record, declared, {k: self._resolve_inferred_type_arg(v)
+                                   for k, v in subst.items()})
+        else:
+            matched = cand.matched
+        return Candidate(matched, declared, cand.binding, cand.evidence,
+                         subst, declared if subst else None)
 
     def _analyze_record_constructor(self, expr: TpyCall, record: RecordInfo) -> TpyType:
         """Analyze a call to a record constructor."""
@@ -7156,20 +7301,11 @@ class CallAnalyzer:
             raise self.ctx.error(
                 f"TypedDict '{record.name}' only accepts keyword arguments", expr)
 
-        # Place the arguments of a construction against its sole signature;
-        # the parameters left open are filled once the type arguments are
-        # known (`_fill_ctor_defaults`). An overload group places and fills
-        # against its winner (`_resolve_ctor_overload_group`).
-        sole_ctor = self._sole_ctor(expr, record)
         written = source_view(expr)
-        group = self._constructs_against_group(expr, record)
-        if not record.init_params and not group and (
-                written.keywords or written.double_star is not None):
+        ctors = self.ctor_signatures(record)
+        if not ctors and (written.keywords or written.double_star is not None):
             # Nothing to bind a keyword to: the binding says so.
             self.bind_args(expr, [], f"{record.name}()")
-        # Bound once; laid out once its type arguments are known
-        # (`_fill_ctor_defaults`).
-        binding = self.ctor_binding(expr, record)
 
         # Check if this is a generic record instantiation (e.g., Stack[int32]())
         if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
@@ -7196,23 +7332,12 @@ class CallAnalyzer:
         if expr.call_type is not None and isinstance(expr.call_type, NominalType) and expr.call_type.is_record:
             # Analyze and type-check constructor arguments with type substitution
             type_subst = self.type_ops.build_type_substitution(expr.call_type)
-            winner = self._resolve_ctor_overload_group(expr, record)
-            if winner is not None:
-                self._attach_ctor_overload_info(expr, record, expr.call_type, winner)
-                return expr.call_type
-            if record.init_params:
-                self._receive_ctor_args(
-                    expr, record,
-                    self._fill_ctor_defaults(expr, record, sole_ctor, binding,
-                                             type_subst, analyze=False),
-                    type_subst)
-            elif written.positional:
-                raise self.ctx.error(
-                    f"'{record.name}' has no __init__ and cannot be constructed with arguments",
-                    expr)
-            elif not record.has_init:
-                self._validate_aggregate_zero_arg(record, expr, type_subst)
-            self._set_record_constructor_info(expr, record, expr.call_type, type_subst)
+            cand = self._construct_at(expr, record, ctors, type_subst)
+            if cand is not None:
+                self._construction_facts(expr, record, cand.declared,
+                                         cand.binding)
+            self._stamp_construction(expr, record, expr.call_type, cand,
+                                     type_subst)
             return expr.call_type
         # Generic record without explicit type args - try type inference
         if record.is_generic():
@@ -7243,52 +7368,85 @@ class CallAnalyzer:
                     f"'{record.name}' has no __init__; "
                     f"use @dataclass or define __init__ to accept constructor arguments",
                     expr)
-            return self.infer_generic_construction(expr, record, binding)
+            return self.infer_generic_construction(expr, record)
         # Non-generic record
-        winner = self._resolve_ctor_overload_group(expr, record)
-        if winner is not None:
-            result_type = NominalType(record.name, _module_qname=record.qualified_name())
-            self._attach_ctor_overload_info(expr, record, result_type, winner)
-            return result_type
-        if record.init_params:
-            self._receive_ctor_args(
-                expr, record,
-                self._fill_ctor_defaults(expr, record, sole_ctor, binding,
-                                         {}, analyze=False),
-                None)
-        elif written.positional:
+        if not ctors and written.positional:
             raise self.ctx.error(
                 f"'{record.name}' has no __init__; "
                 f"use @dataclass or define __init__ to accept constructor arguments",
                 expr)
-        elif not record.has_init:
-            self._validate_aggregate_zero_arg(record, expr, type_subst=None)
+        cand = self._construct_at(expr, record, ctors, {})
         # NominalType.name is the canonical declaration name (qname disambiguates
         # cross-module same-name records); an import alias here would make the
         # constructed type's `name` differ from a union member's canonical name
         # and break `==`-based identity. Codegen qualifies via the qname index,
         # not this name, so the alias is not needed for C++ rendering.
         result_type = NominalType(record.name, _module_qname=record.qualified_name())
-        self._set_record_constructor_info(expr, record, result_type)
+        if cand is not None:
+            self._construction_facts(expr, record, cand.declared, cand.binding)
+        self._stamp_construction(expr, record, result_type, cand)
         return result_type
 
-    def infer_generic_construction(self, expr: TpyCall, record: RecordInfo,
-                                   binding: ArgBinding | None) -> TpyType:
-        """The construction `expr` of generic `record`, bound by `binding`
-        (`ctor_binding`), whose type arguments its arguments and its slot
-        give: inferred, then completed (`complete_construction`), or left
-        pending for its uses to give them. Its slot step runs this again
-        (`GenericCtorRoute`), each argument met through its record."""
+    def _construct_at(self, expr: TpyCall, record: RecordInfo,
+                      ctors: list[FunctionInfo],
+                      type_subst: 'dict[str, TpyType | int]'
+                      ) -> Candidate | None:
+        """Construction `expr` of `record` at its known type arguments
+        `type_subst`, committed to the constructor of `ctors` it binds
+        (ranked over a group); None for a record with no constructor, whose
+        zero-argument construction is checked instead."""
+        if len(ctors) > 1:
+            with self.open_call_args(expr, source_view(expr).operands,
+                                     record.name, scored=True) as scope:
+                cand = self._ctor_group_candidate(expr, record, ctors,
+                                                  type_subst, scope)
+                self.commit_construction(expr, record, cand, scope=scope)
+            return cand
+        if ctors:
+            cand = self._ctor_candidate(expr, record, ctors[0], type_subst)
+            self.commit_construction(expr, record, cand)
+            return cand
+        if source_view(expr).positional:
+            raise self.ctx.error(
+                f"'{record.name}' has no __init__ and cannot be constructed with arguments",
+                expr)
+        if not record.has_init:
+            self._validate_aggregate_zero_arg(record, expr,
+                                              type_subst or None)
+        return None
+
+    def infer_generic_construction(self, expr: TpyCall,
+                                   record: RecordInfo) -> TpyType:
+        """The construction `expr` of generic `record` whose type arguments
+        its arguments and its slot give: inferred, then completed
+        (`complete_construction`), or left pending for its uses to give
+        them. Its slot step runs this again (`GenericCtorRoute`), each
+        argument met through its record."""
         self.expr.set_step_route(expr, GenericCtorRoute(record))
         wildcard_type_args = (expr.type_args
                               if expr.type_args and None in expr.type_args
                               else None)
+        ctors = self.ctor_signatures(record)
+        if len(ctors) > 1:
+            return self._infer_group_construction(expr, record, ctors)
+        # Bound once to its constructor, spelled in the record's own type
+        # parameters; laid out once its type arguments are known.
+        evidence: list[tuple[int, TpyExpr]] = []
+        view: FunctionInfo | None = None
+        binding: ArgBinding | None = None
+        if ctors:
+            view = self._own_ctor_view(record, ctors[0])
+            written = source_view(expr)
+            binding = self.bind_args(expr, view.params, f"{record.name}()",
+                                     src=written)
+            self._refuse_varargs_ctor(expr, record, view)
+            evidence = binding.evidence(written)
         if record.has_init:
             # Seed type-param bindings from the LHS hint vs the record
             # pattern so nested generic-constructor chains see a
             # contextual hint on their first analysis pass -- symmetric
             # to the function/method-call seeding in
-            # `_analyze_generic_function_call`. Wildcard explicit type
+            # `_generic_candidate`. Wildcard explicit type
             # args overlay the seed at their positions; concrete explicit
             # type args take priority over both.
             seed = self.type_ops.seed_subst_from_record_pattern(
@@ -7297,27 +7455,25 @@ class CallAnalyzer:
 
             # The arguments the type parameters are inferred from stay
             # open until the resolved parameters decide them.
-            evidence = (binding.evidence(source_view(expr))
-                        if binding is not None else [])
             with self.open_call_args(expr, [a for _, a in evidence],
                                      record.name, scored=False):
-                typed: list[tuple[int, TpyType]] = []
-                with self.ctx.probe_slot_scope(True):
-                    for i, arg in evidence:
-                        _, ptype, _ = record.init_params[i]
-                        hint = seed.arg_hint(unwrap_ref_type(ptype))
-                        typed.append((i, self.expr.analyze_expr_with_hint(
-                            arg, hint)))
-
+                arg_types = (self._infer_arg_types(view, evidence, seed)
+                             if view is not None else [])
                 inferred = self.type_ops.infer_type_params_for_record(
-                    record, typed, expected_type=self.expr.slot_hint_for(expr),
+                    record, view.params if view is not None else [],
+                    [(i, t) for (i, _), t in zip(evidence, arg_types)],
+                    expected_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=wildcard_type_args,
                 )
                 if inferred:
                     for k, v in list(inferred.items()):
                         inferred[k] = self._resolve_inferred_type_arg(v)
-                    return self.complete_construction(expr, record, inferred,
-                                                      binding, receive=True)
+                    resolved = self.complete_construction(
+                        expr, record, inferred, receive=True, binding=binding)
+                    if binding is not None:
+                        self._construction_facts(expr, record, ctors[0],
+                                                 binding)
+                    return resolved
         else:
             # No __init__ -- try contextual inference only
             result_hint = self.expr.slot_hint_for(expr)
@@ -7340,22 +7496,82 @@ class CallAnalyzer:
                     inferred.setdefault(tp, val)
                 if all(tp in inferred for tp in record.type_params):
                     return self.complete_construction(expr, record, inferred,
-                                                      binding, receive=False)
+                                                      receive=False,
+                                                      binding=binding)
         pending = self._pending_instance_of(expr)
         if pending is not None:
-            # A slot that gives no more than an earlier one did.
+            # A slot that gives no more than an earlier one did (a probe's
+            # step created it); its committing step is the construction's.
+            if binding is not None:
+                region = self._commit_pending_written(expr, record, view,
+                                                      ctors[0], binding)
+                if region is not None:
+                    pending.kwargs_region = region
             return PendingGenericInstanceType(
                 record_name=pending.record_name,
                 instance_id=pending.instance_id)
         # Inference failed -- try deferred resolution (Phase 7a)
         if self._can_defer_generic_inference(record, expr):
-            return self._create_pending_generic_instance(record, expr,
-                                                         binding)
+            return self._create_pending_generic_instance(
+                record, expr, view, ctors[0] if ctors else None, binding)
         raise self.ctx.error(
             f"Cannot infer type arguments for '{record.name}'. "
             f"Please specify explicitly: {record.name}[{', '.join(record.type_params)}](...)",
             expr
         )
+
+    def _commit_pending_written(self, expr: TpyCall, record: RecordInfo,
+                                view: FunctionInfo, ctor: FunctionInfo,
+                                binding: ArgBinding) -> TpyExpr | None:
+        """The one analysis of a construction left pending: its fixed
+        arguments; at its committing step also its `**kwargs` region (each
+        routed keyword at its field, a `**expr` as itself) and its argument
+        facts against declared constructor `ctor`. Returns the region,
+        which its completion lays out."""
+        for _, arg in binding.evidence(source_view(expr)):
+            self.expr.analyze_call_arg(arg)
+        if not self.ctx.slot_step_commits():
+            return None
+        region = self.kwargs_region_arg(expr, view, binding,
+                                        f"{record.name}()")
+        self._construction_facts(expr, record, ctor, binding)
+        return region
+
+    def _construction_facts(self, expr: TpyCall, record: RecordInfo,
+                            ctor: FunctionInfo | None,
+                            binding: ArgBinding) -> None:
+        """The facts of construction `expr` its arguments pass declared
+        constructor `ctor` (by `binding`), every kind of construction's,
+        recorded at the expression where its step commits."""
+        if (ctor is None or ctor is record.field_ctor
+                or not self.ctx.slot_step_commits()):
+            return
+        operands = (expr.binding.operands(args=expr.args) if committed(expr)
+                    else binding.operands(src=source_view(expr)))
+        self.commit_facts(expr, None, CallOperands(ctor, None, operands))
+
+    def _infer_group_construction(self, expr: TpyCall, record: RecordInfo,
+                                  ctors: list[FunctionInfo]) -> TpyType:
+        """Construction `expr` of generic `record` with an `__init__`
+        overload group: ranked over the group, each constructor generic
+        over the record's type parameters, and committed to the winner at
+        the type arguments it was ranked at."""
+        with self.open_call_args(expr, source_view(expr).operands,
+                                 record.name, scored=True) as scope:
+            cand = self._ctor_group_candidate(expr, record, ctors, None,
+                                              scope)
+            subst = {tp: self._resolve_inferred_type_arg(cand.subst[tp])
+                     for tp in record.type_params if tp in cand.subst}
+            if len(subst) != len(record.type_params):
+                raise self.ctx.error(
+                    f"Cannot infer type arguments for '{record.name}'. "
+                    f"Please specify explicitly: {record.name}"
+                    f"[{', '.join(record.type_params)}](...)", expr)
+            resolved = self._construction_type(expr, record, subst)
+            self.commit_construction(expr, record, cand, scope=scope)
+        self._construction_facts(expr, record, cand.declared, cand.binding)
+        self._stamp_construction(expr, record, resolved, cand, subst)
+        return resolved
 
     def construction_bound_error(self, record: RecordInfo, name: str,
                                  subst: dict[str, TpyType]) -> str | None:
@@ -7367,18 +7583,10 @@ class CallAnalyzer:
             record.type_param_bounds, name, self.protocols.satisfies_bound,
             self.type_ops.substitute_type_params)
 
-    def complete_construction(self, expr: TpyCall, record: RecordInfo,
-                              subst: dict[str, TpyType],
-                              binding: ArgBinding | None, *, receive: bool,
-                              commit: bool | None = None) -> NominalType:
-        """Construction `expr` of generic `record`, bound by `binding`
-        (`ctor_binding`), completed at the type arguments `subst`, when its own inference finds them
-        (`infer_generic_construction`) or, left pending, when a use gives
-        them (`MethodAnalyzer._eagerly_resolve_pending_generic`): its type
-        checked against the bounds and stamped, its arguments received at
-        the substituted parameters where `receive` says it receives them,
-        and its constructor's records written where its step commits
-        (`commit`, by default `SemanticContext.slot_step_commits`)."""
+    def _construction_type(self, expr: TpyCall, record: RecordInfo,
+                           subst: dict[str, TpyType]) -> NominalType:
+        """The type construction `expr` of generic `record` builds at the
+        type arguments `subst`, checked against the bounds and stamped."""
         resolved = NominalType(
             self._ctor_type_name(expr, record),
             tuple(subst[p] for p in record.type_params),
@@ -7389,26 +7597,50 @@ class CallAnalyzer:
             raise self.ctx.error(bound_error, expr)
         expr.call_type = resolved
         self.ctx.set_expr_type(expr, resolved)
+        return resolved
+
+    def complete_construction(self, expr: TpyCall, record: RecordInfo,
+                              subst: dict[str, TpyType], *, receive: bool,
+                              commit: bool | None = None,
+                              binding: ArgBinding | None = None,
+                              kwargs_region: 'TpyExpr | None | _RegionNotBuilt'
+                              = REGION_NOT_BUILT,
+                              ) -> NominalType:
+        """Construction `expr` of generic `record` completed at the type
+        arguments `subst`, when its own inference finds them
+        (`infer_generic_construction`) or, left pending, when a use gives
+        them (`MethodAnalyzer._eagerly_resolve_pending_generic`): its type
+        checked against the bounds and stamped, its arguments received at
+        the substituted parameters where `receive` says it receives them,
+        and its constructor's records written where its step commits
+        (`commit`, by default `SemanticContext.slot_step_commits`).
+        `binding`: the binding the inference read, when it did;
+        `kwargs_region`: the `**kwargs` region built where the construction
+        is written (a pending one's; None: it takes none)."""
+        resolved = self._construction_type(expr, record, subst)
         if commit is None:
             commit = self.ctx.slot_step_commits()
-        sole_ctor = self._sole_ctor(expr, record)
-        if receive:
-            self._receive_ctor_args(
-                expr, record,
-                self._fill_ctor_defaults(expr, record, sole_ctor, binding,
-                                         subst, analyze=False),
-                subst)
-        elif commit:
-            # Completed at a use: the written arguments were met where the
-            # construction was; its omitted defaults are filled now.
-            self._fill_ctor_defaults(expr, record, sole_ctor, binding,
-                                     subst, analyze=True)
+        ctors = self.ctor_signatures(record)
+        cand = (self._ctor_candidate(expr, record, ctors[0], subst, binding)
+                if ctors else None)
+        if cand is not None and (receive or commit):
+            # A pending construction's committing step built its region
+            # (`_commit_pending_written`) before any use completes it.
+            assert kwargs_region is not None or cand.binding.kwargs is None, (
+                f"{record.name}(): pending region not built")
+            # Completed at a use, the construction is committed there, at
+            # the type arguments the use gave.
+            self.commit_construction(expr, record, cand,
+                                     kwargs_arg=kwargs_region)
         pending = self._pending_instance_of(expr)
         if pending is not None and commit:
             self._settle_pending_instance(pending, resolved)
-        self._set_record_constructor_info(expr, record, resolved, subst,
-                                          commit=commit)
+        # What the arguments pass is the construction expression's fact,
+        # recorded there whatever completes it (`_construction_facts`).
+        self._stamp_construction(expr, record, resolved, cand, subst,
+                                 commit=commit)
         return resolved
+
 
     def _pending_instance_of(self, expr: TpyCall
                              ) -> 'PendingGenericInstanceInfo | None':
@@ -7486,22 +7718,27 @@ class CallAnalyzer:
         # Not inside a class body (field types must be concrete)
         if self.ctx.record_ctx.record is not None:
             return False
-        # A construction with arguments binds them to its init_params
-        # (`_analyze_record_constructor`), which checks their count.
-        return bool(record.init_params) or not expr.args
+        # A construction with arguments binds them to its constructor
+        # (`infer_generic_construction`), which checks their count.
+        return bool(self.ctor_signatures(record)) or not expr.args
 
     def _create_pending_generic_instance(
-        self, record: RecordInfo, expr: TpyCall, binding: ArgBinding | None,
+        self, record: RecordInfo, expr: TpyCall,
+        view: FunctionInfo | None, ctor: FunctionInfo | None,
+        binding: ArgBinding | None,
     ) -> PendingGenericInstanceType:
         """Create a deferred generic instance for later resolution from
-        method calls; the constructor's arguments are committed against
-        `binding` (`ctor_binding`) once it resolves."""
-        # Analyze constructor args (we need their types even though we can't
-        # type-check against params yet -- T is unknown)
+        method calls; `binding` binds the construction to its constructor
+        `view` (`_own_ctor_view`; `ctor` as declared), against which its
+        arguments are committed once it resolves."""
+        # The arguments are analyzed here, where they are written; their
+        # types seed the type parameters T is not known for yet.
         evidence = (binding.evidence(source_view(expr))
                     if binding is not None else [])
-        for _, arg in evidence:
-            self.expr.analyze_expr(arg)
+        region = (self._commit_pending_written(expr, record, view, ctor,
+                                               binding)
+                  if binding is not None and view is not None
+                  and ctor is not None else None)
 
         instance_id = self.ctx.pending_generic_counter
         self.ctx.pending_generic_counter += 1
@@ -7516,8 +7753,9 @@ class CallAnalyzer:
         if evidence:
             # Try partial inference from available args
             partial = self.type_ops.infer_type_params_for_record(
-                record, [(i, self.ctx.get_expr_type(arg))
-                         for i, arg in evidence], expected_type=None,
+                record, view.params, [(i, self.ctx.get_expr_type(arg))
+                                      for i, arg in evidence],
+                expected_type=None,
             )
             if partial:
                 for k, v in partial.items():
@@ -7533,24 +7771,15 @@ class CallAnalyzer:
             type_params=list(record.type_params),
             inferred=inferred,
             expr=expr,
+            kwargs_region=region,
         )
         self.ctx.func.pending_generic_instances[instance_id] = info
         return PendingGenericInstanceType(record_name=expr.func_name, instance_id=instance_id)
 
     def _analyze_legacy_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
-        """Analyze a legacy function call (fallback path)."""
-        binding = self.bind_args(expr, func.params, expr.func_name)
-        layout = self.commit_args(expr, func, binding, {}, analyze=False)
-        expr.resolved_function_info = func
-
-        if func.has_variadic:
-            self._analyze_and_pack_varargs(expr, func, layout)
-        else:
-            self._typecheck_call_args(expr, func, layout)
-
-        self._check_borrow_arg_conflicts(expr)
-        self._record_mutation_call_edges(expr)
-        return func.return_type
+        """Analyze a legacy function call (fallback path): committed as a
+        call to a free function is."""
+        return self._analyze_single_function_call(expr, func)
 
     def _rewrite_subscript_callee(self, expr: TpyCall) -> TpyType:
         """Rewrite fns[0](args) from generic-call form to expression callee.

@@ -84,7 +84,7 @@ from ..parse.nodes import (
     SourceLocation, VarLinkage, op_spelling, name_path,
 )
 from .arg_binding import (
-    BindReject, CallSource, adopt_temp_call, bind, init_param_infos, relayout,
+    BindReject, CallSource, adopt_temp_call, bind, relayout,
     source_view, temp_call_args,
 )
 from .scope_tracker import register_binder, unregister_binder
@@ -93,7 +93,7 @@ from .call_lends import (
     holds_no_pointer, value_may_point,
 )
 from .context import (
-    OwnSlot, PendingLocal, expr_yields_non_null_ptr, LoopClauseEdges,
+    CallOperands, OwnSlot, PendingLocal, expr_yields_non_null_ptr, LoopClauseEdges,
     record_borrow_binding, record_stmt_borrow_binding,
     holds_generator_object, holds_frame_object, note_owned_local,
     note_nonowning_bind, ConsumingLoop, FinallyCapture, SinkCopy, UnpackClaim,
@@ -3075,10 +3075,8 @@ class StatementAnalyzer:
         written = source_view(stmt)
         if written.positional and len(init_overloads) <= 1:
             if record.has_init:
-                bound = bind(written, init_param_infos(
-                                 record.init_params,
-                                 ctor=(init_overloads[0] if init_overloads
-                                       else None)),
+                ctors = self.expr.calls.ctor_signatures(record)
+                bound = bind(written, ctors[0].params if ctors else [],
                              f"{record.name}()")
                 if isinstance(bound, BindReject) and bound.arity is not None:
                     min_args, max_args, got = bound.arity
@@ -7526,7 +7524,8 @@ class StatementAnalyzer:
 
     def _resolve_subscript_store(self, target: TpySubscript,
                                  key_type: TpyType,
-                                 value_type: TpyType) -> TpyType:
+                                 value_type: TpyType,
+                                 value: TpyExpr) -> TpyType:
         """`t[k] = v` is the explicit `t.__setitem__(k, v)` call: its
         variant resolved on the key and the value
         (`ExpressionAnalyzer.resolve_subscript_dunder`), the key received
@@ -7538,7 +7537,7 @@ class StatementAnalyzer:
         receiver, readonly = recv
         fi = self.expr.resolve_subscript_dunder(
             target, self.expr.subscript_views(receiver, SubscriptDunder.SET),
-            readonly, [key_type, value_type])
+            readonly, [key_type, value_type], stored=value)
         slot = make_ref(store_slot_type(fi))
         self.ctx.set_expr_type(target, slot)
         return slot
@@ -7579,7 +7578,7 @@ class StatementAnalyzer:
         else:
             value_type = pre[1]
         fi = self.expr.resolve_subscript_dunder(
-            sub, sv, False, [key_type, value_type])
+            sub, sv, False, [key_type, value_type], stored=stmt.value)
         stored = prepared.stored
         target = (make_ref(at_path(stored.tree, stored.tree.STEPS[-1:]))
                   if stored is not None else make_ref(store_slot_type(fi)))
@@ -7742,7 +7741,7 @@ class StatementAnalyzer:
                                 and self.expr.calls.context_typed(stmt.value)
                                 else value_type)
                 target_type = self._resolve_subscript_store(
-                    stmt.target, key_type, ranked_value)
+                    stmt.target, key_type, ranked_value, stmt.value)
         if name_list is not None:
             value_type = self._bind_list_elem_cell(
                 stmt.target.name, stmt, stmt.value, value_type, target_type)
@@ -8624,9 +8623,13 @@ class StatementAnalyzer:
         received = (None if result.is_reverse
                     else self.expr.receive_dunder_operand(
                         stmt.value, value_type, result))
-        if received is not None:
-            stmt.value = received
-        return received is not None
+        if received is None:
+            return False
+        stmt.value = received
+        # The target's write is the statement's own.
+        self.expr.calls.commit_facts(
+            stmt, result.method, CallOperands(result.method, None, [received]))
+        return True
 
     def _pending_aug_assign(self, stmt: TpyAugAssign, target_type: TpyType,
                             value_type: TpyType,

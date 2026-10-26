@@ -2779,6 +2779,9 @@ class SemanticAnalyzer:
                         (n, self._finalize_alias_refs(t), d)
                         for (n, t, d) in info.init_params
                     ]
+                if info.field_ctor is not None:
+                    for pi in info.field_ctor.params:
+                        pi.type = self._finalize_alias_refs(pi.type)
                 for overloads in info.methods.values():
                     for fi in overloads:
                         if fi.return_type is not None:

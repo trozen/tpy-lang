@@ -6,6 +6,7 @@ Method call and super() analysis.
 
 from __future__ import annotations
 import copy
+from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from .. import qnames
@@ -37,17 +38,17 @@ from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_borrowing_view_type, protocol_info_of
 from .bound_check import raise_if_class_param_bound_violated
 from .arg_binding import (
-    CallSource, SlotKind, adopt_temp_call, relayout, source_view,
+    ArgBinding, Candidate, CallSource, SlotKind, adopt_temp_call, candidate_of, relayout,
+    source_view,
     temp_call_args,
 )
 from .calls import (
-    ArgLayout, call_shape,
-    validate_generic_defaults,
+    call_shape,
     validate_type_param_bounds,
     resolve_inferred_type_arg,
 )
-from .type_ops import seeded_arg_hint
-from .context import CompTarget, GenericMethodRoute, PENDING_CONTAINER_TYPES
+from .context import (CallOperands, CompTarget, GenericMethodRoute,
+                      PENDING_CONTAINER_TYPES)
 from .overloads import CallShape, operand_param_type
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls, container_overloads)
@@ -479,68 +480,31 @@ class MethodAnalyzer:
 
         self.expr.pend.when_elem_known(expr, lc, record)
 
-    def _check_args_or_pack_varargs(
-        self, expr: TpyMethodCall,
-        resolved: FunctionInfo, layout: ArgLayout,
-        arg_types: list[TpyType] | None = None,
-    ) -> None:
-        """Dispatch arg checking based on whether the method has *args.
-
-        Variadic methods route through `_analyze_and_pack_varargs` (mirrors
-        the free-function path). The pre-analyzed cache is dropped because
-        it holds types analyzed against Span[T], not the element type T
-        the packer needs. ``arg_types`` is ignored on the variadic path --
-        the packer re-analyzes every arg from scratch.
-        """
-        if resolved.has_variadic:
-            self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-            self.calls._analyze_and_pack_varargs(expr, resolved, layout)
-        else:
-            # `*unpack` is only valid at a variadic param position; a
-            # non-variadic method must reject it (mirrors the free-function
-            # guard in CallAnalyzer._typecheck_call_args). Without this the
-            # pre-analyzed element type would be silently coerced as if the
-            # unpack were a single positional arg.
-            for arg in layout.args:
-                if isinstance(arg, TpyStarUnpack):
-                    raise self.ctx.error(
-                        f"Cannot use *unpacking: '{resolved.name}' "
-                        f"does not accept *args", arg)
-            self._check_and_coerce_args(expr, resolved.params, layout,
-                                        arg_types)
-
-    def _check_and_coerce_args(
-        self, expr: TpyMethodCall,
-        params: list[tuple[str, TpyType]], layout: ArgLayout,
-        arg_types: list[TpyType] | None = None,
-    ) -> None:
-        """Receive the method's arguments, laid out as `layout`
-        (`CallAnalyzer.commit_args`), at `params`
-        (`CallAnalyzer.receive_winner_args`). `arg_types`, or the types a
+    def _commit_method(self, expr: TpyMethodCall, cand: Candidate, *,
+                       fill: bool,
+                       written_types: 'list[TpyType | None] | None' = None,
+                       ) -> None:
+        """Commit method call `expr` to its candidate `cand`
+        (`CallAnalyzer.commit_winner`). `written_types`, or the types a
         container method's preparation decided (`pre_analyzed_method_args`),
-        are taken where given instead of a re-entry."""
+        are the types of the written positionals, taken where given instead
+        of a re-entry. A variadic method's arguments are analyzed again: the
+        preparation typed them against Span[T], not the element type T the
+        pack takes."""
         pre = self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-        binding = layout.binding
-        param_at = binding.param_order()
-        decided: list[TpyType | None] | None = arg_types
-        if decided is None and pre is not None:
-            # The pre-analysis typed the written positionals.
-            slots = binding.slots
-            decided = []
-            for slot in param_at:
-                written_at = (slots[slot].index
-                              if slots[slot].kind is SlotKind.POSITIONAL
-                              else None)
-                decided.append(pre[written_at] if written_at is not None
-                               and written_at < len(pre) else None)
-        inferred = self._inferred_receiver_slots(expr)
-        self.calls.receive_winner_args(
-            self.calls.args_scope(layout.args), layout.args, decided,
-            [params[k] for k in param_at], expr.resolved_function_info,
-            call=expr,
-            inferred_slots={j: inferred[k] for j, k in enumerate(param_at)
-                            if k in inferred},
-            param_indices=param_at)
+        resolved = cand.matched
+        expr.resolved_function_info = resolved
+        by_pos = written_types if written_types is not None else pre
+        decided: dict[int, TpyType] | None = None
+        if by_pos is not None and not resolved.has_variadic:
+            decided = {i: by_pos[s.index]
+                       for i, s in enumerate(cand.binding.slots)
+                       if s.kind is SlotKind.POSITIONAL
+                       and s.index < len(by_pos)
+                       and by_pos[s.index] is not None}
+        self.calls.commit_winner(
+            expr, cand, expr.method, fill=fill, decided=decided,
+            inferred_slots=self._inferred_receiver_slots(expr))
 
     def _inferred_receiver_slots(self, expr: TpyMethodCall
                                  ) -> dict[int, InferredSlot]:
@@ -562,8 +526,11 @@ class MethodAnalyzer:
         type_subst: dict[str, TpyType | int],
         is_readonly_receiver: bool = False,
         is_consuming_receiver: bool = False,
+        binding: ArgBinding | None = None,
     ) -> TpyType:
         """Resolve overloads, substitute type params, check arg count, and coerce args.
+        `binding`: a sole method's binding its type arguments were inferred
+        by.
 
         Sets expr.resolved_function_info. Returns the return type.
         """
@@ -574,18 +541,15 @@ class MethodAnalyzer:
             unresolved = overloads[0]
             resolved = (self.type_ops.substitute_method_type_params(unresolved, type_subst)
                         if type_subst else unresolved)
-            binding = self.calls.bind_args(expr, resolved.params, expr.method)
-            kwargs_arg = self.calls.kwargs_region_arg(
-                expr, resolved, binding, expr.method)
-            layout = self.calls.commit_args(
-                expr, resolved, binding, type_subst, analyze=False,
-                fill=self._renders_call(expr), kwargs_arg=kwargs_arg)
-            expr.resolved_function_info = resolved
-            self._check_args_or_pack_varargs(expr, resolved, layout)
-            if type_subst:
-                validate_generic_defaults(
-                    binding, unresolved, type_subst, self.type_ops,
-                    lambda msg: self.ctx.error(msg, expr), layout.filled)
+            written = source_view(expr)
+            if binding is None:
+                binding = self.calls.bind_args(expr, resolved.params,
+                                               expr.method, src=written)
+            cand = candidate_of(
+                written, binding,
+                resolved, resolved, type_subst,
+                unresolved if type_subst else None)
+            self._commit_method(expr, cand, fill=self._renders_call(expr))
         else:
             # Ranked on the call as written, also when an earlier analysis
             # committed it (a call macro's argument analyzed again).
@@ -598,7 +562,7 @@ class MethodAnalyzer:
             with self.calls.open_call_args(
                     expr, written.operands,
                     expr.method, scored=True,
-                    candidates=resolved_overloads) as scope:
+                    candidates=resolved_overloads):
                 pre = self.ctx.func.pre_analyzed_method_args.get(expr)
                 known = ({i: t for i, t in enumerate(pre) if t is not None}
                          if pre is not None and len(pre) == len(positional)
@@ -607,27 +571,26 @@ class MethodAnalyzer:
                     self.ctx.func.pre_analyzed_method_args.pop(expr, None)
                 arg_types, ranked_types = self.calls.probe_overload_args(
                     expr, written, resolved_overloads, known)
-                # The winner receives the arguments the preparation typed
-                # as it typed them; every other one re-enters at its slot.
-                decided = ([known.get(i) for i in range(len(positional))]
-                           if known else None)
-                resolved, const_receiver = self.calls.rank_method_call(
-                    expr.method, resolved_overloads, ranked_types, written,
-                    expr, readonly_receiver=is_readonly_receiver,
+                cand, const_receiver = self.calls.rank_method_call(
+                    expr.method, resolved_overloads, ranked_types,
+                    written, expr,
+                    readonly_receiver=is_readonly_receiver,
                     consuming_receiver=is_consuming_receiver)
-                if resolved is None:
+                if cand is None:
                     self.calls.raise_no_match(
                         expr.method, resolved_overloads, ranked_types,
                         written, expr,
                         [self.compat.call_type_text(t)
                          for t in arg_types.positional])
-                expr.resolved_function_info = resolved
+                resolved = cand.matched
                 expr.const_receiver = const_receiver
-                coerce_arg_types = decided
-                binding = self.calls.bind_args(expr, resolved.params,
-                                               expr.method)
+                if type_subst:
+                    # Its generic defaults are checked at the declaration.
+                    idx = resolved_overloads.index(resolved)
+                    cand = dc_replace(cand, subst=dict(type_subst),
+                                      origin=overloads[idx])
                 if (written.keywords or written.double_star is not None
-                        or binding.kwargs is not None
+                        or cand.binding.kwargs is not None
                         or (resolved.materializes_defaults
                             and self._renders_call(expr))):
                     # Winner picked; its binding spells the keywords in
@@ -635,39 +598,30 @@ class MethodAnalyzer:
                     # region too: the signature takes it). A default
                     # with no C++ spelling must be filled even with no
                     # kwargs, or the emitted call is an argument short.
-                    layout = self.calls.commit_args(
-                        expr, resolved, binding, type_subst, analyze=False,
-                        fill=self._renders_call(expr),
-                        kwargs_arg=self.calls.kwargs_region_arg(
-                            expr, resolved, binding, expr.method))
                     # The arguments are analyzed again at the winner's slots.
                     self.ctx.func.pre_analyzed_method_args.pop(expr, None)
-                    coerce_arg_types = None
+                    self._commit_method(expr, cand,
+                                        fill=self._renders_call(expr))
                 else:
                     # The written positionals stand as the argument list.
-                    layout = self.calls.commit_args(
-                        expr, resolved, binding, type_subst, analyze=False,
-                        fill=False)
-                self._check_args_or_pack_varargs(expr, resolved, layout,
-                                                 coerce_arg_types)
-                # Overloaded methods with generic defaults: find unresolved counterpart
-                if type_subst:
-                    idx = resolved_overloads.index(resolved)
-                    validate_generic_defaults(
-                        binding, overloads[idx], type_subst, self.type_ops,
-                        lambda msg: self.ctx.error(msg, expr), layout.filled)
+                    # The winner receives the arguments the preparation
+                    # typed as it typed them; every other one re-enters at
+                    # its slot.
+                    self._commit_method(
+                        expr, cand, fill=False,
+                        written_types=([known.get(i)
+                                        for i in range(len(positional))]
+                                       if known else None))
 
         # The one funnel every dispatch path reaches (instance call, generic
         # method, `super()`), and the only place carrying the class-level
         # substitution merged with the method-level one -- so it is where a
         # method body's owning-slot copy obligations are answered.
-        if self.ctx.slot_step_commits():
-            if type_subst and expr.resolved_function_info is not None:
-                self.ctx.record_own_copy_instantiation(
-                    expr.resolved_function_info.root, type_subst)
-            self.calls._check_borrow_arg_conflicts(expr)
-            self.calls._record_mutation_call_edges(expr)
-        self.calls._check_error_return_handled(expr, resolved)
+        if (self.ctx.slot_step_commits() and type_subst
+                and expr.resolved_function_info is not None):
+            self.ctx.record_own_copy_instantiation(
+                expr.resolved_function_info.root, type_subst)
+        self.calls.commit_facts(expr, resolved)
         return resolved.return_type
 
     def _renders_call(self, expr: TpyMethodCall) -> bool:
@@ -1763,14 +1717,8 @@ class MethodAnalyzer:
             # All params in return type are resolved, substitute
             return_type = self.type_ops.substitute_type_params(return_type, info.inferred)
 
-        # The call keeps the pending signature, so its omitted defaults are
-        # filled against it; a re-dispatched one fills against its resolved
-        # receiver above.
-        self.calls.commit_args(expr, method, binding, info.inferred,
-                               analyze=True)
-
         # Set minimal function info for void methods
-        expr.resolved_function_info = FunctionInfo(
+        stamp = FunctionInfo(
             name=expr.method,
             params=method.params,
             return_type=return_type,
@@ -1789,8 +1737,32 @@ class MethodAnalyzer:
             is_method=method.is_method,
             is_staticmethod=method.is_staticmethod,
             is_classmethod=method.is_classmethod,
+            # The call unwraps an error return as its resolved twin does.
+            error_return_type=method.error_return_type,
             canonical_fi=method.root,
         )
+        # The call keeps the pending signature, committed as any call is
+        # (a re-dispatched one commits against its resolved receiver above):
+        # a parameter the open type parameters still spell takes its
+        # argument as the argument was typed.
+        unresolved = type_param_names - set(info.inferred)
+        view = self.type_ops.substitute_method_type_params(
+            method, {**{tp: TypeParamRef(tp) for tp in unresolved},
+                     **info.inferred})
+        by_slot = dict(typed)
+        held = {i: by_slot[i] for i, p in enumerate(method.params)
+                if i in by_slot and contains_type_param(p.type, unresolved)}
+        self.calls.commit_winner(
+            expr, candidate_of(source_view(expr), binding, view, method,
+                               info.inferred),
+            expr.method, stamp=stamp,
+            params={i: (method.params[i].name, t) for i, t in held.items()},
+            decided=held)
+        ops = self.calls.committed_operands(expr)
+        # The facts read the declaration's, which the minimal stamp lacks.
+        self.calls.commit_facts(
+            expr, method,
+            CallOperands(method, None, ops.args) if ops is not None else None)
         return return_type
 
     def try_resolve_pending_from_expected_type(
@@ -1880,8 +1852,7 @@ class MethodAnalyzer:
         there."""
         return self.calls.complete_construction(
             info.expr, info.record_info, info.inferred,
-            self.calls.ctor_binding(info.expr, info.record_info),
-            receive=False, commit=True)
+            receive=False, commit=True, kwargs_region=info.kwargs_region)
 
     def _analyze_typed_dict_get(self, expr: TpyMethodCall, record_info, obj_type: TpyType) -> TpyType:
         """Analyze td.get("key") or td.get("key", default) on a TypedDict."""
@@ -2229,6 +2200,7 @@ class MethodAnalyzer:
         arguments on: inferred (or taken from explicit ones), bound-checked
         and applied to the arguments."""
         has_wildcards = expr.type_args and None in expr.type_args
+        binding: ArgBinding | None = None
         if expr.type_args:
             expr.written_type_params = tuple(
                 tp if ta is not None else None
@@ -2240,12 +2212,12 @@ class MethodAnalyzer:
             else:
                 # Partial explicit -- seed + explicit positional args drive
                 # the per-arg hint; wildcards leave the seed binding in place.
-                method_subst = self._infer_method_subst_with_seed(
+                method_subst, binding = self._infer_method_subst_with_seed(
                     expr, partial_func, method_info, new_params,
                     explicit_type_args=expr.type_args,
                 )
         else:
-            method_subst = self._infer_method_subst_with_seed(
+            method_subst, binding = self._infer_method_subst_with_seed(
                 expr, partial_func, method_info, new_params,
                 explicit_type_args=None,
             )
@@ -2278,7 +2250,8 @@ class MethodAnalyzer:
             self.type_ops.compute_representational_subst_params(
                 method_info, expr.inferred_type_args))
 
-        return self._resolve_and_check_args(expr, [method_info], full_subst)
+        return self._resolve_and_check_args(expr, [method_info], full_subst,
+                                            binding=binding)
 
     def _infer_method_subst_with_seed(
         self,
@@ -2287,8 +2260,10 @@ class MethodAnalyzer:
         method_info: FunctionInfo,
         new_params: list[str],
         explicit_type_args: tuple['TpyType | None', ...] | None,
-    ) -> dict[str, TpyType]:
-        """Analyze args with an LHS-hint seed and run method-param inference.
+    ) -> 'tuple[dict[str, TpyType], ArgBinding]':
+        """Analyze args with an LHS-hint seed and run method-param inference;
+        returns the substitution and the call's binding, which the commit
+        lays out.
 
         Shared by the pure-inference and partial-explicit (wildcard) branches
         of ``_analyze_generic_method_call``. The seed is computed against the
@@ -2300,14 +2275,12 @@ class MethodAnalyzer:
             partial_func, self.expr.slot_hint_for(expr),
         ).with_explicit(new_params, explicit_type_args)
 
-        # Inference reads the written arguments each parameter binds.
-        evidence = self.calls.bind_args(
-            expr, partial_func.params, expr.method).evidence(source_view(expr))
-        with self.ctx.probe_slot_scope(True):
-            arg_types = [self.expr.analyze_call_arg(
-                             arg, seeded_arg_hint(partial_func.params, slot,
-                                                  merged_seed))
-                         for slot, arg in evidence]
+        # Inference reads the written arguments each parameter binds, typed
+        # as every generic call's are (a lambda at its callable parameter).
+        binding = self.calls.bind_args(expr, partial_func.params, expr.method)
+        evidence = binding.evidence(source_view(expr))
+        arg_types = self.calls._infer_arg_types(partial_func, evidence,
+                                                merged_seed)
         method_subst = self.type_ops.infer_type_params_for_function(
             partial_func, arg_types, self.protocols.satisfies_bound,
             expected_return_type=self.expr.slot_hint_for(expr),
@@ -2319,7 +2292,7 @@ class MethodAnalyzer:
                 f"Cannot infer type arguments for method '{method_info.name}'. "
                 f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
                 expr)
-        return method_subst
+        return method_subst, binding
 
     def _is_protocol_method_readonly(self, protocol: NominalType, method_name: str) -> bool:
         """Check if a protocol method is readonly (per-method or protocol-level).

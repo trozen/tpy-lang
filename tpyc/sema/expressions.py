@@ -81,7 +81,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
@@ -1585,8 +1585,7 @@ class ExpressionAnalyzer:
                 expr.call_type = None
                 typ = self._call_result(
                     expr, self.calls.infer_generic_construction(
-                        expr, route.record_info,
-                        self.calls.ctor_binding(expr, route.record_info)))
+                        expr, route.record_info))
             elif route.builtin:
                 typ = self._call_result(
                     expr, self.calls._analyze_builtin_function_overloads(
@@ -3157,6 +3156,9 @@ class ExpressionAnalyzer:
                             None, needle_args, [left_type],
                             matched.params[:1], original_method)
                         expr.left = needle_args[0]
+                        self.calls.commit_facts(
+                            expr, matched,
+                            CallOperands(matched, None, needle_args))
                         expr.contains_call = TpyMethodCall(
                             obj=expr.right, method="__contains__",
                             args=[expr.left], resolved_function_info=matched,
@@ -3453,7 +3455,16 @@ class ExpressionAnalyzer:
                                                    result, scope)
             if received is not None:
                 expr.right = received
-        return received is not None
+        if received is None:
+            return False
+        # Received as the explicit call's argument, so recorded as that
+        # call's: the operand it passes, the receiver it runs on.
+        self.calls.commit_facts(
+            expr, result.method,
+            CallOperands(result.method, None, [received]),
+            receiver=expr.right if result.is_reverse else expr.left,
+            receiver_type=result.receiver_type)
+        return True
 
     def _pending_binop(self, expr: TpyBinOp, left_type: TpyType,
                        right_type: TpyType,
@@ -5925,8 +5936,7 @@ class ExpressionAnalyzer:
             frame_fi.root.held_whole_params = frozenset(
                 n_source + k for k, name in enumerate(captures)
                 if name not in lent and name not in iterated)
-            self.calls._check_borrow_arg_conflicts(creation)
-            self.calls._record_mutation_call_edges(creation)
+            self.calls.commit_facts(creation, None)
             expr.frame_creation = creation
         expr.frame_func = func
         expr.frame_captures = reads
@@ -7004,15 +7014,17 @@ class ExpressionAnalyzer:
     def resolve_subscript_dunder(
             self, expr: TpySubscript, sv: SubscriptViews, readonly: bool,
             arg_types: list[TpyType],
-            args: 'list[TpyExpr] | None' = None) -> 'FunctionInfo':
+            args: 'list[TpyExpr] | None' = None,
+            stored: TpyExpr | None = None) -> 'FunctionInfo':
         """Resolve the dunder set `sv` of subscript `expr` exactly as the
         explicit `t.__getitem__(k)` / `__setitem__(k, v)` / `__delitem__(k)`
         call resolves it (`CallAnalyzer.rank_method_call`), so both stamp
         one winner. The key is received at the winner's parameter in place
         on the node -- a written slice builds the slice the variant takes
         instead -- and the further `args` with it (a plain store's value is
-        received by the store). A read is credited on a record receiver
-        here, a store or `del` by its statement."""
+        received by the store, `stored`, which passes it all the same). A
+        read is credited on a record receiver here, a store or `del` by
+        its statement."""
         kind, receiver = sv.kind, sv.receiver
         name = kind.value
         overloads, views, type_subst = sv.overloads, sv.views, sv.subst
@@ -7034,18 +7046,28 @@ class ExpressionAnalyzer:
         readonly_recv = receiver_is_readonly(self.ctx, expr.obj, recv_view)
         method: FunctionInfo | None = None
         const_receiver = False
+        own_subst: 'dict[str, TpyType] | None' = None
         if len(overloads) == 1:
             # One variant: received as a call to it alone is.
             if CallShape(len(ranked)).binding(overloads[0]) is not None:
                 method = overloads[0]
+            if method is not None and any(tp not in type_subst
+                                          for tp in method.type_params):
+                # Its own type parameters bound as the ranking binds them.
+                sole, _ = self.calls.rank_method_call(
+                    name, views, ranked, [expr.index, *(args or [])], expr,
+                    readonly_receiver=readonly_recv)
+                own_subst = sole.subst if sole is not None else None
         else:
-            winner, const_receiver = self.calls.rank_method_call(
+            ranked_cand, const_receiver = self.calls.rank_method_call(
                 name, views, ranked, [expr.index, *(args or [])], expr,
                 readonly_receiver=readonly_recv)
+            winner = ranked_cand.matched if ranked_cand is not None else None
+            own_subst = ranked_cand.subst if ranked_cand is not None else None
             if winner is not None:
                 method = overloads[next(i for i, v in enumerate(views)
                                         if v is winner)]
-        found = (self.operators.bind_winner(method, ranked, type_subst)
+        found = (self.operators.bind_winner(method, type_subst, own_subst)
                  if method is not None else None)
         if found is None:
             self._raise_subscript_mismatch(expr, sv, ranked, arg_types)
@@ -7086,9 +7108,17 @@ class ExpressionAnalyzer:
         expr.dunders = expr.dunders.stamped(kind, fi)
         if const_receiver:
             expr.const_dunders |= {kind}
-        if kind is SubscriptDunder.GET and answers_as_call(receiver):
-            credit_implicit_receiver_call(
-                self.ctx, expr.obj, receiver, method, name, expr)
+        if answers_as_call(receiver):
+            # Recorded as its explicit call's: what the key and a store's
+            # value pass it, each at its parameter (a written slice holds
+            # the key's place, passing nothing a write could reach).
+            self.calls.commit_facts(
+                expr, fi, CallOperands(
+                    fi, None, [expr.index, *(args or [])]
+                    + ([stored] if stored is not None else [])))
+            if kind is SubscriptDunder.GET:
+                credit_implicit_receiver_call(
+                    self.ctx, expr.obj, receiver, method, name, expr)
         return fi
 
     def subscript_arg_context(self, expr: TpySubscript, receiver: TpyType,

@@ -1,0 +1,2 @@
+main.py:17: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:28: error: call to 'check' may return 'Bad' which must be handled with try/except

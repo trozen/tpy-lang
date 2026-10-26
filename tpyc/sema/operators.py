@@ -16,8 +16,7 @@ from ..typesys import (
     substitute_type_params_simple, is_any_float_type, answers_as_call,
 )
 from ..parse import TpyAugAssign, TpyBinOp, TpyExpr
-from .arg_binding import BindReject, CallSource
-from .overloads import (CallShape, bound_evidence, call_ranking,
+from .overloads import (CallShape, call_ranking,
                         filter_receiver_overloads,
                         OverloadAmbiguityError, converts_literal_to_base,
                         pins_const_receiver)
@@ -332,41 +331,30 @@ class OperatorResolver:
         if admits is not None and not admits(views[pick.winner],
                                              pick.winner in pick.strict):
             return None
-        found = self.bind_winner(cands[pick.winner], args, type_subst)
+        found = self.bind_winner(cands[pick.winner], type_subst, pick.subst)
         if found is None:
             return None
         return found._replace(const_receiver=pins_const_receiver(
             cands[pick.winner], cands, readonly))
 
     def bind_winner(
-        self, method: FunctionInfo, args: list[TpyType],
+        self, method: FunctionInfo,
         type_subst: dict[str, TpyType | int],
+        ranked: 'dict[str, TpyType] | None',
     ) -> RankedDunder | None:
         """The ranked winner with its substitution: the receiver's type
-        params, and a type param of the method's own bound from the
-        arguments as a call binds it (a class-shadowed name stays the
-        class's)."""
+        params, and a type param of the method's own as the ranking bound
+        it from the arguments (`ranked`, `OverloadPick.subst`; a
+        class-shadowed name stays the class's). None when the ranking bound
+        not every one of them."""
         bind = _type_entries(type_subst)
         own_params = [tp for tp in method.type_params if tp not in type_subst]
         if not own_params:
             return RankedDunder(method, bind)
-        params = []
-        for param in method.params:
-            param_type = unwrap_ref_type(param.type)
-            if bind:
-                param_type = substitute_type_params_simple(param_type, bind)
-            params.append(dc_replace(param, type=param_type))
-        view = dc_replace(method, params=params, type_params=own_params)
-        evidence = bound_evidence(view, CallSource(tuple(args)))
-        if isinstance(evidence, BindReject):
+        if ranked is None or any(tp not in ranked for tp in own_params):
             return None
-        bound = self.type_ops.infer_type_params_for_function(
-            view, [t for _, t in evidence],
-            self.protocols.type_conforms_to_protocol,
-            slots=[i for i, _ in evidence])
-        if bound is None:
-            return None
-        return RankedDunder(method, {**bind, **bound})
+        return RankedDunder(method, {**bind, **{tp: ranked[tp]
+                                                for tp in own_params}})
 
     def _make_resolved(
         self, found: RankedDunder,

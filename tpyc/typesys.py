@@ -6847,6 +6847,9 @@ class PendingGenericInstanceInfo:
     inferred: dict[str, 'TpyType']
     expr: 'TpyCall'
     decl_line: Optional[int] = None
+    # The construction's `**kwargs` region, built where it is written; its
+    # completion lays it out as it is.
+    kwargs_region: Optional['TpyExpr'] = None
 
 
 @dataclass(frozen=True)
@@ -7899,6 +7902,10 @@ class RecordInfo:
     inherits_init_from: 'Optional[NominalType]' = None  # Set when init_params were copied from an MRO ancestor; drives `using Base::Base;` codegen.
     init_inherit_blocker: Optional[InitInheritBlocker] = None  # Set instead when a class without __init__ could not inherit one.
     init_params: list[tuple[str, TpyType, Optional[str]]] = field(default_factory=list)  # (name, type, default)
+    # The constructor a record with no `__init__` builds from its fields (a
+    # `@native` field constructor, a TypedDict): one signature, synthesized
+    # at registration, that a construction binds as it binds an `__init__`.
+    field_ctor: Optional['FunctionInfo'] = None
     methods: dict[str, list['FunctionInfo']] = field(default_factory=dict)  # method_name -> list of overloads
     properties: dict[str, 'PropertyInfo'] = field(default_factory=dict)  # property_name -> PropertyInfo
     class_constants: dict[str, FieldInfo] = field(default_factory=dict)  # class-scoped Final/ClassVar storage; partitioned out of `fields` during sema registration

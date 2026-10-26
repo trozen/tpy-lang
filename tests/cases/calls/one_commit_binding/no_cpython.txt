@@ -1,0 +1,1 @@
+`mymod` binds `push` / `wipe` with `@cpp_template`, which has no CPython body.

@@ -1,0 +1,1 @@
+main.py:14: error: constructing 'P' through its *args parameter is not supported yet

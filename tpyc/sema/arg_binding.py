@@ -33,7 +33,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Callable, Sequence
 
 from ..parse.nodes import TpyCoerce, TpyVarargPack
-from ..typesys import ParamInfo
+from ..typesys import ParamInfo, unwrap_ref_type
 
 if TYPE_CHECKING:
     from ..parse import TpyExpr
@@ -354,6 +354,13 @@ class ArgBinding:
         return next((i for i, s in enumerate(self.slots)
                      if s.kind is SlotKind.VARIADIC), None)
 
+    def vararg_element_type(self, params: Sequence['ParamInfo']
+                            ) -> 'TpyType':
+        """The element type of the `*args` parameter of `params` (this
+        binding's callee, as the caller spells it), which its pack holds."""
+        assert self.variadic is not None
+        return unwrap_ref_type(params[self.variadic].type).type_args[0]
+
     @property
     def kwargs(self) -> int | None:
         return next((i for i, s in enumerate(self.slots)
@@ -469,9 +476,67 @@ class ArgBinding:
                                 if k in kws),
                           double_star)
 
+    def operands(self, *, args: 'Sequence[TpyExpr] | None' = None,
+                 src: CallSource | None = None) -> 'list[TpyExpr | None]':
+        """Each parameter's operand by index (None: none): the committed
+        list `args` read through `at`, or the call as written (`src`), whose
+        keyword-built `**kwargs` region is its own construction's operands
+        (BUGS.md#kwargs-region-list-copy-unwarned), not the parameter's."""
+        if args is not None:
+            assert self.at is not None
+            return [args[a] if a is not None else None for a in self.at]
+        assert src is not None
+        out: list[TpyExpr | None] = []
+        for i, s in enumerate(self.slots):
+            if s.kind in (SlotKind.POSITIONAL, SlotKind.KEYWORD):
+                out.append(self.expr(i, src))
+            elif s.kind is SlotKind.VARIADIC:
+                out.append(TpyVarargPack(
+                    args=[src.positional[j] for j in s.elements],
+                    element_type=self.vararg_element_type(self.params)))
+            elif s.kind is SlotKind.KWARGS:
+                out.append(src.double_star)
+            else:
+                out.append(None)
+        return out
+
     def committed(self, at: Sequence[int | None]) -> 'ArgBinding':
         """This binding, laid out with parameter `i`'s operand at `at[i]`."""
         return dc_replace(self, at=tuple(at))
+
+
+@dataclass(frozen=True)
+class Candidate:
+    """The callee one analysis step of a call selected, bound once: the
+    step's ranking, or the call's one signature, builds it, and the commit
+    lays the call out, receives and stamps from it without binding or
+    inferring it again.
+
+    `matched`: the callee the call commits against -- its parameters as
+    the call takes them (a generic one substituted); `declared`: how it
+    takes every argument (`receive_winner_args`), None for no rule of its
+    own; `binding`: the call as written bound to `matched`'s parameters;
+    `evidence`: `binding.evidence` of what it was written with; `subst`:
+    the type arguments the call instantiates its callee at (literal
+    markers kept), at which a filled default constructs; `origin`: the
+    generic declaration `matched` instantiates, None for a plain one."""
+    matched: 'FunctionInfo'
+    declared: 'FunctionInfo | None'
+    binding: ArgBinding
+    evidence: tuple[tuple[int, 'TpyExpr'], ...]
+    subst: dict = field(default_factory=dict)
+    origin: 'FunctionInfo | None' = None
+
+
+def candidate_of(written: CallSource, binding: ArgBinding,
+                 matched: 'FunctionInfo', declared: 'FunctionInfo | None',
+                 subst: dict | None = None,
+                 origin: 'FunctionInfo | None' = None) -> Candidate:
+    """The `Candidate` of `matched`, whose parameters the call written as
+    `written` binds by `binding`."""
+    return Candidate(matched, declared, binding,
+                     tuple(binding.evidence(written)), dict(subst or {}),
+                     origin)
 
 
 @dataclass(frozen=True)
@@ -488,21 +553,6 @@ def arity_error_msg(name: str, min_args: int, max_args: int, got: int) -> str:
     if min_args == max_args:
         return f"'{name}' expects {max_args} argument(s), got {got}"
     return f"'{name}' expects {min_args} to {max_args} arguments, got {got}"
-
-
-def init_param_infos(init_params: list[tuple[str, 'TpyType', 'TpyExpr | None']],
-                     keyword_only: bool = False,
-                     ctor: 'FunctionInfo | None' = None) -> list[ParamInfo]:
-    """The `ParamInfo`s of a record constructor's init_params tuples, with
-    the `/` marker of `ctor`, the `__init__` they were taken from (the
-    tuples do not carry it; its parameters lead both lists).
-    BUGS.md#ctor-kwonly-marker-ignored: the `*` marker is not carried."""
-    posonly = ({p.name for p in ctor.params if p.positional_only}
-               if ctor is not None else set())
-    return [ParamInfo(name, ptype, default_expr=default,
-                      keyword_only=keyword_only,
-                      positional_only=name in posonly)
-            for name, ptype, default in init_params]
 
 
 def positional_param_index(params: Sequence['ParamInfo'], i: int) -> int | None:

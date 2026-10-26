@@ -1,5 +1,5 @@
-# A `*rest` constructor slot has no positional default to fall back on, so an
-# omitted-argument construction rejects.
+# A construction through a `*rest` constructor slot, here with the pack
+# omitted, is refused at the call (BUGS.md#ctor-varargs-construction-unlowered).
 from tpy import int32
 
 
@@ -11,7 +11,7 @@ class Bag:
 
 
 def make() -> int32:
-    x = Bag(1)  # tpyc: error(/expr.call/)
+    x = Bag(1)  # tpyc: error(/through its \*args parameter is not supported yet/)
     return x.a
 
 

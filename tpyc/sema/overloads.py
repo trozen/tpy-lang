@@ -1004,6 +1004,7 @@ def _classify_overload(
     joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
     convert: bool = False,
     binding: dict[str, TpyType] | None = None,
+    inferred_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
 ) -> OverloadFit | None:
     """Classify every argument against the parameter of ``overload`` it
     binds (`evidence`, `bound_evidence`), returning its fit or ``None`` if
@@ -1043,6 +1044,10 @@ def _classify_overload(
         # strict match; the conversion stage ranks it at its instantiation.
         if inferred is not None and joined and joined_out is not None:
             joined_out[overload] = inferred
+        if inferred is not None and inferred_out is not None:
+            # The conversion stage ranks it at its declared parameters, but
+            # a winner there is instantiated at what the arguments bound.
+            inferred_out[overload] = inferred
         if inferred is None or joined:
             return None
     per_arg: list[tuple[MatchTier, int]] = []
@@ -1106,9 +1111,11 @@ class OverloadCandidate(NamedTuple):
     types the call has at it, as written (a `CallSource` with each
     operand's type in place of its node; a caller that types arguments per
     candidate passes each its own). The ranking places them on the
-    signature through the call's one binding (`bound_evidence`)."""
+    signature through the call's one binding: `binding`, where the caller
+    bound the call to the candidate already, else bound here."""
     overload: FunctionInfo
     args: CallSource
+    binding: 'ArgBinding | None' = None
 
 
 def typed_source(args: 'CallSource | Sequence[TpyType]') -> CallSource:
@@ -1122,6 +1129,11 @@ class OverloadPick(NamedTuple):
     found applicable (empty when it found none)."""
     winner: int | None
     strict: tuple[int, ...] = ()
+    # The type arguments a generic winner was ranked at (its own type
+    # parameters inferred from the arguments), None for a plain one.
+    subst: 'dict[str, TpyType] | None' = None
+    # The call's binding to the winner, by which it was ranked.
+    binding: 'ArgBinding | None' = None
 
 
 def _pick_best(candidates: list[OverloadCandidate],
@@ -1172,7 +1184,8 @@ def rank_overload_candidates(
         pick = _rank_stages([candidates[i] for i in part], ranking)
         if pick.winner is not None:
             return OverloadPick(part[pick.winner],
-                                tuple(part[i] for i in pick.strict))
+                                tuple(part[i] for i in pick.strict),
+                                pick.subst, pick.binding)
     return OverloadPick(None)
 
 
@@ -1198,17 +1211,23 @@ def _rank_stages(
     part in the conversion stage only, at its declared parameters.
     """
     joined: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
+    inferred: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
     fits: list[OverloadFit | None] = []
     evidences: list[list[tuple[int, TpyType]] | None] = []
+    bindings: list[ArgBinding | None] = []
     for cand in candidates:
         overload = cand.overload
-        evidence = bound_evidence(overload, cand.args)
+        bound = (cand.binding if cand.binding is not None
+                 else bind(cand.args, overload.params, overload.name))
         generic = _has_type_param_params(overload)
-        if isinstance(evidence, BindReject):
+        if isinstance(bound, BindReject):
             evidences.append(None)
+            bindings.append(None)
             fits.append(None)
             continue
+        evidence = bound.evidence(cand.args)
         evidences.append(evidence)
+        bindings.append(bound)
         if generic and ranking.type_ops is None:
             # Nothing to infer with: only the conversion stage takes it, at
             # its parameters as declared.
@@ -1216,15 +1235,16 @@ def _rank_stages(
             continue
         fits.append(_classify_overload(
             overload, evidence, ranking, joined_out=joined,
-            convert=not generic,
+            convert=not generic, inferred_out=inferred,
         ))
     strict = [i for i, fit in enumerate(fits)
               if fit is not None and fit.converted == 0]
     if strict:
-        return OverloadPick(
-            _pick_best(candidates, [(fits[i].rank(), i) for i in strict],
-                       converted=False),
-            tuple(strict))
+        best = _pick_best(candidates, [(fits[i].rank(), i) for i in strict],
+                          converted=False)
+        return OverloadPick(best, tuple(strict),
+                            inferred.get(candidates[best].overload),
+                            bindings[best])
     ranked: list[tuple[tuple, int]] = []
     for index, cand in enumerate(candidates):
         fit = fits[index]
@@ -1238,7 +1258,10 @@ def _rank_stages(
             ranked.append((fit.rank(), index))
     if not ranked:
         return OverloadPick(None)
-    return OverloadPick(_pick_best(candidates, ranked, converted=True))
+    best = _pick_best(candidates, ranked, converted=True)
+    winner = candidates[best].overload
+    return OverloadPick(best, (), joined.get(winner) or inferred.get(winner),
+                        bindings[best])
 
 
 def structural_matches(overloads: list[FunctionInfo],

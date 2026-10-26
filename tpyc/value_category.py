@@ -48,18 +48,20 @@ from . import qnames
 
 class CallOperands(NamedTuple):
     """A call-shaped expression as the borrow facts index it: the callee,
-    its receiver (source index -1), its positional arguments and the
+    its receiver (source index -1), its positional arguments (None at a
+    parameter a not yet laid out call leaves to its default) and the
     keyword arguments sema left unnormalized."""
     fi: FunctionInfo
     obj: TpyExpr | None
-    args: list[TpyExpr]
+    args: 'list[TpyExpr | None]'
     kwargs: dict[str, TpyExpr] = {}
 
     def positioned(self) -> list[tuple[int, TpyExpr]]:
         """Each argument with the parameter index it binds -- positionally,
-        then keywords by name (-2 for a name no parameter has)."""
+        then keywords by name (-2 for a name no parameter has); a
+        parameter given no operand (None) is no entry."""
         by_name = {p.name: i for i, p in enumerate(self.fi.params)}
-        return list(enumerate(self.args)) + [
+        return [(i, a) for i, a in enumerate(self.args) if a is not None] + [
             (by_name.get(k, -2), a) for k, a in (self.kwargs or {}).items()]
 
     def indexed(self) -> list[tuple[int, TpyExpr]]:

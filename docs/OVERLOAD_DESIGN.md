@@ -1080,6 +1080,36 @@ alone would. The ranking, the applicability filter (`CallRanking.admits`)
 and the union and tuple pricers take a cell from one computation,
 `CallRanking.cell`.
 
+**One commit.** The step that selects a call's callee builds its
+`Candidate` (`sema/arg_binding.py`) once: the winner as the call takes it
+(`matched`, a generic one substituted), the declaration whose rules receive
+its arguments (`declared`), the call's binding to it and the written
+argument each parameter binds, and the type arguments the ranking
+instantiated it at (`OverloadPick.subst` for a dunder, the pool inference
+of `_resolve_call_overloads` for a function). A call with one signature
+builds it on that signature: a generic function infers its type arguments
+there (`_generic_candidate`, through `_infer_arg_types`, the one argument
+inference a generic record construction also runs, so a lambda argument
+of `G(lambda v: v + 1, 5)` is typed as `g(lambda v: v + 1, 5)`'s is).
+`CallAnalyzer.commit_winner` commits every free function, method, builtin
+binding and constructor (sole, overload group, inherited, generic, a
+record's field constructor) from it, in one order: the `**kwargs` region
+and the layout (`lay_out_args`), each laid-out operand received once at
+its parameter (`receive_winner_args`; a `*args` element at the element
+type), the defaults left to C++ checked at the substitution
+(`validate_generic_defaults`), the layout stored (`relayout`), then the
+facts a committed call records once -- borrow conflicts, mutation edges,
+the `@error_return` duty -- over the operands its binding holds
+(`committed_operands`). It never binds or infers the winner again. An
+operator or subscript dunder answering as its explicit call keeps its own
+receive (an operator operand takes no promotion; a native container's `in`
+needle stays unconverted) and records the same facts
+(`commit_facts`, handed its operands). What stays per kind is data the lowering reads or
+an open rule: the stamp (a constructor's synthesized signature, a
+substituted function, `ResolvedBinop`, `dunders`), the `inferred_type_args`
+layout, the builtin receive form, the fresh-owned-argument rule and the
+one-char literal at `char`.
+
 #### Worked example: `sum([])`
 
 1. Arg type is `PendingListType(UnknownElement, size=0)`.
@@ -1152,7 +1182,7 @@ call and reports which Fn-typed slots are filled by a *supplied*
   substitutes partial inference into its Fn-slot param to get a hint,
   then synthesises the lambda's "type" as that hint. When the hint
   return is still a `TypeParamRef` and the call-site context can't
-  pin it (`_return_tpr_pinnable_from_context` returns False), the
+  pin it (`_context_pinned` returns None; where it does pin it, the candidate is instantiated at the pinned type), the
   body is analyzed under `SemanticContext.trial_scope()` via
   `_lambda_body_dry_run` so the resolved return type pins the TPR;
   trial state changes (call edges, mutated params, borrow tracker,

@@ -1,0 +1,1 @@
+main.py:16: error: 'P()' takes 1 positional argument(s), got 2

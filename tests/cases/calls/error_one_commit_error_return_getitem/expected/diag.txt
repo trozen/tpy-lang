@@ -1,0 +1,1 @@
+main.py:24: error: call to '__getitem__' may return 'Bad' which must be handled with try/except

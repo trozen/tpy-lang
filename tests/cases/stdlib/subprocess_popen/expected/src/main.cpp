@@ -36,7 +36,7 @@ void cat_roundtrip() {
 //     print("exit:", p.wait(), p.returncode)
 void exit_code() {
     std::vector<std::string> __tmp_1 = {"sh", "-c", "exit 3"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
     std::cout << "exit:" << " " << p.wait() << " " << ::tpy::print_optional_val(p.returncode) << "\n" << ::tpy::check_signals;
 }
 
@@ -51,12 +51,12 @@ void exit_code() {
 //     print("signal:", q.wait())
 void signal_death() {
     std::vector<std::string> __tmp_1 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
     std::cout << "signal:" << " " << ::tpy::print_optional_val(p.poll()) << "\n" << ::tpy::check_signals;
     p.kill();
     std::cout << "signal:" << " " << p.wait() << "\n" << ::tpy::check_signals;
     std::vector<std::string> __tmp_2 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen q = ::tpystd::subprocess::Popen(__tmp_2);
+    ::tpystd::subprocess::Popen q = ::tpystd::subprocess::Popen(__tmp_2, std::nullopt, std::nullopt, std::nullopt);
     q.terminate();
     std::cout << "signal:" << " " << q.wait() << "\n" << ::tpy::check_signals;
 }
@@ -78,7 +78,7 @@ void signal_death() {
 //     print("cache:", p.returncode)
 void caching() {
     std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
     std::optional<int64_t> rc = p.poll();
     int32_t tries = 0;
     while (((!rc.has_value()) && (tries < 2000))) {
@@ -138,7 +138,7 @@ void missing_program() {
     {
         try {
             std::vector<std::string> __tmp_1 = {"tpy-no-such-program-xyz"};
-            (void)(::tpystd::subprocess::Popen(__tmp_1));
+            (void)(::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt));
             std::cout << "missing: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::FileNotFoundError& e) {
             std::cout << "missing:" << " " << e.error_number << " " << e.filename << "\n" << ::tpy::check_signals;
@@ -238,7 +238,7 @@ void no_leaked_pipe() {
     std::vector<std::string> __tmp_1 = {"cat"};
     ::tpystd::subprocess::Popen a = ::tpystd::subprocess::Popen(__tmp_1, ::tpystd::subprocess::PIPE, ::tpystd::subprocess::PIPE);
     std::vector<std::string> __tmp_2 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen b = ::tpystd::subprocess::Popen(__tmp_2);
+    ::tpystd::subprocess::Popen b = ::tpystd::subprocess::Popen(__tmp_2, std::nullopt, std::nullopt, std::nullopt);
     if (!((a.stdin.has_value()))) ::tpy::raise_assertion_error();
     if (!((a.stdout.has_value()))) ::tpy::raise_assertion_error();
     (*a.stdin).close();
@@ -341,7 +341,7 @@ void bad_arguments() {
     {
         try {
             std::vector<std::string> __tmp_2 = {"echo", nul_arg};
-            (void)(::tpystd::subprocess::Popen(__tmp_2));
+            (void)(::tpystd::subprocess::Popen(__tmp_2, std::nullopt, std::nullopt, std::nullopt));
             std::cout << "badarg: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError& e) {
             std::cout << "badarg:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
@@ -350,7 +350,7 @@ void bad_arguments() {
     {
         try {
             std::vector<std::string> __tmp_3 = std::vector<std::string>{};
-            (void)(::tpystd::subprocess::Popen(__tmp_3));
+            (void)(::tpystd::subprocess::Popen(__tmp_3, std::nullopt, std::nullopt, std::nullopt));
             std::cout << "badarg: spawned" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::IndexError& e) {
             std::cout << "badarg: IndexError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
@@ -406,7 +406,7 @@ void bad_arguments() {
 //         print("osproc: waitpid OverflowError")
 void os_process() {
     std::vector<std::string> __tmp_1 = {"sleep", "30"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
     std::cout << "osproc:" << " " << ::tpy::TuplePrinter(::tpystd::os::waitpid(p.pid, ::tpy::stdlib::os::kc_wnohang)) << "\n" << ::tpy::check_signals;
     ::tpystd::os::kill(p.pid, static_cast<int64_t>(::tpy_const_sigkill));
     auto __tup_1 = ::tpystd::os::waitpid(p.pid, 0);
@@ -473,7 +473,7 @@ void os_process() {
 //     print("reaped:", p.poll(), p.returncode)
 void reaped_externally() {
     std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
     auto __tup_1 = ::tpystd::os::waitpid(p.pid, 0);
     int64_t pid = std::get<0>(__tup_1);
     int64_t status = std::get<1>(__tup_1);
@@ -488,7 +488,7 @@ void reaped_externally() {
 //     print("reapedwait:", res[0] == p.pid, p.wait(), p.returncode)
 void wait_after_external_reap() {
     std::vector<std::string> __tmp_1 = {"true"};
-    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1);
+    ::tpystd::subprocess::Popen p = ::tpystd::subprocess::Popen(__tmp_1, std::nullopt, std::nullopt, std::nullopt);
     std::tuple<int64_t, int64_t> res = ::tpystd::os::waitpid(p.pid, 0);
     std::cout << "reapedwait:" << " " << ::tpy::print_bool((std::get<0>(res) == p.pid)) << " " << p.wait() << " " << ::tpy::print_optional_val(p.returncode) << "\n" << ::tpy::check_signals;
 }

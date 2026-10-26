@@ -165,10 +165,8 @@ def post_substitute_hint(
     Returns None when the substitution is empty or leaves any unbound
     ``TypeParamRef`` -- callers fall back to hint-less analysis in that case.
 
-    Shared between ``seeded_arg_hint`` (function/method call args, indexed
-    via ``ParamInfo``) and ``_analyze_record_constructor``'s inline
-    arg-seeding loop (indexed via ``record.init_params`` 3-tuples) so that
-    qualifier-stripping rules stay symmetric across the two sites.
+    Shared by ``seeded_arg_hint`` (every call's argument, a construction's
+    included) and ``ReturnSeed.arg_hint``.
     """
     if not subst:
         return None
@@ -1794,6 +1792,7 @@ class TypeOperations:
     def infer_type_params_for_record(
         self,
         record: RecordInfo,
+        params: 'Sequence[ParamInfo]',
         evidence: 'list[tuple[int, TpyType]]',
         expected_type: SlotHint | TpyType | None = None,
         explicit_type_args: tuple['TpyType | None', ...] | None = None,
@@ -1801,7 +1800,9 @@ class TypeOperations:
         """Infer type parameters from constructor arguments for user-defined generic record.
 
         `evidence` pairs each argument's type with the index of the
-        `init_params` entry it binds (the construction's `ArgBinding`).
+        constructor parameter of `params` it binds (the construction's
+        `ArgBinding`), `params` spelled in the record's own type
+        parameters.
         Returns dict of inferred type params (e.g., {"T": int32}) on success, None on failure.
         If expected_type is provided, unresolved params are matched against the record type
         pattern (a fill-only hint binds only what nothing else does -- `result_bindings`).
@@ -1817,7 +1818,7 @@ class TypeOperations:
                     inferred[tp] = arg
         none_arms: list[tuple[TpyType, TpyType]] = []
         for i, arg_type in evidence:
-            _, ptype, _ = record.init_params[i]
+            ptype = params[i].type
             # A parameter naming no type parameter is evidence of nothing.
             if arg_type is None or not contains_type_param(ptype):
                 continue
@@ -2109,7 +2110,7 @@ class TypeOperations:
 
         Probe-time helper for overload pre-analysis: lets nested generic-call
         and record-ctor args see a hint on their first analysis pass, so the
-        cache short-circuit at the top of ``_analyze_generic_function_call`` /
+        cache short-circuit at the top of ``_generic_candidate`` /
         ``_analyze_record_constructor`` doesn't lock in a hint-naive type that
         the post-selection retry can't refresh.
 
