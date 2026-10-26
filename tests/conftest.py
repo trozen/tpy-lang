@@ -147,11 +147,12 @@ def _run_cxx(cmd: list[str]) -> subprocess.CompletedProcess:
     ccache rewrites the paths under CCACHE_BASEDIR relative to the working
     directory before hashing, so every checkout hashes `runtime/...` and
     `tests/cases/...` alike and worktrees at different paths share entries.
-    Regardless of `CPP_CONFIG.shares_build_dir`: the harness has always run
-    its steps from the checkout root, so a relative path in $CXX or in a
-    search-path variable already means one under the checkout root here.
+    Regardless of `CPP_CONFIG.shares_build_dir` (`build_step_cwd`): the
+    harness has always run its steps from the checkout root, so a relative
+    path in $CXX or in a search-path variable already means one under the
+    checkout root here.
     """
-    return run_build_step(cmd, PROJECT_ROOT, shares_build_dir=True)
+    return run_build_step(cmd, PROJECT_ROOT)
 
 
 FAST_LINKERS = ("lld", "mold")
@@ -2613,6 +2614,7 @@ def build_and_run(build_dir: Path, module_name: str,
         force_includes=all_force_includes or None,
         extra_link_flags=[*fast_linker_flags(), *(extra_link_flags or [])] or None,
         c_sources=c_sources or None,
+        step_cwd=PROJECT_ROOT,
     )
     for cmd in compile_cmds:
         result = _run_cxx(cmd)

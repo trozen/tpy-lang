@@ -37,8 +37,9 @@ def _fmt_ms(seconds: float) -> str:
 
 from . import get_runtime_dir
 from .codegen_cpp.context import NATIVE_INIT_NAMESPACE
-from .toolchain import (FileIdentity, absolute_path, compile_pool, file_identity, host_os,
-                        pch_entry, pch_ready, run_build_step, set_pch_ccache_sloppiness,
+from .toolchain import (FileIdentity, absolute_path, build_step_cwd, compile_pool,
+                        file_identity, host_os, pch_entry, pch_ready, run_build_step,
+                        set_pch_ccache_sloppiness,
                         shared_pch, sweep_shared_cache_best_effort)
 
 
@@ -148,7 +149,7 @@ class CompileBackend(REPLBackend):
     def __init__(self, compiler: list[str], temp_dir: Path, module_name: str,
                  verbose: int = 0):
         from .compiler import CppCompilerConfig
-        # Absolute: the build steps run from it (`run_build_step`).
+        # Absolute: the build steps may run from it (`build_step_cwd`).
         self._temp_dir = Path(absolute_path(temp_dir))
         self._module_name = module_name
         self._config = CppCompilerConfig.for_compiler(compiler)
@@ -238,8 +239,7 @@ class CompileBackend(REPLBackend):
         return self._build_dir / obj_name
 
     def _run_step(self, cmd: list[str]) -> subprocess.CompletedProcess[str]:
-        return run_build_step(cmd, self._temp_dir,
-                              shares_build_dir=self._config.shares_build_dir)
+        return run_build_step(cmd, build_step_cwd(self._config, self._temp_dir))
 
     def _compile_one(self, cpp_path: Path) -> subprocess.CompletedProcess[str]:
         obj = self._obj_path(cpp_path)
@@ -384,6 +384,7 @@ class CompileBackend(REPLBackend):
         all_objs = [self._obj_cache[str(p)] for p in all_cpp_paths]
         link_cmd = [
             *self._config.compiler,
+            *self._OPT_FLAGS,
             "-o", str(self._binary_path),
             *all_objs,
             *support_objs,

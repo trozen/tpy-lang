@@ -837,7 +837,7 @@ class _CliBuild:
             self.runs.append((cmd, kwargs))
             self.events.append("link" if "-c" not in cmd else "compile")
             if "-o" in cmd:
-                out = Path(cmd[cmd.index("-o") + 1])
+                out = Path(kwargs.get("cwd") or ".") / cmd[cmd.index("-o") + 1]
                 out.parent.mkdir(parents=True, exist_ok=True)
                 out.write_bytes(b"")
             return SimpleNamespace(returncode=0, stdout="", stderr="")
@@ -916,15 +916,19 @@ def _record_runs(monkeypatch) -> list[tuple[list[str], dict]]:
 
 
 def test_build_step_runs_from_its_base_dir_only_when_it_shares(monkeypatch, tmp_path):
+    bin_dir = _isolate_build_settings(monkeypatch, tmp_path)
+    assert toolchain.build_step_cwd(_plain_config(), tmp_path) == tmp_path
+    assert toolchain.build_step_cwd(
+        CppCompilerConfig(compiler=[str(bin_dir / "cxx"), "-DX"]), tmp_path) is None
     runs = _record_runs(monkeypatch)
     monkeypatch.setenv("CCACHE_SLOPPINESS", "pch_defines")
-    toolchain.run_build_step(["ccache", "g++", "-c", "x.cpp"], tmp_path, shares_build_dir=True)
+    toolchain.run_build_step(["ccache", "g++", "-c", "x.cpp"], tmp_path)
     [(_, shared)] = runs
     assert shared["cwd"] == tmp_path
     assert shared["env"]["CCACHE_BASEDIR"] == str(tmp_path)
     assert shared["env"]["CCACHE_SLOPPINESS"] == "pch_defines"
     runs.clear()
-    toolchain.run_build_step(["g++", "-c", "x.cpp"], tmp_path, shares_build_dir=False)
+    toolchain.run_build_step(["g++", "-c", "x.cpp"], None)
     # The caller's cwd and environment, as a plain subprocess.run has them.
     [(_, own)] = runs
     assert "cwd" not in own and "env" not in own
@@ -1016,6 +1020,8 @@ def test_cli_with_user_settings_runs_from_the_callers_cwd(monkeypatch, tmp_path,
     assert build.runs
     for cmd, kwargs in build.runs:
         assert "cwd" not in kwargs and "env" not in kwargs
+        # Run from the caller's cwd, so the build dir's paths stay absolute.
+        assert os.path.isabs(cmd[cmd.index("-o") + 1])
     compiles = [cmd for cmd, _ in build.runs if "-c" in cmd]
     if kind == "cxx-word":
         assert all(cmd[:5] == ["cxx", *_USER_WORDS] for cmd in compiles)
@@ -1037,9 +1043,9 @@ def test_cli_build_steps_run_from_the_program_build_dir(monkeypatch, tmp_path, e
     timed = []
     real_timed_run = cli._timed_run
 
-    def timed_run(cmd, base_dir, shares_build_dir):
+    def timed_run(cmd, cwd):
         timed.append(cmd)
-        return real_timed_run(cmd, base_dir, shares_build_dir)
+        return real_timed_run(cmd, cwd)
 
     monkeypatch.setattr(cli, "_timed_run", timed_run)
     assert build.run(*extra) == 0
@@ -1073,10 +1079,10 @@ def test_cli_runtime_tus_take_neither_the_program_headers_nor_the_pch(monkeypatc
     assert generated and all(pch in cmd for cmd in generated)
 
 
-def test_cli_build_steps_are_the_same_relative_to_the_build_dir(monkeypatch, tmp_path):
-    # ccache rewrites only the paths under CCACHE_BASEDIR: identical steps
-    # after that rewrite are what lets a second program hit every stdlib and
-    # runtime entry the first one stored.
+def test_cli_build_steps_are_the_same_in_every_build_dir(monkeypatch, tmp_path):
+    # zig's object cache keys on the literal command line: byte-identical
+    # steps are what lets a second program hit every stdlib and runtime
+    # object the first one stored.
     steps = []
     for name in ("a", "b"):
         build = _CliBuild(monkeypatch, tmp_path / name, pch_builds=False)
@@ -1084,10 +1090,123 @@ def test_cli_build_steps_are_the_same_relative_to_the_build_dir(monkeypatch, tmp
         # The fake PCH sits next to each program; the real one is shared.
         pch_dir = str(tmp_path / name / "entry")
         base = str(tmp_path / name / "out")
-        steps.append([[arg.replace(base, "<BASE>").replace(pch_dir, "<PCH>") for arg in cmd]
+        assert not any(base in arg for cmd, _ in build.runs for arg in cmd)
+        steps.append([[arg.replace(pch_dir, "<PCH>") for arg in cmd]
                       for cmd, _ in build.runs])
     assert steps[0] == steps[1]
-    assert any("<BASE>/src/" in arg for cmd in steps[0] for arg in cmd)
+    assert any(cmd[-1].startswith("src/") for cmd in steps[0])
+
+
+def _layout_commands(tmp_path, config, *, step_cwd="base", opt_flags=None, debug=False):
+    from tpyc.compiler import BuildLayout
+    layout = BuildLayout(tmp_path / "out", "main", "release")
+    rt_include = tmp_path / "rt" / "include"
+    return layout, layout.build_cpp_commands(
+        rt_include, [layout.src_dir / "main.cpp"], config=config, opt_flags=opt_flags,
+        runtime_cpp_sources=[tmp_path / "rt" / "src" / "x.cpp"],
+        step_cwd=layout.base_dir if step_cwd == "base" else step_cwd, debug=debug)
+
+
+def test_build_commands_name_build_dir_paths_relative_to_it(monkeypatch, tmp_path):
+    _isolate_build_settings(monkeypatch, tmp_path)
+    layout, cmds = _layout_commands(tmp_path, _plain_config())
+    generated, runtime, link = cmds
+    assert generated[-4:] == ["-c", "-o", "release/main.o", "src/main.cpp"]
+    assert generated[generated.index("include") - 1] == "-I"
+    assert runtime[-3:] == ["-o", "release/runtime/rt_x.o", str(tmp_path / "rt" / "src" / "x.cpp")]
+    assert str(tmp_path / "rt" / "include") in generated
+    assert link[link.index("-o") + 1:][:3] == ["release/main", "release/main.o",
+                                               "release/runtime/rt_x.o"]
+    assert not any(str(layout.base_dir) in arg for cmd in cmds for arg in cmd)
+
+
+@pytest.mark.parametrize("why", ["caller-cwd", "debug"])
+def test_build_commands_stay_absolute_unless_run_from_the_build_dir(
+        monkeypatch, tmp_path, why):
+    _isolate_build_settings(monkeypatch, tmp_path)
+    layout, cmds = _layout_commands(
+        tmp_path, _plain_config(), step_cwd=None if why == "caller-cwd" else "base",
+        opt_flags=["-g", "-O0"] if why == "debug" else None, debug=why == "debug")
+    generated = cmds[0]
+    assert generated[-1] == str(layout.src_dir / "main.cpp")
+    for cmd in cmds:
+        assert cmd[cmd.index("-o") + 1].startswith(str(layout.base_dir) + os.sep)
+
+
+def test_build_commands_take_the_debug_fact_not_a_flag_scan(monkeypatch, tmp_path):
+    # A release build's -g0 is no debug build: its paths stay relative.
+    _isolate_build_settings(monkeypatch, tmp_path)
+    _, cmds = _layout_commands(tmp_path, _plain_config(), opt_flags=["-g0", "-O3"])
+    assert cmds[0][-1] == "src/main.cpp"
+
+
+def test_link_step_takes_the_build_opt_flags(monkeypatch, tmp_path):
+    # zig builds its bundled libc++ at the link line's optimization level, so
+    # a release link without them pulls in a Debug libc++.
+    _isolate_build_settings(monkeypatch, tmp_path)
+    _, cmds = _layout_commands(tmp_path, _plain_config(), opt_flags=["-g0", "-O3"])
+    link = cmds[-1]
+    assert link[link.index("-o") - 2:link.index("-o")] == ["-g0", "-O3"]
+
+
+def test_build_commands_are_relative_to_the_cwd_the_caller_names(monkeypatch, tmp_path):
+    # The caller decides the cwd once (the harness: its checkout root, for any
+    # config); the commands follow it rather than re-deciding from the config.
+    _isolate_build_settings(monkeypatch, tmp_path)
+    config = CppCompilerConfig(compiler=["cxx"], extra_flags=["-DX"])
+    assert not config.shares_build_dir
+    _, cmds = _layout_commands(tmp_path, config, step_cwd=tmp_path)
+    generated, runtime, link = cmds
+    assert generated[-1] == os.path.join("out", "main.d", "src", "main.cpp")
+    assert runtime[-1] == os.path.join("rt", "src", "x.cpp")
+    assert link[link.index("-o") + 1] == os.path.join("out", "main.d", "release", "main")
+    assert not any(str(tmp_path) in arg for cmd in cmds for arg in cmd)
+
+
+def test_runtime_tus_take_no_third_party_include_dirs(monkeypatch, tmp_path):
+    from tpyc import get_runtime_dir
+    from tpyc.build.third_party import resolve_build_plan
+    from tpyc.compiler import BuildLayout
+
+    _isolate_build_settings(monkeypatch, tmp_path)
+    plan = resolve_build_plan(["pcre2"], get_runtime_dir() / "cpp", {})
+    assert plan.extra_include_dirs and plan.c_sources
+    rt_include = get_runtime_dir() / "cpp" / "include"
+    rt_sources = toolchain.discover_runtime_cpp_sources(get_runtime_dir() / "cpp")
+    assert rt_sources
+
+    def commands(name, with_plan):
+        layout = BuildLayout(tmp_path / name, "main", "release")
+        return layout.build_cpp_commands(
+            rt_include, [layout.src_dir / "main.cpp"], config=_plain_config(),
+            extra_include_dirs=plan.extra_include_dirs if with_plan else None,
+            c_sources=plan.c_sources if with_plan else None,
+            runtime_cpp_sources=rt_sources, step_cwd=layout.base_dir)[:-1]
+
+    def runtime(cmds):
+        return [cmd for cmd in cmds if _runtime_step(cmd)]
+
+    with_re, without_re = commands("a", True), commands("b", False)
+    assert runtime(with_re) == runtime(without_re) and runtime(with_re)
+    tp_dirs = [str(d) for d in plan.extra_include_dirs]
+    [generated] = [cmd for cmd in with_re if cmd[-1] == "src/main.cpp"]
+    assert all(d in generated for d in tp_dirs)
+    # The library's own sources carry its include dir in their own flags.
+    vendored = [cmd for cmd in with_re if cmd[-1].endswith(".c")]
+    assert vendored and all(any(d in arg for d in tp_dirs for arg in cmd) for cmd in vendored)
+
+
+def test_zig_builds_use_ccache_when_it_is_installed(monkeypatch, tmp_path):
+    bin_dir = _isolate_build_settings(monkeypatch, tmp_path)
+    monkeypatch.setenv("PATH", str(bin_dir))
+    monkeypatch.setattr(toolchain, "warn_toolchain_unsupported", lambda compiler: None)
+    monkeypatch.setattr(toolchain, "_resolve_compiler",
+                        lambda cxx: [str(bin_dir / "zig"), "c++"])
+    assert not CppCompilerConfig.from_env("zig").ccache
+    (bin_dir / "ccache").write_text("#!/bin/sh\n")
+    (bin_dir / "ccache").chmod(0o755)
+    zig = CppCompilerConfig.from_env("zig")
+    assert zig.ccache and zig.shares_build_dir
 
 
 def test_build_commands_are_absolute_for_relative_inputs(monkeypatch, tmp_path):
@@ -1113,23 +1232,31 @@ def test_build_commands_are_absolute_for_relative_inputs(monkeypatch, tmp_path):
     [vendor] = [cmd for cmd in cmds if cmd[-1].endswith("vendor.c")]
     assert vendor[-1] == str(tmp_path / "tp" / "src" / "vendor.c")
     [runtime] = [cmd for cmd in cmds if cmd[-1].endswith("x.cpp")]
-    assert has(runtime, tp_include) and not has(runtime, pre)
+    assert not has(runtime, tp_include) and not has(runtime, pre)
     [generated] = [cmd for cmd in cmds if cmd[-1].endswith("main.cpp")]
     assert has(generated, tp_include) and has(generated, pre)
 
 
-def test_build_commands_keep_dotdot_after_a_symlinked_output_dir(monkeypatch, tmp_path):
+@pytest.mark.parametrize("from_base_dir", [False, True])
+def test_build_commands_keep_dotdot_after_a_symlinked_output_dir(
+        monkeypatch, tmp_path, from_base_dir):
     # `-o alias/../out` with `alias` a symlink names `out` beside the link's
     # target; a lexically collapsed `./out` is another directory.
     from tpyc.compiler import BuildLayout
 
+    _isolate_build_settings(monkeypatch, tmp_path)
     (tmp_path / "elsewhere" / "child").mkdir(parents=True)
     (tmp_path / "alias").symlink_to(tmp_path / "elsewhere" / "child")
     monkeypatch.chdir(tmp_path)
     layout = BuildLayout(Path("alias/../out"), "main", "release")
-    cmds = layout.build_cpp_commands(Path("rt/include"), [layout.src_dir / "main.cpp"])
+    cmds = layout.build_cpp_commands(Path("rt/include"), [layout.src_dir / "main.cpp"],
+                                     config=_plain_config(),
+                                     step_cwd=layout.base_dir if from_base_dir else None)
     real_build_dir = tmp_path / "elsewhere" / "out" / "main.d" / "release"
     assert real_build_dir.is_dir() and not (tmp_path / "out").exists()
     assert layout.base_dir.resolve() == real_build_dir.parent
-    outputs = [Path(cmd[cmd.index("-o") + 1]) for cmd in cmds]
+    # A relative output is joined onto the cwd the step runs from.
+    cwd = layout.base_dir if from_base_dir else tmp_path
+    outputs = [cwd / cmd[cmd.index("-o") + 1] for cmd in cmds]
+    assert all(os.path.isabs(cmd[cmd.index("-o") + 1]) != from_base_dir for cmd in cmds)
     assert outputs and all(o.parent.resolve() == real_build_dir for o in outputs)

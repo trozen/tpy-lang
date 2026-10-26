@@ -163,7 +163,7 @@ class BuildLayout:
         """The absolute dir holding every program-specific path of the
         build commands (sources, headers, objects, output): the cwd and
         CCACHE_BASEDIR the CLI runs them with when its config shares the
-        build dir (`run_build_step`)."""
+        build dir (`build_step_cwd`)."""
         return self.root_dir.absolute()
 
     def hpp_path(self, module_name: str) -> Path:
@@ -231,6 +231,8 @@ class BuildLayout:
         c_sources: list[tuple[Path, list[str]]] | None = None,
         runtime_cpp_sources: list[Path] | None = None,
         shared: bool = False,
+        step_cwd: Path | None = None,
+        debug: bool = False,
     ) -> list[list[str]]:
         """Build C++ compilation commands: per-file compile steps + a link step.
 
@@ -265,14 +267,37 @@ class BuildLayout:
                        TU is compiled `-fPIC` and the final step links a
                        loadable `.so` instead of an executable (the recipe
                        itself is per-target -- see `shared_link_flags`).
+            step_cwd: The absolute dir the caller runs every step from
+                       (`run_build_step(cmd, step_cwd)`; the CLI's
+                       `build_step_cwd`), or None for the caller's cwd.
+                       Paths under it are spelled relative to it.
+            debug: A debug build (`-g`): every path stays absolute.
         """
         if config is None:
             config = CppCompilerConfig.for_compiler(CppCompilerConfig().compiler)
         if output is None:
             output = self.binary_path()
 
-        # Absolute so the commands run from any cwd (`run_build_step`).
-        ap = absolute_path
+        # Paths under the step cwd are spelled relative to it, so a program's
+        # commands are the same in every build dir: zig's own object cache
+        # keys on the literal command line (ccache rewrites them itself under
+        # CCACHE_BASEDIR). Not for a debug build: zig would then hand a second
+        # program an object whose debug info names the first program's build
+        # dir. Every other path is absolute, so it names the same file from
+        # any cwd.
+        relative_root = None if debug else step_cwd
+
+        def ap(path: str | Path) -> str:
+            # Both sides keep their `..` (`absolute_path`; `step_cwd` is never
+            # resolved, e.g. `base_dir`), so the lexical relative_to agrees
+            # with the kernel's walk from the cwd.
+            full = absolute_path(path)
+            if relative_root is not None:
+                try:
+                    return str(Path(full).relative_to(relative_root))
+                except ValueError:
+                    pass
+            return full
 
         extra_includes: list[str] = []
         for d in (extra_include_dirs or []):
@@ -289,6 +314,10 @@ class BuildLayout:
             *config.warn_flags,
             "-I", ap(runtime_include_dir),
         ]
+        # Generated TUs keep the extra include dirs: a user `@native` module
+        # declaring a managed library may include its public headers (the
+        # dir `bundled_user_include_dir` names), though the stdlib's own
+        # facades never do.
         common = [
             *toolchain_flags,
             "-I", ap(self.include_dir),
@@ -340,9 +369,12 @@ class BuildLayout:
                 ])
 
         # TPy-owned runtime .cpp files. Same C++ toolchain as user code,
-        # but neither the program's headers nor the PCH: they include only
-        # runtime headers, so their commands stay the same in every program
-        # (one ccache entry) and they skip parsing the whole PCH. Object
+        # but neither the program's headers, the extra include dirs nor the
+        # PCH: they include only runtime headers (the `*_shim` sources that
+        # include a third-party library's own headers are that library's
+        # `c_sources`, with its flags), so their commands stay the same in
+        # every program, whichever third-party libraries it uses (one cache
+        # entry), and they skip parsing the whole PCH. Object
         # names derive from the path relative to runtime/cpp/src/ to avoid
         # collisions with user modules whose .cpp happens to share a stem.
         if runtime_cpp_sources:
@@ -359,12 +391,15 @@ class BuildLayout:
                 obj_files.append(ap(obj))
                 prefix = ["ccache"] if config.ccache else []
                 cmds.append([
-                    *prefix, *toolchain_flags, *extra_includes,
+                    *prefix, *toolchain_flags,
                     "-c", "-o", ap(obj), ap(rt_cpp),
                 ])
 
         cmds.append([
             *config.compiler,
+            # zig builds its own libc++ / libunwind at link time, at the
+            # optimization level the link line names.
+            *(opt_flags or []),
             # Link-only: a darwin-cross driver would otherwise pick the host's
             # ELF `ld`. Not on config.compiler (it errors as unused on -c
             # compiles); the link is the single place it belongs.

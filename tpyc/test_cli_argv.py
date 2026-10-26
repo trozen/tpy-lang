@@ -55,10 +55,11 @@ def test_flag_like_program_args_preserved():
 
 
 def test_default_build_is_optimized_without_ndebug():
-    # The NDEBUG-gated runtime checks stay in the default build by design.
+    # The NDEBUG-gated runtime checks stay in the default build by design;
+    # -g0 because zig emits debug info even at -O3.
     args = Namespace(debug=False)
     assert _build_variant(args) == "release"
-    assert _opt_flags(args) == ["-O3"]
+    assert _opt_flags(args) == ["-g0", "-O3"]
 
 
 def test_debug_build_is_unoptimized_with_debug_info():

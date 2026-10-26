@@ -62,7 +62,7 @@ from . import (
 from .toolchain import (
     CompilerNotFoundError, ToolchainUnsupportedError, CppCompilerConfig,
     list_compilers, shared_pch, set_pch_ccache_sloppiness, sweep_shared_cache_best_effort,
-    compile_pool, run_build_step,
+    build_step_cwd, compile_pool, run_build_step,
 )
 
 
@@ -195,11 +195,11 @@ class ProgressPrinter:
         sys.stderr.flush()
 
 
-def _timed_run(cmd: list[str], base_dir: Path, shares_build_dir: bool,
+def _timed_run(cmd: list[str], cwd: Path | None,
                ) -> tuple[subprocess.CompletedProcess[str], float]:
     """Run a build step and return (result, elapsed_seconds)."""
     t = time.monotonic()
-    r = run_build_step(cmd, base_dir, shares_build_dir=shares_build_dir)
+    r = run_build_step(cmd, cwd)
     return r, time.monotonic() - t
 
 
@@ -287,8 +287,13 @@ def _opt_flags(args: argparse.Namespace) -> list[str]:
     """C++ optimization flags per variant. The default carries no -DNDEBUG:
     the runtime's NDEBUG-gated checks (dead frame slots, storage lifecycle)
     stay on, since eliding them must be a named opt-in. They are not all free
-    at -O3; see the TODO.md generator-frame perf entry."""
-    return ["-g", "-O0"] if args.debug else ["-O3"]
+    at -O3; see the TODO.md generator-frame perf entry.
+
+    The release build says -g0 because zig emits debug info even at -O3:
+    its object cache (or ccache) would otherwise hand a second program an
+    object whose debug info names the first program's build dir. g++ and
+    clang emit none without -g, so all release builds agree."""
+    return ["-g", "-O0"] if args.debug else ["-g0", "-O3"]
 
 
 # The managed third-party libraries, each with a `--<name>` mode flag. A
@@ -1113,6 +1118,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                         progress.pch(t_pch)
                     set_pch_ccache_sloppiness(cpp_config)
 
+            step_cwd = build_step_cwd(cpp_config, layout.base_dir)
             compile_cmds = layout.build_cpp_commands(
                 runtime_include_dir=runtime_dir / "cpp" / "include",
                 cpp_files=all_cpp_paths,
@@ -1125,6 +1131,8 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                 c_sources=third_party_plan.c_sources or None,
                 runtime_cpp_sources=runtime_cpp_sources or None,
                 shared=ext_module_build,
+                step_cwd=step_cwd,
+                debug=args.debug,
             )
 
             compile_steps = compile_cmds[:-1]
@@ -1143,8 +1151,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                     if args.verbose >= 1:
                         print(f"  $ {' '.join(cmd)}", file=sys.stderr)
                     t_step = time.monotonic()
-                    result = run_build_step(
-                        cmd, layout.base_dir, shares_build_dir=cpp_config.shares_build_dir)
+                    result = run_build_step(cmd, step_cwd)
                     if result.returncode != 0:
                         print(f"C++ compilation failed:", file=sys.stderr)
                         print(result.stderr, file=sys.stderr)
@@ -1157,8 +1164,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                 failed_stderr = ""
                 with compile_pool(n_jobs) as pool:
                     futures = {
-                        pool.submit(_timed_run, cmd, layout.base_dir,
-                                    cpp_config.shares_build_dir): cmd
+                        pool.submit(_timed_run, cmd, step_cwd): cmd
                         for cmd in compile_steps
                     }
                     for future in as_completed(futures):
@@ -1176,8 +1182,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             if args.verbose >= 1:
                 print(f"  $ {' '.join(link_step)}", file=sys.stderr)
             t_link = time.monotonic()
-            result = run_build_step(
-                link_step, layout.base_dir, shares_build_dir=cpp_config.shares_build_dir)
+            result = run_build_step(link_step, step_cwd)
             if result.returncode != 0:
                 print(f"C++ link failed:", file=sys.stderr)
                 print(result.stderr, file=sys.stderr)

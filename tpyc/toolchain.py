@@ -1350,23 +1350,31 @@ def set_pch_ccache_sloppiness(config: CppCompilerConfig) -> None:
     os.environ["CCACHE_SLOPPINESS"] = ",".join(sorted(parts))
 
 
-def run_build_step(cmd: list[str], base_dir: Path, *,
-                   shares_build_dir: bool) -> subprocess.CompletedProcess[str]:
-    """Run a C/C++ compile or link command: from `base_dir`, with
-    CCACHE_BASEDIR set to it, when `shares_build_dir`
-    (`CppCompilerConfig.shares_build_dir`); otherwise from the caller's cwd
-    with the environment untouched.
+def build_step_cwd(config: CppCompilerConfig, base_dir: Path) -> Path | None:
+    """The folder a build's compile and link steps run from: `base_dir` when
+    `config.shares_build_dir`, else None -- the caller's cwd, where a
+    relative path in the user's own compiler settings means what the user
+    meant. Callers compute it once and pass it to both `run_build_step` and
+    `BuildLayout.build_cpp_commands`."""
+    return base_dir if config.shares_build_dir else None
+
+
+def run_build_step(cmd: list[str],
+                   cwd: Path | None) -> subprocess.CompletedProcess[str]:
+    """Run a C/C++ compile or link command: from `cwd`, with CCACHE_BASEDIR
+    set to it, when one is given (`build_step_cwd`); otherwise from the
+    caller's cwd with the environment untouched.
 
     ccache rewrites the paths under CCACHE_BASEDIR relative to the working
     directory before hashing, so builds rooted at different paths (two
     programs' build dirs, two checkouts) hash the same generated or runtime
-    TU alike and share its cache entry. `base_dir` must be absolute (ccache
+    TU alike and share its cache entry. `cwd` must be absolute (ccache
     ignores a relative one) and hold every path specific to this build.
     """
-    if not shares_build_dir:
+    if cwd is None:
         return subprocess.run(cmd, capture_output=True, text=True)
-    env = {**os.environ, "CCACHE_BASEDIR": str(base_dir)}
-    return subprocess.run(cmd, capture_output=True, text=True, cwd=base_dir, env=env)
+    env = {**os.environ, "CCACHE_BASEDIR": str(cwd)}
+    return subprocess.run(cmd, capture_output=True, text=True, cwd=cwd, env=env)
 
 
 @contextlib.contextmanager
@@ -1527,7 +1535,7 @@ class CppCompilerConfig:
     target_platform: str = field(init=False)
 
     # Whether build steps run from the build dir with CCACHE_BASEDIR set to
-    # it (`run_build_step`), so builds at different paths share ccache
+    # it (`build_step_cwd`), so builds at different paths share ccache
     # entries. Only when the user supplied no compiler settings of their
     # own: a path in them (`-include x.h`, `@file`, a relative compiler, a
     # relative CPATH element) is relative to the caller's cwd, and the
@@ -1576,7 +1584,7 @@ class CppCompilerConfig:
             else:
                 compiler = _auto_detect_compiler()
         config = cls.for_compiler(compiler)
-        config.ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
+        config.ccache = shutil.which("ccache") is not None
         return config
 
     @classmethod

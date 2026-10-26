@@ -123,18 +123,53 @@ tracking to skip unchanged TUs.
 ### ccache across programs and checkouts
 
 Every compile and link step of a program build -- in the CLI, the REPL and
-the test harness -- runs through
-`toolchain.run_build_step(cmd, base_dir, shares_build_dir=...)`. When it
-shares, the step runs with `base_dir` as its cwd and as `CCACHE_BASEDIR`, so
-ccache rewrites the paths under it relative to the cwd before hashing. The
+the test harness -- runs through `toolchain.run_build_step(cmd, cwd)`. Given
+a cwd, the step runs there with it as `CCACHE_BASEDIR`, so ccache rewrites
+the paths under it relative to the cwd before hashing; given None, it runs
+from the caller's cwd with the environment untouched. The CLI and the REPL
+take the cwd from `toolchain.build_step_cwd(config, base_dir)` -- their base
+dir when the config shares (below), else None -- computed once per build and
+passed to both `run_build_step` and `build_cpp_commands(step_cwd=...)`. The
 CLI's base dir is the program's build dir (`BuildLayout.base_dir`, the
 `<prog>.d/` that holds `src/`, `include/` and the per-variant object dirs);
-the REPL's is its session dir; the harness's is the checkout root, where it
-always runs. The shared PCH build and the toolchain probes run outside it on
-purpose: their commands are the same for every program. Every path tpyc puts
-in a command is absolute (`build_cpp_commands`, joined onto the cwd without
-collapsing `..`, which the kernel resolves after a symlink), so the commands
-run from any cwd.
+the REPL's is its session dir. The harness passes its checkout root to both,
+whatever its config: it has always run from there. The shared PCH build and the toolchain probes run outside it on
+purpose: their commands are the same for every program.
+
+`build_cpp_commands` spells the paths that lie under its `step_cwd` --
+for the CLI the generated sources, `-I <base>/include`, objects, the link's
+inputs and output -- relative to it, so a program's commands are
+byte-identical in every build dir. That is what zig's own object cache
+needs: it keys a `zig c++ -c` on the literal command line plus the content
+of every dependency (not on `-o` or the cwd), so with ccache absent the
+bundled-zig install still shares every stdlib and runtime TU across
+programs. Every other path stays absolute -- for the CLI the runtime and
+third-party sources and include dirs, the shared PCH, and all paths of a
+build that does not share or of a debug build (`debug=`, the CLI's
+`--debug`: zig would hand a second program an object whose debug info names
+the first program's build dir). Absolute paths are joined onto the cwd
+without collapsing `..` (the kernel resolves it after a symlink), and the
+relative ones are taken lexically against the equally uncollapsed step cwd,
+so both name what the kernel finds from the step's cwd. In the harness the
+paths under the checkout root (the case's sources and objects, the runtime
+include dir) are relative to it; they name the same files from there, and
+neither the exec fingerprint nor the stdlib cache's `output_hash` hashes these
+commands. The REPL builds its own commands with absolute paths.
+
+Release builds pass `-g0` (`cli._opt_flags`): zig emits debug info even at
+`-O3`, so without it a second program's object, served from zig's cache or
+ccache, would carry `DW_AT_comp_dir` naming the first program's build dir.
+g++ and clang emit none without `-g`, so every release build agrees. The
+link step takes the same opt flags: zig builds its own libc++ / libunwind at
+the link line's optimization level, so a release link without them pulls in
+a Debug-mode libc++ (a json program: 8.26 MB -> 7.74 MB). g++ and clang link
+prebuilt runtimes and ignore them there.
+
+ccache wraps zig as it wraps any compiler (`ccache <zig> c++`): the zig
+binary tpyc runs is the real executable, so ccache's `compiler_check` keys
+on it, and the PCH sloppiness tpyc sets reaches ccache through the
+environment either way. With both, ccache answers first; zig's own cache
+answers what ccache misses.
 
 The user's compiler settings are never parsed or rewritten: a path in them
 (`-include x.h` found through `-I`, `-I=` under `--sysroot`, a path inside
@@ -163,6 +198,14 @@ across programs.
   `-fdebug-prefix-map=<build dir>=.` would let them share but record sources
   relative to `.`, which a debugger started elsewhere cannot find.
 - Third-party TUs carry no program path and hit as well.
+- A third-party library's include dir (`ThirdPartyBuildPlan.extra_include_dirs`,
+  e.g. PCRE2's `src/` when a program uses `re`) goes to the generated TUs
+  only: a user `@native` module declaring the library may include its
+  public headers, while the runtime TUs include only runtime headers (the
+  `*_shim` sources that include upstream headers are the library's own
+  sources, built with its flags). So the runtime TUs hit between programs
+  that use the library and programs that do not; the generated stdlib TUs
+  still differ by that `-I`.
 
 Current limitation: other settings the compiler driver or ccache resolve
 against the cwd are not part of that check -- a relative `COMPILER_PATH` or
