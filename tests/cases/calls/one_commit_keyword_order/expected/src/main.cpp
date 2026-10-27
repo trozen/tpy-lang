@@ -5,15 +5,13 @@ namespace tpyapp::main {
 
 
 // def tick(n: int32) -> int32:
-//     print("tick", n)
 //     return n
 int32_t tick(int32_t n) {
-    std::cout << "tick" << " " << n << "\n" << ::tpy::check_signals;
     return n;
 }
 
 // def main() -> None:
-//     # Written c, a, b; CPython evaluates them in that order.
+//     # Written c, a, b; the C++ passes them as a, b, c.
 //     g = G(c=tick(1), a=tick(2), b=tick(3))
 //     print("built:", g.a, g.b, g.c)
 void main() {
