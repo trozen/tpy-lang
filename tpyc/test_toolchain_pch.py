@@ -799,7 +799,9 @@ def _isolate_build_settings(monkeypatch, tmp_path) -> Path:
     monkeypatch.setenv("PATH", os.pathsep.join([str(bin_dir), os.environ.get("PATH", "")]))
     for name in BUILD_PATH_ENV:
         monkeypatch.delenv(name, raising=False)
-    monkeypatch.setattr(toolchain, "compiler_dumpmachine", lambda compiler: "")
+    # A Linux target whatever the host: a darwin one adds tpyc's own pin.
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine",
+                        lambda compiler: "x86_64-pc-linux-gnu")
     return bin_dir
 
 
