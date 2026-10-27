@@ -11,6 +11,7 @@ struct Point;
 struct Named;
 struct Pool;
 struct Pinned;
+struct PinHolder;
 struct Tok;
 template<typename T> struct Box;
 struct Holder;
@@ -59,6 +60,8 @@ int32_t lend_temp(int32_t n);
 int32_t maybe(bool flag, int32_t n);
 // def make_pinned(n: int32) -> Own[Pinned]:  # tpyc: mir(uncovered /^owned record result needs movable record$/)
 Pinned make_pinned(int32_t n);
+// def pin_holder(n: int32) -> int32:  # tpyc: mir(covered)
+int32_t pin_holder(int32_t n);
 // def make_tok(n: int32) -> Own[Tok]:  # tpyc: mir(uncovered /^unmodeled record$/)
 Tok make_tok(int32_t n);
 // def make_box(n: int32) -> Own[Box[int32]]:  # tpyc: mir(uncovered /^unsupported return type$/)
@@ -141,6 +144,22 @@ struct Pinned {
 
 inline std::ostream& operator<<(std::ostream& os, const Pinned& obj) {
     ::tpy::print_object_default(os, "Pinned", obj);
+    return os;
+}
+
+// class PinHolder:
+struct PinHolder {
+    // p: Pinned
+    Pinned p;
+
+    // def __init__(self, p: Pinned) -> None:  # tpyc: mir(covered)
+    PinHolder() = default;
+    explicit PinHolder(const Pinned& p);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PinHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PinHolder& obj) {
+    ::tpy::print_object_default(os, "PinHolder", obj);
     return os;
 }
 
@@ -244,6 +263,11 @@ inline Point Pool::spawn(int32_t n) const {
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline Pinned::Pinned(int32_t x) : x(x) {}
+
+// # constructor: a @nomove member initialized by copy is built in place, never moved
+// def __init__(self, p: Pinned) -> None:  # tpyc: mir(covered)
+//     self.p = copy(p)
+inline PinHolder::PinHolder(const Pinned& p) : p(p) {}
 
 // def __init__(self, a: int32) -> None:
 //     self.a = a

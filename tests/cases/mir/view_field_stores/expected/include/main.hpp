@@ -13,6 +13,7 @@ struct Stamp;
 struct R;
 struct Buf;
 struct Wrap;
+struct Frozen;
 struct Holder;
 struct Base;
 struct Derived;
@@ -20,6 +21,14 @@ struct Fixed;
 struct Kid;
 struct Shell;
 struct Items;
+
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Frozen> {
+    size_t operator()(const ::tpyapp::main::Frozen& val) const noexcept;
+};
+
+namespace tpyapp::main {
 
 extern std::string G;
 inline constexpr std::string_view __name__ = "__main__";
@@ -80,11 +89,11 @@ int32_t own_store_local(Tok&& t, int32_t k);
 int32_t own_store_param(Tok&& t, std::string_view s);
 // def consume_built(k: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t consume_built(int32_t k);
-// def consume_named(k: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record argument$/)
+// def consume_named(k: int32) -> int32:  # tpyc: mir(covered)
 int32_t consume_named(int32_t k);
 // def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/) mir_summary(known) warning(/never consumed/)
 int32_t change(R& a, R&& b, bool flag);
-// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record argument$/)
+// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^constructor argument type$/)
 int32_t private_own_alias(int32_t k);
 // def store_replace(t: Tok, s: str, b: Own[Buf], flag: bool) -> None:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
 void store_replace(Tok& t, std::string_view s, Buf&& b, bool flag);
@@ -94,6 +103,10 @@ void own_write_transfer(int32_t k, bool flag);
 int32_t wrap_copy(const Tok& t);
 // def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void wrap_copy_replaced(int32_t k, bool flag);
+// def factory_copy(k: int32) -> int32:  # tpyc: mir(covered)
+int32_t factory_copy(int32_t k);
+// def frozen_fields(s: str) -> int32:  # tpyc: mir(covered)
+int32_t frozen_fields(std::string_view s);
 // def wrap_move(k: int32) -> int32:  # tpyc: mir(conflict /scope_end/)
 int32_t wrap_move(int32_t k);
 // def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
@@ -126,7 +139,7 @@ void call_fill_other(int32_t k, bool flag);
 void call_fill_control(int32_t k);
 // def reused_construct(n: int32) -> None:  # tpyc: mir(conflict /replacement/)
 void reused_construct(int32_t n);
-// def stamped(s: str) -> int32:  # tpyc: mir(uncovered /^constructor body effects$/)
+// def stamped(s: str) -> int32:  # tpyc: mir(covered)
 int32_t stamped(std::string_view s);
 // def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 void reseat_self(int32_t k, bool flag);
@@ -284,6 +297,42 @@ inline std::ostream& operator<<(std::ostream& os, const Wrap& obj) {
     return os;
 }
 
+// @dataclass(frozen=True)
+// class Frozen:
+struct Frozen {
+    // s: StrView
+    std::string_view s;
+    // n: int32
+    int32_t n;
+
+    Frozen() = default;
+    explicit Frozen(std::string_view s, int32_t n);
+
+    bool __eq__(const Frozen& other) const;
+
+    std::string __repr__() const;
+
+    uint64_t __hash__() const;
+
+    friend bool operator==(const Frozen& lhs, const Frozen& other) {
+        return lhs.__eq__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Frozen";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Frozen& obj) {
+    os << obj.__repr__();
+    return os;
+}
+} // namespace tpyapp::main
+
+inline size_t std::hash<::tpyapp::main::Frozen>::operator()(const ::tpyapp::main::Frozen& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
+
+namespace tpyapp::main {
+
+
 // class Holder:
 struct Holder {
     // inner: R
@@ -435,7 +484,7 @@ inline Outer::Outer(const Tok& inner, int32_t tag)
 //     self.s = "lit"
 //     self.n = n
 //     if n > 0:
-//         self.s = s  # tpyc: mir_borrows(self.s, self.s|s)
+//         self.s = s  # tpyc: mir_borrows(self.s, s)
 inline Stamp::Stamp(std::string_view s, int32_t n)
     : s("lit"),
       n(n) {
@@ -466,6 +515,24 @@ inline Buf::Buf(std::string_view text) : text(text) {}
 // def __init__(self, t: Own[Tok]) -> None:
 //     self.t = t
 inline Wrap::Wrap(Tok&& t) : t(std::move(t)) {}
+
+inline Frozen::Frozen(std::string_view s, int32_t n)
+    : s(s),
+      n(n) {}
+
+inline bool Frozen::__eq__(const Frozen& other) const {
+    return ((this->s == other.s) && (this->n == other.n));
+}
+
+inline std::string Frozen::__repr__() const {
+    return std::format("Frozen(s={}, n={})", ::tpy::repr_of(this->s), ::tpy::repr_of(this->n));
+}
+
+inline uint64_t Frozen::__hash__() const {
+    uint64_t h = ::tpy::__hash__(this->s);
+    h = (static_cast<uint64_t>(h ^ ::tpy::__hash__(this->n)));
+    return h;
+}
 
 // def __init__(self, inner: R) -> None:
 //     self.inner = copy(inner)

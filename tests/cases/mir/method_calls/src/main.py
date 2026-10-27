@@ -402,13 +402,12 @@ def call_bool(p: Pair) -> bool:  # tpyc: mir(covered)
 class Tally:
     n: int32
 
-    # kept refusal: a constructor tail calling a method on self -- the record's definition
-    # refuses a constructor with body effects, so the method's summary stays opaque
-    def __init__(self, n: int32) -> None:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+    # a constructor tail calling a method on self, after every field is initialized
+    def __init__(self, n: int32) -> None:  # tpyc: mir(covered)
         self.n = n
         self.bump()
 
-    def bump(self) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary record: constructor body effects$/)
+    def bump(self) -> None:  # tpyc: mir(covered) mir_summary(known)
         self.n += 1
 
 

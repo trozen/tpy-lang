@@ -6,12 +6,13 @@ import pytest
 
 from ..typesys import BOOL, INT32
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy,
     MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .testutil import hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
+from .testutil import construction, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
 from .prepare import validate_function
 
 B = MIRBodyId("owned", "verify")
@@ -29,8 +30,9 @@ SLOTS = (
     MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
     MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
 )
+INITIALIZE = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
 NUMBER = MIRAssign(MIRPlace(N), MIRConstant(1))
-INIT = MIRAssign(MIRPlace(S), MIRConstruct((N,)))
+INIT = MIRAssign(MIRPlace(S), construction(LAYOUT, N), storage_write=INITIALIZE)
 BORROW = MIRAssign(MIRPlace(P), MIRBorrow(MIRPlace(S)))
 COPY = MIRAssign(MIRPlace(T), MIRCopy(MIRPlace(P, (MIRDeref(),))))
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(P, (MIRDeref(), MEMBER))))
@@ -46,15 +48,15 @@ def invalid(fn: MIRFunction, message: str) -> None:
 @pytest.mark.parametrize("stmt,message", [
     (MIRAssign(MIRPlace(T), MIRRead(MIRPlace(S))), "read type mismatch"),
     (MIRAssign(MIRPlace(T), MIRAlias(P)), "alias type mismatch"),
-    (MIRAssign(MIRPlace(T), MIRConstruct(())), "incomplete or mistyped"),
-    (MIRAssign(MIRPlace(T), MIRConstruct((FLAG,))), "incomplete or mistyped"),
+    (MIRAssign(MIRPlace(T), construction(LAYOUT), storage_write=INITIALIZE), "call arity mismatch"),
+    (MIRAssign(MIRPlace(T), construction(LAYOUT, FLAG), storage_write=INITIALIZE), "call argument type mismatch"),
     (MIRAssign(MIRPlace(T), MIRCopy(MIRPlace(P))), "copy source"),
     (MIRAssign(MIRPlace(T), MIRMove(P)), "move source"),
     (MIRAssign(MIRPlace(Q), MIRBorrow(MIRPlace(P))), "borrow type"),
     (MIRAssign(MIRPlace(T), MIRBorrow(MIRPlace(S))), "borrow type"),
-    (MIRAssign(MIRPlace(P), MIRConstruct((N,))), "record destination"),
+    (MIRAssign(MIRPlace(P), construction(LAYOUT, N), storage_write=INITIALIZE), "backing write needs private body"),
     (MIRAssign(MIRPlace(P, (MIRDeref(),)), MIRCopy(MIRPlace(S))), "record replacement"),
-    (MIRAssign(MIRPlace(S), MIRMove(S)), "repeated storage initialization"),
+    (MIRAssign(MIRPlace(S), MIRMove(S)), "record move source"),
 ])
 def test_categories_do_not_conflate_storage_holders_and_values(stmt: MIRAssign, message: str) -> None:
     invalid(replace(GOOD, blocks=(MIRBlock(A, (NUMBER, INIT, BORROW, stmt, READ), MIRReturn(RESULT)),)), message)
@@ -100,7 +102,8 @@ def test_layout_and_eligibility_are_required() -> None:
 
 def test_replacement_preserves_identity_and_reads_old_payload_first() -> None:
     alias = MIRAssign(MIRPlace(Q), MIRAlias(P))
-    replacement = MIRAssign(MIRPlace(P, (MIRDeref(),)), MIRConstruct((RESULT,)))
+    replacement = MIRAssign(MIRPlace(P, (MIRDeref(),)), construction(LAYOUT, RESULT),
+                            storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, P))
     mutate = MIRAssign(MIRPlace(Q, (MIRDeref(), MEMBER)), MIRConstant(9))
     snapshot = replace(GOOD, blocks=(MIRBlock(A, (NUMBER, INIT, BORROW, READ, replacement, READ),
                                               MIRReturn(RESULT)),))

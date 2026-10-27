@@ -13,7 +13,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRAlias, MIRBodyId, MIRFunction, MIRNotCovered
 from .value import MIRFieldId, MIRHolding
 from .testutil import Heap, Reference, execute

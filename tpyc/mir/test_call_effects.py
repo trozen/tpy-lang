@@ -21,7 +21,7 @@ from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dependencies import MIRDependencies
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBranch, MIRCall, MIRCallStmt, MIRFunction,
     MIRNotCovered, MIRPlace, MIRPoint, MIRRead,
@@ -241,6 +241,9 @@ def test_call_statements_are_real_uses_without_storage_ends(artifacts: Artifacts
     assert not inspect_payload_lifetimes(prepared(fn)).conflicts
     presence = prepared(fn).presence
     for point, call in calls(fn):
+        if getattr(call.summary.callee.identity, "name", None) == "__init__":
+            # A construction is the fill of its record's storage.
+            continue
         block = next(b for b in fn.blocks if b.id == point.block)
         stmt = block.statements[point.index]
         assert set(call.arguments) <= live.points[point]
@@ -307,11 +310,18 @@ def test_writer_comparison_with_literal_has_no_competing_effect(artifacts: Artif
 
 @pytest.mark.parametrize(("name", "reason"), [
     ("eager", "order-sensitive eager operands"), ("temporary_order", "named argument crosses unproven evaluation order"),
-    ("constructor_argument", "effectful constructor argument"),
 ])
 def test_known_writes_do_not_prove_eager_or_named_temp_order(artifacts: Artifacts, name: str, reason: str) -> None:
     result = artifacts[1].summaries[th.THIRFunctionIdentity("main", name)]
     assert result.state is MIRSummaryState.OPAQUE and reason in result.reason
+
+
+def test_a_writing_constructor_argument_is_an_ordinary_argument(artifacts: Artifacts) -> None:
+    # `Cell(assign(cell, 1))`: the one argument is evaluated before the
+    # constructor's call, as at any call; its write is the body's.
+    result = artifacts[1].summaries[th.THIRFunctionIdentity("main", "constructor_argument")]
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    assert {(w.parameter, w.path[0].name) for w in result.summary.writes} == {(0, "value")}
 
 
 @pytest.mark.parametrize("state", [MIRSummaryState.PENDING, MIRSummaryState.OPAQUE])

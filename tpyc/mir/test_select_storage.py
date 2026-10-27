@@ -11,10 +11,10 @@ from ..thir.storage_facts import THIRBackingKind, collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
 from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType
 from . import lower as lowering
+from .call_contract import MIRSummaryResult
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRStorageInit, MIRWrap,
-    MIRAssign, MIRBorrow, MIRConstant, MIRPlace, MIRRead,
+    MIRStorageInit, MIRAssign, MIRBorrow, MIRConstant, MIRPlace, MIRRead,
     MIRStorageWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap,
 )
 from .shapes import MIRTupleIndex, MIRUnionPayload
@@ -232,7 +232,7 @@ def test_missing_select_root_does_not_reuse_argument_proof(
                                               definitions=request.definitions, summaries=request.summaries)
     mapping = MappingProxyType(IdentityMap((node, place) for node, place in lowered.backings.items()
                                            if not isinstance(node, th.THIRSlotEmplace)))
-    monkeypatch.setattr("tpyc.mir.storage_adapter.lower_function_storage",
+    monkeypatch.setattr("tpyc.mir.storage_adapter.lower_callable",
                         lambda *args, **kwargs: replace(lowered, backings=mapping))
     result = certify_thir_storage(request)
     assert result.verdict is MIRStorageVerdict.NOT_COVERED
@@ -283,7 +283,7 @@ def test_missing_operation_does_not_reuse_select_storage_proof(
     alias = source.body[1]
     mapping = MappingProxyType(IdentityMap((node, points) for node, points in lowered.operations.items()
                                            if node is not alias))
-    monkeypatch.setattr("tpyc.mir.storage_adapter.lower_function_storage",
+    monkeypatch.setattr("tpyc.mir.storage_adapter.lower_callable",
                         lambda *args, **kwargs: replace(lowered, operations=mapping))
     result = certify_thir_storage(request)
     assert result.evidence.verdict is MIRStorageVerdict.CERTIFIED
@@ -354,8 +354,8 @@ def test_unsupported_select_producers_stay_uncovered(artifacts: Artifacts, mutat
                                                        else {"custom_destructor": True}))
         definitions = MIRDefinitions((replace(constructor, record_layout=layout),))
     elif mutation == "effect":
-        constructor = definitions.records[node.result_type].constructor
-        definitions = MIRDefinitions((replace(constructor, body=(th.THIRExprStmt(th.THIRLiteral(INT32, 0)),)),))
+        # A constructor whose body has an effect has no summary a caller applies.
+        opaque = definitions.records[node.result_type].callee.identity
     elif mutation == "unstable_operand":
         # Pure field reads are outside the stable scalar operand contract for named storage.
         value = replace(source.body[-1].value, receiver=select.then)
@@ -365,6 +365,9 @@ def test_unsupported_select_producers_stay_uncovered(artifacts: Artifacts, mutat
         select = th.THIRValueSelect(select.result_type, select.then, node, "||", form=th.Form.BORROW)
     source = _with_body(source, (replace(declaration, init=select), *rest))
     request = replace(_request(artifacts, source), definitions=definitions)
+    if mutation == "effect":
+        request = replace(request, summaries=MappingProxyType({
+            **request.summaries, opaque: MIRSummaryResult.opaque("summary output effect")}))
     result = certify_thir_storage(request)
     assert result.requires_proof and result.verdict is MIRStorageVerdict.NOT_COVERED
 

@@ -9,15 +9,15 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import _iter_children
-from .collect import dump_codegen_mir
+from .testutil import dump_compiled_mir
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import compiled_definitions, ContainerValue, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, ContainerValue, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, copy, readonly
@@ -243,7 +243,7 @@ def test_native_iteration_nested_exits_and_callable_positions(artifacts: Artifac
         assert execute(bodies["nested"], Reference(0), n, stop, skip, heap={0: {field: 5}}) == expected
     receiver_field = next(r.fields[0].id for r in bodies["Runner"].records if r.type.name == "Runner")
     heap = {0: {}, 1: {field: 7}}
-    execute(bodies["Runner"], Reference(0), 3, heap=heap)
+    construct(bodies["Runner"], 0, 3, heap=heap)
     assert heap[0][receiver_field] == 2
     assert execute(bodies["method"], Reference(0), Reference(1), 3, heap=heap) == 7
     assert heap[1][field] == 7
@@ -268,9 +268,7 @@ def test_codegen_collection_includes_loop_copy() -> None:
     force_in_place(modules, IN_PLACE_SITES)
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
-    dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                              compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
-                              compiler.thir_reject_by_node)
+    dumped = dump_compiled_mir(compiler, entry, ctx)
     copied = dumped.split(f"fn {entry.name}::copied@", 1)[1].split("\nfn ", 1)[0]
     replaced = dumped.split(f"fn {entry.name}::replaced@", 1)[1].split("\nfn ", 1)[0]
     assert " = copy " in copied and "initialize" in copied
@@ -314,9 +312,7 @@ def moved(run: bool, stop: bool, skip: bool, early: bool, items: list[int32], n:
     assert move.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
     entry = _entry(modules)
-    dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                              compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
-                              compiler.thir_reject_by_node)
+    dumped = dump_compiled_mir(compiler, entry, ctx)
     assert " = move " in dumped and "initialize" in dumped
     for run, stop, skip, early, count in ((False, False, False, False, 0),
                                          (True, False, False, False, 2),

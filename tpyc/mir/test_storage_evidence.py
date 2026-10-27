@@ -13,17 +13,17 @@ from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
 from .definitions import MIRDefinitions
 from .dependencies import _dependencies
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRStorageInit,
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIREdge,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIREdge,
     MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRStorageWrite,
     MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRWrap, MIRIsAlternative,
+    MIRWrap, MIRIsAlternative, MIRNotCovered,
 )
 from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
-from .scope_lifetime import inspect_scope_lifetimes
+from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_evidence import (
     MIRStorageConflictKind, MIRStorageEvidence, MIRStorageVerdict, _storage_evidence,
     certify_storage_origins,
@@ -33,8 +33,8 @@ from .test_payload_lifetime import CURRENT, payload, write
 from .test_scope_inspection import stale_scalar_alias
 from .validate import MIRPresenceError
 from .testutil import (
-    compiled_definitions, bind_parameters, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot, prepared,
-    workspace_functions,
+    compiled_definitions, bind_parameters, construction, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot, prepared,
+    with_calls, workspace_functions,
 )
 
 
@@ -316,13 +316,13 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     if optional:
         lent = MIRPlace(BACKING, (MIRUnionPayload(1),))
         iteration = (MIRStorageInit(MIRPlace(BACKING), 0, MIRConstant(None)),
-                     MIRAssign(MIRPlace(built.id), MIRConstruct((VALUE,)),
+                     MIRAssign(MIRPlace(built.id), construction(layout, VALUE),
                                storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                      MIRAssign(MIRPlace(BACKING), MIRWrap(1, MIRPlace(built.id)),
                                storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)),
                      MIRAssign(MIRPlace(SAVED), MIRBorrow(lent)), read)
     else:
-        construct = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)),
+        construct = MIRAssign(MIRPlace(BACKING), construction(layout, VALUE),
                               storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         iteration = (construct, MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))), read)
     if not retain:
@@ -392,7 +392,7 @@ def reused(definitions: MIRDefinitions, *, retain: bool) -> MIRFunction:
     slots = tuple(replace(s, storage_duration=MIRStorageDuration.BODY, residence=ROOT) if s.id == BACKING else s
                   for s in fn.slots) + (_ref(EARLIER, cell, MIRSlotKind.LOCAL, ROOT),)
     built = MIRSlotId(LOOP, 7)
-    replace_site = (MIRAssign(MIRPlace(built), MIRConstruct((VALUE,)),
+    replace_site = (MIRAssign(MIRPlace(built), construction(layout, VALUE),
                               storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                     MIRAssign(MIRPlace(BACKING), MIRWrap(1, MIRPlace(built)),
                               storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
@@ -468,8 +468,8 @@ def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
         MIRSlot(R_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER), storage,
         replace(storage, id=R_SPARE),
         _ref(R_SAVED, cell, MIRSlotKind.LOCAL, region)), (
-        MIRBlock(R_ENTRY, (MIRAssign(MIRPlace(R_LOCAL), MIRConstruct((R_VALUE,)), storage_write=once),
-                           MIRAssign(MIRPlace(R_SPARE), MIRConstruct((R_VALUE,)), storage_write=once)),
+        MIRBlock(R_ENTRY, (MIRAssign(MIRPlace(R_LOCAL), construction(layout, R_VALUE), storage_write=once),
+                           MIRAssign(MIRPlace(R_SPARE), construction(layout, R_VALUE), storage_write=once)),
                  MIRBranch(R_FLAG, R_LOCAL_ARM, R_OWNER_ARM), region),
         MIRBlock(R_LOCAL_ARM, (MIRAssign(MIRPlace(R_SAVED), local_arm),), MIRReturn(R_SAVED), region),
         MIRBlock(R_OWNER_ARM, (MIRAssign(MIRPlace(R_SAVED), MIRAlias(R_OWNER)),), MIRReturn(R_SAVED), region)),
@@ -534,12 +534,43 @@ def test_missing_placement_or_write_facts_are_not_covered(artifacts: Artifacts) 
                                        for s in fn.slots))
     with pytest.raises(MIRValidationError, match="owned storage needs a placement"):
         certify_storage_origins(prepared(unplaced), frozenset({R_SPARE}), definitions)
-    fn = replace(fn, blocks=tuple(replace(b, statements=tuple(
+    unstated = replace(fn, blocks=tuple(replace(b, statements=tuple(
         replace(stmt, storage_write=None) if stmt.target == MIRPlace(R_LOCAL) else stmt
         for stmt in b.statements)) for b in fn.blocks))
-    evidence = certify_storage_origins(prepared(fn), frozenset({R_SPARE}), definitions)
+    # A construction is a call: without its write fact it is invalid MIR too.
+    with pytest.raises(MIRValidationError, match="call result type or target mismatch"):
+        certify_storage_origins(prepared(unstated), frozenset({R_SPARE}), definitions)
+    # A copy of a lent record states no fact and still validates: the scope
+    # analysis cannot tell what it begins, so the evidence is not covered.
+    copied = replace(fn, blocks=tuple(replace(b, statements=tuple(
+        replace(stmt, value=MIRCopy(MIRPlace(R_OWNER, (MIRDeref(),))), storage_write=None)
+        if stmt.target == MIRPlace(R_LOCAL) else stmt for stmt in b.statements)) for b in fn.blocks))
+    evidence = certify_storage_origins(prepared(copied), frozenset({R_SPARE}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED
     assert any("missing storage initialization/write fact" in g.reason for g in evidence.gaps)
+
+
+OPTIONAL_LOCAL = '''from tpy import int32
+def f(n: int32) -> int32:
+    q: int32 | None = n
+    if q is not None:
+        return q
+    return 0
+'''
+
+
+def test_a_scope_root_without_placement_is_not_covered() -> None:
+    compiler, modules = _compile(OPTIONAL_LOCAL)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = lower_function(next(f for f in ctx.thir_functions.values() if f.name == "f"), MIRBodyId("main", "f"))
+    assert isinstance(fn, MIRFunction), fn
+    q = next(s for s in fn.slots if s.name == "q")
+    # A scalar Optional local owns no storage, so the validator does not
+    # require its placement; the scope analysis needs it to end the local.
+    unplaced = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == q.id else s for s in fn.slots))
+    assert analyze_scope_ends(prepared(unplaced)) == MIRNotCovered(
+        fn.id, "scope ends", f"missing storage placement for %{q.id.index}", slot=q.id)
 
 
 def test_unmaterialized_required_origin_is_not_covered(artifacts: Artifacts) -> None:
@@ -562,12 +593,16 @@ def test_storage_records_need_verified_hook_free_definitions(artifacts: Artifact
         hooked = next(t for t in definitions.records if t.name == "Hooked")
         _, layout = _cell(definitions)
         field = MIRField(MIRFieldId(hooked, layout.fields[0].id.name), INT32)
-        fn = replace(fn, records=(*fn.records, MIRRecordLayout(hooked, (field,), True, True)),
+        hooked_layout = MIRRecordLayout(hooked, (field,), True, True)
+        # The backing is now a `Hooked`, built by its own constructor.
+        fn = with_calls(replace(fn, records=(*fn.records, hooked_layout),
                      slots=tuple(reslot(s, type=hooked) if s.id == BACKING else s for s in fn.slots),
                      blocks=tuple(replace(b, statements=tuple(
                          replace(stmt, value=MIRAlias(OWNER)) if stmt.target == MIRPlace(SAVED)
-                         and isinstance(stmt.value, MIRBorrow) else stmt for stmt in b.statements))
-                         for b in fn.blocks))
+                         and isinstance(stmt.value, MIRBorrow)
+                         else replace(stmt, value=construction(hooked_layout, *stmt.value.arguments))
+                         if stmt.target == MIRPlace(BACKING) else stmt for stmt in b.statements))
+                         for b in fn.blocks)))
         reason = "custom record special member"
     else:
         fn = replace(fn, records=(replace(fn.records[0], copyable=not fn.records[0].copyable),))
@@ -614,7 +649,7 @@ def test_malformed_mir_and_requests_raise(artifacts: Artifacts) -> None:
     iteration = fn.blocks[2]
     twice = replace(fn, blocks=(*fn.blocks[:2], replace(iteration, statements=(
         iteration.statements[0], *iteration.statements)), fn.blocks[3]))
-    with pytest.raises(MIRValidationError, match="repeated storage initialization"):
+    with pytest.raises(MIRValidationError, match="repeated initialization within region activation"):
         certify_storage_origins(prepared(twice), frozenset({BACKING}), definitions)
     for roots in (frozenset(), frozenset({OWNER}), frozenset({MIRSlotId(RETURN, BACKING.index)})):
         with pytest.raises(MIRValidationError):

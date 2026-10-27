@@ -12,7 +12,7 @@ from .coverage import call_write_places
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
     statement_call, statement_target, MIRSlot, MIRNot, MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIREdge, MIRReturn,
-    MIRAssign, MIRIsAlternative,
+    MIRAssign, MIRIsAlternative, initialized_places,
     MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_shape, MIRWrap,
     MIRCall, MIRPresentCall, present_effects,
 )
@@ -40,7 +40,8 @@ class MIRPresenceIssue:
     message: str
 
 
-def present_call(call: MIRCall, present: 'Facts', slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPresentCall:
+def present_call(call: MIRCall, present: 'Facts', slots: Mapping[MIRSlotId, MIRSlot],
+                 initializes: tuple[MIRPlace, ...] = ()) -> MIRPresentCall:
     """`call` under the selections `present` proves before it: a sum
     argument's alternatives outside its possible ones (an absent
     Optional's payload, a narrowed union's other members) lend nothing, so
@@ -54,7 +55,7 @@ def present_call(call: MIRCall, present: 'Facts', slots: Mapping[MIRSlotId, MIRS
         if slots[arg].shape.cls in SUM_CLASSES and possible:
             excluded[i] = frozenset(range(len(slots[arg].shape.members))) - possible
     effects = present_effects(call.summary, excluded)
-    return MIRPresentCall(call, effects, call_write_places(call, effects, slots))
+    return MIRPresentCall(call, effects, call_write_places(call, effects, slots), initializes)
 
 
 @dataclass(frozen=True)
@@ -393,7 +394,7 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
             point = MIRPoint(bid, index)
             points[point] = state.present
             if (call := statement_call(stmt)) is not None:
-                calls[point] = present_call(call, state.present, slots)
+                calls[point] = present_call(call, state.present, slots, initialized_places(stmt, layouts))
             if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIRIteratorRead, MIRIteratorAdvance))
                     and dict(state.present).get(MIRPlace(stmt.value.source)) != frozenset({1})):
                 issues.append(MIRPresenceIssue(point, MIRPresenceIssueKind.SELECTION,
@@ -414,7 +415,8 @@ def _analyze_presence(fn: MIRFunction, resolve: Resolve | None) -> MIRPresence:
         state = _State()
         for index, stmt in enumerate(block.statements):
             if (call := statement_call(stmt)) is not None:
-                calls[MIRPoint(block.id, index)] = present_call(call, state.present, slots)
+                calls[MIRPoint(block.id, index)] = present_call(call, state.present, slots,
+                                                                initialized_places(stmt, layouts))
             state = _transfer(state, stmt, booleans, domains, aliases, slots, layouts,
                               kill_at(MIRPoint(block.id, index)), fields)
     return MIRPresence(fn, MappingProxyType(points), MappingProxyType(domains), tuple(issues),

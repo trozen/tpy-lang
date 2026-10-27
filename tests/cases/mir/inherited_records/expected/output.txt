@@ -12,3 +12,8 @@ super 6
 upcast 7
 payload 7
 after 7
+skipped 2
+defaulted 1
+two_views 5
+view_replaced 41
+chain 6

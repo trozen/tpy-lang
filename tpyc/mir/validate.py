@@ -15,17 +15,17 @@ from ..thir.scalar_leaves import (
 from ..type_def_registry import type_def_of, zero_value_of
 from ..typesys import (
     BOOL, INT32, NominalType, TpyType, VoidType,
-    certified_primitive_comparison, through_view, unwrap_own,
+    certified_primitive_comparison, unwrap_own,
     unwrap_readonly, view_family_of,
 )
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto,
     MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRRvalue, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRReceiverInit, MIRBodyKind, MIRGlobalId, MIRMemberInit,
-    MIRMemberInits, MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRBodyKind, MIRGlobalId,
+    MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
     MIRStatement, MIRRegionId, MIREdge, MIRIsAlternative, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint,
-    statement_target, place_shape, view_member, MIRWrap,
+    statement_target, place_shape, view_member, MIRWrap, builds_base, initialized_places,
 )
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
@@ -119,9 +119,8 @@ def _region_structure(fn: MIRFunction) -> MIRRegionFlow:
     return flow
 
 
-def operands(value: MIRRvalue | MIRMemberInits) -> tuple[MIRSlotId, ...]:
-    """The slots a value reads -- through an entry initialization's nested
-    members; a literal's constant operand (an entry literal's) is none."""
+def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
+    """The slots a value reads; a constant operand is none."""
     match value:
         case MIRCall(arguments=arguments):
             return arguments
@@ -140,8 +139,6 @@ def operands(value: MIRRvalue | MIRMemberInits) -> tuple[MIRSlotId, ...]:
             return () if source is None else (source.root,)
         case MIRConstruct(fields=fields):
             return tuple(f for f in fields if not isinstance(f, MIRConstant))
-        case MIRMemberInits(fields=members):
-            return tuple(s for member in members for s in operands(member.value))
         case MIRCompare(left=left, right=right):
             return (left, right)
         case MIRNot(operand=operand):
@@ -217,13 +214,11 @@ def statement_may_raise(stmt: MIRStatement, slots: 'Mapping[MIRSlotId, MIRSlot]'
             raise MIRValidationError("unknown instruction")
 
 
-def value_may_raise(value: MIRRvalue | MIRMemberInits, target: MIRShape | None, records: MIRRecords) -> bool:
+def value_may_raise(value: MIRRvalue, target: MIRShape | None, records: MIRRecords) -> bool:
     """Whether writing `value` into a value of shape `target` can exit by
     exception: a raising operation, call, copy, element access or literal
-    (its own flag), a constant materialized into an owned leaf's buffer
-    (`TypeDef.copy_may_raise`; a view or a scalar takes it as is), or an
-    entry initialization some field of whose record raises (an Optional
-    member's: its payload's)."""
+    (its own flag), or a constant materialized into an owned leaf's buffer
+    (`TypeDef.copy_may_raise`; a view or a scalar takes it as is)."""
     match value:
         case (MIROp(may_raise=may_raise) | MIRCall(may_raise=may_raise) | MIRCopy(may_raise=may_raise)
               | MIRConstruct(may_raise=may_raise) | MIRRead(may_raise=may_raise)
@@ -231,10 +226,6 @@ def value_may_raise(value: MIRRvalue | MIRMemberInits, target: MIRShape | None, 
             return may_raise
         case MIRConstant():
             return target is not None and target.leaf_storage and bool(type_def_of(target.type).copy_may_raise)
-        case MIRMemberInits(fields=members):
-            record = target.payload if target.cls is MIRClass.OPTIONAL else target
-            return any(value_may_raise(member.value, shape, records)
-                       for member, (_, shape) in zip(members, construct_members(record, records)))
     return False
 
 
@@ -257,18 +248,18 @@ def copies_into(source: TpyType, target: TpyType) -> bool:
 
 
 def body_may_raise(blocks: 'tuple[MIRBlock, ...] | list[MIRBlock]', slots: 'Mapping[MIRSlotId, MIRSlot]',
-                   records: MIRRecords, receiver_init: MIRReceiverInit | None) -> bool:
-    """`MIRFunction.exceptional_exits`: some statement may raise, or the
-    receiver's entry initialization may (`value_may_raise` of its members
-    into the record the receiver points at)."""
-    return (receiver_init is not None and value_may_raise(
-                receiver_init.members, place_shape(MIRPlace(receiver_init.receiver, (MIRDeref(),)), slots, records),
-                records)
-            or any(statement_may_raise(stmt, slots, records) for block in blocks for stmt in block.statements))
+                   records: MIRRecords) -> bool:
+    """`MIRFunction.exceptional_exits`: some statement may raise."""
+    return any(statement_may_raise(stmt, slots, records) for block in blocks for stmt in block.statements)
 
 
 def source_definition(stmt: MIRStatement) -> MIRSlotId | None:
+    """The slot a statement defines whole: an assignment's unprojected
+    target, or record storage it begins (a wrapper's construction leaves
+    its source binding unassigned)."""
     match stmt:
+        case MIRStorageInit(target=target, value=None):
+            return target.root
         case MIRStorageInit() | MIRCallStmt() | MIRPrint():
             return None
         case MIRAssign(target=target):
@@ -310,6 +301,244 @@ def _cyclic_blocks(blocks: dict[MIRBlockId, MIRBlock],
     return cyclic
 
 
+_UNINITIALIZED, _INITIALIZED, _MAYBE = "uninitialized", "initialized", "maybe"
+
+
+class _Initialization:
+    """Which places are initialized at each point: the one place-keyed
+    analysis of storage initialization. Its places are each slot's whole
+    storage, and each field of a destination record (a constructor's
+    result), which a holder bound to it (`MIRSlot.bound_storage`, the
+    constructor's `self`) reaches. A place is uninitialized, initialized,
+    or maybe (on some path only): `must` holds the places initialized on
+    every path, `may` those on some. A storage begin, a whole write of a
+    slot and a write of a field initialize it; a move, and a call handed
+    an argument's storage, leave that storage uninitialized; an edge
+    leaving a region ends the storage it owns. A raise leaves the body:
+    there is no exceptional edge to weigh."""
+
+    def __init__(self, fn: MIRFunction, slots: 'Mapping[MIRSlotId, MIRSlot]',
+                 blocks: 'Mapping[MIRBlockId, MIRBlock]', regions: MIRRegionFlow,
+                 reachable: frozenset[MIRBlockId], records: MIRRecords) -> None:
+        self.slots, self.blocks, self.records = slots, blocks, records
+        self.bound = {s.id: s.bound_storage for s in fn.slots if s.bound_storage is not None}
+        self.fields = {s.id: tuple(MIRPlace(s.id, (f,)) for f in records[s.type].fields)
+                       for s in fn.slots if s.destination and s.type in records}
+        entry = frozenset(MIRPlace(s.id) for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL))
+        universe = frozenset({MIRPlace(s.id) for s in fn.slots} | {p for fs in self.fields.values() for p in fs})
+        incoming: dict[MIRBlockId, list[tuple[MIRBlockId, frozenset[MIRSlotId]]]] = {bid: [] for bid in reachable}
+        for edge, transition in regions.edges.items():
+            if edge.source in reachable and transition.target is not None:
+                incoming[transition.target].append((edge.source, transition.ended))
+        must_out = {bid: universe for bid in reachable}
+        may_out: dict[MIRBlockId, frozenset[MIRPlace]] = {bid: frozenset() for bid in reachable}
+        self.must_in: dict[MIRBlockId, frozenset[MIRPlace]] = {}
+        self.may_in: dict[MIRBlockId, frozenset[MIRPlace]] = {}
+        work = deque(reachable)
+        queued = set(reachable)
+        while work:
+            bid = work.popleft()
+            queued.remove(bid)
+            musts = [self.ended(must_out[source], ended) for source, ended in incoming[bid]]
+            mays = [self.ended(may_out[source], ended) for source, ended in incoming[bid]]
+            if bid == fn.entry:
+                musts.append(entry)
+                mays.append(entry)
+            must = frozenset.intersection(*musts) if musts else universe
+            may = frozenset().union(*mays)
+            self.must_in[bid], self.may_in[bid] = must, may
+            for stmt in blocks[bid].statements:
+                must, may = self.step(stmt, must, may)
+            if must != must_out[bid] or may != may_out[bid]:
+                must_out[bid], may_out[bid] = must, may
+                for target in successors(blocks[bid].terminator):
+                    if target not in queued:
+                        work.append(target)
+                        queued.add(target)
+        self._states: dict[MIRBlockId, list[tuple[frozenset[MIRPlace], frozenset[MIRPlace]]]] = {}
+
+    @staticmethod
+    def ended(places: frozenset[MIRPlace], ended: frozenset[MIRSlotId]) -> frozenset[MIRPlace]:
+        return frozenset(p for p in places if p.root not in ended) if ended else places
+
+    def tracked(self, place: MIRPlace) -> tuple[MIRPlace, bool] | None:
+        """The analysis's place `place` lies in -- a slot's storage, or a
+        destination's field, through the holder bound to it -- and whether it
+        is that place exactly; None for a place under any other holder."""
+        root, projections = place.root, place.projections
+        if root in self.bound and projections[:1] == (MIRDeref(),):
+            root, projections = self.bound[root], projections[1:]
+        if not projections:
+            return MIRPlace(root), True
+        if root in self.fields and isinstance(projections[0], MIRField):
+            return MIRPlace(root, projections[:1]), len(projections) == 1
+        return None
+
+    def step(self, stmt: MIRStatement, must: frozenset[MIRPlace], may: frozenset[MIRPlace]
+             ) -> tuple[frozenset[MIRPlace], frozenset[MIRPlace]]:
+        target = statement_target(stmt)
+        found = self.tracked(target) if target is not None else None
+        cleared = frozenset(self.consumed(stmt))
+        if cleared:
+            must, may = must - cleared, may - cleared
+        if found is not None and found[1]:
+            initialized = self.initialized(stmt) if builds_base(stmt) else {found[0]}
+            must, may = must | initialized, may | initialized
+        return must, may
+
+    def consumed(self, stmt: MIRStatement) -> list[MIRPlace]:
+        """The storage a statement's operation consumes, once per consuming
+        operand: a move's source; a call argument the callee binds as its
+        own storage; a storage-owning slot a sum construction or an
+        aggregate construction takes whole, which moves it."""
+        value = stmt.call if isinstance(stmt, MIRCallStmt) else stmt.value if isinstance(stmt, MIRAssign) else None
+        match value:
+            case MIRMove(source=source):
+                return [MIRPlace(source)]
+            case MIRCall(summary=summary) if summary is not None:
+                taken = [sid for sid, binding in zip(value.arguments, summary.parameters) if binding.storage]
+            case MIRWrap(source=source) if source is not None and not source.projections:
+                taken = [source.root]
+            case MIRConstruct(fields=fields):
+                taken = [sid for sid in fields if isinstance(sid, MIRSlotId)]
+            case _:
+                return []
+        return [MIRPlace(sid) for sid in taken if self.slots[sid].shape.owns_storage]
+
+    def initialized(self, stmt: MIRStatement) -> frozenset[MIRPlace]:
+        """The fields of a destination a statement initializes
+        (`initialized_places`: a base's constructor's), as this analysis
+        tracks them; none for any other statement."""
+        found = (self.tracked(place) for place in initialized_places(stmt, self.records))
+        return frozenset(f[0] for f in found if f is not None and f[1] and f[0].projections)
+
+    def states(self, bid: MIRBlockId) -> list[tuple[frozenset[MIRPlace], frozenset[MIRPlace]]]:
+        """The state before each statement of a block, and before its terminator."""
+        if bid not in self._states:
+            must, may = self.must_in[bid], self.may_in[bid]
+            found = [(must, may)]
+            for stmt in self.blocks[bid].statements:
+                must, may = self.step(stmt, must, may)
+                found.append((must, may))
+            self._states[bid] = found
+        return self._states[bid]
+
+    @staticmethod
+    def state(place: MIRPlace, must: frozenset[MIRPlace], may: frozenset[MIRPlace]) -> str:
+        return _INITIALIZED if place in must else _MAYBE if place in may else _UNINITIALIZED
+
+    def field_write(self, bid: MIRBlockId, index: int, place: MIRPlace) -> str:
+        """The state of the field a write of `place` writes, before it: a
+        destination's field it writes exactly; any other place a write
+        reaches is initialized storage the write replaces."""
+        found = self.tracked(place)
+        if found is None or not found[1] or not found[0].projections:
+            return _INITIALIZED
+        return self.state(found[0], *self.states(bid)[index])
+
+    def check(self, reachable: frozenset[MIRBlockId]) -> None:
+        """The rules: a read needs its place initialized -- a field it reads,
+        or each field of a destination it reads whole; a use of a bound
+        holder other than through a field reads its storage whole, and
+        borrowing a destination whole needs only its begun storage. An
+        initialization needs its storage uninitialized on every path; an
+        in-place write of owned storage needs it initialized."""
+        slots = self.slots
+
+        def whole(root: MIRSlotId, must: frozenset[MIRPlace], what: str) -> None:
+            if not all(p in must for p in self.fields.get(root, ())):
+                raise MIRDefiniteAssignmentError(f"{what} before every field is initialized")
+
+        def read(sid: MIRSlotId, place: MIRPlace | None, must: frozenset[MIRPlace], borrow: bool) -> None:
+            if sid in self.bound:
+                if place is not None and (found := self.tracked(place)) is not None and found[0].projections:
+                    if found[0] not in must:
+                        raise MIRDefiniteAssignmentError("read before field initialization")
+                    return
+                whole(self.bound[sid], must, "use of the record")
+                return
+            slot = slots[sid]
+            if sid in self.fields and place is not None and place.projections:
+                found = self.tracked(place)
+                if found is not None and found[0] not in must:
+                    raise MIRDefiniteAssignmentError("read before field initialization")
+                return
+            if sid in self.fields and not borrow:
+                whole(sid, must, "use of the record")
+            if MIRPlace(sid) in must:
+                return
+            _require(not slot.shape.inline_sum, "read before storage initialization")
+            if slot.shape.owns_storage:
+                raise MIRDefiniteAssignmentError("read after move")
+
+        def initialize(stmt: MIRStatement, target: MIRPlace, must: frozenset[MIRPlace],
+                       may: frozenset[MIRPlace]) -> None:
+            slot = slots[target.root]
+            fact = stmt.storage_write if isinstance(stmt, MIRAssign) else None
+            # A record's whole write with no fact fills its storage too.
+            initializes = isinstance(stmt, MIRStorageInit) or (
+                isinstance(fact, MIRStorageWrite) and fact.mode is MIRStorageWriteMode.INITIALIZE) or (
+                fact is None and slot.shape.is_storage)
+            if initializes and target in may:
+                if isinstance(slot.storage_duration, MIRRegionId):
+                    raise MIRRepeatedInitializationError(stmt.loc)
+                _require(not slot.shape.owned_tuple, "repeated tuple initialization")
+                _require(not slot.shape.owns_storage, "repeated storage initialization")
+            if fact == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE) and target not in must:
+                _require(not slot.shape.inline_sum, "assignment before storage initialization")
+                _require(not slot.shape.leaf_storage, "replacement before storage initialization")
+
+        for bid in sorted(reachable, key=lambda b: b.index):
+            block = self.blocks[bid]
+            states = self.states(bid)
+            for index, stmt in enumerate(block.statements):
+                must, may = states[index]
+                target = statement_target(stmt)
+                if target is not None and not target.projections:
+                    initialize(stmt, target, must, may)
+                value = stmt.value if isinstance(stmt, MIRAssign) else None
+                for sid, place in _operand_places(stmt):
+                    read(sid, place, must, isinstance(value, MIRBorrow) and place is not None
+                         and not place.projections)
+                consumed = self.consumed(stmt)
+                if len(set(consumed)) != len(consumed):
+                    raise MIRDefiniteAssignmentError("read after move")
+                if builds_base(stmt):
+                    # A base's fields are initialized in the record being built, never replaced.
+                    _require(not self.initialized(stmt) & may, "repeated field initialization")
+                elif target is not None and target.projections:
+                    found = self.tracked(target)
+                    if found is None or not found[0].projections:
+                        read(target.root, None, must, False)
+                    elif not found[1] and found[0] not in must:
+                        raise MIRDefiniteAssignmentError("write under a field before its initialization")
+            must, _ = states[-1]
+            term = block.terminator
+            if isinstance(term, MIRReturn) and term.value is not None:
+                read(term.value, None, must, False)
+
+
+def _operand_places(stmt: MIRStatement) -> tuple[tuple[MIRSlotId, MIRPlace | None], ...]:
+    """Each slot a statement's value reads, with the place it reads when it
+    reads one (a read, copy or borrow of a place); None for a whole slot
+    (an alias, a move, a call's argument, a construct's operand)."""
+    match stmt:
+        case MIRCallStmt(call=call):
+            return tuple((sid, None) for sid in call.arguments)
+        case MIRPrint(arguments=arguments):
+            return tuple((sid, None) for sid in arguments)
+        case MIRStorageInit():
+            return ()
+    value = stmt.value
+    match value:
+        case (MIRRead(source=source) | MIRCopy(source=source) | MIRUnionExtract(source=source)
+              | MIRBorrow(source=source) | MIRIsAlternative(source=source)):
+            return ((source.root, source),)
+        case MIRWrap(source=source) if source is not None:
+            return ((source.root, source),)
+    return tuple((sid, None) for sid in operands(value))
+
+
 def _validate_structure(fn: MIRFunction) -> None:
     # Each summary's path walks, made once by its contract check and read by every call of it.
     # Over the body's layouts: whether a path's records verify is the summary's and the
@@ -324,8 +553,9 @@ def _validate_structure(fn: MIRFunction) -> None:
     call_summaries = IdentitySet(fn.call_summaries)
     _require(fn.kind in (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.METHOD, MIRBodyKind.CONSTRUCTOR),
              "unsupported body kind")
-    _require((fn.kind is MIRBodyKind.CONSTRUCTOR) == (fn.receiver_init is not None),
-             "constructor entry mismatch")
+    # A constructor, and only a constructor, builds a record where its caller receives it.
+    _require((fn.kind is MIRBodyKind.CONSTRUCTOR) == any(s.destination for s in fn.slots),
+             "constructor result mismatch")
     _require(bool(fn.id.module and fn.id.declaration), "empty body identity")
     _require(result_problem(fn.return_type, fn.borrowed_result, fn.return_representation) is None,
              "unsupported return type or access")
@@ -476,6 +706,13 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "unsupported reference slot type or form")
         _require(shape.holding is MIRHolding.ALIAS or slot.alias_source is None,
                  "payload alias source on non-alias slot")
+        _require(not slot.destination or (
+            slot.kind is MIRSlotKind.TEMPORARY and shape.is_storage and shape.cls is MIRClass.RECORD
+            and slot.storage_duration is MIRStorageDuration.BODY), "invalid destination storage")
+        bound_to = slots.get(slot.bound_storage) if slot.bound_storage is not None else None
+        _require(slot.bound_storage is None or (
+            bound_to is not None and bound_to.destination and slot.kind is MIRSlotKind.LOCAL
+            and shape.is_pointer and not shape.readonly and slot.type == bound_to.type), "invalid bound storage")
     # Each parameter slot holds its binding's value.
     for sid, binding in bindings.items():
         bound = replace(binding, value=slots[sid].shape)
@@ -483,7 +720,7 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(problem is None, f"parameter {problem}")
         _require(bound == binding, "parameter slot differs from its binding")
 
-    def member_operand(src: MIRSlotId | MIRConstant, member: MIRShape, entry: bool) -> bool | None:
+    def member_operand(src: MIRSlotId | MIRConstant, member: MIRShape) -> bool | None:
         """Whether `src` fills a construct's member of shape `member`, and
         whether filling it may raise (None: it does not fill it). A holder
         member stores the loan its operand holds -- a view member a readonly
@@ -493,14 +730,9 @@ def _validate_structure(fn: MIRFunction) -> None:
         family) or takes owned temporary storage of its type; a record or
         container is copied through a holder of it or moved out of temporary
         storage of its type; an Optional record member takes the payload a
-        borrowed Optional holder lends, if engaged. At entry (`entry`, a
-        receiver member's literal) a leaf element may be a constant and an
-        owned leaf a parameter's own storage, as a composed record member's
-        field may: there are no slots before the CFG."""
+        borrowed Optional holder lends, if engaged."""
         if isinstance(src, MIRConstant):
-            return False if entry and (member.cls is MIRClass.LEAF and leaf_constant(member.type, src.value)
-                                       or member.cls is MIRClass.OWNED_LEAF
-                                       and owned_constant(member.type, src.value)) else None
+            return None
         source = slots.get(src)
         if source is None:
             return None
@@ -515,7 +747,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                 if source.shape.leaf_borrow and copies_into(source.type, member.type):
                     return bool(type_def_of(member.type).copy_may_raise)
                 return False if (source.shape.leaf_storage and source.type == member.type
-                                 and (entry or source.kind is MIRSlotKind.TEMPORARY)) else None
+                                 and source.kind is MIRSlotKind.TEMPORARY) else None
             case MIRClass.OPTIONAL:
                 # The definition decided copy or move; an empty payload copies nothing.
                 payload = member.payload.type
@@ -531,13 +763,15 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and not source.readonly and found.movable) else None
         return None
 
-    def construct_ok(value: MIRConstruct, target: MIRShape, *, entry: bool = False) -> bool:
+    def construct_ok(value: MIRConstruct, target: MIRShape) -> bool:
         """One operand per member of the target's shape (`member_operand`):
-        a record's fields, a tuple's elements (`construct_members`), or a
-        container literal's elements (a dict's keys and values alternating),
-        whose length the literal fixes and which allocates. It may raise
-        exactly when a member's copy may, or it is a literal."""
-        if not isinstance(value.fields, tuple) or type(value.may_raise) is not bool:
+        a tuple's elements (`construct_members`), or a container literal's
+        elements (a dict's keys and values alternating), whose length the
+        literal fixes and which allocates. It may raise exactly when a
+        member's copy may, or it is a literal. A record is built by its
+        constructor's call, never field by field."""
+        if (not isinstance(value.fields, tuple) or type(value.may_raise) is not bool
+                or target.cls is MIRClass.RECORD):
             return False
         literal = target.cls is MIRClass.CONTAINER
         if literal:
@@ -553,7 +787,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                 return False
         raises = literal
         for src, member in zip(value.fields, members):
-            copied = member_operand(src, member, entry)
+            copied = member_operand(src, member)
             if copied is None:
                 return False
             raises = raises or copied
@@ -599,161 +833,11 @@ def _validate_structure(fn: MIRFunction) -> None:
                      or isinstance(projections[-1], MIRField))
                 and value.may_raise is (record_copy_may_raise(typ) or reaches_element(value.source)))
 
-    def entry_parameter(sid: MIRSlotId, receiver: MIRSlotId) -> MIRSlot:
-        """A whole parameter an entry initializer reads: never the receiver,
-        whose storage it builds."""
-        source = slots.get(sid)
-        _require(source is not None and source.kind is MIRSlotKind.PARAMETER and sid != receiver,
-                 "invalid receiver initializer parameter")
-        return source
-
-    def entry_place(place: object, receiver: MIRSlotId) -> MIRSlot:
-        """The parameter a copy or borrow at entry reads whole: its own
-        storage, or the storage it lends (`(*%n)`), no projection beyond."""
-        _require(isinstance(place, MIRPlace), "invalid receiver initializer parameter")
-        source = entry_parameter(place.root, receiver)
-        _require(place.projections == object_prefix(source.shape), "invalid receiver initializer parameter")
-        return source
-
-    def validate_member_inits(inits: MIRMemberInits, record: MIRShape, receiver: MIRSlotId) -> None:
-        """Entry initialization of record storage of shape `record`: one
-        initializer per field of its layout, in layout order (the
-        receiver's, or a composed member's, recursively)."""
-        members = construct_members(record, records)
-        _require(isinstance(inits, MIRMemberInits) and isinstance(inits.fields, tuple)
-                 and len(inits.fields) == len(members), "incomplete receiver initialization")
-        for init_member, (_, member) in zip(inits.fields, members):
-            validate_member_init(init_member, member, receiver)
-
-    def validate_member_init(init_member: MIRMemberInit, member: MIRShape, receiver: MIRSlotId) -> None:
-        """The entry rule: what a caller's construct can reproduce
-        (`definitions._caller_operands`). Every operand is a whole
-        parameter other than the receiver, or a constant; each member class
-        takes its sources by its own predicate. Exit facts are the values'
-        own (`value_may_raise`)."""
-        _require(isinstance(init_member, MIRMemberInit), "invalid receiver initializer")
-        value = init_member.value
-        cls = member.cls
-        if cls in AGGREGATE_CLASSES:
-            # Copied through a parameter lent readonly, moved out of an
-            # `Own[...]` parameter's storage, or built over the parameters --
-            # a record by the member's own constructor, field by field, a
-            # container by its literal, which allocates.
-            found = aggregate_facts(member.type, records.get) if defined(member.type) else None
-            _require(found is not None, "record field needs its layout")
-            match value:
-                case MIRCopy(source=place):
-                    source = entry_place(place, receiver)
-                    _require(source.type == member.type and found.copyable
-                             and source.shape.is_pointer and source.readonly, "invalid receiver initializer parameter")
-                    _require(value.may_raise is found.copy_may_raise, "receiver initializer exit fact mismatch")
-                case MIRMove(source=sid):
-                    source = entry_parameter(sid, receiver)
-                    _require(source.type == member.type and found.movable and handed_storage(source, fn.slot_bindings),
-                             "invalid receiver initializer parameter")
-                case MIRConstruct() if cls is MIRClass.CONTAINER:
-                    _require(not isinstance(admitted_members(member.type, False, records), str),
-                             "unsupported container field")
-                    for operand in operands(value):
-                        entry_parameter(operand, receiver)
-                    _require(construct_ok(value, member, entry=True), "invalid receiver initializer literal")
-                case MIRMemberInits() if cls is MIRClass.RECORD:
-                    _require(found.movable, "invalid receiver initializer construct")
-                    validate_member_inits(value, member, receiver)
-                case _:
-                    raise MIRValidationError("invalid receiver initializer")
-            return
-        if cls is MIRClass.OPTIONAL:
-            payload = member.payload
-            # Empty, copied from the payload an Optional record parameter
-            # lends, or engaged with a payload its own constructor builds.
-            layout = records.get(payload.type)
-            _require(layout is not None and not layout.opaque, "optional record field needs its payload layout")
-            match value:
-                case MIRWrap(alternative=0, source=None):
-                    pass
-                case MIRCopy(source=place):
-                    source = entry_place(place, receiver)
-                    _require(layout.copyable and source.shape.record_payload
-                             and source.shape.payload.type == payload.type, "invalid receiver initializer parameter")
-                    _require(value.may_raise is record_copy_may_raise(payload.type),
-                             "receiver initializer exit fact mismatch")
-                case MIRMemberInits():
-                    _require(layout.movable, "invalid receiver initializer construct")
-                    validate_member_inits(value, payload, receiver)
-                case _:
-                    raise MIRValidationError("invalid receiver initializer")
-            return
-        if cls is MIRClass.VIEW:
-            # A view member stores the loan a lent parameter holds -- a borrow
-            # of an owned leaf of its family the caller lends, or a view
-            # parameter's -- or a literal's static storage; no buffer is copied.
-            match value:
-                case MIRBorrow(source=place):
-                    source = entry_place(place, receiver)
-                    _require(source.shape.owned_leaf_borrow and value.may_raise is False
-                             and view_compatible(member.type, source.type), "invalid receiver initializer parameter")
-                case MIRAlias(source=sid):
-                    source = entry_parameter(sid, receiver)
-                    _require(source.shape.view_holder and view_compatible(member.type, source.type),
-                             "invalid receiver initializer parameter")
-                case MIRConstant(value=literal):
-                    _require(type(literal) in (str, bytes) and owned_constant(through_view(member.type), literal),
-                             "invalid receiver initializer constant")
-                case _:
-                    raise MIRValidationError("invalid receiver initializer")
-            return
-        if cls is not MIRClass.OWNED_LEAF:
-            match value:
-                case MIRRead(source=place):
-                    _require(isinstance(place, MIRPlace) and not place.projections and value.may_raise is False,
-                             "invalid receiver initializer parameter")
-                    source = entry_parameter(place.root, receiver)
-                    _require(source.shape.is_scalar and source.type == member.type,
-                             "invalid receiver initializer parameter")
-                case MIRConstant(value=literal):
-                    _require(leaf_constant(member.type, literal), "invalid receiver initializer constant")
-                case _:
-                    raise MIRValidationError("invalid receiver initializer")
-            return
-        # An owned leaf is copied from a parameter's storage -- the caller's
-        # through a readonly borrow of its own type, or the body's own
-        # by-value copy -- or materialized from a constant, or moved out of
-        # the by-value copy.
-        match value:
-            case MIRCopy(source=place):
-                source = entry_place(place, receiver)
-                _require((source.shape.owned_leaf_borrow or source.shape.leaf_storage) and source.type == member.type,
-                         "invalid receiver initializer parameter")
-                _require(value.may_raise is bool(type_def_of(member.type).copy_may_raise),
-                         "receiver initializer exit fact mismatch")
-            case MIRMove(source=sid):
-                source = entry_parameter(sid, receiver)
-                _require(source.shape.leaf_storage and source.type == member.type,
-                         "invalid receiver initializer parameter")
-            case MIRConstant(value=literal):
-                _require(owned_constant(member.type, literal), "invalid receiver initializer constant")
-            case _:
-                raise MIRValidationError("invalid receiver initializer")
-
-    if fn.receiver_init is not None:
-        init = fn.receiver_init
-        # The built receiver is the body's receiver, parameter 0: never
-        # another parameter of the record's type.
-        _require(isinstance(init, MIRReceiverInit) and bool(bindings)
-                 and init.receiver == next(iter(bindings)),
-                 "invalid constructor receiver")
-        receiver = slots[init.receiver]
-        _require(receiver.shape.is_pointer
-                 and not receiver.readonly and receiver.type in records
-                 and isinstance(fn.return_type, VoidType), "invalid constructor receiver")
-        validate_member_inits(init.members, shape_at(MIRPlace(receiver.id, (MIRDeref(),))), receiver.id)
-
     def slot_type(slot: MIRSlotId) -> TpyType:
         _require(slot in slots, "undeclared operand or destination")
         return slots[slot].type
 
-    def place_info(place: MIRPlace, *, write: bool = False) -> MIRShape:
+    def place_info(place: MIRPlace, *, write: bool = False, initialization: bool = False) -> MIRShape:
         _require(isinstance(place, MIRPlace), "invalid place")
         slot_type(place.root)
         slot = slots[place.root]
@@ -780,7 +864,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(shape.cls is not MIRClass.CONTAINER or bool(shape.members), "unsupported container field")
                     _require(field_types.setdefault(projection.id, projection.type) == projection.type,
                              "inconsistent field type")
-        problem = store_problem(walked) if write else None
+        problem = store_problem(walked, initialization=initialization) if write else None
         _require(problem is None, problem)
         _require(not (write and tuple_member), "tuple element replacement is forbidden")
         _require(not (write and optional_member), "optional payload replacement is forbidden")
@@ -886,24 +970,21 @@ def _validate_structure(fn: MIRFunction) -> None:
                          "call scalar argument mismatch")
 
     pred: dict[MIRBlockId, set[MIRBlockId]] = {b: set() for b in blocks}
-    # Owned parameters with body storage arrive initialized: the caller
-    # materialized them, so an INITIALIZE of one is a second initialization.
-    initialized_storage: set[MIRSlotId] = {
-        s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.shape.is_storage
-        and s.storage_duration is MIRStorageDuration.BODY}
     owning_blocks: set[MIRBlockId] = set()
+    reachable = reachable_blocks(fn)
+    initialization = _Initialization(fn, slots, blocks, regions, reachable, records)
 
     def scoped_initialization(target: MIRSlot, block: MIRBlock) -> bool:
         """The one INITIALIZE placement rule of storage of every kind (an
         owned leaf, an owned tuple, a scalar wrapper's payload, a record):
         scoped storage is initialized in the region that owns it, or inside
         a full expression nested in it (its result built in the
-        expression's own region), and recorded for the repeat check; False
-        for storage of no region, whose placement its caller checks."""
+        expression's own region); False for storage of no region, whose
+        placement its caller checks. Initializing it again within one
+        activation is `_Initialization`'s to refuse."""
         if not isinstance(target.storage_duration, MIRRegionId):
             return False
         _require(target.storage_duration in regions.chains[block.region], "scoped initialization needs owning region")
-        region_initializations[target.id] = block.id
         return True
 
     def validate_owned_write(stmt: MIRAssign, block: MIRBlock, target: MIRSlot) -> None:
@@ -914,18 +995,22 @@ def _validate_structure(fn: MIRFunction) -> None:
         if fact.mode is MIRStorageWriteMode.INITIALIZE and not scoped_initialization(target, block):
             _require(target.storage_duration is MIRStorageDuration.BODY, "backing write needs private body storage")
             owning_blocks.add(block.id)
-        if fact.mode is not MIRStorageWriteMode.IN_PLACE:
-            _require(target.id not in initialized_storage, "repeated storage initialization")
-            initialized_storage.add(target.id)
         validate_owned_value(value, target.type, MIRPlace(target.id))
 
     def validate_call_record(call: MIRCall, typ: TpyType) -> None:
         """Record storage of type `typ` a call initializes or replaces: fresh
         storage the callee hands over by value (`Own[R]`), never a borrowed
         result's referent copied. The loans it stores are the summary's
-        transfers into the result."""
+        transfers into the result. A call whose result is a struct-base
+        ancestor's (`MIRCall.initializes`, the one fact the callee's
+        result type states again) initializes that base's fields of it."""
         validate_call(call)
-        _require(call.summary.callee.signature.hands_over(typ), "call record result type mismatch")
+        base = call.initializes
+        _require(base is None or (base in records.get(typ, MIRRecordLayout(typ, (), False, False)).ancestors
+                                  and base in records),
+                 "call base initialization type mismatch")
+        _require(call.summary.callee.signature.hands_over(typ if base is None else base),
+                 "call record result type mismatch")
 
     def validate_element_write(stmt: MIRAssign, typ: TpyType) -> None:
         """An element replaced in place (`xs[i] = v`): a weak update of the
@@ -984,19 +1069,37 @@ def _validate_structure(fn: MIRFunction) -> None:
             case _:
                 raise MIRValidationError("record write needs a construct, move, copy or call")
 
-    def validate_member_write(stmt: MIRStatement, typ: TpyType) -> None:
-        """An inline record or container member replaced whole (`ln.a = v`,
-        `self.items = data`): in place, under the record a holder reaches,
-        which keeps its identity; a declared `readonly[...]` member, or one
-        reached readonly, is never replaced. C++ copy- or move-assigns, so
-        the member is movable."""
-        _require(isinstance(stmt, MIRAssign), "record member write needs a replacement fact")
+    def field_write(stmt: MIRStatement, initializing: bool, *, owned: bool) -> MIRShape:
+        """The one target check of a field write, whatever the member's
+        class: the written field's state (`_Initialization.field_write`)
+        decides. A write of an uninitialized field is its initialization --
+        storage the field owns is INITIALIZEd, and the field's own
+        `readonly` allows it; any other replaces the field -- IN_PLACE, never
+        of a declared `readonly[...]` field or one reached readonly. A
+        readonly holder on the way refuses either. A view member or a scalar
+        owns no storage: its write carries no storage fact."""
+        _require(isinstance(stmt, MIRAssign), "field write needs a storage write fact")
         fact = stmt.storage_write
-        _require(isinstance(fact, MIRStorageWrite) and fact.mode is MIRStorageWriteMode.IN_PLACE
-                 and fact.rebind_owner is None, "record member write needs a replacement fact")
-        target = place_info(stmt.target, write=True)
-        _require(target.owned_place and not target.readonly, "store through readonly storage")
-        _require(defined(typ) and facts(typ).movable, "record member replacement needs movable record")
+        if owned:
+            mode = MIRStorageWriteMode.INITIALIZE if initializing else MIRStorageWriteMode.IN_PLACE
+            _require(isinstance(fact, MIRStorageWrite) and fact.mode is mode and fact.rebind_owner is None,
+                     "field write needs its initialization or replacement fact")
+        else:
+            _require(fact is None, "field write of no storage needs no storage fact")
+        target = place_info(stmt.target, write=True, initialization=initializing)
+        _require(initializing or not target.readonly, "store through readonly storage")
+        return target
+
+    def validate_member_write(stmt: MIRStatement, typ: TpyType, initializing: bool) -> None:
+        """An inline record or container member written whole (`ln.a = v`,
+        `self.items = data`) under the record a holder reaches, which keeps
+        its identity (`field_write`). A replacement is C++'s copy- or
+        move-assignment, so its member is movable; an initialization
+        constructs in place."""
+        target = field_write(stmt, initializing, owned=True)
+        _require(target.owned_place, "store through readonly storage")
+        _require(defined(typ) and (initializing or facts(typ).movable),
+                 "record member replacement needs movable record")
         for operand in operands(stmt.value):
             _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
                      "global value needs explicit read")
@@ -1005,18 +1108,14 @@ def _validate_structure(fn: MIRFunction) -> None:
     # The temporaries a sum construction moved into a payload: each once.
     wrapped_payloads: set[MIRSlotId] = set()
 
-    def validate_optional_field_write(stmt: MIRStatement) -> None:
+    def validate_optional_field_write(stmt: MIRStatement, initializing: bool) -> None:
         """`h.p = v` on an Optional record field, or a whole write of an
-        owned sum slot: the whole value replaced in place (the record around
-        a field keeps its identity). The value empties it, moves a record
-        built in temporary storage into its payload, or copies another
-        Optional's payload."""
-        _require(isinstance(stmt, MIRAssign), "optional field write needs a replacement fact")
-        fact = stmt.storage_write
-        _require(isinstance(fact, MIRStorageWrite) and fact.mode is MIRStorageWriteMode.IN_PLACE
-                 and fact.rebind_owner is None, "optional field write needs a replacement fact")
-        target = place_info(stmt.target, write=True)
-        _require(target.cls is MIRClass.OPTIONAL and not target.readonly, "store through readonly storage")
+        owned sum slot: the whole value written (`field_write`; the record
+        around a field keeps its identity). The value empties it, moves a
+        record built in temporary storage into its payload, or copies
+        another Optional's payload."""
+        target = field_write(stmt, initializing, owned=True)
+        _require(target.cls is MIRClass.OPTIONAL, "store through readonly storage")
         payload = target.payload.type
         container = target.payload.cls is MIRClass.CONTAINER
         layout = records.get(payload)
@@ -1041,23 +1140,20 @@ def _validate_structure(fn: MIRFunction) -> None:
             case _:
                 raise MIRValidationError("optional field write needs an optional construction or copy")
 
-    def validate_view_member_write(stmt: MIRAssign, typ: TpyType) -> None:
-        """`t.s = v`: a view member rebound to the loan a view holder holds,
-        under a record a mutable path reaches. It replaces no storage, so it
-        carries no storage event."""
-        _require(stmt.storage_write is None, "view member write needs no storage fact")
-        target = place_info(stmt.target, write=True)
-        _require(target.is_pointer and not target.readonly, "store through readonly storage")
+    def validate_view_member_write(stmt: MIRAssign, typ: TpyType, initializing: bool) -> None:
+        """`t.s = v`: a view member bound to the loan a view holder holds,
+        under a record a mutable path reaches (`field_write`). It replaces
+        no storage, so it carries no storage event."""
+        target = field_write(stmt, initializing, owned=False)
+        _require(target.is_pointer, "store through readonly storage")
         source = slots.get(stmt.value.source) if isinstance(stmt.value, MIRAlias) else None
         _require(source is not None and source.kind is not MIRSlotKind.GLOBAL and source.shape.view_holder
                  and view_compatible(typ, source.type), "view member write needs a view holder")
 
-    def validate_owned_field_write(stmt: MIRAssign, typ: TpyType) -> None:
-        # A field is initialized by its constructor; any later write replaces
-        # its buffer in place, under the record a borrowed holder reaches.
-        fact = stmt.storage_write
-        _require(isinstance(fact, MIRStorageWrite) and fact.rebind_owner is None
-                 and fact.mode is MIRStorageWriteMode.IN_PLACE, "owned-leaf field write needs a replacement fact")
+    def validate_owned_field_write(stmt: MIRAssign, typ: TpyType, initializing: bool) -> None:
+        """An owned-leaf field's buffer initialized or replaced in place
+        (`field_write`), under the record a borrowed holder reaches."""
+        field_write(stmt, initializing, owned=True)
         validate_owned_value(stmt.value, typ, stmt.target)
 
     def validate_owned_value(value: MIRRvalue, typ: TpyType, target: MIRPlace) -> None:
@@ -1106,11 +1202,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                 raise MIRValidationError("owned leaf write needs a copy, move, operation, constant or call")
     payload_initializations: set[MIRSlotId] = set()
     payload_init_blocks: set[MIRBlockId] = set()
-    region_initializations: dict[MIRSlotId, MIRBlockId] = {}
     for block in fn.blocks:
         _require(block.id.body == fn.id and block.id.index >= 0,
                  "foreign or invalid block ID")
-        for stmt in block.statements:
+        for index, stmt in enumerate(block.statements):
             _require(isinstance(stmt, (MIRAssign, MIRStorageInit, MIRCallStmt, MIRPrint)),
                      "unknown instruction")
             target_place = statement_target(stmt)
@@ -1135,9 +1230,20 @@ def _validate_structure(fn: MIRFunction) -> None:
                     _require(residence is None or residence in active, "use outside binding residence")
             if target_place is None:
                 continue
-            target_shape = place_info(target_place, write=True)
+            # A write of a field not yet initialized is its initialization.
+            initializing = (block.id in reachable
+                            and initialization.field_write(block.id, index, target_place) == _UNINITIALIZED)
+            _require(block.id not in reachable
+                     or initialization.field_write(block.id, index, target_place) != _MAYBE,
+                     "write of a field initialized on some path only")
+            target_shape = place_info(target_place, write=True, initialization=initializing)
             target_type = target_shape.type
             target = slots[target_place.root]
+            if isinstance(stmt, MIRStorageInit) and stmt.value is None:
+                # Record storage begun at entry, its fields initialized by the body.
+                _require(not stmt.target.projections and target.destination and stmt.alternative is None
+                         and block.id == fn.entry, "storage begin needs destination storage at entry")
+                continue
             if isinstance(stmt, MIRStorageInit):
                 match stmt:
                     case MIRStorageInit():
@@ -1157,7 +1263,6 @@ def _validate_structure(fn: MIRFunction) -> None:
                 payload_initializations.add(target.id)
                 if isinstance(target.storage_duration, MIRRegionId):
                     _require(target.storage_duration == block.region, "scoped initialization needs owning region")
-                    region_initializations[target.id] = block.id
                 else:
                     _require(target.storage_duration is MIRStorageDuration.BODY
                              and (not fn.regions or block.region == blocks[fn.entry].region),
@@ -1171,22 +1276,22 @@ def _validate_structure(fn: MIRFunction) -> None:
                 validate_owned_write(stmt, block, target)
                 continue
             if view_member(stmt.target) is not None:
-                validate_view_member_write(stmt, target_type)
+                validate_view_member_write(stmt, target_type, initializing)
                 continue
             if elements_place(stmt.target):
                 validate_element_write(stmt, target_type)
                 continue
             if stmt.target.projections and owned_leaf_place_type(stmt.target, slots, records) is not None:
-                validate_owned_field_write(stmt, target_type)
+                validate_owned_field_write(stmt, target_type, initializing)
                 continue
             if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
                     and value_class(member.type) is MIRClass.OPTIONAL) or (
                     not stmt.target.projections and target.shape.owned_sum):
-                validate_optional_field_write(stmt)
+                validate_optional_field_write(stmt, initializing)
                 continue
             if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
                     and value_class(member.type) in AGGREGATE_CLASSES):
-                validate_member_write(stmt, target_type)
+                validate_member_write(stmt, target_type, initializing)
                 continue
             # The write's checks follow the storage it lands in: an owned
             # tuple's, a scalar wrapper's inline payload, or an aggregate's.
@@ -1197,8 +1302,6 @@ def _validate_structure(fn: MIRFunction) -> None:
             elif target.shape.owned_tuple and not stmt.target.projections:
                 _require(fact.mode is MIRStorageWriteMode.INITIALIZE and fact.rebind_owner is None
                          and isinstance(value, MIRConstruct), "tuple initialization needs owning tuple construction")
-                _require(target.id not in initialized_storage, "repeated tuple initialization")
-                initialized_storage.add(target.id)
                 if not scoped_initialization(target, block):
                     _require(target.storage_duration is MIRStorageDuration.BODY,
                              "tuple initialization needs owning placement")
@@ -1227,6 +1330,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and fact.rebind_owner is None,
                                  "scoped initialization needs owning region")
                         scoped_initialization(target, block)
+                    case MIRStorageWriteMode.INITIALIZE if builds_base(stmt):
+                        # A base's fields of the record being built, through the holder bound to it.
+                        _require(target.bound_storage is not None and stmt.target.projections == (MIRDeref(),)
+                                 and fact.rebind_owner is None, "base initialization needs the record built")
                     case MIRStorageWriteMode.INITIALIZE:
                         _require(not stmt.target.projections and target.shape.is_storage
                                  and target.storage_duration is MIRStorageDuration.BODY and fact.rebind_owner is None,
@@ -1352,13 +1459,13 @@ def _validate_structure(fn: MIRFunction) -> None:
                         or stmt.target.projections
                         and stmt.target.projections == sole_object(target.shape)),
                         "record destination type")
-                    if not stmt.target.projections:
-                        _require(stmt.target.root not in initialized_storage, "repeated storage initialization")
-                        initialized_storage.add(stmt.target.root)
-                    else:
+                    if builds_base(stmt):
+                        # A base's fields initialized in the record a holder reaches: built in place.
+                        _require(fact is not None and fact.mode is MIRStorageWriteMode.INITIALIZE
+                                 and fact.rebind_owner is None, "base initialization needs an initialization fact")
+                    elif stmt.target.projections:
                         _require(facts(target_type).movable
-                                 and (isinstance(value, MIRConstruct)
-                                      or fact is not None and fact.mode is MIRStorageWriteMode.IN_PLACE),
+                                 and fact is not None and fact.mode is MIRStorageWriteMode.IN_PLACE,
                                  "unsupported record replacement")
                     validate_record_value(value, target_type, stmt.target)
                 case MIRBorrow():
@@ -1490,100 +1597,61 @@ def _validate_structure(fn: MIRFunction) -> None:
                     # `Own[...]` parameter's) is moved out: a readonly or
                     # non-movable one would be copied instead.
                     source = slots[term.value]
+                    # Destination storage is built where the caller receives it: nothing moves.
                     _require(source.shape.owns_storage and (source.kind is not MIRSlotKind.PARAMETER
                                                           or handed_storage(source, fn.slot_bindings))
                              and source.type == owned_aggregate_result(fn.return_type) and not source.readonly
-                             and defined(source.type) and facts(source.type).movable,
+                             and defined(source.type) and (source.destination or facts(source.type).movable),
                              "owned record return needs movable owned storage")
                 else:
                     _require(slot_type(term.value) == fn.return_type and slots[term.value].shape.is_scalar,
                              "return type mismatch")
                     _require(slots[term.value].kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
 
-    exceptional = body_may_raise(fn.blocks, slots, records, fn.receiver_init)
+    exceptional = body_may_raise(fn.blocks, slots, records)
     _require(type(fn.exceptional_exits) is bool and fn.exceptional_exits is exceptional,
              "exceptional exit fact mismatch")
     cyclic = _cyclic_blocks(blocks, pred)
     _require(not owning_blocks.intersection(cyclic), "owning operation in cycle")
     _require(not payload_init_blocks.intersection(cyclic), "payload initialization in cycle")
-    for sid, initialization in region_initializations.items():
-        owner = slots[sid].storage_duration
-        pending = list(successors(blocks[initialization].terminator))
-        seen: set[MIRBlockId] = set()
-        while pending:
-            bid = pending.pop()
-            if owner not in regions.chains[blocks[bid].region] or bid in seen:
-                continue
-            if bid == initialization:
-                loc = next((stmt.loc for stmt in blocks[initialization].statements
-                            if (target := statement_target(stmt)) is not None and target.root == sid), None)
-                raise MIRRepeatedInitializationError(loc)
-            seen.add(bid)
-            pending.extend(successors(blocks[bid].terminator))
 
-    reachable = reachable_blocks(fn)
     parameters = {s.id for s in fn.slots if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
     writes = {bid: {sid for s in blocks[bid].statements if (sid := source_definition(s)) is not None}
               for bid in reachable}
-    physical_writes = {bid: {target.root for s in blocks[bid].statements
-                             if (target := statement_target(s)) is not None and not target.projections}
-                       for bid in reachable}
     # Intersection is a must analysis; initialize at top, with a synthetic
     # parameter-only incoming edge at entry even if the entry has a back edge.
     incoming = {bid: set(slots) for bid in reachable}
     outgoing = {bid: set(slots) for bid in reachable}
-    physical_in = {bid: set(slots) for bid in reachable}
-    physical_out = {bid: set(slots) for bid in reachable}
     work = deque(reachable)
     queued = set(reachable)
     incoming_edges = {bid: [] for bid in reachable}
     for edge, transition in regions.edges.items():
         if edge.source in reachable and transition.target is not None:
-            incoming_edges[transition.target].append((edge.source, transition.reset, transition.ended))
+            incoming_edges[transition.target].append((edge.source, transition.reset))
     while work:
         bid = work.popleft()
         queued.remove(bid)
-        sources = [outgoing[source] - reset for source, reset, _ in incoming_edges[bid]]
-        constructed = [physical_out[source] - ended for source, _, ended in incoming_edges[bid]]
+        sources = [outgoing[source] - reset for source, reset in incoming_edges[bid]]
         if bid == fn.entry:
             sources.append(parameters)
-            constructed.append(parameters)
         new_in = set.intersection(*sources)
         new_out = new_in | writes[bid]
-        new_physical_in = set.intersection(*constructed)
-        new_physical_out = new_physical_in | physical_writes[bid]
         incoming[bid] = new_in
-        physical_in[bid] = new_physical_in
-        if new_out != outgoing[bid] or new_physical_out != physical_out[bid]:
+        if new_out != outgoing[bid]:
             outgoing[bid] = new_out
-            physical_out[bid] = new_physical_out
             for target in successors(blocks[bid].terminator):
                 if target not in queued:
                     work.append(target)
                     queued.add(target)
     for bid in reachable:
         assigned = incoming[bid].copy()
-        constructed = physical_in[bid].copy()
         block = blocks[bid]
         for stmt in block.statements:
             reads = set(statement_reads(stmt))
             if not reads <= assigned:
                 raise MIRDefiniteAssignmentError("read before definite assignment")
-            _require(all(sid in constructed for sid in reads if slots[sid].shape.inline_sum),
-                     "read before storage initialization")
-            if (isinstance(stmt, MIRAssign) and not stmt.target.projections
-                    and stmt.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
-                    and slots[stmt.target.root].shape.inline_sum):
-                _require(stmt.target.root in constructed, "assignment before storage initialization")
-            if (isinstance(stmt, MIRAssign) and not stmt.target.projections
-                    and stmt.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
-                    and slots[stmt.target.root].shape.leaf_storage):
-                _require(stmt.target.root in constructed, "replacement before storage initialization")
             if (definition := source_definition(stmt)) is not None:
                 assigned.add(definition)
-            target = statement_target(stmt)
-            if target is not None and not target.projections:
-                constructed.add(target.root)
         term = block.terminator
         match term:
             case MIRBranch():
@@ -1592,3 +1660,5 @@ def _validate_structure(fn: MIRFunction) -> None:
             case MIRReturn() if term.value is not None:
                 if term.value not in assigned:
                     raise MIRDefiniteAssignmentError("return before definite assignment")
+    # Storage initialization, after the slot-level assignment above.
+    initialization.check(reachable)

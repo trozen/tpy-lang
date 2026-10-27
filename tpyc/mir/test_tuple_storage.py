@@ -19,8 +19,8 @@ from .reach import reaches
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
 from .testutil import (
-    hand_record, bind_parameters, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
-    reslot, tuple_shape, union_shape, prepared,
+    construction, hand_record, bind_parameters, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
+    reslot, tuple_shape, union_shape, prepared, with_calls,
 )
 from .prepare import validate_function
 
@@ -39,7 +39,8 @@ TUPLE = TupleType((CELL, CELL, CELL, INT32))
 # which the tuple's construct moves from.
 TEMPS = (MIRSlotId(BODY, 10), MIRSlotId(BODY, 11))
 INITIALIZE = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
-BUILD = tuple(MIRAssign(MIRPlace(t), MIRConstruct((VALUE,)), storage_write=INITIALIZE) for t in TEMPS)
+RECORD = MIRRecordLayout(CELL, (FIELD,), True, True)
+BUILD = tuple(MIRAssign(MIRPlace(t), construction(RECORD, VALUE), storage_write=INITIALIZE) for t in TEMPS)
 TUPLE_INIT = MIRAssign(MIRPlace(PAIR), MIRConstruct((*TEMPS, EXTERNAL, VALUE)), storage_write=INITIALIZE)
 INIT = (*BUILD, TUPLE_INIT)
 
@@ -61,18 +62,18 @@ def function(*statements: MIRAssign) -> MIRFunction:
           for t in TEMPS),
     )
     return bind_parameters(MIRFunction(BODY, INT32, slots, (MIRBlock(ENTRY, statements, MIRReturn(VALUE), ROOT),), ENTRY,
-                       records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
+                       records=(RECORD,),
                        regions=(MIRRegion(ROOT, None, ENTRY),)))
 
 
 def scoped(fn: MIRFunction, inside: tuple[MIRAssign, ...], after: tuple[MIRAssign, ...]) -> MIRFunction:
     slots = tuple(replace(s, storage_duration=CHILD, residence=CHILD) if s.id == PAIR or s.id in TEMPS else s
                   for s in fn.slots)
-    return replace(fn, slots=slots, blocks=(
+    return with_calls(replace(fn, slots=slots, blocks=(
         MIRBlock(ENTRY, (), MIRGoto(INNER), ROOT),
         MIRBlock(INNER, inside, MIRGoto(EXIT), CHILD),
         MIRBlock(EXIT, after, MIRReturn(VALUE), ROOT),
-    ), regions=(*fn.regions, MIRRegion(CHILD, ROOT, INNER)))
+    ), regions=(*fn.regions, MIRRegion(CHILD, ROOT, INNER))))
 
 
 def test_inline_identity_mutation_and_initialization_inventory() -> None:
@@ -164,9 +165,9 @@ def test_skipped_initialization_and_repeated_scope_activation() -> None:
     ((*BUILD, replace(TUPLE_INIT, value=MIRConstruct((TEMPS[0], TEMPS[1], TEMPS[1], VALUE)))), "payload type"),
     ((*BUILD, replace(TUPLE_INIT, value=MIRConstruct((TEMPS[0], TEMPS[1], EXTERNAL, VALUE), may_raise=True))),
      "payload type"),
-    ((replace(BUILD[0], value=MIRConstruct(())), BUILD[1], TUPLE_INIT), "mistyped record construction"),
-    ((replace(BUILD[0], value=MIRConstruct((FLAG,))), BUILD[1], TUPLE_INIT), "mistyped record construction"),
-    ((replace(BUILD[0], value=MIRConstruct((RESULT,))), BUILD[1], TUPLE_INIT), "definite assignment"),
+    ((replace(BUILD[0], value=construction(RECORD)), BUILD[1], TUPLE_INIT), "call arity mismatch"),
+    ((replace(BUILD[0], value=construction(RECORD, FLAG)), BUILD[1], TUPLE_INIT), "call argument type mismatch"),
+    ((replace(BUILD[0], value=construction(RECORD, RESULT)), BUILD[1], TUPLE_INIT), "definite assignment"),
     ((BUILD[0], TUPLE_INIT), "definite assignment"),
 ])
 def test_invalid_tuple_initialization(statements: tuple[MIRAssign, ...], message: str) -> None:

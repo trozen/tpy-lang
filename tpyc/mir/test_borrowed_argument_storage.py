@@ -19,7 +19,7 @@ from .testutil import compiled_definitions, placed_storage, prepared, workspace_
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRWrap,
     MIRStorageInit,
@@ -275,7 +275,9 @@ def test_retained_call_result_observes_iteration_end(artifacts: Artifacts, name:
             statements.append(MIRAssign(MIRPlace(holder), MIRAlias(seed.id)))
         for stmt in block.statements:
             statements.append(stmt)
-            if not captured and isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall):
+            # The borrowed-result call, not the construction filling the argument's storage.
+            if (not captured and isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+                    and stmt.value.summary.returns):
                 # Retain the returned holder itself, not the call's actual argument.
                 statements.append(MIRAssign(MIRPlace(holder), MIRAlias(stmt.target.root)))
                 captured = True

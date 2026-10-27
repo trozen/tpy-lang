@@ -829,7 +829,9 @@ def test_a_readonly_container_field_is_built_like_any_container_field(readonly_b
     # The constructor copies both container parameters into its fields.
     init = readonly_bodies["H.__init__"]
     assert init.status is MIRVerdictStatus.COVERED, init.reason
-    assert "initialize-receiver %0 (copy (*%1) may-raise, copy (*%2) may-raise)" in dump_function(init.function)
+    dump = dump_function(init.function)
+    assert "(*%3).__main__.H::xs = copy (*%0) may-raise [initialize]" in dump
+    assert "(*%3).__main__.H::ro = copy (*%1) may-raise [initialize]" in dump
     # A caller's construct lends a container argument alike for a readonly
     # field and a mutable one; `len(h.ro)` then stops at a readonly
     # container field read as a stub protocol argument, a gap of its own.

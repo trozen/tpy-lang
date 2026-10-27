@@ -367,7 +367,7 @@ def test_a_view_member_write_carries_no_storage_fact(program: _Program) -> None:
     _, write = _view_write(fn)
     fact = next(s.storage_write for b in _lowered(program, "store").blocks for s in b.statements
                 if isinstance(s, MIRAssign) and s.storage_write is not None)
-    with pytest.raises(MIRValidationError, match="view member write needs no storage fact"):
+    with pytest.raises(MIRValidationError, match="field write of no storage needs no storage fact"):
         validate_function(replace(fn, blocks=tuple(replace(b, statements=tuple(
             replace(s, storage_write=fact) if s is write else s for s in b.statements)) for b in fn.blocks)))
 

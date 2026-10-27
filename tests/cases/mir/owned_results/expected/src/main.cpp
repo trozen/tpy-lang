@@ -207,6 +207,17 @@ Pinned make_pinned(int32_t n) {
     return Pinned(n);
 }
 
+// # free function: a @nomove record's copy built into its holder's member
+// def pin_holder(n: int32) -> int32:  # tpyc: mir(covered)
+//     p = Pinned(n)
+//     h = PinHolder(p)
+//     return h.p.x
+int32_t pin_holder(int32_t n) {
+    Pinned p = Pinned(n);
+    PinHolder h = PinHolder(p);
+    return h.p.x;
+}
+
 // # kept refusal: a value-type record returned by value
 // def make_tok(n: int32) -> Own[Tok]:  # tpyc: mir(uncovered /^unmodeled record$/)
 //     return Tok(n)
@@ -244,6 +255,7 @@ Box<int32_t> make_box(int32_t n) {
 //     print("lend_temp", lend_temp(2))
 //     print("maybe", maybe(True, 9), maybe(False, 9))
 //     print("make_pinned", make_pinned(5).x)
+//     print("pin_holder", pin_holder(5))
 //     print("make_tok", make_tok(6).a)
 //     print("make_box", make_box(7).v)
 //     h = Holder()
@@ -274,6 +286,7 @@ void main() {
     std::cout << "lend_temp" << " " << ::tpyapp::main::lend_temp(2) << "\n" << ::tpy::check_signals;
     std::cout << "maybe" << " " << ::tpyapp::main::maybe(true, 9) << " " << ::tpyapp::main::maybe(false, 9) << "\n" << ::tpy::check_signals;
     std::cout << "make_pinned" << " " << ::tpyapp::main::make_pinned(5).x << "\n" << ::tpy::check_signals;
+    std::cout << "pin_holder" << " " << ::tpyapp::main::pin_holder(5) << "\n" << ::tpy::check_signals;
     std::cout << "make_tok" << " " << ::tpyapp::main::make_tok(6).a << "\n" << ::tpy::check_signals;
     std::cout << "make_box" << " " << ::tpyapp::main::make_box(7).v << "\n" << ::tpy::check_signals;
     Holder h = Holder();

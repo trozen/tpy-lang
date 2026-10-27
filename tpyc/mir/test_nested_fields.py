@@ -11,7 +11,7 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..typesys import BOOL, NoneType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRFunction, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap,
 )

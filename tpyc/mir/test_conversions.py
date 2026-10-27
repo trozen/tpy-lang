@@ -271,7 +271,7 @@ def test_an_owning_owned_leaf_argument_is_storage_the_call_takes(dumps) -> None:
 def test_a_record_temporary_is_storage_the_call_takes(dumps) -> None:
     lines = dumps["record_argument"]
     assert "%1: P owned-storage temporary duration=r1 residence=r1" in lines
-    assert "%1 = construct (%0) [initialize]" in lines
+    assert "%1 = call __main__.P::__init__(%0) [reader, normal-return] [initialize]" in lines
     assert any(line.startswith("%2 = call adopt(%1) ") for line in lines)
 
 
@@ -446,21 +446,17 @@ def test_a_container_operand_refuses_an_element_place(unit, monkeypatch) -> None
 # --- calls state their result's shape ------------------------------------------------
 
 def _stated(unit, monkeypatch, body: str) -> list[tuple[str, object, MIRShape]]:
-    """Each call's and construct's value as built while `body` lowers: its kind, summary and stated shape."""
+    """Each call's value as built while `body` lowers: its kind (a record's
+    construction, else a call), summary and stated shape."""
     stated = []
-    call_value, construct = _Lowering.call_value, _Lowering.construct
+    call_value = _Lowering.call_value
 
-    def call_spy(self, f, node, summary, *rest):
-        g = call_value(self, f, node, summary, *rest)
-        stated.append(("call", summary, g.value.shape))
+    def call_spy(self, f, node, summary, *rest, **options):
+        g = call_value(self, f, node, summary, *rest, **options)
+        constructs = getattr(summary.callee.identity, "name", None) == "__init__"
+        stated.append(("construct" if constructs else "call", summary, g.value.shape))
         return g
-
-    def construct_spy(self, *args):
-        v = construct(self, *args)
-        stated.append(("construct", None, v.shape))
-        return v
     monkeypatch.setattr(_Lowering, "call_value", call_spy)
-    monkeypatch.setattr(_Lowering, "construct", construct_spy)
     compiler, definitions, workspace, sources, _ = unit
     with activate_compiler(compiler):
         lower_body(sources[body], definitions, workspace, fresh=True)
@@ -476,7 +472,8 @@ def test_a_construct_states_record_storage(unit, monkeypatch, dumps) -> None:
     for body, write in (("e_construct", "initialize]"), ("e_temporary_field", "initialize]")):
         (kind, _, shape), = _stated(unit, monkeypatch, body)
         assert kind == "construct" and shape.cls is MIRClass.RECORD and shape.is_storage, body
-        assert any(line.startswith("%1 = construct (%0) [" + write) for line in _statements(dumps[body])), body
+        assert any(line.startswith("%1 = call __main__.P::__init__(%0) [") and line.endswith(write)
+                   for line in _statements(dumps[body])), body
 
 
 def test_a_call_states_its_result_shape(unit, monkeypatch, dumps) -> None:
@@ -517,9 +514,9 @@ def test_a_lent_temporary_operand_ends_with_the_initialization(dumps) -> None:
     # The operand's region is a child of the region of the statement the temporary is initialized at.
     parent, entry = regions[operand[2]]
     assert parent == storage[2]
-    # It holds exactly the initialization: the operand, its holder, the construct; then it ends.
+    # It holds exactly the initialization: the operand, its holder, the construction; then it ends.
     block = lines[lines.index(entry + ":") + 1:]
     assert [re.sub(r"%\d+", "%", line) for line in block[:3]] == [
-        "% = 2 [initialize]", "% = borrow %", "% = construct (%) [initialize]"]
-    assert block[2].startswith(storage[1] + " = construct") and block[3].startswith("goto ")
+        "% = 2 [initialize]", "% = borrow %", "% = call __main__.B::__init__(%) [reader, normal-return] [initialize]"]
+    assert block[2].startswith(storage[1] + " = call __main__.B::__init__") and block[3].startswith("goto ")
     assert f"{entry} edge 0: {operand[2]} {operand[1]}" in lines

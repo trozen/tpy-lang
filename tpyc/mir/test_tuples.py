@@ -15,7 +15,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .value import MIRFieldId
 from .testutil import Heap, Reference, execute

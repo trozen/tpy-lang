@@ -27,7 +27,7 @@ from .nodes import (
     MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRPresentCall, MIRRead, MIRSlotKind, present_effects,
     statement_call,
 )
-from .lower import lower_function
+from .testutil import lower_function
 from .presence import present_call
 from .value import MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
@@ -239,9 +239,11 @@ def body_named(workspace: MIRCallWorkspace, name: str) -> MIRFunction:
 
 
 def calls(body: MIRFunction) -> list[tuple[MIRPoint, MIRAssign]]:
+    """The calls of functions: a record's construction is its storage's fill."""
     return [(MIRPoint(block.id, index), stmt) for block in body.blocks
             for index, stmt in enumerate(block.statements)
-            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)]
+            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+            and getattr(stmt.value.summary.callee.identity, "name", None) != "__init__"]
 
 
 def test_forward_definitions_and_transitive_calls_are_known(artifacts: Artifacts) -> None:

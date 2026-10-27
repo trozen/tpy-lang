@@ -11,13 +11,13 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL, INT32, TpyType
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRBodyId, MIRFunction, MIRNotCovered, MIRRegionId, MIRStorageWrite,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import compiled_definitions, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -118,7 +118,7 @@ def test_mutation_and_operands_in_each_admitted_position(artifacts: Artifacts, f
     assert execute(bodies["late"], flag, 2) == (5 if flag else 0)
     assert execute(bodies["repeat"], flag) == 7
     heap = {}
-    execute(bodies["Runner"], Reference(0), flag, heap=heap)
+    construct(bodies["Runner"], 0, flag, heap=heap)
     assert tuple(heap[0].values()) == (12 if flag else 0,)
     assert execute(bodies["method"], Reference(0), flag, heap=heap) == (13 if flag else 0)
 
@@ -141,7 +141,7 @@ def test_positive_producer_facts_and_inline_placement(artifacts: Artifacts) -> N
             assert isinstance(backing.storage_duration, MIRRegionId)
         assert analyze_scope_ends(prepared(body)).ends
         assert not inspect_scope_lifetimes(prepared(body)).conflicts
-        assert any(isinstance(s.storage_write, MIRStorageWrite)
+        assert any(isinstance(getattr(s, "storage_write", None), MIRStorageWrite)
                    for b in body.blocks for s in b.statements)
 
 

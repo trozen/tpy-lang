@@ -2245,15 +2245,14 @@ as the corpus grows).
   leaf stays banned). Model: a read is a borrow of `%r.Owner::name` at an
   operand position and a `MIRCopy` at an owned sink; `r.f = v` and the
   field `+=` are `IN_PLACE` replacement events on the field place
-  (`storage.storage_destination`), as for owned-leaf locals. Each
-  constructor member is decided once (`MIRFieldInitializer`, its one choice
-  the `move` bit) and lowered as a `MIRMemberInit(value, loc)` in
-  `MIRReceiverInit.members`, `value` the CFG's node for the same value: a
-  scalar parameter's `MIRRead`, a `MIRCopy` of a parameter's storage
-  (`may_raise` from the TypeDef), a constant (materialized: it raises as
-  owned storage taking it does, `validate.value_may_raise`), a `MIRMove`
-  out of a by-value parameter; a receiver-init copy that may raise is an exceptional exit
-  of the constructor, and the caller's `MIRConstruct` carries `may_raise`.
+  (`storage.storage_destination`), as for owned-leaf locals. A
+  constructor's member-init entry is the field write `self.f = v` is, an
+  INITIALIZE through `self` ([Constructors are ordinary bodies](#constructors-are-ordinary-bodies-unit-7)): a scalar parameter's `MIRRead`, a
+  `MIRCopy` of a parameter's storage (`may_raise` from the TypeDef), a
+  constant (materialized: it raises as owned storage taking it does,
+  `validate.value_may_raise`), a `MIRMove` out of a by-value parameter; a
+  copy that may raise is an exceptional exit of the constructor, and a
+  caller's call raises as the constructor's summary says.
   A record declaration's initializer is a full expression that owns its
   argument temporaries. A callee's field writes are replacement events at
   the call: `MIRStorageEvents.call_writes` lists every place a call may
@@ -2552,11 +2551,8 @@ as the corpus grows).
   slices; tuple, Optional and union elements; `bytearray`; a dict view
   bound to a local is a lowering reject today
   (`BUGS.md#dict-view-local-binding-rejected`); a constructor member-init
-  from a literal of RECORD elements (`self.ps = [Point(1), Point(2)]`:
-  the member initializer takes parameter slots and constants only, and the
-  element records need temporaries before any CFG exists -- "constructor
-  initializer needs parameter or literal"; a literal of leaves or an empty
-  literal initializes); a container returned by reference from a RECORD
+  from a literal of RECORD elements (`self.ps = [Point(1), Point(2)]`)
+  lowers since unit 7, as an ordinary statement; a container returned by reference from a RECORD
   parameter (`items_of(b) -> list[int32]` returning `b.items`) now
   summarizes with the field path (`returns={param0.items}`) and its caller
   binds the field place ([projected return origins](#projected-return-origins));
@@ -2737,10 +2733,8 @@ as the corpus grows).
   no summary), and its property read, "unsupported expression"
   (`mir/accessor_calls` `call_virtual_getter`); an explicit call of a dunder with an
   injected operator template (`p.__eq__(q)`), "unsupported expression"; a
-  constructor tail calling a method on `self` (`Tally.__init__`): the
-  record's definition refuses a constructor with body effects, so the
-  method's summary is OPAQUE ("summary record: constructor body effects")
-  and the constructor refuses ("call needs finalized known summary"); a
+  constructor tail calling a method on `self` (`Tally.__init__`) lowers
+  since unit 7 (the constructor is an ordinary body); a
   call-result, constructor-temporary or
   element receiver (`pick(g).read()`, `Gauge(k).read()`,
   `gs[0].bump()`), "call needs borrowed record name", the limit record
@@ -3110,7 +3104,9 @@ facts) and `tpyc/mir/test_inherited_records.py` (MIR).
   access, and MIR compares the receiver binding against it. A subclass
   method hiding a base method is resolved statically by sema (own methods
   first), which matches the C++.
-- **Definitions chain** (`mir/definitions.py`). `MIRDefinitions` verifies
+- **Definitions chain** -- *History: the pre-unit-7 model, deleted by unit 7; [Constructors are ordinary bodies](#constructors-are-ordinary-bodies-unit-7) is current.* A base initializer is now a call of
+  the base's constructor (`MIRCall.initializes`) and `MIRDefinitions`
+  keeps only certificates. What the chain was: `MIRDefinitions` verified
   base-first (memoized; there is no cycle). A constructor with base
   initializers (`THIRBaseInit.base`, the base's identity) composes its
   definition from the base's: every struct-base ancestor in the layout is
@@ -3422,7 +3418,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   holder. A record's verified definition composes its member records'
   definitions, and reads its container fields' element definitions, as it
   composes its struct bases'.
-- **Definitions** (`mir/definitions.py`). `MIRDefinitions` verifies what a
+- **Definitions** (`mir/definitions.py`; since unit 7 certificates only, "Constructors are ordinary bodies"). `MIRDefinitions` verifies what a
   definition reads before the record itself (`_read_records`: struct
   bases, record fields, the record members of container fields). A field is
   admitted by shape through one predicate, `scalar_leaves.modeled_field`,
@@ -3436,7 +3432,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   "unsupported record fields".
   Each member record's definition must verify (`_member_definitions`,
   "member definition: <reason>": `HasHooked` "... custom record special
-  member", `HasEffect` "... constructor body effects", a value-type or
+  member", a value-type or
   exception member "... missing constructor definition"), and a container
   field's elements are read through the shared `container_definition`
   (`Bag`, whose `list[Loud]` element runs a copy hook: "unsupported native
@@ -3445,7 +3441,9 @@ and setter and `getter_through_field`; `mir/method_calls`
   record definition". A body's layouts close transitively over member
   records (`close_layouts`), and the validator requires the layout of every
   record field ("record field needs its layout").
-- **Constructor parameters and member initializers.** THIR publishes
+- **Constructor parameters and member initializers** -- *History: the pre-unit-7 model, deleted by unit 7; [Constructors are ordinary bodies](#constructors-are-ordinary-bodies-unit-7) is current.* A
+  member-init entry is now the field write it is, and a construction binds
+  its arguments through the one binder. What the definitions did: THIR publishes
   `THIRParam.borrowed_record` on a constructor's record parameters at the
   constructor's own const verdict, as on a function's; an `Own[R]`
   parameter carries none. `definitions.aggregate_parameter` admits a record
@@ -3472,17 +3470,17 @@ and setter and `getter_through_field`; `mir/method_calls`
   one exit fact of a whole-record copy: an owned-leaf field whose TypeDef
   copy may raise, any container field (a new allocation), or a member
   record whose copy may, recursively; a member whose layout is unknown
-  may. Every record copy reads it: a copying member initializer, the
-  lowering's `MIRCopy` (`_Lowering.copy_may_raise`), the validator's record copy (`record_copy_ok`,
-  shared by record destinations, element writes and member writes), the
-  receiver-initialization rule and the construct's member check
-  (`member_operand`). A copy of a
+  may. Every record copy reads it: the lowering's `MIRCopy`
+  (`_Lowering.copy_may_raise`), the validator's record copy
+  (`record_copy_ok`, shared by record destinations, element writes and
+  member writes) and the construct's member check (`member_operand`). A copy of a
   record with a `str` or a `list` field is an exceptional exit, an
   all-scalar record's is not (`duplicate_point`, `duplicate_plain`,
   `duplicate_flat`); a record whose container element runs a copy hook has
   no definition, so its copy refuses (`duplicate`, "unsupported native
   container element").
-- **Receiver initialization** (`MIRMemberInits`). A composed member is
+- **Receiver initialization** -- *History: the pre-unit-7 model, deleted by unit 7; [Constructors are ordinary bodies](#constructors-are-ordinary-bodies-unit-7) is current.* The entry is ordinary
+  statements and `MIRMemberInits` is deleted. What it was: a composed member was
   initialized at entry field by field, as the receiver is:
   `MIRMemberInit(MIRMemberInits(fields))`, one initializer per field of the
   member's layout (a value over a parameter or a constant), nested for a
@@ -3661,20 +3659,13 @@ and setter and `getter_through_field`; `mir/method_calls`
     field, "unsupported record fields" at the definition (a tuple and an Optional
     scalar field pinned in `test_owned.py`); Optional fields of loan-free
     records are modeled since ([Optional record fields](#optional-record-fields)).
-  - In a member initializer: a call result (`Called`, `self.a = mk(x)`),
-    "constructor initializer needs parameter or literal"; a record argument
-    of the member's constructor (`Nested`, `self.line = Line(a, b)`),
-    "member argument needs matching parameter or literal" (`_base_leg`
-    models no record leg), and with the same reason an `Own[str]`
-    parameter passed bare as a leg of the member's construct (`self.p =
-    Point(1, s)` with `s: Own[str]`; probed). One `Own[R]` parameter
-    stored into two members (`self.a = p; self.b = p`: THIR spells a copy,
-    then the move at the last use), "constructor initializer needs
-    parameter" (probed). A member whose constructor has body effects
-    (`HasEffect`), "member definition: constructor body effects", although
-    copying or moving a member never runs its constructor; a member whose
-    constructor stores an owned-leaf constant (`self.name = "t"`), "member
-    definition: constructor owned-leaf constant" (probed).
+  - In a member initializer: one `Own[R]` parameter stored into two
+    members (`self.a = copy(p); self.b = p`), "unsupported record
+    initializer". Since unit 7 a call result (`self.a = mk(x)`), a record
+    argument of the member's constructor (`self.line = Line(a, b)`) and a
+    member whose constructor has body effects or stores an owned-leaf
+    constant lower: the entry is ordinary statements and a construction
+    calls the constructor's summary.
   - A local moved into an `Own[R]` constructor argument (`moved_local`: `q
     = Point(x, "q"); Line(Point(1, "a"), q)`), "move needs fixed movable
     owned local": THIR spells the last-use `THIRMove` in STORAGE form over
@@ -3925,8 +3916,11 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   record holding a loan) registers the root object's layout too
   (`lower.held_root`): its loans are keyed on the full member path under
   that object.
-- **View member initializer** (`definitions._view_initializer`; the
-  field's class says it is a loan). A view member stores the loan of a
+- **View member initializer** -- *History: the pre-unit-7 model, deleted by unit 7; [Constructors are ordinary bodies](#constructors-are-ordinary-bodies-unit-7) is current.* A view member-init is now
+  the view field write it is (`alias` of the view holder the argument
+  lowers to), and a base's or member's view loan reaches the caller through
+  the constructor's summary. What the definitions did
+  (`definitions._view_initializer`; the field's class says it is a loan): A view member stores the loan of a
   `str` / `bytes` parameter the caller lends (CONST_REF or VIEW, read
   through `coerce(%s -> StrView)`), of a view parameter passed by value
   (`definitions.view_parameter`), or a literal's static storage. No
@@ -4182,8 +4176,9 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   refused there: `sec_insert` ("container holds a borrow"),
   `records/field_admission` `ViewSlots.set` ("missing field identity"),
   and, outside views, `sec_setitem` ("element write needs a stub
-  contract") and `optional/view_at_owned_opt_decl` `Holder.__init__`
-  ("member definition: constructor owned-leaf constant"). Records written
+  contract"); `optional/view_at_owned_opt_decl` `Holder.__init__`
+  ("member definition: constructor owned-leaf constant") lowers since
+  unit 7. Records written
   through a place, copied operands, optional backings and constructor legs,
   against the slice-2 base over every case and the stdlib (29528 common
   bodies): 4 bodies changed their first blocker, all from a lifted refusal
@@ -4277,11 +4272,11 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   share (`definitions.optional_parameter`, reading the value of the one
   binding `call_contract.parameter_binding` derives): a `P | None` pointer
   at a readonly or mutable payload, or a scalar `int32 | None` by value.
-  `_optional_initializer` handles the parameter copied into the field,
-  `None`, and a composed `P(..)` (`_composed_member`, shared with the
-  record member arm, which both check the record is movable). Caller constructs take an Optional operand: none,
-  `&name`, `optional_to_ptr(field)`, an Optional name, or an argument
-  temporary (the construct carries the raise of its payload copy).
+  A constructor's Optional member-init is the Optional field write
+  (`None`, the parameter copied, an engaged `P(..)` built in a temporary
+  and wrapped), since unit 7; a caller binds an Optional argument through
+  the one binder: none, `&name`, `optional_to_ptr(field)`, an Optional
+  name, or an argument temporary.
 - **Conflicts pinned.** `callee` (`o = h.p; clear(h); o.x`) and
   `H.via_self`: a `replacement` conflict each; `alias` (`o = a.p; b.p =
   None; o.x`) and `copy_both`, whose conflict needs two parameters naming
@@ -4487,7 +4482,10 @@ Generated C++ is unchanged; only the diagnostic is new. Pinned by
   existing `affects` rule; an overlap is an `argument_alias` conflict at the
   call (`classify_retention` sorts body replacements from call aliases). A
   caller passing two of its own parameters publishes the obligation again.
-  An `[elements]` step overlaps like any other step: element identity is not
+  A construction `R(...)` is such a call: the calls a body makes
+  (`definitions.body_calls`, constructions and base initializers included)
+  are the ones whose obligations are discharged, and the warning names the
+  callee by its record (`'R'`), not by `__init__`. An `[elements]` step overlaps like any other step: element identity is not
   tracked, so a write to one element also flags a borrow of another (a
   constant-index false positive; see "Origins and write reach").
 - **Normal compilation.** `Compiler.report_mir_warnings` runs MIR over the
@@ -4503,7 +4501,7 @@ Generated C++ is unchanged; only the diagnostic is new. Pinned by
   conflict, a kind apart from `replacement`, so the census and the pins tell
   a precondition from a defect of the body; it never reads `covered`
   because of an obligation. Obligations are discharged only where MIR
-  analyzes the caller -- generator, async, constructor, module-level,
+  analyzes the caller -- generator, async, module-level,
   `Callable`-value, implicit-dunder and `-L` callers are unchecked.
   Relieving a body is a later unit: it needs the fact that every caller is
   known and checked (a private, non-escaping function).
@@ -4630,10 +4628,11 @@ skips its own dependency leaves only: a view member of the object it lends
 still retains what the write replaces
 (`BUGS.md#record-view-member-source-replaced`, `element_view_replaced`).
 
-One construct: `MIRConstruct` builds a record, a tuple and a container
-literal alike, one operand per member of the target's shape
-(`shapes.construct_members`: a record's fields, a tuple's elements; a
-literal's elements repeat, so only the validator cycles them). Its readers
+One construct: `MIRConstruct` builds a tuple and a container literal
+alike, one operand per member of the target's shape
+(`shapes.construct_members`: a tuple's elements; a literal's elements
+repeat, so only the validator cycles them). A record is never built field
+by field: it is its constructor's call (below). Its readers
 key on the target, never on a node class: the validator's one member check
 (`construct_ok` / `member_operand`: a holder member stores its operand's
 loan, a storage member takes a moved temporary or a copy through a
@@ -4648,9 +4647,68 @@ declaration's full expression (`literal_record`) and moved in, which is
 what C++ does (`std::tuple<P, int32_t>{P(1), 2}`); every storage target
 takes one INITIALIZE placement rule (`validate.scoped_initialization`:
 scoped storage in its owning region or a full expression nested in it).
-A constructor entry's member value is one of the CFG's value nodes;
-`MIRMemberInits` stays a second record-construct spelling at entry until
-entry initialization becomes ordinary statements (TODO.md "[MIR] FIRST").
+
+#### Constructors are ordinary bodies (unit 7)
+
+A constructor is an ordinary body that builds and returns an owned record,
+and `R(...)` is an ordinary call that reads that body's summary.
+
+- **The record.** The body's result is body storage of the record type,
+  begun at entry by a root storage begin (`MIRStorageInit` with no
+  alternative) and returned at every exit (`return %result`, `Own[R]`). It
+  is built where the caller receives it (`MIRSlot.destination`), so the
+  `Own[R]` movability requirement does not apply. `self` is a holder bound
+  to it before any statement and never rebound (`MIRSlot.bound_storage`);
+  field writes go through it as in a method.
+- **Member inits.** Each member-init entry is the field write it is,
+  lowered by the CFG's field-write dispatch as an INITIALIZE of the field;
+  values that need ordinary expression lowering lower like any statement's.
+  Which fields the entry initializes is THIR's partition: a field left to
+  the body is default-constructed by the C++ skeleton first, which no fact
+  publishes, so such a constructor is refused ("incomplete constructor
+  initialization"). THIR's list order must be the layout's ("constructor
+  field order").
+- **Base inits and inherited constructors.** A base initializer is a call of
+  the base's constructor whose `Own[B]` result initializes exactly the
+  fields B declares and inherits in the record (`(*self) = call B.__init__
+  [initializes=B] [initialize]`, `MIRCall.initializes`). One helper,
+  `nodes.initialized_places`, names those places, on the resolved call
+  (`MIRPresentCall.initializes`, apart from `writes`, which may replace);
+  the validator, the initialization analysis, the storage events (one
+  INITIALIZE per storage-owning base field) and the dependency fill read
+  it. Such a call writes projected places only: it kills no liveness and
+  clears no other entry of the record. A record with no `__init__` of its
+  own constructs through its base's constructor the same way, into a fresh
+  slot. A base the source never calls is what C++ runs for it: when the
+  base's constructor binds with zero arguments, C++ calls it, so it is that
+  call (a constructor whose parameters all have defaults is then refused
+  like any call omitting a default, "incomplete constructor arguments":
+  MIR binds no default argument); otherwise C++ runs the empty default
+  constructor, admitted only for a fieldless base, which it builds empty.
+- **Initialization.** One place-keyed analysis (`validate._Initialization`)
+  keeps each slot's storage and each field of a destination uninitialized,
+  initialized or maybe. A read needs initialized; an INITIALIZE needs
+  uninitialized on every path; a write under a field reads the field; a use
+  of `self` other than through a field reads the record whole; any write
+  of a field initialized on some path only is refused. A move, a call
+  handed an argument's storage, and a sum or aggregate construction taking
+  a storage-owning operand clear it (one operand moved twice is a read
+  after move); a region exit ends the storage it owns. A base call
+  initializing no field reads nothing. A field's state decides its write's mode and readonly
+  check (`validate.field_write`): an initialization of a `readonly` field
+  is allowed, a replacement is not, and only a replacement needs a movable
+  record. Use after move through another holder is MIR's own MOVE storage
+  event under retention, not sema's move rule
+  (`BUGS.md#own-move-loop-carried-alias`): a moved named argument is
+  admitted at an `Own[...]` parameter (the summary keeps the callee's
+  stores into it private), and a holder of the moved storage live after the
+  call is a retention conflict.
+- **Callers.** A construction binds its arguments with the one binder
+  (`lower.argument`) and applies the constructor's summary (`call_value`);
+  its raise is the summary's. The workspace schedules constructors as
+  callees (`mir_workspace.callable_identity`), function-shaped (no owner;
+  a THIR-published callee is filed). `MIRDefinitions` keeps only record
+  certificates and each record's callee.
 
 Still separate, with its reason: `MIRUnionExtract` (TODO.md "[MIR] FIRST",
 step (1)).

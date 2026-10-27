@@ -9,7 +9,7 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRBranch, MIRFunction, MIRNotCovered, MIRReturn, MIRSlotKind
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_lower import lower

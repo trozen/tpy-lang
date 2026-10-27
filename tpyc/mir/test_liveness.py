@@ -6,14 +6,14 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
-from ..typesys import BOOL, INT32, OptionalType, TupleType, UnionType, VoidType
+from ..typesys import BOOL, INT32, OptionalType, OwnType, TupleType, UnionType, VoidType
 from .liveness import MIRPoint, _liveness, dump_liveness
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBranch, MIRConstant, MIRFunction, MIRGoto,
-    MIRIsAlternative, MIRMemberInit, MIRMemberInits, MIRPlace, MIRRead, MIRReceiverInit, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRBorrow, MIRIsAlternative, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
     MIRUnionExtract, MIRRvalue, MIRAlias, MIRCopy, MIRMove, MIRConstruct, MIRGlobalId,
-    MIRStorageDuration, MIRWrap,
+    MIRStorageDuration, MIRWrap, MIRCall, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -22,7 +22,7 @@ from .test_iteration import fixture as iteration_fixture
 from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
 from .testutil import (
-    compiled_definitions, hand_record, bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape,
+    compiled_definitions, construction, hand_record, bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape,
     owned_shape, tuple_shape, union_shape, prepared,
 )
 
@@ -148,16 +148,20 @@ def test_scalar_payload_alias_keeps_union_live_until_value_read() -> None:
     assert result.live_in[D] == set()
 
 
-def test_receiver_initialization_is_an_entry_use_not_a_loop_use() -> None:
-    slots = (MIRSlot(P, borrowed_shape(CELL), MIRSlotKind.PARAMETER),
-             MIRSlot(X, leaf_shape(INT32), MIRSlotKind.PARAMETER))
-    fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (), MIRReturn()),), A,
-                     records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
-                     receiver_init=MIRReceiverInit(P, MIRMemberInits((MIRMemberInit(MIRRead(MIRPlace(X))),))),
-                     kind=MIRBodyKind.CONSTRUCTOR))
+def test_constructor_initialization_is_an_ordinary_use() -> None:
+    # A constructor's field initialization is a statement: what it reads is
+    # live at entry like any operand, and the record it builds is its own.
+    slots = (MIRSlot(X, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+             MIRSlot(Y, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY,
+                     destination=True),
+             MIRSlot(P, borrowed_shape(CELL), MIRSlotKind.LOCAL, "self", bound_storage=Y))
+    fn = bind_parameters(MIRFunction(B, OwnType(CELL), slots, (MIRBlock(A, (
+        MIRStorageInit(MIRPlace(Y), None, None), MIRAssign(MIRPlace(P), MIRBorrow(MIRPlace(Y))),
+        MIRAssign(MIRPlace(P, (MIRDeref(), FIELD)), MIRRead(MIRPlace(X)))), MIRReturn(Y)),), A,
+        records=(MIRRecordLayout(CELL, (FIELD,), True, True),), kind=MIRBodyKind.CONSTRUCTOR))
     result = prepared(fn).liveness
-    assert result.live_in[A] == set()
-    assert result.entry_live == {P, X}
+    assert result.entry_live == {X}
+    assert result.points[MIRPoint(A, 2)] == {P, X, Y}
 
 
 def test_invalid_mir_is_not_an_empty_success() -> None:
@@ -177,14 +181,15 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
     target = MIRSlot(Z, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY)
     records = (MIRRecordLayout(CELL, (FIELD,), True, True),)
     expected = {X}
-    value = MIRConstruct((X,))
+    value = construction(records[0], X)
     prefix = ()
     if operation == "copy":
         value = MIRCopy(MIRPlace(P, (MIRDeref(),)))
         expected = {P}
     elif operation == "move":
         ref = replace(target, id=P)
-        prefix = (MIRAssign(MIRPlace(P), MIRConstruct((X,))),)
+        prefix = (MIRAssign(MIRPlace(P), construction(records[0], X),
+                            storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),)
         value, expected = MIRMove(P), {P}
     elif operation in ("tuple", "tuple_copy", "tuple_element"):
         typ = TupleType((CELL, INT32))
@@ -216,7 +221,9 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
         value, expected = ((MIRWrap(0, MIRPlace(P)), {P}) if operation == "union"
                            else (MIRCopy(MIRPlace(Y)), {Y}))
     fn = bind_parameters(MIRFunction(B, VoidType(), (ref, scalar, other, target),
-                     (MIRBlock(A, prefix + (MIRAssign(MIRPlace(Z), value),), MIRReturn()),), A, records=records))
+                     (MIRBlock(A, prefix + (MIRAssign(MIRPlace(Z), value, storage_write=(
+                         MIRStorageWrite(MIRStorageWriteMode.INITIALIZE) if isinstance(value, MIRCall) else None)),),
+                               MIRReturn()),), A, records=records))
     result = prepared(fn).liveness
     assert result.points[MIRPoint(A, len(prefix))] == expected
     assert result.points[MIRPoint(A, len(prefix) + 1)] == set()

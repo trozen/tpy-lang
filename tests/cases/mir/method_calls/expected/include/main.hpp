@@ -316,11 +316,11 @@ struct Tally {
     // n: int32
     int32_t n;
 
-    // def __init__(self, n: int32) -> None:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+    // def __init__(self, n: int32) -> None:  # tpyc: mir(covered)
     Tally() = default;
     explicit Tally(int32_t n);
 
-    // def bump(self) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary record: constructor body effects$/)
+    // def bump(self) -> None:  # tpyc: mir(covered) mir_summary(known)
     void bump();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
@@ -739,16 +739,15 @@ inline bool Pair::__bool__() const {
     return (this->a != 0);
 }
 
-// # kept refusal: a constructor tail calling a method on self -- the record's definition
-// # refuses a constructor with body effects, so the method's summary stays opaque
-// def __init__(self, n: int32) -> None:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+// # a constructor tail calling a method on self, after every field is initialized
+// def __init__(self, n: int32) -> None:  # tpyc: mir(covered)
 //     self.n = n
 //     self.bump()
 inline Tally::Tally(int32_t n) : n(n) {
     this->bump();
 }
 
-// def bump(self) -> None:  # tpyc: mir(covered) mir_summary(opaque /^summary record: constructor body effects$/)
+// def bump(self) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     self.n += 1
 inline void Tally::bump() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);

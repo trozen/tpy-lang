@@ -146,6 +146,128 @@ class VSub(VBase):
         self.size += 2
 
 
+class Quiet:
+    def __init__(self, x: int32) -> None:
+        pass
+
+
+class OverQuiet(Quiet):
+    k: int32
+
+    # skipped base: a fieldless base whose constructor needs an argument is built empty
+    def __init__(self) -> None:  # tpyc: mir(covered) warning(/does not call 'super\(\).__init__/)
+        self.k = 1
+
+
+class Counted:
+    n: int32
+
+    def __init__(self) -> None:
+        self.n = 42
+
+
+class OverCounted(Counted):
+    k: int32
+
+    # skipped base: a base constructor taking no argument is the call C++ makes
+    def __init__(self) -> None:  # tpyc: mir(covered) warning(/does not call 'super\(\).__init__/)
+        self.k = 1
+
+
+class Defaulted:
+    def __init__(self, n: int32 = 7) -> None:
+        pass
+
+
+class OverDefaulted(Defaulted):
+    k: int32
+
+    # skipped base: a defaulted constructor runs too, a call MIR binds no default argument of
+    def __init__(self) -> None:  # tpyc: mir(uncovered /^incomplete constructor arguments$/) warning(/does not call 'super\(\).__init__/)
+        self.k = 1
+
+
+class VA:
+    a: StrView
+
+    def __init__(self, a: StrView) -> None:
+        self.a = a
+
+
+class VB:
+    b: StrView
+
+    def __init__(self, b: StrView) -> None:
+        self.b = b
+
+
+class VAB(VA, VB):
+    # two struct bases each storing a view: the second base call keeps the first base's loan
+    def __init__(self, a: StrView, b: StrView) -> None:  # tpyc: mir(covered)
+        VA.__init__(self, a)  # tpyc: mir_borrows(self.a, a)
+        VB.__init__(self, b)  # tpyc: mir_borrows(self.a, a) mir_borrows(self.b, b)
+
+
+class Named:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+
+class VC:
+    c: int32
+
+    def __init__(self, nm: Named) -> None:
+        self.c = 1
+        nm.name = "replaced"
+
+
+class VAC(VA, VC):
+    # the first base keeps a view the second base's call may replace: a no-alias obligation
+    def __init__(self, a: StrView, nm: Named) -> None:  # tpyc: mir(conflict /alias_obligation/)
+        VA.__init__(self, a)
+        VC.__init__(self, nm)
+
+
+class Chain:
+    n: int32
+
+    # recursive constructor: its own call has no summary yet
+    def __init__(self, n: int32) -> None:  # tpyc: mir(uncovered /^call needs finalized known summary$/) mir_summary(opaque /^recursive or recursion-dependent call$/)
+        self.n = n
+        if n > 0:
+            rest = Chain(n - 1)
+            self.n += rest.n
+
+
+# free function: skipped bases, built empty and called
+def skipped_bases() -> int32:  # tpyc: mir(covered)
+    q = OverQuiet()
+    c = OverCounted()
+    # CPython never runs Counted.__init__ here (the warning), so c.n is not read
+    return q.k + c.k
+
+
+# free function: both bases' loans, from the caller's arguments
+def two_views(a: str, b: str) -> int32:  # tpyc: mir(covered)
+    v = VAB(a, b)
+    return len(v.a) + len(v.b)  # tpyc: mir_borrows(v.a, a) mir_borrows(v.b, b)
+
+
+# free function: the second base replaces nm.name, which the first base's view holds
+# (BUGS.md#record-view-member-source-replaced)
+def view_replaced(k: int32) -> int32:  # tpyc: mir(conflict /replacement/)
+    nm = Named("a" * (40 + k))
+    v = VAC(nm.name, nm)  # tpyc: warning(/argument 'nm.name' is what 'VAC' modifies/)
+    return len(v.a)
+
+
+# free function: a caller of the recursive constructor has no summary to apply
+def make_chain(n: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+    return Chain(n).n
+
+
 # free function: a subclass parameter, base methods applied through it
 def use_sub(s: Sub) -> int32:  # tpyc: mir(covered)
     s.bump()
@@ -270,6 +392,12 @@ def main() -> None:  # tpyc: mir(uncovered /^order-sensitive eager operands$/)
     print("payload", upcast_payload(s))
     # the upcast bumped the Sub itself: read after the calls, not inside their print
     print("after", s.n)
+    print("skipped", skipped_bases())
+    od = OverDefaulted()
+    print("defaulted", od.k)
+    print("two_views", two_views("aa", "bbb"))
+    print("view_replaced", view_replaced(1))
+    print("chain", make_chain(3))
 
 
 main()

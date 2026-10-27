@@ -112,8 +112,8 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
                 transfers.append((stmt.value.source.root, point))
                 reads = tuple(r for r in reads if r != stmt.value.source.root)
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct):
-                # Owned temporary record storage a construct names as an
-                # operand is moved into the built record or element: a
+                # Owned temporary storage a construct names as an operand is
+                # moved into the built tuple member or container element: a
                 # transfer, which leaves the destination's own slot to classify.
                 moved = {f for f in stmt.value.fields if f in records and slots[f].kind is MIRSlotKind.TEMPORARY}
                 transfers.extend((f, point) for f in moved)
@@ -228,8 +228,11 @@ def _transfers(body: MIRFunction, dependencies: MIRDependencies,
         elif not slots[store.key.root].shape.is_storage:
             return "summary store under an unmodeled holder"
         else:
-            # What a body stores in an `Own[R]` parameter's object, the caller
-            # never reads again: its argument is a temporary of the call.
+            # What a body stores in an `Own[R]` parameter's object, no holder
+            # of the caller's reads after the call: the argument is fresh
+            # storage of the full expression, or a name the call moves, whose
+            # MOVE storage event makes a holder of it live after the call a
+            # retention conflict at the caller.
             continue
         path = summary_path(store.key.projections)
         for ref in store.loans:
@@ -312,10 +315,12 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
         present = MappingProxyType({})
         found = prepared
     callee = declaration.resolved_callee
-    # A method body binds its receiver as parameter 0, and only a method's callee names an owner.
+    # A method body binds its receiver as parameter 0, and only a method's
+    # callee names an owner; a constructor is function-shaped.
     method = declaration.receiver is not None
     twin = declaration.access_twin
-    if (callee is None or body.kind is not (MIRBodyKind.METHOD if method else MIRBodyKind.FREE_FUNCTION)
+    if (callee is None or body.kind not in ((MIRBodyKind.METHOD,) if method
+                                            else (MIRBodyKind.FREE_FUNCTION, MIRBodyKind.CONSTRUCTOR))
             or (callee.identity.owner is not None) is not method
             or twin and not (method and callee.signature.result_follows_receiver and callee.signature.passings)
             or body.borrowed_result != call_result(callee, method and declaration.receiver.readonly)
@@ -576,6 +581,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction, prepared
                 case MIRAlias():
                     if not target.shape.borrow_holder:
                         return MIRSummaryResult.opaque("summary unsupported alias")
+                case MIRMove() if leaf_place:
+                    # A by-value owned leaf moved into a field's buffer, as a copy is.
+                    pass
                 case MIRConstruct() | MIRMove() if own_storage or elements or private_target or member:
                     # Building the body's own storage, or handing it to an
                     # element or a member (which takes the moved value; the

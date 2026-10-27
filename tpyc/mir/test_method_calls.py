@@ -19,7 +19,7 @@ from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, call_return_problem
 from .presence import present_call
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRBodyId, MIRCall, MIRCallStmt, MIRFunction, MIRNotCovered, MIRPlace, MIRSlot, MIRSlotId,
     MIRSlotKind,

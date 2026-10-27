@@ -387,7 +387,7 @@ def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]
         if thir is None:
             thir = (ctx.thir_top_level if source.kind is MIRBodyKind.MODULE
                     else ctx.thir_functions.get(source.func))
-        calls = obligation_calls(thir, callees) if thir is not None and callees else 0
+        calls = obligation_calls(thir, callees, definitions) if thir is not None and callees else 0
         resolved = (verdict is not None and verdict.analyses is not None
                     and not isinstance(verdict.analyses.retention, MIRNotCovered))
         return {"obligation_calls": calls, "undischarged_obligation_calls": 0 if resolved else calls}

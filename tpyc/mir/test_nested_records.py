@@ -1,10 +1,12 @@
-"""MIR over records with inline record fields: a definition composing its
-member records' verified definitions (and its container fields' elements),
-the member initializer's copy, move and composed construct, the record
+"""MIR over records with inline record fields: a certificate reading its
+member records' verified certificates (and its container fields' elements),
+the member initializer's copy, move and constructor call, the record
 copy's exceptional exit read from the whole layout, `Own[R]` parameters as
 the body's owned storage, and callers constructing such records."""
 
+import copy
 from dataclasses import dataclass, replace
+from types import MappingProxyType
 
 import pytest
 
@@ -19,25 +21,23 @@ from .call_contract import (
     MIRSummaryState, crossed_records, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
-from .coverage import MIRUnsupported
-from .definitions import (
-    MIRComposedConstruct, MIRConstructorDefinition, MIRDefinitions, constructor_initialization,
-    layout_copy_may_raise,
-)
+from .definitions import MIRConstructorDefinition, MIRDefinitions, layout_copy_may_raise
 from .dependencies import MIRReferent
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
-    MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite,
+    MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite,
     MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerStructure, MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRValidationError
 from .retention import analyze_retention
 from .storage import analyze_storage
+from .test_constructors import built as built_record, field_write, rewritten, statements
 from .testutil import (
-    Reference, bind_parameters, Redeclared, borrowed_shape, bound, execute, leaf_shape, repass, reslot, prepared,
+    construct, bind_parameters, constructor_summaries, Redeclared, borrowed_shape, bound, leaf_shape, repass, reslot,
+    prepared,
 )
 from .prepare import validate_function
 from .reach import reaches, storage_destination, storage_exclusions
@@ -724,11 +724,6 @@ def _definition(program: _Program, name: str) -> MIRConstructorDefinition | str:
     return program.definitions.records[_record(program, name)]
 
 
-def _fields(initializers) -> list[tuple[str, object, bool, bool]]:
-    return [(i.field.id.name, _fields(i.source.initializers) if isinstance(i.source, MIRComposedConstruct)
-             else i.source, i.move, i.may_raise) for i in initializers]
-
-
 def _lowered(program: _Program, name: str) -> MIRFunction:
     fn = program.verdicts[name].function
     assert isinstance(fn, MIRFunction), program.verdicts[name].reason
@@ -741,21 +736,37 @@ def _refusal(program: _Program, name: str) -> str:
     return verdict.reason
 
 
-def _initialization_refusal(ctor: th.THIRConstructor, definitions) -> str:
-    try:
-        constructor_initialization(ctor, definitions)
-    except MIRUnsupported as failure:
-        return failure.reason
-    raise AssertionError("initialized")
+def _forged(program: _Program, records) -> MIRDefinitions:
+    """The verified definitions with their certificates replaced by `records`."""
+    definitions = copy.copy(program.definitions)
+    object.__setattr__(definitions, "records", MappingProxyType(dict(records)))
+    return definitions
 
 
-# --- the definitions chain -----------------------------------------------------------
+def _built(program: _Program, ctor: th.THIRConstructor, records=None) -> MIRFunction | MIRNotCovered:
+    """`ctor`'s body, lowered over the verified definitions or forged `records`."""
+    definitions = program.definitions if records is None else _forged(program, records)
+    # The calls it makes read the verified constructors' summaries: a forged
+    # certificate is this body's alone.
+    return lower_constructor(ctor, MIRBodyId("main", f"{ctor.record_name}.__init__"), definitions=definitions,
+                             summaries=constructor_summaries(program.definitions))
+
+
+def _initialization_refusal(program: _Program, ctor: th.THIRConstructor, records=None) -> str:
+    built = _built(program, ctor, records)
+    assert isinstance(built, MIRNotCovered), dump_function(built)
+    return built.reason
+
+
+def _member_write(program: _Program, fn: MIRFunction | str, name: str) -> MIRAssign:
+    return field_write(_lowered(program, f"{fn}.__init__") if isinstance(fn, str) else fn, name)
+
+
+# --- certificates --------------------------------------------------------------------
 
 @pytest.mark.parametrize("name,reason", [
     # A member with a custom special member: the outer storage runs it.
     ("HasHooked", "member definition: custom record special member"),
-    # A member whose constructor has effects has no verified definition.
-    ("HasEffect", "member definition: constructor body effects"),
     # Record kinds MIR models no layout for: a value type, an exception.
     ("HasMeters", "member definition: missing constructor definition"),
     ("HasErr", "member definition: missing constructor definition"),
@@ -766,8 +777,15 @@ def test_a_definition_composes_its_members(program: _Program, name: str, reason:
     assert _definition(program, name) == reason
 
 
+def test_a_member_constructor_with_effects_is_a_call_of_no_known_summary(program: _Program) -> None:
+    # The record's storage verifies; its constructor's body calls `Effect(n)`,
+    # whose summary its print leaves unknown.
+    assert isinstance(_definition(program, "HasEffect"), MIRConstructorDefinition)
+    assert _refusal(program, "HasEffect.__init__") == "call needs finalized known summary"
+
+
 def test_a_missing_member_definition_refuses_by_member(program: _Program) -> None:
-    assert _initialization_refusal(program.constructors["Built"], {}) == (
+    assert _initialization_refusal(program, program.constructors["Built"], {}) == (
         "member definition: missing constructor definition")
 
 
@@ -782,14 +800,17 @@ def test_a_cyclic_member_refuses_neutrally(program: _Program) -> None:
 
 # --- member initializers -------------------------------------------------------------
 
+def _mode(write: MIRAssign) -> tuple[str, bool]:
+    return type(write.value).__name__, getattr(write.value, "may_raise", False)
+
+
 def test_member_initializer_modes(program: _Program) -> None:
     # A record parameter lent readonly is copied (its str makes the copy
     # raise); an `Own[R]` parameter is moved.
-    assert _fields(_definition(program, "Line").initializers) == [
-        ("a", "a", False, True), ("b", "b", True, False)]
-    assert _fields(_definition(program, "Copied").initializers) == [("a", "a", False, True)]
+    assert [_mode(_member_write(program, "Line", n)) for n in ("a", "b")] == [("MIRCopy", True), ("MIRMove", False)]
+    assert _mode(_member_write(program, "Copied", "a")) == ("MIRCopy", True)
     # An all-scalar member copies with no allocation.
-    assert _fields(_definition(program, "FlatHolder").initializers) == [("f", "f", False, False)]
+    assert _mode(_member_write(program, "FlatHolder", "f")) == ("MIRCopy", False)
 
 
 def test_an_explicit_copy_is_the_same_member_copy(program: _Program) -> None:
@@ -797,70 +818,78 @@ def test_an_explicit_copy_is_the_same_member_copy(program: _Program) -> None:
     mil = ctor.mil_inits[0]
     explicit = replace(ctor, mil_inits=(replace(mil, value=th.THIRCopy(
         mil.value.result_type, value=mil.value, cpp_type="Point", form=th.Form.STORAGE)),))
-    assert _fields(constructor_initialization(explicit, program.definitions.records).initializers) == [
-        ("a", "a", False, True)]
+    fn = _built(program, explicit)
+    assert isinstance(fn, MIRFunction), fn.reason
+    assert _mode(field_write(fn, "a")) == ("MIRCopy", True)
+
+
+def _arguments(fn: MIRFunction, arguments: tuple[MIRSlotId, ...]) -> list[object]:
+    """What each of `arguments` is: the constant a temporary holds, else
+    the name of the slot it reads or borrows."""
+    names = {s.id: s.name for s in fn.slots}
+    values = {s.target.root: s.value for s in statements(fn)
+              if isinstance(s, MIRAssign) and not s.target.projections}
+    found = []
+    for arg in arguments:
+        value = values.get(arg)
+        source = getattr(value, "source", arg)
+        found.append(value if isinstance(value, MIRConstant) else
+                     names[source.root if isinstance(source, MIRPlace) else source])
+    return found
 
 
 def test_composed_members(program: _Program) -> None:
-    # The member's own definition composed with one leg per argument.
-    assert _fields(_definition(program, "Built").initializers) == [
-        ("p", [("x", "x", False, False), ("name", "name", False, True)], False, False),
-        ("n", "x", False, False)]
-    # A literal leg takes the member's mode.
-    assert _fields(_definition(program, "Literal").initializers) == [
-        ("p", [("x", MIRConstant(3), False, False), ("name", "name", False, True)], False, False)]
-    # One parameter in two borrowed legs: two copies.
-    assert _fields(_definition(program, "Twice").initializers) == [
-        ("names", [("first", "s", False, True), ("second", "s", False, True)], False, False)]
+    # The member is built in place by its own constructor's call, its
+    # arguments the constructor's parameters or literals.
+    built = _lowered(program, "Built.__init__")
+    p = field_write(built, "p")
+    assert isinstance(p.value, MIRCall) and _arguments(built, p.value.arguments) == ["x", "name"]
+    assert p.storage_write == MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+    literal = _lowered(program, "Literal.__init__")
+    assert _arguments(literal, field_write(literal, "p").value.arguments) == [MIRConstant(3), "name"]
+    # One parameter lent to both of the member constructor's parameters.
+    twice = _lowered(program, "Twice.__init__")
+    assert _arguments(twice, field_write(twice, "names").value.arguments) == ["s", "s"]
 
 
-@pytest.mark.parametrize("name,reason", [
-    # A call result: no parameter or literal to build from.
-    ("Called", "constructor initializer needs parameter or literal"),
-    # A record argument to the member's constructor: a lend no leg models.
-    ("Nested", "member argument needs matching parameter or literal"),
+@pytest.mark.parametrize("name", [
+    # A call result: an ordinary owned value written into the member.
+    "Called",
+    # A record argument to the member's constructor: lent as at any call.
+    "Nested",
+])
+def test_member_initializers_are_ordinary_values(program: _Program, name: str) -> None:
+    assert program.verdicts[f"{name}.__init__"].status in _COVERED
+    assert isinstance(_definition(program, name), MIRConstructorDefinition)
+
+
+def test_a_field_written_only_by_the_body_refuses(program: _Program) -> None:
     # A record lent mutably (MUT_REF) is written through by the body; the
     # member assigned from it is no member initializer.
-    ("Mutated", "incomplete constructor initialization"),
-])
-def test_member_initializer_refusals(program: _Program, name: str, reason: str) -> None:
-    assert _definition(program, name) == reason
+    assert _refusal(program, "Mutated.__init__") == "incomplete constructor initialization"
 
 
 def test_a_container_literal_member_takes_leaf_constants(program: _Program) -> None:
-    # `self.items = [1, n]` is a literal over a parameter and a constant, as
-    # a composed record member's field takes either: the constant is an
-    # entry operand of the constructor body and an operand the caller
-    # materializes.
+    # `self.items = [1, n]` is a literal over a parameter and a constant: the
+    # body builds it as any field write does, over slots.
     definition = _definition(program, "Nums")
     assert isinstance(definition, MIRConstructorDefinition)
-    assert [init.source for init in definition.initializers] == [(MIRConstant(1), "n"), (MIRConstant(2), "n")]
     body = _lowered(program, "Nums.__init__")
-    items, table = body.receiver_init.members.fields
-    assert isinstance(items.value, MIRConstruct) and items.value.fields[0] == MIRConstant(1)
+    items = field_write(body, "items")
+    assert isinstance(items.value, MIRConstruct) and all(isinstance(f, MIRSlotId) for f in items.value.fields)
+    assert _arguments(body, items.value.fields) == [MIRConstant(1), "n"]
+    # The caller calls the constructor: it builds no literal.
     caller = _lowered(program, "build_nums")
-    built = [stmt.value for b in caller.blocks for stmt in b.statements
-             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct)
-             and stmt.value.fields and all(isinstance(f, MIRSlotId) for f in stmt.value.fields)]
-    assert built, "the caller builds the literal over slots"
-    # A constant in a body statement's literal is no operand: only entry
-    # initialization has no slot to hold it.
-    stmt = next(stmt for b in caller.blocks for stmt in b.statements
-                if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) and len(stmt.value.fields) == 2
-                and stmt.value.may_raise)
-    forged = replace(stmt, value=replace(stmt.value, fields=(MIRConstant(1), stmt.value.fields[1])))
-    blocks = tuple(replace(b, statements=tuple(forged if s is stmt else s for s in b.statements))
-                   for b in caller.blocks)
+    assert not [s for s in statements(caller) if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)]
+    # A constant in a literal is no operand: a slot holds it.
+    forged = replace(items, value=replace(items.value, fields=(MIRConstant(1), items.value.fields[1])))
     with pytest.raises(MIRValidationError):
-        validate_function(replace(caller, blocks=blocks))
-    # An owned leaf's constant is the caller's no more than a record
-    # member's is (`_caller_operands`); the body still builds it at entry,
-    # as `self.s = "a"` does for a record's `str` field -- a constant lends
-    # nothing.
-    assert _definition(program, "Labels") == "constructor owned-leaf constant"
-    (names,) = _lowered(program, "Labels.__init__").receiver_init.members.fields
+        validate_function(rewritten(body, items, forged))
+    # An owned leaf's constant is built by the body as `self.s = "a"` builds
+    # a record's `str` field; a caller constructs through the constructor.
+    assert isinstance(_definition(program, "Labels"), MIRConstructorDefinition)
+    names = field_write(_lowered(program, "Labels.__init__"), "names")
     assert isinstance(names.value, MIRConstruct) and len(names.value.fields) == 1
-    assert isinstance(names.value.fields[0], MIRConstant)
 
 
 def test_a_constructor_writes_through_a_mutably_lent_aggregate(program: _Program) -> None:
@@ -885,34 +914,24 @@ def test_a_constructor_writes_through_a_mutably_lent_aggregate(program: _Program
     for name in ("RetainsRackElement", "RetainsListElement"):
         verdict = program.verdicts[f"{name}.__init__"]
         assert verdict.status in _COVERED and verdict.conflicts == ("replacement",), verdict.describe()
-    # A caller binds only a parameter its construct models: the caller rule
-    # is stricter than the constructor body's.
+    # A caller applies the constructor's summary as for any call: its write
+    # through the lent argument is the call's.
     for name in ("build_writes_point", "build_writes_list"):
-        assert _refusal(program, name) == "constructor parameter type"
+        verdict = program.verdicts[name]
+        assert verdict.status in _COVERED and verdict.conflicts == (), verdict.describe()
 
 
-@pytest.mark.parametrize("name,reason", [
-    # An `Own[str]` parameter passed to the member's `str` parameter: a leg
-    # binds a parameter at its own passing, so none models the lend.
-    ("OwnLeg", "member argument needs matching parameter or literal"),
-    # A member whose definition materializes an owned-leaf constant: a
-    # caller's construct has no operand for it.
-    ("Labeled", "constructor owned-leaf constant"),
-    ("HasLabeled", "member definition: constructor owned-leaf constant"),
-])
-def test_kept_composed_member_refusals(program: _Program, name: str, reason: str) -> None:
-    assert _definition(program, name) == reason
-
-
-@pytest.mark.parametrize("name,reason", [
-    ("OwnLeg.__init__", "member argument needs matching parameter or literal"),
-    ("own_leg", "member argument needs matching parameter or literal"),
-    ("HasLabeled.__init__", "member definition: constructor owned-leaf constant"),
-    ("has_labeled", "member definition: constructor owned-leaf constant"),
-])
-def test_kept_composed_member_refusals_reach_bodies(program: _Program, name: str, reason: str) -> None:
-    # The constructor body and its callers refuse with the definition.
-    assert _refusal(program, name) == reason
+def test_composed_member_shapes_lower(program: _Program) -> None:
+    # An `Own[str]` parameter lent to the member constructor's `str`
+    # parameter, and a member whose constructor materializes an owned-leaf
+    # constant: each body calls the member's constructor as any call.
+    for name in ("OwnLeg", "Labeled", "HasLabeled"):
+        assert isinstance(_definition(program, name), MIRConstructorDefinition)
+        assert program.verdicts[f"{name}.__init__"].status in _COVERED
+    assert program.verdicts["has_labeled"].status in _COVERED
+    # A caller handing its `Own[str]` name over refuses as at any call of a
+    # function taking one.
+    assert _refusal(program, "own_leg") == "unsupported owned-leaf expression"
 
 
 def _with_member_layout(program: _Program, name: str, **changes) -> dict[NominalType, object]:
@@ -926,26 +945,26 @@ def _with_member_layout(program: _Program, name: str, **changes) -> dict[Nominal
 def test_member_initializer_capability_refusals(program: _Program) -> None:
     # A lent member is copied and an `Own[R]` one moved: each needs the
     # member layout's capability.
-    assert _initialization_refusal(program.constructors["Copied"], _with_member_layout(
-        program, "Point", copyable=False)) == "constructor copies a noncopyable record"
-    assert _initialization_refusal(program.constructors["Line"], _with_member_layout(
-        program, "Point", movable=False)) == "constructor moves a nonmovable record"
-    # A member its own constructor builds is moved in too.
-    assert _initialization_refusal(program.constructors["Built"], _with_member_layout(
-        program, "Point", movable=False)) == "constructor moves a nonmovable record"
+    assert _initialization_refusal(program, program.constructors["Copied"], _with_member_layout(
+        program, "Point", copyable=False)) == "record is not copyable or copy form"
+    assert _initialization_refusal(program, program.constructors["Line"], _with_member_layout(
+        program, "Point", movable=False)) == "move needs fixed movable owned local"
+    # A member its own constructor builds is built in place: no move.
+    built = _built(program, program.constructors["Built"], _with_member_layout(program, "Point", movable=False))
+    assert isinstance(built, MIRFunction), built.reason
     # An explicit copy into a member yields storage; THIR spells no other form.
     ctor = program.constructors["Copied"]
     mil = ctor.mil_inits[0]
     borrowed = replace(ctor, mil_inits=(replace(mil, value=th.THIRCopy(
         mil.value.result_type, value=mil.value, cpp_type="Point", form=th.Form.BORROW)),))
-    assert _initialization_refusal(borrowed, program.definitions.records) == "constructor copy form"
+    assert _initialization_refusal(program, borrowed) == "record is not copyable or copy form"
 
 
 def test_a_borrowed_parameter_is_never_moved(program: _Program) -> None:
     ctor = program.constructors["Line"]
     a, b, *_ = ctor.mil_inits
     moved = replace(ctor, mil_inits=(replace(a, value=th.THIRMove(a.value.result_type, value=a.value)), b))
-    assert _initialization_refusal(moved, program.definitions.records) == "constructor move needs an owned parameter"
+    assert _initialization_refusal(program, moved) == "move needs fixed movable owned local"
 
 
 # --- record copies may raise ---------------------------------------------------------
@@ -987,29 +1006,37 @@ def test_a_hooked_element_refuses_the_copy(program: _Program) -> None:
 
 # --- constructor bodies --------------------------------------------------------------
 
-@pytest.mark.parametrize("name,receiver,raises", [
-    # A composed member is initialized field by field, like the receiver.
-    ("Built", "({read %1, copy (*%2) may-raise}, read %1)", True),
+@pytest.mark.parametrize("name,copied,raises", [
+    # A member built by its own constructor is its call, written into the field.
+    ("Built", False, True),
     # One lent parameter read by both copies.
-    ("Twice", "({copy (*%1) may-raise, copy (*%1) may-raise})", True),
-    # A literal leg is the field's constant, a scalar's by value.
-    ("Literal", "({3, copy (*%1) may-raise})", True),
-    ("Corner", "({read %1, 5})", False),
-    # A move leg moves the parameter's own storage into the field.
-    ("MoveLeg", "({1, move %1})", False),
+    ("Twice", False, True),
+    ("Literal", False, True),
+    ("Corner", False, False),
+    # A moved argument moves the parameter's own storage into the call's argument.
+    ("MoveLeg", False, False),
     # A composed member of a composed member, and one building a container.
-    ("Deep", "({{7, copy (*%1) may-raise}, 7})", True),
-    ("HasListed", "({construct (%1, %1) may-raise, read %1})", True),
-    ("Copied", "(copy (*%1) may-raise)", True),
-    ("FlatHolder", "(copy (*%1))", False),
+    ("Deep", False, True),
+    ("HasListed", False, True),
+    ("Copied", True, True),
+    ("FlatHolder", True, False),
 ])
-def test_composed_member_bodies_lower(program: _Program, name: str, receiver: str, raises: bool) -> None:
+def test_composed_member_bodies_lower(program: _Program, name: str, copied: bool, raises: bool) -> None:
     fn = _lowered(program, f"{name}.__init__")
-    assert f"initialize-receiver %0 {receiver}" in dump_function(fn)
+    first = _self_writes(fn)[0]
+    assert isinstance(first.value, MIRCopy if copied else MIRCall), dump_function(fn)
+    assert first.storage_write == MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
     # A raising field anywhere in the initialization makes the body raise.
     assert fn.exceptional_exits is raises
     with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
         validate_function(replace(fn, exceptional_exits=not raises))
+
+
+def _self_writes(fn: MIRFunction) -> list[MIRAssign]:
+    """The writes of a field through the constructor's `self`, in order."""
+    _, holder = built_record(fn)
+    return [s for s in statements(fn) if isinstance(s, MIRAssign) and s.target.root == holder.id
+            and s.target.projections[:1] == (MIRDeref(),)]
 
 
 def test_nested_entry_operands(program: _Program) -> None:
@@ -1017,94 +1044,39 @@ def test_nested_entry_operands(program: _Program) -> None:
     s, = (slot.id for slot in fn.slots if slot.name == "s")
     # The parameter a nested field copies from is live at entry.
     assert s in prepared(fn).liveness.entry_live
-    corner = _lowered(program, "Corner.__init__")
+    # Lowered over the summaries the interpreter runs the bodies of.
+    corner = _built(program, program.constructors["Corner"])
     flat = _record(program, "Flat")
-    heap = {1: {}}
-    # Entry initialization builds the member's storage in place.
-    execute(corner, Reference(1), 4, heap=heap)
+    heap = {}
+    # The member's storage is built in place.
+    construct(corner, 1, 4, heap=heap)
     assert heap[1] == {MIRFieldId(_record(program, "Corner"), "f"): {
         MIRFieldId(flat, "x"): 4, MIRFieldId(flat, "y"): 5}}
 
 
-def _receiver_member(fn: MIRFunction, index: int, value: object) -> MIRFunction:
-    init = fn.receiver_init
-    fields = list(init.members.fields)
-    fields[index] = replace(fields[index], value=value)
-    return replace(fn, receiver_init=replace(init, members=MIRMemberInits(tuple(fields))))
-
-
-def _nested_member(fn: MIRFunction, path: tuple[int, ...], value: object) -> MIRFunction:
-    """`fn` with the member value at `path` (outer index, then one index
-    per nested level) replaced, every enclosing level kept."""
-    def change(inits: MIRMemberInits, path: tuple[int, ...]) -> MIRMemberInits:
-        fields = list(inits.fields)
-        index, *rest = path
-        fields[index] = replace(fields[index], value=value if not rest else change(fields[index].value, tuple(rest)))
-        return MIRMemberInits(tuple(fields))
-    return replace(fn, receiver_init=replace(fn.receiver_init, members=change(fn.receiver_init.members, path)))
-
-
-def _member_value(fn: MIRFunction, path: tuple[int, ...]) -> object:
-    value = fn.receiver_init.members
-    for index in path:
-        value = value.fields[index].value
-    return value
-
-
-def test_receiver_record_member_validation(program: _Program) -> None:
+def test_constructor_record_member_validation(program: _Program) -> None:
     built = _lowered(program, "Built.__init__")
-    nested = _member_value(built, (0,))
-    assert isinstance(nested, MIRMemberInits)
-    # One initializer per field of the member's layout.
-    with pytest.raises(MIRValidationError, match="incomplete receiver initialization"):
-        validate_function(_receiver_member(built, 0, MIRMemberInits(nested.fields[:1])))
-    # The member's exit fact is its fields' copies' own.
-    copy = _member_value(built, (0, 1))
-    with pytest.raises(MIRValidationError, match="receiver initializer exit fact mismatch"):
-        validate_function(_nested_member(built, (0, 1), replace(copy, may_raise=False)))
-    # Each nested field follows its own field's rules: a scalar by value,
-    # a lent owned leaf copied, never moved out of the caller's storage.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer$"):
-        validate_function(_nested_member(built, (0, 0), MIRCopy(_member_value(built, (0, 0)).source)))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(_nested_member(built, (0, 1), MIRMove(copy.source.root)))
-    # A constant takes its field's type.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer constant"):
-        validate_function(_nested_member(_lowered(program, "Literal.__init__"), (0, 0), MIRConstant("3")))
-    # Only a record field is initialized field by field.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer$"):
-        validate_function(_receiver_member(built, 1, nested))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer$"):
-        validate_function(_nested_member(built, (0, 0), nested))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer$"):
-        validate_function(_nested_member(built, (0, 1), nested))
-    deep = _lowered(program, "Deep.__init__")
-    # Two levels down: the rules recurse into the member's own layout.
-    deep_copy = _member_value(deep, (0, 0, 1))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(_nested_member(deep, (0, 0, 1), MIRMove(deep_copy.source.root)))
-    with pytest.raises(MIRValidationError, match="receiver initializer exit fact mismatch"):
-        validate_function(_nested_member(deep, (0, 0, 1), replace(deep_copy, may_raise=False)))
-    # A move leg moves the body's own storage; a constant there is
-    # materialized, which may raise where the move does not.
-    move_leg = _lowered(program, "MoveLeg.__init__")
-    with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
-        validate_function(_nested_member(move_leg, (0, 1), MIRConstant("n")))
-    listed = _lowered(program, "HasListed.__init__")
-    # A nested container literal allocates.
-    literal = _member_value(listed, (0, 0))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer literal"):
-        validate_function(_nested_member(listed, (0, 0), replace(literal, may_raise=False)))
-    copied = _lowered(program, "Copied.__init__")
-    # A lent record is copied, never moved out of the caller's storage.
-    record_copy = _member_value(copied, (0,))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(_receiver_member(copied, 0, MIRMove(record_copy.source.root)))
-    with pytest.raises(MIRValidationError, match="receiver initializer exit fact mismatch"):
-        validate_function(_receiver_member(copied, 0, replace(record_copy, may_raise=False)))
+    member = _self_writes(built)[0]
+    assert isinstance(member.value, MIRCall)
+
+    def damaged(fn: MIRFunction, write: MIRAssign, value: object) -> MIRFunction:
+        return rewritten(fn, write, replace(write, value=value))
+    # One argument per parameter of the member's constructor.
+    with pytest.raises(MIRValidationError, match="call arity mismatch"):
+        validate_function(damaged(built, member, replace(member.value, arguments=member.value.arguments[:1])))
+    # The member's exit fact is its constructor's.
+    with pytest.raises(MIRValidationError, match="call exit fact mismatch"):
+        validate_function(damaged(built, member, replace(member.value, may_raise=False)))
     # A constant is no record source.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer"):
-        validate_function(_receiver_member(copied, 0, MIRConstant(1)))
+    with pytest.raises(MIRValidationError, match="record write needs a construct, move, copy or call"):
+        validate_function(damaged(built, member, MIRConstant(1)))
+    copied = _lowered(program, "Copied.__init__")
+    record_copy = _self_writes(copied)[0]
+    # A lent record is copied, never moved out of the caller's storage.
+    with pytest.raises(MIRValidationError, match="record move source or eligibility"):
+        validate_function(damaged(copied, record_copy, MIRMove(record_copy.value.source.root)))
+    with pytest.raises(MIRValidationError, match="record copy source or eligibility"):
+        validate_function(damaged(copied, record_copy, replace(record_copy.value, may_raise=False)))
 
 
 def test_a_record_field_needs_its_member_layout(program: _Program) -> None:
@@ -1121,19 +1093,14 @@ def test_record_member_initializer_capabilities(program: _Program) -> None:
     point = _record(program, "Point")
     copied = _lowered(program, "Copied.__init__")
     validate_function(copied)
-    # A member copy needs a copyable layout ...
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
+    # A member copy needs a copyable layout.
+    with pytest.raises(MIRValidationError, match="record copy source or eligibility"):
         validate_function(_with_layout(copied, point, copyable=False))
-    # ... and reads through a readonly lend (a parameter lent mutably, bound so).
-    lent = copied.slots[copied.receiver_init.members.fields[0].value.source.root.index]
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(bind_parameters(_with_slot(copied, lent, readonly=False)))
-    # A move out of the `Own[R]` parameter, and a member built field by
-    # field then moved in, need a movable layout.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
+    # A move out of the `Own[R]` parameter needs a movable layout ...
+    with pytest.raises(MIRValidationError, match="record move source or eligibility"):
         validate_function(_with_layout(_lowered(program, "Line.__init__"), point, movable=False))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer construct"):
-        validate_function(_with_layout(_lowered(program, "Built.__init__"), point, movable=False))
+    # ... while a member built by its own constructor is built in place: no move.
+    validate_function(_with_layout(_lowered(program, "Built.__init__"), point, movable=False))
 
 
 # --- `Own[R]` parameters -------------------------------------------------------------
@@ -1187,7 +1154,8 @@ def test_an_owned_record_return_moves_the_storage_itself(program: _Program) -> N
 
 def test_a_caller_hands_a_temporary_over(program: _Program) -> None:
     fn = _lowered(program, "hand_over")
-    call, = (s.value for b in fn.blocks for s in b.statements if isinstance(getattr(s, "value", None), MIRCall))
+    call, = (s.value for b in fn.blocks for s in b.statements if isinstance(getattr(s, "value", None), MIRCall)
+             and s.value.summary.callee.identity.name == "consume")
     argument = fn.slots[call.arguments[0].index]
     assert argument.shape.is_storage and argument.kind is MIRSlotKind.TEMPORARY
 
@@ -1215,19 +1183,22 @@ def test_owned_record_parameter_slot_negatives(program: _Program, change: dict, 
 def test_a_member_moves_from_the_parameter_storage(program: _Program) -> None:
     fn = _lowered(program, "Line.__init__")
     storage = _handed(fn)
-    assert "initialize-receiver %0 (copy (*%1) may-raise, move %2)" in dump_function(fn)
-    assert fn.receiver_init.members.fields[1].value == MIRMove(storage.id)
+    copy, move = _self_writes(fn)
+    assert isinstance(copy.value, MIRCopy) and copy.value.may_raise
+    assert move.value == MIRMove(storage.id)
     # The holder is a borrow: moving out of it would move the caller's storage.
     holder = fn.blocks[0].statements[0].target.root
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(_receiver_member(fn, 1, MIRMove(holder)))
+    with pytest.raises(MIRValidationError, match="record move source or eligibility"):
+        validate_function(rewritten(fn, move, replace(move, value=MIRMove(holder))))
 
 
 # --- callers' constructs -------------------------------------------------------------
 
 def _constructs(fn: MIRFunction) -> list[MIRAssign]:
+    """The constructions in `fn`: calls of a record's constructor into a slot."""
     return [s for b in fn.blocks for s in b.statements
-            if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)]
+            if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) and not s.target.projections
+            and getattr(s.value.summary.callee.identity, "name", None) == "__init__"]
 
 
 def _outer(fn: MIRFunction, typ: NominalType) -> MIRAssign:
@@ -1236,14 +1207,14 @@ def _outer(fn: MIRFunction, typ: NominalType) -> MIRAssign:
 
 
 def _operands(fn: MIRFunction, stmt: MIRAssign) -> list[tuple[str, str]]:
-    return [(fn.slots[o.index].shape.holding.name, fn.slots[o.index].kind.name) for o in stmt.value.fields]
+    return [(fn.slots[o.index].shape.holding.name, fn.slots[o.index].kind.name) for o in stmt.value.arguments]
 
 
 def test_a_lent_parameter_takes_a_holder(program: _Program) -> None:
     fn = _lowered(program, "lent_name")
     line = _outer(fn, _record(program, "Line"))
-    # The named record is copied through its own holder; a construct handed
-    # to the `Own[Point]` parameter is a temporary the member moves from.
+    # The named record is lent through its own holder (the constructor copies
+    # it); a construction handed to the `Own[Point]` parameter is a temporary.
     assert _operands(fn, line) == [("POINTER", "PARAMETER"), ("VALUE", "TEMPORARY")]
     # Copying Point (a str field) may raise.
     assert line.value.may_raise
@@ -1254,7 +1225,7 @@ def test_a_temporary_bound_to_a_lent_parameter_is_borrowed(program: _Program) ->
     line = _outer(fn, _record(program, "Line"))
     # C++ binds the temporary to `const Point&` and the member copies it.
     assert _operands(fn, line) == [("POINTER", "TEMPORARY"), ("VALUE", "TEMPORARY")]
-    holder = line.value.fields[0]
+    holder = line.value.arguments[0]
     borrow, = (s for s in fn.blocks[1].statements if s.target.root == holder)
     assert isinstance(borrow.value, MIRBorrow)
     assert fn.slots[borrow.value.source.root.index].shape.is_storage
@@ -1263,21 +1234,16 @@ def test_a_temporary_bound_to_a_lent_parameter_is_borrowed(program: _Program) ->
         ("POINTER", "PARAMETER"), ("VALUE", "TEMPORARY")]
 
 
-def test_a_composed_member_is_built_then_moved_in(program: _Program) -> None:
+def test_a_composed_record_is_one_call(program: _Program) -> None:
+    # The caller calls the outer constructor; the member is its body's call.
     fn = _lowered(program, "composed_callers")
-    point, built = _record(program, "Point"), _record(program, "Built")
-    member, literal = (s for s in _constructs(fn) if fn.slots[s.target.root.index].type == point)
-    # The member's construct carries its copy; the outer construct only moves.
-    assert member.value.may_raise and member.storage_write.mode is MIRStorageWriteMode.INITIALIZE
-    outer = _outer(fn, built)
-    assert outer.value.fields[0] == member.target.root and not outer.value.may_raise
-    names = _outer(fn, _record(program, "Names"))
-    # One lent operand read by both copies.
-    assert names.value.fields[0] == names.value.fields[1]
-    # A literal leg is a constant operand of the member's construct.
-    constant = literal.value.fields[0]
-    assert any(isinstance(s, MIRAssign) and s.target.root == constant and s.value == MIRConstant(3)
-               for b in fn.blocks for s in b.statements)
+    built = _outer(fn, _record(program, "Built"))
+    assert built.value.may_raise and built.storage_write.mode is MIRStorageWriteMode.INITIALIZE
+    assert _arguments(fn, built.value.arguments) == ["x", "s"]
+    assert {fn.slots[c.target.root.index].type.name for c in _constructs(fn)} == {"Built", "Twice", "Literal"}
+    # The literal argument is the member constructor's, in the outer constructor's body.
+    literal = _lowered(program, "Literal.__init__")
+    assert _arguments(literal, field_write(literal, "p").value.arguments)[0] == MIRConstant(3)
 
 
 def test_a_member_place_is_lent_through_a_holder(program: _Program) -> None:
@@ -1286,12 +1252,13 @@ def test_a_member_place_is_lent_through_a_holder(program: _Program) -> None:
     # `Line(ln.a, mk(x))`: a temporary holder borrowing the member place,
     # copied through by the member initializer.
     assert _operands(fn, line) == [("POINTER", "TEMPORARY"), ("VALUE", "TEMPORARY")]
-    borrow, = (s for b in fn.blocks for s in b.statements if s.target.root == line.value.fields[0])
+    borrow, = (s for b in fn.blocks for s in b.statements if s.target.root == line.value.arguments[0])
     assert isinstance(borrow.value, MIRBorrow) and isinstance(borrow.value.source.projections[-1], MIRField)
 
 
 @pytest.mark.parametrize("name,reason", [
-    ("effectful", "effectful constructor argument"),
+    # An argument with an effect beside another, as at any call.
+    ("effectful", "order-sensitive eager operands"),
     # The member's storage runs a hook: no definition, no owned local.
     ("hooked_member", "member definition: custom record special member"),
 ])
@@ -1335,22 +1302,17 @@ def _with_construct(fn: MIRFunction, stmt: MIRAssign, value: MIRConstruct) -> MI
 def test_construct_validator_negatives(program: _Program) -> None:
     fn = _lowered(program, "lent_name")
     line = _outer(fn, _record(program, "Line"))
-    lent, handed = line.value.fields
+    lent, handed = line.value.arguments
     point = _record(program, "Point")
-    bad = "incomplete or mistyped record construction"
     # Arity.
-    with pytest.raises(MIRValidationError, match=bad):
-        validate_function(_with_construct(fn, line, replace(line.value, fields=(lent,))))
-    # The exit fact is the member copies'.
-    with pytest.raises(MIRValidationError, match=bad):
+    with pytest.raises(MIRValidationError, match="call arity mismatch"):
+        validate_function(_with_construct(fn, line, replace(line.value, arguments=(lent,))))
+    # The exit fact is the constructor's.
+    with pytest.raises(MIRValidationError, match="call exit fact mismatch"):
         validate_function(_with_construct(fn, line, replace(line.value, may_raise=False)))
-    # A borrowed operand of a noncopyable record.
-    layouts = tuple(replace(r, copyable=False) if r.type == point else r for r in fn.records)
-    with pytest.raises(MIRValidationError, match=bad):
-        validate_function(replace(fn, records=layouts))
-    # Owned storage that is no temporary (the moved operand must be handed over).
+    # Owned storage that is no temporary (the moved argument must be handed over).
     local = replace(fn.slots[handed.index], kind=MIRSlotKind.LOCAL)
-    with pytest.raises(MIRValidationError, match=bad):
+    with pytest.raises(MIRValidationError, match="call record argument mismatch"):
         validate_function(replace(fn, slots=tuple(local if s.id == handed else s for s in fn.slots)))
     # The member layout must be present.
     with pytest.raises(MIRValidationError, match="record field needs its layout|record place needs layout"):
@@ -1359,26 +1321,23 @@ def test_construct_validator_negatives(program: _Program) -> None:
 
 def test_construct_record_operand_negatives(program: _Program) -> None:
     fn = _lowered(program, "lent_name")
-    line_type, point = _record(program, "Line"), _record(program, "Point")
+    line_type = _record(program, "Line")
     line = _outer(fn, line_type)
-    lent, handed = line.value.fields
-    bad = "incomplete or mistyped record construction"
-    # A lent operand of another record type.
+    lent, handed = line.value.arguments
+    # A lent argument of another record type.
     other, = (s.id for s in fn.slots if s.type == line_type and s.shape.holding is MIRHolding.POINTER)
-    with pytest.raises(MIRValidationError, match=bad):
-        validate_function(_with_construct(fn, line, replace(line.value, fields=(other, handed))))
-    # The handed-over temporary is moved from: never readonly, and movable.
+    with pytest.raises(MIRValidationError, match="call argument type mismatch"):
+        validate_function(_with_construct(fn, line, replace(line.value, arguments=(other, handed))))
+    # The handed-over temporary is the callee's: never readonly.
     with pytest.raises(MIRValidationError, match="readonly owned storage"):
         validate_function(_with_slot(fn, fn.slots[handed.index], readonly=True))
-    with pytest.raises(MIRValidationError, match=bad):
-        validate_function(_with_layout(fn, point, movable=False))
-    # The same rule holds for a construct written into a member (`f.line = Line(..)`).
+    # The same rule holds for a construction written into a member (`f.line = Line(..)`).
     enclosing = _lowered(program, "replace_enclosing")
     write, = _member_writes(enclosing)
     frame = write.target.root
-    with pytest.raises(MIRValidationError, match=bad):
+    with pytest.raises(MIRValidationError, match="call argument type mismatch"):
         validate_function(_with_statement(enclosing, write, value=replace(
-            write.value, fields=(frame, *write.value.fields[1:]))))
+            write.value, arguments=(frame, *write.value.arguments[1:]))))
 
 
 def test_three_construct_destinations_agree(program: _Program) -> None:
@@ -1447,7 +1406,8 @@ def _member_writes(fn: MIRFunction) -> list[MIRAssign]:
 
 
 @pytest.mark.parametrize("name,kind", [
-    ("replace_member", MIRConstruct),
+    # A construction: the constructor's call into the member.
+    ("replace_member", MIRCall),
     # A member read into the member: a copy of the member place.
     ("member_copy", MIRCopy),
     # A borrowed parameter read into the member: a copy through its holder.
@@ -1606,7 +1566,7 @@ def test_member_write_validator_negatives(program: _Program) -> None:
     fn = _lowered(program, "replace_member")
     write, = _member_writes(fn)
     point, line = _record(program, "Point"), _record(program, "Line")
-    fact = "record member write needs a replacement fact"
+    fact = "field write needs its initialization or replacement fact"
     # No fact: the write would be no storage event at all.
     with pytest.raises(MIRValidationError, match=fact):
         validate_function(_with_statement(fn, write, storage_write=None))
@@ -1645,13 +1605,13 @@ def test_member_write_validator_negatives(program: _Program) -> None:
     with pytest.raises(MIRValidationError, match="record copy source or eligibility"):
         validate_function(_with_statement(copied, copy_write, value=replace(copy_write.value, may_raise=False)))
     # A global is read into a local first, never a member's operand.
-    scalar = fn.slots[write.value.fields[0].index]
+    scalar = fn.slots[write.value.arguments[0].index]
     assert scalar.shape.is_scalar
     global_slot = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(scalar.type), MIRSlotKind.GLOBAL, "g",
                           global_id=MIRGlobalId("main", "g"))
     with pytest.raises(MIRValidationError, match="global value needs explicit read"):
         validate_function(_with_statement(replace(fn, slots=(*fn.slots, global_slot)), write, value=replace(
-            write.value, fields=(global_slot.id, *write.value.fields[1:]))))
+            write.value, arguments=(global_slot.id, *write.value.arguments[1:]))))
 
 
 def test_a_sliced_member_copy_refuses(program: _Program) -> None:
@@ -1746,7 +1706,8 @@ def _with_summaries(program: _Program, name: str, **paths) -> MIRFunction | MIRN
     fn = program.functions[name]
     defaults = {"first": ("returns", [("Line", "a")]), "reset": ("writes", [("Line", "a")]),
                 "bump": ("writes", [("Line", "a"), ("Point", "x")])}
-    summaries = {}
+    # The constructions it makes call the verified constructors.
+    summaries = dict(constructor_summaries(program.definitions))
     for method, (kind, steps) in defaults.items():
         try:
             callee = _callee(fn, method)

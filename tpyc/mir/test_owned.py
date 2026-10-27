@@ -14,14 +14,13 @@ from ..thir.lower.storage import record_layout
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import THIRValidationError, validate_constructor, validate_function
 from ..type_def_registry import ParamPassing
-from ..thir.scalar_leaves import MIRClass
 from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRWrap,
-    MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
 from .value import MIRFieldId
 from .storage import MIRStorageEvents, analyze_storage
@@ -227,7 +226,7 @@ def test_actual_producer_shapes_and_deterministic_dump(artifacts: Artifacts) -> 
             is LocalBinding.REBIND_SLOT)
     assert isinstance(functions["copied"].body[1].init, th.THIRCopy)
     assert isinstance(functions["moved"].body[1].init, th.THIRMove)
-    for name, operation in (("shared", MIRConstruct), ("copied", MIRCopy), ("moved", MIRMove)):
+    for name, operation in (("shared", MIRCall), ("copied", MIRCopy), ("moved", MIRMove)):
         fn = lower(functions[name], constructors)
         values = [s.value for b in fn.blocks for s in b.statements]
         assert any(isinstance(v, operation) for v in values)
@@ -263,7 +262,6 @@ def test_cyclic_in_place_replacement(artifacts: Artifacts) -> None:
     (lambda c: replace(c, record_layout=replace(c.record_layout, custom_copy=True)), "special member"),
     (lambda c: replace(c, record_layout=replace(c.record_layout, custom_move=True)), "special member"),
     (lambda c: replace(c, record_layout=replace(c.record_layout, unique_constructor=False)), "unique"),
-    (lambda c: replace(c, body=(th.THIRExprStmt(th.THIRLiteral(INT32, 1)),)), "body effects"),
     (lambda c: replace(c, base_inits=(th.THIRBaseInit("Base", (), NominalType("Base")),)),
      "base constructor identity"),
 ])
@@ -272,18 +270,36 @@ def test_incomplete_or_effectful_constructor_is_not_summarized(
 ) -> None:
     functions, constructors = artifacts
     changed = tuple(change(c) if c.record_name == "Cell" else c for c in constructors)
+    definitions = MIRDefinitions(changed)
+    cell = next(c for c in changed if c.record_name == "Cell")
+    # The constructor's own body refuses with the reason ...
+    body = lower_constructor(cell, MIRBodyId("owned", "Cell.__init__"), definitions=definitions)
+    assert isinstance(body, MIRNotCovered) and reason in body.reason
+    # ... and a caller, with no summary to apply, refuses the call (or the
+    # record's refused certificate).
     fn = functions["shared"]
-    result = lower_function(fn, MIRBodyId("owned", fn.name),
-                            definitions=MIRDefinitions(changed))
-    assert isinstance(result, MIRNotCovered) and reason in result.reason
+    result = lower_function(fn, MIRBodyId("owned", fn.name), definitions=definitions)
+    assert isinstance(result, MIRNotCovered) and (
+        reason in result.reason or result.reason == "call needs finalized known summary")
+
+
+def test_a_constructor_body_statement_is_summarized(artifacts: Artifacts) -> None:
+    # A body statement is an ordinary statement of the constructor's body:
+    # one with no effect leaves its summary known, and a caller applies it.
+    functions, constructors = artifacts
+    changed = tuple(replace(c, body=(th.THIRExprStmt(th.THIRLiteral(INT32, 1)),)) if c.record_name == "Cell" else c
+                    for c in constructors)
+    fn = functions["shared"]
+    assert isinstance(lower_function(fn, MIRBodyId("owned", fn.name), definitions=MIRDefinitions(changed)),
+                      MIRFunction)
 
 
 @pytest.mark.parametrize("change,reason", [
     (lambda init: replace(init, args=()), "incomplete constructor arguments"),
     (lambda init: replace(init, args=(th.THIRLiteral(BOOL, True),)), "call scalar argument mismatch"),
     (lambda init: replace(init, args=(th.THIRCall(INT32, "effect", ()),)), "call needs resolved ordinary callee"),
-    (lambda init: replace(init, args=(th.THIRWalrus(INT32, "n", "n", th.THIRLiteral(INT32, 2)),)),
-     "effectful constructor argument"),
+    # An argument with an effect is evaluated before the call, as at any call.
+    (lambda init: replace(init, args=(th.THIRWalrus(INT32, "n", "n", th.THIRLiteral(INT32, 2)),)), None),
 ])
 def test_constructor_arguments_are_complete_and_pure(
     artifacts: Artifacts, change: Callable[[th.THIRCtorCall], th.THIRCtorCall], reason: str,
@@ -294,7 +310,10 @@ def test_constructor_arguments_are_complete_and_pure(
     fn = replace(fn, params=(th.THIRParam("n", INT32, passing=ParamPassing.VALUE),), body=(declaration, *fn.body[1:]))
     result = lower_function(fn, MIRBodyId("owned", fn.name),
                             definitions=MIRDefinitions(constructors))
-    assert isinstance(result, MIRNotCovered) and reason in result.reason
+    if reason is None:
+        assert isinstance(result, MIRFunction), result
+    else:
+        assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 
 def test_cpp_spellings_do_not_supply_storage_or_constructor_identity(artifacts: Artifacts) -> None:
@@ -331,8 +350,10 @@ def test_owned_and_self_alias_method_bodies(body: str) -> None:
 
 
 @pytest.mark.parametrize("declaration,assignment,reason", [
-    ("value: int32 = 5", "pass", "incomplete constructor initialization"),
-    ("value: int32", "self.value = value\n        print(value)", "constructor body effects"),
+    # The constructor's own body refuses, or summarizes no known effects: a
+    # caller has no summary to apply.
+    ("value: int32 = 5", "pass", "call needs finalized known summary"),
+    ("value: int32", "self.value = value\n        print(value)", "call needs finalized known summary"),
     ("value: tuple[int32, int32]", "self.value = (value, value)", "unsupported record fields"),
     ("value: int32 | None", "self.value = value", "unsupported record fields"),
 ])
@@ -351,10 +372,9 @@ def test_real_constructor_effects_and_sibling_shapes_remain_uncovered(
         assert isinstance(result, MIRNotCovered) and reason in result.reason
 
 
-def test_a_caller_builds_a_container_member_of_its_construct() -> None:
-    # `Record(1)` with `self.value = [value]`: the caller builds the member's
-    # literal over its argument into storage of the full expression and
-    # moves it into the construct, as a member built by its own constructor is.
+def test_a_constructor_builds_its_container_member() -> None:
+    # `Record(1)` with `self.value = [value]`: the constructor's body builds
+    # the member's literal over its parameter; the caller calls it.
     source = ("from tpy import int32\nclass Record:\n    value: list[int32]\n"
               "    def __init__(self, value: int32):\n        self.value = [value]\n"
               "def build() -> int32:\n    record = Record(1)\n    return 0\n")
@@ -362,14 +382,20 @@ def test_a_caller_builds_a_container_member_of_its_construct() -> None:
     with activate_compiler(compiler):
         _, ctx = compiler.generate_code_and_thir(_entry(modules))
         fn = next(f for n, f in ctx.thir_functions.items() if n.name == "build")
-        result = lower_function(fn, MIRBodyId("owned", "build"),
-                                definitions=compiled_definitions(compiler, tuple(ctx.thir_constructors.values())))
+        ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Record")
+        definitions = compiled_definitions(compiler, (ctor,))
+        result = lower_function(fn, MIRBodyId("owned", "build"), definitions=definitions)
+        body = lower_constructor(ctor, MIRBodyId("owned", "Record.__init__"), definitions=definitions)
     assert isinstance(result, MIRFunction), result
-    constructs = [s for b in result.blocks for s in b.statements
-                  if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)]
-    literal, record = constructs
-    assert result.slots[literal.target.root.index].shape.cls is MIRClass.CONTAINER and literal.value.may_raise
-    assert record.value.fields == (literal.target.root,)
+    assert not [s for b in result.blocks for s in b.statements
+                if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)]
+    call, = [s.value for b in result.blocks for s in b.statements
+             if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall)]
+    assert call.summary.callee.identity.name == "__init__"
+    assert isinstance(body, MIRFunction), body
+    literal, = [s for b in body.blocks for s in b.statements
+                if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)]
+    assert literal.target.projections and literal.value.may_raise
 
 
 @pytest.mark.parametrize("decorator,methods,attribute,expected", [
@@ -440,7 +466,11 @@ def outer() -> int32:
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     ctor = next(c for c in ctx.thir_constructors.values() if c.record_name == "Holder")
     assert ctor.body[0].owned_storage is not None
-    assert isinstance(MIRDefinitions((ctor,)).records[ctor.record_layout.type], str)
+    # Its field is written by the body after the local: no member initializer.
+    with activate_compiler(compiler):
+        definitions = compiled_definitions(compiler, tuple(ctx.thir_constructors.values()))
+        body = lower_constructor(ctor, MIRBodyId("owned", "Holder.__init__"), definitions=definitions)
+    assert isinstance(body, MIRNotCovered) and body.reason == "incomplete constructor initialization"
     outer = next(f for n, f in ctx.thir_functions.items() if n.name == "outer")
     nested = next(s for s in outer.body if isinstance(s, th.THIRNestedDef))
     assert nested.body[0].owned_storage is not None

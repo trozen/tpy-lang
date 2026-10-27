@@ -342,8 +342,9 @@ int32_t own_store_local(Tok&& t, int32_t k) {
     return t.n;
 }
 
-// # free function: a parameter's loan stored into an Own parameter's object is no transfer:
-// # the caller never reads its temporary again
+// # free function: a parameter's loan stored into an Own parameter's object is no transfer: no
+// # holder of the caller's reads that object after the call (a moved name's MOVE makes one a
+// # retention conflict at the caller)
 // # the Own parameter is only read or written in place, never handed on: the warning is right
 // def own_store_param(t: Own[Tok], s: str) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
 //     t.s = s
@@ -363,7 +364,7 @@ int32_t consume_built(int32_t k) {
 }
 
 // # free function: a named record handed to an Own parameter
-// def consume_named(k: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record argument$/)
+// def consume_named(k: int32) -> int32:  # tpyc: mir(covered)
 //     t = Tok("static", k)
 //     return consume(t)
 int32_t consume_named(int32_t k) {
@@ -386,8 +387,10 @@ int32_t change(R& a, R&& b, bool flag) {
 }
 
 // # free function: one named record lent and handed over stays refused, which keeps an Own
-// # parameter's object private to the callee
-// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record argument$/)
+// # parameter's object private to the callee: the handed-over argument is the temporary sema's
+// # copy builds, which no owned argument form admits (the owned-argument reason still reads
+// # "constructor argument type")
+// def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^constructor argument type$/)
 //     r = R(mk(k), "static")
 //     v: StrView = r.buf
 //     r.s = v
@@ -455,6 +458,30 @@ void wrap_copy_replaced(int32_t k, bool flag) {
         b.text = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
     }
     std::cout << "wrap_copy_replaced" << " " << w.t.s << " " << t.n << "\n" << ::tpy::check_signals;
+}
+
+// # free function: a named record's copy handed to an Own function parameter carries its stored loan
+// # into the owned result
+// def factory_copy(k: int32) -> int32:  # tpyc: mir(covered)
+//     a = mk(k)
+//     t = Tok(a, 1)
+//     u = ident(copy(t))
+//     # the call binds u in a block after the call's own, so the loans are read here
+//     return len(u.s) + t.n  # tpyc: mir_borrows(u.s, a)
+int32_t factory_copy(int32_t k) {
+    std::string a = ::tpyapp::main::mk(k);
+    Tok t = Tok(a, 1);
+    Tok u = ::tpyapp::main::ident(Tok(t));
+    return (::tpy::add_check<int32_t>(::tpy::__len__(u.s), t.n));
+}
+
+// # free function: a frozen dataclass's view and scalar fields, initialized by its constructor
+// def frozen_fields(s: str) -> int32:  # tpyc: mir(covered)
+//     f = Frozen(s, 2)
+//     return len(f.s) + f.n  # tpyc: mir_borrows(f.s, s)
+int32_t frozen_fields(std::string_view s) {
+    Frozen f = Frozen(s, 2);
+    return (::tpy::add_check<int32_t>(::tpy::__len__(f.s), f.n));
 }
 
 // # free function: a named record moved into an Own constructor parameter; `t.s` views the temporary
@@ -676,9 +703,9 @@ void reused_construct(int32_t n) {
     std::cout << "reused_construct" << " " << ::tpy::__len__(r->buf) << "\n" << ::tpy::check_signals;
 }
 
-// # free function: a constructor with body effects is not constructed through
-// def stamped(s: str) -> int32:  # tpyc: mir(uncovered /^constructor body effects$/)
-//     st = Stamp(s, 1)
+// # free function: a constructor with body effects is called through its summary
+// def stamped(s: str) -> int32:  # tpyc: mir(covered)
+//     st = Stamp(s, 1)  # tpyc: mir_borrows(st.s, s|static)
 //     return st.n
 int32_t stamped(std::string_view s) {
     Stamp st = Stamp(s, 1);
@@ -999,6 +1026,8 @@ void element_view_replaced(Items& r, int32_t k, bool flag) {
 //     print("private_own_alias", private_own_alias(1))
 //     own_write_transfer(1, False)
 //     print("wrap_copy", wrap_copy(w))
+//     print("factory_copy", factory_copy(1))
+//     print("frozen_fields", frozen_fields("fz"))
 //     b = Buf(mk(2))
 //     store_and_replace(t, b.text, b, False)
 //     print("store_and_replace", t.s)
@@ -1083,6 +1112,8 @@ void main(bool flag) {
     std::cout << "private_own_alias" << " " << ::tpyapp::main::private_own_alias(1) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::own_write_transfer(1, false);
     std::cout << "wrap_copy" << " " << ::tpyapp::main::wrap_copy(w) << "\n" << ::tpy::check_signals;
+    std::cout << "factory_copy" << " " << ::tpyapp::main::factory_copy(1) << "\n" << ::tpy::check_signals;
+    std::cout << "frozen_fields" << " " << ::tpyapp::main::frozen_fields("fz") << "\n" << ::tpy::check_signals;
     Buf b = Buf(::tpyapp::main::mk(2));
     ::tpyapp::main::store_and_replace(t, b.text, b, false);
     std::cout << "store_and_replace" << " " << t.s << "\n" << ::tpy::check_signals;
@@ -1128,6 +1159,10 @@ void main(bool flag) {
     ::tpyapp::main::element_view_replaced(__tmp_1, 2, false);
 }
 
+// # MIR over stores into view members: view member writes, callee transfers, member records, owned
+// # results and Own parameters, records written through a place, base and member constructors.
+// from dataclasses import dataclass
+//
 // G = mk(0)
 //
 // main(False)

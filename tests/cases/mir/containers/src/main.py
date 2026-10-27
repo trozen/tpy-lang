@@ -59,9 +59,8 @@ class Index:
 class Pts:
     ps: list[Point]
 
-    # constructor: a container of records -- a record element built by its own constructor
-    # is no literal operand at entry (BUGS.md#mir-ctor-nested-construct-operand)
-    def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+    # constructor: a container of records -- each record element built by its constructor's call
+    def __init__(self) -> None:  # tpyc: mir(covered)
         self.ps = [Point(1), Point(2)]
 
     # method: an element borrow of a field, grown through a local alias of that field
@@ -451,9 +450,8 @@ class Rack:
     items: list[Point]
     rec: Point
 
-    # a literal member whose element is a record construct is not modeled
-    # (BUGS.md#mir-ctor-nested-construct-operand)
-    def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+    # a literal member whose element is a record built by its constructor's call
+    def __init__(self) -> None:  # tpyc: mir(covered)
         self.items = [Point(1)]
         self.rec = Point(1)
 

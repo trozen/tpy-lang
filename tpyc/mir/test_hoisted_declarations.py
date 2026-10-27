@@ -10,7 +10,7 @@ from ..thir.source import UNBOUND
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWrite, MIRStorageWriteMode, MIRReturn,
     MIRStorageDuration, MIRWrap,
@@ -19,7 +19,7 @@ from .value import MIRHolding
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_retention import analyze
 from .test_reuse import CELL_SOURCE, source_function
-from .testutil import compiled_definitions, optional_value, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, optional_value, Reference, execute, prepared
 from .validate import MIRDefiniteAssignmentError
 from .prepare import validate_function
 
@@ -294,7 +294,7 @@ def test_hoist_producers_preserve_results_and_shared_mutation(hoists: Hoists) ->
             assert heap[0][field] == (9 if flag else 1)
             assert execute(bodies[name], flag, optional_value(None)) == 0
         heap = {}
-        execute(bodies["Observer"], Reference(0), flag, heap=heap)
+        construct(bodies["Observer"], 0, flag, heap=heap)
         assert tuple(heap[0].values()) == (9,)
         assert execute(bodies["method"], Reference(0), flag, heap=heap) == 9
 
@@ -303,7 +303,7 @@ def test_constant_loop_initializes_hoist_in_each_callable(hoists: Hoists) -> Non
     _, bodies, _, _ = hoists
     assert execute(bodies["constant_loop"]) == 1
     heap = {}
-    execute(bodies["ConstantObserver"], Reference(0), heap=heap)
+    construct(bodies["ConstantObserver"], 0, heap=heap)
     assert tuple(heap[0].values()) == (1,)
     assert execute(bodies["constant_method"], Reference(0), heap=heap) == 1
 

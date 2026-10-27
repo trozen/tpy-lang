@@ -24,9 +24,10 @@ from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import dump_function
 from .emit import MIRValue, owned_leaf_shape
 from .liveness import MIRPoint
-from .lower import _Lowering, lower_function
+from .lower import _Lowering
+from .testutil import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRConstruct,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant,
     MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRStorageWrite,
     MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
@@ -38,7 +39,7 @@ from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .validate import statement_may_raise
-from .testutil import bind_parameters, borrowed_shape, leaf_shape, owned_shape, repass, reslot, prepared
+from .testutil import bind_parameters, borrowed_shape, construction, leaf_shape, owned_shape, repass, reslot, prepared
 from ..thir.scalar_leaves import MIRClass
 from .prepare import validate_function
 
@@ -132,8 +133,8 @@ class _Variant:
         return (MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.TEMPORARY, residence=R0), field_slot,
                 _holder(WRITER, self.type, readonly=False))
 
-    def init(self) -> MIRConstant | MIRConstruct:
-        return MIRConstant("a") if self.leaf else MIRConstruct((FIELD_VALUE,))
+    def init(self) -> MIRConstant | MIRCall:
+        return MIRConstant("a") if self.leaf else construction(self.layout, FIELD_VALUE)
 
     def use(self) -> MIRAssign:
         if self.leaf:
@@ -146,7 +147,7 @@ class _Variant:
             return (MIRAssign(MIRPlace(STORAGE), MIRConstant("b"), storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)),)
         # A record is replaced through a holder that rebinds to it (the lowering's in-place form).
         return (MIRAssign(MIRPlace(WRITER), MIRBorrow(MIRPlace(STORAGE))),
-                MIRAssign(MIRPlace(WRITER, (MIRDeref(),)), MIRConstruct((FIELD_VALUE,)),
+                MIRAssign(MIRPlace(WRITER, (MIRDeref(),)), construction(self.layout, FIELD_VALUE),
                           storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, WRITER)))
 
     def return_type(self):
@@ -1011,9 +1012,14 @@ def _refused(lowered_active, name: str, match, change) -> str:
 
 
 def test_hand_built_shapes_no_source_reaches_refuse(lowered_active) -> None:
-    # A move out of an owned leaf: the by-value parameter handed back through a move.
-    assert _refused(lowered_active, "by_value", lambda n: isinstance(n, th.THIRName),
-                    lambda n: th.THIRMove(result_type=n.result_type, value=n, form=Form.STORAGE)) == "owned-leaf move"
+    # A move of the by-value parameter's own buffer is one an owned leaf takes,
+    # as a record's is: it lowers.
+    source = lowered_active.thir["by_value"]
+    moved = replace(source, body=_rewrite_thir(source.body, lambda n: isinstance(n, th.THIRName),
+                                               lambda n: th.THIRMove(result_type=n.result_type, value=n,
+                                                                     form=Form.STORAGE)))
+    assert isinstance(lower_function(moved, MIRBodyId("owned", "by_value"),
+                                     definitions=lowered_active.definitions), MIRFunction)
     # A form conversion whose source is not a borrowed name.
     assert _refused(lowered_active, "ret_copy", lambda n: isinstance(n, th.THIRFormConvert),
                     lambda n: replace(n, value=replace(n.value, form=Form.STORAGE))) == "unsupported form conversion"

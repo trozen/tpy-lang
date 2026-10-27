@@ -107,10 +107,14 @@ record storage into a nullable holder, OWN replacement redirects that holder,
 IN_PLACE replaces its present referent and None clears only the holder. THIR
 records payload ownership at the constructor-backed declaration producer;
 MIR consumes the effective replacement verdict and retains presence checks.
-Their layouts contain only scalar-leaf fields and have no custom special members; construction
-requires a complete, pure constructor definition. `MIRDefinitions` indexes and
-checks the emitted `THIRConstructor` and `THIRInheritedConstructor` artifacts and their logical layout/member
-facts, without reaching back into sema. Each replacement site has distinct
+Their layouts contain only scalar-leaf fields and have no custom special members.
+`MIRDefinitions` indexes and checks the emitted `THIRConstructor` and
+`THIRInheritedConstructor` artifacts as record certificates -- layout, special
+members, copy/move facts, member and container-element certificates -- and the
+constructor a construction calls, without reaching back into sema; it holds no
+initializers. A constructor is an ordinary body building and returning its
+record, and `R(...)` an ordinary call of its summary (docs/MIR_ANALYSIS_PLAN.md
+"Constructors are ordinary bodies"). Each replacement site has distinct
 storage, an owned sum slot built empty at the body level; repeated execution
 refills that site's sum. IN_PLACE replacements preserve referent identity.
 Positive MIR record-write facts distinguish initial construction from in-place

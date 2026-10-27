@@ -1,5 +1,6 @@
 # MIR over stores into view members: view member writes, callee transfers, member records, owned
 # results and Own parameters, records written through a place, base and member constructors.
+from dataclasses import dataclass
 from tpy import Own, StrView, int32, copy
 
 
@@ -40,7 +41,7 @@ class Stamp:
         self.s = "lit"
         self.n = n
         if n > 0:
-            self.s = s  # tpyc: mir_borrows(self.s, self.s|s)
+            self.s = s  # tpyc: mir_borrows(self.s, s)
 
 
 class R:
@@ -275,8 +276,9 @@ def own_store_local(t: Own[Tok], k: int32) -> int32:  # tpyc: mir(conflict /stor
     return t.n
 
 
-# free function: a parameter's loan stored into an Own parameter's object is no transfer:
-# the caller never reads its temporary again
+# free function: a parameter's loan stored into an Own parameter's object is no transfer: no
+# holder of the caller's reads that object after the call (a moved name's MOVE makes one a
+# retention conflict at the caller)
 # the Own parameter is only read or written in place, never handed on: the warning is right
 def own_store_param(t: Own[Tok], s: str) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
     t.s = s
@@ -290,7 +292,7 @@ def consume_built(k: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 
 
 # free function: a named record handed to an Own parameter
-def consume_named(k: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record argument$/)
+def consume_named(k: int32) -> int32:  # tpyc: mir(covered)
     t = Tok("static", k)
     return consume(t)
 
@@ -305,8 +307,10 @@ def change(a: R, b: Own[R], flag: bool) -> int32:  # tpyc: mir(conflict /replace
 
 
 # free function: one named record lent and handed over stays refused, which keeps an Own
-# parameter's object private to the callee
-def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^unsupported record argument$/)
+# parameter's object private to the callee: the handed-over argument is the temporary sema's
+# copy builds, which no owned argument form admits (the owned-argument reason still reads
+# "constructor argument type")
+def private_own_alias(k: int32) -> int32:  # tpyc: mir(uncovered /^constructor argument type$/)
     r = R(mk(k), "static")
     v: StrView = r.buf
     r.s = v
@@ -353,6 +357,28 @@ def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /rep
     if flag:
         b.text = mk(k + 1)
     print("wrap_copy_replaced", w.t.s, t.n)
+
+
+# free function: a named record's copy handed to an Own function parameter carries its stored loan
+# into the owned result
+def factory_copy(k: int32) -> int32:  # tpyc: mir(covered)
+    a = mk(k)
+    t = Tok(a, 1)
+    u = ident(copy(t))
+    # the call binds u in a block after the call's own, so the loans are read here
+    return len(u.s) + t.n  # tpyc: mir_borrows(u.s, a)
+
+
+@dataclass(frozen=True)
+class Frozen:
+    s: StrView
+    n: int32
+
+
+# free function: a frozen dataclass's view and scalar fields, initialized by its constructor
+def frozen_fields(s: str) -> int32:  # tpyc: mir(covered)
+    f = Frozen(s, 2)
+    return len(f.s) + f.n  # tpyc: mir_borrows(f.s, s)
 
 
 # free function: a named record moved into an Own constructor parameter; `t.s` views the temporary
@@ -488,9 +514,9 @@ def reused_construct(n: int32) -> None:  # tpyc: mir(conflict /replacement/)
     print("reused_construct", len(r.buf))
 
 
-# free function: a constructor with body effects is not constructed through
-def stamped(s: str) -> int32:  # tpyc: mir(uncovered /^constructor body effects$/)
-    st = Stamp(s, 1)
+# free function: a constructor with body effects is called through its summary
+def stamped(s: str) -> int32:  # tpyc: mir(covered)
+    st = Stamp(s, 1)  # tpyc: mir_borrows(st.s, s|static)
     return st.n
 
 
@@ -761,6 +787,8 @@ def main(flag: bool) -> None:
     print("private_own_alias", private_own_alias(1))
     own_write_transfer(1, False)
     print("wrap_copy", wrap_copy(w))
+    print("factory_copy", factory_copy(1))
+    print("frozen_fields", frozen_fields("fz"))
     b = Buf(mk(2))
     store_and_replace(t, b.text, b, False)
     print("store_and_replace", t.s)

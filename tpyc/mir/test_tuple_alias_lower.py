@@ -11,13 +11,13 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRRead, MIRPoint, MIRCopy, MIRSlotKind, MIRStorageWriteMode,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import compiled_definitions, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -107,7 +107,7 @@ def test_alias_chains_preserve_mutation_in_each_position(artifacts: Artifacts) -
     assert execute(bodies["repeat"], True) == 9
     assert execute(bodies["repeat"], False) == 1
     heap = {}
-    execute(bodies["Runner"], Reference(0), heap=heap)
+    construct(bodies["Runner"], 0, heap=heap)
     assert tuple(heap[0].values()) == (12,)
     assert execute(bodies["method"], Reference(0), heap=heap) == 13
 

@@ -14,7 +14,7 @@ from . import emit, lower as lowering
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto, MIRPlace, MIRStorageWriteMode,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRGoto, MIRPlace, MIRStorageWriteMode,
     MIRRegionId, MIRReturn, function_body_kind,
 )
 from .shapes import MIRTupleIndex, MIRUnionPayload
@@ -24,7 +24,7 @@ from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir, active_artifacts
 from .test_expression_temporary_lower import SOURCE as EXPRESSION_SOURCE
-from .testutil import Reference, execute, prepared
+from .testutil import construct, constructor_summaries, execute, prepared
 from .validate import MIRRepeatedInitializationError
 from .value import MIRValidationError
 from .prepare import validate_function
@@ -168,7 +168,9 @@ def _request(artifacts: Artifacts, fn: th.THIRFunction | th.THIRConstructor) -> 
     kind = (MIRBodyKind.CONSTRUCTOR if isinstance(fn, th.THIRConstructor) else
             function_body_kind(fn))
     name = fn.record_name if isinstance(fn, th.THIRConstructor) else fn.name
-    return MIRStorageRequest(fn, MIRBodyId("main", name), kind, artifacts[2], artifacts[1].summaries)
+    # Constructions call the constructors' summaries whose bodies `execute` runs.
+    summaries = {**artifacts[1].summaries, **constructor_summaries(artifacts[2])}
+    return MIRStorageRequest(fn, MIRBodyId("main", name), kind, artifacts[2], MappingProxyType(summaries))
 
 
 @pytest.mark.parametrize("name", ["eager", "method", "Caller", "loop", "ranges", "select"])
@@ -212,7 +214,7 @@ def test_full_expression_backings_keep_their_actual_region(
     assert result.evidence.required == frozenset(p.root for p in result.backings.values())
     slots = {s.id: s for s in result.function.slots}
     writes = {s.target: (b, s) for b in result.function.blocks for s in b.statements
-              if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)}
+              if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall)}
     ends = analyze_scope_ends(prepared(result.function))
     for backing in source.storage_facts.backings:
         assert backing.kind is THIRBackingKind.FULL_EXPRESSION and backing.placement is None
@@ -238,7 +240,7 @@ def test_full_expression_backings_keep_their_actual_region(
                    if edge.entered)
     if name == "Runner":
         heap = {}
-        execute(result.function, Reference(0), 11, heap=heap)
+        construct(result.function, 0, 11, heap=heap)
         assert next(iter(heap[0].values())) == 11
 
 
@@ -301,7 +303,7 @@ def test_full_expression_missing_or_pruned_backing_cannot_certify(
                                                   definitions=request.definitions, summaries=request.summaries)
         first, second = source.storage_facts.backings
         mapping = MappingProxyType(IdentityMap(((first.node, lowered.backings[first.node]),)))
-        monkeypatch.setattr("tpyc.mir.storage_adapter.lower_function_storage",
+        monkeypatch.setattr("tpyc.mir.storage_adapter.lower_callable",
                             lambda *args, **kwargs: replace(lowered, backings=mapping))
     result = certify_thir_storage(request)
     assert result.requires_proof and result.verdict is MIRStorageVerdict.NOT_COVERED
@@ -453,7 +455,7 @@ def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: 
     result = certify_thir_storage(request)
     fn = result.function
     construction = next(b for b in fn.blocks if any(
-        isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) for s in b.statements))
+        isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) for s in b.statements))
     malformed = replace(fn, blocks=tuple(
         replace(b, terminator=MIRGoto(b.id)) if b is construction else b for b in fn.blocks))
     with pytest.raises(MIRRepeatedInitializationError) as failure:
@@ -631,7 +633,7 @@ def test_missing_mapping_cannot_reuse_a_partial_proof(artifacts: Artifacts, monk
                                               definitions=request.definitions, summaries=request.summaries)
     omitted = source.storage_facts.obligations[1].sink
     mapping = IdentityMap((stmt, points) for stmt, points in lowered.operations.items() if stmt is not omitted)
-    monkeypatch.setattr("tpyc.mir.storage_adapter.lower_function_storage",
+    monkeypatch.setattr("tpyc.mir.storage_adapter.lower_callable",
                         lambda *args, **kwargs: replace(lowered, operations=MappingProxyType(mapping)))
     result = certify_thir_storage(request)
     assert result.evidence.verdict is MIRStorageVerdict.CERTIFIED

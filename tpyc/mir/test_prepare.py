@@ -19,7 +19,7 @@ from .nodes import (
 from .prepare import MIRPrepared, prepare, validate_function, validated
 from .shapes import MIRDeref, MIRUnionPayload
 from .testutil import (
-    alias_shape, bind_parameters, borrowed_shape, hand_record, leaf_shape, optional_shape, owned_shape, tuple_shape,
+    alias_shape, bind_parameters, construction, borrowed_shape, hand_record, leaf_shape, optional_shape, owned_shape, tuple_shape,
     union_shape,
 )
 from .retention import analyze_retention
@@ -36,6 +36,7 @@ BASE = hand_record("Base", "prepare.Base", n=INT32)
 SUB = hand_record("Sub", "prepare.Sub", BASE, p=OptionalType(P))
 PX = MIRField(MIRFieldId(P, "x"), INT32)
 HP = MIRField(MIRFieldId(H, "p"), OptionalType(P))
+LAYOUT_P = MIRRecordLayout(P, (PX,), True, True)
 SS = MIRField(MIRFieldId(S, "s"), STR)
 BN = MIRField(MIRFieldId(BASE, "n"), INT32)
 SP = MIRField(MIRFieldId(SUB, "p"), OptionalType(P))
@@ -287,7 +288,7 @@ def _missing_fact(name: str, kind: MIRSlotKind | None, inside: bool) -> MIRFunct
     if kind is None:
         subject = MIRSlot(target, borrowed_shape(P), MIRSlotKind.PARAMETER)
         statements = (MIRAssign(MIRPlace(value), MIRConstant(0)),
-                      MIRAssign(MIRPlace(target, (MIRDeref(),)), MIRConstruct((value,))))
+                      MIRAssign(MIRPlace(target, (MIRDeref(),)), construction(LAYOUT_P, value)))
         other = MIRSlot(value, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=root)
     else:
         duration = MIRStorageDuration.BODY if kind is MIRSlotKind.LOCAL else None
@@ -308,7 +309,7 @@ def _missing_fact(name: str, kind: MIRSlotKind | None, inside: bool) -> MIRFunct
                          MIRAssign(MIRPlace(cond), MIRIsAlternative(field, (1,)))), MIRBranch(cond, yes, no), root),
         MIRBlock(yes, (*(statements if inside else ()), read), MIRReturn(result), root),
         MIRBlock(no, (MIRAssign(MIRPlace(result), MIRConstant(0)),), MIRReturn(result), root),
-    ), entry, (MIRRecordLayout(P, (PX,), True, True), MIRRecordLayout(H, (HP,), True, True)),
+    ), entry, (LAYOUT_P, MIRRecordLayout(H, (HP,), True, True)),
         regions=(MIRRegion(root, None, entry),)))
 
 
@@ -328,8 +329,8 @@ def _outcomes(fn: MIRFunction) -> tuple[str, ...]:
         analyze_storage, analyze_retention, analyze_scope_ends, analyze_payload_ends))
 
 
-SELECTION = "refused: payload access without current presence proof"
 MISSING_SUM_FACT = "inline aggregate whole write needs its storage write fact"
+MISSING_RECORD_FACT = "call needs whole result holder"
 
 
 @pytest.mark.parametrize(("name", "kind", "inside", "expected"), [
@@ -338,12 +339,10 @@ MISSING_SUM_FACT = "inline aggregate whole write needs its storage write fact"
     ("temporary", MIRSlotKind.TEMPORARY, True, ("refused: " + MISSING_SUM_FACT,)),
     ("local", MIRSlotKind.LOCAL, True, ("refused: " + MISSING_SUM_FACT,)),
     # A whole-record construction through a borrowed holder may replace what
-    # any external holder points into: storage and retention refuse it, the
-    # scope ends do not track it, and a field proof it may reach dies
-    # (fail closed; the base place rule kept it, `P` holding no `H.p`).
-    ("holder", None, False,
-     ("not covered: missing storage write fact", "not covered: storage: missing storage write fact", "ok", "ok")),
-    ("holder_inside", None, True, (SELECTION,)),
+    # any external holder points into: without its in-place fact it never
+    # validates, so no reader weighs it.
+    ("holder", None, False, ("refused: " + MISSING_RECORD_FACT,)),
+    ("holder_inside", None, True, ("refused: " + MISSING_RECORD_FACT,)),
 ])
 def test_a_missing_write_fact_is_scoped_by_each_reader(name: str, kind: MIRSlotKind | None, inside: bool,
                                                        expected: tuple[str, ...]) -> None:

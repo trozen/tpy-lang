@@ -10,7 +10,7 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .value import MIRFieldId, MIRValidationError
 from .testutil import Reference, TupleValue, execute, reslot

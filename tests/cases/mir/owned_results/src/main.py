@@ -176,6 +176,21 @@ def make_pinned(n: int32) -> Own[Pinned]:  # tpyc: mir(uncovered /^owned record 
     return Pinned(n)
 
 
+class PinHolder:
+    p: Pinned
+
+    # constructor: a @nomove member initialized by copy is built in place, never moved
+    def __init__(self, p: Pinned) -> None:  # tpyc: mir(covered)
+        self.p = copy(p)
+
+
+# free function: a @nomove record's copy built into its holder's member
+def pin_holder(n: int32) -> int32:  # tpyc: mir(covered)
+    p = Pinned(n)
+    h = PinHolder(p)
+    return h.p.x
+
+
 class Tok(ValueType):
     a: int32
 
@@ -234,6 +249,7 @@ def main() -> None:
     print("lend_temp", lend_temp(2))
     print("maybe", maybe(True, 9), maybe(False, 9))
     print("make_pinned", make_pinned(5).x)
+    print("pin_holder", pin_holder(5))
     print("make_tok", make_tok(6).a)
     print("make_box", make_box(7).v)
     h = Holder()

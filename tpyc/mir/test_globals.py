@@ -12,12 +12,12 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, _iter_children, validate_function as validate_thir
 from ..typesys import BOOL, INT32
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRBodyId, MIRFunction, MIRGlobalId, MIRNotCovered, MIRSlotKind,
     MIRAssign, MIRCompare, MIRNot, MIRPlace, MIRReturn,
 )
-from .testutil import Reference, execute, reslot
+from .testutil import construct, Reference, execute, reslot
 from .value import MIRValidationError
 from .prepare import validate_function
 
@@ -99,7 +99,7 @@ def test_storage_is_shared_between_calls_and_other_bodies(artifacts: Artifacts) 
     constructor = lower_constructor(ctor, MIRBodyId("globals", "Writer.__init__"))
     assert isinstance(constructor, MIRFunction), constructor
     heap = {}
-    execute(constructor, Reference(1), 12, heap=heap, global_state=state)
+    construct(constructor, 1, 12, heap=heap, global_state=state)
     assert execute(read, global_state=state) == 12
     state[count] = 0
     assert execute(lower(functions["write"]), Reference(1), heap=heap, global_state=state) == 12

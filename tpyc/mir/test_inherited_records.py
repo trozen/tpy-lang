@@ -1,8 +1,8 @@
 """MIR over records with struct bases: a layout carrying its ancestors'
 fields keyed by their declaring owner, storage binding at an ancestor's type
 at a call argument (`binds_at`), field membership in the storage's layout,
-the definitions chain composing each base constructor's verified definition
-with its arguments, the inherited-constructor relabel, and the owner-qualified
+a base initializer as a call of the base's constructor initializing the
+base's fields, the inherited constructor calling its base's, and the owner-qualified
 spelling of a shadowed field."""
 
 from dataclasses import dataclass, replace
@@ -16,13 +16,11 @@ from ..thir.testutil import _compile, _entry
 from ..typesys import INT32, STR, NominalType
 from .call_contract import MIRSummaryState, binds_at
 from .collect import MIRBodyVerdict, enumerate_bodies, line_facts
-from .coverage import MIRUnsupported
-from .definitions import (
-    owned_leaf_layout, MIRConstructorDefinition, MIRDefinitions, _verify, constructor_initialization,
-)
-from .lower import lower_function
-from .nodes import MIRBodyId, MIRConstant, MIRFunction, MIRNotCovered
-from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
+from .definitions import owned_leaf_layout, MIRConstructorDefinition, MIRDefinitions
+from .dump import dump_function
+from .testutil import lower_constructor, lower_function
+from .nodes import MIRAssign, MIRBodyId, MIRCall, MIRConstant, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRPlace
+from .value import MIRField, MIRRecordLayout, MIRValidationError
 from .prepare import validate_function
 
 SOURCE = """\
@@ -204,7 +202,7 @@ def program():
         result = _Program(
             compiler, {c.record_name: c for c in ctx.thir_constructors.values()},
             {i.record_layout.type.name: i for i in ctx.thir_inherited_constructors.values()},
-            {fn.name: fn for _, fn in mir.workspace.definitions.values()},
+            {fn.name: fn for _, fn in mir.workspace.definitions.values() if isinstance(fn, th.THIRFunction)},
             mir.definitions, mir.workspace.summaries,
             {v.body.declaration.split("@")[0]: v for v in verdicts})
     return result
@@ -227,11 +225,6 @@ def _definition(program: _Program, name: str) -> MIRConstructorDefinition:
     return definition
 
 
-def _fields(definition: MIRConstructorDefinition) -> list[tuple[str, object, bool, bool]]:
-    return [(f"{i.field.id.owner.name}::{i.field.id.name}", i.source, i.move, i.may_raise)
-            for i in definition.initializers]
-
-
 def _lowered(program: _Program, name: str) -> MIRFunction:
     fn = program.verdicts[name].function
     assert isinstance(fn, MIRFunction), program.verdicts[name].reason
@@ -242,12 +235,34 @@ def _base_init(ctor: th.THIRConstructor, *args: th.THIRExpr) -> th.THIRConstruct
     return replace(ctor, base_inits=(replace(ctor.base_inits[0], args=args),))
 
 
-def _refusal(ctor: th.THIRConstructor, bases) -> str:
-    try:
-        constructor_initialization(ctor, bases)
-    except MIRUnsupported as failure:
-        return failure.reason
-    raise AssertionError("composed")
+def _built(ctor: th.THIRConstructor, definitions: MIRDefinitions) -> MIRFunction | MIRNotCovered:
+    return lower_constructor(ctor, MIRBodyId("main", f"{ctor.record_name}.__init__"), definitions=definitions)
+
+
+def _refusal(ctor: th.THIRConstructor, definitions: MIRDefinitions) -> str:
+    built = _built(ctor, definitions)
+    assert isinstance(built, MIRNotCovered), dump_function(built)
+    return built.reason
+
+
+def _base_calls(fn: MIRFunction) -> list[MIRAssign]:
+    """The base initializers of a constructor body: calls initializing a base's fields."""
+    return [s for b in fn.blocks for s in b.statements
+            if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) and s.value.initializes is not None]
+
+
+def _sources(fn: MIRFunction, call: MIRAssign) -> list[object]:
+    """What each argument of `call` holds: the parameter it borrows, or the constant it is."""
+    names = {s.id: s.name for s in fn.slots}
+    values = {s.target.root: s.value for b in fn.blocks for s in b.statements
+              if isinstance(s, MIRAssign) and not s.target.projections}
+    found = []
+    for arg in call.value.arguments:
+        value = values.get(arg)
+        source = getattr(value, "source", arg)
+        found.append(value if isinstance(value, MIRConstant) else
+                     names[source.root if isinstance(source, MIRPlace) else source])
+    return found
 
 
 # --- the binding rule ----------------------------------------------------------------
@@ -362,25 +377,24 @@ def test_a_shadowed_field_is_spelled_with_its_owner(program: _Program) -> None:
     assert sorted(spelled for _line, spelled in plain.writes) == ["self.k", "self.n"] and not plain.ambiguous
 
 
-# --- the definitions chain -----------------------------------------------------------
+# --- base initializers -----------------------------------------------------------
 
-def test_composition_per_leg(program: _Program) -> None:
-    # A lent view (VIEW -> VIEW) keeps the base's copy; a scalar passes through.
-    assert _fields(_definition(program, "Sub")) == [
-        ("Base::n", MIRConstant(0), False, False), ("Base::name", "name", False, True),
-        ("Sub::k", "k", False, False)]
-    # A constant leg takes the base member's mode.
-    assert _fields(_definition(program, "Deep")) == [
-        ("Base::n", MIRConstant(0), False, False), ("Base::name", "name", False, True),
-        ("Sub::k", MIRConstant(1), False, False), ("Deep::d", MIRConstant(3), False, False)]
+def test_a_base_initializer_calls_the_base_constructor(program: _Program) -> None:
+    def base_call(name: str) -> tuple[str, list[object], bool]:
+        fn = _lowered(program, f"{name}.__init__")
+        call, = _base_calls(fn)
+        return call.value.initializes.name, _sources(fn, call), call.value.may_raise
+    # A lent name passes through; the base's own copy of it may raise.
+    assert base_call("Sub") == ("Base", ["name"], True)
+    # A constant argument is the base parameter's value.
+    assert base_call("Deep") == ("Sub", ["name", MIRConstant(1)], True)
     # CONST_REF -> CONST_REF lends the owned leaves the base copies.
     assert [p.passing.name for p in program.constructors["BigSub"].params] == ["CONST_REF", "CONST_REF"]
-    assert _fields(_definition(program, "BigSub")) == [("Big::v", "v", False, False), ("Big::t", "t", False, True)]
-    # An owned-leaf constant into the base's own copy is materialized there:
-    # the body composes it, a caller's construct has no operand for it.
-    lit = constructor_initialization(program.constructors["Lit"], program.definitions.records)
-    assert _fields(lit) == [("Holder::s", MIRConstant("x"), False, True)]
-    assert program.definitions.records[_record(program, "Lit")] == "constructor owned-leaf constant"
+    assert base_call("BigSub") == ("Big", ["v", "t"], True)
+    # An owned-leaf constant into the base's own copy is materialized in the
+    # derived body and handed over; a caller constructs through it.
+    assert base_call("Lit") == ("Holder", [MIRConstant("x")], False)
+    assert isinstance(program.definitions.records[_record(program, "Lit")], MIRConstructorDefinition)
 
 
 def _moved_into_holder(program: _Program) -> th.THIRConstructor:
@@ -391,53 +405,54 @@ def _moved_into_holder(program: _Program) -> th.THIRConstructor:
     return _base_init(replace(lit, params=(param,)), th.THIRMove(STR, name))
 
 
-def test_composition_of_moves(program: _Program) -> None:
-    moved = _moved_into_holder(program)
-    holder = _record(program, "Holder")
-    # MOVE o MOVE: the member takes the caller's storage.
-    assert _fields(constructor_initialization(moved, program.definitions.records)) == [
-        ("Holder::s", "s", True, False)]
-    # MOVE o COPY: the child's storage is moved into the base's own copy,
-    # which the base copies on: the member takes a copy of the child's
-    # parameter (which may raise), so a caller cannot construct through it.
-    ctor = program.constructors["Holder"]
-    copying = replace(ctor, mil_inits=(replace(ctor.mil_inits[0], value=ctor.mil_inits[0].value.value),))
-    bases = {holder: constructor_initialization(copying)}
-    assert _fields(constructor_initialization(moved, bases)) == [("Holder::s", "s", False, True)]
-    with pytest.raises(MIRUnsupported) as refused:
-        _verify(moved, bases)
-    assert refused.value.reason == "constructor copies an owned parameter"
+def _argument_value(fn: MIRFunction, call: MIRAssign) -> object:
+    return next(s.value for b in fn.blocks for s in b.statements
+                if isinstance(s, MIRAssign) and s.target.root == call.value.arguments[0]
+                and not s.target.projections)
 
 
-def test_composition_refusals(program: _Program) -> None:
-    records = program.definitions.records
-    moved = _moved_into_holder(program)
-    # A bare name into an owning base parameter: a copy the leg does not model.
-    assert _refusal(_base_init(moved, moved.base_inits[0].args[0].value), records) == (
-        "base argument needs matching parameter or literal")
-    # An expression argument.
-    sub = program.constructors["Sub"]
-    k = th.THIRName(INT32, "k")
-    expression = th.THIRBinOp(INT32, k, "+", k, None)
-    deep = program.constructors["Deep"]
-    assert _refusal(_base_init(deep, deep.base_inits[0].args[0], expression),
-                    records) == "base argument needs matching parameter or literal"
-    # An owning leg whose base parameter feeds no member.
+def test_a_base_argument_moves_an_owned_parameter(program: _Program) -> None:
+    fn = _built(_moved_into_holder(program), program.definitions)
+    assert isinstance(fn, MIRFunction), fn.reason
+    call, = _base_calls(fn)
+    # The base's parameter takes the derived parameter's storage.
+    moved = _argument_value(fn, call)
+    assert isinstance(moved, MIRMove) and {s.id: s.name for s in fn.slots}[moved.source] == "s"
+    # An owning argument whose base parameter feeds no member: the base's body drops it.
     drop = _record(program, "Drop")
-    dropped = replace(moved, base_inits=(replace(moved.base_inits[0], base=drop),),
+    moved_ctor = _moved_into_holder(program)
+    dropped = replace(moved_ctor, base_inits=(replace(moved_ctor.base_inits[0], base=drop),),
                       record_layout=replace(program.constructors["Drop"].record_layout,
-                                            type=moved.record_layout.type, ancestors=(drop,)))
-    assert _refusal(dropped, records) == "base argument effect not modeled"
+                                            type=moved_ctor.record_layout.type, ancestors=(drop,)))
+    fn = _built(dropped, program.definitions)
+    assert isinstance(fn, MIRFunction), fn.reason
+    call, = _base_calls(fn)
+    assert call.value.initializes == drop and isinstance(_argument_value(fn, call), MIRMove)
+
+
+def test_base_initializer_refusals(program: _Program) -> None:
+    definitions = program.definitions
+    moved = _moved_into_holder(program)
+    # A bare owned name into an owning base parameter is a copy of it, as at any call.
+    copied = _built(_base_init(moved, moved.base_inits[0].args[0].value), definitions)
+    assert isinstance(copied, MIRFunction), copied.reason
+    assert isinstance(_argument_value(copied, _base_calls(copied)[0]), MIRCopy)
+    # A borrowed name into an owning base parameter: no owned argument (the
+    # C++ would build the base's `str` from a view).
+    lent = program.constructors["Base"].params[0]
+    borrowed = _base_init(replace(moved, params=(lent,)), replace(th.THIRName(STR, lent.name), form=th.Form.BORROW))
+    assert _refusal(borrowed, definitions) == "argument form disagrees with its passing"
     # A skipped base is value-initialized: its constructor never runs.
     assert program.constructors["Skip"].base_inits[0].args == ()
-    assert records[_record(program, "Skip")] == "base constructor not called"
-    assert _refusal(replace(sub, base_inits=()), records) == "base constructor not called"
-    # One base built twice (sema never emits it; the chain refuses it anyway).
+    assert program.verdicts["Skip.__init__"].reason == "base constructor not called"
+    sub = program.constructors["Sub"]
+    assert _refusal(replace(sub, base_inits=()), definitions) == "base constructor not called"
+    # One base built twice (sema never emits it; the body refuses it anyway).
     assert _refusal(replace(sub, base_inits=(sub.base_inits[0], sub.base_inits[0])),
-                    records) == "base constructor called twice"
-    # A base whose definition is refused refuses the derived one.
-    assert records[_record(program, "EffectSub")] == "base definition: constructor body effects"
-    assert _refusal(sub, {}) == "base definition: missing constructor definition"
+                    definitions) == "base constructor called twice"
+    # A base whose constructor has no usable summary refuses the derived body's call.
+    assert program.verdicts["EffectSub.__init__"].reason == "call needs finalized known summary"
+    assert _refusal(sub, MIRDefinitions()) == "base definition: missing constructor definition"
 
 
 # --- the inherited constructor -------------------------------------------------------
@@ -446,7 +461,7 @@ def test_an_inherited_constructor_is_the_base_definition_at_the_derived_type(pro
     dog, animal = _definition(program, "Dog"), _definition(program, "Animal")
     assert dog.layout.type == program.inherited["Dog"].record_layout.type
     assert dog.layout.ancestors == (animal.layout.type,)
-    assert dog.constructor is animal.constructor and dog.initializers == animal.initializers
+    assert dog.callee == animal.callee and dog.initializes == animal.layout.type
     assert dog.layout.fields == animal.layout.fields
     # A caller constructs through it.
     assert program.verdicts["make_dog"].function is not None, program.verdicts["make_dog"].reason
@@ -466,3 +481,74 @@ def test_inherited_constructor_shape_refusals(program: _Program, change: str) ->
     definitions = MIRDefinitions(tuple(program.constructors.values()),
                                  inherited=(replace(inherited, record_layout=layout),))
     assert definitions.records[layout.type] == "inherited constructor shape"
+
+
+# --- skipped and empty base calls ---------------------------------------------------
+
+BASE_CALLS = """\
+from tpy import int32
+
+
+class Empty:
+    def __init__(self) -> None:
+        pass
+
+
+class AfterEmpty(Empty):
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        super().__init__()
+        self.x = x
+
+
+class Loud:
+    def __init__(self, n: int32 = 7) -> None:
+        print(n)
+
+
+class SkipsLoud(Loud):
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+
+class Quiet:
+    def __init__(self, n: int32 = 7) -> None:
+        pass
+
+
+class SkipsQuiet(Quiet):
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        self.x = x
+"""
+
+
+def _base_call_verdicts() -> dict[str, MIRBodyVerdict]:
+    compiler, modules = _compile(BASE_CALLS)
+    entry = _entry(modules)
+    _, ctx = compiler.generate_code_and_thir(entry)
+    with compiler.mir_analysis(((entry, ctx),)) as mir:
+        return {v.body.declaration.split("@")[0]: v for v in enumerate_bodies(
+            entry.ast, entry.analyzer, ctx, entry.name, mir.definitions, compiler.thir_reject_by_node,
+            mir.workspace)}
+
+
+def test_a_base_call_initializing_no_field_reads_nothing() -> None:
+    # `super().__init__()` of a fieldless base before the own field: no whole read of the record.
+    verdict = _base_call_verdicts()["AfterEmpty.__init__"]
+    assert verdict.function is not None, verdict.reason
+    assert verdict.summary.state is MIRSummaryState.KNOWN
+
+
+def test_a_skipped_base_with_defaulted_parameters_is_its_call() -> None:
+    verdicts = _base_call_verdicts()
+    # C++ runs `Loud(7)`, which prints: the derived summary never drops it as normal-return.
+    # The skipped base is a call of `Loud.__init__`, whose output effect leaves it no known summary.
+    assert verdicts["SkipsLoud.__init__"].reason == "call needs finalized known summary"
+    assert verdicts["Loud.__init__"].summary.reason == "summary output effect"
+    # A call omitting a defaulted argument binds no value for it, as at any call.
+    assert verdicts["SkipsQuiet.__init__"].reason == "incomplete constructor arguments"

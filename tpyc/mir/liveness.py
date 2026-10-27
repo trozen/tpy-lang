@@ -9,7 +9,7 @@ from .nodes import (
     MIRStatement, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
     MIRPoint, MIRSlotId, MIRTerminator,
 )
-from .validate import operands, reachable_blocks, source_definition, statement_reads, successors
+from .validate import reachable_blocks, source_definition, statement_reads, successors
 from .value import MIRValidationError
 
 
@@ -92,8 +92,6 @@ def _liveness(fn: MIRFunction) -> MIRLiveness:
             live = before(block.statements[index], live)
             points[MIRPoint(bid, index)] = live
     entry = incoming[fn.entry]
-    if fn.receiver_init is not None:
-        entry = close(entry | {fn.receiver_init.receiver} | set(operands(fn.receiver_init.members)))
     return MIRLiveness(fn, MappingProxyType(incoming), MappingProxyType(outgoing),
                        MappingProxyType(points), entry)
 

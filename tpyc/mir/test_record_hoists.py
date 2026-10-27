@@ -10,7 +10,7 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRPlace,
     MIRStorageInit,
@@ -19,7 +19,7 @@ from .nodes import (
     MIRRegionId, MIRStorageDuration,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
-from .testutil import compiled_definitions, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32
@@ -167,7 +167,7 @@ def test_shared_mutation_in_free_functions_methods_and_constructor_tails(artifac
     assert execute(bodies["repeated"], flag) == 8
     assert execute(bodies["late_operand"], flag, 2) == (5 if flag else 0)
     heap = {}
-    execute(bodies["Runner"], Reference(0), flag, heap=heap)
+    construct(bodies["Runner"], 0, flag, heap=heap)
     assert tuple(heap[0].values()) == (9 if flag else 0,)
     assert execute(bodies["method"], Reference(0), flag, heap=heap) == (10 if flag else 0)
 

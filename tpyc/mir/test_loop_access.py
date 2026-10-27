@@ -13,7 +13,7 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import ReadonlyType
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRSlotKind
 
 SOURCE = """\

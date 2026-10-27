@@ -4,6 +4,46 @@
 namespace tpyapp::main {
 
 
+// # free function: skipped bases, built empty and called
+// def skipped_bases() -> int32:  # tpyc: mir(covered)
+//     q = OverQuiet()
+//     c = OverCounted()
+//     # CPython never runs Counted.__init__ here (the warning), so c.n is not read
+//     return q.k + c.k
+int32_t skipped_bases() {
+    OverQuiet q = OverQuiet();
+    OverCounted c = OverCounted();
+    return (::tpy::add_check<int32_t>(q.k, c.k));
+}
+
+// # free function: both bases' loans, from the caller's arguments
+// def two_views(a: str, b: str) -> int32:  # tpyc: mir(covered)
+//     v = VAB(a, b)
+//     return len(v.a) + len(v.b)  # tpyc: mir_borrows(v.a, a) mir_borrows(v.b, b)
+int32_t two_views(std::string_view a, std::string_view b) {
+    VAB v = VAB(a, b);
+    return (::tpy::add_check<int32_t>(::tpy::__len__(v.a), ::tpy::__len__(v.b)));
+}
+
+// # free function: the second base replaces nm.name, which the first base's view holds
+// # (BUGS.md#record-view-member-source-replaced)
+// def view_replaced(k: int32) -> int32:  # tpyc: mir(conflict /replacement/)
+//     nm = Named("a" * (40 + k))
+//     v = VAC(nm.name, nm)  # tpyc: warning(/argument 'nm.name' is what 'VAC' modifies/)
+//     return len(v.a)
+int32_t view_replaced(int32_t k) {
+    Named nm = Named((::tpy::str_repeat("a", (::tpy::add_check<int32_t>(40, k)))));
+    VAC v = VAC(nm.name, nm);
+    return ::tpy::__len__(v.a);
+}
+
+// # free function: a caller of the recursive constructor has no summary to apply
+// def make_chain(n: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+//     return Chain(n).n
+int32_t make_chain(int32_t n) {
+    return Chain(n).n;
+}
+
 // # free function: a subclass parameter, base methods applied through it
 // def use_sub(s: Sub) -> int32:  # tpyc: mir(covered)
 //     s.bump()
@@ -189,6 +229,12 @@ int32_t upcast_payload(Sub& s) {
 //     print("payload", upcast_payload(s))
 //     # the upcast bumped the Sub itself: read after the calls, not inside their print
 //     print("after", s.n)
+//     print("skipped", skipped_bases())
+//     od = OverDefaulted()
+//     print("defaulted", od.k)
+//     print("two_views", two_views("aa", "bbb"))
+//     print("view_replaced", view_replaced(1))
+//     print("chain", make_chain(3))
 void main() {
     Sub s = Sub("a", 5);
     std::cout << "use_sub" << " " << ::tpyapp::main::use_sub(s) << "\n" << ::tpy::check_signals;
@@ -211,6 +257,12 @@ void main() {
     std::cout << "upcast" << " " << ::tpyapp::main::upcast_local(s) << "\n" << ::tpy::check_signals;
     std::cout << "payload" << " " << ::tpyapp::main::upcast_payload(s) << "\n" << ::tpy::check_signals;
     std::cout << "after" << " " << s.n << "\n" << ::tpy::check_signals;
+    std::cout << "skipped" << " " << ::tpyapp::main::skipped_bases() << "\n" << ::tpy::check_signals;
+    OverDefaulted od = OverDefaulted();
+    std::cout << "defaulted" << " " << od.k << "\n" << ::tpy::check_signals;
+    std::cout << "two_views" << " " << ::tpyapp::main::two_views("aa", "bbb") << "\n" << ::tpy::check_signals;
+    std::cout << "view_replaced" << " " << ::tpyapp::main::view_replaced(1) << "\n" << ::tpy::check_signals;
+    std::cout << "chain" << " " << ::tpyapp::main::make_chain(3) << "\n" << ::tpy::check_signals;
 }
 
 // main()

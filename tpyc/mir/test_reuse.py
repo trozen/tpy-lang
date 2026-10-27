@@ -8,9 +8,9 @@ from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, OptionalType
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
     MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRWrap, MIRRegion, MIRRegionId,
 )
@@ -18,7 +18,7 @@ from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .testutil import (
-    compiled_definitions, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape,
+    compiled_definitions, construction, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape,
     owned_shape, reslot,
     prepared,
 )
@@ -33,6 +33,17 @@ class Cell:
 
     def __init__(self, value: int32):
         self.value = value
+"""
+
+
+# A record copied into a local's own storage: a non-call record write.
+COPY_SOURCE = """
+from tpy import copy
+
+def copied(k: int32) -> int32:
+    a = Cell(k)
+    b = copy(a)
+    return b.value
 """
 
 
@@ -157,6 +168,7 @@ def backing_function() -> MIRFunction:
     root, iteration = MIRRegionId(body, 0), MIRRegionId(body, 1)
     cell = hand_record("Cell", "storage.Cell", value=INT32)
     field = MIRField(MIRFieldId(cell, "value"), INT32)
+    layout = MIRRecordLayout(cell, (field,), True, True)
     slots = (MIRSlot(n, leaf_shape(INT32), MIRSlotKind.PARAMETER),
              MIRSlot(store, optional_shape(OptionalType(cell), owned_shape(cell)), MIRSlotKind.LOCAL,
                      storage_duration=MIRStorageDuration.BODY, residence=root),
@@ -168,7 +180,8 @@ def backing_function() -> MIRFunction:
     return bind_parameters(MIRFunction(body, INT32, slots, (
         MIRBlock(a, (MIRStorageInit(MIRPlace(store), 0, MIRConstant(None)),), MIRGoto(loop), root),
         MIRBlock(loop, (
-            MIRAssign(MIRPlace(built), MIRConstruct((n,)), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+            MIRAssign(MIRPlace(built), construction(layout, n),
+                      storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
             MIRAssign(MIRPlace(store), MIRWrap(1, MIRPlace(built)),
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)),
             MIRAssign(MIRPlace(holder), MIRBorrow(MIRPlace(store, (MIRUnionPayload(1),)))),
@@ -176,7 +189,7 @@ def backing_function() -> MIRFunction:
         MIRBlock(end, (MIRAssign(MIRPlace(result), MIRRead(MIRPlace(holder, (MIRDeref(), field)))),), MIRReturn(result),
                  root),
         MIRBlock(latch, (), MIRBranch(flag, loop, end), root),
-    ), a, (MIRRecordLayout(cell, (field,), True, True),),
+    ), a, (layout,),
         regions=(MIRRegion(root, None, a), MIRRegion(iteration, root, loop))))
 
 
@@ -191,9 +204,9 @@ def rewrite_site(fn: MIRFunction, index: int = BUILD, **changes: object) -> MIRF
 
 
 @pytest.mark.parametrize("fact,message", [
-    (None, "optional field write needs a replacement fact"),
-    (MIRStorageWrite(MIRStorageWriteMode.INITIALIZE), "optional field write needs a replacement fact"),
-    (MIRStorageWrite("own"), "optional field write needs a replacement fact"),
+    (None, "field write needs its initialization or replacement fact"),
+    (MIRStorageWrite(MIRStorageWriteMode.INITIALIZE), "field write needs its initialization or replacement fact"),
+    (MIRStorageWrite("own"), "field write needs its initialization or replacement fact"),
 ])
 def test_cycles_require_positive_reuse_fact(fact: MIRStorageWrite | None, message: str) -> None:
     # The refill a cycle repeats replaces the sum's payload in place: only that fact admits it.
@@ -229,7 +242,17 @@ def test_site_has_one_static_writer_and_valid_initialized_source() -> None:
 def test_missing_fact_is_uncovered_even_when_acyclic() -> None:
     fn = backing_function()
     fn = replace(fn, blocks=(fn.blocks[0], replace(fn.blocks[1], terminator=MIRGoto(fn.blocks[2].id)), *fn.blocks[2:]))
-    fn = rewrite_site(fn, storage_write=None)
+    # A construction is a call: its whole write of record storage states
+    # its fact, or the body never validates (no analysis guesses the kind).
+    with pytest.raises(MIRValidationError, match="call result type or target mismatch"):
+        validate_function(rewrite_site(fn, storage_write=None))
+    # A copy into record storage validates without one: the inventory
+    # cannot tell an initialization from a replacement, so it is not covered.
+    fn = source_function(CELL_SOURCE + COPY_SOURCE, "copied")
+    entry = fn.blocks[0]
+    copy, = (s for s in entry.statements if isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy))
+    fn = replace(fn, blocks=(replace(entry, statements=tuple(
+        replace(s, storage_write=None) if s is copy else s for s in entry.statements)), *fn.blocks[1:]))
     validate_function(fn)
     result = analyze_storage(prepared(fn))
     assert isinstance(result, MIRNotCovered)
@@ -241,7 +264,7 @@ def test_in_place_owner_and_projection_must_match_exactly() -> None:
     fn = backing_function()
     block = fn.blocks[1]
     holder = fn.slots[2].id
-    stmt = MIRAssign(MIRPlace(holder, (MIRDeref(),)), MIRConstruct((fn.slots[0].id,)),
+    stmt = MIRAssign(MIRPlace(holder, (MIRDeref(),)), construction(fn.records[0], fn.slots[0].id),
                      storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, holder))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(*block.statements, stmt),
                                                  terminator=MIRGoto(fn.blocks[2].id)), *fn.blocks[2:]))

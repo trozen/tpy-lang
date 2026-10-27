@@ -9,7 +9,7 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRBodyId, MIRBodyKind, MIRBranch, MIRFunction, MIRPlace,
 )

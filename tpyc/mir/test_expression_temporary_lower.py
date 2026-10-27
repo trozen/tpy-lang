@@ -10,15 +10,15 @@ from ..thir import nodes as th
 from ..thir.storage_facts import collect_storage_facts
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import _iter_children
-from ..typesys import INT32
-from .collect import dump_codegen_mir
+from .testutil import dump_compiled_mir
+from .call_contract import MIRSummaryResult
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRRegionId, MIRSlotKind
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageVerdict
-from .testutil import compiled_definitions, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, constructor_summaries, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -118,7 +118,7 @@ def test_source_lowers_and_executes(artifacts: Artifacts, name: str, args: tuple
 def test_receiver_positions_and_inline_emission(artifacts: Artifacts) -> None:
     _, bodies, _, cpp = artifacts
     heap = {}
-    execute(bodies["Runner"], Reference(0), 11, heap=heap)
+    construct(bodies["Runner"], 0, 11, heap=heap)
     assert execute(bodies["method"], Reference(0), 13, heap=heap) == 13
     assert next(iter(heap[0].values())) == 13
     assert "Cell(value).value" in cpp and "Cell(n).value" in cpp
@@ -149,29 +149,31 @@ def test_source_facts_and_verified_constructor_are_required(artifacts: Artifacts
         access = replace(access, field_identity=None)
     elif mutation == "no_storage":
         access = replace(access, receiver=replace(access.receiver, full_expression_storage=None))
-    else:
-        ctor = definitions.records[access.receiver.result_type].constructor
-        ctor = replace(ctor, body=(th.THIRExprStmt(th.THIRLiteral(INT32, 0)),))
-        definitions = MIRDefinitions((ctor,))
+    summaries = dict(constructor_summaries(definitions))
+    if mutation == "effectful_constructor":
+        # A constructor whose body has an effect has no summary a caller applies.
+        callee = definitions.records[access.receiver.result_type].callee.identity
+        summaries[callee] = MIRSummaryResult.opaque("summary output effect")
     rhs = replace(rhs, left=access)
     expr = replace(expr, **({"rhs": rhs} if isinstance(expr, th.THIRValueSelect) else {"right": rhs}))
     fn = replace(fn, body=(replace(fn.body[0], value=expr),))
     result = lower_function(fn, MIRBodyId("bad", mutation),
-                            definitions=definitions)
+                            definitions=definitions, summaries=summaries)
     assert isinstance(result, MIRNotCovered)
     assert result.reason == {"no_field": "missing field identity",
                              "no_storage": "missing or invalid full-expression storage",
-                             "effectful_constructor": "constructor body effects"}[mutation]
+                             "effectful_constructor": "call needs finalized known summary"}[mutation]
     fn = replace(fn, storage_facts=collect_storage_facts(fn.body, fn.temp_plan))
     bound = certify_thir_storage(MIRStorageRequest(fn, result.body, MIRBodyKind.FREE_FUNCTION,
-                                                  definitions, {}))
+                                                  definitions, summaries))
     assert bound.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(g.reason == result.reason for g in bound.gaps)
 
 
 @pytest.mark.parametrize("body,reason", [
     ("return consume(Cell(1))", "call needs finalized known summary"),
-    ("return Cell((n := 1)).value", "effectful constructor argument"),
+    # An argument with an effect is evaluated before the call, as at any call.
+    ("return Cell((n := 1)).value", None),
     ("result = Cell(1).value < (n := 2)\n    return n", "order-sensitive eager operands"),
     ("for i in range(Cell(1).value):\n        n = i\n    return n", "temporary needs full-expression boundary"),
     ("pair = (Cell(1),)\n    return pair[0].value", None),
@@ -198,7 +200,7 @@ def boundary(n: int32) -> int32:
     else:
         assert isinstance(result, MIRNotCovered) and result.reason == reason
         bound = certify_thir_storage(MIRStorageRequest(fn, result.body, MIRBodyKind.FREE_FUNCTION,
-                                                      definitions, {}))
+                                                      definitions, constructor_summaries(definitions)))
         assert bound.verdict is MIRStorageVerdict.NOT_COVERED
         assert any(g.reason == reason for g in bound.gaps)
 
@@ -231,9 +233,7 @@ def test_debug_dump_exposes_temporary_region() -> None:
     compiler, modules = _compile(SOURCE)
     entry = _entry(modules)
     ctx = compiler.collect_thir(entry, tolerate_reject=True)
-    output = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                             compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
-                             compiler.thir_reject_by_node)
+    output = dump_compiled_mir(compiler, entry, ctx)
     assert "::local@" in output and "owned-storage temporary duration=r1" in output
     assert "initialize" in output and "scope ends" in output
 

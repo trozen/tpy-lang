@@ -8,7 +8,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..thir.nodes import (
-    THIRBorrowedRecord, THIRCallableSignature, THIRFunction, THIRFunctionIdentity, THIRResolvedCallee,
+    THIRConstructor, THIRBorrowedRecord, THIRCallableSignature, THIRFunction, THIRFunctionIdentity, THIRResolvedCallee,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import Representation, INT32, NominalType, RefType
@@ -21,9 +21,9 @@ from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, resolve_call_returns
 from .presence import present_call
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRFunction, MIRNotCovered, MIRReturn, MIRPoint,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRFunction, MIRNotCovered, MIRReturn, MIRPoint,
     MIRPlace, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref
@@ -320,7 +320,12 @@ def test_return_preserves_selected_identity(artifacts: Artifacts, name: str, fla
 def workspace(artifacts: Artifacts, compiled) -> MIRCallWorkspace:
     with activate_compiler(compiled[0]):
         functions, _, definitions = artifacts
-        return analyze_call_workspace(tuple((MIRBodyId("main", n), fn) for n, fn in functions.items()), definitions)
+        # The constructors too: a construction calls its constructor's summary.
+        constructors = tuple((MIRBodyId("main", f"{d.constructor.record_name}.__init__"), d.constructor)
+                             for d in definitions.records.values()
+                             if not isinstance(d, str) and isinstance(d.constructor, THIRConstructor))
+        return analyze_call_workspace(
+            tuple((MIRBodyId("main", n), fn) for n, fn in functions.items()) + constructors, definitions)
 
 
 @pytest.mark.parametrize("name, roots", [
@@ -343,8 +348,10 @@ def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: 
     assert isinstance(body, MIRFunction), body
     dependencies = prepared(body).dependencies
     assert not isinstance(dependencies, MIRNotCovered)
+    # The calls returning a borrow (a construction fills owned storage).
     calls = [(block, index, stmt) for block in body.blocks for index, stmt in enumerate(block.statements)
-             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)]
+             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+             and not body.slots[stmt.target.root.index].shape.is_storage]
     assert calls
     for block, index, stmt in calls:
         origins = dependencies.referents[MIRPoint(block.id, index + 1)][stmt.target]
@@ -436,8 +443,10 @@ def test_returned_holder_participates_in_storage_analysis(workspace: MIRCallWork
     value = next(s for s in body.slots if s.name == "value")
     saved = next(s for s in body.slots if s.name == "saved")
     # Replace storage after the call; a content write alone does not end its loans.
+    built, = (s.value for b in body.blocks for s in b.statements
+              if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) and body.slots[s.target.root.index].shape.is_storage)
     blocks = tuple(replace(block, statements=tuple(
-        MIRAssign(MIRPlace(local.id, (MIRDeref(),)), MIRConstruct((value.id,)),
+        MIRAssign(MIRPlace(local.id, (MIRDeref(),)), replace(built, arguments=(value.id,)),
                   storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, local.id))
         if isinstance(stmt, MIRAssign) and stmt.target.projections else stmt
         for stmt in block.statements)) for block in body.blocks)
@@ -464,7 +473,7 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
         replace(stmt, value=MIRCall(summary, (stmt.value.source,)))
         if isinstance(stmt, MIRAssign) and stmt.target == MIRPlace(SAVED) and isinstance(stmt.value, MIRAlias)
         else stmt for stmt in block.statements)) for block in body.blocks)
-    changed = replace(body, blocks=blocks, call_summaries=(summary,))
+    changed = replace(body, blocks=blocks, call_summaries=(*body.call_summaries, summary))
     assert any(isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
                for block in changed.blocks for stmt in block.statements)
     actual = inspect_scope_lifetimes(prepared(changed))

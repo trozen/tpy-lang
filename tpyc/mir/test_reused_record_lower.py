@@ -8,8 +8,8 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
-from .collect import dump_codegen_mir
-from .lower import lower_constructor, lower_function
+from .testutil import dump_compiled_mir
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRBodyId, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRStorageWriteMode,
 )
@@ -17,7 +17,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_cyclic_record_lower import nodes
 from .test_retention import analyze
-from .testutil import compiled_definitions, ContainerValue, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, ContainerValue, Reference, execute, prepared
 
 
 CELL_SOURCE = '''from tpy import int32, copy
@@ -221,7 +221,7 @@ def hoists(compiled) -> Hoists:
                 bodies["Runner"] = lower_constructor(ctor, MIRBodyId("reused", "Runner"), definitions=definitions)
         for name, fn in bodies.items():
             assert isinstance(fn, MIRFunction), (name, fn)
-        dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
+        dumped = dump_compiled_mir(compiler, entry, ctx)
         return functions, bodies, dumped
 
 
@@ -267,7 +267,7 @@ def test_hoisted_copy_skipped_paths_and_constructor_tail(hoists: Hoists, skip: b
     field = next(r.fields[0].id for r in ctor.records if r.type.name == "Cell")
     for flag in (False, True):
         heap = {}
-        execute(ctor, Reference(0), flag, heap=heap)
+        construct(ctor, 0, flag, heap=heap)
         assert tuple(heap[0].values()) == (7 if flag else 0,)
         assert heap[1][field] == 3
         assert execute(hoists[1]["boolean"], flag) is flag
@@ -339,7 +339,7 @@ LOOP:
     assert write.storage_write.mode is MIRStorageWriteMode.INITIALIZE
     assert analyze(fn).conflicts == ()
     assert inspect_scope_lifetimes(prepared(fn)).conflicts == ()
-    dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, definitions, compiler.thir_reject_by_node)
+    dumped = dump_compiled_mir(compiler, entry, ctx)
     assert " = move " in dumped and "in_place" in dumped
     for run, flag, stop, trips in ((False, True, False, 0), (True, True, False, 2),
                                   (True, True, True, 1), (True, False, False, 1)):
@@ -347,10 +347,13 @@ LOOP:
         arguments = (2 if run else 0, ContainerValue((1, 2) if run else ()), run, flag, stop)
         if position == "constructor":
             arguments = (2 if run else 0, run, flag, stop)
-        if position in ("method", "constructor"):
+        if position == "method":
             heap[0] = {}
             arguments = (Reference(0), *arguments)
-        result = execute(fn, *arguments, heap=heap)
+        if position == "constructor":
+            construct(fn, 0, *arguments, heap=heap)
+        else:
+            result = execute(fn, *arguments, heap=heap)
         expected = 9 if run and flag else 0
         assert (next(iter(heap[0].values())) if position == "constructor" else result) == expected
         # Each loop activation owns a source and, only on the taken guard, its destination.

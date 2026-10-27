@@ -14,7 +14,7 @@ from ..thir.storage_facts import THIRBackingKind, THIRStorageFacts, validate_sto
 from ..thir.temp_plan import THIRTempPlan, validate_plan
 from .call_contract import MIRSummaryResult
 from .definitions import MIRDefinitions
-from .lower import lower_constructor_storage, lower_function_storage
+from .lower import lower_callable
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRSlotId, function_body_kind
 from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageEvidence, MIRStorageVerdict,
@@ -113,13 +113,9 @@ def certify_thir_storage(request: MIRStorageRequest) -> MIRBoundStorageEvidence:
     if isinstance(source, th.THIRConstructor):
         if request.kind is not MIRBodyKind.CONSTRUCTOR:
             raise MIRValidationError("storage request kind differs from its constructor")
-        lowered = lower_constructor_storage(source, request.body, definitions=request.definitions,
-                                            summaries=request.summaries)
-    else:
-        if request.kind is not function_body_kind(source):
-            raise MIRValidationError("storage request kind differs from its function")
-        lowered = lower_function_storage(source, request.body,
-                                         definitions=request.definitions, summaries=request.summaries)
+    elif request.kind is not function_body_kind(source):
+        raise MIRValidationError("storage request kind differs from its function")
+    lowered = lower_callable(source, request.body, request.definitions, request.summaries)
     if isinstance(lowered, MIRNotCovered):
         gaps.append(lowered)
         return MIRBoundStorageEvidence(request, None, MappingProxyType({}), MappingProxyType({}), None, tuple(gaps))

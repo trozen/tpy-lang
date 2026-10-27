@@ -11,9 +11,9 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from . import test_record_initialization as optional
 from .definitions import MIRDefinitions
 from .liveness import MIRPoint
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRGoto,
+    MIRAssign, MIRBlock, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
     MIRMove, MIRRegion,
     MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRStorageDuration,
@@ -22,7 +22,8 @@ from .shapes import MIRDeref
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import INITIAL, analyze, loop_function
-from .testutil import compiled_definitions, execute, owned_shape, reslot, prepared
+from .testutil import compiled_definitions, construction, execute, owned_shape, reslot, prepared, with_calls
+from .validate import MIRDefiniteAssignmentError
 from .value import MIRValidationError
 from .prepare import validate_function
 
@@ -38,6 +39,11 @@ def test_reused_site_keeps_previous_holder_dependencies(move: bool, shape: str, 
     write = replace(block.statements[build], value=MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL)))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(
         *block.statements[:build], write, *block.statements[build + 1:])), *fn.blocks[2:]))
+    if move:
+        # The site re-executes on the next pass and moves INITIAL again.
+        with pytest.raises(MIRDefiniteAssignmentError, match="read after move"):
+            analyze(fn)
+        return
     assert {c.holder for c in analyze(fn).conflicts} == (set() if safe else {observed})
     heap = {}
     assert execute(fn, 3, True, heap=heap) == 3
@@ -50,7 +56,7 @@ def optional_transfers(fn: MIRFunction, move: bool) -> MIRFunction:
     source = MIRSlotId(fn.id, max(s.id.index for s in fn.slots) + 1)
     slot = MIRSlot(source, owned_shape(optional.CELL), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
                    residence=optional.ROOT)
-    init = MIRAssign(MIRPlace(source), MIRConstruct((optional.VALUE,)),
+    init = MIRAssign(MIRPlace(source), construction(optional.RECORD, optional.VALUE),
                      storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     # Each fill's record is built by a transfer of `source`.
     built = {MIRPlace(b) for b in optional.BUILT}
@@ -59,7 +65,7 @@ def optional_transfers(fn: MIRFunction, move: bool) -> MIRFunction:
         if isinstance(stmt, MIRAssign) and stmt.target in built else stmt
         for stmt in block.statements)) for block in fn.blocks)
     entry = replace(blocks[0], statements=(init, *blocks[0].statements))
-    return replace(fn, slots=(*fn.slots, slot), blocks=(entry, *blocks[1:]))
+    return with_calls(replace(fn, slots=(*fn.slots, slot), blocks=(entry, *blocks[1:])))
 
 
 @pytest.mark.parametrize("move", [False, True])
@@ -71,6 +77,11 @@ def test_optional_transfer_joins_empty_and_filled_sum(move: bool) -> None:
         MIRBlock(optional.JOIN, (*optional.write(1), optional.BIND, optional.SAVE, optional.MUTATE, optional.READ),
                  MIRReturn(optional.RESULT), optional.ROOT))
     fn = optional_transfers(fn, move)
+    if move:
+        # The join's fill moves the source a second time on the filled path.
+        with pytest.raises(MIRDefiniteAssignmentError, match="read after move"):
+            analyze(fn)
+        return
     assert execute(fn, 3, False) == execute(fn, 3, True) == 9
     assert optional.selection(fn, MIRPoint(optional.JOIN, 1)) == frozenset({0, 1})
     assert analyze(fn).conflicts == ()
@@ -84,6 +95,11 @@ def test_optional_transfer_preserves_identity_and_live_alias(move: bool) -> None
         *optional.write(1), optional.BIND, optional.MUTATE, optional.READ),
         MIRReturn(optional.RESULT), optional.ROOT))
     fn = optional_transfers(fn, move)
+    if move:
+        # The second fill moves the source again.
+        with pytest.raises(MIRDefiniteAssignmentError, match="read after move"):
+            analyze(fn)
+        return
     heap = {}
     assert execute(fn, 3, False, heap=heap) == 9
     # The source and the sum's one inline record, refilled in place.
@@ -106,6 +122,11 @@ def test_optional_transfer_backedge_does_not_reinitialize_the_sum(move: bool) ->
                  MIRReturn(optional.RESULT), optional.ROOT), built=optional.CHILD)
     fn = replace(fn, regions=(*fn.regions, MIRRegion(optional.CHILD, optional.ROOT, optional.YES)))
     fn = optional_transfers(fn, move)
+    if move:
+        # The back edge re-runs the fill, which moves the source again.
+        with pytest.raises(MIRDefiniteAssignmentError, match="read after move"):
+            analyze(fn)
+        return
     heap = {}
     assert execute(fn, 3, True, heap=heap) == 9
     assert len(heap) == 2

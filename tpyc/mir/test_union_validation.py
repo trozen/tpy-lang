@@ -12,13 +12,13 @@ from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsAlternative, MIRNot,
-    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRConstruct, MIRStorageDuration,
+    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRStorageDuration,
     MIRWrap, MIRCopy, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .testutil import (
-    hand_record,
+    construction, hand_record,
     bind_parameters, Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
     reslot, union_shape,
 )
@@ -182,19 +182,21 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
     storage = MIRSlotId(BODY, len(SLOTS))
     field = MIRField(MIRFieldId(record, "value"), INT32)
     slot = MIRSlot(storage, owned_shape(record), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY)
+    layout = MIRRecordLayout(record, (field,), True, True)
     # A checked read before replacement snapshots a scalar; the alias itself
     # cannot bypass that read by appearing directly in a constructor operand.
     statements = (FIRST_BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
-        CLEAR, MIRAssign(MIRPlace(storage), MIRConstruct((RESULT if checked_read else ALIAS,))))
+        CLEAR, MIRAssign(MIRPlace(storage), construction(layout, RESULT if checked_read else ALIAS),
+                         storage_write=INIT))
     fn = bind_parameters(replace(function(MIRBlock(ENTRY, statements, MIRReturn(VALUE))),
-                 slots=(*SLOTS, slot), records=(MIRRecordLayout(record, (field,), True, True),)))
+                 slots=(*SLOTS, slot), records=(layout,)))
     if checked_read:
         validated(fn)
         heap = {}
         assert execute(fn, UnionValue(0), 7, False, heap=heap) == 7
         assert heap[1][field.id] == 7
     else:
-        with pytest.raises(MIRValidationError, match="record construction"):
+        with pytest.raises(MIRValidationError, match="call scalar argument mismatch"):
             validated(fn)
 
 

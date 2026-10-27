@@ -3,7 +3,9 @@ stored inline): the field predicate, the layout of a field place, THIR's
 identity rule for the field's accesses, the lowered reads, and the presence
 kill rule at writes and calls that may reach the field."""
 
+import copy
 from dataclasses import dataclass, replace
+from types import MappingProxyType
 
 import pytest
 
@@ -18,12 +20,11 @@ from .value import MIRRecords
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstant, MIRFunction, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind, place_shape,
+    MIRAssign, MIRBodyId, MIRConstant, MIRFunction, MIRNotCovered, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind, place_shape,
     MIRWrap, MIRIsAlternative, MIRCopy, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .value import MIRField, MIRFieldId
-from .coverage import MIRUnsupported
-from .definitions import constructor_initialization
+from .testutil import lower_constructor
 from .dependencies import MIRReferent, resolve_referents
 from .liveness import MIRPoint
 from .presence import Resolve, _State, _kill_field_facts, _transfer
@@ -297,9 +298,9 @@ def test_a_field_place_carries_an_owned_payload_layout(program: _Program) -> Non
 
 
 @pytest.mark.parametrize("name,init", [
-    ("H.__init__", "initialize-receiver %0 (copy %1, read %2)"),
-    ("Empty.__init__", "initialize-receiver %0 (wrap[0])"),
-    ("Built.__init__", "initialize-receiver %0 ({read %1})"),
+    ("H.__init__", "  (*%3).__main__.H::p = copy %0 [initialize] @ 52:17"),
+    ("Empty.__init__", "  (*%1).__main__.Empty::p = wrap[0] [initialize] @ 60:8"),
+    ("Built.__init__", "  (*%2).__main__.Built::p = wrap[1] %4 [initialize] @ 67:17"),
 ])
 def test_the_dump_spells_each_optional_member_initializer(program: _Program, name: str, init: str) -> None:
     verdict = program.verdicts[name]
@@ -513,11 +514,15 @@ def test_may_hold_looks_through_aggregates(program: _Program) -> None:
 
 
 def test_a_composed_payload_needs_a_movable_record(program: _Program) -> None:
-    records = dict(program.definitions.records)
+    # The payload is built in a temporary and moved into the member.
+    definitions = copy.copy(program.definitions)
+    records = dict(definitions.records)
     p = program.types["P"]
     records[p] = replace(records[p], layout=replace(records[p].layout, movable=False))
-    with pytest.raises(MIRUnsupported, match="constructor moves a nonmovable record"):
-        constructor_initialization(program.constructors["Built"], records)
+    object.__setattr__(definitions, "records", MappingProxyType(records))
+    built = lower_constructor(program.constructors["Built"], MIRBodyId("main", "Built.__init__"),
+                              definitions=definitions)
+    assert isinstance(built, MIRNotCovered) and built.reason == "optional field payload needs movable record"
 
 
 # --- writes ---------------------------------------------------------------------------------

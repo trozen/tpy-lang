@@ -18,7 +18,7 @@ from ..typesys import NominalType, OptionalType, TupleType, UnionType
 from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRStorageInit, MIRConstant,
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall, MIRCopy, MIRFunction,
@@ -204,7 +204,7 @@ def test_lazy_wrapper_is_declared_before_branch_and_payload_is_conditional(artif
     declaration = next(block for block in body.blocks if any(isinstance(stmt, MIRStorageInit)
                                                              for stmt in block.statements))
     construction = next(block for block in body.blocks if any(isinstance(stmt, MIRAssign)
-        and isinstance(stmt.value, MIRConstruct) for stmt in block.statements))
+        and isinstance(stmt.value, MIRCall) for stmt in block.statements))
     assert declaration.id == body.entry and construction.id != declaration.id
     borrows = [stmt for stmt in construction.statements if isinstance(stmt, MIRAssign)
                and isinstance(stmt.value, MIRBorrow)]

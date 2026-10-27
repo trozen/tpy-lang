@@ -26,7 +26,8 @@ from .mir.shapes import REGION_STEPS, MIRTupleIndex, MIRUnionPayload
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import MIRCall, MIRFunction, MIRPlace, MIRSlotKind, source_order, statement_call, call_place
 from .mir.value import MIRField, MIRValidationError
-from .mir_workspace import MIRProgram, resolved_calls
+from .mir.definitions import MIRDefinitions, body_calls, constructor_record_qname
+from .mir_workspace import MIRProgram
 
 
 @dataclass(frozen=True)
@@ -110,10 +111,11 @@ def obligation_callees(program: MIRProgram) -> frozenset[th.THIRFunctionIdentity
 
 
 def obligation_calls(body: th.THIRFunction | th.THIRConstructor,
-                     callees: frozenset[th.THIRFunctionIdentity]) -> int:
-    """How many calls in a THIR body reach a callee with obligations: each is
-    checked only where MIR lowers the body and resolves its retention."""
-    return sum(call.resolved_callee.identity in callees for call in resolved_calls(body))
+                     callees: frozenset[th.THIRFunctionIdentity], definitions: MIRDefinitions) -> int:
+    """How many calls in a THIR body (`body_calls`, constructions included)
+    reach a callee with obligations: each is checked only where MIR lowers
+    the body and resolves its retention."""
+    return sum(callee.identity in callees for _call, callee in body_calls(body, definitions))
 
 
 def _steps_spelling(steps: Iterable[object]) -> str:
@@ -219,7 +221,7 @@ def alias_check_bodies(modules: Iterable[tuple[TpyModule, SemanticAnalyzer, Code
     for module, analyzer, ctx, name in modules:
         for source in enumerate_body_sources(module, analyzer, ctx, name, reasons):
             if (source.refusal is None and source.source is not None
-                    and obligation_calls(source.source, callees)):
+                    and obligation_calls(source.source, callees, program.definitions)):
                 yield module, source
 
 
@@ -272,13 +274,14 @@ class CallSites:
             self._calls = calls
         return self._calls
 
-    def argument(self, call: MIRCall, index: int, name: str) -> TpyExpr | None:
-        """The analyzed argument a call binds to parameter `index` (`name`):
-        a bound receiver is the object before the dot. None when the call
-        is not found, or a starred argument comes first."""
-        identity = call.summary.callee.identity
+    def argument(self, call: MIRCall, index: int, name: str, resolved: tuple[str, str | None]) -> TpyExpr | None:
+        """The analyzed argument a call binds to parameter `index` (`name`),
+        found by its position and the callable sema resolved it to
+        (`resolved`, as `_resolved_key` spells it): a bound receiver is the
+        object before the dot. None when the call is not found, or a starred
+        argument comes first."""
         loc = call.site
-        found = (self._index().get((loc.line, loc.column, identity.name, identity.owner), [])
+        found = (self._index().get((loc.line, loc.column, *resolved), [])
                  if loc is not None else [])
         if len(found) != 1:
             return None
@@ -300,9 +303,29 @@ def _spelled(expr: TpyExpr | None) -> str | None:
     return expression_spelling(expr) if expr is not None else None
 
 
-def _parameter_names(program: MIRProgram, identity: th.THIRFunctionIdentity) -> tuple[str, ...] | None:
+@dataclass(frozen=True)
+class _Callee:
+    """How a warning names a callee: its parameter names, its Python
+    spelling, and the callable sema resolved its calls to (`_resolved_key`)."""
+    names: tuple[str, ...]
+    spelled: str
+    resolved: tuple[str, str | None]
+
+
+def _callee(program: MIRProgram, identity: th.THIRFunctionIdentity) -> _Callee | None:
+    """A construction `R(...)` calls its record's constructor, which takes
+    no receiver: spelled by the record, resolved to the record's `__init__`."""
     definition = program.workspace.definitions.get(identity)
-    return None if definition is None else tuple(p.name for p in th.effective_params(definition[1]))
+    if definition is None:
+        return None
+    source = definition[1]
+    if isinstance(source, th.THIRConstructor):
+        return _Callee(tuple(p.name for p in source.params), source.record_name,
+                       (identity.name, constructor_record_qname(identity)))
+    owner = identity.owner.rsplit(".", 1)[-1] if identity.owner is not None else None
+    return _Callee(tuple(p.name for p in th.effective_params(source)),
+                   f"{owner}.{identity.name}" if owner is not None else identity.name,
+                   (identity.name, identity.owner))
 
 
 def _remedy(summary: MIRCallSummary, index: int, member: tuple[object, ...], passed: _MemberArgument) -> str:
@@ -334,19 +357,18 @@ def _remedy(summary: MIRCallSummary, index: int, member: tuple[object, ...], pas
 
 
 def alias_warning(alias: MIRArgumentAlias, program: MIRProgram, sites: CallSites) -> Diagnostic | None:
-    identity = alias.call.summary.callee.identity
-    names = _parameter_names(program, identity)
-    if names is None:
+    found = _callee(program, alias.call.summary.callee.identity)
+    if found is None:
         return None
-    owner = identity.owner.rsplit(".", 1)[-1] if identity.owner is not None else None
-    callee = f"{owner}.{identity.name}" if owner is not None else identity.name
-    retained = sites.argument(alias.call, alias.retained, names[alias.retained])
+    names, callee = found.names, found.spelled
+    retained = sites.argument(alias.call, alias.retained, names[alias.retained], found.resolved)
     passed = _member_argument(retained, alias.member)
     analyzed, argument = passed.expr, passed.spelled
     storage = alias.storage
     if storage is None:
         member = alias.written_member
-        written = _member_argument(sites.argument(alias.call, alias.written, names[alias.written]), member).spelled
+        written = _member_argument(sites.argument(alias.call, alias.written, names[alias.written], found.resolved),
+                                   member).spelled
         storage = written and written + _steps_spelling(alias.written_path[len(member):])
     held, writer = names[alias.retained], names[alias.written]
     if alias.retained == alias.written:

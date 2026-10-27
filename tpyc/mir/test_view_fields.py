@@ -15,18 +15,20 @@ from ..thir.testutil import _compile, _entry
 from ..typesys import Loan, NominalType, OptionalType, OwnType, TupleType, UnionType, loan_class
 from .call_contract import MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, summary_problem
 from .collect import MIRBodyVerdict, enumerate_bodies
-from .coverage import MIRUnsupported
-from .definitions import MIRDefinitions, MIRHeldLayout, _BaseLeg, _compose, constructor_initialization
+from .definitions import MIRDefinitions, MIRHeldLayout
 from .dependencies import (
     MIRReferent, MIRUnseededLoan, dump_dependencies, live_holders, object_keys, resolve_referents, stored_on_fill,
 )
 from .liveness import MIRPoint
+from .testutil import lower_constructor
+from .dump import dump_function
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInits, MIRMove, MIRNotCovered,
-    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRCopy, MIRAlias, MIRFunction, MIRMove, MIRNotCovered,
+    MIRPlace, MIRRead, MIRReturn, MIRSlotId,
 )
 from .shapes import MIRDeref
-from .value import MIRField, MIRValidationError, loan_field
+from .value import MIRField, MIRValidationError
+from .test_constructors import field_write, rewritten
 from .testutil import no_layouts, borrowed_shape, optional_shape, tuple_shape, union_shape, prepared
 from .prepare import validate_function, validated
 from .validate import MIRPresenceError
@@ -250,53 +252,41 @@ def _with_slot(fn: MIRFunction, sid: MIRSlotId, **changes) -> MIRFunction:
 
 # --- definitions ------------------------------------------------------------------------
 
+def _stores(program: _Program, name: str) -> list:
+    """The loans constructor `name`'s summary stores into its result, by member."""
+    summary = program.verdicts[f"{name}.__init__"].summary.summary
+    return sorted((t.path[-1].name, t.source) for t in summary.transfers)
+
+
 def test_a_view_member_stores_a_lent_loan(program: _Program) -> None:
     # A str parameter the caller lends, a view parameter's loan, a literal's static storage.
-    tok = program.definitions.records[_record(program, "Tok")]
-    assert [(i.field.id.name, i.source, i.move, i.may_raise) for i in tok.initializers] == [
-        ("s", "s", False, False), ("n", "n", False, False)]
-    viewed = program.definitions.records[_record(program, "Viewed")]
-    assert [(i.source, i.move) for i in viewed.initializers] == [("v", False)]
-    lit = program.definitions.records[_record(program, "Lit")]
-    assert [(i.source, i.move) for i in lit.initializers] == [(MIRConstant("lit"), False)]
-    # The receiver's entry initialization stores the loan, no copy and no exit.
+    assert _stores(program, "Tok") == [("s", 0)]
+    assert _stores(program, "Viewed") == [("v", 0)]
+    assert [m for m, source in _stores(program, "Lit")] == ["s"]
+    assert not isinstance(_stores(program, "Lit")[0][1], int)
+    # The constructor's field write stores the loan, no copy and no exit.
     ctor = _lowered(program, "Tok.__init__")
-    s, n = ctor.receiver_init.members.fields
-    assert isinstance(s.value, MIRBorrow) and isinstance(n.value, MIRRead)
+    s, n = field_write(ctor, "s"), field_write(ctor, "n")
+    assert isinstance(s.value, MIRAlias) and s.storage_write is None and isinstance(n.value, MIRRead)
     assert not ctor.exceptional_exits
 
 
-@pytest.mark.parametrize("name,reason", [
-    # The constructor's own copy dies at return: no record may keep its loan.
-    ("Owning", "constructor view needs a lent parameter"),
-])
-def test_unmodeled_stored_loans_refuse(program: _Program, name: str, reason: str) -> None:
-    assert _definition(program, name) == reason
+def test_unmodeled_stored_loans_refuse(program: _Program) -> None:
+    # The constructor's own copy dies at return: storing its loan into the
+    # result escapes, and the escape is the constructor body's conflict.
+    assert program.verdicts["Owning.__init__"].conflicts == ("store_escape",)
 
 
 def test_a_base_leg_lends_the_derived_parameter_s_loan(program: _Program) -> None:
-    # The base's BORROW initializer becomes the one a direct `self.s = s`
-    # in the derived constructor would be; a literal leg stores static storage.
-    def borrows(name: str) -> list:
-        return [(i.field.id.name, i.source) for i in _definition(program, name).initializers
-                if loan_field(i.field.type)]
-    assert borrows("Derived") == [("s", "s")]
-    assert borrows("ViewLent") == [("v", "s")]
-    assert borrows("ViewLit") == [("v", MIRConstant("abc"))]
-    # An inherited constructor reuses the base's initializers: its parameters are the base's.
-    assert _definition(program, "Child").initializers == _definition(program, "Tok").initializers
-
-
-def test_a_borrow_leg_lends_storage_that_outlives_the_call(program: _Program) -> None:
-    init = _definition(program, "Tok").initializers[0]
-    # A literal a reference parameter binds is a temporary of the call, not
-    # static storage; a moved or owning leg is the base's own copy, which
-    # dies with the call. (THIR builds neither shape into a base today.)
-    literal = _BaseLeg(MIRConstant("abc"), False, False, None)
-    for leg in (literal, _BaseLeg("s", True, True, None), _BaseLeg("s", False, True, None)):
-        with pytest.raises(MIRUnsupported, match="base argument borrow not modeled"):
-            _compose(init, {"s": leg})
-    assert _compose(init, {"s": replace(literal, static=True)}).source == MIRConstant("abc")
+    # The base's call stores the derived parameter's loan, as a direct
+    # `self.s = s` in the derived constructor would; a literal argument stores static storage.
+    assert _stores(program, "Derived") == [("s", 0)]
+    assert _stores(program, "ViewLent") == [("v", 0)]
+    assert [m for m, source in _stores(program, "ViewLit")] == ["v"]
+    assert not isinstance(_stores(program, "ViewLit")[0][1], int)
+    # An inherited constructor calls the base's: its parameters are the base's.
+    child, tok = _definition(program, "Child"), _definition(program, "Tok")
+    assert child.callee == tok.callee and child.initializes == tok.layout.type
 
 
 def test_a_recursive_record_holding_a_view_holds_a_borrow(program: _Program) -> None:
@@ -325,17 +315,19 @@ def test_a_constructor_view_conversion_keeps_the_view(program: _Program) -> None
     assert isinstance(mil.value, th.THIRCoerce)
     stored = replace(ctor, mil_inits=(replace(mil, value=replace(mil.value, form=th.Form.STORAGE)),
                                       *ctor.mil_inits[1:]))
-    with pytest.raises(MIRUnsupported) as refused:
-        constructor_initialization(stored)
-    assert refused.value.reason == "constructor view conversion"
+    refused = lower_constructor(stored, MIRBodyId("m", "Tok.__init__"), definitions=program.definitions)
+    assert isinstance(refused, MIRNotCovered), dump_function(refused)
+    # The field write refuses it as any write of a view member does.
+    assert refused.reason == "unsupported view source"
 
 
 def test_a_record_without_a_definition_has_a_held_layout(program: _Program) -> None:
-    reader = _record(program, "Reader")
-    # A call initializes `size`: no caller constructs through it, but a
-    # holder's layout is decided from the fields alone.
-    assert program.definitions.records[reader] == "constructor initializer needs parameter or literal"
-    assert isinstance(program.definitions.held_layout(None, reader), MIRHeldLayout)
+    forest, reader = _record(program, "Forest"), _record(program, "Reader")
+    # Its member record has no definition: no caller constructs a Forest,
+    # but a holder's layout is decided from the fields alone.
+    assert isinstance(program.definitions.records[forest], str)
+    assert isinstance(program.definitions.held_layout(None, forest), MIRHeldLayout)
+    assert program.definitions.layouts[forest].fields[0].id.name == "first"
     assert program.definitions.layouts[reader].fields[0].id.name == "data"
     head = _lowered(program, "Reader.head")
     assert reader in {r.type for r in head.records} and not program.verdicts["Reader.head"].conflicts
@@ -375,7 +367,7 @@ def test_stored_loans_follow_the_object(program: _Program) -> None:
     for sid in storage:
         assert state[MIRPlace(sid, (member,))] == frozenset({MIRReferent(MIRPlace(buf))})
     writes = {type(s.value) for s in _assigns(fn) if not s.target.projections and s.target.root in storage}
-    assert writes == {MIRConstruct, MIRCopy, MIRMove}
+    assert writes == {MIRCall, MIRCopy, MIRMove}
 
 
 def test_a_fill_with_no_stored_loan_to_carry_refuses(program: _Program) -> None:
@@ -507,33 +499,27 @@ def test_a_view_member_place_is_read_whole(program: _Program) -> None:
 
 def test_a_construct_stores_a_view_operand(program: _Program) -> None:
     fn = _lowered(program, "built")
-    construct = next(s for s in _assigns(fn) if isinstance(s.value, MIRConstruct))
-    count = next(f for f in construct.value.fields if fn.slots[f.index].shape.is_scalar)
+    construct = next(s for s in _assigns(fn) if isinstance(s.value, MIRCall) and s.value.summary.transfers)
+    count = next(a for a in construct.value.arguments if fn.slots[a.index].shape.is_scalar)
     # A view member takes a lending holder, never a scalar.
-    with pytest.raises(MIRValidationError, match="incomplete or mistyped record construction"):
-        validate_function(_with_statement(fn, construct, value=replace(construct.value, fields=(
+    with pytest.raises(MIRValidationError, match="call argument type mismatch"):
+        validate_function(_with_statement(fn, construct, value=replace(construct.value, arguments=(
             count, count))))
 
 
-def test_receiver_view_member_validation(program: _Program) -> None:
+def test_constructor_view_member_validation(program: _Program) -> None:
     ctor = _lowered(program, "Tok.__init__")
-    init = ctor.receiver_init
-
-    s, n = init.members.fields
+    s, n = field_write(ctor, "s"), field_write(ctor, "n")
 
     def member(value: object) -> MIRFunction:
-        return replace(ctor, receiver_init=replace(init, members=MIRMemberInits((replace(s, value=value), n))))
-    # A view member stores a loan: no copy, no exit.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer"):
-        validate_function(member(MIRCopy(s.value.source, True)))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(member(replace(s.value, may_raise=True)))
-    # A scalar parameter lends nothing; a constant is a literal of the view's family.
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(member(MIRBorrow(n.value.source)))
-    with pytest.raises(MIRValidationError, match="invalid receiver initializer constant"):
-        validate_function(member(MIRConstant(1)))
-    validate_function(member(MIRConstant("lit")))
+        return rewritten(ctor, s, replace(s, value=value))
+    # A view member is bound to the loan a view holder holds: no copy, no borrow, no constant.
+    for value in (MIRCopy(MIRPlace(s.value.source), True), MIRBorrow(n.value.source), MIRConstant("lit")):
+        with pytest.raises(MIRValidationError, match="view member write needs a view holder"):
+            validate_function(member(value))
+    # A scalar lends nothing.
+    with pytest.raises(MIRValidationError, match="view member write needs a view holder"):
+        validate_function(member(MIRAlias(n.value.source.root)))
 
 
 def test_storage_that_would_move_a_stored_loan_refuses(program: _Program) -> None:
@@ -560,7 +546,7 @@ def test_storage_that_would_move_a_stored_loan_refuses(program: _Program) -> Non
 def test_whole_writes_of_a_record_holding_a_loan_validate(program: _Program) -> None:
     fn = _lowered(program, "built")
     tok = _record(program, "Tok")
-    construct = next(s for s in _assigns(fn) if isinstance(s.value, MIRConstruct))
+    construct = next(s for s in _assigns(fn) if isinstance(s.value, MIRCall) and s.value.summary.transfers)
     # A result by value hands its stored loans to the caller as transfers.
     storage = construct.target.root
     block = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))

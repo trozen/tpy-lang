@@ -11,7 +11,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .call_contract import MIRGlobalId, MIRSummaryResult, MIRSummaryState, summary_problem
 from .definitions import MIRDefinitions
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWriteMode,
     MIRStorageDuration,

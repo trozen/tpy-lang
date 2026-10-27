@@ -14,7 +14,7 @@ from ..typesys import INT32, OptionalType, STRVIEW, TupleType
 from .dependencies import MIRReferent, object_keys, stored_on_fill
 from .collect import enumerate_bodies
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRPlace, MIRPoint,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall, MIRCopy, MIRFunction, MIRPlace, MIRPoint,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit, MIRWrap,
 )
 from .retention import MIRRetention, analyze_retention
@@ -368,13 +368,14 @@ def _refilled(fn: MIRFunction, *, empty_first: bool) -> tuple[MIRFunction, MIRPl
     block = next(b for b in fn.blocks if any(isinstance(s, MIRAssign) and isinstance(s.value, MIRWrap)
                                              for s in b.statements))
     view, count, construct, wrap, borrow = block.statements
-    assert isinstance(construct, MIRAssign) and isinstance(construct.value, MIRConstruct)
+    assert isinstance(construct, MIRAssign) and isinstance(construct.value, MIRCall)
     b = next(s for s in fn.slots if s.name == "b")
     next_id = max(s.id.index for s in fn.slots) + 1
     view2 = replace(next(s for s in fn.slots if s.id == view.target.root), id=MIRSlotId(fn.id, next_id))
     built2 = replace(next(s for s in fn.slots if s.id == construct.target.root), id=MIRSlotId(fn.id, next_id + 1))
     refill = (replace(view, target=MIRPlace(view2.id), value=MIRBorrow(MIRPlace(b.id))),
-              replace(construct, target=MIRPlace(built2.id), value=MIRConstruct((view2.id, count.target.root))),
+              replace(construct, target=MIRPlace(built2.id), value=replace(construct.value, arguments=tuple(
+                  view2.id if a == view.target.root else a for a in construct.value.arguments))),
               replace(wrap, value=MIRWrap(1, MIRPlace(built2.id))),
               borrow)
     emptied = (replace(wrap, value=MIRWrap(0)),) if empty_first else ()

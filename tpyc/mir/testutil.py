@@ -1,37 +1,42 @@
 """A bounded MIR interpreter with explicit shared object identities."""
 
-from collections.abc import Callable, Collection, Iterable
-import copy
+from collections.abc import Callable, Collection, Iterable, Mapping
+from contextlib import nullcontext
 from dataclasses import dataclass, replace
 import operator
 from types import MappingProxyType
 
 from ..compilation_context import activate_compiler
-from ..mir_workspace import MIRCallWorkspace
+from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from ..type_def_registry import TypeCategory, TypeDef, _type_defs, int_traits_of, register
 from ..typesys import INT32_MIN, INT32_MAX, FieldInfo, NominalType, RecordInfo
 
 from .nodes import (
-    MIRSlot, MIRAlias, MIRAssign, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
-    MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
+    MIRSlot, MIRAlias, MIRAssign, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead,
+    MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRSlotId,
     MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
     MIREdge, MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint, place_shape, MIRWrap, MIRNotCovered, MIRBodyId,
+    builds_base, statement_call,
 )
 from .value import (
     NO_FIELDS, Declared, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, RecordFields,
-    WRAPPER_CLASSES,
+    WRAPPER_CLASSES, loan_field,
 )
 from .region_flow import MIRRegionFlow
 from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, value_class
 from ..type_def_registry import ParamPassing
 from ..typesys import OwnType, TpyType, return_representation
-from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
-from .definitions import MIRDefinitions, declared_fields
+from .call_contract import (
+    FUNCTION, MIR_RESULT, MIRCallSummary, MIRLoanTransfer, MIRParameterBinding, parameter_binding,
+)
+from .definitions import MIRDefinitions, constructor_identity, declared_fields
 from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
-from .validate import operands, statement_reads
+from .validate import statement_reads
 from .prepare import MIRPrepared, prepare
+from . import lower as _lower
+from .collect import dump_codegen_mir
 from .lower import MIRLoweredStorage
 
 # The TypeDef of every hand-built record (`hand_record`): its declared
@@ -142,6 +147,84 @@ def records_of(*layouts: MIRRecordLayout) -> MIRRecords:
     return MIRRecords(MappingProxyType({layout.type: layout for layout in layouts}), declared_fields())
 
 
+# The bodies of the constructors `constructor_summaries` lowered, which
+# `execute` runs where a construction calls one.
+_CONSTRUCTOR_BODIES: dict[int, MIRFunction] = {}
+_CONSTRUCTOR_SUMMARIES: dict[int, tuple[MIRDefinitions, Mapping[th.THIRFunctionIdentity, object]]] = {}
+
+
+def constructor_summaries(definitions: MIRDefinitions) -> Mapping[th.THIRFunctionIdentity, object]:
+    """The summaries of the constructors `definitions` certifies, from a
+    call workspace over those constructors alone: what a construction
+    `R(...)` calls, for a test lowering a body with no workspace of its own."""
+    cached = _CONSTRUCTOR_SUMMARIES.get(id(definitions))
+    if cached is not None and cached[0] is definitions:
+        return cached[1]
+
+    constructors = tuple(d.constructor for d in definitions.records.values()
+                         if not isinstance(d, str) and isinstance(d.constructor, th.THIRConstructor))
+    # The lowering reads the TypeDefs of the compilation that verified them.
+    with activate_compiler(definitions.compiler) if definitions.compiler is not None else nullcontext():
+        workspace = analyze_call_workspace(tuple(
+            (MIRBodyId("constructors", f"{c.record_name}.__init__#{i}"), c) for i, c in enumerate(constructors)),
+            definitions)
+    _CONSTRUCTOR_SUMMARIES[id(definitions)] = (definitions, workspace.summaries)
+    for identity, (body, _source) in workspace.definitions.items():
+        lowered = workspace.bodies.get(body)
+        result = workspace.summaries[identity]
+        if lowered is not None and not isinstance(lowered, MIRNotCovered) and result.summary is not None:
+            # Keyed by the summary object a caller's call holds: identities repeat across compilations.
+            _CONSTRUCTOR_BODIES[id(result.summary)] = lowered.function
+    return workspace.summaries
+
+
+def _summaries(definitions: MIRDefinitions | None, summaries: Mapping[th.THIRFunctionIdentity, object] | None
+               ) -> Mapping[th.THIRFunctionIdentity, object] | None:
+    """The summaries a test lowers a body against: its own, else those of
+    the constructors `definitions` certifies (`constructor_summaries`)."""
+    if summaries is not None or definitions is None:
+        return summaries
+    return constructor_summaries(definitions)
+
+
+# A test lowers one body with no call workspace of its own: these lower it as
+# `lower`'s entry points do, a construction calling its constructor's
+# summary (`_summaries`). Run under the compilation that verified the
+# definitions, whose TypeDefs the lowering reads.
+
+def lower_function(fn: th.THIRFunction, body: MIRBodyId, *, definitions: MIRDefinitions | None = None,
+                   summaries: Mapping[th.THIRFunctionIdentity, object] | None = None) -> MIRFunction | MIRNotCovered:
+    return _lower.lower_function(fn, body, definitions=definitions, summaries=_summaries(definitions, summaries))
+
+
+def lower_function_storage(fn: th.THIRFunction, body: MIRBodyId, *, definitions: MIRDefinitions | None = None,
+                           summaries: Mapping[th.THIRFunctionIdentity, object] | None = None
+                           ) -> MIRLoweredStorage | MIRNotCovered:
+    return _lower.lower_function_storage(fn, body, definitions=definitions,
+                                         summaries=_summaries(definitions, summaries))
+
+
+def lower_constructor(ctor: th.THIRConstructor, body: MIRBodyId, *, definitions: MIRDefinitions | None = None,
+                      summaries: Mapping[th.THIRFunctionIdentity, object] | None = None) -> MIRFunction | MIRNotCovered:
+    return _lower.lower_constructor(ctor, body, definitions=definitions, summaries=_summaries(definitions, summaries))
+
+
+def lower_constructor_storage(ctor: th.THIRConstructor, body: MIRBodyId, *,
+                              definitions: MIRDefinitions | None = None,
+                              summaries: Mapping[th.THIRFunctionIdentity, object] | None = None
+                              ) -> MIRLoweredStorage | MIRNotCovered:
+    return _lower.lower_constructor_storage(ctor, body, definitions=definitions,
+                                            summaries=_summaries(definitions, summaries))
+
+
+def dump_compiled_mir(compiler: object, entry: object, ctx: object) -> str:
+    """The `--dump-mir` text of a compiled module, over the program's
+    definitions and call workspace as the CLI builds them."""
+    with compiler.mir_analysis(((entry, ctx),)) as mir:
+        return dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name, mir.definitions,
+                                compiler.thir_reject_by_node, mir.workspace)
+
+
 def compiled_definitions(compiler: object, constructors: 'tuple[th.THIRConstructor, ...]') -> MIRDefinitions:
     """The definitions of a compilation's constructors, verified under it."""
     with activate_compiler(compiler):
@@ -185,6 +268,49 @@ def with_fields(base: RecordFields, extra: 'Iterable[MIRField]') -> RecordFields
     return Redeclared(base, lambda typ, declared: declared | added.get(typ, frozenset()))
 
 
+# The record layout of each hand-built constructor summary (`construction`),
+# which `execute` builds the record from.
+_HAND_CONSTRUCTORS: dict[int, MIRRecordLayout] = {}
+_HAND_SUMMARIES: dict[tuple[MIRRecordLayout, bool], MIRCallSummary] = {}
+
+
+def construction(layout: MIRRecordLayout, *arguments: MIRSlotId, may_raise: bool = False) -> MIRCall:
+    """A hand-built construction of record `layout`: a call of its
+    constructor, one parameter per field taking the field's value -- a
+    scalar by value, a view member storing the loan its argument holds (a
+    transfer into the result) -- and handing over the record built."""
+    key = (layout, may_raise)
+    summary = _HAND_SUMMARIES.get(key)
+    if summary is None:
+        params = tuple(th.THIRParam(f"p{i}", f.type, passing=f.type.param_passing(False))
+                       for i, f in enumerate(layout.fields))
+        bindings = tuple(parameter_binding(p) for p in params)
+        assert all(isinstance(b, MIRParameterBinding) for b in bindings), bindings
+        result = OwnType(layout.type)
+        signature = th.THIRCallableSignature(tuple(p.type for p in params), result,
+                                             passings=tuple(p.passing for p in params),
+                                             return_representation=return_representation(result))
+        callee = th.THIRResolvedCallee(constructor_identity(layout.type), signature)
+        transfers = frozenset(
+            MIRLoanTransfer(MIR_RESULT, (th.THIRFieldIdentity(f.id.owner, f.id.name, f.type),), i)
+            for i, f in enumerate(layout.fields) if loan_field(f.type))
+        summary = _HAND_SUMMARIES[key] = MIRCallSummary(
+            callee, bindings, frozenset(range(len(params))), frozenset(), frozenset(), frozenset(), transfers,
+            not may_raise)
+        _HAND_CONSTRUCTORS[id(summary)] = layout
+    return MIRCall(summary, tuple(arguments), may_raise)
+
+
+def with_calls(fn: MIRFunction) -> MIRFunction:
+    """A hand-built body with the summaries of the calls it makes."""
+    found = {id(s): s for s in fn.call_summaries}
+    for block in fn.blocks:
+        for stmt in block.statements:
+            if (call := statement_call(stmt)) is not None:
+                found.setdefault(id(call.summary), call.summary)
+    return replace(fn, call_summaries=tuple(found.values()))
+
+
 def bind_parameters(fn: MIRFunction, passings: dict[MIRSlotId, ParamPassing] | None = None, *,
                     fields: 'Iterable[MIRField]' = ()) -> MIRFunction:
     """A hand-built body with the binding the one derivation
@@ -204,9 +330,9 @@ def bind_parameters(fn: MIRFunction, passings: dict[MIRSlotId, ParamPassing] | N
     declared = fn.record_fields if fn.record_fields is not NO_FIELDS else declared_fields()
     representation = (fn.return_representation if fn.return_representation is not None
                       else return_representation(fn.return_type))
-    return replace(fn, parameter_bindings=tuple(bindings),
-                   record_fields=with_fields(declared, fields) if fields else declared,
-                   return_representation=representation)
+    return with_calls(replace(fn, parameter_bindings=tuple(bindings),
+                              record_fields=with_fields(declared, fields) if fields else declared,
+                              return_representation=representation))
 
 
 def repass(fn: MIRFunction, name: str, passing: ParamPassing) -> MIRFunction:
@@ -333,7 +459,9 @@ _OPERATIONS = {
 
 def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
             global_state: dict[MIRGlobalId, int | bool] | None = None,
-            output: list[tuple[Value, ...]] | None = None) -> Value | None:
+            output: list[tuple[Value, ...]] | None = None, begun: int | None = None) -> Value | None:
+    """Run `fn`; record storage it begins (a constructor's result) takes
+    identity `begun` when given."""
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     assert len(params) == len(args)
     values = dict(zip(params, args))
@@ -349,40 +477,6 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         if slot.global_id is not None:
             assert slot.global_id in global_values, "global storage must be initialized by caller"
     records = fn.record_layouts
-    if fn.receiver_init is not None:
-        init = fn.receiver_init
-        reference = values[init.receiver]
-        assert isinstance(reference, Reference) and not reference.path
-        assert reference.identity not in objects or not objects[reference.identity]
-        def member_value(member: MIRField, source: object) -> Value:
-            # A record member is inline storage: a copy of what its parameter
-            # holds (or the parameter's own storage moved in), or the fields
-            # its own constructor initializes.
-            layout = records.get(member.type)
-            layout = None if layout is None or layout.opaque else layout
-            match source:
-                case MIRConstant():
-                    return source.value
-                case MIRMemberInits():
-                    return {f.id: member_value(f, m.value) for f, m in zip(layout.fields, source.fields)}
-                case MIRConstruct():
-                    return ContainerValue([s.value if isinstance(s, MIRConstant) else values[s]
-                                           for s in source.fields])
-                case MIRWrap(source=None):
-                    return optional_value()
-            (root,) = operands(source)
-            value = values[root]
-            if layout is not None and isinstance(value, Reference):
-                held = objects[value.identity]
-                for step in value.path:
-                    held = held[step]
-                return copy.deepcopy(held)
-            # A container member copies its parameter's container.
-            return ContainerValue(value.elements) if isinstance(value, ContainerValue) else value
-        objects[reference.identity] = {
-            member.id: member_value(member, value.value)
-            for member, value in zip(records[slots[init.receiver].type].fields, init.members.fields)
-        }
     next_identity = max(objects, default=0) + 1
     bid = fn.entry
     comparisons = {"<": operator.lt, "<=": operator.le, ">": operator.gt,
@@ -448,6 +542,13 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 printed = tuple(values[sid] for sid in stmt.arguments)
                 if output is not None:
                     output.append(printed)
+                continue
+            if isinstance(stmt, MIRStorageInit) and stmt.value is None:
+                # Record storage begun: an object whose fields are written next.
+                if begun is None:
+                    begun, next_identity = next_identity, next_identity + 1
+                objects[begun] = {}
+                values[stmt.target.root] = Reference(begun)
                 continue
             if isinstance(stmt, MIRStorageInit):
                 physical[stmt.target.root] = UnionValue(stmt.alternative, stmt.value.value)
@@ -547,9 +648,6 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                              else read(rhs.source))
                 case MIRConstruct() if place_shape(stmt.target, slots, records).cls is MIRClass.CONTAINER:
                     value = ContainerValue([values[src] for src in rhs.fields])
-                case MIRConstruct():
-                    layout = records[place_shape(stmt.target, slots, records).type]
-                    value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
                 case MIRCopy() | MIRMove():
                     source = rhs.source.root if isinstance(rhs, MIRCopy) else rhs.source
                     reference = values[source]
@@ -564,9 +662,28 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     traits = int_traits_of(slots[stmt.target.root].type)
                     if traits is not None and not traits.min_value <= value <= traits.max_value:
                         raise OverflowError(f"{rhs.op} overflows {slots[stmt.target.root].type}")
+                case MIRCall() if id(rhs.summary) in _HAND_CONSTRUCTORS:
+                    value = {f.id: values[sid] for f, sid in zip(_HAND_CONSTRUCTORS[id(rhs.summary)].fields,
+                                                                rhs.arguments)}
+                case MIRCall() if id(rhs.summary) in _CONSTRUCTOR_BODIES:
+                    # A construction runs its constructor's body over the same heap.
+                    built = execute(_CONSTRUCTOR_BODIES[id(rhs.summary)],
+                                    *(values[sid] for sid in rhs.arguments), heap=objects,
+                                    global_state=global_values)
+                    value = objects.pop(built.identity)
+                    next_identity = max(objects, default=next_identity) + 1
                 case _:
                     raise AssertionError(rhs)
-            if isinstance(value, dict):
+            if isinstance(value, dict) and stmt.target.projections and isinstance(
+                    stmt.target.projections[-1], MIRField):
+                # An inline record member: the object around it keeps its identity.
+                obj, member = field(stmt.target)
+                if isinstance(obj.get(member), dict):
+                    obj[member].clear()
+                    obj[member].update(value)
+                else:
+                    obj[member] = value
+            elif isinstance(value, dict):
                 if stmt.target.projections:
                     reference = read(stmt.target)
                     assert isinstance(reference, Reference)
@@ -582,7 +699,9 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                         values[stmt.target.root] = reference
                 destination = record(reference) if stmt.target.projections else None
                 if destination is not None:
-                    destination.clear()
+                    if not builds_base(stmt):
+                        # A base's constructor fills only the base's fields.
+                        destination.clear()
                     destination.update(value)
                 else:
                     objects[reference.identity] = value
@@ -623,6 +742,14 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
         for sid in regions.edges[edge].ended:
             physical.pop(sid, None)
     raise AssertionError("unexpected nontermination")
+
+
+def construct(fn: MIRFunction, identity: int, *args: Value, heap: Heap,
+              global_state: dict[MIRGlobalId, int | bool] | None = None) -> None:
+    """Run a constructor body, the record it builds and returns stored in
+    `heap` at `identity`: the object later calls lend by that identity."""
+    built = execute(fn, *args, heap=heap, global_state=global_state, begun=identity)
+    assert built == Reference(identity)
 
 
 def placed_storage(fn: MIRFunction) -> list[MIRSlot]:

@@ -11,7 +11,7 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, INT32_MIN, INT32_MAX
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 from .value import MIRFieldId, MIRHolding
 from .testutil import Reference, UnionValue, execute

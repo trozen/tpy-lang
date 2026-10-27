@@ -7,7 +7,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIREdge, MIRFunction, MIRGoto, MIRReturn, MIRPlace, MIRRead,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRWrap, MIRIsAlternative,
@@ -15,7 +15,7 @@ from .nodes import (
 from .shapes import MIRUnionPayload
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
-from .testutil import compiled_definitions, bind_parameters, Reference, execute, leaf_shape, prepared
+from .testutil import construct, compiled_definitions, bind_parameters, Reference, execute, leaf_shape, prepared
 from .value import MIRValidationError
 from .prepare import validate_function
 
@@ -177,7 +177,7 @@ def test_late_producers_keep_scope_and_shared_mutation(late_bodies: tuple[dict[s
     assert "Cell& alias = local;" in cpp
     # The constructor's later local must not overwrite its receiver identity.
     heap = {}
-    execute(bodies["Observer"], Reference(0), False, heap=heap)
+    construct(bodies["Observer"], 0, False, heap=heap)
     assert tuple(heap[0].values()) == (9,)
     assert execute(bodies["method"], Reference(0), False, heap=heap) == 9
 

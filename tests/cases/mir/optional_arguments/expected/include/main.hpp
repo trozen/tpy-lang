@@ -32,7 +32,7 @@ int32_t call_free_temp();
 int32_t call_method(Q& q, const H& h);
 // def call_ctor(q: Q, h: H) -> int32:  # tpyc: mir(covered)
 int32_t call_ctor(Q& q, const H& h);
-// def call_ctor_temp() -> int32:  # tpyc: mir(uncovered /named argument crosses unproven evaluation order/)
+// def call_ctor_temp() -> int32:  # tpyc: mir(certified)
 int32_t call_ctor_temp();
 // def call_bump(q: Q, h: H) -> int32:  # tpyc: mir(covered)
 int32_t call_bump(Q& q, H& h);

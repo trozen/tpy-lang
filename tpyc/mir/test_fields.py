@@ -13,20 +13,21 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import latch_declared_native_flags
 from ..typesys import INT32, STR, NominalType
 from .call_contract import MIRParameterWrite, MIRSummaryState
-from .definitions import MIRDefinitions
+from .definitions import MIRConstructorDefinition, MIRDefinitions
 from .dependencies import MIRReferent
 from .dump import dump_function
 from .liveness import MIRPoint
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRFunction, MIRMemberInits,
-    MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIRFunction,
+    MIRMove, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode,
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRValidationError, loan_field
 from .retention import MIRRetention, analyze_retention
 from .storage import analyze_storage, dump_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
+from .test_constructors import field_write, rewritten, statements
 from .testutil import prepared
 from .prepare import validate_function
 from .reach import reaches, storage_exclusions
@@ -238,6 +239,8 @@ class _Lowered:
     constructors: dict
     summaries: dict
     record: NominalType
+    # By callee identity: every constructor's is named `__init__`.
+    by_identity: dict
 
 
 @pytest.fixture(scope="module")
@@ -255,7 +258,7 @@ def lowered():
                         for ctor in ctx.thir_constructors.values()}
         record = next(c.record_layout.type for c in ctx.thir_constructors.values() if c.record_name == "Rec")
         result = _Lowered(compiler, modules, mir.definitions, bodies, constructors,
-                       {identity.name: result for identity, result in summaries.items()}, record)
+                       {identity.name: result for identity, result in summaries.items()}, record, dict(summaries))
     return result
 
 
@@ -301,56 +304,76 @@ def _name_field(active: _Lowered) -> MIRField:
 # --- constructors ----------------------------------------------------------------
 
 
+INITIALIZE = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+
+
+def _initialization(fn: MIRFunction, field: str) -> tuple[object, MIRStorageWrite | None]:
+    write = field_write(fn, field)
+    return write.value, write.storage_write
+
+
 def test_constructor_copies_a_borrowed_parameter_into_the_field(active) -> None:
     fn = _ctor(active, "Rec")
-    lines = _lines(fn)
     # The view parameter's buffer is copied into the field: an allocation that may raise.
-    assert "initialize-receiver %0 (copy (*%1) may-raise, read %2)" in lines
-    assert "exceptional exits" in lines and fn.exceptional_exits
-    name, n = fn.receiver_init.members.fields
-    assert name.value == MIRCopy(MIRPlace(fn.slots[1].id, (MIRDeref(),)), True)
-    assert n.value == MIRRead(MIRPlace(fn.slots[2].id))
-    assert name.loc is not None and name.loc.line == 6
+    assert _initialization(fn, "name") == (MIRCopy(MIRPlace(fn.slots[0].id, (MIRDeref(),)), True), INITIALIZE)
+    assert "exceptional exits" in _lines(fn) and fn.exceptional_exits
+    value, fact = _initialization(fn, "n")
+    assert isinstance(value, MIRRead) and fact is None
+    assert field_write(fn, "name").loc.line == 6
 
 
 def test_constructor_initialization_modes(active) -> None:
     # A by-value parameter is moved in and cannot raise.
     own = _ctor(active, "OwnRec")
-    assert "initialize-receiver %0 (move %1)" in _lines(own) and not own.exceptional_exits
+    assert _initialization(own, "name") == (MIRMove(own.slots[0].id), INITIALIZE) and not own.exceptional_exits
     # A by-value parameter initializing two fields is copied, then moved.
-    assert "initialize-receiver %0 (copy %1 may-raise, move %1)" in _lines(_ctor(active, "Twice"))
+    twice = _ctor(active, "Twice")
+    assert _initialization(twice, "x") == (MIRCopy(MIRPlace(twice.slots[0].id), True), INITIALIZE)
+    assert _initialization(twice, "y") == (MIRMove(twice.slots[0].id), INITIALIZE)
     # Constants materialize (a BigInt's cannot raise: its allocation failure is a panic).
     lit = _ctor(active, "Lit")
-    assert "initialize-receiver %0 ('x', 0, b'ab', read %1)" in _lines(lit) and lit.exceptional_exits
+    assert [_initialization(lit, f) for f in ("name", "total", "data")] == [
+        (MIRConstant("x"), INITIALIZE), (MIRConstant(0), INITIALIZE), (MIRConstant(b"ab"), INITIALIZE)]
+    assert lit.exceptional_exits
     # A bytes view is materialized, a BigInt and a String are copied from their const references.
-    assert "initialize-receiver %0 (copy (*%1) may-raise)" in _lines(_ctor(active, "Byt"))
-    assert "initialize-receiver %0 (copy (*%1))" in _lines(_ctor(active, "Big"))
-    assert "initialize-receiver %0 (copy (*%1) may-raise)" in _lines(_ctor(active, "Strg"))
+    for name, field, raises in (("Byt", "data", True), ("Big", "total", False), ("Strg", "s", True)):
+        fn = _ctor(active, name)
+        assert _initialization(fn, field) == (MIRCopy(MIRPlace(fn.slots[0].id, (MIRDeref(),)), raises),
+                                              INITIALIZE), name
 
 
 def test_constructor_body_write_replaces_the_initialized_field(active) -> None:
-    lines = _lines(_ctor(active, "Cond"))
-    assert "initialize-receiver %0 ('')" in lines
-    assert "(*%0).__main__.Cond::name = copy (*%1) may-raise [in_place]" in lines
+    fn = _ctor(active, "Cond")
+    assert _initialization(fn, "name") == (MIRConstant(""), INITIALIZE)
+    # The body's later write replaces the initialized field in place.
+    replace_name = MIRCopy(MIRPlace(fn.slots[0].id, (MIRDeref(),)), True)
+    assert any(isinstance(s, MIRAssign) and s.value == replace_name
+               and s.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)
+               for s in statements(fn))
 
 
 def test_a_record_holding_a_view_stores_its_parameters_loan(active) -> None:
     # The view member stores the loan the view parameter holds: no copy, no exit.
     holder = _ctor(active, "Holder")
-    assert "initialize-receiver %0 (alias %1)" in _lines(holder) and not holder.exceptional_exits
+    assert _initialization(holder, "v") == (MIRAlias(holder.slots[0].id), None) and not holder.exceptional_exits
     record = next(t for t in active.definitions.records if t.name == "Holder")
-    definition = active.definitions.records[record]
-    assert [(loan_field(init.field.type), init.move) for init in definition.initializers] == [(True, False)]
+    result = active.by_identity[active.definitions.records[record].callee.identity]
+    # A caller's construction stores its argument's loan into the record.
+    transfer, = result.summary.transfers
+    assert loan_field(transfer.path[-1].type) and transfer.source == 0
 
 
-def test_caller_definitions_need_a_lent_or_moved_argument(active) -> None:
+def test_callers_call_constructors_whatever_their_members(active) -> None:
     records = {t.name: r for t, r in active.definitions.records.items()}
-    # A constant member has no caller operand; a parameter both copied and moved neither.
-    assert records["Lit"] == "constructor owned-leaf constant"
-    assert records["Twice"] == "constructor copies an owned parameter"
-    assert records["Cond"] == "constructor owned-leaf constant"
-    for name in ("lit_local", "twice_local"):
-        assert isinstance(active.bodies[name], MIRNotCovered)
+    # A constant member, and a parameter both copied and moved, are the
+    # constructor body's own: a caller calls it with its arguments.
+    for name in ("Lit", "Twice", "Cond"):
+        assert isinstance(records[name], MIRConstructorDefinition), name
+    assert "%1 = call __main__.Lit::__init__(%0) [reader, may-raise] [initialize]" in _lines(_body(active, "lit_local"))
+    lines = _lines(_body(active, "twice_local"))
+    # The `Own[str]` argument is the full expression's copy.
+    assert "%1 = copy (*%0) may-raise [initialize]" in lines
+    assert "%2 = call __main__.Twice::__init__(%1) [reader, may-raise] [initialize]" in lines
 
 
 def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None:
@@ -358,12 +381,12 @@ def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None
     lines = _lines(_body(active, "own_local"))
     assert "%1: str owned-storage temporary duration=r1 residence=r1" in lines
     assert "%1 = copy (*%0) may-raise [initialize]" in lines
-    assert "%2 = construct (%1) [initialize]" in lines
-    # A call's fresh result is lent to the member that copies it, and dies with the statement.
+    assert "%2 = call __main__.OwnRec::__init__(%1) [reader, normal-return] [initialize]" in lines
+    # A call's fresh result is lent to the constructor that copies it, and dies with the statement.
     fn = _body(active, "local_call")
     lines = _lines(fn)
     assert "%2 = call main::make(%1) [reader, may-raise] [initialize]" in lines
-    assert "%3 = borrow %2" in lines and "%5 = construct (%3, %4) may-raise [initialize]" in lines
+    assert "%3 = borrow %2" in lines and "%5 = call __main__.Rec::__init__(%3, %4) [reader, may-raise] [initialize]" in lines
     storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
     assert certify_storage_origins(prepared(fn), storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
@@ -371,10 +394,10 @@ def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None
 def test_a_caller_construct_copies_a_lent_argument(active) -> None:
     lines = _lines(_body(active, "local_plain"))
     assert "%1 = borrow (*%0)" in lines
-    assert "%3 = construct (%1, %2) may-raise [initialize]" in lines
+    assert "%3 = call __main__.Rec::__init__(%1, %2) [reader, may-raise] [initialize]" in lines
     # A static literal is lent the same way.
     lines = _lines(_body(active, "local_literal"))
-    assert "%0 = 'lit'" in lines and "%2 = construct (%0, %1) may-raise [initialize]" in lines
+    assert "%0 = 'lit'" in lines and "%2 = call __main__.Rec::__init__(%0, %1) [reader, may-raise] [initialize]" in lines
 
 
 def test_a_caller_construct_copies_through_a_view_argument(active) -> None:
@@ -382,8 +405,8 @@ def test_a_caller_construct_copies_through_a_view_argument(active) -> None:
     # own borrow: the inferred view local is lent as it is, the member init is
     # the copy.
     for name, lent, construct in (
-            ("ctor_from_view", "%2 = borrow (*%0)", "%4 = construct (%2, %3) may-raise [initialize]"),
-            ("ctor_from_string", "%1 = borrow (*%0)", "%3 = construct (%1, %2) may-raise [initialize]")):
+            ("ctor_from_view", "%2 = borrow (*%0)", "%4 = call __main__.Rec::__init__(%2, %3) [reader, may-raise] [initialize]"),
+            ("ctor_from_string", "%1 = borrow (*%0)", "%3 = call __main__.Rec::__init__(%1, %2) [reader, may-raise] [initialize]")):
         fn = _body(active, name)
         lines = _lines(fn)
         assert lent in lines and construct in lines, name
@@ -574,33 +597,26 @@ def test_validator_rejects_a_projection_inside_an_owned_leaf(active) -> None:
             damaged, *fn.blocks[0].statements[1:])),)))
 
 
-def _with_init(fn: MIRFunction, *fields) -> MIRFunction:
-    return replace(fn, receiver_init=replace(fn.receiver_init, members=MIRMemberInits(fields)))
-
-
-def test_validator_rejects_receiver_inits_without_their_facts(active) -> None:
+def test_validator_rejects_field_initializations_without_their_facts(active) -> None:
     fn = _ctor(active, "Rec")
-    name, n = fn.receiver_init.members.fields
+    name, n = field_write(fn, "name"), field_write(fn, "n")
     param, scalar = name.value.source.root, n.value.source.root
-    for fields, message in (
-            ((name.value, n), "invalid receiver initializer"),
-            ((replace(name, value=replace(name.value, may_raise=False)), n), "exit fact mismatch"),
-            ((replace(name, value=MIRRead(MIRPlace(param))), n), "invalid receiver initializer"),
-            ((replace(name, value=MIRMove(param)), n), "initializer parameter"),
-            ((replace(name, value=MIRConstant(3)), n), "initializer constant"),
-            # Lowering never initializes a member from a parameter of another type
-            # (the definition gate requires the member's own owned type).
-            ((replace(name, value=MIRCopy(MIRPlace(scalar), True)), n), "initializer parameter"),
-            ((name, replace(n, value=MIRCopy(MIRPlace(scalar)))), "invalid receiver initializer")):
+    for old, value, message in (
+            (name, replace(name.value, may_raise=False), "exit fact mismatch"),
+            (name, MIRRead(MIRPlace(param)), "owned leaf write needs a copy"),
+            (name, MIRConstant(3), "constant type or range mismatch"),
+            # Lowering never initializes a field from a value of another type.
+            (name, MIRCopy(MIRPlace(scalar), True), "owned leaf copy source mismatch"),
+            (n, MIRCopy(MIRPlace(scalar)), "record destination type")):
         with pytest.raises(MIRValidationError, match=message):
-            validate_function(_with_init(fn, *fields))
+            validate_function(rewritten(fn, old, replace(old, value=value)))
     # The body's exit fact follows the copy.
     with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
         validate_function(replace(fn, exceptional_exits=False))
     moved = _ctor(active, "OwnRec")
-    (member,) = moved.receiver_init.members.fields
+    member = field_write(moved, "name")
     with pytest.raises(MIRValidationError, match="exceptional exit fact mismatch"):
-        validate_function(_with_init(moved, replace(member, value=MIRCopy(MIRPlace(member.value.source), True))))
+        validate_function(rewritten(moved, member, replace(member, value=MIRCopy(MIRPlace(member.value.source), True))))
 
 
 def test_validator_checks_construct_and_field_write_facts(active) -> None:
@@ -611,11 +627,12 @@ def test_validator_checks_construct_and_field_write_facts(active) -> None:
         return replace(fn, blocks=(replace(block, statements=tuple(
             change(s) if match(s) else s for s in block.statements)),))
 
-    is_construct = lambda s: isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct)
-    with pytest.raises(MIRValidationError, match="mistyped record construction"):
+    is_construct = lambda s: (isinstance(s, MIRAssign) and isinstance(s.value, MIRCall)
+                              and getattr(s.value.summary.callee.identity, "name", None) == "__init__")
+    with pytest.raises(MIRValidationError, match="call exit fact mismatch"):
         validate_function(patched(is_construct, lambda s: replace(s, value=replace(s.value, may_raise=False))))
     is_write = lambda s: isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy) and s.target.projections
-    with pytest.raises(MIRValidationError, match="field write needs a replacement fact"):
+    with pytest.raises(MIRValidationError, match="field write needs its initialization or replacement fact"):
         validate_function(patched(is_write, lambda s: replace(
             s, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))))
     with pytest.raises(MIRValidationError, match="copy exit fact mismatch"):
@@ -628,3 +645,38 @@ def test_layouts_carry_the_owned_leaf_field_storage(active) -> None:
     assert layouts[STR].opaque and _name_field(active) in layouts[active.record].fields
     with pytest.raises(MIRValidationError, match="owned-leaf field needs its opaque layout"):
         validate_function(replace(fn, records=tuple(r for r in fn.records if r.type != STR)))
+
+
+UNMODELED_SIBLING_SOURCE = """\
+from tpy import StrView, int32
+
+
+class Holder:
+    view: StrView
+    pair: tuple[int32, int32]
+
+    def __init__(self, view: StrView) -> None:
+        self.view = view
+        self.pair = (1, 2)
+
+
+def write(h: Holder, view: StrView) -> None:
+    h.view = view
+"""
+
+
+def test_a_malformed_access_refuses_before_its_record_is_registered() -> None:
+    compiler, modules = _compile(UNMODELED_SIBLING_SOURCE)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
+        fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "write")
+        stmt = fn.body[0]
+        # The record's tuple field is unmodeled: registering the view member's record refuses it.
+        result = lower_function(fn, MIRBodyId("fields", "write"), definitions=definitions)
+        assert getattr(result, "reason", None) == "unsupported record fields"
+        # A view member spelled at the wrong form is the access's own defect, reported first.
+        malformed = replace(fn, body=(replace(stmt, target=replace(stmt.target, form=th.Form.STORAGE)),
+                                      *fn.body[1:]))
+        result = lower_function(malformed, MIRBodyId("fields", "write"), definitions=definitions)
+        assert getattr(result, "reason", None) == "unsupported field type or form"

@@ -108,8 +108,8 @@ def call_ctor(q: Q, h: H) -> int32:  # tpyc: mir(covered)
     return n
 
 
-# kept refusal: a temporary at a constructor's Optional parameter; MIR does not prove the order it is built in
-def call_ctor_temp() -> int32:  # tpyc: mir(uncovered /named argument crosses unproven evaluation order/)
+# a temporary at a constructor's Optional parameter, bound as any call's argument
+def call_ctor_temp() -> int32:  # tpyc: mir(certified)
     d = H(Q(4))
     return d.n
 

@@ -25,7 +25,7 @@ from .test_storage_evidence import (
     BACKING, FLAG, ITERATION, OWNER, R_LOCAL, R_LOCAL_ARM, R_OWNER_ARM, R_SAVED,
     SAVED, _cell, _ref, activation, returning, reused,
 )
-from .testutil import compiled_definitions, bind_parameters, leaf_shape, owned_shape, prepared, tuple_shape
+from .testutil import compiled_definitions, bind_parameters, construction, leaf_shape, owned_shape, prepared, tuple_shape
 
 
 @pytest.fixture(scope="module")
@@ -194,7 +194,7 @@ def test_owned_tuple_member_infers_its_local_backing(definitions: MIRDefinitions
                                                                         residence=ROOT), built),
                  blocks=(MIRBlock(ENTRY, (
                      # The member is built in its own temporary, which the tuple moves from.
-                     MIRAssign(MIRPlace(temporary), MIRConstruct((VALUE,)), storage_write=initialize),
+                     MIRAssign(MIRPlace(temporary), construction(layout, VALUE), storage_write=initialize),
                      MIRAssign(MIRPlace(pair), MIRConstruct((temporary, VALUE)), storage_write=initialize),
                      MIRAssign(MIRPlace(ALIAS), MIRBorrow(member)),
                      MIRAssign(MIRPlace(result), MIRRead(MIRPlace(ALIAS, (MIRDeref(), layout.fields[0]))))),

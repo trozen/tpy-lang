@@ -12,7 +12,7 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, ReadonlyType
 from .definitions import MIRDefinitions
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRSlotKind, function_body_kind
 from .value import MIRFieldId
 from .testutil import compiled_definitions, Reference, execute

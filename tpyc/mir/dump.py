@@ -7,7 +7,7 @@ from .call_contract import MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint,
     MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove,
-    MIRMemberInits, MIRRegionId, MIRStorageInit,
+    MIRRegionId, MIRStorageInit,
     MIRIsAlternative, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIRWrap,
 )
@@ -48,6 +48,8 @@ def _call(call: MIRCall) -> str:
     if call.summary.global_reads:
         effects += ", global-reads={" + ", ".join(sorted(f"{g.module}::{g.name}"
                                                         for g in call.summary.global_reads)) + "}"
+    if call.initializes is not None:
+        effects += f", initializes={call.initializes}"
     return f"call {callee}({args}) [{effects}, {'may-raise' if call.may_raise else 'normal-return'}]"
 
 
@@ -100,8 +102,6 @@ def _rvalue(value: object) -> str:
         case MIRConstruct(fields=fields, may_raise=may_raise):
             return "construct (" + ", ".join(_rvalue(s) if isinstance(s, MIRConstant) else f"%{s.index}"
                                              for s in fields) + ")" + (" may-raise" if may_raise else "")
-        case MIRMemberInits(fields=members):
-            return "{" + ", ".join(_rvalue(m.value) for m in members) + "}"
         case MIRWrap():
             return _wrap(value)
         case MIRIsAlternative(source=source, alternatives=alternatives):
@@ -169,10 +169,6 @@ def dump_function(fn: MIRFunction) -> str:
         if slot.residence is not None:
             duration += f" residence=r{slot.residence.index}"
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
-    if fn.receiver_init is not None:
-        init = fn.receiver_init
-        values = ", ".join(_rvalue(member.value) for member in init.members.fields)
-        lines.append(f"initialize-receiver %{init.receiver.index} ({values})")
     for region in fn.regions:
         parent = f"r{region.parent.index}" if region.parent is not None else "body"
         lines.append(f"region r{region.id.index} parent={parent} entry=bb{region.entry.index}")
@@ -185,6 +181,9 @@ def dump_function(fn: MIRFunction) -> str:
             if isinstance(stmt, MIRPrint):
                 arguments = ", ".join(f"%{s.index}" for s in stmt.arguments)
                 lines.append(f"  print ({arguments}){_location(stmt.loc)}")
+                continue
+            if isinstance(stmt, MIRStorageInit) and stmt.value is None:
+                lines.append(f"  begin-storage {_place(stmt.target)}{_location(stmt.loc)}")
                 continue
             if isinstance(stmt, MIRStorageInit):
                 lines.append(f"  initialize-storage {_place(stmt.target)} alternative={stmt.alternative} "

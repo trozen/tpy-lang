@@ -24,18 +24,19 @@ from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .liveness import MIRPoint
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .retention import analyze_retention
 from .storage import analyze_storage
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRFunction,
-    MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
+    MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
     MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRDeref, object_prefix
 from .value import MIRHolding, MIRValidationError, container_members, with_access
+from .test_constructors import built, field_write, rewritten
 from .testutil import (
-    compiled_definitions, ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape,
+    construct, compiled_definitions, ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape,
     Redeclared, repass, reslot, prepared, workspace_functions,
 )
 from .prepare import validate_function
@@ -514,7 +515,7 @@ def test_an_element_write_replaces_the_region_in_place(active) -> None:
     values = ContainerValue((1, 2))
     assert execute(fn, values) == 5 and values.elements == [5, 2]
     record = _fn(active, "replace_after_use")
-    assert "(*%0)[elements] = construct (%5) [in_place]" in _lines(record)
+    assert "(*%0)[elements] = call __main__.Point::__init__(%5) [reader, normal-return] [in_place]" in _lines(record)
     cell = next(r.fields[0].id for r in record.records if r.type.name == "Point")
     heap = {1: {cell: 1}}
     assert execute(record, ContainerValue((Reference(1),)), heap=heap) == 1 and heap[1][cell] == 3
@@ -581,16 +582,20 @@ def test_container_members_are_initialized_at_entry(active) -> None:
     bag = lower_constructor(active.constructors["Bag"], MIRBodyId("containers", "Bag"), definitions=active.definitions)
     pair = lower_constructor(active.constructors["Pair"], MIRBodyId("containers", "Pair"),
                              definitions=active.definitions)
-    assert "initialize-receiver %0 (construct () may-raise)" in _lines(bag) and bag.exceptional_exits
-    assert "initialize-receiver %0 (construct (%1, %1) may-raise)" in _lines(pair)
+    # A container member's literal is built in place: the field's initialization.
+    initialize = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+    items = field_write(bag, "items")
+    assert (items.value, items.storage_write) == (MIRConstruct((), True), initialize) and bag.exceptional_exits
+    xs = field_write(pair, "xs")
+    assert isinstance(xs.value, MIRConstruct) and len(xs.value.fields) == 2 and xs.value.may_raise
+    assert xs.storage_write == initialize
     heap: dict = {}
-    execute(pair, Reference(1), 4, heap=heap)
+    construct(pair, 1, 4, heap=heap)
     assert [v.elements for v in heap[1].values()] == [[4, 4]]
-    # A caller's construct builds a container member's literal into storage
-    # of the full expression and moves it in.
+    # A caller calls the constructor, whose body builds the member's literal.
     lines = _lines(_fn(active, "build"))
-    assert lines.index("%0 = construct () may-raise [initialize]") < lines.index(
-        "%1 = construct (%0) [initialize]")
+    assert "%0 = call __main__.Bag::__init__() [reader, may-raise] [initialize]" in lines
+    assert not any(" = construct " in line for line in lines)
 
 
 # --- refusals --------------------------------------------------------------------------
@@ -698,7 +703,7 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     validate_function(field_write(MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
     receiver = items.blocks[0].statements[0].value.source.root
     _rejects(field_write(MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, receiver)),
-             "record member write needs a replacement fact")
+             "field write needs its initialization or replacement fact")
     # A container field whose members MIR does not model.
     nested = make_list(make_list(INT32))
     def nested_field(s: MIRAssign) -> MIRAssign:
@@ -830,20 +835,18 @@ def test_validator_rejects_damaged_container_member_init(active) -> None:
     pair = lower_constructor(active.constructors["Pair"], MIRBodyId("containers", "Pair"),
                              definitions=active.definitions)
     validate_function(pair)
-    init = pair.receiver_init
-    member = init.members.fields[0]
-    receiver = init.receiver
-    param = member.value.fields[0]
+    member = field_write(pair, "xs")
+    result, _ = built(pair)
+    element = member.value.fields[0]
 
     def damaged(value: object) -> MIRFunction:
-        return replace(pair, receiver_init=replace(init, members=MIRMemberInits((replace(member, value=value),))))
-    # The receiver is the storage entry builds, never an operand.
-    _rejects(damaged(MIRConstruct((receiver, receiver), True)), "invalid receiver initializer parameter")
+        return rewritten(pair, member, replace(member, value=value))
+    # The record being built is no element of its own field's literal.
+    _rejects(damaged(MIRConstruct((result.id, result.id), True)), "incomplete or mistyped container literal")
     # A literal allocates: its exit fact is the value's own.
-    _rejects(damaged(MIRConstruct((param, param), False)), "invalid receiver initializer literal")
-    _rejects(damaged(MIRCopy(MIRPlace(param))), "invalid receiver initializer parameter")
-    _rejects(damaged(MIRConstant(1)), "invalid receiver initializer")
-    assert member == MIRMemberInit(MIRConstruct((param, param), True), member.loc)
+    _rejects(damaged(MIRConstruct((element, element), False)), "incomplete or mistyped container literal")
+    _rejects(damaged(MIRCopy(MIRPlace(element))), "record copy source or eligibility")
+    _rejects(damaged(MIRConstant(1)), "record write needs a construct, move, copy or call")
 
 
 # --- dict views -------------------------------------------------------------------

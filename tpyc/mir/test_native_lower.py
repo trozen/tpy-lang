@@ -8,13 +8,13 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn
 from .shapes import MIRContainerElements
 from .value import MIRHolding
 from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
-from .testutil import compiled_definitions, ContainerValue, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, ContainerValue, Reference, execute, prepared
 
 PREFIX = '''from tpy import int32, Array, readonly
 class Cell:
@@ -175,7 +175,7 @@ def test_native_transfers_targets_and_constructor_tail(artifacts) -> None:
     result = next(r.fields[0].id for r in bodies["Runner"].records if r.type.name == "Runner")
     heap = {1: {cell: 3}, 2: {cell: 5}}
     values = ContainerValue((Reference(1), Reference(2)))
-    execute(bodies["Runner"], Reference(0), values, heap=heap)
+    construct(bodies["Runner"], 0, values, heap=heap)
     assert heap[0][result] == 5
     assert execute(bodies["walk"], Reference(0), values, heap=heap) == 5
     assert heap[1][cell] == heap[2][cell] == 9

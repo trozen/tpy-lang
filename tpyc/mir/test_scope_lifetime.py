@@ -10,7 +10,7 @@ from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, OptionalType
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered,
     MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,

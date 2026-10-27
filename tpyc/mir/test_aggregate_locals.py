@@ -15,7 +15,7 @@ from ..typesys import Representation
 from .call_contract import call_result
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRConstructorDefinition, MIRDefinitions
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstruct, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWrite,
     MIRStorageWriteMode, MIRSlotKind, MIRWrap,

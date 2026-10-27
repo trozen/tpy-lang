@@ -15,7 +15,7 @@ from .call_contract import MIRReturnOrigin, MIRSummaryState, owned_aggregate_res
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRStorageInit,
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRCopy, MIRFunction, MIRMove,
@@ -331,7 +331,8 @@ def test_a_fixed_local_returns_its_own_backing(active) -> None:
 
 
 @pytest.mark.parametrize("name, value_type", [
-    ("make", MIRConstruct), ("duplicate", MIRCopy), ("forward", MIRCall),
+    # A construction is its constructor's call.
+    ("make", MIRCall), ("duplicate", MIRCopy), ("forward", MIRCall),
 ])
 def test_anything_else_is_built_into_a_result_slot(active, name: str, value_type: type) -> None:
     fn = _lowered(active, name)
@@ -468,7 +469,7 @@ def test_a_constructor_reseat_with_built_leaf_arguments_is_covered(active) -> No
     # `str` argument needs.
     fn = _lowered(active, "reseat_ctor")
     holder = _slot(fn, "m").id
-    (replacement,) = [s for s in _writes(fn, MIRConstruct) if s.target == MIRPlace(holder, (MIRDeref(),))]
+    (replacement,) = [s for s in _writes(fn, MIRCall) if s.target == MIRPlace(holder, (MIRDeref(),))]
     assert replacement.storage_write == MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, holder)
 
 

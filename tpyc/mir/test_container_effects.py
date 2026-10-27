@@ -28,7 +28,7 @@ from .dependencies import MIRReferent, resolve_referents
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCallStmt, MIRConstant,
     MIRConstruct, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead,
-    MIRMove, MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
+    MIRMove, MIRPlace, MIRPoint, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .shapes import MIRContainerElements, MIRContainerStructure, MIRDeref
@@ -40,7 +40,8 @@ from .storage_evidence import certify_borrow_operations, certify_storage_origins
 from .summaries import summarize_function
 from .validate import MIRPresenceError, body_may_raise
 from .testutil import (
-    no_layouts, records_of, hand_record, bind_parameters, bindings_of, borrowed_shape, bound, cursor_shape,
+    compiled_definitions, construction, no_layouts, records_of, with_calls, hand_record, bind_parameters, bindings_of,
+    borrowed_shape, bound, cursor_shape,
     leaf_shape, owned_shape, prepared,
 )
 from .prepare import validate_function
@@ -175,8 +176,7 @@ def body(slots, *blocks, records=(RECORD,), borrowed_result=None) -> MIRFunction
                        # A forged body registers the container definitions its storage has.
                        containers=tuple({s.type: None for s in slots if s.shape.cls is MIRClass.CONTAINER
                                          and s.shape.is_storage}),
-                       exceptional_exits=body_may_raise(blocks, {s.id: s for s in slots}, {r.type: r for r in records},
-                                                         None),
+                       exceptional_exits=body_may_raise(blocks, {s.id: s for s in slots}, {r.type: r for r in records}),
                        borrowed_result=borrowed_result))
 
 
@@ -295,8 +295,14 @@ def element_borrow(*tail, live_after: bool = True, container_live: bool = False,
                 records=(MIRRecordLayout(cell, (value,), True, True),))
 
 
-CONSTRUCT = (assign(3, MIRConstant(1)), assign(2, MIRConstruct((sid(3),)),
-                                               write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)))
+def construct(cell=CELL) -> tuple[MIRAssign, MIRAssign]:
+    """`Cell(1)` built into the temporary `%2`."""
+    layout = MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True)
+    return (assign(3, MIRConstant(1)), assign(2, construction(layout, sid(3)),
+                                              write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)))
+
+
+CONSTRUCT = construct()
 APPEND = MIRCallStmt(MIRCall(append_summary(), (sid(0), sid(2)), True))
 SETITEM = assign(0, MIRMove(sid(2)), DEREF, ELEMENTS, write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, sid(0)))
 
@@ -432,8 +438,9 @@ def test_shape_write_under_a_live_element_borrow_conflicts() -> None:
 
 def test_container_holder_is_never_reached_by_its_own_writes() -> None:
     # `ps` is live across the append: the list object survives its growth.
-    fn = element_borrow(*CONSTRUCT, APPEND, SETITEM, container_live=True, live_after=False)
-    assert prepared(fn).liveness.points[MIRPoint(bid(0), 6)] >= {sid(0)}
+    # The append takes the cell's storage over, so the write builds another.
+    fn = element_borrow(*CONSTRUCT, APPEND, *CONSTRUCT, SETITEM, container_live=True, live_after=False)
+    assert prepared(fn).liveness.points[MIRPoint(bid(0), 8)] >= {sid(0)}
     assert not conflicts(fn)
 
 
@@ -562,7 +569,7 @@ def declared(compiled, name: str) -> th.THIRFunction:
 
 
 def definitions(compiled) -> MIRDefinitions:
-    return MIRDefinitions(tuple(compiled[2].thir_constructors.values()))
+    return compiled_definitions(compiled[0], tuple(compiled[2].thir_constructors.values()))
 
 
 def cell_type(compiled) -> NominalType:
@@ -579,11 +586,11 @@ def grow_body(compiled) -> MIRFunction:
                  MIRSlotKind.PARAMETER, "ps")
     slots = (ps, owned(1, cell), scalar(2))
     call = MIRCall(append_summary(container.type, cell), (sid(0), sid(1)), True)
-    return MIRFunction(B, VoidType(), slots, (MIRBlock(bid(0), (
+    return with_calls(MIRFunction(B, VoidType(), slots, (MIRBlock(bid(0), (
         assign(2, MIRConstant(1)),
-        assign(1, MIRConstruct((sid(2),)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+        assign(1, construction(record, sid(2)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         MIRCallStmt(call)), MIRReturn(None)),), bid(0), records=(record,), call_summaries=(call.summary,),
-        exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields())
+        exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields()))
 
 
 def test_a_callee_shape_write_is_published_and_reaches_the_caller(compiled) -> None:
@@ -595,7 +602,7 @@ def test_a_callee_shape_write_is_published_and_reaches_the_caller(compiled) -> N
     assert result.summary.writes == {MIRParameterWrite(0, (STRUCTURE,))}
     assert result.summary.returns == frozenset()
     # The caller's element holder is live across `grow(ps)`.
-    caller = element_borrow(*CONSTRUCT, MIRCallStmt(MIRCall(result.summary, (sid(0),), True)),
+    caller = element_borrow(*construct(cell_type(compiled)), MIRCallStmt(MIRCall(result.summary, (sid(0),), True)),
                             cell=cell_type(compiled))
     assert conflicts(caller) == {(place(1), place(0, ELEMENTS))}
 
@@ -613,8 +620,8 @@ def test_a_private_container_write_keeps_the_summary_known(compiled) -> None:
     block = replace(fn.blocks[0], statements=(
         assign(3, MIRConstruct((), True), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         assign(4, MIRBorrow(place(3))), *fn.blocks[0].statements[:2], MIRCallStmt(call)))
-    fn = replace(fn, slots=(*fn.slots, storage, xs), blocks=(block,), call_summaries=(call.summary,),
-                 containers=(cells,))
+    fn = with_calls(replace(fn, slots=(*fn.slots, storage, xs), blocks=(block,), call_summaries=(call.summary,),
+                            containers=(cells,)))
     result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.writes == frozenset()
@@ -627,7 +634,8 @@ def test_an_argument_temporary_the_body_reads_keeps_the_summary_opaque(compiled)
     fn = grow_body(compiled)
     cell = cell_type(compiled)
     read = assign(2, MIRRead(place(1, MIRField(MIRFieldId(cell, "value"), INT32))))
-    block = replace(fn.blocks[0], statements=(*fn.blocks[0].statements, read))
+    *built, call = fn.blocks[0].statements
+    block = replace(fn.blocks[0], statements=(*built, read, call))
     fn = replace(fn, blocks=(block,))
     result = summarize_function(decl, fn, prepared(fn), definitions(compiled))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary storage or value shape"
@@ -708,12 +716,12 @@ def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> 
     record = MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True)
 
     def body(field: MIRField) -> MIRFunction:
-        return MIRFunction(B, VoidType(), (b, owned(1, cell), scalar(2), temp), (MIRBlock(bid(0), (
+        return with_calls(MIRFunction(B, VoidType(), (b, owned(1, cell), scalar(2), temp), (MIRBlock(bid(0), (
             assign(2, MIRConstant(2)),
-            assign(1, MIRConstruct((sid(2),)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+            assign(1, construction(record, sid(2)), write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
             assign(3, MIRBorrow(place(0, MIRDeref(), field))), MIRCallStmt(call)), MIRReturn(None)),), bid(0),
             records=(record, MIRRecordLayout(bag, (field,), True, True)), call_summaries=(call.summary,),
-            exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields())
+            exceptional_exits=True, parameter_bindings=bindings_of(decl), record_fields=declared_fields()))
     defs = _WithBag(definitions(compiled), MIRRecordLayout(bag, (items,), True, True))
     fn = body(items)
     result = summarize_function(decl, fn, prepared(fn), defs)

@@ -19,6 +19,7 @@ from .dependencies import MIRReferent
 from .liveness import MIRPoint
 from .nodes import MIRBlockId, MIRBodyId, MIRPlace, MIRSlotId
 from .retention import MIRRetentionConflict, alias_obligation
+from ..mir_diagnostics import obligation_callees, obligation_calls
 
 SOURCE = '''\
 from tpy import int32, copy
@@ -361,3 +362,51 @@ def test_a_later_phase_warning_lands_in_source_order() -> None:
     insert_in_source_order(diagnostics, warning(12, "d"))
     insert_in_source_order(diagnostics, Diagnostic(DiagnosticLevel.WARNING, "e"))
     assert [d.message for d in diagnostics] == ["a", "b", "c", "d", "e"]
+
+
+CONSTRUCTION_SOURCE = '''\
+from tpy import StrView, int32
+
+
+class Buf:
+    text: str
+
+    def __init__(self, text: str) -> None:
+        self.text = text
+
+
+class Tok:
+    s: StrView
+
+    def __init__(self, s: str, b: Buf) -> None:
+        self.s = s
+        b.text = "x" * 40
+
+
+def made(b: Buf) -> int32:
+    t = Tok(b.text, b)
+    return len(t.s)
+
+
+def apart(b: Buf, c: Buf) -> int32:
+    t = Tok(c.text, b)
+    return len(t.s)
+'''
+
+
+def test_a_construction_breaking_its_constructor_obligation_is_warned() -> None:
+    compiler, modules = _compile(CONSTRUCTION_SOURCE)
+    entry = _entry(modules)
+    _, ctx = compiler.generate_code_and_thir(entry)
+    with compiler.mir_analysis([(entry, ctx)]) as mir:
+        callees = obligation_callees(mir)
+        bodies = {fn.name: fn for fn in ctx.thir_functions.values()}
+        # The construction is the body's only call reaching an obligation: it is counted, so the
+        # body is analyzed for argument aliases.
+        assert obligation_calls(bodies["made"], callees, mir.definitions) == 1
+        assert obligation_calls(bodies["apart"], callees, mir.definitions) == 1
+    found = {d.loc.line: d.message for d in _warnings((compiler, entry, ctx))}
+    # `s` may view `b.text`, which the constructor replaces while the record keeps `s`.
+    assert sorted(found) == [20]
+    assert found[20].startswith("argument 'b.text' is what 'Tok' modifies through parameter 'b' "
+                                "while it still uses 's'")

@@ -1,12 +1,12 @@
-main.py:259: warning: argument 'b.text' is what 'make_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
-main.py:265: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:272: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:281: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:301: warning: Own[R] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:314: warning: copies R into owned storage; use copy() to make this explicit
-main.py:319: warning: Own[Buf] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:330: warning: copies Buf into owned storage; use copy() to make this explicit
-main.py:379: warning: argument 'b.text' is what 'store_and_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
-main.py:414: warning: Mutation of 't' while borrowed (field assignment may invalidate references)
-main.py:540: warning: Mutation of 'o.inner' while borrowed (field assignment may invalidate references)
-main.py:656: warning: Own[Holder] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:260: warning: argument 'b.text' is what 'make_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
+main.py:266: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:273: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:283: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:303: warning: Own[R] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:318: warning: copies R into owned storage; use copy() to make this explicit
+main.py:323: warning: Own[Buf] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:334: warning: copies Buf into owned storage; use copy() to make this explicit
+main.py:405: warning: argument 'b.text' is what 'store_and_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
+main.py:440: warning: Mutation of 't' while borrowed (field assignment may invalidate references)
+main.py:566: warning: Mutation of 'o.inner' while borrowed (field assignment may invalidate references)
+main.py:682: warning: Own[Holder] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

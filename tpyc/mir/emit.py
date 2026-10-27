@@ -14,7 +14,7 @@ from ..identity_map import IdentityMap
 from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction,
-    MIRGoto, MIRNot, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
+    MIRGoto, MIRNot, MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRRead,
     MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot, MIRWrap,
     MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
     source_order, statement_target, place_shape,
@@ -25,7 +25,7 @@ from .value import (
     value_shape,
 )
 from .shapes import MIRUnionPayload, Projection, object_prefix
-from .validate import body_may_raise, operands, reaches_element, statement_reads, successors
+from .validate import body_may_raise, reaches_element, statement_reads, successors
 from .prepare import _FirstPhase, first_phase
 
 
@@ -126,6 +126,8 @@ class _SlotRecord:
     residence: RegionHandle | None = None
     writable: bool | None = None
     loc: object = None
+    destination: bool = False
+    bound_storage: MIRSlotId | None = None
 
     @property
     def type(self) -> TpyType:
@@ -259,13 +261,15 @@ class Fragment:
     def record(self, shape: MIRShape, kind: MIRSlotKind = MIRSlotKind.TEMPORARY, name: str | None = None, *,
                loc: object = None, alias_source: MIRPlace | None = None, global_id: object = None,
                storage_duration: object = None,
-               writable: bool | None = None) -> MIRSlotId:
+               writable: bool | None = None, destination: bool = False,
+               bound_storage: MIRSlotId | None = None) -> MIRSlotId:
         """A slot of the body, not yet placed: `adopt` places it."""
         root = self.root
         sid = MIRSlotId(self.body, len(root.records))
         root.records[sid] = _SlotRecord(sid, shape, kind, name, alias_source=alias_source, global_id=global_id,
                                         storage_duration=storage_duration,
-                                        writable=writable, loc=loc)
+                                        writable=writable, loc=loc, destination=destination,
+                                        bound_storage=bound_storage)
         return sid
 
     def adopt(self, sid: MIRSlotId, storage_duration: object = None) -> MIRSlotId:
@@ -670,7 +674,6 @@ class Fragment:
 
 def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, callees: tuple[object, ...],
              result: object, layouts: MIRRecords,
-             receiver_init: MIRReceiverInit | None = None,
              parameter_bindings: tuple[MIRParameterBinding, ...] = (),
              return_representation: Representation | None = None) -> tuple[MIRFunction, _FirstPhase]:
     """The body built, closed and numbered: a reachable end returns (a
@@ -692,7 +695,7 @@ def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, 
         if not void:
             raise MIRFallthroughError("non-void fallthrough")
         body.end(MIRReturn())
-    fn = _Assembly(body, receiver_init, reachable).function(return_type, kind, callees, result, layouts,
+    fn = _Assembly(body, reachable).function(return_type, kind, callees, result, layouts,
                                                             parameter_bindings, return_representation)
     return fn, first_phase(fn)
 
@@ -705,8 +708,7 @@ def _structure(value: object) -> bool:
 
 
 def slot_occurrences(value: object, out: list[MIRSlotId]) -> None:
-    """Every slot `value` names, in field order (a statement, a terminator,
-    an entry initialization)."""
+    """Every slot `value` names, in field order (a statement, a terminator)."""
     if isinstance(value, MIRSlotId):
         out.append(value)
     elif isinstance(value, tuple):
@@ -734,11 +736,9 @@ class _Assembly:
     occurrence, the slots no statement names by kind, declaration site and
     name; then pruning, the write modes, the frozen slots."""
 
-    def __init__(self, emitter: Fragment, receiver_init: MIRReceiverInit | None,
-                 reachable: set[MIRBlockId]) -> None:
+    def __init__(self, emitter: Fragment, reachable: set[MIRBlockId]) -> None:
         self.emitter = emitter
         self.body = emitter.body
-        self.receiver_init = receiver_init
         self.reachable = reachable
         self.by_id = {b.id: b for b in emitter.blocks}
         self.block_ids = self.number_blocks()
@@ -779,7 +779,6 @@ class _Assembly:
         placed = {r.id: r for r in records}
         order: dict[MIRSlotId, None] = {r.id: None for r in records if r.kind is MIRSlotKind.PARAMETER}
         found: list[MIRSlotId] = []
-        slot_occurrences(self.receiver_init, found)
         for block in sorted(self.emitter.blocks, key=lambda b: self.block_ids[b.id].index):
             for stmt in block.statements:
                 slot_occurrences(stmt, found)
@@ -847,7 +846,8 @@ class _Assembly:
         return MIRSlot(self.slot_ids[record.id], shape, record.kind, record.name,
                        alias_source=self.remap(record.alias_source), global_id=record.global_id,
                        storage_duration=self.duration(record.storage_duration),
-                       residence=self.region(record.residence) if record.residence is not None else None)
+                       residence=self.region(record.residence) if record.residence is not None else None,
+                       destination=record.destination, bound_storage=self.remap(record.bound_storage))
 
     # --- the function ------------------------------------------------------
 
@@ -899,7 +899,6 @@ class _Assembly:
             assert b.terminator is not None
             blocks.append(MIRBlock(self.block_ids[b.id], self.remap(tuple(b.statements)), self.remap(b.terminator),
                                    self.region(b.region)))
-        receiver_init = self.remap(self.receiver_init)
         frozen = {slot.id: slot for slot in map(self.freeze, emitter.slots)}
         reachable_blocks = {b.id for b in blocks}
         regions = tuple(MIRRegion(self.region_ids[r], None if r.parent is None else self.region(r.parent),
@@ -907,21 +906,17 @@ class _Assembly:
                         for r in sorted(self.region_ids, key=lambda r: self.region_ids[r].index)
                         if self.block_ids[r.entry.id] in reachable_blocks)
         records = tuple(layouts.values())
-        fn = MIRFunction(self.body, return_type, _reachable_slots(frozen, blocks, receiver_init), tuple(blocks),
-                         self.block_ids[emitter.head.id], records, receiver_init, kind, regions,
+        fn = MIRFunction(self.body, return_type, _reachable_slots(frozen, blocks), tuple(blocks),
+                         self.block_ids[emitter.head.id], records, kind, regions,
                          callees, result,
-                         body_may_raise(blocks, frozen, layouts, receiver_init),
+                         body_may_raise(blocks, frozen, layouts),
                          parameter_bindings, layouts.fields, return_representation,
                          tuple(sorted(layouts.containers, key=str)))
         return fn
 
 
-def _reachable_slots(slots: Mapping[MIRSlotId, MIRSlot], blocks: list[MIRBlock],
-                     receiver: MIRReceiverInit | None) -> tuple[MIRSlot, ...]:
+def _reachable_slots(slots: Mapping[MIRSlotId, MIRSlot], blocks: list[MIRBlock]) -> tuple[MIRSlot, ...]:
     retained = {s.id for s in slots.values() if s.kind in (MIRSlotKind.PARAMETER, MIRSlotKind.GLOBAL)}
-    if receiver is not None:
-        retained.add(receiver.receiver)
-        retained.update(operands(receiver.members))
     for block in blocks:
         for stmt in block.statements:
             if (target := statement_target(stmt)) is not None:

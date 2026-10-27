@@ -13,7 +13,7 @@ from ..typesys import BOOL, INT32_MAX, INT32_MIN, VoidType
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBodyId, MIRFunction, MIRNotCovered, MIRPlace, MIRReturn, MIRWrap, MIRCopy,
 )

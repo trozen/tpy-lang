@@ -1,2 +1,6 @@
-main.py:240: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
-main.py:247: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:158: warning: 'OverQuiet.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Quiet' part instead
+main.py:173: warning: 'OverCounted.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Counted' part instead, which runs 'Counted.__init__()'
+main.py:186: warning: 'OverDefaulted.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'Defaulted' part instead, which runs 'Defaulted.__init__()'
+main.py:262: warning: argument 'nm.name' is what 'VAC' modifies through parameter 'nm' while it still uses 'a'; bind it to a local first ('v = nm.name') or restructure so the call does not hand over both
+main.py:362: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol
+main.py:369: warning: upcast narrows 'Sub' to 'Base' -- only 'Base' fields and methods will be accessible; keep the concrete type or make 'Base' a @dynamic protocol

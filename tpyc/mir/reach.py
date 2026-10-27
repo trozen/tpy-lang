@@ -12,7 +12,7 @@ from ..thir.scalar_leaves import MIRClass, inline_member_type, value_class
 from ..typesys import OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
 from .nodes import (
     MIRAssign, MIRCopy, MIRMove, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement,
-    MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, place_shape,
+    MIRStorageInit, MIRStorageWrite, MIRStorageWriteMode, MIRWrap, builds_base, place_shape,
 )
 from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRUnionPayload, MIRWalk, Projection,
@@ -320,7 +320,8 @@ class MIRStorageEvent:
 
 
 def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
-                   slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRStorageEvent, ...]:
+                   slots: Mapping[MIRSlotId, MIRSlot],
+                   initialized: tuple[MIRPlace, ...] = ()) -> tuple[MIRStorageEvent, ...]:
     """Every storage event of a statement, with its kind: a wrapper's
     physical construction (`MIRStorageInit`, with the payload it
     materializes); an assignment by its storage write fact to a storage
@@ -344,7 +345,14 @@ def storage_events(stmt: MIRStatement, call_writes: tuple[MIRPlace, ...],
                     if member is not None and member.owns_storage else None)
             return (MIRStorageEvent(MIRStorageEventKind.CONSTRUCT, target, materialized=held),)
     events: list[MIRStorageEvent] = []
-    if isinstance(stmt, MIRAssign):
+    if builds_base(stmt):
+        # A base's constructor initializes the base's fields of the record
+        # the target reaches (`initialized_places`, the call's): each
+        # storage-owning one is an initialization, the record around them
+        # keeps its identity.
+        events.extend(MIRStorageEvent(MIRStorageEventKind.INITIALIZE, place) for place in initialized
+                      if storage_destination(place, slots))
+    elif isinstance(stmt, MIRAssign):
         target = stmt.target
         root = slots[target.root].shape
         owned_tuple = not target.projections and root.owned_tuple

@@ -18,7 +18,7 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dump import _write_step
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstruct, MIRFunction, MIRMove, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBorrow, MIRCall, MIRConstruct, MIRFunction, MIRMove, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .shapes import MIRContainerElements, MIRDeref, MIRUnionPayload
 from .value import MIRRecords, MIRField, MIRFieldId, MIRValidationError
@@ -301,10 +301,17 @@ def _private(fn: MIRFunction, facts_of: MIRFunction | None = None) -> frozenset[
     return _private_records(fn, prepared(base).dependencies)
 
 
+def _operands(value: object) -> tuple[MIRSlotId, ...]:
+    """The slots a construct (a literal) or a call (a record's construction) takes."""
+    if isinstance(value, MIRConstruct):
+        return tuple(value.fields)
+    return value.arguments if isinstance(value, MIRCall) else ()
+
+
 def _construct_operands(fn: MIRFunction) -> list[MIRSlot]:
-    """The owned record temporaries constructs take as operands."""
+    """The owned record temporaries constructions take as operands."""
     return [fn.slots[f.index] for b in fn.blocks for s in b.statements
-            if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) for f in s.value.fields
+            if isinstance(s, MIRAssign) for f in _operands(s.value)
             if fn.slots[f.index].shape.is_storage and fn.slots[f.index].shape.cls is not MIRClass.CONTAINER]
 
 
@@ -579,11 +586,10 @@ def test_member_chains_refused(active, shape: str) -> None:
 
 # --- record temporaries moved into a construct ------------------------------------
 
-@pytest.mark.parametrize("name", ["build", "build_frame", "composed", "literal"])
+@pytest.mark.parametrize("name", ["build", "build_frame", "literal"])
 def test_a_temporary_a_construct_moves_in_is_private(active, name: str) -> None:
-    # `Line(p, Point(..), 0)` (an `Own[Point]` member), `Frame(build(x), 2)`
-    # (a handed-over call result), `Built(x, s)` (a composed member built
-    # over the operands), `[Point(n, "l")]` (an element).
+    # `Line(p, Point(..), 0)` (an `Own[Point]` constructor parameter),
+    # `Frame(build(x), 2)` (a handed-over call result), `[Point(n, "l")]` (an element).
     fn = _lowered(active, name)
     moved = _construct_operands(fn)
     assert moved and all(s.kind is MIRSlotKind.TEMPORARY for s in moved)
@@ -612,8 +618,7 @@ def _with_after_construct(fn: MIRFunction, temporary: MIRSlot, *extra: MIRAssign
     for block in fn.blocks:
         statements = []
         for stmt in block.statements:
-            moves = isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) and (
-                temporary.id in stmt.value.fields)
+            moves = isinstance(stmt, MIRAssign) and temporary.id in _operands(stmt.value)
             if moves:
                 statements.extend(before)
             statements.append(stmt)
@@ -656,10 +661,10 @@ def test_a_holder_live_at_the_construct_keeps_the_temporary_out(active) -> None:
 
 
 def test_only_a_temporary_operand_is_moved_in(active) -> None:
-    # Hand-built, never validated: a construct names no other owned record
+    # Hand-built, never validated: a literal names no other owned record
     # storage as an operand (the validator moves only temporaries), so any
     # other is a read that leaves the slot foreign.
-    fn = _lowered(active, "build")
+    fn = _lowered(active, "literal")
     (temporary,) = _construct_operands(fn)
     local = replace(temporary, kind=MIRSlotKind.LOCAL)
     named = replace(fn, slots=tuple(local if s.id == temporary.id else s for s in fn.slots))

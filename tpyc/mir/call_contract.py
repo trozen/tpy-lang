@@ -152,18 +152,14 @@ class MIRProtocolParameter:
 
 class MIRBindingContext(Enum):
     """Who binds a parameter without declaring its access: a function body
-    or summary, or a constructor's definition (what it is handed it moves
-    into a member, private to no one)."""
+    or summary, a constructor's included."""
     FUNCTION = auto()
-    CONSTRUCTOR = auto()
 
 
-# The one context input of a binding's derivation: a function's, a
-# constructor's, or a stub's (its declared access, which is also the
-# loan's access source).
+# The one context input of a binding's derivation: a function's, or a
+# stub's (its declared access, which is also the loan's access source).
 BindingContext = MIRBindingContext | Declared
 FUNCTION = MIRBindingContext.FUNCTION
-CONSTRUCTOR = MIRBindingContext.CONSTRUCTOR
 
 
 @dataclass(frozen=True)
@@ -173,7 +169,7 @@ class MIRParameterBinding:
     `Own[...]` / `readonly[...]` wrapper its value's type drops; the value
     the callee holds (`value_shape`), or a protocol parameter's; the
     passing THIR published; whether the object is handed over for the
-    callee alone (`private_owned`, decided by the constructor context)."""
+    callee alone (`private_owned`)."""
     declared: TpyType
     value: MIRShape | MIRProtocolParameter
     passing: ParamPassing
@@ -309,8 +305,8 @@ def derived_binding(declared: TpyType, passing: ParamPassing, laid: MIRShape | N
     context and the wrapper a fact lays out (`laid`: THIR's, or the one a
     binding holds; of the declared type's class); else the reason. The class is the subject type's (a protocol
     parameter has none); passed by value the callee's own storage
-    (`parameter_storage`), private to it when handed over outside a
-    constructor; else the caller's loan at the access its source gives
+    (`parameter_storage`), private to it when handed over; else the
+    caller's loan at the access its source gives
     (`loan_access`: a stub's declaration, else its passing), an Optional
     record's its payload's. A fact lays out only a wrapper (`takes_layout`);
     a record or container is admitted by its type (`admission_problem`). The passing is its type's (`_passing_problem`,
@@ -351,7 +347,7 @@ def derived_binding(declared: TpyType, passing: ParamPassing, laid: MIRShape | N
     if not stub and (protocol or handed and (cls is MIRClass.LEAF or cls in AGGREGATE_CLASSES and not (
             passing is ParamPassing.OWN and isinstance(declared, OwnType) and declared.wrapped == value.type))):
         return "unsupported parameter type"
-    return MIRParameterBinding(declared, value, passing, handed and context is not CONSTRUCTOR)
+    return MIRParameterBinding(declared, value, passing, handed)
 
 
 def _holding_problem(cls: MIRClass | None, typ: TpyType, passing: ParamPassing, storage: bool, handed: bool,

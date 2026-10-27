@@ -28,7 +28,7 @@ from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .dump import dump_function
 from .liveness import MIRPoint
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRFunction, MIRNotCovered, MIRPlace, MIRSlotKind
 from .value import Declared, MIRHolding, MIRValidationError, with_access
 from .retention import analyze_retention

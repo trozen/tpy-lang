@@ -92,8 +92,6 @@ def verdicts() -> dict[str, MIRBodyVerdict]:
 
 
 @pytest.mark.parametrize("name, reason", [
-    # A descendant lent to a constructor parameter, refused whether or not a member uses it.
-    ("unused_descendant", "constructor argument type"),
     # A named record handed over to a constructor's `Own[P]` parameter.
     ("named_own", "constructor argument type"),
 ])
@@ -101,6 +99,12 @@ def test_refused_arguments_name_their_reason(verdicts: dict[str, MIRBodyVerdict]
     verdict = verdicts[name]
     assert verdict.status is MIRVerdictStatus.UNCOVERED, verdict.describe()
     assert verdict.reason == reason
+
+
+def test_a_descendant_is_lent_to_a_constructor_as_to_any_call(verdicts: dict[str, MIRBodyVerdict]) -> None:
+    # The constructor's `P` parameter binds a `D` as any call's does (its storage binds at an ancestor).
+    verdict = verdicts["unused_descendant"]
+    assert verdict.status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED), verdict.describe()
 
 
 @pytest.mark.parametrize("name", [

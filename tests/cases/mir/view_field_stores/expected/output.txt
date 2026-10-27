@@ -23,6 +23,8 @@ consume_named 6
 private_own_alias 41
 own_write_transfer xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 wrap_copy 2
+factory_copy 42
+frozen_fields 4
 store_and_replace xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 transfer_replace xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 alias_result xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

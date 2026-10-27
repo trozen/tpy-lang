@@ -13,13 +13,13 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..typesys import BOOL
 from .definitions import MIRDefinitions
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstruct, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWriteMode, MIRWrap,
+    MIRAssign, MIRBodyId, MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRStorageWriteMode, MIRWrap,
 )
 from .shapes import MIRDeref, MIRUnionPayload
 from .storage import MIRStorageEvents, analyze_storage
-from .testutil import Heap, Reference, execute, reslot, prepared
+from .testutil import construct, Heap, Reference, execute, reslot, prepared
 from .validate import MIRPresenceError
 from .value import MIRValidationError
 from ..thir.scalar_leaves import MIRClass
@@ -204,7 +204,7 @@ def test_method_and_constructor_tail_share_storage_operations(artifacts: Artifac
                            definitions=MIRDefinitions(constructors))
     assert isinstance(fn, MIRFunction), fn
     heap: Heap = {}
-    execute(fn, Reference(10), heap=heap)
+    construct(fn, 10, heap=heap)
     member = next(r.fields[0].id for r in fn.records if r.type.name == "Host")
     assert heap[10][member] == 7 and len(heap) == 3
     method = lower(functions["optional_method"], constructors)
@@ -247,11 +247,16 @@ def test_missing_fact_does_not_infer_ownership_from_cpp(artifacts: Artifacts) ->
 
 
 @pytest.mark.parametrize("name,reason", [
-    ("owned_call", "optional backing storage"), ("effectful", "effectful constructor argument"),
+    ("owned_call", "optional backing storage"),
 ])
 def test_unsupported_storage_families_remain_uncovered(artifacts: Artifacts, name: str, reason: str) -> None:
     result = lower(artifacts[0][name], artifacts[1])
     assert isinstance(result, MIRNotCovered) and reason in result.reason
+
+
+def test_an_effectful_constructor_argument_is_an_ordinary_argument(artifacts: Artifacts) -> None:
+    # `Cell(value := 2)`: the argument is evaluated before the constructor's call, as at any call.
+    assert isinstance(lower(artifacts[0]["effectful"], artifacts[1]), MIRFunction)
 
 
 def test_cyclic_optional_in_place_replacement(artifacts: Artifacts) -> None:
@@ -278,7 +283,7 @@ def test_in_place_requires_current_presence(artifacts: Artifacts) -> None:
     for block in fn.blocks:
         statements = []
         for stmt in block.statements:
-            if isinstance(stmt.value, MIRConstruct) and stmt.target.projections:
+            if isinstance(stmt.value, MIRCall) and stmt.target.projections:
                 assert stmt.target.projections == (MIRUnionPayload(1), MIRDeref())
                 statements.append(MIRAssign(MIRPlace(stmt.target.root), MIRWrap(0)))
                 changed = True

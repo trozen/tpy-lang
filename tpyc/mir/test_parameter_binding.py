@@ -1,6 +1,6 @@
 """The one parameter binding (`call_contract.parameter_binding`): a body's
 parameter slots, its summary, a stub's declaration and a constructor's
-definition all bind a parameter by the class, holding and loan access it
+summary all bind a parameter by the class, holding and loan access it
 derives from the `THIRParam` alone."""
 
 from dataclasses import dataclass, replace
@@ -15,13 +15,13 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OwnType, ReadonlyType, Representation, passing_representation
 from .call_contract import (
-    CONSTRUCTOR, MIRParameterBinding, MIRProtocolParameter, MIRReturnOrigin, MIRSummaryState,
+    MIRParameterBinding, MIRProtocolParameter, MIRReturnOrigin, MIRSummaryState,
     derived_binding, param_type, parameter_binding, parameter_contract_problem, signature_params, summary_problem,
 )
 from . import value as value_module
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRConstructorDefinition, MIRDefinitions
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRPlace, MIRSlotKind, MIRStorageDuration
 from .shapes import MIRTupleIndex, MIRUnionPayload, distinct_lent_objects
 from .reach import origin, parameter_objects
@@ -361,8 +361,6 @@ def test_an_object_handed_over_is_private_to_the_callee(active: _Program, name: 
     # An `Own[R]` record, an `Own[str]` and an `Own[list[T]]` are the callee's alone.
     binding = _binding(active, name)
     assert binding.storage and binding.private_owned
-    # A constructor's parameter is moved into the record the caller then owns.
-    assert parameter_binding(_param(active, name), CONSTRUCTOR) == replace(binding, private_owned=False)
 
 
 @pytest.mark.parametrize("name", ["record", "container", "grow"])
@@ -563,12 +561,16 @@ def test_the_access_twin_rebinds_only_its_receiver_access(active: _Program) -> N
     assert result.summary.parameters == _summary(active, "Shelf.me").parameters
 
 
-def test_a_constructor_definition_stores_its_bindings_and_an_inherited_one_reuses_them(active: _Program) -> None:
+def test_a_constructor_summary_binds_its_parameters_and_an_inherited_one_calls_it(active: _Program) -> None:
     box, sub = (active.definitions.records[t] for t in active.definitions.records if t.name in ("Box", "Sub"))
     assert isinstance(box, MIRConstructorDefinition) and isinstance(sub, MIRConstructorDefinition)
-    assert [b.cls for b in box.bindings] == [MIRClass.RECORD, MIRClass.OWNED_LEAF, MIRClass.VIEW, MIRClass.LEAF]
-    assert box.bindings == tuple(parameter_binding(p, CONSTRUCTOR) for p in box.constructor.params)
-    assert sub.bindings is box.bindings
+    result = active.workspace.summaries[box.callee.identity]
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    bindings = result.summary.parameters
+    assert [b.cls for b in bindings] == [MIRClass.RECORD, MIRClass.OWNED_LEAF, MIRClass.VIEW, MIRClass.LEAF]
+    # A constructor is a callable: its parameters bind as any function's.
+    assert bindings == tuple(parameter_binding(p) for p in box.constructor.params)
+    assert sub.callee == box.callee
 
 
 # --- refusals ------------------------------------------------------------------------
@@ -621,10 +623,8 @@ def test_each_refusal_names_its_reason(active: _Program) -> None:
         "unmodeled record")
     for param, reason in cases:
         assert _bound(param) == reason, (param, reason)
-    # A constructor moves only a record handed over into a member; a scalar
-    # handed over is a container method's element.
+    # A scalar handed over is a container method's element.
     scalar = th.THIRParam("n", OwnType(INT32), passing=ParamPassing.VALUE)
-    assert parameter_binding(scalar, CONSTRUCTOR) == "unsupported parameter type"
     assert parameter_binding(scalar, Declared(False)).private_owned
 
 
@@ -760,9 +760,6 @@ def test_the_contract_refuses_each_forged_value(active: _Program) -> None:
         assert _contract(forged) == reason, (forged, reason)
     # A tuple or union lent by reference is held by value.
     assert pair.passing is ParamPassing.CONST_REF and pair.value.holding is MIRHolding.VALUE and _contract(pair) is None
-    # A constructor's definition keeps what it moves in: private to no one.
-    assert parameter_contract_problem(owned_record, CONSTRUCTOR) == _DIFFERS
-    assert parameter_contract_problem(replace(owned_record, private_owned=False), CONSTRUCTOR) is None
     # A stub's protocol parameter only reads.
     protocol, = _stub(active, "container").parameters
     assert parameter_contract_problem(protocol, Declared(True)) is None

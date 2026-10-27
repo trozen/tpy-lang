@@ -13,7 +13,7 @@ from ..typesys import (
 )
 from .call_contract import MIRSummaryState
 from .coverage import slot_representation
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRConstant, MIRFunction, MIRNotCovered, MIROp, MIRPrint, MIRSlotKind,
     MIRStorageDuration,

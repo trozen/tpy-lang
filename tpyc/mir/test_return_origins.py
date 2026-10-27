@@ -26,7 +26,7 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, call_return_problem, resolve_call_returns
 from .dump import _call as _dump_call, _write_step, dump_function
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
     MIRPresentCall, MIRSlot, MIRSlotId, MIRSlotKind,

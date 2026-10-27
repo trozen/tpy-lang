@@ -7,7 +7,7 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative, MIRNotCovered,
     MIRStorageWrite, MIRStorageWriteMode, MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
@@ -287,7 +287,8 @@ def source_bodies(compiled) -> dict[str, MIRFunction]:
 @pytest.mark.parametrize("name", ["snapshot", "clear", "replace", "Cell", "readonly_source"])
 def test_source_producers_stamp_initialization_and_assignment(source_bodies: dict[str, MIRFunction], name: str) -> None:
     fn = source_bodies[name]
-    facts = [s.storage_write.mode for b in fn.blocks for s in b.statements if isinstance(s.storage_write, MIRStorageWrite)]
+    facts = [s.storage_write.mode for b in fn.blocks for s in b.statements
+             if isinstance(getattr(s, "storage_write", None), MIRStorageWrite)]
     assert facts == ([MIRStorageWriteMode.INITIALIZE] * (2 if name == "clear" else 1)
                      + [MIRStorageWriteMode.IN_PLACE])
     events = analyze_payload_ends(prepared(fn))

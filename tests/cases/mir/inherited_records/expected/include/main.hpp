@@ -36,9 +36,30 @@ struct B;
 struct AB;
 struct VBase;
 struct VSub;
+struct Quiet;
+struct OverQuiet;
+struct Counted;
+struct OverCounted;
+struct Defaulted;
+struct OverDefaulted;
+struct VA;
+struct VB;
+struct VAB;
+struct Named;
+struct VC;
+struct VAC;
+struct Chain;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def skipped_bases() -> int32:  # tpyc: mir(covered)
+int32_t skipped_bases();
+// def two_views(a: str, b: str) -> int32:  # tpyc: mir(covered)
+int32_t two_views(std::string_view a, std::string_view b);
+// def view_replaced(k: int32) -> int32:  # tpyc: mir(conflict /replacement/)
+int32_t view_replaced(int32_t k);
+// def make_chain(n: int32) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
+int32_t make_chain(int32_t n);
 // def use_sub(s: Sub) -> int32:  # tpyc: mir(covered)
 int32_t use_sub(Sub& s);
 // def alias_inherited(s: Sub) -> int32:  # tpyc: mir(covered)
@@ -182,6 +203,128 @@ inline std::ostream& operator<<(std::ostream& os, const VBase& obj) {
     return os;
 }
 
+// class Quiet:
+struct Quiet {
+
+    // def __init__(self, x: int32) -> None:
+    Quiet() = default;
+    explicit Quiet(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Quiet";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Quiet& obj) {
+    ::tpy::print_object_default(os, "Quiet", obj);
+    return os;
+}
+
+// class Counted:
+struct Counted {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self) -> None:
+    Counted();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
+    ::tpy::print_object_default(os, "Counted", obj);
+    return os;
+}
+
+// class Defaulted:
+struct Defaulted {
+
+    // def __init__(self, n: int32 = 7) -> None:
+    explicit Defaulted(int32_t n = 7);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Defaulted";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Defaulted& obj) {
+    ::tpy::print_object_default(os, "Defaulted", obj);
+    return os;
+}
+
+// class VA:
+struct VA {
+    // a: StrView
+    std::string_view a;
+
+    // def __init__(self, a: StrView) -> None:
+    VA() = default;
+    explicit VA(std::string_view a);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.VA";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VA& obj) {
+    ::tpy::print_object_default(os, "VA", obj);
+    return os;
+}
+
+// class VB:
+struct VB {
+    // b: StrView
+    std::string_view b;
+
+    // def __init__(self, b: StrView) -> None:
+    VB() = default;
+    explicit VB(std::string_view b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.VB";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VB& obj) {
+    ::tpy::print_object_default(os, "VB", obj);
+    return os;
+}
+
+// class Named:
+struct Named {
+    // name: str
+    std::string name;
+
+    // def __init__(self, name: str) -> None:
+    Named() = default;
+    explicit Named(std::string_view name);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
+    ::tpy::print_object_default(os, "Named", obj);
+    return os;
+}
+
+// class VC:
+struct VC {
+    // c: int32
+    int32_t c;
+
+    // def __init__(self, nm: Named) -> None:
+    VC() = default;
+    explicit VC(Named& nm);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.VC";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VC& obj) {
+    ::tpy::print_object_default(os, "VC", obj);
+    return os;
+}
+
+// class Chain:
+struct Chain {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:  # tpyc: mir(uncovered /^call needs finalized known summary$/) mir_summary(opaque /^recursive or recursion-dependent call$/)
+    Chain() = default;
+    explicit Chain(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Chain";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Chain& obj) {
+    ::tpy::print_object_default(os, "Chain", obj);
+    return os;
+}
+
 // class Sub(Base):
 struct Sub : Base {
     // k: int32
@@ -253,6 +396,79 @@ struct VSub : VBase {
 
 inline std::ostream& operator<<(std::ostream& os, const VSub& obj) {
     ::tpy::print_object_default(os, "VSub", obj);
+    return os;
+}
+
+// class OverQuiet(Quiet):
+struct OverQuiet : Quiet {
+    // k: int32
+    int32_t k;
+
+    // def __init__(self) -> None:  # tpyc: mir(covered) warning(/does not call 'super\(\).__init__/)
+    OverQuiet();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OverQuiet";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OverQuiet& obj) {
+    ::tpy::print_object_default(os, "OverQuiet", obj);
+    return os;
+}
+
+// class OverCounted(Counted):
+struct OverCounted : Counted {
+    // k: int32
+    int32_t k;
+
+    // def __init__(self) -> None:  # tpyc: mir(covered) warning(/does not call 'super\(\).__init__/)
+    OverCounted();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OverCounted";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OverCounted& obj) {
+    ::tpy::print_object_default(os, "OverCounted", obj);
+    return os;
+}
+
+// class OverDefaulted(Defaulted):
+struct OverDefaulted : Defaulted {
+    // k: int32
+    int32_t k;
+
+    // def __init__(self) -> None:  # tpyc: mir(uncovered /^incomplete constructor arguments$/) warning(/does not call 'super\(\).__init__/)
+    OverDefaulted();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OverDefaulted";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OverDefaulted& obj) {
+    ::tpy::print_object_default(os, "OverDefaulted", obj);
+    return os;
+}
+
+// class VAB(VA, VB):
+struct VAB : VA, VB {
+
+    // def __init__(self, a: StrView, b: StrView) -> None:  # tpyc: mir(covered)
+    VAB() = default;
+    explicit VAB(std::string_view a, std::string_view b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.VAB";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VAB& obj) {
+    ::tpy::print_object_default(os, "VAB", obj);
+    return os;
+}
+
+// class VAC(VA, VC):
+struct VAC : VA, VC {
+
+    // def __init__(self, a: StrView, nm: Named) -> None:  # tpyc: mir(conflict /alias_obligation/)
+    VAC() = default;
+    explicit VAC(std::string_view a, Named& nm);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.VAC";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const VAC& obj) {
+    ::tpy::print_object_default(os, "VAC", obj);
     return os;
 }
 
@@ -387,6 +603,52 @@ inline void VBase::grow() {
     this->size = ::tpy::add_check<int32_t>(this->size, 1);
 }
 
+// def __init__(self, x: int32) -> None:
+//     pass
+inline Quiet::Quiet(int32_t x) {
+}
+
+// def __init__(self) -> None:
+//     self.n = 42
+inline Counted::Counted() : n(42) {}
+
+// def __init__(self, n: int32 = 7) -> None:
+//     pass
+inline Defaulted::Defaulted(int32_t n) {
+}
+
+// def __init__(self, a: StrView) -> None:
+//     self.a = a
+inline VA::VA(std::string_view a) : a(a) {}
+
+// def __init__(self, b: StrView) -> None:
+//     self.b = b
+inline VB::VB(std::string_view b) : b(b) {}
+
+// def __init__(self, name: str) -> None:
+//     self.name = name
+inline Named::Named(std::string_view name) : name(name) {}
+
+// def __init__(self, nm: Named) -> None:
+//     self.c = 1
+//     nm.name = "replaced"
+inline VC::VC(Named& nm) : c(1) {
+    nm.name = "replaced";
+}
+
+// # recursive constructor: its own call has no summary yet
+// def __init__(self, n: int32) -> None:  # tpyc: mir(uncovered /^call needs finalized known summary$/) mir_summary(opaque /^recursive or recursion-dependent call$/)
+//     self.n = n
+//     if n > 0:
+//         rest = Chain(n - 1)
+//         self.n += rest.n
+inline Chain::Chain(int32_t n) : n(n) {
+    if ((n > 0)) {
+        Chain rest = Chain((::tpy::sub_check<int32_t>(n, 1)));
+        this->n = ::tpy::add_check<int32_t>(this->n, rest.n);
+    }
+}
+
 // # subclass constructor: the base initializer chained, then an own field
 // def __init__(self, name: str, k: int32) -> None:  # tpyc: mir(covered)
 //     super().__init__(name)
@@ -448,6 +710,43 @@ inline VSub::VSub() : VBase() {}
 inline void VSub::grow() {
     this->size = ::tpy::add_check<int32_t>(this->size, 2);
 }
+
+// # skipped base: a fieldless base whose constructor needs an argument is built empty
+// def __init__(self) -> None:  # tpyc: mir(covered) warning(/does not call 'super\(\).__init__/)
+//     self.k = 1
+inline OverQuiet::OverQuiet()
+    : Quiet(),
+      k(1) {}
+
+// # skipped base: a base constructor taking no argument is the call C++ makes
+// def __init__(self) -> None:  # tpyc: mir(covered) warning(/does not call 'super\(\).__init__/)
+//     self.k = 1
+inline OverCounted::OverCounted()
+    : Counted(),
+      k(1) {}
+
+// # skipped base: a defaulted constructor runs too, a call MIR binds no default argument of
+// def __init__(self) -> None:  # tpyc: mir(uncovered /^incomplete constructor arguments$/) warning(/does not call 'super\(\).__init__/)
+//     self.k = 1
+inline OverDefaulted::OverDefaulted()
+    : Defaulted(),
+      k(1) {}
+
+// # two struct bases each storing a view: the second base call keeps the first base's loan
+// def __init__(self, a: StrView, b: StrView) -> None:  # tpyc: mir(covered)
+//     VA.__init__(self, a)  # tpyc: mir_borrows(self.a, a)
+//     VB.__init__(self, b)  # tpyc: mir_borrows(self.a, a) mir_borrows(self.b, b)
+inline VAB::VAB(std::string_view a, std::string_view b)
+    : VA(a),
+      VB(b) {}
+
+// # the first base keeps a view the second base's call may replace: a no-alias obligation
+// def __init__(self, a: StrView, nm: Named) -> None:  # tpyc: mir(conflict /alias_obligation/)
+//     VA.__init__(self, a)
+//     VC.__init__(self, nm)
+inline VAC::VAC(std::string_view a, Named& nm)
+    : VA(a),
+      VC(nm) {}
 
 // # three-level chain: the grandparent's fields through two base initializers
 // def __init__(self, name: str) -> None:  # tpyc: mir(covered)

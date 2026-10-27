@@ -10,13 +10,13 @@ from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRFunction, MIRNotCovered, MIRStorageWrite,
     MIRStorageWriteMode, MIRRegionId, MIRStorageDuration, MIRStorageInit,
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
-from .testutil import compiled_definitions, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, Reference, execute, prepared
 
 
 SOURCE = '''from tpy import int32
@@ -166,7 +166,7 @@ def test_wrapper_snapshots_and_callable_siblings(artifacts: Artifacts, flag: boo
     assert execute(bodies["union_snapshot"], flag) == (7 if flag else 2)
     assert execute(bodies["union_with_none"], flag) == (0 if flag else 2)
     heap = {}
-    execute(bodies["Observer"], Reference(0), flag, heap=heap)
+    construct(bodies["Observer"], 0, flag, heap=heap)
     assert tuple(heap[0].values()) == (2 if flag else 0,)
     for method in ("optional_loop", "union_loop"):
         assert execute(bodies[method], Reference(0), flag, heap=heap) == (3 if flag else 0)

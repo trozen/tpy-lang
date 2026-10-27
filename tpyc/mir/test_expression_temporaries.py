@@ -10,10 +10,10 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .definitions import MIRDefinitions
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRRead,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRConstruct, MIRWrap,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRCall, MIRConstruct, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRValidationError
@@ -235,7 +235,7 @@ def test_invalid_materialization_fails_closed(definitions: MIRDefinitions, chang
 
 def test_temporary_cannot_be_reinitialized_without_leaving_region(definitions: MIRDefinitions) -> None:
     fn = lower(function(read(definitions)), definitions)
-    block = next(b for b in fn.blocks if any(isinstance(s.value, MIRConstruct) for s in b.statements))
+    block = next(b for b in fn.blocks if any(isinstance(s.value, MIRCall) for s in b.statements))
     fn = replace(fn, blocks=tuple(replace(b, terminator=MIRGoto(b.id)) if b.id == block.id else b
                                  for b in fn.blocks))
     with pytest.raises(MIRValidationError, match="repeated initialization"):

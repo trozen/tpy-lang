@@ -10,17 +10,17 @@ from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32, OptionalType, ReadonlyType, TupleType, UnionType, VoidType
 from .dependencies import MIRDependencies, MIRReferent, _dependencies, dump_dependencies
 from .liveness import MIRPoint, _liveness
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy,
     MIRFunction, MIRGoto, MIRIsAlternative, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRStorageWrite, MIRStorageWriteMode, MIRConstruct, MIRUnionExtract, MIRWrap,
+    MIRBodyKind, MIRSlotKind, MIRStorageDuration, MIRStorageWrite, MIRStorageWriteMode, MIRConstruct, MIRUnionExtract, MIRWrap,
 )
 from .shapes import MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .validate import successors
 from .testutil import (
-    compiled_definitions, hand_record, bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape,
+    compiled_definitions, construction, hand_record, bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape,
     owned_shape, reslot, tuple_shape, union_shape, prepared,
 )
 from ..thir.scalar_leaves import MIRClass
@@ -112,23 +112,26 @@ def test_local_storage_copy_move_and_replacement_keep_distinct_origins() -> None
              reference(Y), reference(Z),
              storage, replace(storage, id=STORE2), replace(storage, id=third))
     fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
-        MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),
+        MIRAssign(MIRPlace(STORE), construction(LAYOUT, P), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(STORE))),
         MIRAssign(MIRPlace(Y), MIRAlias(X)),
         MIRAssign(MIRPlace(STORE2), MIRCopy(MIRPlace(X, (MIRDeref(),)))),
         MIRAssign(MIRPlace(third), MIRMove(STORE2)),
         MIRAssign(MIRPlace(Z), MIRBorrow(MIRPlace(third))),
+        # The moved-from storage is built again before it is borrowed.
+        MIRAssign(MIRPlace(STORE2), construction(LAYOUT, P), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(STORE2))),
-        MIRAssign(MIRPlace(Y, (MIRDeref(),)), MIRConstruct((P,))),
+        MIRAssign(MIRPlace(Y, (MIRDeref(),)), construction(LAYOUT, P),
+                  storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, Y)),
         MIRAssign(MIRPlace(Y, (MIRDeref(), FIELD)), MIRRead(MIRPlace(P))),
         MIRAssign(MIRPlace(Z, (MIRDeref(), FIELD)), MIRRead(MIRPlace(P))),
     ), MIRReturn()),), A, records=(LAYOUT,)))
     result = analyze(fn)
-    state = result.referents[MIRPoint(A, 8)]
+    state = result.referents[MIRPoint(A, 9)]
     for holder, root in ((X, STORE2), (Y, STORE), (Z, third)):
         assert state[MIRPlace(holder)] == {MIRReferent(MIRPlace(root))}
-    assert MIRPlace(Y) in result.active[MIRPoint(A, 8)]
-    assert MIRPlace(Y) not in result.active[MIRPoint(A, 9)]
+    assert MIRPlace(Y) in result.active[MIRPoint(A, 9)]
+    assert MIRPlace(Y) not in result.active[MIRPoint(A, 10)]
 
 
 def test_tuple_leaves_and_parameter_payloads_keep_separate_origins() -> None:
@@ -207,7 +210,8 @@ def test_recursive_field_graph_is_rejected_before_unbounded_path_growth(readonly
 def test_missing_and_malformed_backing_facts_fail_explicitly() -> None:
     storage = MIRSlot(STORE, owned_shape(CELL), MIRSlotKind.TEMPORARY)
     fn = bind_parameters(MIRFunction(B, VoidType(), (storage, MIRSlot(P, leaf_shape(INT32), MIRSlotKind.PARAMETER)), (
-        MIRBlock(A, (MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),), MIRReturn()),), A, records=(LAYOUT,)))
+        MIRBlock(A, (MIRAssign(MIRPlace(STORE), construction(LAYOUT, P), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),), MIRReturn()),), A,
+        records=(LAYOUT,)))
     with pytest.raises(MIRValidationError, match="owned storage needs a placement"):
         prepared(fn).dependencies
     for duration in ("body", MIRStorageDuration.CALLER):
@@ -350,8 +354,10 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
         for fn in bodies.values():
             assert isinstance(fn, MIRFunction), fn
             result = analyze(fn)
-            if fn.receiver_init is not None:
-                assert result.entry_active == {MIRPlace(fn.receiver_init.receiver): external(fn.receiver_init.receiver)}
+            if fn.kind is MIRBodyKind.CONSTRUCTOR:
+                # A constructor's record is its own storage: no caller loan is seeded for it.
+                params = {s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER}
+                assert all(place.root in params for place in result.entry_active)
         retained = bodies["retained"]
         # The initial record and the reseat's own sum live for the body; the
         # reseat's record is built in its full expression, then moved in.

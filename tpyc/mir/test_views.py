@@ -19,7 +19,7 @@ from .collect import MIRVerdictStatus, analyze_body, enumerate_bodies
 from .dependencies import MIRReferent
 from .dump import dump_function
 from .liveness import MIRPoint
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstant, MIRCopy, MIRFunction, MIRPlace, MIRReturn, MIRSlot,
     MIRSlotKind,

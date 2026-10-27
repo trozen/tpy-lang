@@ -17,6 +17,7 @@ give 1
 lend_temp 3
 maybe 9 0
 make_pinned 5
+pin_holder 5
 make_tok 6
 make_box 7
 put 8

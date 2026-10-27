@@ -9,10 +9,10 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..typesys import INT32
 from .dump import dump_function
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRRangeAdvance
 from .scope_lifetime import inspect_scope_lifetimes
-from .testutil import compiled_definitions, Reference, execute, prepared
+from .testutil import construct, compiled_definitions, Reference, execute, prepared
 
 SOURCE = '''from tpy import int32
 def capture(start: int32, stop: int32) -> int32:
@@ -133,7 +133,7 @@ def test_once_captured_bounds_and_independent_body_target(artifacts) -> None:
 def test_methods_constructor_tails_and_iteration_storage(artifacts) -> None:
     _, bodies, _ = artifacts
     heap = {}
-    execute(bodies["Runner"], Reference(0), 3, heap=heap)
+    construct(bodies["Runner"], 0, 3, heap=heap)
     assert tuple(heap[0].values()) == (2,)
     assert execute(bodies["walk"], Reference(0), 4, heap=heap) == 3
     assert execute(bodies["bound"], Reference(0), heap=heap) == 2

@@ -49,7 +49,8 @@ def analyze_storage(prepared: MIRPrepared) -> MIRStorageEvents | MIRNotCovered:
         for index, stmt in enumerate(block.statements):
             point = MIRPoint(block.id, index)
             called = present.get(point)
-            events = storage_events(stmt, called.writes if called is not None else (), slots)
+            events = storage_events(stmt, called.writes if called is not None else (), slots,
+                                    called.initializes if called is not None else ())
             if any(event.unknown_replacement for event in events):
                 return MIRNotCovered(fn.id, "storage", "missing storage write fact", stmt.loc)
             if block.id not in reached:

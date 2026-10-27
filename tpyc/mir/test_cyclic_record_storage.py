@@ -5,21 +5,22 @@ from dataclasses import replace
 import pytest
 
 from ..compilation_context import activate_compiler
+from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import validate_function as validate_thir
 from .definitions import MIRDefinitions
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import (
-    MIRAlias, MIRBodyId, MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRStorageWrite,
-    MIRStorageWriteMode, MIRStorageDuration, MIRConstruct,
+    MIRAlias, MIRAssign, MIRBodyId, MIRCopy, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIRPlace, MIRSlot,
+    MIRSlotKind, MIRStorageWrite, MIRStorageWriteMode, MIRStorageDuration, MIRConstruct,
 )
 from .shapes import MIRDeref
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .test_retention import CURRENT, INITIAL, LOOP, analyze, loop_function
+from .test_retention import BUILT, CELL, CURRENT, INITIAL, LAYOUT, LOOP, N, analyze, loop_function
 from .test_scope_inspection import scoped_loop
-from .testutil import compiled_definitions, execute, prepared
+from .testutil import compiled_definitions, construction, execute, owned_shape, prepared
 from .value import MIRValidationError
 from .prepare import validate_function
 
@@ -92,6 +93,12 @@ def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction:
                                                 (False, False, True), (True, False, False), (True, True, False)])
 def test_each_activation_owns_an_independent_copy(
         source: tuple[th.THIRFunction, MIRDefinitions], move: bool, inner: bool, readonly: bool) -> None:
+    if move and not inner:
+        # Moving the one source built before the loop again on each pass reads it after its move.
+        result = lower_function(transferred(source, move, readonly=readonly), MIRBodyId("cyclic", "fresh"),
+                                definitions=source[1])
+        assert isinstance(result, MIRNotCovered) and result.reason == "read after move", result
+        return
     fn = lower(transferred(source, move, inner_source=inner, readonly=readonly), source[1])
     writes = analyze_storage(prepared(fn)).writes.values()
     transfer, = (s for s in writes if isinstance(s.value, MIRMove if move else MIRCopy))
@@ -126,31 +133,50 @@ def test_readonly_move_stays_uncovered(source: tuple[th.THIRFunction, MIRDefinit
     assert isinstance(result, MIRNotCovered) and result.reason == "move needs fixed movable owned local"
 
 
+def fresh_source(fn: MIRFunction) -> tuple[MIRFunction, MIRAssign]:
+    """`fn` with storage of the loop's iteration region a move takes, and
+    the statement building it: each activation moves a record built in it
+    (moving one built before the loop would read it after its move)."""
+    region = next(b.region for b in fn.blocks if b.id == LOOP)
+    fresh = MIRSlot(BUILT, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=region, residence=region)
+    build = MIRAssign(MIRPlace(BUILT), construction(LAYOUT, N),
+                      storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
+    return replace(fn, slots=(*(s for s in fn.slots if s.id != BUILT), fresh)), build
+
+
 @pytest.mark.parametrize("move", [False, True])
 @pytest.mark.parametrize("shape", ["record", "singleton", "mixed", "optional", "union"])
 @pytest.mark.parametrize("reseat_first", [False, True])
 def test_previous_activation_alias_survives_copy_reconstruction(move: bool, shape: str, reseat_first: bool) -> None:
     fn, observed = scoped_loop(shape, reseat_first=reseat_first)
+    fn, build = fresh_source(fn)
     block = fn.blocks[1]
-    transfer = MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL))
-    init = replace(block.statements[0], value=transfer)
-    fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(init, *block.statements[1:])), *fn.blocks[2:]))
+    init = replace(block.statements[0], value=MIRMove(BUILT) if move else MIRCopy(MIRPlace(INITIAL)))
+    built = (build, init) if move else (init,)
+    fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(*built, *block.statements[1:])),
+                             *fn.blocks[2:]))
     result = inspect_scope_lifetimes(prepared(fn))
     assert not isinstance(result.conflicts, MIRNotCovered)
     assert {c.holder for c in result.conflicts} == (set() if reseat_first else {observed})
 
 
 @pytest.mark.parametrize("move", [False, True])
-@pytest.mark.parametrize("fault,reason", [("duplicate", "repeated storage initialization"),
+@pytest.mark.parametrize("fault,reason", [("duplicate", "repeated initialization within region activation"),
                                          ("activation", "repeated initialization within region activation"),
                                          ("body", "owning operation in cycle")])
 def test_transfer_does_not_bypass_activation_rules(move: bool, fault: str, reason: str) -> None:
-    fn, _ = scoped_loop("record")
+    fn, build = fresh_source(scoped_loop("record")[0])
     block = fn.blocks[1]
-    init = replace(block.statements[0], value=MIRMove(INITIAL) if move else MIRCopy(MIRPlace(INITIAL)))
-    statements = (init, init, *block.statements[1:]) if fault == "duplicate" else (init, *block.statements[1:])
+    # Distinct locations tell a refusal on the transfer's target from one on its source.
+    build = replace(build, loc=SourceLocation(1, 4))
+    init = replace(block.statements[0], value=MIRMove(BUILT) if move else MIRCopy(MIRPlace(INITIAL)),
+                   loc=SourceLocation(2, 4))
+    # A move takes a record built just before it, so each transfer's source is initialized.
+    transfer = (build, init) if move else (init,)
+    statements = (*transfer, *transfer, *block.statements[1:]) if fault == "duplicate" else (
+        *transfer, *block.statements[1:])
     if fault == "body":
-        statements = (replace(init, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+        statements = (*transfer[:-1], replace(init, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                       *block.statements[1:])
         fn = replace(fn, slots=tuple(replace(s, storage_duration=MIRStorageDuration.BODY,
                                              residence=fn.blocks[0].region)
@@ -158,8 +184,11 @@ def test_transfer_does_not_bypass_activation_rules(move: bool, fault: str, reaso
     block = replace(block, statements=statements,
                     terminator=MIRGoto(block.id) if fault == "activation" else block.terminator)
     fn = replace(fn, blocks=(fn.blocks[0], block, *fn.blocks[2:]))
-    with pytest.raises(MIRValidationError, match=reason):
+    with pytest.raises(MIRValidationError, match=reason) as raised:
         validate_function(fn)
+    if fault != "body":
+        # The transfer's own target is the place initialized twice, not its source.
+        assert raised.value.loc == init.loc
 
 
 @pytest.mark.parametrize("shape", ["record", "singleton", "mixed", "optional", "union"])
@@ -174,8 +203,10 @@ def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool
     write = replace(block.statements[build], target=MIRPlace(CURRENT, (MIRDeref(),)),
                     storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, CURRENT))
     if operation != "construct":
-        write = replace(write, value=MIRCopy(MIRPlace(INITIAL)) if operation == "copy" else MIRMove(INITIAL))
-    stmts = (*block.statements[:build], write, *block.statements[point.index + 3:])
+        write = replace(write, value=MIRCopy(MIRPlace(INITIAL)) if operation == "copy" else MIRMove(BUILT))
+    # A move keeps the site's built record as its source.
+    built = block.statements[build:build + 1] if operation == "move" else ()
+    stmts = (*block.statements[:build], *built, write, *block.statements[point.index + 3:])
     capture = stmts[-1]
     value = (replace(capture.value, fields=(CURRENT, *capture.value.fields[1:]))
              if isinstance(capture.value, MIRConstruct)
@@ -183,8 +214,5 @@ def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool
     stmts = (*stmts[:-1], replace(capture, value=value))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=stmts), *fn.blocks[2:]))
     result = analyze(fn)
-    # A move also empties INITIAL, which `current` still reaches from the
-    # first activation and is captured and read through afterwards.
-    moved = {MIRPlace(CURRENT)} if operation == "move" else set()
-    assert {c.holder for c in result.conflicts} == (set() if safe else {holder}) | moved
+    assert {c.holder for c in result.conflicts} == (set() if safe else {holder})
     assert all(c.point.block == LOOP for c in result.conflicts)

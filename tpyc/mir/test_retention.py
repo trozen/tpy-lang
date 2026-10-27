@@ -11,7 +11,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRFunction,
     MIRGoto, MIRNotCovered, MIRPlace, MIRRead, MIRStorageWrite, MIRStorageWriteMode, MIRReturn, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRStorageDuration, MIRConstruct, MIRWrap, MIRIsAlternative, MIRCopy, MIRRegion, MIRRegionId,
-    MIRStorageInit,
+    MIRStorageInit, MIRCall,
 )
 from .shapes import MIRContainerElements, MIRDeref, MIRTupleIndex, MIRUnionPayload
 from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
@@ -20,9 +20,9 @@ from .retention import (
     MIRRetention, MIRRetentionConflict, _one_object, analyze_retention, dump_retention,
 )
 from .storage import MIRStorageEvents, analyze_storage
-from .test_reuse import loop_source, source_function
+from .test_reuse import CELL_SOURCE, COPY_SOURCE, loop_source, source_function
 from .testutil import (
-    hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot,
+    construction, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot,
     tuple_shape, union_shape, prepared,
 )
 from ..thir.scalar_leaves import MIRClass
@@ -87,7 +87,7 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
              storage, site, replace(current, residence=ROOT_R), replace(reference(TEMP), residence=ROOT_R),
              replace(holder, residence=ROOT_R), replace(holder, id=COPIED, residence=ROOT_R),
              MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT_R), built)
-    initial = MIRAssign(MIRPlace(INITIAL), MIRConstruct((N,)),
+    initial = MIRAssign(MIRPlace(INITIAL), construction(LAYOUT, N),
                         storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
     borrow = MIRAssign(MIRPlace(TEMP), MIRBorrow(MIRPlace(INITIAL)))
     set_current = MIRAssign(MIRPlace(CURRENT), MIRWrap(1, MIRPlace(TEMP)) if optional_owner else MIRAlias(TEMP))
@@ -95,7 +95,7 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
     copy_holder = MIRAssign(MIRPlace(COPIED), copy)
     observed = MIRPlace(COPIED if copied else SAVED, path)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(observed.root, (*path, MIRDeref(), FIELD))))
-    write = (MIRAssign(MIRPlace(BUILT), MIRConstruct((N,)), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
+    write = (MIRAssign(MIRPlace(BUILT), construction(LAYOUT, N), storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
              MIRAssign(MIRPlace(SITE), MIRWrap(1, MIRPlace(BUILT)), storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
     replacement = (*write, replace(borrow, value=MIRBorrow(MIRPlace(SITE, (MIRUnionPayload(1),)))), set_current)
     reads = (read,) if not safe else ()
@@ -153,7 +153,7 @@ def in_place_function(*, live_alias: bool, rhs_only: bool = False) -> MIRFunctio
              MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
     alias = MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT))
     read_alias = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
-    write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((OUT if rhs_only else N,)),
+    write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), construction(LAYOUT, OUT if rhs_only else N),
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, CURRENT))
     after = read_alias if live_alias else MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(CURRENT, (MIRDeref(), FIELD))))
     statements = (alias, *((read_alias,) if rhs_only else ()), write, after)
@@ -284,11 +284,11 @@ def test_branch_join_reports_possible_retention_without_merging_private_roots() 
     fn, _, _ = loop_function("record")
     entry = fn.blocks[0]
     # The site's sum filled once, outside any loop: its record built in body storage.
-    initial_site = (MIRAssign(MIRPlace(BUILT), MIRConstruct((N,)),
+    initial_site = (MIRAssign(MIRPlace(BUILT), construction(LAYOUT, N),
                               storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
                     MIRAssign(MIRPlace(SITE), MIRWrap(1, MIRPlace(BUILT)),
                               storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
-    write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((N,)),
+    write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), construction(LAYOUT, N),
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE, CURRENT))
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
     fn = replace(fn, slots=tuple(replace(s, storage_duration=MIRStorageDuration.BODY, residence=ROOT_R)
@@ -321,9 +321,21 @@ def test_actual_missing_write_metadata_cannot_be_an_empty_conflict_result() -> N
     fn = in_place_function(live_alias=True)
     fn = replace(fn, blocks=(replace(fn.blocks[0], statements=tuple(
         replace(s, storage_write=None) for s in fn.blocks[0].statements)),))
+    # A record rebuilt by a call states its storage fact: without one the
+    # body is refused before retention could read it as conflict-free.
+    with pytest.raises(MIRValidationError, match="call needs whole result holder"):
+        analyze_retention(prepared(fn))
+    # A copy into record storage that states no fact still validates:
+    # retention cannot tell what it replaces, so it is not covered rather
+    # than conflict-free.
+    fn = source_function(CELL_SOURCE + COPY_SOURCE, "copied")
+    entry = fn.blocks[0]
+    copy, = (s for s in entry.statements if isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy))
+    fn = replace(fn, blocks=(replace(entry, statements=tuple(
+        replace(s, storage_write=None) if s is copy else s for s in entry.statements)), *fn.blocks[1:]))
     result = analyze_retention(prepared(fn))
     assert isinstance(result, MIRNotCovered)
-    assert "missing storage write fact" in result.reason
+    assert result.reason == "storage: missing storage write fact"
 
 
 def _any(written: MIRReferent, target: MIRReferent) -> bool:
@@ -387,7 +399,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
                     replaced = root if root in heap else None
                     heap[root] = heap[source.root]
                     value = _Object(root)
-                case MIRConstruct(fields=(operand,)) if slots[stmt.target.root].shape.is_storage:
+                case MIRCall(arguments=(operand,)) if slots[stmt.target.root].shape.is_storage:
                     root = stmt.target.root
                     replaced = root if root in heap else None
                     heap[root] = values[operand]
@@ -438,7 +450,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
     def used_before_overwrite(root: MIRSlotId, future: list) -> bool:
         for _, stmt, _, _ in future:
             match stmt.value:
-                case MIRConstruct(fields=fields):
+                case MIRConstruct(fields=fields) | MIRCall(arguments=fields):
                     uses = fields
                 case MIRRead(source=source) | MIRBorrow(source=source):
                     uses = (source.root,)

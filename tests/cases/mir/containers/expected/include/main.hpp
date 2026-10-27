@@ -188,7 +188,7 @@ struct Pts {
     // ps: list[Point]
     std::vector<Point> ps;
 
-    // def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+    // def __init__(self) -> None:  # tpyc: mir(covered)
     Pts();
 
     // def alias_grow(self, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
@@ -211,7 +211,7 @@ struct Rack {
     // rec: Point
     Point rec;
 
-    // def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+    // def __init__(self) -> None:  # tpyc: mir(covered)
     Rack();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rack";
 };
@@ -332,9 +332,8 @@ inline void Index::bump(std::string_view k, int32_t v) {
     ::tpy::__setitem__(this->counts, k, v);
 }
 
-// # constructor: a container of records -- a record element built by its own constructor
-// # is no literal operand at entry (BUGS.md#mir-ctor-nested-construct-operand)
-// def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+// # constructor: a container of records -- each record element built by its constructor's call
+// def __init__(self) -> None:  # tpyc: mir(covered)
 //     self.ps = [Point(1), Point(2)]
 inline Pts::Pts() : ps(std::vector<Point>{Point(1), Point(2)}) {}
 
@@ -371,9 +370,8 @@ inline int32_t Pts::alias_grow_after_use() {
     return (::tpy::add_check<int32_t>(v, ::tpy::__len__(this->ps)));
 }
 
-// # a literal member whose element is a record construct is not modeled
-// # (BUGS.md#mir-ctor-nested-construct-operand)
-// def __init__(self) -> None:  # tpyc: mir(uncovered /^constructor initializer needs parameter or literal$/)
+// # a literal member whose element is a record built by its constructor's call
+// def __init__(self) -> None:  # tpyc: mir(covered)
 //     self.items = [Point(1)]
 //     self.rec = Point(1)
 inline Rack::Rack()

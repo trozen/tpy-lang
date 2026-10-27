@@ -9,7 +9,7 @@ from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..type_def_registry import ParamPassing
 from ..typesys import BIGINT, BOOL, BYTEARRAY, INT32, STR, IntLiteralType, TpyType, TupleType
-from .lower import lower_function
+from .testutil import lower_function
 from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
 
 LOC = SourceLocation(17, 4, "case.py")

@@ -299,13 +299,14 @@ def object_path(shape: MIRShape, path: tuple[Projection, ...]) -> tuple[Projecti
     return tuple(out)
 
 
-def store_problem(walked: MIRWalk) -> str | None:
+def store_problem(walked: MIRWalk, *, initialization: bool = False) -> str | None:
     """Whether a store may write the place a walk ends at, by TPy's write
     rule; None when it may, else the problem. Every holder on the way is
     mutable (a pointer's access is its object's); replacing a field also
     needs the field mutable (not declared `readonly[...]`), replacing an
     element only its container: a `list[readonly[R]]` element is replaced,
-    never written into. A view never changes its container's shape."""
+    never written into. A field's `initialization` is no replacement: its
+    own access allows it. A view never changes its container's shape."""
     for hop in walked.hops:
         if isinstance(hop.projection, MIRContainerStructure) and hop.holder.container_view_holder:
             return "store changes the shape of a viewed container"
@@ -317,7 +318,8 @@ def store_problem(walked: MIRWalk) -> str | None:
                     return "store through readonly container"
             return "store through readonly storage"
     last = walked.hops[-1] if walked.hops else None
-    if last is not None and isinstance(last.projection, MIRField) and last.reached.readonly:
+    if (last is not None and isinstance(last.projection, MIRField) and last.reached.readonly
+            and not initialization):
         return "store through readonly storage"
     return None
 

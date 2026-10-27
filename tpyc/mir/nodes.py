@@ -8,7 +8,7 @@ from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
-from ..typesys import Representation, TpyType
+from ..typesys import NominalType, Representation, TpyType
 from .call_contract import MIRCallSummary, MIRGlobalId, MIRParameterBinding, path_projections
 from .shapes import (
     MIRUnionPayload, MIRWalk, Projection, lent_prefix, walk, walk_to,
@@ -102,6 +102,13 @@ class MIRSlot:
     global_id: MIRGlobalId | None = None
     storage_duration: MIRStorageDuration | MIRRegionId | None = None
     residence: MIRRegionId | None = None
+    # Storage built in the place its caller receives it (a constructor's
+    # result): C++ constructs it there, so handing it over moves nothing.
+    destination: bool = False
+    # The storage a holder is bound to before any statement and never
+    # rebound from (a constructor's `self`, bound to its result): a place
+    # through it is that storage's.
+    bound_storage: 'MIRSlotId | None' = None
 
     @property
     def type(self) -> TpyType:
@@ -184,6 +191,11 @@ class MIRCall:
     # analyzed call and its argument for each parameter. No MIR fact.
     site: SourceLocation | None = field(default=None, compare=False)
     bound_receiver: bool = field(default=False, compare=False)
+    # The base whose fields the callee's `Own[B]` result initializes in the
+    # record storage the call writes (a constructor's base initializer, a
+    # construction through a base's constructor); None for a call whose
+    # result is the whole value written.
+    initializes: NominalType | None = None
 
 
 @dataclass(frozen=True)
@@ -196,6 +208,33 @@ class MIRPresentCall:
     call: 'MIRCall'
     effects: MIRCallSummary
     writes: tuple['MIRPlace', ...]
+    # The places the call initializes (`initialized_places`), apart from
+    # the places it may replace: an initialization replaces nothing.
+    initializes: tuple['MIRPlace', ...] = ()
+
+
+def initialized_places(stmt: 'MIRStatement', records: MIRRecords) -> tuple['MIRPlace', ...]:
+    """The places a statement's call initializes: the fields a base's
+    constructor builds (`MIRCall.initializes`, each field the base
+    declares or inherits, keyed by its declaring owner) in the record
+    storage the statement's target reaches; none for any other statement,
+    whose target is what it fills."""
+    value = stmt.value if isinstance(stmt, MIRAssign) else None
+    if not isinstance(value, MIRCall) or value.initializes is None:
+        return ()
+    base = records.get(value.initializes)
+    if base is None:
+        return ()
+    return tuple(MIRPlace(stmt.target.root, (*stmt.target.projections, f)) for f in base.fields)
+
+
+def builds_base(stmt: 'MIRStatement') -> bool:
+    """A base initializer: a call whose result initializes a base's fields
+    (`initialized_places`, possibly none) of the record a holder reaches --
+    it neither reads nor fills that record whole. An inherited constructor's
+    call fills its fresh slot whole instead."""
+    return (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall) and stmt.value.initializes is not None
+            and bool(stmt.target.projections))
 
 
 def present_effects(summary: MIRCallSummary, excluded: Mapping[int, frozenset[int]]) -> MIRCallSummary:
@@ -261,10 +300,7 @@ class MIRConstruct:
     of temporary storage or copied through a holder, a holder member (a
     view member, a tuple's pointer) storing the loan its operand holds.
     Into a container layout it is a literal: one operand per element (a
-    dict's keys and values alternate), each by its member's form. A
-    receiver member's literal at entry may take a leaf element's constant,
-    as a composed record member's field does (`MIRMemberInit`): there are
-    no slots before the CFG to hold it."""
+    dict's keys and values alternate), each by its member's form."""
     fields: tuple[MIRSlotId | MIRConstant, ...]
     # Some member is copied, and that copy can exit by exception
     # (`TypeDef.copy_may_raise`); a container literal allocates, so always.
@@ -397,10 +433,13 @@ class MIRAssign:
 
 @dataclass(frozen=True)
 class MIRStorageInit:
-    """Construct a physical wrapper without assigning its source binding."""
+    """Begin storage without assigning its source binding: a physical
+    wrapper constructed with its default alternative, or record storage
+    (`alternative` and `value` None) whose fields the body initializes
+    after."""
     target: MIRPlace
-    alternative: int
-    value: MIRConstant
+    alternative: int | None
+    value: MIRConstant | None
     loc: SourceLocation | None = None
 
 
@@ -474,38 +513,6 @@ class MIRBlock:
 
 
 @dataclass(frozen=True)
-class MIRMemberInits:
-    """Record storage built by its constructor at entry -- the receiver, or
-    a record member (an Optional record member's payload) built by its own
-    constructor and moved in -- one initializer per field of its layout, in
-    layout order. There are no temporaries before the CFG, so each field
-    names its own parameter or constant: the second record-construct
-    spelling."""
-    fields: tuple['MIRMemberInit', ...]
-
-
-@dataclass(frozen=True)
-class MIRMemberInit:
-    """How one member of the receiver is initialized at entry, in layout
-    order: the value the CFG spells the same way -- a scalar parameter's
-    read, a constant, a copy or move of a parameter, a borrow of a lent
-    owned-leaf parameter or an alias of a view parameter (a view member's
-    loan), a container member's literal, an Optional member left empty
-    (`MIRWrap(0)`), or a record member built by its own constructor
-    (`MIRMemberInits`). Which values may appear here is the validator's
-    entry rule (`validate_member_init`)."""
-    value: 'MIRRvalue | MIRMemberInits'
-    loc: SourceLocation | None = None
-
-
-@dataclass(frozen=True)
-class MIRReceiverInit:
-    """Initialize supplied storage before the CFG can observe the receiver."""
-    receiver: MIRSlotId
-    members: MIRMemberInits
-
-
-@dataclass(frozen=True)
 class MIRFunction:
     id: MIRBodyId
     return_type: TpyType
@@ -513,15 +520,14 @@ class MIRFunction:
     blocks: tuple[MIRBlock, ...]
     entry: MIRBlockId
     records: tuple[MIRRecordLayout, ...] = ()
-    receiver_init: MIRReceiverInit | None = None
     kind: MIRBodyKind = MIRBodyKind.FREE_FUNCTION
     regions: tuple[MIRRegion, ...] = ()
     call_summaries: tuple[MIRCallSummary, ...] = ()
     borrowed_result: THIRBorrowedRecord | None = None
     # Some statement can exit the body by exception (`validate.statement_may_raise`):
     # a raising operation, an allocating copy or materialization, a call whose
-    # summary may raise, or a print; or a receiver member's initialization
-    # copies an owned leaf. Derived at lowering, re-checked by the validator.
+    # summary may raise, or a print. Derived at lowering, re-checked by the
+    # validator.
     exceptional_exits: bool = False
     # How each parameter slot is bound (`call_contract.parameter_binding`),
     # receiver first: the lowering's, which a summary publishes.

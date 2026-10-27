@@ -26,7 +26,7 @@ from .dependencies import (
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
-from .lower import MIRLoweredStorage, lower_constructor_storage, lower_function_storage
+from .lower import MIRLoweredStorage, lower_callable
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRNotCovered,
     MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
@@ -51,7 +51,7 @@ from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
     MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
 )
-from ..mir_workspace import MIRCallWorkspace
+from ..mir_workspace import MIRCallWorkspace, callable_identity
 
 
 def _declaration_name(name: str, func: TpyFunction | None) -> str:
@@ -67,19 +67,29 @@ def body_declaration(func: TpyFunction, owner: TpyType | None) -> str:
     return _declaration_name(f"{owner.name}.{func.name}" if owner is not None else func.name, func)
 
 
-def call_definitions(ctx: CodeGenContext, module_name: str) -> tuple[tuple[MIRBodyId, THIRFunction], ...]:
+def call_definitions(ctx: CodeGenContext, module_name: str
+                     ) -> tuple[tuple[MIRBodyId, THIRFunction | THIRConstructor], ...]:
     """Every body publishing a callee identity -- its definition and an
-    `@auto_readonly` def's access twin -- under the id the verdict walk
-    gives it: the clones of a def share one declaration, so the second
-    lowered body is `#2` as in `enumerate_body_sources`. A cache entry is
-    read back only for the very function it lowered (`MIRCallWorkspace.lowering`)."""
+    `@auto_readonly` def's access twin, and each constructor -- under the
+    id the verdict walk gives it: the clones of a def share one
+    declaration, so the second lowered body is `#2` as in
+    `enumerate_body_sources`. A cache entry is read back only for the very
+    body it lowered (`MIRCallWorkspace.lowering`). A generic record's
+    constructor is no callee MIR summarizes."""
     seen: dict[str, int] = {}
-    result: list[tuple[MIRBodyId, THIRFunction]] = []
-    for node, fn in ctx.thir_functions.items():
-        name = body_declaration(node, fn.receiver.type if fn.receiver else None)
+    result: list[tuple[MIRBodyId, THIRFunction | THIRConstructor]] = []
+
+    def body(name: str) -> MIRBodyId:
         count = seen[name] = seen.get(name, 0) + 1
+        return MIRBodyId(module_name, name if count == 1 else f"{name}#{count}")
+    for node, fn in ctx.thir_functions.items():
+        name = body(body_declaration(node, fn.receiver.type if fn.receiver else None))
         if fn.resolved_callee is not None:
-            result.append((MIRBodyId(module_name, name if count == 1 else f"{name}#{count}"), fn))
+            result.append((name, fn))
+    for node, ctor in ctx.thir_constructors.items():
+        layout = ctor.record_layout
+        if layout is not None and not getattr(layout.type, "type_args", ()):
+            result.append((body(_declaration_name(f"{ctor.record_name}.__init__", node)), ctor))
     return tuple(result)
 
 
@@ -146,8 +156,8 @@ class MIRBodySource:
 
     @property
     def summary_identity(self) -> THIRFunctionIdentity | None:
-        if isinstance(self.source, THIRFunction) and self.source.resolved_callee is not None:
-            return self.source.resolved_callee.identity
+        if isinstance(self.source, (THIRFunction, THIRConstructor)):
+            return callable_identity(self.source)
         return None
 
 
@@ -398,12 +408,10 @@ def lower_body(source: MIRBodySource, definitions: MIRDefinitions, workspace: MI
     over its callees' final summaries."""
     assert source.source is not None and source.refusal is None
     summaries = workspace.summaries if workspace is not None else None
-    if isinstance(source.source, THIRConstructor):
-        return lower_constructor_storage(source.source, source.body, definitions=definitions, summaries=summaries)
     cached = workspace.lowering(source.body, source.source) if workspace is not None and not fresh else None
     if cached is not None:
         return cached
-    return lower_function_storage(source.source, source.body, definitions=definitions, summaries=summaries)
+    return lower_callable(source.source, source.body, definitions, summaries)
 
 
 def body_summary(source: MIRBodySource, workspace: MIRCallWorkspace | None) -> MIRSummaryResult | None:
@@ -654,9 +662,8 @@ def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
 
 def _line_write(block: MIRBlockId, place: MIRPlace, value: object, slots: Mapping[MIRSlotId, MIRSlot],
                 records: Mapping[TpyType, MIRRecordLayout]) -> MIRLineWrite:
-    """A write of `value` into `place` as its line's facts read it, a CFG
-    statement's and a constructor entry's alike: what the place holds
-    (`_written_kind`), and whether the value is a copy."""
+    """A write of `value` into `place` as its line's facts read it: what
+    the place holds (`_written_kind`), and whether the value is a copy."""
     return MIRLineWrite(block.index, _written_kind(place, slots, records), isinstance(value, MIRCopy))
 
 
@@ -750,20 +757,6 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                            resolve_referents(place, dependencies.referents[point], slots, records)} - {None}
             for text in spelled:
                 replaced.setdefault((loc.line, text), []).append(kind)
-
-    if fn.receiver_init is not None:
-        # The receiver's entry initialization carries no CFG statement; its
-        # members' source lines are the constructor's field writes.
-        receiver = slots[fn.receiver_init.receiver]
-        layout = next((r for r in fn.records if r.type == receiver.type), None)
-        if layout is not None and receiver.id in named:
-            for member, field in zip(fn.receiver_init.members.fields, layout.fields):
-                if member.loc is None:
-                    continue
-                lines.add(member.loc.line)
-                place = MIRPlace(receiver.id, (*object_prefix(receiver.shape), field))
-                writes.setdefault((member.loc.line, _spell(place, holders)), []).append(
-                    _line_write(fn.entry, place, member.value, slots, records))
 
     dependencies = analyses.dependencies
     leaves: dict[str, list[MIRPlace]] = {}

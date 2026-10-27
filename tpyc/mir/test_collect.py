@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 
 from .. import cli
-from ..compilation_context import activate_compiler
 from ..mir_workspace import analyze_call_workspace
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
@@ -27,18 +26,14 @@ from .nodes import (
 )
 from .shapes import MIRContainerElements, MIRDeref
 from .value import MIRRecordLayout
-from .testutil import compiled_definitions, bind_parameters, borrowed_shape, leaf_shape, prepared, workspace_functions
+from .testutil import bind_parameters, dump_compiled_mir, borrowed_shape, leaf_shape, prepared, workspace_functions
 
 
 def dump(source: str) -> str:
     compiler, modules = _compile(source)
     entry = _entry(modules)
     ctx = compiler.collect_thir(entry, tolerate_reject=True)
-    # MIR admits a record by the TypeDef its compilation registered.
-    with activate_compiler(compiler):
-        return dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,
-                                compiled_definitions(compiler, tuple(ctx.thir_constructors.values())),
-                                compiler.thir_reject_by_node)
+    return dump_compiled_mir(compiler, entry, ctx)
 
 
 SOURCE = """\
@@ -491,7 +486,9 @@ def test_verdicts_climb_the_ladder() -> None:
     assert countdown.summary is not None and countdown.summary.state is MIRSummaryState.OPAQUE
     assert "recursi" in countdown.summary.reason
     ctor = by_name["__init__"]
-    assert ctor.kind is MIRBodyKind.CONSTRUCTOR and ctor.summary is None and ctor.line == 7
+    # A constructor is a callable: its body summarizes for its callers.
+    assert ctor.kind is MIRBodyKind.CONSTRUCTOR and ctor.line == 7
+    assert ctor.summary is not None and ctor.summary.state is MIRSummaryState.KNOWN
     init, = (v for v in verdicts if v.line is None)
     assert (init.name, init.status, init.reason) == ("__tpy_init", MIRVerdictStatus.UNCOVERED,
                                                      "module initialization")
@@ -671,7 +668,7 @@ def test_unnamed_storage_takes_its_binding_name(facts) -> None:
     assert not any(line == 38 for line, _ in rebind.events)
     # A call writing the refilled payload spells it as a borrow of it does.
     refill = facts["refill_append"]
-    assert _borrows(refill, 91, "r") == [(4, {"r@90"})]
+    assert _borrows(refill, 91, "r") == [(2, {"r@90"})]
     assert refill.events == {(91, "r@90.items[structure]"): ("call",)}
 
 

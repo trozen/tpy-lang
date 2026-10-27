@@ -7,7 +7,7 @@ import pytest
 from ..typesys import BOOL, INT32, NoneType, OptionalType, TupleType, UnionType
 from .dump import dump_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIREdge,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIREdge,
     MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRStorageInit, MIRStorageWrite,
     MIRStorageWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRConstruct, MIRStatement, MIRWrap,
@@ -19,7 +19,7 @@ from .retention import analyze_retention
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
 from .testutil import (
-    hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape,
+    construction, hand_record, bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape,
     union_shape, prepared,
 )
 from .validate import MIRDefiniteAssignmentError
@@ -36,11 +36,12 @@ ENTRY, YES, NO, JOIN, ENTRY_AGAIN = (MIRBlockId(BODY, i) for i in range(5))
 ROOT, CHILD = (MIRRegionId(BODY, i) for i in range(2))
 PAYLOAD = MIRPlace(BACKING, (MIRUnionPayload(1),))
 INIT = MIRStorageInit(MIRPlace(BACKING), 0, MIRConstant(None))
+RECORD = MIRRecordLayout(CELL, (FIELD,), True, True)
 
 
 def write(site: int = 0) -> tuple[MIRAssign, MIRAssign]:
     """A fill: a record built in the site's storage, moved into the payload."""
-    return (MIRAssign(MIRPlace(BUILT[site]), MIRConstruct((VALUE,)),
+    return (MIRAssign(MIRPlace(BUILT[site]), construction(RECORD, VALUE),
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)),
             MIRAssign(MIRPlace(BACKING), MIRWrap(1, MIRPlace(BUILT[site])),
                       storage_write=MIRStorageWrite(MIRStorageWriteMode.IN_PLACE)))
@@ -69,7 +70,7 @@ def function(*blocks: MIRBlock, built: MIRRegionId | None = None) -> MIRFunction
                   residence=built if built is not None else ROOT) for sid in BUILT),
     )
     return bind_parameters(MIRFunction(BODY, INT32, slots, blocks, ENTRY,
-                       records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
+                       records=(RECORD,),
                        regions=(MIRRegion(ROOT, None, ENTRY),)))
 
 
@@ -120,9 +121,9 @@ def test_replacement_preserves_physical_identity_and_reports_logical_conflict() 
     ((INIT, INIT), "repeated payload initialization"),
     ((INIT, BIND), "read before definite assignment"),
     ((INIT, SAVE), "read before definite assignment"),
-    ((INIT, WRITE[0], replace(FILL, storage_write=None)), "optional field write needs a replacement fact"),
+    ((INIT, WRITE[0], replace(FILL, storage_write=None)), "field write needs its initialization or replacement fact"),
     ((INIT, WRITE[0], replace(FILL, storage_write=MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))),
-     "optional field write needs a replacement fact"),
+     "field write needs its initialization or replacement fact"),
     ((INIT, *WRITE, FILL), "optional field payload needs a moved temporary"),
 ])
 def test_malformed_or_unavailable_storage(statements: tuple[MIRStatement, ...], message: str) -> None:
@@ -291,3 +292,46 @@ def test_possible_fill_with_retained_alias_reports_overwrite() -> None:
     assert selection(fn, MIRPoint(JOIN, 2)) == frozenset({0, 1})
     conflicts = analyze_retention(prepared(fn)).conflicts
     assert {(c.point, c.holder) for c in conflicts} == {(MIRPoint(JOIN, 2), MIRPlace(SAVED))}
+
+
+INITIALIZE = MIRStorageWrite(MIRStorageWriteMode.INITIALIZE)
+
+
+def test_an_owning_wrap_or_construct_consumes_its_operand() -> None:
+    copied = MIRAssign(MIRPlace(BUILT[1]), MIRCopy(MIRPlace(BUILT[0])), storage_write=INITIALIZE)
+    validate_function(straight(INIT, WRITE[0], copied, WRITE[1]))
+    # The sum construction moved the built record into the payload: its storage is no source after.
+    with pytest.raises(MIRDefiniteAssignmentError, match="read after move"):
+        validate_function(straight(INIT, *WRITE, copied))
+    pair = MIRSlotId(BODY, 8)
+    shape = tuple_shape(TupleType((CELL, CELL)), (owned_shape(CELL), owned_shape(CELL)))
+
+    def paired(*members: MIRSlotId) -> MIRFunction:
+        built = tuple(MIRAssign(MIRPlace(sid), construction(RECORD, VALUE), storage_write=INITIALIZE)
+                      for sid in dict.fromkeys(members))
+        fn = straight(*built, MIRAssign(MIRPlace(pair), MIRConstruct(members), storage_write=INITIALIZE))
+        return replace(fn, slots=(*fn.slots, MIRSlot(pair, shape, MIRSlotKind.LOCAL,
+                                                     storage_duration=MIRStorageDuration.BODY, residence=ROOT)))
+
+    validate_function(paired(BUILT[0], BUILT[1]))
+    # An owning construction moves each member operand in: one temporary cannot be both members.
+    with pytest.raises(MIRDefiniteAssignmentError, match="read after move"):
+        validate_function(paired(BUILT[0], BUILT[0]))
+
+
+def test_an_initialization_over_a_maybe_initialized_place_is_refused() -> None:
+    build = WRITE[0]
+
+    def joined(yes: tuple[MIRStatement, ...], no: tuple[MIRStatement, ...],
+               join: tuple[MIRStatement, ...]) -> MIRFunction:
+        return function(MIRBlock(ENTRY, (), MIRBranch(FLAG, YES, NO), ROOT),
+                        MIRBlock(YES, yes, MIRGoto(JOIN), ROOT),
+                        MIRBlock(NO, no, MIRGoto(JOIN), ROOT),
+                        MIRBlock(JOIN, join, MIRReturn(VALUE), ROOT))
+
+    validate_function(joined((build,), (build,), ()))
+    validate_function(joined((), (), (build,)))
+    # Initialized on one arm only: after the join the storage may hold a record, which the
+    # initialization would overwrite without ending it.
+    with pytest.raises(MIRValidationError, match="repeated storage initialization"):
+        validate_function(joined((build,), (), (build,)))

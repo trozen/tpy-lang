@@ -16,7 +16,7 @@ from .call_contract import MIRSummaryState
 from .collect import call_definitions
 from .dump import _write_step
 from .definitions import MIRDefinitions
-from .lower import lower_constructor, lower_function
+from .testutil import lower_constructor, lower_function
 from .nodes import (
     MIRWrap,
     MIRStorageInit,
@@ -203,7 +203,9 @@ def test_retaining_a_real_for_argument_reports_its_body_end(artifacts: Artifacts
         if block.id == fn.entry:
             statements.insert(0, MIRAssign(MIRPlace(holder), MIRAlias(seed.id)))
         for stmt in block.statements:
-            if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall):
+            # The call lent the argument, not the construction filling its storage.
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall)
+                    and stmt.value.summary.callee.identity.name != "__init__"):
                 statements.append(MIRAssign(MIRPlace(holder), MIRAlias(stmt.value.arguments[0])))
         if isinstance(block.terminator, MIRReturn):
             statements.append(MIRAssign(MIRPlace(copied), MIRAlias(holder)))
