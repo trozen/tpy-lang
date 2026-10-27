@@ -7,7 +7,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import asyncio
 from typing import Final, Iterator, overload
-from tpy import int32, Array, Ptr, Own, readonly, inline, dispatch
+from tpy import int32, Array, Ptr, Own, readonly, dispatch
 from tpy.extern import cpp_template
 
 
@@ -495,23 +495,11 @@ class NkOuter:
             return self.n == other.n
 
 
-# inverse: an @inline method and a @cpp_template variant declare nothing in
-# C++, so naming a later nested class there adds no order and a body calling
-# a prototype deferred past this class keeps building
-def inl_sink(n: int32) -> None:
-    print("inline sink", n)
-
-
+# inverse: a @cpp_template variant declares nothing in C++, so naming a
+# later nested class there adds no order and a body calling a prototype
+# deferred past this class keeps building
 class InlFirst:
     N: Final[int32] = 5
-
-    @inline
-    def use(self, value: Ptr[InlOuter.Inner]) -> None:  # tpyc: ok
-        inl_sink(7)
-
-    @inline
-    def get(self) -> Ptr[InlOuter.Inner]:  # tpyc: ok
-        inl_sink(8)
 
     @dispatch
     @cpp_template("static_cast<int32_t>(7)")
@@ -698,8 +686,6 @@ def main() -> None:
     print("nested key", len(nk.keys))
 
     inl = InlFirst()
-    inl.use(None)
-    inl.get()
     print("cpp_template", inl.pick(4))
     for n in InlCaller[int32]():
         print("inline", n)

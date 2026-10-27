@@ -9098,8 +9098,6 @@ def _marker_reject(e: TpyMethodCall, analyzer) -> str:
         return "method.marker.callable_field"
     if e.macro_expansion is not None:
         return "method.marker.macro"
-    if e.fstr_expansion is not None:
-        return "method.marker.fstr"
     if e.super_parent_type is not None or e.unbound_self_parent_type is not None:
         return "method.marker.super"
     if e.user_module_call is not None or e.builtin_module_call is not None:
@@ -9234,7 +9232,6 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     # per-branch generic decisions below.
     if (e.typed_dict_get_field is not None
             or e.is_callable_field or e.macro_expansion is not None
-            or e.fstr_expansion is not None
             # EXPLICIT type args are rejected -- EXCEPT where sema already
             # folded the explicit spelling into the inferred list and the
             # arm renders from `inferred_type_args` alone: a STATIC call

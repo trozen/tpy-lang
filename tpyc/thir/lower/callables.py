@@ -82,7 +82,7 @@ def _bound_by_body(fi: FunctionInfo, root: FunctionInfo, arity: int | None) -> b
                 or root.is_async or root.is_generator or root.error_return_type is not None
                 or root.native_name is not None or root.cpp_template is not None
                 or root.linkage is not FunctionLinkage.DEFAULT or root.is_builtin_function
-                or root.special_handling or root.inline_body is not None or root.kwarg_name is not None
+                or root.special_handling or root.kwarg_name is not None
                 or any(p.is_variadic or p.is_kwargs for p in root.params)
                 or fi.return_type is None or fi.return_type != root.return_type
                 or tuple(p.type for p in fi.params) != tuple(p.type for p in root.params)
@@ -329,7 +329,7 @@ def _not_a_stub(fi: FunctionInfo, arity: int) -> bool:
     return any((not (f.is_native_import or f.cpp_template is not None)
                 or f.is_constructor or f.is_callable_value or f.is_async or f.is_generator
                 or f.is_consuming or f.error_return_type is not None or f.special_handling
-                or f.is_builtin_function or f.inline_body is not None or f.kwarg_name is not None
+                or f.is_builtin_function or f.kwarg_name is not None
                 or f.frame_captures is not None or f.is_property_getter or f.is_property_setter
                 or any(p.is_variadic or p.is_kwargs for p in f.params))
                for f in (fi, fi.root)) or arity != len(fi.params) or fi.return_type is None

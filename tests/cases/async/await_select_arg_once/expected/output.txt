@@ -86,9 +86,6 @@ eval n
 raise-def n 0
 eval n
 raise-kw n 7
-pr2 1 5
-pr2 1 4
-pr2 6 1
 macro-def 1 2 5
 macro-kw 1 2 7
 macro-kw-first 1 2 8

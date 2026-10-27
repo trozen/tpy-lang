@@ -73,7 +73,7 @@ files. Core types:
 | Category | Types |
 |----------|-------|
 | Numeric  | `int` (BigInt), `int8`/`int16`/`int32`/`int64`, `uint8`/`uint16`/`uint32`/`uint64`, `float` / `float64`, `float32`, `bool` |
-| Text     | `str`, `StrView`, `String`, `char`, `FStr` (parameter type that accepts an f-string without materialising a `str`) |
+| Text     | `str`, `StrView`, `String`, `char` |
 | Collections | `list[T]`, `dict[K, V]`, `set[T]`, `tuple[...]`, `Array[T, N]`, `Span[T]` |
 | Bytes    | `bytes`, `bytearray`, `BytesView` |
 | Optional / union | `Optional[T]` / `T | None`, `A | B` |

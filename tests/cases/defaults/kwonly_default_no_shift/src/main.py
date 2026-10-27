@@ -7,7 +7,7 @@
 # a call is analyzed through a proxy or a second time.
 from typing import TypedDict, Unpack
 
-from tpy import Fn, dispatch, inline, int64
+from tpy import Fn, dispatch, int64
 
 import kwmod
 
@@ -96,29 +96,6 @@ class Base:
 class Child(Base):
     def run(self) -> int64:
         return outer(Base.m(self, 3, k=1))  # tpyc: ok
-
-
-def add(a: int64, b: int64) -> int64:
-    print("inline", a, b)
-    return a
-
-
-# @inline: the expansion takes the keyword and the declared default.
-@inline
-def show(a: int64, b: int64 = 2) -> None:
-    add(a, b)
-
-
-# A variadic @inline def that is never called, and one whose body never uses
-# its `*args`, expand as before: only a use of the pack is refused.
-@inline
-def va_never(*xs: int64) -> None:
-    add(len(xs), 0)
-
-
-@inline
-def va_unused(a: int64, *xs: int64) -> None:
-    add(a, 9)
 
 
 def kw_sum(**kw: Unpack[Opts]) -> int64:
@@ -239,13 +216,6 @@ class Coded(Exception):
 def raise_coded(n: int64) -> None:
     # A keyword raise constructs the exception as the call `Coded(...)` does.
     raise Coded("coded", code=n)
-
-
-# @inline method: the receiver substituted, the omitted default declared.
-class Shower:
-    @inline
-    def show(self, a: int64, b: int64 = 2) -> None:
-        add(a, b)
 
 
 class Calc:
@@ -377,9 +347,6 @@ def sections() -> None:
     # `a` binds the regular parameter, `x` the TypedDict field.
     print("method-td", M().m(a=1, x=2))  # tpyc: ok
     print("proxy", Child().run())
-    show(1, b=5)  # tpyc: ok
-    show(a=3)  # tpyc: ok
-    va_unused(7, 8)  # tpyc: ok
     d = Opts(x=3)
     print("kwargs-spread", kw_sum(**d))  # tpyc: ok
     sections_reentry()
@@ -403,8 +370,6 @@ def sections_reentry() -> None:
             raise_coded(n + 6)
         except Coded as e:
             print("raise-kw", e.code)
-    # An @inline method by keyword, its `b` left to the declared default.
-    Shower().show(a=4)  # tpyc: ok
     b = Bag()
     # The pending method's `T` comes from the keyword argument.
     b.put(v=3)  # tpyc: ok

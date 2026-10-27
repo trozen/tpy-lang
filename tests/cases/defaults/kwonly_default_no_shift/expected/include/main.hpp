@@ -21,7 +21,6 @@ template<typename T> struct OptBox;
 struct Scaler;
 struct Outer;
 struct Coded;
-struct Shower;
 struct Calc;
 struct Disp;
 
@@ -59,8 +58,6 @@ template<typename U, typename __F0>
       { __fn(__a0) } -> std::convertible_to<U>;
   }
 ::tpy::val_or_ref_t<U> apply__Fn_str_U__str(__F0&& f, std::string_view x);
-// def add(a: int64, b: int64) -> int64:
-int64_t add(int64_t a, int64_t b);
 // def kw_sum(**kw: Unpack[Opts]) -> int64:
 int64_t kw_sum(const Opts& kw);
 // def kw_infer[T](x: T, *, k: T = 1) -> T:
@@ -344,17 +341,6 @@ struct Coded : ::tpy::Exception {
 
 inline std::ostream& operator<<(std::ostream& os, const Coded& obj) {
     ::tpy::print_object_default(os, "Coded", obj);
-    return os;
-}
-
-// class Shower:
-struct Shower {
-
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Shower";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Shower& obj) {
-    ::tpy::print_object_default(os, "Shower", obj);
     return os;
 }
 

@@ -28,8 +28,6 @@ generator 6
 async 6
 alias heap True
 nested key 2
-inline sink 7
-inline sink 8
 cpp_template 4
 inline call 3
 inline 5

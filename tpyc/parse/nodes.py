@@ -541,7 +541,7 @@ class TpyCall(TpyCallLike):
     cast_source_is_any: bool = False         # Set by sema for typing.cast: True iff source's static type is Any
     compile_time_assert: bool = False        # Set by sema for assert_send[T]()/assert_sync[T](): checked in sema, elided in codegen
     # Set by sema: the expression this call IS, lowered in its place -- a
-    # @call_macro's replacement, an @inline body, a getattr/hasattr synth.
+    # @call_macro's replacement or a getattr/hasattr synth.
     macro_expansion: 'TpyExpr | None' = None
     dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
     # D16 v1.5: try/catch lambda forms. Inner __getattr__ call is stored here;
@@ -641,7 +641,6 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     macro_expansion: 'TpyExpr | None' = None
     typed_dict_get_field: str | None = None  # Set by sema: td.get("key") -> field access
     typed_dict_get_optional: bool = False  # Set by sema: total=False field, absent by default
-    fstr_expansion: 'TpyExpr | None' = None  # Set by sema: inlined FStr method body
     # See TpyCall.representational_subst_params for the contract.
     representational_subst_params: frozenset[str] | None = None
 
@@ -650,8 +649,6 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
         return f"'{self.method}(...)'"
 
     def children(self) -> list[TpyExpr]:
-        if self.fstr_expansion is not None:
-            return [self.fstr_expansion]
         if self.macro_expansion is not None:
             return [self.macro_expansion]
         callee = self.subscript_callee if self.subscript_callee is not None else self.obj
@@ -2025,7 +2022,6 @@ class TpyFunction:
     body: list[TpyStmt]
     is_noalloc: bool = False
     is_hotpath: bool = False
-    is_inline: bool = False
     is_readonly: bool = False
     readonly_opt_out: bool = False
     is_pure: bool = False
@@ -2271,12 +2267,6 @@ class TpyFunction:
         signature of the trailing implementation, which is specialized and
         emitted per stub."""
         return self.overload_form is OverloadForm.OVERLOAD
-
-    @property
-    def skip_codegen(self) -> bool:
-        """An `@inline` def: its body is cloned into each call site and
-        never emitted (nor analyzed) on its own."""
-        return self.is_inline and not self.is_stub
 
     @property
     def is_lifecycle_hook(self) -> bool:

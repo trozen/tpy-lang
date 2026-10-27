@@ -5,12 +5,16 @@
 | Feature | Status | Notes |
 |---------|--------|-------|
 | Regular f-strings -> `std::format` | **Done** | Format string + args validated at compile time, per-type wrapping, `!s`/`!r`, format specs |
-| `FStr` compile-time-only type | **Done** | Keeps f-string decomposed (format template + typed parts) instead of lowering to `std::format` |
-| Call macro decomposition (`MacroArg.as_fstring()`) | **Done** | `is_static_str` detection for literals, ternaries of literals, and `Final[str]` name references (local or imported) |
+| Call macro decomposition (`MacroArg.as_fstring()`) | **Done** | An f-string passed to a `@call_macro` arrives decomposed (format template + typed parts) instead of lowered to `std::format`; `is_static_str` detection for literals, ternaries of literals, and `Final[str]` name references (local or imported) |
+| Wrapper as a call macro | **Done** | A function forwarding an f-string to a macro is written as a `@call_macro` itself (see "Wrapping a call macro") |
 | Tuple-based dispatch | **Done** | Heterogeneous `std::tuple` with per-type wrapping to native generic functions |
 | Macro context introspection | **Done** | `first_param`, `get_field_type`, `get_method_return_type`, `qualified_name` -- auto-discover logger by name with qualified type check |
-| `FStr[wrap_fn]` protocol-based wrapping | **Planned** | Per-type wrapping via overload set, eliminates `@inline` requirement. See design below |
+| `FStr[wrap_fn]` protocol-based wrapping | **Planned** | Per-type wrapping via overload set, so an ordinary function can take a decomposed f-string. See design below |
 | `StaticStr` type | **Planned** | String literals in FStr context get `const char*` type for zero-cost static storage |
+
+The earlier `@inline` decorator (a function body expanded at each call site)
+and the bare `FStr` parameter type it took were removed: call macros cover
+their one use, and `FStr[wrap_fn]` would bring the type back with a consumer.
 
 ### Future Extensions
 
@@ -80,7 +84,7 @@ format specs on `int` (BigInt).
 
 ---
 
-## FStr: F-String Decomposition
+## F-String Decomposition in Call Macros
 
 ### Motivation
 
@@ -93,47 +97,23 @@ logger.debug("s={} i={}", wrapToLog(some_string), some_int);
 ```
 
 Regular f-strings lower to `std::format(...)` which eagerly formats into a
-`std::string` -- defeating the purpose of async logging. FStr keeps the f-string
-decomposed so individual typed args can be packed into the logger buffer without
-formatting.
+`std::string` -- defeating the purpose of async logging. A call macro sees the
+f-string decomposed, so individual typed args can be packed into the logger
+buffer without formatting.
 
 ### Current implementation
 
-#### FStr type
-
-`FStr` is a compile-time-only type (`is_compile_time_only() = True`). It has no
-C++ representation. When an f-string is passed to an `FStr` parameter, the
-compiler keeps it decomposed (format template + individual typed expressions)
-instead of lowering to `std::format`.
-
-Resolved via type alias at import time: `_register_compile_time_type_alias`
-checks the type factory and registers `FStr -> FStrType` for types where
-`is_compile_time_only()` is True.
-
-#### @inline decorator
-
-`@inline` marks a function/method for call-site body inlining. The body must be
-a single call expression. At each call site the body is cloned, parameters are
-substituted with actual arguments, and the result is analyzed. No C++ function
-is generated.
-
-FStr parameters require `@inline` because the f-string literal must reach the
-call macro at the call site -- a regular function would only see a parameter
-name, not the f-string structure.
-
-Works for both methods and free functions.
-
 #### Call macro decomposition
 
-`MacroArg.as_fstring()` returns `(format_template, [MacroFStringPart])`. Each
-part carries the expression AST node, its resolved type, and format spec.
+An f-string argument of a `@call_macro` is analyzed like any f-string and
+handed to the macro as written. `MacroArg.as_fstring()` returns
+`(format_template, [MacroFStringPart])` (or None for a non-f-string argument);
+a plain string literal is an f-string with no parts. Each part carries the
+expression AST node, its resolved type, and format spec.
 `MacroFStringPart.is_static_str` is True for: string literals, ternaries of
 literals (recursively), and name references that resolve to a module-level
 `Final[str]` constant -- local or imported. Used to route parts through
 zero-alloc wrappers (pointer-only) versus copying wrappers in log-style macros.
-
-F-string validity checks (formattable types, `__str__`/`__repr__`) are skipped
-for FStr context (`for_fstr=True`) -- the macro handles per-type dispatch.
 
 #### macro_deps
 
@@ -172,12 +152,44 @@ discovers the logger by checking `first_param` for a `_logger` field or
 The qualified name check ensures the field/method returns the right type, not
 just any type with the same short name.
 
-#### Example
+#### Wrapping a call macro
 
-Explicit logger (via `@inline` pass-through):
+A function that receives an f-string and forwards it to a macro would see
+only a `str` parameter, so a wrapper is written as a call macro too. It either
+composes in Python (calling the other macro's function) or expands to a call
+of the other macro, which is expanded in turn:
 
 ```python
-from tpy import FStr, int32, inline
+# log_wrap.py
+__tpy__ = {"mod": "macro"}
+from tpyc.macro_api import CallMacroContext, MacroArg, call_macro, macro_deps, ast, Expr
+import log_macro
+
+macro_deps("log_macro", "log_infra")
+
+@call_macro
+def log_free(ctx: CallMacroContext, logger: MacroArg, fs: MacroArg) -> Expr:
+    return log_macro.log_debug(ctx, logger, fs)
+
+@call_macro
+def log_free_chain(ctx: CallMacroContext, logger: MacroArg, fs: MacroArg) -> Expr:
+    return ast.call("log_debug", [logger.expr, fs.expr])  # needs log_debug in scope
+```
+
+The wrapper declares in `macro_deps` every module its expansion names,
+including those the wrapped macro's expansion names (`log_infra` here): the
+wrapped macro's own `macro_deps` do not carry over to the wrapper's callers. The parameter names are the keywords callers may use
+(`log_free(logger=h, fs=f"...")`). There is no method spelling: inside a
+method, call `log(...)` or `log_debug(self._logger, ...)`; outside, pass the
+logger (`log_debug(m._logger, ...)`) or write a wrapper macro that takes the
+object and reads its field.
+
+#### Example
+
+Explicit logger:
+
+```python
+from tpy import int32
 from log_infra import LogHandle
 from log_macro import log_debug
 
@@ -187,15 +199,11 @@ class Module:
     def __init__(self, name: str) -> None:
         self._logger = LogHandle(name)
 
-    @inline
-    def log(self, fs: FStr) -> None:
-        log_debug(self._logger, fs)
-
 def main() -> None:
     m = Module("M")
     s = "hello"
     i: int32 = 42
-    m.log(f"s={s} i={i}")
+    log_debug(m._logger, f"s={s} i={i}")
 ```
 
 Generates:
@@ -232,24 +240,28 @@ void log_from_free(Module& mod, int32_t val) {
 }
 ```
 
+The test case `tests/cases/str/fstr_decompose` exercises each form.
+
 ### Current limitations
 
-- **@inline body**: single call expression only. Future: multi-statement via
-  C++ expression blocks (`({ stmt; stmt; expr; })`)
-- **@inline return type**: always void
-- **@inline substitution**: positional args, `self.field`, direct names only.
-  No kwargs, binary ops, ternaries, subscripts.
+- **Wrappers are macros**: a function cannot take a decomposed f-string;
+  forwarding one needs a `@call_macro` wrapper (`FStr[wrap_fn]` below lifts
+  this).
+- **A free call macro's expansion loses its position's use**: a wrapper whose
+  expansion is a void call used as a statement is refused, and a local bound
+  from an expansion that names an existing value copies it
+  (`BUGS.md#call-macro-expansion-loses-consumer`).
 - **No definition-time type checking**: errors surface at call sites (like C++
   templates)
-- **Field access**: inlined body accesses fields directly at the call site
-  (e.g. `m._logger`), bypassing any future access control
+- **Field access**: a macro that reads `obj._logger` at the call site bypasses
+  any future access control
 
 ---
 
 ## Future Design: FStr[wrap_fn]
 
-The long-term direction eliminates `@inline` for the logging use case and moves
-per-type wrapping to a protocol-based system.
+The long-term direction lets an ordinary function take a decomposed f-string
+and moves per-type wrapping to a protocol-based system.
 
 ### Core idea
 
@@ -258,7 +270,7 @@ to each expression." `F` is an overload set dispatched per-type by the compiler.
 
 ```python
 def log_debug(logger: LogHandle, fs: FStr[log_wrap]) -> None:
-    # Regular function, no @inline needed.
+    # Regular function, no call macro needed.
     # Compiler splits fs into (fmt, wrapped_tuple) at call site.
     log_dispatch(logger, fs.fmt, fs.args)
 ```
@@ -313,8 +325,7 @@ duration, zero cost.
 ### Field access solved
 
 With `FStr[wrap_fn]`, the function receives `(fmt, tuple)` as regular
-parameters. No `@inline`, no body inlining, no field access from outside the
-class. The decomposition + wrapping happens at the call site; the method body
+parameters. No wrapper macro, no field access from outside the class. The decomposition + wrapping happens at the call site; the method body
 is a regular function that accesses its own fields normally.
 
 This matches the Rust pattern: the macro (or compiler transformation) runs at
@@ -370,8 +381,7 @@ log_debug(self, f"s={s} i={i}")
 ```
 
 Works for both methods (`self`) and free functions (`module` parameter). But
-still accesses `_logger` from outside the class -- same field access issue as
-`@inline`.
+still accesses `_logger` from outside the class.
 
 **Macro context introspection** (implemented): macro discovers the logger from
 the calling context by field name:
@@ -386,7 +396,7 @@ log(f"s={s} i={i}")
 parameter for free functions. Combined with `get_field_type`, `get_method_return_type`,
 and `qualified_name`, the macro uses one code path for both cases.
 
-### Format specs in FStr decomposition
+### Format specs in f-string decomposition
 
 Format specs like `f"{pi:.2f}"` are preserved in the format template as
 `"{:.2f}"`. The spec is part of the template string, not the expression.
@@ -401,12 +411,12 @@ packing, spec = formatting at output time), but other use cases (e.g.
 ### Relationship to C++ std::format_args
 
 C++20 `std::make_format_args(args...)` creates a type-erased `format_args`
-object that captures references. Similar concept to FStr decomposition but:
+object that captures references. Similar concept to f-string decomposition but:
 - Type-erased (single type, loses per-arg type info)
 - Captures references (lifetime tied to scope, not suitable for async)
 - No per-type wrapping hook
 
-FStr's typed tuple approach is closer to what async loggers need: each arg
+The typed tuple approach is closer to what async loggers need: each arg
 maintains its original type for efficient buffer packing.
 
 ### Rust comparison

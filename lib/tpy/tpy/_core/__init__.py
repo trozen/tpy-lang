@@ -15,7 +15,7 @@ from ._types import (
     float32,
     int8, int16, int32, int64,
     uint8, uint16, uint32, uint64,
-    char, String, StrView, FStr,
+    char, String, StrView,
     # `Poll`'s body lives here for codegen-ordering reasons (see
     # `_types.py`); its qname is `tpy.coro.Poll`.
     Poll,

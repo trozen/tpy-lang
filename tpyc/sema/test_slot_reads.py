@@ -222,7 +222,7 @@ def test_readers_mark_their_argument():
     (lam,) = _args_of(modules, "fn")
     assert read(lam), "a lambda reads its slot"
     (fstr,) = _args_of(modules, "text")
-    assert read(fstr), "an f-string reads its slot"
+    assert not read(fstr), "an f-string is a str at every slot"
     name, binop, select, call, method = _args_of(modules, "num")
     assert not read(name), "a name reads no slot"
     assert not read(binop), "arithmetic reads no slot"

@@ -90,7 +90,7 @@ UNDECIDABLE: dict[str, str] = {
 
 # TypeDefs with no C++ rendering at all: `cpp_formatter` is None or emits
 # `auto` (the C++ compiler deduces the iterator adapters' concrete type).
-NO_CPP_RENDERING = {"tpy.FStr", "tpy.CopyIter", "tpy.OwnIter"}
+NO_CPP_RENDERING = {"tpy.CopyIter", "tpy.OwnIter"}
 
 # Value TypeDefs whose C++ type is a TPy-defined record: codegen emits the
 # specialization next to the struct, not the header.

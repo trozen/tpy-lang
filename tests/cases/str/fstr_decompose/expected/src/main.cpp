@@ -21,25 +21,31 @@ void log_from_service(Service& svc, int32_t val) {
 // def main() -> None:
 //     m = Module("M")
 //
-//     # Method @inline: mixed types
+//     # Explicit logger: mixed types
 //     s = "hello"
 //     i: int32 = 42
-//     m.log_inline(f"s={s} i={i}")
+//     log_debug(m._logger, f"s={s} i={i}")
 //
-//     # Method @inline: static string literal
-//     m.log_inline(f"status={"ok"}")
+//     # Explicit logger: static string literal
+//     log_debug(m._logger, f"status={"ok"}")
 //
-//     # Method @inline: ternary of string literals
+//     # Explicit logger: ternary of string literals
 //     flag = True
-//     m.log_inline(f"result={"yes" if flag else "no"}")
+//     log_debug(m._logger, f"result={"yes" if flag else "no"}")
 //
-//     # Method @inline: dynamic string variable
+//     # Explicit logger: dynamic string variable
 //     tag = "world"
-//     m.log_inline(f"tag={tag}")
+//     log_debug(m._logger, f"tag={tag}")
 //
-//     # Free function @inline
+//     m.log_explicit(5)
+//
+//     # A wrapper macro composed in Python, positional and by keyword
 //     h = LogHandle("F")
-//     log_free(h, f"free={i}")
+//     log_free(h, f"free={i}")  # tpyc: ok
+//     log_free(logger=h, fs=f"kw={i}")  # tpyc: ok
+//
+//     # A wrapper macro expanding to the log_debug macro's call
+//     log_free_chain(h, f"chain={i}")  # tpyc: ok
 //
 //     # Auto-discover _logger field in method
 //     m.log_auto("ctx", 99)
@@ -54,16 +60,16 @@ void log_from_service(Service& svc, int32_t val) {
 //     # Auto-discover get_logger() via free function first param
 //     log_from_service(svc, 88)
 //
-//     # Plain string to @inline FStr parameter
-//     m.log_inline("plain")
+//     # Plain string to a call macro
+//     log_debug(m._logger, "plain")
 //
-//     # Plain string to @inline free function FStr parameter
+//     # Plain string through the wrapper macro
 //     log_free(h, "free_plain")
 //
 //     # Plain string with braces (must be escaped in format template)
-//     m.log_inline("val={}")
+//     log_debug(m._logger, "val={}")
 //
-//     # Plain string to direct call macro (not via @inline)
+//     # Plain string to direct call macro
 //     log_debug(h, "direct_plain")
 //
 //     # Plain string with braces to direct call macro
@@ -78,8 +84,11 @@ void main() {
     ::mylog::log_dispatch(m._logger, "result={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::StaticStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::StaticStr>(::mylog::static_str(((flag) ? ("yes") : ("no"))))));
     std::string_view tag = "world";
     ::mylog::log_dispatch(m._logger, "tag={}", [] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<::mylog::DeferredStr*>(&(std::get<0>(__t))); }(std::tuple<::mylog::DeferredStr>(::mylog::defer_str(tag))));
+    m.log_explicit(5);
     ::mylog::LogHandle h = ::mylog::LogHandle("F");
     ::mylog::log_dispatch(h, "free={}", std::tuple<int32_t>(i));
+    ::mylog::log_dispatch(h, "kw={}", std::tuple<int32_t>(i));
+    ::mylog::log_dispatch(h, "chain={}", std::tuple<int32_t>(i));
     m.log_auto("ctx", 99);
     Service svc = Service("S");
     svc.log_auto("hello");
@@ -94,6 +103,7 @@ void main() {
 
 // from log_infra import LogHandle
 // from log_macro import log_debug, log
+// from log_wrap import log_free, log_free_chain
 //
 // main()
 void __tpy_init() {

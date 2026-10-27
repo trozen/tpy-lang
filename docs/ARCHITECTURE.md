@@ -1005,8 +1005,7 @@ consumer runs on its operand, a lambda's capture settlement -- runs once, at the
 effect context; under a query it stays a query, the trial around it rolling back what it
 analyzed. A check that only asks inside a committed one (a union member tried, an element type
 probed) runs under a query of its own. Still analyzed
-again: a lambda met at another slot, a call macro's arguments inside its expansion and an `@inline`
-parameter at each use (one node per use). Under the test harness a second analysis of a node
+again: a lambda met at another slot and a call macro's arguments inside its expansion. Under the test harness a second analysis of a node
 outside a trial is an internal error (`TPY_ASSERT_ANALYZED_ONCE`), and so is a record written where
 the step does not commit (`TPY_ASSERT_SLOT_EFFECTS`), both set by `conftest.py`; structural tests in
 `tpyc/sema/test_analyze_once.py` and `tpyc/sema/test_slot_reads.py`.

@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Iterator
 import tpy
 import shapes
-from tpy import Own, String, inline, int32
+from tpy import Own, String, int32
 
 
 class Color(Enum):
@@ -75,11 +75,6 @@ def note(n: int32) -> int32:
     return n
 
 
-@inline
-def build(v: int32) -> None:
-    Tick(v)
-
-
 def gen(n: int32) -> Iterator[int32]:
     # generator body
     Tick(n)  # tpyc: ok
@@ -120,8 +115,6 @@ def spellings(flag: bool) -> None:
         shapes.Tock(k)  # tpyc: ok
         # nested class
         Outer.Inner(k)  # tpyc: ok
-        # the constructor arrives through an @inline expansion
-        build(k)  # tpyc: ok
         # module-qualified builtin conversion
         tpy.int32(k)  # tpyc: ok
         print("  after", k)

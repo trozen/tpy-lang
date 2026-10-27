@@ -3,7 +3,7 @@
 # prints one `eval` line per call; the order of operands is not pinned).
 import asyncio
 from dataclasses import dataclass, astuple
-from tpy import int32, dispatch, inline
+from tpy import int32, dispatch
 import await_sel_mod
 
 
@@ -135,33 +135,6 @@ async def go(c: bool) -> None:
         print("raise-kw", str(e2), e2.code)
 
 
-def pr2(a: int32, b: int32) -> int32:
-    print("pr2", a, b)
-    return a
-
-
-@inline
-def twice_kw(a: int32, k: int32 = 5) -> int32:
-    pr2(a, b=k)
-
-
-class S:
-    def __init__(self) -> None:
-        pass
-
-    @inline
-    def show_kw(self, a: int32, k: int32 = 2) -> int32:
-        pr2(b=a, a=k)
-
-
-def inline_sections() -> None:
-    x = 1
-    # A keyword call in an @inline body: its keywords are the parameters'.
-    twice_kw(x)  # tpyc: ok
-    twice_kw(x, k=4)  # tpyc: ok
-    S().show_kw(k=6, a=x)  # tpyc: ok
-
-
 @dataclass
 class P:
     a: int32
@@ -184,5 +157,4 @@ def macro_sections() -> None:
 
 asyncio.run(go(True))
 asyncio.run(go(False))
-inline_sections()
 macro_sections()

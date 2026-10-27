@@ -103,8 +103,6 @@ struct __coro_AsyHolder_value;
 
 // async def async_section() -> None:
 __coro_async_section async_section();
-// def inl_sink(n: int32) -> None:
-void inl_sink(int32_t n);
 // def main() -> None:
 void main();
 

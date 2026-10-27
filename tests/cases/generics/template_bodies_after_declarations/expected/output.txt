@@ -26,4 +26,3 @@ o 11 4
 p True True False
 p False True
 q 3 6 12 9
-r 6

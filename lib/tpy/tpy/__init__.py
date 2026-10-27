@@ -5,7 +5,7 @@ __tpy__ = {"mod": "native",
 # decorator kwargs (e.g. @native(function=True)) in _core/_types.py.
 from ._bootstrap import (
     # Decorators / type modifiers
-    readonly, noalloc, hotpath, nocopy, pure, inline, dispatch, dynamic, error_return,
+    readonly, noalloc, hotpath, nocopy, pure, dispatch, dynamic, error_return,
     unsafe_send, unsafe_sync, nosend, nosync, nomove,
     Own, Fn,
 )
@@ -25,7 +25,7 @@ from ._core import (
     float32,
     int8, int16, int32, int64,
     uint8, uint16, uint32, uint64,
-    char, String, StrView, FStr, BytesView,
+    char, String, StrView, BytesView,
     # Container types
     Span, Array, Ptr, SpanIter,
     # varargs is imported under a private alias so its builtin record
@@ -57,7 +57,7 @@ __all__ = [
     "int8", "int16", "int32", "int64",
     "uint8", "uint16", "uint32", "uint64",
     "float32", "float64",
-    "char", "String", "StrView", "FStr", "BytesView",
+    "char", "String", "StrView", "BytesView",
     # Container types
     "Span", "Array", "Ptr", "SpanIter",
     # Slice types
@@ -65,7 +65,7 @@ __all__ = [
     # Pointer / ownership
     "Own", "Fn",
     # Decorators / type modifiers
-    "readonly", "noalloc", "hotpath", "nocopy", "pure", "inline", "dispatch", "dynamic",
+    "readonly", "noalloc", "hotpath", "nocopy", "pure", "dispatch", "dynamic",
     "error_return",
     "unsafe_send", "unsafe_sync", "nosend", "nosync", "nomove",
     "auto_readonly", "auto_own", "unsafe_interior_mutable",  # parser keywords (no .py stub)

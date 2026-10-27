@@ -1,1 +1,0 @@
-main.py:29: error: Cannot use 'b' after it was consumed by a consuming method call

@@ -855,27 +855,6 @@ __coro_go go(bool c) {
     return __coro_go(c);
 }
 
-// def pr2(a: int32, b: int32) -> int32:
-//     print("pr2", a, b)
-//     return a
-int32_t pr2(int32_t a, int32_t b) {
-    std::cout << "pr2" << " " << a << " " << b << "\n" << ::tpy::check_signals;
-    return a;
-}
-
-// def inline_sections() -> None:
-//     x = 1
-//     # A keyword call in an @inline body: its keywords are the parameters'.
-//     twice_kw(x)  # tpyc: ok
-//     twice_kw(x, k=4)  # tpyc: ok
-//     S().show_kw(k=6, a=x)  # tpyc: ok
-void inline_sections() {
-    int32_t x = 1;
-    ::tpyapp::main::pr2(x, 5);
-    ::tpyapp::main::pr2(x, 4);
-    ::tpyapp::main::pr2(6, x);
-}
-
 // def tsink(t: tuple[int32, int32], k: int32 = 5) -> str:
 //     return f"{t[0]} {t[1]} {k}"
 std::string tsink(const std::tuple<int32_t, int32_t>& t, int32_t k) {
@@ -907,7 +886,6 @@ void macro_sections() {
 //
 // asyncio.run(go(True))
 // asyncio.run(go(False))
-// inline_sections()
 // macro_sections()
 void __tpy_init() {
     static bool initialized = false;
@@ -917,7 +895,6 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::go(true)));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::go(false)));
-    ::tpyapp::main::inline_sections();
     ::tpyapp::main::macro_sections();
 }
 

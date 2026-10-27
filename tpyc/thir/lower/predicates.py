@@ -772,7 +772,7 @@ def _builtin_value_member(m: 'TpyType') -> bool:
     to_cpp. Non-user only -- the user flavor is `_value_record_member`;
     the whole STR/BYTES type CLASSES keep their own rows (an owned-buffer
     member's insert/extract renders are theirs to gate, not this row's --
-    and qname checks miss the tpy.String/FStr siblings)."""
+    and qname checks miss the tpy.String sibling)."""
     if not (isinstance(m, NominalType) and not m.is_user_record
             and m.is_value_type() and not m.type_args):
         return False
@@ -794,8 +794,7 @@ def _value_record_slot(t: 'TpyType | None') -> bool:
     if t.is_user_record:
         return True
     td = type_def_of(t)
-    return (td is not None and td.category is TypeCategory.RECORD
-            and not td.is_compile_time_only)
+    return td is not None and td.category is TypeCategory.RECORD
 
 
 def _value_opt_record(t: 'TpyType | None') -> 'OptionalType | None':
@@ -3174,8 +3173,7 @@ def _f1_record(t: TpyType | None, analyzer) -> bool:
     if not t.is_user_record:
         td = type_def_of(t)
         if (td is None or td.record is None
-                or td.category is not TypeCategory.RECORD
-                or td.is_compile_time_only):
+                or td.category is not TypeCategory.RECORD):
             return False
         is_builtin_record = True
     if t.type_args and not all(
@@ -3209,7 +3207,6 @@ def _f1_container_ref(t: TpyType | None) -> bool:
     td = type_def_of(t)
     return (td is not None and td.cpp_formatter is not None
             and td.category is not TypeCategory.RECORD
-            and not td.is_compile_time_only
             and t.value_form() is ValueForm.BORROW_REF)
 
 
@@ -3265,11 +3262,9 @@ def record_like(t: TpyType | None, analyzer) -> bool:
     # A bound generator object is one frame, bound and aliased as a record.
     if isinstance(t, ConcreteGenType):
         return True
-    td = type_def_of(t)
-    if td is not None and td.is_compile_time_only:
-        return False
     if t.is_user_record:
         return analyzer.registry.get_record_for_type(t) is not None
+    td = type_def_of(t)
     if td is None:
         return False
     if td.record is not None and td.category is TypeCategory.RECORD:
@@ -3316,7 +3311,7 @@ def _record_class_binding(t: 'TpyType | None') -> bool:
         return True
     td = type_def_of(t)
     return (td is not None and td.record is not None
-            and td.cpp_formatter is None and not td.is_compile_time_only)
+            and td.cpp_formatter is None)
 
 
 def _protocol_subscript_recv(recv: TpyExpr, declared: dict[str, TpyType],
@@ -3976,7 +3971,7 @@ def _user_deref_stub_method_ok(e: TpyExpr, declared: dict[str, TpyType],
             or e.builtin_module_call is not None
             or e.typed_dict_get_field is not None
             or e.is_callable_field or e.macro_expansion is not None
-            or e.fstr_expansion is not None or e.type_args
+            or e.type_args
             or e.inferred_type_args or e.needs_optional_runtime_check):
         return False
     fi = e.resolved_function_info
@@ -4016,7 +4011,7 @@ def _deref_member_call_ok(e: TpyMethodCall) -> bool:
             or e.builtin_module_call is not None
             or e.typed_dict_get_field is not None
             or e.is_callable_field or e.macro_expansion is not None
-            or e.fstr_expansion is not None or e.type_args
+            or e.type_args
             or e.inferred_type_args or e.needs_optional_runtime_check):
         return False
     fi = e.resolved_function_info
@@ -11591,7 +11586,7 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
                                   targs_ok: bool = False) -> bool:
     """No special-emit marker: every marker takes a different method-call
     path (static / super / module-qualified / typed-dict / nested-ctor /
-    callable-field / macro / fstr / deref chain). The Optional runtime-check
+    callable-field / macro / deref chain). The Optional runtime-check
     marker is NOT in this set -- callers dispose of it themselves (the
     optional-ptr borrow receiver renders it as the deref_check face; every
     other caller must reject it explicitly). `targs_ok` admits a plain
@@ -11606,8 +11601,7 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
                 or e.user_module_call is not None
                 or e.builtin_module_call is not None
                 or e.typed_dict_get_field is not None
-                    or e.is_callable_field or e.macro_expansion is not None
-                or e.fstr_expansion is not None
+                or e.is_callable_field or e.macro_expansion is not None
                 or ((e.type_args or e.inferred_type_args) and not targs_ok)
                 or e.deref_depth
                 or e.deref_narrowed_to is not None)

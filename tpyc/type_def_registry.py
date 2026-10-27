@@ -37,7 +37,7 @@ class TypeCategory(Enum):
     FLOAT = auto()
     BOOL = auto()
     CHAR = auto()
-    STR = auto()          # str, String, StrView, FStr
+    STR = auto()          # str, String, StrView
     BYTES = auto()        # bytes, bytearray, BytesView
     SLICE = auto()        # slice, basic_slice
     VOID = auto()
@@ -360,8 +360,6 @@ class TypeDef:
     # is reassigned in the body.
     is_expensive_copy: bool = False
     param_needs_copy_for_reassign: bool = False
-    # Compile-time-only types (FStr) have no runtime C++ representation.
-    is_compile_time_only: bool = False
     # Native heap-owning container of T whose layout the compiler cannot
     # introspect (list, dict, set, plus user @native records that opt in via
     # @native(indirecting=True)). Consulted by cycle detection to break
@@ -1032,7 +1030,6 @@ def boundary_unmarshallable_msg(name: str, what: str, type_name: str,
 def is_str_type(t: "TpyType") -> bool:     return _is_qn(t, "builtins.str")
 def is_string_type(t: "TpyType") -> bool:  return _is_qn(t, "tpy.String")
 def is_str_view_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.StrView")
-def is_fstr_type(t: "TpyType") -> bool:    return _is_qn(t, "tpy.FStr")
 def is_float64_type(t: "TpyType") -> bool: return _is_qn(t, "builtins.float")
 def is_float32_type(t: "TpyType") -> bool: return _is_qn(t, "tpy.float32")
 def is_bytes_type(t: "TpyType") -> bool:   return _is_qn(t, "builtins.bytes")
@@ -1326,8 +1323,7 @@ def _populate() -> None:
     ))
 
     # String family. All flavors report is_value_type=True; String and str
-    # are heap-backed and expensive to copy, StrView is a lightweight view,
-    # FStr is compile-time-only.
+    # are heap-backed and expensive to copy, StrView is a lightweight view.
     # element_of returns CHAR so iteration / for-each over any str-family
     # type yields char.
     def _char_elem(args):
@@ -1358,13 +1354,6 @@ def _populate() -> None:
         cpp_formatter=lambda args: "std::string_view",
         param_cpp_formatter=lambda args: "std::string_view",
         element_of=_char_elem,
-    ))
-    # FStr has no runtime representation; cpp_formatter/param_cpp_formatter
-    # stay None so to_cpp() raises TypeError via the is_compile_time_only
-    # check in TpyType.to_cpp / NominalType.to_cpp.
-    register(TypeDef(
-        "tpy.FStr", TC.STR, is_value_type=True,
-        is_compile_time_only=True,
     ))
 
     # Bytes family. bytes/bytearray are heap-backed (each its own class over
@@ -1605,7 +1594,7 @@ def _populate_factories() -> None:
         make_list, make_dict, make_dict_keys_view, make_dict_values_view,
         make_dict_items_view, make_set, make_array, make_span,
         make_span_iter, make_range, WAKER,
-        FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW, FSTR,
+        FLOAT32, FLOAT, BIGINT, BOOL, CHAR, STR, STRING, STRVIEW,
         BYTES, BYTEARRAY, BYTESVIEW, BASIC_SLICE, SLICE,
         INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64,
     )
@@ -1660,7 +1649,6 @@ def _populate_factories() -> None:
         ("tpy.char",             (),           lambda: CHAR),
         ("tpy.String",           (),           lambda: STRING),
         ("tpy.StrView",          (),           lambda: STRVIEW),
-        ("tpy.FStr",             (),           lambda: FSTR),
         ("builtins.int",         (),           lambda: BIGINT),
         ("builtins.float",       (),           lambda: FLOAT),
         ("builtins.bool",        (),           lambda: BOOL),

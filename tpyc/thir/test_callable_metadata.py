@@ -179,7 +179,7 @@ def use(a: Cell) -> int32:
     ("is_constructor", True), ("is_callable_value", True),
     ("is_builtin_function", True), ("special_handling", True),
     ("native_name", "foreign"), ("cpp_template", "foreign({0})"),
-    ("error_return_type", "Error"), ("inline_body", object()),
+    ("error_return_type", "Error"),
     ("frame_captures", []), ("type_params", ["T"]),
 ])
 def test_nonordinary_callees_have_no_descriptor(

@@ -1,14 +1,9 @@
-# FStr: f-string decomposition via call macro, FStr inlining, tuple dispatch,
-# static string detection, deferred-copy string wrapping, and auto-discovery.
-from tpy import FStr, int32, inline
+# f-string decomposition via call macros: explicit logger, wrapper macros
+# (composed and chained), tuple dispatch, static strings, deferred copies.
+from tpy import int32
 from log_infra import LogHandle
 from log_macro import log_debug, log
-
-
-# @inline on a free function
-@inline
-def log_free(logger: LogHandle, fs: FStr) -> None:
-    log_debug(logger, fs)
+from log_wrap import log_free, log_free_chain
 
 
 # _logger field path
@@ -18,10 +13,9 @@ class Module:
     def __init__(self, name: str) -> None:
         self._logger = LogHandle(name)
 
-    # @inline on a method: explicit logger
-    @inline
-    def log_inline(self, fs: FStr) -> None:
-        log_debug(self._logger, fs)
+    # Explicit logger inside a method
+    def log_explicit(self, n: int32) -> None:
+        log_debug(self._logger, f"explicit={n}")  # tpyc: ok
 
     # Auto-discover via _logger field
     def log_auto(self, tag: str, n: int32) -> None:
@@ -56,25 +50,31 @@ def log_from_service(svc: Service, val: int32) -> None:
 def main() -> None:
     m = Module("M")
 
-    # Method @inline: mixed types
+    # Explicit logger: mixed types
     s = "hello"
     i: int32 = 42
-    m.log_inline(f"s={s} i={i}")
+    log_debug(m._logger, f"s={s} i={i}")
 
-    # Method @inline: static string literal
-    m.log_inline(f"status={"ok"}")
+    # Explicit logger: static string literal
+    log_debug(m._logger, f"status={"ok"}")
 
-    # Method @inline: ternary of string literals
+    # Explicit logger: ternary of string literals
     flag = True
-    m.log_inline(f"result={"yes" if flag else "no"}")
+    log_debug(m._logger, f"result={"yes" if flag else "no"}")
 
-    # Method @inline: dynamic string variable
+    # Explicit logger: dynamic string variable
     tag = "world"
-    m.log_inline(f"tag={tag}")
+    log_debug(m._logger, f"tag={tag}")
 
-    # Free function @inline
+    m.log_explicit(5)
+
+    # A wrapper macro composed in Python, positional and by keyword
     h = LogHandle("F")
-    log_free(h, f"free={i}")
+    log_free(h, f"free={i}")  # tpyc: ok
+    log_free(logger=h, fs=f"kw={i}")  # tpyc: ok
+
+    # A wrapper macro expanding to the log_debug macro's call
+    log_free_chain(h, f"chain={i}")  # tpyc: ok
 
     # Auto-discover _logger field in method
     m.log_auto("ctx", 99)
@@ -89,16 +89,16 @@ def main() -> None:
     # Auto-discover get_logger() via free function first param
     log_from_service(svc, 88)
 
-    # Plain string to @inline FStr parameter
-    m.log_inline("plain")
+    # Plain string to a call macro
+    log_debug(m._logger, "plain")
 
-    # Plain string to @inline free function FStr parameter
+    # Plain string through the wrapper macro
     log_free(h, "free_plain")
 
     # Plain string with braces (must be escaped in format template)
-    m.log_inline("val={}")
+    log_debug(m._logger, "val={}")
 
-    # Plain string to direct call macro (not via @inline)
+    # Plain string to direct call macro
     log_debug(h, "direct_plain")
 
     # Plain string with braces to direct call macro

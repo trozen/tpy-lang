@@ -1872,17 +1872,6 @@ class String(NativeIterable[char], Iterable[char], Comparable, Equatable):
 
 
 
-@builtin_type("tpy.FStr")
-class FStr:
-    """Compile-time f-string decomposition marker.
-
-    When an f-string is passed to an FStr parameter, the compiler keeps the
-    f-string decomposed (format template + individual expressions) instead of
-    lowering to std::format. Used with call macros for zero-copy logging.
-    """
-    pass
-
-
 @builtin_type("tpy.StrView")
 @native("std::string_view", borrowing_view=True)
 class StrView(NativeIterable[char], Iterable[char], Comparable, Equatable):

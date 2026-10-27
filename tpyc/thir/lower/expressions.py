@@ -10617,21 +10617,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and e.resolved_function_info.is_callable_value
                 and not e.is_callable_field):
             return _lower_computed_call(e, e.obj, rtype, lc, declared, use)
-        if e.fstr_expansion is not None:
-            # An `@inline` METHOD call: sema stores the substituted body's
-            # expression here (a FREE `@inline` call sets `macro_expansion`
-            # instead), and it renders in place ahead of everything
-            # else in the method branch, unlike its macro_expansion
-            # neighbour. The expansion IS this node's value, so it inherits
-            # the consumer's use, slot target included (a void `@inline`
-            # body at a statement needs the DISCARD sink). Witness AFTER
-            # it lowers:
-            # `_witness` has no rollback, so witnessing first would mark the
-            # face for a body that then raises.
-            fstr_lowered = _lower_expr(e.fstr_expansion, lc, declared,
-                                       use=use)
-            _witness("call.fstr_expansion")
-            return fstr_lowered
         er_fi = e.resolved_function_info
         if (not er_expr_unwrap and not error_return_raw and er_fi is not None
                 and er_fi.error_return_type is not None):

@@ -5,7 +5,7 @@ from ._extern import (
     value_ptr_coercion,
 )
 from ._decorators import (
-    readonly, noalloc, hotpath, nocopy, pure, inline, dispatch, dynamic, error_return,
+    readonly, noalloc, hotpath, nocopy, pure, dispatch, dynamic, error_return,
     unsafe_send, unsafe_sync, nosend, nosync, nomove,
     Own, Fn,
 )

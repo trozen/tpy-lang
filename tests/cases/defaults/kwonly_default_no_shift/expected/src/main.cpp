@@ -37,14 +37,6 @@ int64_t outer__str(std::string_view x) {
     return 0;
 }
 
-// def add(a: int64, b: int64) -> int64:
-//     print("inline", a, b)
-//     return a
-int64_t add(int64_t a, int64_t b) {
-    std::cout << "inline" << " " << a << " " << b << "\n" << ::tpy::check_signals;
-    return a;
-}
-
 // def kw_sum(**kw: Unpack[Opts]) -> int64:
 //     return kw["x"]
 int64_t kw_sum(const Opts& kw) {
@@ -260,9 +252,6 @@ void pending_reentry(bool c) {
 //     # `a` binds the regular parameter, `x` the TypedDict field.
 //     print("method-td", M().m(a=1, x=2))  # tpyc: ok
 //     print("proxy", Child().run())
-//     show(1, b=5)  # tpyc: ok
-//     show(a=3)  # tpyc: ok
-//     va_unused(7, 8)  # tpyc: ok
 //     d = Opts(x=3)
 //     print("kwargs-spread", kw_sum(**d))  # tpyc: ok
 //     sections_reentry()
@@ -281,9 +270,6 @@ void sections() {
     std::cout << "lambda-trial" << " " << lt << "\n" << ::tpy::check_signals;
     std::cout << "method-td" << " " << M().m(1, Opts(2)) << "\n" << ::tpy::check_signals;
     std::cout << "proxy" << " " << Child().run() << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::add(1, 5);
-    ::tpyapp::main::add(3, 2);
-    ::tpyapp::main::add(7, 9);
     Opts d = Opts(3);
     std::cout << "kwargs-spread" << " " << ::tpyapp::main::kw_sum(d) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::sections_reentry();
@@ -307,8 +293,6 @@ void sections() {
 //             raise_coded(n + 6)
 //         except Coded as e:
 //             print("raise-kw", e.code)
-//     # An @inline method by keyword, its `b` left to the declared default.
-//     Shower().show(a=4)  # tpyc: ok
 //     b = Bag()
 //     # The pending method's `T` comes from the keyword argument.
 //     b.put(v=3)  # tpyc: ok
@@ -341,7 +325,6 @@ void sections_reentry() {
             }
         }
     }
-    ::tpyapp::main::add(4, 2);
     Bag<int32_t> b = Bag<int32_t>();
     b.put(3);
     std::cout << "reanalysis-coerce" << " " << ::tpy::print_float(::tpyapp::main::outer_f__float(Calc().scale(static_cast<double>(2)))) << "\n" << ::tpy::check_signals;

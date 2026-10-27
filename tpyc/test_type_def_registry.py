@@ -60,7 +60,6 @@ def _canonical_instances() -> dict[str, ts.TpyType]:
         "builtins.str":   ts.STR,
         "tpy.String":     ts.STRING,
         "tpy.StrView":    ts.STRVIEW,
-        "tpy.FStr":       ts.FSTR,
         "builtins.bytes":     ts.BYTES,
         "builtins.bytearray": ts.BYTEARRAY,
         "tpy.BytesView":      ts.BYTESVIEW,
@@ -297,10 +296,6 @@ def test_pending_types_do_not_inherit_registry_behavior():
 # =========================================================================
 
 
-# Sentinel -- FStr.to_cpp() raises TypeError (compile-time only type).
-_RAISES_TYPE_ERROR = object()
-
-
 # Each entry pins the answers expected from the live TpyType instance *and*,
 # eventually, from the TypeDef registry when the primitive becomes a plain
 # NominalType. Fields mirror the current subclass overrides:
@@ -311,8 +306,7 @@ _RAISES_TYPE_ERROR = object()
 #   subscript_borrows            -- bool (primitives: always False today)
 #   is_expensive_copy            -- bool
 #   param_needs_copy_for_reassign-- bool
-#   is_compile_time_only         -- bool
-#   to_cpp                       -- str or _RAISES_TYPE_ERROR
+#   to_cpp                       -- str
 #   to_cpp_param_type            -- str (default: == to_cpp for value types)
 #   element_qname                -- str | None (qname of get_element_type())
 #   int_bits / int_signed        -- only for FIXED_INT category
@@ -323,49 +317,41 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     "tpy.int8":  dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                      is_compile_time_only=False,
                       to_cpp="int8_t", to_cpp_param_type="int8_t",
                       element_qname=None, int_bits=8,  int_signed=True),
     "tpy.int16": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                      is_compile_time_only=False,
                       to_cpp="int16_t", to_cpp_param_type="int16_t",
                       element_qname=None, int_bits=16, int_signed=True),
     "tpy.int32": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                      is_compile_time_only=False,
                       to_cpp="int32_t", to_cpp_param_type="int32_t",
                       element_qname=None, int_bits=32, int_signed=True),
     "tpy.int64": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                       is_send=True, is_sync=True, subscript_borrows=False,
                       is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                      is_compile_time_only=False,
                       to_cpp="int64_t", to_cpp_param_type="int64_t",
                       element_qname=None, int_bits=64, int_signed=True),
     "tpy.uint8":  dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                       is_compile_time_only=False,
                        to_cpp="uint8_t", to_cpp_param_type="uint8_t",
                        element_qname=None, int_bits=8,  int_signed=False),
     "tpy.uint16": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                       is_compile_time_only=False,
                        to_cpp="uint16_t", to_cpp_param_type="uint16_t",
                        element_qname=None, int_bits=16, int_signed=False),
     "tpy.uint32": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                       is_compile_time_only=False,
                        to_cpp="uint32_t", to_cpp_param_type="uint32_t",
                        element_qname=None, int_bits=32, int_signed=False),
     "tpy.uint64": dict(category=TypeCategory.FIXED_INT, is_value_type=True,
                        is_send=True, is_sync=True, subscript_borrows=False,
                        is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                       is_compile_time_only=False,
                        to_cpp="uint64_t", to_cpp_param_type="uint64_t",
                        element_qname=None, int_bits=64, int_signed=False),
 
@@ -373,7 +359,6 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     "builtins.int": dict(category=TypeCategory.BIG_INT, is_value_type=True,
                          is_send=True, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=True, param_needs_copy_for_reassign=True,
-                         is_compile_time_only=False,
                          to_cpp="::tpy::BigInt",
                          to_cpp_param_type="const ::tpy::BigInt&",
                          element_qname=None),
@@ -382,13 +367,11 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     "builtins.float": dict(category=TypeCategory.FLOAT, is_value_type=True,
                            is_send=True, is_sync=True, subscript_borrows=False,
                            is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                           is_compile_time_only=False,
                            to_cpp="double", to_cpp_param_type="double",
                            element_qname=None, float_bits=64),
     "tpy.float32":    dict(category=TypeCategory.FLOAT, is_value_type=True,
                            is_send=True, is_sync=True, subscript_borrows=False,
                            is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                           is_compile_time_only=False,
                            to_cpp="float", to_cpp_param_type="float",
                            element_qname=None, float_bits=32),
 
@@ -396,13 +379,11 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     "builtins.bool": dict(category=TypeCategory.BOOL, is_value_type=True,
                           is_send=True, is_sync=True, subscript_borrows=False,
                           is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                          is_compile_time_only=False,
                           to_cpp="bool", to_cpp_param_type="bool",
                           element_qname=None),
     "tpy.char":      dict(category=TypeCategory.CHAR, is_value_type=True,
                           is_send=True, is_sync=True, subscript_borrows=False,
                           is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                          is_compile_time_only=False,
                           to_cpp="char", to_cpp_param_type="char",
                           element_qname=None),
 
@@ -410,50 +391,38 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     "builtins.str": dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=True, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=True, param_needs_copy_for_reassign=True,
-                         is_compile_time_only=False,
                          to_cpp="std::string",
                          to_cpp_param_type="std::string_view",
                          element_qname="tpy.char"),
     "tpy.String":   dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=True, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=True, param_needs_copy_for_reassign=True,
-                         is_compile_time_only=False,
                          to_cpp="::tpy::String",
                          to_cpp_param_type="const ::tpy::String&",
                          element_qname="tpy.char"),
     "tpy.StrView":  dict(category=TypeCategory.STR, is_value_type=True,
                          is_send=False, is_sync=True, subscript_borrows=False,
                          is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                         is_compile_time_only=False,
                          to_cpp="std::string_view",
                          to_cpp_param_type="std::string_view",
                          element_qname="tpy.char"),
-    "tpy.FStr":     dict(category=TypeCategory.STR, is_value_type=True,
-                         is_send=True, is_sync=True, subscript_borrows=False,
-                         is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                         is_compile_time_only=True,
-                         to_cpp=_RAISES_TYPE_ERROR, to_cpp_param_type=_RAISES_TYPE_ERROR,
-                         element_qname=None),
 
     # --- Bytes family ----------------------------------------------------
     "builtins.bytes":     dict(category=TypeCategory.BYTES, is_value_type=True,
                                is_send=True, is_sync=True, subscript_borrows=False,
                                is_expensive_copy=True, param_needs_copy_for_reassign=True,
-                               is_compile_time_only=False,
                                to_cpp="::tpy::Bytes",
                                to_cpp_param_type="::tpy::BytesView",
                                element_qname="tpy.uint8"),
     "builtins.bytearray": dict(category=TypeCategory.BYTES, is_value_type=False,
                                is_send=True, is_sync=False, subscript_borrows=False,
                                is_expensive_copy=True, param_needs_copy_for_reassign=True,
-                               is_compile_time_only=False,
                                to_cpp="::tpy::ByteArray",
                                to_cpp_param_type="const ::tpy::ByteArray&",
                                element_qname="tpy.uint8"),
     "tpy.BytesView":      dict(category=TypeCategory.BYTES, is_value_type=True,
                                is_send=False, is_sync=True, subscript_borrows=False,
                                is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                               is_compile_time_only=False,
                                to_cpp="::tpy::BytesView",
                                to_cpp_param_type="::tpy::BytesView",
                                element_qname="tpy.uint8"),
@@ -462,14 +431,12 @@ PRIMITIVE_SNAPSHOT: dict[str, dict] = {
     "tpy.basic_slice":      dict(category=TypeCategory.SLICE, is_value_type=True,
                                  is_send=True, is_sync=True, subscript_borrows=False,
                                  is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                                 is_compile_time_only=False,
                                  to_cpp="::tpy::BasicSlice",
                                  to_cpp_param_type="::tpy::BasicSlice",
                                  element_qname=None),
     "builtins.slice":       dict(category=TypeCategory.SLICE, is_value_type=True,
                                  is_send=True, is_sync=True, subscript_borrows=False,
                                  is_expensive_copy=False, param_needs_copy_for_reassign=False,
-                                 is_compile_time_only=False,
                                  to_cpp="::tpy::Slice",
                                  to_cpp_param_type="::tpy::Slice",
                                  element_qname=None),
@@ -489,7 +456,6 @@ _PRIMITIVE_INSTANCES: dict[str, ts.TpyType] = {
     "builtins.str":   ts.STR,
     "tpy.String":     ts.STRING,
     "tpy.StrView":    ts.STRVIEW,
-    "tpy.FStr":       ts.FSTR,
     "builtins.bytes":     ts.BYTES,
     "builtins.bytearray": ts.BYTEARRAY,
     "tpy.BytesView":      ts.BYTESVIEW,
@@ -549,19 +515,9 @@ def test_primitive_instance_matches_snapshot(qname):
     assert inst.subscript_borrows() == expected["subscript_borrows"], qname
     assert inst.is_expensive_copy() == expected["is_expensive_copy"], qname
     assert inst.param_needs_copy_for_reassign() == expected["param_needs_copy_for_reassign"], qname
-    assert inst.is_compile_time_only() == expected["is_compile_time_only"], qname
 
-    if expected["to_cpp"] is _RAISES_TYPE_ERROR:
-        with pytest.raises(TypeError):
-            inst.to_cpp()
-    else:
-        assert inst.to_cpp() == expected["to_cpp"], qname
-
-    if expected["to_cpp_param_type"] is _RAISES_TYPE_ERROR:
-        with pytest.raises(TypeError):
-            inst.to_cpp_param_type()
-    else:
-        assert inst.to_cpp_param_type() == expected["to_cpp_param_type"], qname
+    assert inst.to_cpp() == expected["to_cpp"], qname
+    assert inst.to_cpp_param_type() == expected["to_cpp_param_type"], qname
 
     elem = inst.get_element_type()
     if expected["element_qname"] is None:
@@ -599,7 +555,6 @@ def test_primitive_type_def_matches_snapshot(qname):
     assert td.subscript_borrows == expected["subscript_borrows"], qname
     assert td.is_expensive_copy == expected["is_expensive_copy"], qname
     assert td.param_needs_copy_for_reassign == expected["param_needs_copy_for_reassign"], qname
-    assert td.is_compile_time_only == expected["is_compile_time_only"], qname
 
     # is_send / is_sync: default None means "follow is_value_type". Resolve
     # against empty type_args (primitives have none) and compare.
@@ -616,20 +571,10 @@ def test_primitive_type_def_matches_snapshot(qname):
     else:
         assert sync_resolved == expected_sync, qname
 
-    # cpp_formatter: populated for every primitive except FStr (compile-
-    # time only -- its to_cpp raises TypeError, which is an absence of
-    # formatter rather than a concrete string).
-    if expected["to_cpp"] is _RAISES_TYPE_ERROR:
-        assert td.cpp_formatter is None, qname
-    else:
-        assert td.cpp_formatter is not None, qname
-        assert td.cpp_formatter(()) == expected["to_cpp"], qname
-
-    if expected["to_cpp_param_type"] is _RAISES_TYPE_ERROR:
-        assert td.param_cpp_formatter is None, qname
-    else:
-        assert td.param_cpp_formatter is not None, qname
-        assert td.param_cpp_formatter(()) == expected["to_cpp_param_type"], qname
+    assert td.cpp_formatter is not None, qname
+    assert td.cpp_formatter(()) == expected["to_cpp"], qname
+    assert td.param_cpp_formatter is not None, qname
+    assert td.param_cpp_formatter(()) == expected["to_cpp_param_type"], qname
 
     if expected["category"] is TypeCategory.FIXED_INT:
         assert td.int_traits is not None, qname
@@ -654,14 +599,13 @@ def test_primitive_predicates_match_isinstance():
     from tpyc.type_def_registry import (
         is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
         is_float_category, is_str_category, is_bytes_category, is_slice_category,
-        is_str_type, is_string_type, is_str_view_type, is_fstr_type,
+        is_str_type, is_string_type, is_str_view_type,
         is_float64_type, is_float32_type,
         is_bytes_type, is_bytearray_type, is_bytes_view_type,
     )
     # After Phase D step 6: all primitive subclasses are NominalType singletons.
     # Validate the qname-only predicates directly (no isinstance-equivalent).
     qname_preds = {
-        is_fstr_type:        "tpy.FStr",
         is_str_type:         "builtins.str",
         is_string_type:      "tpy.String",
         is_str_view_type:    "tpy.StrView",
@@ -730,18 +674,6 @@ def test_trait_accessors_match_snapshot():
         else:
             assert float_tr is None, qname
 
-
-def test_is_any_str_type_excludes_fstr():
-    """is_any_str_type must not report FStr as a string type even though FStr
-    shares TypeCategory.STR with the runtime str family in the registry.
-    FStr is compile-time only and is never a valid str value at runtime --
-    callers relying on is_any_str_type to branch on runtime str types would
-    misbehave if FStr slipped in."""
-    assert not ts.is_any_str_type(ts.FSTR)
-    # Sanity: the legitimate str-family types still report True.
-    assert ts.is_any_str_type(ts.STR)
-    assert ts.is_any_str_type(ts.STRING)
-    assert ts.is_any_str_type(ts.STRVIEW)
 
 
 # =========================================================================
@@ -1096,7 +1028,6 @@ FACTORY_SNAPSHOT: dict[str, tuple[str, ...]] = {
     "tpy.char":       (),
     "tpy.String":     (),
     "tpy.StrView":    (),
-    "tpy.FStr":       (),
     "builtins.int":   (),
     "builtins.float": (),
     "builtins.bool":  (),

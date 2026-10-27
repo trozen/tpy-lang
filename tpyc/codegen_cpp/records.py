@@ -1063,8 +1063,7 @@ class RecordGenerator:
                 destructor_small = small and destructor_small is not False
             # A RESUMABLE member is defined with its frame
             # (`_emit_resumable_structs`).
-        # A twin follows its implementation, which an `@inline` one is not
-        # emitted at all.
+        # A twin takes its implementation's partition, when that is emitted.
         for method in record.methods:
             impl = twins.get(method)
             if impl is not None and impl in methods:

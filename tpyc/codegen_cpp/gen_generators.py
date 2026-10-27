@@ -591,7 +591,7 @@ class GeneratorCodegen:
                         return m
             return None
         for f in mod_ast.functions:
-            if f.name == name and f.is_generator and not f.skip_codegen:
+            if f.name == name and f.is_generator:
                 return f
         return None
 

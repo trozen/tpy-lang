@@ -517,8 +517,6 @@ class TpyType:
         td = type_def_of(self)
         if td is not None and td.cpp_formatter is not None:
             return td.cpp_formatter(self.type_args)
-        if td is not None and td.is_compile_time_only:
-            raise TypeError(f"{type(self).__name__} is compile-time only and has no C++ representation")
         raise NotImplementedError
 
     def is_pointer(self) -> bool:
@@ -556,13 +554,6 @@ class TpyType:
         if not isinstance(self, NominalType):
             return None
         return type_def_of(self)
-
-    def is_compile_time_only(self) -> bool:
-        """Return True if this type exists only at compile time (no C++ representation)."""
-        td = self._nominal_td()
-        if td is not None:
-            return td.is_compile_time_only
-        return False
 
     def is_value_type(self) -> bool:
         """Return True if this is a value type (copy semantics).
@@ -1361,8 +1352,6 @@ class NominalType(TpyType):
         td = type_def_of(self)
         if td is not None and td.cpp_formatter is not None:
             return td.cpp_formatter(self.type_args)
-        if td is not None and td.is_compile_time_only:
-            raise TypeError(f"{self.name} is compile-time only and has no C++ representation")
         # Check for native C++ name mapping. `Compiler.native_cpp_names`
         # is populated during codegen setup -- includes @native records,
         # imported records, AND @builtin_type-with-body records
@@ -3628,12 +3617,8 @@ def is_any_str_type(typ: 'TpyType') -> bool:
 
     Includes LiteralType with str base (the Literal["r", "w"] annotation type).
     Single-value LiteralType instances from enrichment never reach storage/codegen.
-    Excludes FStr (compile-time only, shares TypeCategory.STR with the runtime
-    str family in the registry).
     """
-    from .type_def_registry import is_str_category, is_fstr_type
-    if is_fstr_type(typ):
-        return False
+    from .type_def_registry import is_str_category
     if is_str_category(typ) or isinstance(typ, PendingStrType):
         return True
     # Cold path: Literal[str] annotations.
@@ -7025,7 +7010,6 @@ VOID = VoidType()
 STR = NominalType("str", (), _module_qname="builtins.str")
 STRING = NominalType("String", (), _module_qname="tpy.String")
 STRVIEW = NominalType("StrView", (), _module_qname="tpy.StrView")
-FSTR = NominalType("FStr", (), _module_qname="tpy.FStr")
 CHAR = NominalType("char", (), _module_qname="tpy.char")
 BYTES = NominalType("bytes", (), _module_qname="builtins.bytes")
 BYTEARRAY = NominalType("bytearray", (), _module_qname="builtins.bytearray")
@@ -8316,7 +8300,6 @@ class FunctionInfo:
     # check point (it may raise KeyboardInterrupt), so a cleanup body
     # calling it is not inert (`may_interrupt`).
     checks_signals: bool = False
-    is_inline: bool = False
     is_consuming: bool = False
     is_method: bool = False
     is_staticmethod: bool = False
@@ -8539,9 +8522,6 @@ class FunctionInfo:
     # opaque.
     is_callable_value: bool = False
     kwarg_name: Optional[str] = None  # name of **kwargs param (TypedDict type)
-    # FStr inlining: body expression to inline at call sites.
-    # Set during method body analysis for methods with FStr params.
-    inline_body: Optional[Any] = None  # TpyExpr: body expression for @inline functions
     # Defining module name. Set when this FunctionInfo is registered
     # during the current module's signature finalization sub-phase,
     # so cross-module mutation propagation can tell apart "I own
@@ -8644,12 +8624,6 @@ class FunctionInfo:
         """Store the per-param const ABI verdict on THIS fi (the raw fi --
         `populate_const_borrow_params` runs before any substitution)."""
         self._const_borrow_params = sig
-
-    @property
-    def has_fstr_param(self) -> bool:
-        """True if any parameter has FStr type."""
-        from .type_def_registry import is_fstr_type
-        return any(is_fstr_type(p.type) for p in self.params)
 
     @property
     def is_decorator_stub(self) -> bool:
@@ -8928,12 +8902,10 @@ def is_declaration_only(fi: 'FunctionInfo') -> bool:
 def analyzes_body(func: 'TpyFunction | None') -> bool:
     """Whether sema's body passes analyze `func` for the facts its
     FunctionInfo carries (`body_function_info` / `body_method_info`): a def
-    with a body, not one inlined at its call sites and not a generator
-    expression's (analyzed where the expression is written). The passes
+    with a body, not a generator expression's (analyzed where the expression is written). The passes
     skip every other def, and a call reads its callee's facts as pending
     exactly while such a body is unanalyzed (`return_borrow_fact_pending`)."""
-    return (func is not None and not func.is_stub and not func.is_inline
-            and not func.is_genexpr)
+    return func is not None and not func.is_stub and not func.is_genexpr
 
 
 def is_bodyless_binding(fn) -> bool:
@@ -8962,8 +8934,7 @@ def emits_cpp_defaults(fn: 'TpyFunction', native_owner: bool = False) -> bool:
     line, written without any. A `typing.overload` stub is bodyless too, yet
     its specialization is emitted with the stub's defaults -- except on a
     `native_owner` class, for which TPy emits no member at all."""
-    if fn.is_export or fn.skip_codegen:
-        # An `@inline` def has no C++ declaration: each call expands it.
+    if fn.is_export:
         return False
     if fn.is_typing_overload_stub:
         return not native_owner

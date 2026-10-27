@@ -567,6 +567,12 @@ def asdict(ctx: CallMacroContext, obj: MacroArg) -> TpyExpr:
 Kwargs annotated with simple types (`str`, `int`, `bool`) are auto-extracted
 from literals. Macros raise `MacroError` for compile errors.
 
+A call macro composes another one either by calling its Python function
+(`return log_macro.log_debug(ctx, logger, fs)`) or by expanding to a call of it
+(`ast.call("log_debug", ...)`, which needs the name in the caller's scope).
+`macro_deps` does not carry over from the macro it wraps: the wrapper lists
+every module its expansion names (`docs/FSTR_DESIGN.md` "Wrapping a call macro").
+
 ### Builder-trace macros (call-chain macros) -- Phase 7, done
 
 Applied to a class whose constructor opens a *trace*: the compiler tracks the

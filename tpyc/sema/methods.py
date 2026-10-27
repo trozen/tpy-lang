@@ -5,7 +5,6 @@ Method call and super() analysis.
 """
 
 from __future__ import annotations
-import copy
 from dataclasses import replace as dc_replace
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
@@ -28,7 +27,7 @@ from ..parse import (
     TpyExpr, TpySubscript,
     is_super_del_call,
 )
-from ..parse.nodes import NoneUse, NoneUseKind, comp_free_reads, name_path
+from ..parse.nodes import NoneUse, NoneUseKind, name_path
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
@@ -1950,23 +1949,6 @@ class MethodAnalyzer:
 
         method_info = overloads[0]
 
-        # @inline: clone body and substitute at call site.
-        # For FStr params, validate that f-string literals are passed.
-        if method_info.inline_body is not None:
-            # Every parameter the body names takes an argument: the call has
-            # no C++ declaration to leave a default to (`emits_cpp_defaults`).
-            binding = self.calls.bind_args(expr, method_info.params, expr.method)
-            if not self.calls.step_commits(expr):
-                # A probe binds and reads: the expansion is the commit's.
-                return VOID
-            kwargs_arg = self.calls.kwargs_region_arg(
-                expr, method_info, binding, expr.method)
-            self.calls.commit_args(expr, method_info, binding, type_subst,
-                                   analyze=False, kwargs_arg=kwargs_arg)
-            return self._inline_method_call(
-                expr, method_info,
-                self.calls.fstr_operands(expr, method_info))
-
         # Check if the method has its own type parameters (generic method).
         # Generic methods don't support multiple overloads; user-defined methods
         # always register a single overload per name (registration.py).
@@ -1985,127 +1967,6 @@ class MethodAnalyzer:
         return self._resolve_and_check_args(
             expr, overloads, type_subst, is_readonly_receiver=is_readonly_receiver,
             is_consuming_receiver=is_consuming_receiver)
-
-    def _inline_method_call(
-        self, expr: TpyMethodCall, method_info: FunctionInfo,
-        operands: list[TpyExpr],
-    ) -> TpyType:
-        """Inline a method with FStr parameter at the call site.
-
-        Clones the method's body expression, substitutes ``self`` with the
-        receiver and the FStr parameter with the actual f-string argument,
-        then analyzes the substituted expression. This lets the f-string
-        literal reach the call macro for decomposition.
-        """
-        body = copy.deepcopy(method_info.inline_body)
-
-        # Build the substitution map: param name -> call-site argument.
-        # method_info.params does NOT include 'self' (it's implicit for methods).
-        param_map: dict[str, TpyExpr] = {}
-        for pi, arg in zip(method_info.params, operands):
-            param_map[pi.name] = arg
-
-        # Substitute names in the cloned body
-        MethodAnalyzer._substitute_inline_body(body, expr.obj, param_map,
-                                               method_info, expr)
-
-        # Store the inlined expression on the method call node for codegen
-        expr.fstr_expansion = body
-
-        # Analyze the substituted expression (side effect: type-checks the macro expansion)
-        self.expr.analyze_expr(body)
-        return VOID
-
-    @staticmethod
-    def _substitute_inline_body(
-        node: TpyExpr, receiver: TpyExpr | None,
-        param_map: dict[str, TpyExpr], func: FunctionInfo,
-        call: TpyExpr,
-    ) -> None:
-        """In-place substitute names in a cloned @inline body expression.
-
-        Args:
-            node: The cloned body expression to substitute in.
-            receiver: The ``self`` replacement (method calls), or None (free functions).
-            param_map: Parameter name -> call-site argument expression.
-            func: The @inline callee; call: the call expanded, where a use
-                of the callee's `*args` parameter is refused.
-
-        Replaces TpyName references matching param_map keys or "self" (when
-        receiver is provided) in positional args, function refs, and method
-        receivers.
-
-        Current limitation: only handles TpyCall, TpyMethodCall, TpyFieldAccess,
-        and TpyName in positional args. Does not recurse into kwargs, TpyBinOp,
-        TpyIfExpr, TpySubscript, or other nested expression types. Sufficient
-        for @inline bodies constrained to a single call. Future: support
-        multi-statement bodies via expression blocks.
-        """
-        # The expansion has no spelling for the packed `*args` yet.
-        va = next((p.name for p in func.params if p.is_variadic), None)
-        if va is not None and any(r.name == va for r in comp_free_reads(node)):
-            raise SemanticError(
-                f"@inline function '{func.name}' cannot use its *args "
-                f"parameter '{va}' yet", call.loc)
-        if receiver is not None:
-            param_map = {**param_map, "self": receiver}
-        MethodAnalyzer._substitute_inline_node(node, param_map)
-
-    @staticmethod
-    def _inline_use(name: str, param_map: dict[str, TpyExpr]) -> TpyExpr:
-        """The argument for one use of parameter `name`: each use is the
-        argument evaluated again, its own node, since one node is analyzed
-        once (the receiver is the `self` parameter's argument)."""
-        arg = param_map[name]
-        param_map[name] = copy.deepcopy(arg)
-        return arg
-
-    @staticmethod
-    def _substitute_inline_node(node: TpyExpr,
-                                param_map: dict[str, TpyExpr]) -> None:
-        use = MethodAnalyzer._inline_use
-
-        def sub_args(call: TpyCall | TpyMethodCall) -> None:
-            written = source_view(call)
-            args = list(written.positional)
-            MethodAnalyzer._substitute_inline_args(args, param_map)
-            values = [e for _, e in written.keywords]
-            MethodAnalyzer._substitute_inline_args(values, param_map)
-            star = ([written.double_star]
-                    if written.double_star is not None else [])
-            MethodAnalyzer._substitute_inline_args(star, param_map)
-            relayout(call, CallSource(
-                tuple(args),
-                tuple(zip((k for k, _ in written.keywords), values)),
-                star[0] if star else None), None)
-
-        if isinstance(node, TpyCall):
-            if isinstance(node.func, TpyName) and node.func.name in param_map:
-                node.func = use(node.func.name, param_map)
-            sub_args(node)
-        elif isinstance(node, TpyMethodCall):
-            if isinstance(node.obj, TpyName) and node.obj.name == "self" \
-                    and "self" in param_map:
-                node.obj = use("self", param_map)
-            sub_args(node)
-
-    @staticmethod
-    def _substitute_inline_args(args: list[TpyExpr],
-                                param_map: dict[str, TpyExpr]) -> None:
-        """Substitute names in a list of positional arguments."""
-        use = MethodAnalyzer._inline_use
-        sub = MethodAnalyzer._substitute_inline_node
-        for i, arg in enumerate(args):
-            if isinstance(arg, TpyName) and arg.name in param_map:
-                args[i] = use(arg.name, param_map)
-            elif isinstance(arg, TpyFieldAccess):
-                if (isinstance(arg.obj, TpyName) and arg.obj.name == "self"
-                        and "self" in param_map):
-                    arg.obj = use("self", param_map)
-                else:
-                    sub(arg, param_map)
-            elif isinstance(arg, (TpyCall, TpyMethodCall)):
-                sub(arg, param_map)
 
     def complete_generic_method_call(
             self, expr: TpyMethodCall,

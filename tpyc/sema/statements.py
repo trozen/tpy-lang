@@ -6013,8 +6013,7 @@ class StatementAnalyzer:
             stmt.type = _expand_aliases(stmt.type)
 
         # resolve_type sets is_protocol flag, upgrades NominalType -> TypeParamRef
-        # in generic scopes, substitutes enum placeholders, and handles
-        # compile-time-only aliases (FStr etc.).
+        # in generic scopes and substitutes enum placeholders.
         if stmt.type:
             stmt.type = self.type_ops.resolve_type(stmt.type)
 

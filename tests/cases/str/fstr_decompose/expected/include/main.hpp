@@ -27,6 +27,9 @@ struct Module {
     // def __init__(self, name: str) -> None:
     explicit Module(std::string_view name);
 
+    // def log_explicit(self, n: int32) -> None:
+    void log_explicit(int32_t n);
+
     // def log_auto(self, tag: str, n: int32) -> None:
     void log_auto(std::string_view tag, int32_t n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Module";
@@ -62,6 +65,13 @@ inline std::ostream& operator<<(std::ostream& os, const Service& obj) {
 // def __init__(self, name: str) -> None:
 //     self._logger = LogHandle(name)
 inline Module::Module(std::string_view name) : _logger(::mylog::LogHandle(name)) {}
+
+// # Explicit logger inside a method
+// def log_explicit(self, n: int32) -> None:
+//     log_debug(self._logger, f"explicit={n}")  # tpyc: ok
+inline void Module::log_explicit(int32_t n) {
+    ::mylog::log_dispatch(this->_logger, "explicit={}", std::tuple<int32_t>(n));
+}
 
 // # Auto-discover via _logger field
 // def log_auto(self, tag: str, n: int32) -> None:

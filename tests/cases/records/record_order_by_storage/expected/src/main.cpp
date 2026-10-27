@@ -56,15 +56,6 @@ __coro_async_section async_section() {
     return __coro_async_section();
 }
 
-// # inverse: an @inline method and a @cpp_template variant declare nothing in
-// # C++, so naming a later nested class there adds no order and a body calling
-// # a prototype deferred past this class keeps building
-// def inl_sink(n: int32) -> None:
-//     print("inline sink", n)
-void inl_sink(int32_t n) {
-    std::cout << "inline sink" << " " << n << "\n" << ::tpy::check_signals;
-}
-
 // def inl_number(n: int32 = InlFirst.N) -> int32:
 //     return n
 int32_t inl_number(int32_t n) {
@@ -196,8 +187,6 @@ int32_t hb_number(int32_t n) {
 //     print("nested key", len(nk.keys))
 //
 //     inl = InlFirst()
-//     inl.use(None)
-//     inl.get()
 //     print("cpp_template", inl.pick(4))
 //     for n in InlCaller[int32]():
 //         print("inline", n)
@@ -338,8 +327,6 @@ void main() {
     nk.keys.insert(NkOuter::Key(2));
     std::cout << "nested key" << " " << ::tpy::__len__(nk.keys) << "\n" << ::tpy::check_signals;
     InlFirst inl = InlFirst();
-    ::tpyapp::main::inl_sink(7);
-    ::tpyapp::main::inl_sink(8);
     std::cout << "cpp_template" << " " << inl.pick(4) << "\n" << ::tpy::check_signals;
     {
         auto __src_8 = InlCaller<int32_t>();

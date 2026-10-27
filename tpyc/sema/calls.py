@@ -5,7 +5,6 @@ Function and constructor call analysis.
 """
 
 from __future__ import annotations
-import copy
 from contextlib import contextmanager
 from dataclasses import dataclass, replace as dc_replace
 from typing import Callable, Iterable, Iterator, Mapping, NamedTuple, NoReturn, TYPE_CHECKING
@@ -129,7 +128,7 @@ from ..modules import _resolve_concrete_type_name
 from .. import qnames
 from ..type_def_registry import (
     get_type_def, is_array, is_span, is_varargs, is_list, is_borrowing_view_type,
-    is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
+    is_fixed_int_type, is_bool_type, is_char_type,
     is_str_type, is_big_int_type,
     int_traits_of,
     is_enum_type, enum_info_of, protocol_info_of,
@@ -6517,7 +6516,7 @@ class CallAnalyzer:
             validated: list[tuple[Candidate, FunctionInfo]] = []
             shaped_ids = {id(f) for f in shaped}
             for func in candidates:
-                if not func.is_generic() or func.inline_body is not None:
+                if not func.is_generic():
                     continue
                 found = self._validated(expr, func)
                 if isinstance(found, Candidate):
@@ -6694,61 +6693,10 @@ class CallAnalyzer:
             "unsafe_cast() requires a type argument or target type annotation "
             "(e.g., unsafe_cast[uint32](p) or q: Ptr[uint32] = unsafe_cast(p))", expr)
 
-    def _inline_function_call(self, expr: TpyCall, func: FunctionInfo) -> TpyType:
-        """Inline an @inline function call: clone body, substitute params, analyze."""
-        body = copy.deepcopy(func.inline_body)
-        # Every parameter the body names takes an argument: the call has no
-        # C++ declaration to leave a default to (`emits_cpp_defaults`).
-        binding = self.bind_args(expr, func.params, expr.func_name)
-        if not self.step_commits(expr):
-            # A probe binds and reads: the expansion is the commit's.
-            return VOID
-        kwargs_arg = self.kwargs_region_arg(expr, func, binding, func.name)
-        self.commit_args(expr, func, binding, {}, analyze=False,
-                         kwargs_arg=kwargs_arg)
-
-        # Build param name -> call-site arg map and substitute
-        param_map = dict(zip((pi.name for pi in func.params),
-                             self.fstr_operands(expr, func)))
-        # Lazy: methods.py imports calls at module load; cycle breaks here.
-        from .methods import MethodAnalyzer
-        MethodAnalyzer._substitute_inline_body(body, None, param_map, func,
-                                               expr)
-
-        # Store expansion for codegen
-        expr.macro_expansion = body
-
-        # Analyze the substituted expression
-        self.expr.analyze_expr(body)
-        return VOID
-
-    def fstr_operands(self, expr: 'TpyCallLike',
-                      func: FunctionInfo) -> list[TpyExpr]:
-        """The committed arguments of a call to @inline `func`, each a FStr
-        parameter takes as an f-string: a string literal is one, rewritten
-        in the call only where its step commits (a probe hands the source
-        operand back); anything else is refused."""
-        operands = list(expr.args)
-        for i, (pi, arg) in enumerate(zip(func.params, operands)):
-            if not is_fstr_type(pi.type) or isinstance(arg, TpyFString):
-                continue
-            if not isinstance(arg, TpyStrLiteral):
-                raise self.ctx.error(
-                    f"Parameter '{pi.name}' has type FStr -- only f-string "
-                    f"or string literals are accepted", arg)
-            operands[i] = TpyFString(parts=[arg.value], loc=arg.loc)
-            if self.ctx.slot_step_commits():
-                expr.args[i] = operands[i]
-        return operands
-
     def _analyze_single_function_call(self, expr: TpyCall, func: FunctionInfo,
                                       cand: Candidate | None = None) -> TpyType:
         """Analyze a call to a single user-defined function `func`, or to
         the winner of its overload set the ranking bound as `cand`."""
-        # @inline: clone body and substitute at call site
-        if func.inline_body is not None:
-            return self._inline_function_call(expr, func)
-
         # Handle generic functions
         if func.is_generic():
             with self._adaptive_list_args(expr, [func]):

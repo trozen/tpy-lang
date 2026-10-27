@@ -41,13 +41,12 @@ if TYPE_CHECKING:
 
 def _emits_own_cpp(typ: NominalType) -> bool:
     """True if this NominalType's C++ emission bypasses its Python name --
-    either via a TypeDef cpp_formatter (builtins like list, str), via a
-    native_name mapping (@native records), or because it has no runtime
-    form (compile-time-only types like FStr). In those cases, an imported
+    either via a TypeDef cpp_formatter (builtins like list, str) or via a
+    native_name mapping (@native records). In those cases, an imported
     `using PythonName = ...;` alias is dead code: the Python name never
     appears in generated C++."""
     td = type_def_of(typ)
-    if td is not None and (td.cpp_formatter is not None or td.is_compile_time_only):
+    if td is not None and td.cpp_formatter is not None:
         return True
     return typ.name in require_current_compiler().native_cpp_names
 
@@ -760,8 +759,6 @@ class CodeGenerator:
 
         # Generate function definitions (skip template functions -- defined in header)
         for func in module.functions:
-            if func.skip_codegen:
-                continue
             if self._genexpr_in_source(func):
                 continue    # emitted above the body that creates it
             if func.is_generator:
@@ -924,7 +921,7 @@ class CodeGenerator:
 
     def _function_body_in_source(self, func: TpyFunction) -> bool:
         """A free function whose one body is a plain definition in the .cpp."""
-        return not (func.skip_codegen or func.is_generator or func.is_async
+        return not (func.is_generator or func.is_async
                     or self.functions.is_template_function(func))
 
     def _genexpr_in_source(self, func: TpyFunction) -> bool:
@@ -1103,7 +1100,7 @@ class CodeGenerator:
                 if m.is_generator:
                     gens[(m.name, record.name)] = m
         for f in module.functions:
-            if f.is_generator and not f.skip_codegen:
+            if f.is_generator:
                 gens[(f.name, None)] = f
         self.gen_generators.same_module_generators = gens
 
@@ -1136,10 +1133,10 @@ class CodeGenerator:
                 if method.is_async:
                     units.append((method, record.name, True))
         for func in module.functions:
-            if func.is_async and not func.skip_codegen:
+            if func.is_async:
                 units.append((func, None, True))
         for func in module.functions:
-            if (func.skip_codegen or not func.is_generator
+            if (not func.is_generator
                     or self._genexpr_in_source(func)):
                 continue
             units.append((func, None, False))
@@ -1855,7 +1852,7 @@ class CodeGenerator:
         # can reference the struct type name).
         emitted_gen_fwd = False
         for func in module.functions:
-            if func.skip_codegen or self._genexpr_in_source(func):
+            if self._genexpr_in_source(func):
                 continue
             if func.is_generator:
                 if self._resumable_generator_eligible(func, None):
@@ -1889,8 +1886,6 @@ class CodeGenerator:
         deferred_fwd_funcs: list[tuple[TpyFunction, set[str]]] = []
         emitted_fwd_func = False
         for func in module.functions:
-            if func.skip_codegen:
-                continue
             if needs := _func_needed_class_qnames(func, registry):
                 deferred_fwd_funcs.append((func, needs))
             elif self._gen_function_forward_decl(hpp, func):
@@ -2076,8 +2071,6 @@ class CodeGenerator:
         # non-template signatures are already forward-declared above)
         emitted_func_decl = False
         for func in module.functions:
-            if func.skip_codegen:
-                continue
             if func.is_generator:
                 continue  # The factory is emitted in the source file
             if func.is_async:

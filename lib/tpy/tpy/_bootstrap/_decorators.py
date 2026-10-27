@@ -36,9 +36,6 @@ def dynamic(): ...
 @builtin_decorator("tpy.pure")
 def pure(): ...
 
-@builtin_decorator("tpy.inline")
-def inline(): ...
-
 # Overloading with self-contained variants: every same-named @dispatch def
 # carries its own implementation (a body, @native or @cpp_template) and the
 # set has no trailing implementation. Contrast typing.overload, whose

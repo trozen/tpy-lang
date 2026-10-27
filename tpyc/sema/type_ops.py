@@ -346,10 +346,8 @@ class TypeOperations:
           function / record scope becomes `TypeParamRef` (parser emits
           `NominalType("T")` because type-param scope is scope-local
           to sema, not parser).
-        - Compile-time-only aliases (e.g. `FStr` singleton) expand to
-          their target type.
         - Structural wrappers (`PtrType`, `OwnType`, ...) recurse into
-          their inner types so both transformations above reach deeply
+          their inner types so the transformation above reaches deeply
           nested positions.
 
         Args:
@@ -365,10 +363,6 @@ class TypeOperations:
                     return TypeParamRef(typ.name, bound=bound)
                 if typ.name in (self.ctx.record_ctx.type_params or []):
                     return TypeParamRef(typ.name)
-            if not typ.type_args and self.ctx.registry.type_aliases:
-                alias = self.ctx.registry.get_type_alias(typ.name)
-                if alias is not None and alias.is_compile_time_only():
-                    return alias
             if typ.type_args:
                 new_args = tuple(
                     self.resolve_type(arg, protocols_only=protocols_only) if isinstance(arg, TpyType) else arg
@@ -2319,7 +2313,6 @@ class TypeOperations:
             is_pure=method.is_pure,
             is_transient=method.is_transient,
             checks_signals=method.checks_signals,
-            is_inline=method.is_inline,
             is_consuming=method.is_consuming,
             # Accessor identity is invariant under substitution; dropping
             # it left an inherited generic property's resolved fi

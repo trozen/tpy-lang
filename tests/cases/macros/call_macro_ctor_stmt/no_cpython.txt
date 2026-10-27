@@ -1,0 +1,1 @@
+The call macro expands only under tpyc; CPython would call the macro function itself.

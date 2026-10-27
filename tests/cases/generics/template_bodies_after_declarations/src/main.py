@@ -6,7 +6,7 @@ from enum import Enum
 from typing import (
     Any, Final, Iterable, Iterator, Literal, Protocol, Self, overload,
 )
-from tpy import Fn, auto_readonly, dispatch, inline, int32, Own, copy, readonly
+from tpy import Fn, dispatch, int32, Own, copy, readonly
 import cyc_a
 import cyc_user
 import iters
@@ -334,25 +334,6 @@ class Hue(Enum):
         return 9
 
 
-# (r) an `@overload` method whose implementation is `@inline` with a clone
-# twin (`@auto_readonly`): neither is emitted, so the twin has no placement
-# to follow (calling it is BUGS.md#inline-overload-method-call-undeclared)
-class InlineTwin:
-    def __init__(self, n: int32) -> None:
-        self.n = n
-
-    @overload
-    @auto_readonly
-    def emit(self, n: int32) -> None: ...
-    @inline
-    @auto_readonly
-    def emit(self, n: int32) -> None:  # tpyc: ok
-        note(str(n))
-
-    def get(self) -> int32:
-        return self.n
-
-
 class Later:
     def __init__(self, v: int32) -> None:
         self.v = v
@@ -494,9 +475,6 @@ def main() -> None:
     s2.k = 5
     print("q", first_q, s1.f(s2), SelfImpl(3).f(SelfImpl(4)),
           Hue.RED.f(Hue.RED))
-    t = InlineTwin(5)
-    t.n += 1
-    print("r", t.get())
 
 
 main()

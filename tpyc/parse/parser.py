@@ -2468,7 +2468,6 @@ class Parser:
         is_pure = False
         transient_dec: ast.expr | None = None
         checks_signals_dec: ast.expr | None = None
-        is_inline = False
         is_hotpath = False
         is_override = False
         overload_form: OverloadForm | None = None
@@ -2519,8 +2518,6 @@ class Parser:
                 is_property_getter = True
             elif qname == qnames.PURE:
                 is_pure = True
-            elif qname == qnames.INLINE:
-                is_inline = True
             elif qname == qnames.HOTPATH:
                 is_hotpath = True
             elif qname == qnames.OVERRIDE:
@@ -2871,7 +2868,6 @@ class Parser:
             is_property_getter=is_property_getter,
             is_property_setter=is_property_setter,
             property_name=property_setter_name,
-            is_inline=is_inline,
             is_hotpath=is_hotpath,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
@@ -2934,7 +2930,6 @@ class Parser:
         genexprs_before = self._plain_genexpr_count
         is_noalloc = False
         is_hotpath = False
-        is_inline = False
         is_readonly = False
         readonly_opt_out = False
         is_pure = False
@@ -2965,8 +2960,6 @@ class Parser:
                 is_noalloc = True
             elif qname == qnames.HOTPATH:
                 is_hotpath = True
-            elif qname == qnames.INLINE:
-                is_inline = True
             elif qname == qnames.PURE:
                 is_pure = True
             elif qname == qnames.READONLY:
@@ -3265,7 +3258,6 @@ class Parser:
             body=body,
             is_noalloc=is_noalloc,
             is_hotpath=is_hotpath,
-            is_inline=is_inline,
             is_readonly=is_readonly,
             readonly_opt_out=readonly_opt_out,
             is_pure=is_pure,

@@ -504,22 +504,6 @@ class TestImplicitCoroutineRuntime:
         assert "tpy.coro" not in entry.ast.user_module_imports
         assert '#include "tpystd/coro.hpp"' not in hpp
 
-    def test_unused_inline_async_conservatively_loads_runtime(self) -> None:
-        source = (
-            "from tpy import inline\n@inline\n"
-            "async def compute(n: int) -> None:\n    print(n)\n"
-        )
-        compiler = Compiler.from_source(source, lib_dirs=_STDLIB_DIRS)
-        modules = compiler.compile()
-        entry = next(m for m in modules if m.is_entry_point)
-        hpp, _ = compiler.generate_code_to_strings(entry)
-        assert "tpy.coro" in compiler.modules
-        assert "tpy.coro" in entry.ast.user_module_imports
-        assert '#include "tpystd/coro.hpp"' in hpp
-        assert "::tpystd::coro::Waker" not in hpp
-        assert not any(name == "asyncio" or name.startswith("asyncio.")
-                       for name in compiler.modules)
-
     @pytest.mark.parametrize("route", ["file", "source", "empty_roots"])
     def test_missing_runtime_reports_first_async_location(self, tmp_path: Path, route: str) -> None:
         source = (

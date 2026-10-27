@@ -114,7 +114,6 @@ struct EqB;
 struct SelfStub;
 struct SelfImpl;
 struct __enum_Hue;
-struct InlineTwin;
 struct Later;
 struct Outer;
 struct Five;
@@ -678,25 +677,6 @@ inline std::ostream& operator<<(std::ostream& os, const __enum_Hue& obj) {
     return os;
 }
 
-// class InlineTwin:
-struct InlineTwin {
-    // self.n = n
-    int32_t n;
-
-    // def __init__(self, n: int32) -> None:
-    InlineTwin() = default;
-    explicit InlineTwin(int32_t n);
-
-    // def get(self) -> int32:
-    int32_t get() const;
-    static constexpr std::string_view __tpy_class_name__ = "__main__.InlineTwin";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const InlineTwin& obj) {
-    ::tpy::print_object_default(os, "InlineTwin", obj);
-    return os;
-}
-
 // class Later:
 struct Later {
     // self.v = v
@@ -927,16 +907,6 @@ inline int32_t SelfImpl::f(const SelfImpl& x) {
 // def f(self, x: Self) -> int32: ...
 inline int32_t __enum_Hue::f(Hue x) {
     return 9;
-}
-
-// def __init__(self, n: int32) -> None:
-//     self.n = n
-inline InlineTwin::InlineTwin(int32_t n) : n(n) {}
-
-// def get(self) -> int32:
-//     return self.n
-inline int32_t InlineTwin::get() const {
-    return this->n;
 }
 
 // def __init__(self, v: int32) -> None:

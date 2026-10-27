@@ -7,7 +7,13 @@ M: result={}
   [S]yes
 M: tag={}
   [C]world
+M: explicit={}
+  5
 F: free={}
+  42
+F: kw={}
+  42
+F: chain={}
   42
 M: tag={} n={}
   [C]ctx

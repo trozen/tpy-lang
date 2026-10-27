@@ -1406,7 +1406,7 @@ class Compiler:
         # A genexpr's function joins the list during sema, so it answers
         # through the parser's flag or the verdict would depend on when it is
         # asked.
-        if any(f.is_generator and not f.is_genexpr and not f.skip_codegen
+        if any(f.is_generator and not f.is_genexpr
                and not f.type_params for f in module.functions):
             return True
         return any(m.is_generator and not m.type_params

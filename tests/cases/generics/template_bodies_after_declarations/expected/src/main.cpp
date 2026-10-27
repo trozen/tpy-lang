@@ -208,9 +208,6 @@ void section_e() {
 //     s2.k = 5
 //     print("q", first_q, s1.f(s2), SelfImpl(3).f(SelfImpl(4)),
 //           Hue.RED.f(Hue.RED))
-//     t = InlineTwin(5)
-//     t.n += 1
-//     print("r", t.get())
 void main() {
     std::cout << "a" << " " << Gen<int32_t>(2).m() << "\n" << ::tpy::check_signals;
     Maker<int32_t> mk = Maker<int32_t>(3);
@@ -298,9 +295,6 @@ void main() {
     int32_t first_q = s1.f(s2);
     s2.k = 5;
     std::cout << "q" << " " << first_q << " " << s1.f(s2) << " " << SelfImpl(3).f(SelfImpl(4)) << " " << __enum_Hue{Hue::RED}.f(Hue::RED) << "\n" << ::tpy::check_signals;
-    InlineTwin t = InlineTwin(5);
-    t.n = ::tpy::add_check<int32_t>(t.n, 1);
-    std::cout << "r" << " " << t.get() << "\n" << ::tpy::check_signals;
 }
 
 // from enum import Enum

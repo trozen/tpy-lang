@@ -555,8 +555,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (`uint32.wrap(i)`) -> template expansion
     "call.macro_expansion",         # `@call_macro`/getattr/hasattr call ->
                                     # its sema-synthesized replacement expr
-    "call.fstr_expansion",          # `@inline` METHOD call -> the substituted
-                                    # body expression, rendered in place
     "call.dyn_hasattr",             # runtime hasattr probe -> the try/catch
                                     # stmt-expr over `obj.__getattr__(name)`
     "call.dyn_getattr_default",     # getattr(obj, name, default) -> the
@@ -912,7 +910,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr_stmt.macro_discard",      # void stmt-position macro expansion
                                     # (setattr/delattr builtins) dispatched
                                     # with the DISCARD use
-    "expr_stmt.marker_chain",       # void stmt-position @inline/macro marker
+    "expr_stmt.marker_chain",       # void stmt-position macro-to-macro
                                     # CHAIN peeled to its renderer (DISCARD)
     # A base-init arg beyond the scalar row: str name/literal, None,
     # IntLiteralType digits, record / Optional-ptr / Own param names --

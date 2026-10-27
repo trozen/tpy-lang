@@ -14143,24 +14143,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                              end_value=end_value, sink_expr=sink_expr,
                              flush=print_flush, loc=loc)
         narrowed = lc.narrow.narrowed.keys()
-        # An `@inline` call renders its substituted body in place, and that
-        # body is itself a `@call_macro` call -- peel the marker chain
-        # (fstr_expansion on a method node, macro_expansion on a call
-        # node) so the renderer below is reached
-        # at STATEMENT position. Without the peel the inner markers lower
+        # A `@call_macro` whose expansion is itself a macro call -- peel
+        # the macro_expansion chain so the renderer below is reached at
+        # STATEMENT position. Without the peel the inner markers lower
         # through the expression ladders, which drop the DISCARD use.
         macro_src = stmt.expr
         chain_peeled = False
-        while True:
-            if (isinstance(macro_src, TpyMethodCall)
-                    and isinstance(macro_src.fstr_expansion,
-                                   (TpyCall, TpyMethodCall))):
-                macro_src = macro_src.fstr_expansion
-            elif (isinstance(macro_src, TpyCall)
-                    and isinstance(macro_src.macro_expansion, TpyCall)):
-                macro_src = macro_src.macro_expansion
-            else:
-                break
+        while (isinstance(macro_src, TpyCall)
+                and isinstance(macro_src.macro_expansion, TpyCall)):
+            macro_src = macro_src.macro_expansion
             chain_peeled = True
         if (isinstance(macro_src, TpyCall)
                 and isinstance(macro_src.macro_expansion, TpyMethodCall)):
@@ -14262,8 +14253,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # A discarded CONSTRUCTION renders a functional cast, and `T(name);`
         # in statement position is a DECLARATION of `name` -- a build error
         # in the name's own block, a silently default-constructed shadow in a
-        # nested one. Read off the LOWERED node: an @inline or macro
-        # expansion and a module-qualified spelling all arrive there.
+        # nested one. Read off the LOWERED node: a macro expansion and a
+        # module-qualified spelling both arrive there.
         return THIRExprStmt(expr=_flush_witness("flush.expr_stmt", discarded),
                             void_cast=void_cast or _constructs_value(discarded),
                             loc=loc)

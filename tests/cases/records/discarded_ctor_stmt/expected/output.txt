@@ -19,7 +19,6 @@ other-args:
 spellings:
   tock 3
   inner 3
-  tick 3
   after 3
   bad color
   bad kind

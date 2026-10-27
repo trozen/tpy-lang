@@ -79,7 +79,7 @@ from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
 from .send_chain import why_not_send, why_not_sync, render_chain
 from ..type_def_registry import (
-    is_fixed_int_type, is_fstr_type, int_traits_of,
+    is_fixed_int_type, int_traits_of,
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
     get_type_def, NativeMembers, latch_native_members,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
@@ -1088,14 +1088,11 @@ class TypeRegistrar:
         into the global namespace and imported_names tracking.
         """
         # Register tpy types from type factories (int32, Array, Span, etc.)
-        # Compile-time-only types (e.g. FStr) are also registered as type aliases
-        # so the parser resolves them directly to their NominalType singleton.
         for qname in factory_qnames_in_module("tpy"):
             simple_name = bare_name(qname)
             if simple_name not in self.ctx.imported_names:
                 self.ctx.imported_names[simple_name] = ("tpy", simple_name)
                 self.ctx.global_ns.bind_imported_name(simple_name, "tpy", simple_name)
-            self._register_compile_time_type_alias(simple_name, "tpy", simple_name)
 
         # Register compiled tpy module exports (functions, protocols, type aliases)
         tpy_info = self.ctx.registry.get_module("tpy")
@@ -1113,19 +1110,6 @@ class TypeRegistrar:
                     if name not in self.ctx.imported_names:
                         self.ctx.imported_names[name] = ("tpy", name)
                         self.ctx.global_ns.bind_imported_name(name, "tpy", name)
-
-    def _register_compile_time_type_alias(self, local_name: str, module: str, original_name: str) -> None:
-        """Register a type alias for compile-time-only builtin types.
-
-        Compile-time-only types (like FStr) have a type factory but no C++
-        representation. They're resolved to their singleton at sema time so
-        predicate checks (e.g. is_fstr_type(ptype)) work.
-        Regular builtin types (int32, basic_slice, etc.) also flow as NominalType
-        and use @native for C++ mapping.
-        """
-        type_obj = builtin_modules.get_builtin_type_obj(f"{module}.{original_name}")
-        if type_obj is not None and type_obj.is_compile_time_only():
-            self.ctx.registry.register_type_alias(local_name, type_obj)
 
     def get_module_function_overloads(self, module_name: str, func_name: str) -> list[FunctionInfo] | None:
         """Look up function overloads in a module using the unified registry."""
@@ -2223,7 +2207,6 @@ class TypeRegistrar:
                 is_transient=method.is_transient,
                 checks_signals=method.checks_signals,
                 may_interrupt=binding_may_interrupt(method),
-                is_inline=method.is_inline,
                 is_consuming=method.is_consuming,
                 is_method=True,
                 is_async=method.is_async,
@@ -2293,29 +2276,6 @@ class TypeRegistrar:
                 # builtin stubs declare readonly-ness explicitly.
                 func_info.return_borrows_from = frozenset({-1})
                 func_info.following_components = frozenset({RESULT_ROOT})
-            # @inline: store the body expression for call-site inlining.
-            # Body must be a single call statement. Cloned and substituted at call sites.
-            if method.skip_codegen:
-                non_doc = [s for s in method.body
-                           if not (isinstance(s, TpyExprStmt)
-                                   and isinstance(s.expr, TpyStrLiteral))]
-                if (len(non_doc) == 1
-                        and isinstance(non_doc[0], TpyExprStmt)
-                        and isinstance(non_doc[0].expr, (TpyCall, TpyMethodCall))):
-                    func_info.inline_body = non_doc[0].expr
-                else:
-                    raise SemanticError(
-                        f"@inline method '{record.display_name}.{method.name}' must have a single "
-                        f"call expression as its body.",
-                        method.loc or record.loc,
-                    )
-            # Validate: FStr params require @inline
-            elif func_info.has_fstr_param and not method.is_stub:
-                raise SemanticError(
-                    f"Method '{record.display_name}.{method.name}' has FStr parameter but is "
-                    f"not marked @inline. FStr parameters require @inline.",
-                    method.loc or record.loc,
-                )
             # Propagate qualified name back to AST so codegen can use it directly.
             # ReturnException validation is deferred to validate_method_error_returns()
             # because the ReturnException marker on exception records is set during
@@ -4697,7 +4657,6 @@ class TypeRegistrar:
             is_transient=func.is_transient,
             checks_signals=func.checks_signals,
             may_interrupt=binding_may_interrupt(func),
-            is_inline=func.is_inline,
             is_async=func.is_async,
             is_generator=func.is_generator,
             send_override=func.send_override,
@@ -4727,27 +4686,6 @@ class TypeRegistrar:
             _emits_cpp_defaults=emits_cpp_defaults(func),
         )
         self._stamp_result_borrows(func, info)
-        # @inline: store body for call-site inlining
-        if func.skip_codegen:
-            non_doc = [s for s in func.body
-                       if not (isinstance(s, TpyExprStmt)
-                               and isinstance(s.expr, TpyStrLiteral))]
-            if (len(non_doc) == 1
-                    and isinstance(non_doc[0], TpyExprStmt)
-                    and isinstance(non_doc[0].expr, (TpyCall, TpyMethodCall))):
-                info.inline_body = non_doc[0].expr
-            else:
-                raise SemanticError(
-                    f"@inline function '{func.name}' must have a single "
-                    f"call expression as its body.",
-                    func.loc,
-                )
-        elif any(is_fstr_type(p.type) for p in info.params) and not func.is_stub:
-            raise SemanticError(
-                f"Function '{func.name}' has FStr parameter but is not marked @inline. "
-                f"FStr parameters require @inline.",
-                func.loc,
-            )
 
         self._qualify_error_return(func, info)
 

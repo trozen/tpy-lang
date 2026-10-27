@@ -14,9 +14,6 @@ reanalysis-varargs 203
 lambda-trial 32
 method-td 12
 proxy 31
-inline 1 5
-inline 3 2
-inline 7 9
 kwargs-spread 3
 method-optional-default 0 2
 kwonly-infer-free 3.5
@@ -28,7 +25,6 @@ module-kw 13
 dotted-ctor-kw 14
 raise-kw 6
 raise-kw 7
-inline 4 2
 pending 3 2
 reanalysis-coerce 2.5
 reanalysis-pending 0

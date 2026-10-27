@@ -423,8 +423,7 @@ class InertWalk:
     def method_call(self, e: TpyMethodCall, thrown: bool = False) -> None:
         if e.macro_expansion is not None:
             return
-        self.require(e.fstr_expansion is None
-                     and not e.is_callable_field
+        self.require(not e.is_callable_field
                      and e.typed_dict_get_field is None
                      and e.deref_depth == 0 and e.super_parent_type is None
                      and e.unbound_self_parent_type is None

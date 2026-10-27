@@ -3000,12 +3000,6 @@ class SemanticAnalyzer:
                     method
                 )
 
-            # @inline methods: skip body analysis. The body is a template that
-            # gets cloned and substituted at each call site (see methods.py
-            # _inline_method_call).
-            if method.skip_codegen:
-                continue
-
             # Track consuming method for ownership propagation through fields
             prev_consuming = self.ctx.in_consuming_method
             self.ctx.in_consuming_method = method.is_consuming
@@ -3539,9 +3533,6 @@ class SemanticAnalyzer:
 
     def _register_tpy_type_alias(self, original_name: str, local_name: str) -> None:
         """Register a single tpy type alias from the compiled tpy module_info."""
-        # Compile-time-only types (e.g. FStr) take priority
-        self.registrar._register_compile_time_type_alias(local_name, "tpy", original_name)
-
         # AST-level type aliases (e.g. float64 = float)
         tpy_info = self.ctx.registry.get_module("tpy")
         if not tpy_info or not tpy_info.type_aliases:
@@ -3972,8 +3963,7 @@ class SemanticAnalyzer:
     def _skip_body_analysis(self, func: TpyFunction) -> bool:
         """Functions Pass 7 does not analyze, so their expr_types stay empty:
         bodyless stubs (a @overload stub is handled via its trailing
-        implementation), @inline functions (inlined at call sites, not
-        emitted standalone) and generator expressions (analyzed where
+        implementation) and generator expressions (analyzed where
         written)."""
         return not analyzes_body(func)
 
@@ -3982,7 +3972,7 @@ class SemanticAnalyzer:
         ctx.defer_until_sema_complete. They run here -- after every body in
         the module is type-checked -- so they can read inferred expression
         types (absent at pass 5.5 when the macro itself ran). Skip bodies
-        passes 6/7 never analyzed (@overload stubs, @inline), so a callback
+        passes 6/7 never analyzed (@overload stubs), so a callback
         never reads empty expr_types.
         """
         for record in module.all_records():

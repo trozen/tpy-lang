@@ -145,8 +145,6 @@ void free_fn(bool flag) {
 //         shapes.Tock(k)  # tpyc: ok
 //         # nested class
 //         Outer.Inner(k)  # tpyc: ok
-//         # the constructor arrives through an @inline expansion
-//         build(k)  # tpyc: ok
 //         # module-qualified builtin conversion
 //         tpy.int32(k)  # tpyc: ok
 //         print("  after", k)
@@ -166,7 +164,6 @@ void spellings(bool flag) {
     if (flag) {
         (void)(::tpyapp::shapes::Tock(k));
         (void)(Outer::Inner(k));
-        (void)(Tick(k));
         (void)(k);
         std::cout << "  after" << " " << k << "\n" << ::tpy::check_signals;
     }

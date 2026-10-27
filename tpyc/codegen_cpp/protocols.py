@@ -458,7 +458,7 @@ def record_emitted_members(record: TpyRecord, overload_groups: IdentityMap,
     out: list[EmittedMember] = []
     for method in record.methods:
         # The ctor and destructor family are entered once, below.
-        if (method.skip_codegen or method.name in _CTOR_DTOR_NAMES
+        if (method.name in _CTOR_DTOR_NAMES
                 or (method.is_overload_stub and method.is_stub)):
             continue
         stubs = overload_groups.get(method)
@@ -503,7 +503,7 @@ def _record_shims(record: TpyRecord,
     """The shims of `record` over its emitted ``members``, in struct order:
     `operator[]`, the binary and reflected friends, `operator*`, `size()`,
     `operator()`, the unary friends. A dunder no member emits (an `@overload`
-    implementation, an `@inline` def) gets none."""
+    implementation) gets none."""
     by_func: IdentityMap[TpyFunction, EmittedMember] = IdentityMap()
     for entry in members:
         if entry.kind not in (MemberKind.CTOR, MemberKind.DESTRUCTOR):

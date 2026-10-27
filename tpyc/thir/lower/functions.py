@@ -1768,14 +1768,10 @@ def iter_module_callables(module: TpyModule, analyzer):
     (None-skipped for generic records). The constructor is excluded -- its body
     is emitted via the member-init-list driver (the M3 ctor frontier), not
     gen_method_def; so is the unemitted @overload clone, which has no body to
-    emit, and the `skip_codegen` (@inline) callable, whose body sema
-    never analyzed -- lowering it would walk a body with empty `expr_types`.
-    Excluding them HERE rather than at each driver is what keeps a third
+    emit. Excluding them HERE rather than at each driver is what keeps a third
     consumer (the dump) from reporting them as un-routed."""
     dead_clones = unemitted_overload_clones(module, analyzer)
     for func in module.functions:
-        if func.skip_codegen:
-            continue
         yield func, None
     for record in module.all_records():
         self_type = _method_self_type(record, analyzer)
@@ -1783,8 +1779,7 @@ def iter_module_callables(module: TpyModule, analyzer):
             continue
         init = record.init_method
         for method in record.methods:
-            if (method is not init and not method.skip_codegen
-                    and id(method) not in dead_clones):
+            if method is not init and id(method) not in dead_clones:
                 yield method, self_type
 
 def iter_module_constructors(module: TpyModule, analyzer):

@@ -14,7 +14,6 @@ struct M;
 struct R;
 struct Outer;
 struct Err;
-struct S;
 struct P;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -39,10 +38,6 @@ template<typename T>
 std::string vsink(::tpy::varargs<const std::string> xs, int32_t k = 5);
 // async def go(c: bool) -> None:
 __coro_go go(bool c);
-// def pr2(a: int32, b: int32) -> int32:
-int32_t pr2(int32_t a, int32_t b);
-// def inline_sections() -> None:
-void inline_sections();
 // def tsink(t: tuple[int32, int32], k: int32 = 5) -> str:
 std::string tsink(const std::tuple<int32_t, int32_t>& t, int32_t k = 5);
 // def macro_sections() -> None:
@@ -141,19 +136,6 @@ struct Err : ::tpy::Exception {
 
 inline std::ostream& operator<<(std::ostream& os, const Err& obj) {
     ::tpy::print_object_default(os, "Err", obj);
-    return os;
-}
-
-// class S:
-struct S {
-
-    // def __init__(self) -> None:
-    S();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.S";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const S& obj) {
-    ::tpy::print_object_default(os, "S", obj);
     return os;
 }
 
@@ -444,11 +426,6 @@ inline Outer::Inner::Inner(std::string_view s, int32_t k)
 inline Err::Err(std::string_view msg, int32_t code)
     : ::tpy::Exception(msg),
       code(code) {}
-
-// def __init__(self) -> None:
-//     pass
-inline S::S() {
-}
 
 inline P::P(int32_t a, int32_t b)
     : a(a),

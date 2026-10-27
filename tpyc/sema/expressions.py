@@ -30,7 +30,7 @@ from ..typesys import (
     ResolvedBinop, FunctionInfo, ParamInfo, UnknownElementType, UNKNOWN_ELEMENT,
     PendingDictType, PendingSetType, DictLiteralInfo, SetLiteralInfo,
     resolve_int_literals, CallableType, make_fn_type, is_fn_type,
-    INT32, FLOAT, STR, FSTR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
+    INT32, FLOAT, STR, STRVIEW, CHAR, BOOL, BIGINT, NONE, BASIC_SLICE, SLICE, BYTES, BYTESVIEW, UINT8,
     is_protocol_type, container_to_str_template, contains_type_param,
     PendingGenericInstanceType, unwrap_ref_type, unwrap_send_sync, make_ref, RefType,
     is_integer_type, is_any_int_type, is_union_or_optional_type,
@@ -65,7 +65,7 @@ from ..parse import (
 from .. import qnames
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_list,
-    is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type, is_fstr_type,
+    is_fixed_int_type, is_big_int_type, is_bool_type, is_char_type,
     is_basic_slice_type, is_slice_type,
     int_traits_of,
     is_enum_type, is_int_enum_type, enum_info_of,
@@ -504,11 +504,11 @@ CONTAINER_KINDS: tuple[type, ...] = (
 
 # The expressions whose analysis reads the slot they are analyzed for even
 # when it has no hint: with none they take a default (a container's open
-# element, `str` for an f-string, the type parameter itself for `T()`, an
-# error for a lambda). An argument-less generic constructor
-# (`generic_constructor_factory`) is one too.
+# element, the type parameter itself for `T()`, an error for a lambda). An
+# argument-less generic constructor (`generic_constructor_factory`) is one
+# too. An f-string is not: it is a `str` at every slot.
 SLOT_READER_KINDS: tuple[type, ...] = (
-    *CONTAINER_KINDS, TpyFString, TpyTypeParamConstruct, TpyLambda)
+    *CONTAINER_KINDS, TpyTypeParamConstruct, TpyLambda)
 
 # The other shapes `_analyze_hinted_shape` types from a hint: unhinted,
 # their analysis consults nothing (a name or dotted path is a function or
@@ -1868,13 +1868,6 @@ class ExpressionAnalyzer:
                                         coercion_ctx=coercion_ctx)
             self.ctx.set_expr_type(expr, typ)
             return typ
-
-        # F-string with FStr hint: keep decomposed for macro consumption.
-        # Skip format-validity checks -- the call macro handles per-type dispatch.
-        if isinstance(expr, TpyFString) and is_fstr_type(type_hint):
-            self._analyze_fstring(expr, for_fstr=True)
-            self.ctx.set_expr_type(expr, FSTR)
-            return FSTR
 
         # T() default-construction: resolves to whatever T maps to
         if isinstance(expr, TpyTypeParamConstruct):
@@ -7283,22 +7276,15 @@ class ExpressionAnalyzer:
             return True
         return self.protocols.type_conforms_to_protocol(t, self._REPRESENTABLE)
 
-    def _analyze_fstring(self, expr: TpyFString, *, for_fstr: bool = False) -> TpyType:
-        """Analyze f-string parts and return STR (owned string).
-
-        Args:
-            for_fstr: If True, only analyze expression types without validating
-                formattability. Used for FStr parameters where the call macro
-                handles per-type dispatch (types don't need __str__/__repr__).
-        """
+    def _analyze_fstring(self, expr: TpyFString) -> TpyType:
+        """Analyze f-string parts and return STR (owned string)."""
         for part in expr.parts:
             if isinstance(part, TpyFStringValue):
-                # Any int renders; a format spec, or a macro formatting the
-                # value per type, needs the width now.
+                # Any int renders; a format spec needs the width now.
                 with self.pend.sink(part.expr if part.format_spec is None
-                                    and not for_fstr else None):
+                                    else None):
                     part_type = self.analyze_expr(part.expr)
-                if for_fstr or is_pending_num(part_type):
+                if is_pending_num(part_type):
                     continue
                 resolved = unwrap_readonly(part_type)
                 if isinstance(resolved, OwnType):
