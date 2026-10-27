@@ -207,12 +207,12 @@ void nested() {
             bool __fin_ran_9 = false;
             try {
                 if ((x > 3)) {
-                    ::tpy::BigInt __tpy_ret_0 = x;
+                    auto* __tpy_retp_0 = &(x);
                     __fin_ran_9 = true;
                     std::cout << "try-cleanup" << " " << x << "\n" << ::tpy::check_signals;
                     __fin_ran_8 = true;
                     __ctx_1.__exit__({}, nullptr, {});
-                    return __tpy_ret_0;
+                    return std::move(*__tpy_retp_0);
                 }
                 std::cout << "small" << " " << x << "\n" << ::tpy::check_signals;
             } catch (...) {

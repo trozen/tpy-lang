@@ -1,6 +1,6 @@
-# A movable (BigInt) local returned under a NON-suspending finally: the
-# eager pre-finally capture must not move (the snapshot pins the bare
-# render `= total;`) -- only the direct-ready site moves. The annotation
+# A movable (BigInt) local returned under a NON-suspending finally: nothing
+# moves before the finally -- the capture takes a borrow there and moves
+# after the chain, into the ready result. The annotation
 # makes total a genuine BigInt; an inferred int32 would render through a
 # BigInt(...) coercion, which the bare-name gate excludes at every site.
 import asyncio

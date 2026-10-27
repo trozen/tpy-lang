@@ -30,11 +30,11 @@ value-bounded element (`T: ValueType`) means its copy is proven harmless.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Mapping
 
-from ..parse import TpyExpr
+from ..parse import TpyExpr, TpyStmt
 from ..typesys import TpyType
 from ..value_category import peel_value_wrappers
 
@@ -52,6 +52,14 @@ class SinkRead:
     source: TpyExpr
     slot: TpyType
     sink: 'TupleSink | None' = None
+    # The declaration, rebind or walrus binding the source to a name: the
+    # leaves the slot owns are those that binding owns at its site
+    # (`site_ownership`), as a local's declared type carries no `Own`
+    # markers.
+    binds: 'TpyStmt | TpyExpr | None' = None
+    # Whether the sink's check declares the copies it makes (a warning,
+    # a hedge); a sink no check speaks for records them UNDECLARED.
+    declares_copies: bool = True
 
 
 class LeafPermission(Enum):
@@ -62,12 +70,19 @@ class LeafPermission(Enum):
     WARNED: an implicit copy, and its copy warning says so.
     HEDGED: an implicit copy of an open `T` leaf, and its definition-time
         hedge (`defer_own_copy_verdict`) says so.
-    EXPLICIT: copied under `copy()`."""
+    EXPLICIT: copied under `copy()`.
+    UNDECLARED: a copy the sink would make that no check declares: the
+        lowering refuses it.
+    VALUE: a copy a `ValueType` bound makes unobservable (`T`,
+        `T | int32`): permitted with no diagnostic; not an implicit copy
+        (`copies`), and the leaf still moves at a real last use."""
     PASS = "pass"
     MOVE = "move"
     WARNED = "warned"
     HEDGED = "hedged"
     EXPLICIT = "explicit"
+    UNDECLARED = "undeclared"
+    VALUE = "value"
 
     @property
     def copies(self) -> bool:
@@ -77,6 +92,9 @@ class LeafPermission(Enum):
 
 @dataclass(frozen=True)
 class Leaf:
+    # The leaf's value comes from existing storage (a name, an element or
+    # a field it moves out of, a borrow it copies); False only for a new
+    # value -- a fresh call result, a construction, a literal temporary.
     borrowed: bool
     slot_owns: bool
     permission: LeafPermission
@@ -91,7 +109,11 @@ class Disposition(Enum):
     COPY: some leaf copies implicitly and none moves -- the copy of the
         source whole, its passed leaves passed on.
     MIXED: some leaf moves and another does not -- the source converts
-        element by element."""
+        element by element.
+
+    An element's record (`SourceRecord.under`) is COPY exactly when the
+    whole it is part of is; one whose own leaves copy inside a whole that
+    converts element by element is MIXED."""
     NONE = "none"
     MOVE = "move"
     COPY = "copy"
@@ -101,14 +123,16 @@ class Disposition(Enum):
 @dataclass(frozen=True)
 class SourceRecord:
     """`leaves`: every reference leaf path of the source at its slot. A
-    select's verdict sits on the select's record; `arms` holds each arm's
-    own record (its own ownership; an arm never warns on its own).
+    select's verdict sits on the select's record.
 
     The ONE classification of the record: `copied` / `moved` per path, and
     `disposition` over the whole. Every reader of an owning sink's
-    copy-or-move verdict asks it here."""
+    copy-or-move verdict asks it here.
+
+    `part_of_copy`: None for a source's own record; for an element's
+    (`under`), whether the sink copies the whole it is part of."""
     leaves: Mapping[ElemPath, Leaf]
-    arms: tuple['SourceRecord', ...] = field(default=())
+    part_of_copy: bool | None = None
 
     @property
     def copied(self) -> frozenset[ElemPath]:
@@ -124,25 +148,76 @@ class SourceRecord:
 
     @property
     def disposition(self) -> Disposition:
+        """A VALUE leaf decides nothing: its copy and its move are one
+        (`LeafPermission.VALUE`). An element's is COPY exactly where the
+        whole's is (`part_of_copy`)."""
+        if self.part_of_copy:
+            return Disposition.COPY
         moved = self.moved
         if moved:
-            return (Disposition.MOVE if len(moved) == len(self.leaves)
+            decided = [leaf for leaf in self.leaves.values()
+                       if leaf.permission is not LeafPermission.VALUE]
+            return (Disposition.MOVE if len(moved) == len(decided)
                     else Disposition.MIXED)
-        return Disposition.COPY if self.copied else Disposition.NONE
+        if not self.copied:
+            return Disposition.NONE
+        return (Disposition.MIXED if self.part_of_copy is False
+                else Disposition.COPY)
 
     @property
     def moves_whole(self) -> bool:
         """The sink takes the source whole by move: some leaf moves and
-        every other passes (MOVE, or MIXED over passed leaves)."""
+        every other passes or is a VALUE leaf (MOVE, or MIXED over passed
+        leaves)."""
         perms = {leaf.permission for leaf in self.leaves.values()}
         return (LeafPermission.MOVE in perms
-                and perms <= {LeafPermission.MOVE, LeafPermission.PASS})
+                and perms <= {LeafPermission.MOVE, LeafPermission.PASS,
+                              LeafPermission.VALUE})
 
     def element_moves(self, index: int) -> bool:
         """Whether the sink moves every leaf under top-level element
-        `index` (an element holding no leaf moves nothing of its own)."""
-        return all(leaf.permission is LeafPermission.MOVE
+        `index` (an element holding no leaf moves nothing of its own); a
+        VALUE leaf moves with it."""
+        return all(leaf.permission in (LeafPermission.MOVE,
+                                       LeafPermission.VALUE)
                    for p, leaf in self.leaves.items() if p[:1] == (index,))
+
+    @property
+    def fresh(self) -> frozenset[ElemPath]:
+        """The leaf paths the sink moves a new value into: no existing
+        object, so a copy of one copies nothing the program holds."""
+        return frozenset(p for p, leaf in self.leaves.items()
+                         if leaf.permission is LeafPermission.MOVE
+                         and not leaf.borrowed)
+
+    @property
+    def copies_whole(self) -> bool:
+        """The sink copies the source whole (`Disposition.COPY`), or the
+        whole this element record is part of."""
+        return self.disposition is Disposition.COPY
+
+    @property
+    def copy_permitted(self) -> frozenset[ElemPath]:
+        """The leaf paths a copy may take: those the sink copies (WARNED /
+        HEDGED), copies under `copy()` (EXPLICIT) or copies unobservably
+        (VALUE), and the root `()` -- every leaf -- where it copies the
+        whole."""
+        out = frozenset(p for p, leaf in self.leaves.items()
+                        if leaf.permission.copies
+                        or leaf.permission in (LeafPermission.EXPLICIT,
+                                               LeafPermission.VALUE))
+        return out | {()} if self.copies_whole else out
+
+    def under(self, index: int) -> 'SourceRecord':
+        """The record of top-level element `index`, relative to it: the
+        leaves under it, and a root leaf `()` -- a `copy()` of the whole --
+        kept visible to every element."""
+        leaves = {p[1:]: leaf for p, leaf in self.leaves.items()
+                  if p[:1] == (index,)}
+        root = self.leaves.get(())
+        if root is not None:
+            leaves[()] = root
+        return SourceRecord(leaves, part_of_copy=self.copies_whole)
 
     def copies_at(self, path: ElemPath) -> bool | None:
         """Whether the sink copies a leaf at or under `path`; None where

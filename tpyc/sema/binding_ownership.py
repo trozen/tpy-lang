@@ -54,19 +54,20 @@ from ..parse.nodes import (ResultForm, TpyCall, TpyDictComprehension,
                            TpyListComprehension, TpyMatch, TpyMethodCall,
                            TpyName, TpyNamedExpr, TpyNestedDef,
                            TpySetComprehension, TpyStmt, TpyTry,
-                           TpyTupleUnpack, TpyVarDecl, TpyWith,
+                           TpyTupleUnpack, TpyVarDecl, TpyWith, TpyAssign,
                            iter_capture_bindings, walk_body_stmts,
                            walk_expr_tree, written_names)
 from .. import modules as builtin_modules
 from ..type_def_registry import is_copy_iter, is_own_iter
 from ..typesys import (FunctionInfo, NominalType, OptionalType, OwnType,
+                       global_binds_by_reference,
                        ReadonlyType, TpyType, TypeParamRef, is_protocol_type,
                        param_takes_ownership,
                        substitute_type_params_structural, unwrap_own,
                        unwrap_readonly,
                        unwrap_ref_type, unwrap_send_sync,
                        view_family_for_type)
-from ..value_category import peel_coerce
+from ..value_category import peel_coerce, peel_value_wrappers
 from .alias_rebind import (ElemPath, bare_tuple, leaf_paths,
                            owned_leaf_paths, tuple_name_bindings)
 from .iter_loans import IterElementSource, iter_element_source
@@ -375,6 +376,16 @@ def local_ownership(ctx: 'SemanticContext', func: object,
     return body.locals.get(name, NOT_OWNED)
 
 
+def bound_name(site: object) -> str:
+    """The name a declaration, a rebind or a walrus binds."""
+    if isinstance(site, TpyVarDecl):
+        return site.name
+    if isinstance(site, TpyNamedExpr):
+        return site.target
+    assert isinstance(site, TpyAssign) and isinstance(site.target, TpyName)
+    return site.target.name
+
+
 def site_ownership(ctx: 'SemanticContext', site: object,
                    name: str) -> BindingOwnership:
     """The entry of `name` at binding site `site` (a for statement, a
@@ -569,6 +580,17 @@ def read_ownership(ctx: 'SemanticContext',
     return NOT_OWNED
 
 
+def _less(acq: Acquired, paths: frozenset[ElemPath] | None,
+          borrowed: NonOwningBind | None) -> BindingOwnership:
+    """`acq` at `paths` (None: every leaf) less what the folded
+    non-owning bindings `borrowed` borrow: nothing for a whole borrow."""
+    if borrowed is None:
+        return BindingOwnership(acq, paths)
+    if borrowed.elems is None:
+        return BindingOwnership(None, None, frozenset({()}), borrowed.line)
+    return BindingOwnership(acq, paths, borrowed.elems, borrowed.line)
+
+
 class CompMove(Enum):
     """How a comprehension's clause decided to move a read of its variable
     (`TypeCompatibility.comp_elem_moves`): the last-evaluated sink, an
@@ -610,6 +632,17 @@ class _BodyWalk:
         self.pending: list[tuple[object, str, Acquired | None,
                                  frozenset[ElemPath] | None,
                                  TpyForEach, bool]] = []
+        self.params = (frozenset(p for p, _t in func.params)
+                       if isinstance(func, TpyFunction) else frozenset())
+        # Each name binding's non-owning notes, by the value it binds.
+        self.notes_at: IdentityMap = IdentityMap()
+        for n, entry in fs.nonowning_sites.items():
+            for at, elems, _source in entry.notes:
+                if isinstance(at, TpyExpr):
+                    self.notes_at.setdefault(peel_value_wrappers(at),
+                                             []).append((n, elems))
+        # The name-binding sites of each local, in walk order.
+        self.bind_sites: dict[str, list[object]] = {}
 
     def stmts(self, stmts: list[TpyStmt]) -> None:
         for s in stmts:
@@ -660,13 +693,47 @@ class _BodyWalk:
                     if c.bind_by_value and not self._module(c.name)
                     else NOT_OWNED
                     for c in iter_capture_bindings(case.pattern)}
-        elif (isinstance(s, TpyVarDecl) and s.init is not None
-              and binds_val_or_ref(s.name, s.init, declared_bound_type(
-                  s, self.ctx.var_types, self.ctx.get_expr_type(s.init)),
-                  **self.slots)):
-            self.lending.add(s.name)
-            self.ctx.val_or_ref_decls.add(s)
+        elif isinstance(s, TpyVarDecl) and s.init is not None:
+            lending = binds_val_or_ref(
+                s.name, s.init, declared_bound_type(
+                    s, self.ctx.var_types, self.ctx.get_expr_type(s.init)),
+                **self.slots)
+            if lending:
+                self.lending.add(s.name)
+                self.ctx.val_or_ref_decls.add(s)
+            self._bind_site(s, s.name, s.init, lending=lending)
+        elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
+            self._bind_site(s, s.target.name, s.value)
         self.non_loop |= bound
+
+    def _bind_site(self, site: object, name: str, value: TpyExpr, *,
+                   lending: bool = False) -> None:
+        """The entry of a name binding -- a declaration, a rebind, a walrus
+        -- at its own site: what the value it binds hands it, less what the
+        binding's own non-owning notes borrow (`fold_nonowning`). A
+        declaration binding a `val_or_ref_t` result itself owns nothing;
+        module storage owns nothing (a global is a slot a function still
+        reads, unless its layout holds values). A parameter's ownership is
+        its type's: no site."""
+        if name in self.params:
+            return
+        if lending:
+            self.sites[site] = {name: NOT_OWNED}
+            return
+        if self._module(name):
+            # Module storage owns by its layout: a pointer slot aliases, a
+            # value global holds what it is bound to.
+            gt = self.ctx.global_scope.lookup(name)
+            if gt is None or global_binds_by_reference(gt):
+                self.sites[site] = {name: NOT_OWNED}
+                return
+        rec: NonOwningBind | None = None
+        for n, elems in self.notes_at.get(peel_value_wrappers(value), ()):
+            if n == name:
+                rec = fold_nonowning(rec, value, elems)
+        self.sites[site] = {name: _less(Acquired.OWNED_LOCAL, None, rec)}
+        if not self._module(name):
+            self.bind_sites.setdefault(name, []).append(site)
 
     def _module(self, name: str, *, comprehension: bool = False) -> bool:
         """Whether target `name` -- a statement's, or a comprehension
@@ -701,12 +768,7 @@ class _BodyWalk:
             within = self.within.get(at, ()) if at is not None else ()
             if any(loop is lp for lp in within):
                 inside = fold_nonowning(inside, at, elems)
-        if inside is None:
-            return BindingOwnership(acq, paths)
-        if inside.elems is None:
-            return BindingOwnership(None, None, frozenset({()}),
-                                    inside.line)
-        return BindingOwnership(acq, paths, inside.elems, inside.line)
+        return _less(acq, paths, inside)
 
     def _loop(self, s: TpyForEach
               ) -> tuple[Acquired | None, frozenset[ElemPath] | None]:
@@ -727,6 +789,8 @@ class _BodyWalk:
 
     def expr(self, e: TpyExpr) -> bool:
         self.within[e] = self.loops
+        if isinstance(e, TpyNamedExpr):
+            self._bind_site(e, e.target, e.value)
         if isinstance(e, TpyGeneratorExpression):
             # A function of its own: only its first source is this body's.
             if e.generators:
@@ -757,6 +821,36 @@ class _BodyWalk:
         return True
 
 
+def _sites_meet(walk: _BodyWalk, name: str,
+                entry: BindingOwnership) -> BindingOwnership:
+    """A LOCAL's entry: the meet of its name-binding sites' entries
+    (`_every_site_owns`), less what its other bindings to existing
+    storage borrow (an unpack target, a `with` target)."""
+    sites = [walk.sites[x][name] for x in walk.bind_sites.get(name, ())]
+    if not sites:
+        # Bound by no declaration, rebind or walrus (an unpack target).
+        return entry
+    if not all(sites):
+        return NOT_OWNED
+    meet = _every_site_owns(tuple(sites))
+    values = IdentitySet()
+    for x in walk.bind_sites[name]:
+        values.add(peel_value_wrappers(
+            x.init if isinstance(x, TpyVarDecl) else x.value))
+    rest: NonOwningBind | None = None
+    entry = walk.fs.nonowning_sites.get(name)
+    for at, elems, _source in entry.notes if entry is not None else ():
+        if not (isinstance(at, TpyExpr)
+                and peel_value_wrappers(at) in values):
+            rest = fold_nonowning(rest, at, elems)
+    if rest is None:
+        return meet
+    if rest.elems is None:
+        return NOT_OWNED
+    return BindingOwnership(meet.acquired, meet.acquired_paths,
+                            meet.borrowed | rest.elems)
+
+
 def record_body_ownership(ctx: 'SemanticContext',
                           body: list[TpyStmt]) -> None:
     """THE writer of fact 1 for the body being settled (`ctx.func`): the
@@ -783,10 +877,14 @@ def record_body_ownership(ctx: 'SemanticContext',
                 or binds_module_storage(fs, name, comprehension=False)):
             continue
         bind = fs.nonowning_bind(name)
-        locals_[name] = BindingOwnership(
+        entry = BindingOwnership(
             Acquired.REBOUND_PARAM if name in owning_params
             and name not in fs.ever_owned_locals else Acquired.OWNED_LOCAL,
             None, bind.elems if bind is not None else frozenset())
+        if entry.acquired is Acquired.OWNED_LOCAL:
+            entry = _sites_meet(walk, name, entry)
+        if entry:
+            locals_[name] = entry
     loop_only = {n: tuple(sites) for n, sites in loop_bound.items()
                  if n not in walk.non_loop}
     ctx.body_ownership[func] = BodyOwnership(

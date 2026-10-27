@@ -999,6 +999,27 @@ lift and the view shim's param type -- and the slot alone. What the sink
 still decides itself is its target / receiver and the named language-rule
 refusals (a stored lambda, the view-slot fence).
 
+Whether the conversion may copy an existing object is read from sema's record
+of the source, which the read's `Source` carries (`Source.record`; an
+element's is its whole's under its index, `SourceRecord.under`): a copy may
+take the leaves the record permits (`SourceRecord.copy_permitted`: its WARNED,
+HEDGED, EXPLICIT and VALUE leaves, the root path where the record copies the
+read whole) and the leaves it moves a new value into (`SourceRecord.fresh`: a
+MOVE leaf that is not `borrowed`, so its copy copies nothing the program
+holds). The conversion's plan names the leaves it copies by path, and one
+check in `convert` holds them to the record at every construct it enforces
+(assignment, argument, result; member-init pending), so no sink keeps a copy
+gate of its own. The check's invariant: for every reference leaf the
+destination owns, the read's record has a leaf -- MOVE, WARNED,
+HEDGED, EXPLICIT, PASS, UNDECLARED or VALUE (a copy a `ValueType` bound
+makes unobservable, permitted with no diagnostic; it moves only at a real
+last use) -- and a leaf without one is an internal
+error (`copy.no_record`). Sema keeps that total by registering every owning
+sink, name bindings included (a declaration, a rebind, a walrus, a `nonlocal`
+rebind: what the binding owns at its own site), with one owning fact per sink
+(`_slot_owned_paths`); a name read's move follows the same record wherever
+its slot owns a leaf.
+
 The PLACEMENT half of the slot contract -- whether a statement exists to
 hoist a declaration before -- is a fact about the whole expression tree
 under a sink, and `_ExprUse` is deliberately not propagated into

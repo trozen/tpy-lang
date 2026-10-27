@@ -1,0 +1,3 @@
+Each section is a warned copy of a tuple name into a local literal's owned
+storage, where CPython aliases the name's tuple: the printed values differ
+by design.

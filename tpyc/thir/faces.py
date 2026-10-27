@@ -2463,10 +2463,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # native protocol slot (repr_of(this->f))
     "arg.type_ctor_protocol_field",  # the same bare member read on the
                                     # TYPE-CTOR arg loop (str(p.name))
-    "arg.type_ctor_int_tparam",     # INT-kind type-param arg at a scalar
-                                    # type-ctor slot (`int32(N)` under
-                                    # `[N: int]`): the non-type template
-                                    # parameter passes bare
     "arg.type_ctor_tparam",         # TYPE-param-typed arg at that same slot
                                     # (`int32(x)` under `[T: AnyFixedInt]`):
                                     # the bare monomorphized name

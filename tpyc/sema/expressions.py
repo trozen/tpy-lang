@@ -5040,6 +5040,12 @@ class ExpressionAnalyzer:
             eph[name] = eph[eph_root]
         else:
             eph.pop(name, None)
+        if self.compat.settles_body_local(name, module=True):
+            # The binding is an owning sink of what it owns
+            # (`SinkRead.binds`).
+            self.compat.register_sink(expr.value, unwrap_ref_type(resolved),
+                                      TupleSink.LOCAL, per_leaf=True,
+                                      binds=expr)
 
         return result_type
 

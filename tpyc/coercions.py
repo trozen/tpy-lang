@@ -14,6 +14,7 @@ from .typesys import (
     is_integer_type, unwrap_readonly, AnyType, same_base_type,
     VIEW_TYPE_FAMILIES, INT_TYPE_ARG_MAX,
 )
+from .parse.nodes import TpyCoerce, TpyExpr
 from .type_def_registry import (
     is_array, is_span, is_list, is_dict, is_set, int_traits_of, float_traits_of,
     is_fixed_int_type, is_big_int_type, is_float64_type, is_float32_type,
@@ -735,6 +736,31 @@ def coercion_rule(name: str) -> Optional[Coercion]:
     """The declared rule a lowered coercion names, or None for a tag no rule
     declares."""
     return _RULES_BY_NAME.get(name)
+
+
+STRING_TO_STR_COERCION = "string_to_str"
+
+# Str-family coercions whose target is a VIEW: the result borrows the source's
+# buffer, so the coerce renders its inner bare at every position.
+VIEW_TARGET_STR_COERCIONS = frozenset({"str_to_strview", "string_to_strview"})
+
+# Str-family coercions that are identity in EVERY position (no codegen lambda):
+# both sides of string_to_str spell std::string (`String` derives from it); the
+# two *_to_strview arms feed a std::string_view slot every source converts into
+# implicitly.
+IDENTITY_STR_COERCIONS = (frozenset({STRING_TO_STR_COERCION})
+                          | VIEW_TARGET_STR_COERCIONS)
+
+
+def peel_identity_coercions(expr: TpyExpr,
+                            stop: TpyExpr | None = None) -> TpyExpr:
+    """`expr` under its identity str-family coercions
+    (`IDENTITY_STR_COERCIONS`), stopping at `stop`: the value every position
+    renders bare."""
+    while (expr is not stop and isinstance(expr, TpyCoerce)
+           and expr.coercion.name in IDENTITY_STR_COERCIONS):
+        expr = expr.expr
+    return expr
 
 
 def resolve_coercion(actual: TpyType, expected: TpyType,

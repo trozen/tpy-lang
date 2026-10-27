@@ -1,0 +1,57 @@
+free_fn decl 1 5
+free_fn rebind 1 6
+walrus 1
+walrus after 1 7
+unpack 1 8 2
+method 3 9
+closure 11
+loop 0 1 20
+loop 1 1 21
+arm 1 30
+arm other
+dead_member 40 1
+module 1 50
+gen 1
+gen 60
+async 170
+ctor 1 95
+error_return 1 99
+er 99
+clone 5
+lam 8 s
+opt_back 5
+pair_back (3, 1)
+own_pair 2
+items s
+bounded_paths t
+bounded_paths after t
+method_bound 2
+class_bound b d c
+fin_vt hello
+fin_vt ret hello
+fin_open open
+fin_open ret open
+fin_str str
+fin_str ret str
+fin_int 7
+fin_int ret 7
+fin_string strg
+fin_string ret strg
+fin_string_own so
+fin_string_own ret so
+fin_plain_str ps!
+fin_plain_str ret ps!
+fin_view vw
+fin_view ret vw
+fin_plain_tuple pt?
+fin_plain_tuple ret pt? 1
+fin_del dl
+fin_del ret dl
+fin_del_local dk#
+fin_del_local ret dk#
+fin_tuple tup 3
+fin_tuple ret tup 3
+shadow_opt 6
+set_local 9
+shadow_keep 4
+mixed_own 4 5

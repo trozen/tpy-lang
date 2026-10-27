@@ -1,10 +1,11 @@
-main.py:92: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:100: warning: copies Box into field (tuple element 1); use copy() to make this explicit
 main.py:26: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
 main.py:33: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
 main.py:39: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
 main.py:46: warning: copies Box into container (tuple element 1); use copy() to make this explicit
 main.py:55: warning: copies Box into owned storage (tuple element 0.1); use copy() to make this explicit
-main.py:61: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
-main.py:70: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
-main.py:76: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
-main.py:82: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:63: warning: copies Box into owned storage (tuple element 0.0.1); use copy() to make this explicit
+main.py:69: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:78: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:84: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:90: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit

@@ -60,9 +60,9 @@ from ...parse.nodes import (
     TpyVarargPack,
 )
 from ...typesys import binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
-from ...typesys import make_readonly, param_takes_ownership
+from ...typesys import (is_open_type_param_return, make_readonly,
+                        param_takes_ownership)
 from ...typesys import (
-    owned_payload,
     ConcreteFrameType,
     AliasRef,
     RecursiveAliasInstanceType,
@@ -168,6 +168,7 @@ from ...typesys import (
 from ...symbol_binding import SymbolKind, lookup_imported
 from ...coercions import (wrap_into_any, CoercionContext, coercion_rule,
                           DYN_ERASURES, INTO_DYN_FACTORY, INTO_DYN_INHERIT,
+                          VIEW_TARGET_STR_COERCIONS,
                           context_free_wrap_template, resolve_coercion)
 from ...compilation_context import get_current_compiler
 from ...value_category import (
@@ -175,7 +176,7 @@ from ...value_category import (
     lends_from_dying_source,
     property_access_returns_cpp_ref,
     frame_factory_callee, call_hands_back_value, call_returns_cpp_ref,
-    handed_over_iter, is_rvalue_source,
+    handed_over_iter, is_rvalue_source, lends_pointer_form_result,
     materializing_temp_source,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, expr_kind_tag,
@@ -187,14 +188,15 @@ from ...sema.type_ops import signature_may_return_borrow
 from ...sema.own_copy import contains_reference_type
 from ...sema.alias_rebind import alias_sources, bare_tuple, reference_paths
 from ...sema.binding_ownership import read_ownership
-from ...sema.source_records import Disposition, read_record, verdict
+from ...sema.source_records import (Disposition, LeafPermission, NO_RECORD,
+                                    read_record, verdict)
 from ...identity_map import IdentityMap
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import (render_int_literal_value,
                                          target_less_int_literal_type)
 from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
                       elem_borrow_form_differs, element_source, tuple_elems,
-                      SelectResult, Source, TraitAbi, arms_copy_declared)
+                      SelectResult, Source, TraitAbi)
 from ..nodes import (
     THIRBorrowedRecord,
     THIROwnedRecord,
@@ -346,7 +348,6 @@ from .predicates import (
     _container_value_optional_elem,
     _cpp_noncopyable_type,
     _ctor_arg_slot_ok,
-    _int_type_param_value,
     _dict_view_iterable_ok,
     _eligible_char,
     _field_decl_type,
@@ -432,7 +433,6 @@ from .predicates import (
     _PTR_IDENTITY_COERCIONS,
     _SPANLIKE_COERCIONS,
     _SPAN_METHOD_COERCIONS,
-    _VIEW_TARGET_STR_COERCIONS,
     _is_string_owned,
     _mixed_sign_compare,
     _module_var_read_cpp,
@@ -600,7 +600,7 @@ from .predicates import (
     _unrouted_binding_read,
     _value_opt_view_name,
 )
-from .convert import (converted, elementwise_plan, layout_tuple,
+from .convert import (converted, layout_tuple,
                       param_tuple_slot, store_slot, to_local)
 from .context import (FrameLocalClass, _call_arg_forms,
                       _ExprResultUse, _ExprUse, _LowerCtx,
@@ -650,7 +650,7 @@ from .checks import (
     _record_copy_borrow_ret,
     _declared_call_at_owning_elem,
     declared_call_elem_copy_ok,
-    own_element_copy_type,
+    own_element_copy_type, own_element_copy_member, own_element_payload,
     _btuple_pass_arg,
     _own_move_source_slice_facts,
     _r_own_move_source_slice,
@@ -663,7 +663,7 @@ from .checks import (
     _own_slot_reference_tuple,
     _enum_receiver,
     _is_move_source_facts,
-    record_disposition,
+    record_disposition, dyn_local_read,
     _own_opt_ptr_name_move_arg_facts,
     _r_own_opt_ptr_name_move,
     _r_opt_own_ptr_opt_name_move,
@@ -3340,22 +3340,18 @@ def _operand_temp_cpp(left: TpyExpr, spelled: str) -> 'str | None':
     return None if isinstance(left, TpyName) else spelled
 
 
-def _select_result(held: Held, e: 'TpyExpr | None', lc: '_LowerCtx',
-                   arms: 'tuple[THIRExpr, THIRExpr]', *,
+def _select_result(held: Held, e: 'TpyExpr | None', lc: '_LowerCtx', *,
                    temporary: 'bool | None' = None) -> SelectResult:
     """A select's normalized result (`THIRIfExpr.normalized`,
     `THIRValueSelect.normalized`), published where the arms are normalized.
     It dies with its statement where the value-category classifier calls
     the select an rvalue, unless the site knows (`temporary`); an owned
-    result is then a fresh value rather than an operand's storage. It
-    hands back one of its `arms`, so it copies an existing object only
-    where each arm is fresh or declares its own copy."""
+    result is then a fresh value rather than an operand's storage."""
     if temporary is None:
         temporary = e is not None and is_rvalue_source(lc.analyzer, e)
     if held is Held.STORAGE and temporary:
         held = Held.FRESH
-    return SelectResult(held, temporary, arms_copy_declared(
-        stamped(a, lc).source for a in arms))
+    return SelectResult(held, temporary)
 
 
 def _hoisted_select(node: THIRValueSelect, lc: '_LowerCtx') -> THIRValueSelect:
@@ -3515,8 +3511,7 @@ def _lower_value_select(e: TpyBinOp, rtype: 'TpyType | None',
         truthy_mode=truthy_mode,
         lhs_temp_cpp=lhs_temp_cpp,
         lhs_cast=lhs_cast, rhs_cast=rhs_cast, rhs_sv=rhs_sv,
-        form=form, normalized=_select_result(_held_of_form(form), e, lc,
-                                            (lowered_lhs, lowered_rhs)),
+        form=form, normalized=_select_result(_held_of_form(form), e, lc),
         loc=loc), lc)
 
 
@@ -3621,8 +3616,7 @@ def _lower_container_select(e: TpyBinOp, rtu: 'TpyType', lc: '_LowerCtx',
         result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
         truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
         form=Form.BORROW,
-        normalized=_select_result(Held.BORROWED, e, lc,
-                                  (lowered_lhs, lowered_rhs)), loc=loc), lc)
+        normalized=_select_result(Held.BORROWED, e, lc), loc=loc), lc)
 
 
 def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
@@ -3687,16 +3681,14 @@ def _lower_container_select_prvalue(e: TpyBinOp, rtu: 'TpyType',
     # A prvalue `?:` built straight into the direct-init storage: the
     # object itself, read as a value that dies with the statement -- or,
     # with a NAME operand, a copy of that existing object, which the slot
-    # takes through the copy sema declared for it (`Source.copy_declared`).
+    # takes through the copy sema declared for it (`copy_permitted`).
     return _hoisted_select(THIRValueSelect(
         result_type=rtu, lhs=lowered_lhs, rhs=lowered_rhs, op=e.op,
         truthy_mode=truthy_mode, lhs_temp_cpp=lhs_temp_cpp,
         lhs_move=lhs_move, form=Form.VALUE,
-        normalized=(_select_result(Held.VALUE, e, lc,
-                                   (lowered_lhs, lowered_rhs), temporary=True)
+        normalized=(_select_result(Held.VALUE, e, lc, temporary=True)
                     if lhs_fresh and rhs_fresh
-                    else _select_result(Held.STORAGE, e, lc,
-                                        (lowered_lhs, lowered_rhs))),
+                    else _select_result(Held.STORAGE, e, lc)),
         loc=loc), lc)
 
 
@@ -6180,7 +6172,14 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
             # The C++ call hands back a reference into storage the callee
             # does not own.
             return Held.BORROWED
-        return Held.FRESH if rv and _owned_buffer(t, an) else Held.VALUE
+        if rv and _owned_buffer(t, an):
+            return Held.FRESH
+        # A reference-type result the callee positively hands back by value
+        # in its storage form is a new object: no existing one.
+        if (t is not None and not t.is_value_type()
+                and _new_object_result(e, node, lc)):
+            return Held.FRESH
+        return Held.VALUE
     if isinstance(node, (THIRIfExpr, THIRValueSelect)):
         # What the lowering normalized the arms into.
         return node.select_result.held
@@ -6286,13 +6285,16 @@ def lent_holder(held_t: TpyType, slot_t: TupleType, lc: '_LowerCtx', *,
                                       lc.analyzer, const=const))
 
 
-def stamped(node: THIRExpr, lc: '_LowerCtx') -> THIRExpr:
+def stamped(node: THIRExpr, lc: '_LowerCtx', *,
+            record_of: 'TpyExpr | None' = None) -> THIRExpr:
     """`node` with its `Source`, for a node an arm builds beside
     `_lower_expr` (a bare receiver, a coerce's inner, a field source): the
-    same stamp, with no parse node to read."""
+    same stamp, with no parse node to read -- but `record_of`, the parse
+    node a built value stands for, whose record it carries."""
     if node.source is not None:
         return node
-    return replace(node, source=stamp_source(None, node, lc, {}))
+    return replace(node, source=stamp_source(None, node, lc, {},
+                                             record_of=record_of))
 
 
 def _uw_param(rec: BindingRepr) -> 'TpyType | None':
@@ -6310,14 +6312,9 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
     (`_read_owned_elements`): a borrowed element is someone else's object,
     and one of an undeclared read is nobody's to move. Its pointee is const
     where the binding's pointers are. An owned tuple's element is held as
-    its layout holds it. Each element's copy is declared where the read's
-    record copies a leaf of it (`SourceRecord.copies_at`)."""
+    its layout holds it. Each element's copy permission is the read's
+    under it (`element_source`)."""
     movable = parent.movable
-    record = verdict(lc.analyzer.ctx, e)
-
-    def copies(i: int) -> bool:
-        return bool(record.copies_at((i,)))
-
     if rec.ptr_tuple is not None:
         ets = rec.ptr_tuple.element_types
         owned = _read_owned_elements(e, rec, lc, len(ets))
@@ -6327,13 +6324,10 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
                 movable=(movable and owned is not None
                          and i < len(owned) and owned[i]),
                 pointee_owned=(owned[i] if owned is not None
-                               and i < len(owned) else None),
-                undeclared=movable and owned is None,
-                copy_declared=copies(i))
+                               and i < len(owned) else None))
             if TupleType._element_is_pointer_repr(et)
             else element_source(
                 parent, i, held=Held.STORAGE, movable=movable,
-                copy_declared=copies(i),
                 trait=(TraitAbi.VAL_OR_PTR
                        if TupleType._element_is_val_or_ptr(et) else None))
             for i, et in enumerate(ets))
@@ -6360,14 +6354,12 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
             return None
         return tuple(
             element_source(parent, i, held=Held.STORAGE,
-                           movable=movable and owned[i],
-                           copy_declared=copies(i))
+                           movable=movable and owned[i])
             if ((inline_elems is not None and inline_elems[i])
                 or not TupleType._element_is_pointer_repr(et))
             else element_source(
                 parent, i, held=Held.BORROWED, pointer=True, const=rec.const,
-                movable=movable and owned[i], pointee_owned=owned[i],
-                copy_declared=copies(i))
+                movable=movable and owned[i], pointee_owned=owned[i])
             for i, et in enumerate(ets))
     if rec.tuple_layout is None:
         return None
@@ -6376,11 +6368,9 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
         if isinstance(m, THIRBorrowedRecord):
             out.append(element_source(parent, i, held=Held.BORROWED,
                                       pointer=True, const=m.readonly,
-                                      pointee_owned=False,
-                                      copy_declared=copies(i)))
+                                      pointee_owned=False))
         elif isinstance(m, THIROwnedRecord):
-            out.append(element_source(parent, i, held=Held.STORAGE,
-                                      copy_declared=copies(i)))
+            out.append(element_source(parent, i, held=Held.STORAGE))
         else:
             # A parameter holds its elements in their borrow form, which a
             # union or a nested tuple spells apart from its storage.
@@ -6389,8 +6379,7 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
                 held=(Held.BORROWED
                       if rec.is_param and elem_borrow_form_differs(m)
                       and not isinstance(_uw_param(rec), OwnType)
-                      else Held.VALUE),
-                copy_declared=copies(i)))
+                      else Held.VALUE)))
     return tuple(out)
 
 
@@ -6505,6 +6494,24 @@ def _temporary(e: 'TpyExpr | None', node: THIRExpr,
     return None
 
 
+def _new_object_result(e: 'TpyExpr | None', node: THIRExpr,
+                       lc: '_LowerCtx') -> bool:
+    """A call's result is a new object by a positive by-value guarantee:
+    an `Own` or by-value stamped result (`call_hands_back_value`), or a
+    by-value C++ return (`_prvalue`) whose declared return is no open type
+    parameter -- that one is `val_or_ref_t<T>`, a reference at a reference
+    instantiation (`is_open_type_param_return`) -- and no pointer form."""
+    if e is None:
+        return False
+    if call_hands_back_value(e):
+        return not lends_pointer_form_result(lc.analyzer, e)
+    fi = getattr(e, "resolved_function_info", None)
+    ret = fi.root.return_type if fi is not None else None
+    return (ret is not None and not is_open_type_param_return(ret)
+            and _prvalue(e, node, lc)
+            and not lends_pointer_form_result(lc.analyzer, e))
+
+
 def _prvalue(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx') -> bool:
     """`Source.prvalue`: a construction or a literal, a call whose C++
     hands back its result by value (neither a lent operand nor a reference
@@ -6554,7 +6561,8 @@ def _place(node: THIRExpr, lc: '_LowerCtx') -> bool:
 
 
 def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
-                 declared: dict[str, TpyType]) -> Source:
+                 declared: dict[str, TpyType], *,
+                 record_of: 'TpyExpr | None' = None) -> Source:
     """The one writer of `THIRExpr.source`, run on every node `_lower_expr`
     returns and on every node an arm builds beside it (`stamped`, no parse
     node): the facts are computed here from the parse node, the lowered
@@ -6566,6 +6574,8 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     binding = binding_of(e, lc, declared) if e is not None else None
     if binding is None and prior is not None:
         binding = prior.binding
+    own_record = read_record(lc.analyzer.ctx, e) if e is not None else None
+    rec_e = NO_RECORD if own_record is None else own_record
     named = (isinstance(e, TpyName) and isinstance(lowered, THIRName)
              and lowered.name == e.name)
     receiver = (isinstance(e, TpyName) and isinstance(lowered, THIRSelf)
@@ -6579,17 +6589,25 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     elif named or receiver:
         # Any other read moves at its last use of a name movable here. A
         # read whose record copies is copied by its conversion
-        # (`must_copy`, `copy_declared`); where it is moved here, the C++
+        # (`must_copy`, `copy_permitted`); where it is moved here, the C++
         # binding holds a copy of its own its rebind made, which sema
         # reads as a borrow
         # (BUGS.md#owned-local-rebound-from-lvalue-copies-silently,
         # BUGS.md#generic-lending-local-copies-unwarned).
-        movable = (_moves_here(e, lc)
-                   and (not named or _borrow_tuple_read_moves(e, lc)))
+        # A read whose record's slot owns a leaf moves as the record says.
+        # A record whose slot owns none (a value payload, a borrow-form
+        # return) decides nothing about the move: the name's own rule does;
+        # nor does a VALUE leaf, whose copy and move are one.
+        movable = (bool(rec_e.moved)
+                   if (any(leaf.slot_owns
+                           and leaf.permission is not LeafPermission.VALUE
+                           for leaf in rec_e.leaves.values())
+                       and not dyn_local_read(e, lc.analyzer))
+                   else (_moves_here(e, lc)
+                         and (not named or _borrow_tuple_read_moves(e, lc))))
     elif (e is not None
           and isinstance(lowered, (THIRSubscript, THIRFieldAccess)) and (
-            (isinstance(e, TpySubscript)
-             and verdict(lc.analyzer.ctx, e).moves_whole)
+            (isinstance(e, TpySubscript) and rec_e.moves_whole)
             or (isinstance(e, TpyFieldAccess) and e.consuming_move))):
         # Sema moves this member / element out of storage the body owns
         # (an owned tuple element at the tuple's last use, a consuming
@@ -6629,7 +6647,7 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                  # borrowed); an index set declares only those tuple
                  # elements, which the slot's element rows copy.
                  or (e is not None and isinstance(lowered, THIRSubscript)
-                     and () in verdict(lc.analyzer.ctx, e).copied))
+                     and () in rec_e.copied))
     # A copied live name is typed by its binding: a literal-built local's
     # expression type may still be the pending literal's.
     copy_type = copied_type(
@@ -6651,19 +6669,14 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                              _held_from_facts(e, lowered, lc, declared))
     elif prior is not None:
         named_type = prior.named_type
-    select = lowered.select_result
     captured = named and lc.captures(e.name)
-    # A whole copy is the record's: every leaf it holds copies or passes,
-    # none moves (`Disposition.COPY`); a tuple some leaf of which moves
-    # converts element by element.
-    copy_declared = ((e is not None and verdict(lc.analyzer.ctx, e)
-                      .disposition is Disposition.COPY)
-                     or (select is not None and select.copy_declared))
     source = Source(held=_held_from_facts(e, lowered, lc, declared),
                     held_by_deref=held_by_deref,
                     const=const, movable=movable,
                     must_copy=must_copy,
-                    copy_declared=copy_declared,
+                    record=(own_record if record_of is None
+                            else read_record(lc.analyzer.ctx, record_of)),
+
                     temporary=_temporary(e, lowered, lc),
                     elems=elems, binding=binding,
                     captured=captured,
@@ -10167,16 +10180,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     and _resolved_str_value(p.type, analyzer) is not None
                     and _resolved_str_value(
                         analyzer.get_expr_type(a), analyzer) is not None)
-                # An INT-kind type-param arg (`int32(N)` under `[N: int]`):
-                # the non-type template parameter is a constant that renders
-                # as the bare name, which is exactly what the resolved
-                # overload's `{0}` slot expands over -- the same bare pass a
-                # scalar name takes.
-                int_tparam = (
-                    scalar_ctor
-                    and _int_type_param_value(analyzer.get_expr_type(a))
-                    and _ctor_arg_slot_ok(p.type, analyzer)
-                    and _witness("arg.type_ctor_int_tparam"))
                 # A TYPE-PARAM arg (`int32(x)` under `[T: AnyFixedInt]`):
                 # the monomorphized binding renders as the bare name, which
                 # is what the resolved overload's `{0}` slot expands over --
@@ -10188,8 +10191,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     and _is_type_param_slot(analyzer.get_expr_type(a))
                     and _ctor_arg_slot_ok(p.type, analyzer)
                     and _witness("arg.type_ctor_tparam"))
-                if (scalar_ctor and not str_parse and not int_tparam
-                        and not tparam_arg
+                if (scalar_ctor and not str_parse and not tparam_arg
                         and not (_ctor_arg_slot_ok(p.type, analyzer)
                                  and (_resolved_scalar(
                                           analyzer.get_expr_type(a), analyzer)
@@ -11697,7 +11699,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     lc.analyzer) is not None)
             view_str_field = (
                 str_field_inner
-                and e.coercion.name in _VIEW_TARGET_STR_COERCIONS
+                and e.coercion.name in VIEW_TARGET_STR_COERCIONS
                 and _witness("coerce.str_field_view"))
             inner = _lower_expr(
                 e.expr, lc, declared,
@@ -12719,8 +12721,7 @@ def lower_print_sink(file_val: TpyExpr, lc: '_LowerCtx',
         return THIRIfExpr(
             result_type=analyzer.get_expr_type(file_val),
             cond=cond, then=then, orelse=orelse, form=Form.BORROW,
-            normalized=_select_result(Held.BORROWED, file_val, lc,
-                                      (then, orelse), temporary=False),
+            normalized=_select_result(Held.BORROWED, file_val, lc, temporary=False),
             loc=getattr(file_val, "loc", None))
     if isinstance(file_val, TpyFieldAccess):
         rtype = analyzer.get_expr_type(file_val)
@@ -13535,6 +13536,18 @@ def _witness_container_elem_fam(slot: 'TpyType | None', analyzer) -> None:
     if fam in ("enum", "optional", "tuple", "container", "record", "bytes"):
         _witness(f"containerlit.{fam}_elem")
 
+def _copied_in_place(member: TpyExpr, payload: TpyType,
+                     lc: '_LowerCtx') -> bool:
+    """Whether a copied tuple-literal member is a call handing back a C++
+    reference to the element's storage type `payload`: an lvalue the
+    literal's construction copies in place, as the member's own element
+    row renders it."""
+    return (isinstance(member, (TpyCall, TpyMethodCall))
+            and call_returns_cpp_ref(lc.analyzer,
+                                     member.resolved_function_info)
+            and storage_type(lc.analyzer.get_expr_type(member)) == payload)
+
+
 def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
                          lc: '_LowerCtx',
                          declared: dict[str, TpyType], *,
@@ -13558,9 +13571,19 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem_slot)))
         member = e.elements[i]
         payload = tuple_elem_payload(elem_slot)
-        if own_element_copied(member, payload, lc.analyzer):
+        if (own_element_copied(member, payload, lc.analyzer)
+                and not _copied_in_place(member, payload, lc)):
             # A borrowed member sema declared a copy of builds as its
-            # explicit `copy(member)` would.
+            # explicit `copy(member)` would -- but an lvalue of the
+            # element's own storage type, which the literal's construction
+            # copies in place: a name holding it, or a call lending it.
+            if isinstance(member, TpyName):
+                read = _lower_expr(member, lc, declared)
+                src = read.source
+                if (src is not None and src.held is Held.STORAGE
+                        and not src.pointer_held
+                        and storage_type(read.result_type) == payload):
+                    return read
             return _lower_copy_special(member, "copy", payload, lc, declared,
                                        getattr(member, "loc", None))
         if (isinstance(member, TpyFieldAccess) and member.consuming_move
@@ -14091,7 +14114,7 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             result_type=held_t, spelled_cpp=f"std::tuple<{', '.join(src)}>",
             elem_cpps=tuple(src), elements=tuple(lowered),
             addr_of=tuple(lifts), elem_wraps=elem_wraps or (),
-            loc=getattr(e, "loc", None)), lc)
+            loc=getattr(e, "loc", None)), lc, record_of=e)
         return converted(source, param_tuple_slot(
             dest, analyzer, const=target_readonly), analyzer)
     _witness("btuple.literal")
@@ -15983,12 +16006,8 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             slot_t = resolve_tuple_pending(unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer)
             _witness("move.own_tuple_ptr_lift")
-            per_elem = elementwise_plan(
-                lowered, param_tuple_slot(slot_t, lc.analyzer), lc.analyzer)
-            return (per_elem.expr if per_elem is not None
-                    else converted(lowered,
-                                   param_tuple_slot(slot_t, lc.analyzer),
-                                   lc.analyzer))
+            return converted(lowered, param_tuple_slot(slot_t, lc.analyzer),
+                             lc.analyzer)
         _witness("move.own_tuple")
         return moved
     if _own_tuple_decay_copy_arg(a, ptype, lc, declared):
@@ -16123,15 +16142,14 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     mslot = _unwrap_own(pslot.element_types[i])
                     mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                         mslot)))
-                    if (verdict(lc.analyzer.ctx, sub).disposition
-                            is Disposition.COPY):
+                    copied = own_element_copy_member(
+                        sub, own_element_payload(pslot.element_types[i]),
+                        lc.analyzer)
+                    if copied is not None:
                         # A borrowed member sema declared a copy of: it
                         # builds exactly as its explicit `copy(p)` would,
                         # of the payload an owned element holds.
-                        payload = owned_payload(pslot.element_types[i])
-                        if payload is None:
-                            payload = mbare
-                        if own_element_copy_type(sub, lc.analyzer) != payload:
+                        if not copied:
                             note_detail("arg.own_element_copy_source")
                             own_elems_ok = False
                             break
@@ -16164,8 +16182,10 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                 a.elements[i], "copy",
                                 _unwrap_own(pslot.element_types[i]), lc,
                                 declared, getattr(a.elements[i], "loc", None))
-                            if (verdict(lc.analyzer.ctx, a.elements[i])
-                                .disposition is Disposition.COPY)
+                            if own_element_copy_member(
+                                a.elements[i], own_element_payload(
+                                    pslot.element_types[i]),
+                                lc.analyzer) is not None
                             else _ptr_opt_lift(a.elements[i],
                                                ptr_opt_member(i), lc, declared)
                             if ptr_opt_member(i) is not None
@@ -16214,14 +16234,6 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                  allow_temps=temp_args))
             lowered = _lower_expr(a, lc, declared, use=_use,
                                   allow_unrouted_name=True)
-            mv = _node_moves(lowered)
-            if (isinstance(a, TpyName) and not mv
-                    and contains_reference_type(_own_t)
-                    and not verdict(lc.analyzer.ctx, a).copied):
-                # A copy of a reference the store would make silently; a
-                # tuple of plain values copies like any value.
-                note_detail("arg.own_tuple_undeclared_copy")
-                raise ThirUnsupported("expr.tuple_arg")
             _witness("arg.own_tuple_storage")
             stored = _field_write._converted(
                 lowered, _field_write.field_slot_use(
@@ -18416,7 +18428,6 @@ def _lower_truth_tested_ternary(e: TpyIfExpr, lc: '_LowerCtx',
     return THIRIfExpr(result_type=BOOL, cond=cond, then=then,
                       orelse=orelse, form=Form.VALUE,
                       normalized=_select_result(Held.VALUE, e, lc,
-                                                (then, orelse),
                                                 temporary=True),
                       loc=getattr(e, "loc", None))
 
@@ -19180,7 +19191,7 @@ def _lower_narrowed_ternary(e: TpyIfExpr, ifn, slot, rtype,
     return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                       orelse=orelse, form=form,
                       normalized=_select_result(_held_of_form(form), e,
-                                                lc, (then, orelse)),
+                                                lc),
                       loc=loc)
 
 
@@ -19437,7 +19448,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.BORROW,
                           normalized=_select_result(Held.BORROWED, e,
-                                                    lc, (then, orelse)),
+                                                    lc),
                           loc=loc)
     vopt = (sopt if sopt is not None
             else _value_opt_ternary_result(result_t, analyzer))
@@ -19455,8 +19466,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                  else "ifexpr.value_opt")
         return THIRIfExpr(result_type=vopt, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE,
-                          normalized=_select_result(Held.VALUE, e, lc,
-                                                    (then, orelse)),
+                          normalized=_select_result(Held.VALUE, e, lc),
                           loc=loc)
     u_res = _eligible_ptr_union_wide(
         unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result_t))),
@@ -19474,7 +19484,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIfExpr(result_type=u_res, cond=cond, then=then,
                           orelse=orelse, form=Form.BORROW,
                           normalized=_select_result(Held.BORROWED, e,
-                                                    lc, (then, orelse)),
+                                                    lc),
                           loc=loc)
     rec_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(result_t)))
     if (bind and _f1_tuple(rec_t, analyzer) is not None
@@ -19488,7 +19498,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIfExpr(
             result_type=result_t, cond=cond, then=then, orelse=orelse,
             form=Form.STORAGE,
-            normalized=_select_result(Held.STORAGE, e, lc, (then, orelse),
+            normalized=_select_result(Held.STORAGE, e, lc,
                                       temporary=False), loc=loc)
     if (isinstance(rec_t, TupleType) and rec_t.is_mixed_own()
             and isinstance(e.then_expr, (TpyCall, TpyMethodCall))
@@ -19516,7 +19526,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.BORROW,
                           normalized=_select_result(Held.BORROWED, e,
-                                                    lc, (then, orelse)),
+                                                    lc),
                           loc=loc)
     # LIST comps only: the set/dict flavors have no witness, so they keep
     # rejecting until one exists (the machinery below is family-blind, so
@@ -19543,7 +19553,6 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         return THIRIfExpr(result_type=result_t, cond=cond, then=then,
                           orelse=orelse, form=Form.VALUE,
                           normalized=_select_result(Held.VALUE, e, lc,
-                                                    (then, orelse),
                                                     temporary=True),
                           loc=loc)
     # A value-form record ternary is a value select, the tuple/scalar
@@ -19616,7 +19625,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                               then=then, orelse=orelse,
                               form=Form.BORROW,
                               normalized=_select_result(
-                                  Held.BORROWED, e, lc, (then, orelse),
+                                  Held.BORROWED, e, lc,
                                   temporary=False),
                               loc=loc)
         fresh_arms = None
@@ -19633,7 +19642,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                               then=fresh_arms[0], orelse=fresh_arms[1],
                               form=Form.VALUE,
                               normalized=_select_result(
-                                  Held.VALUE, e, lc, fresh_arms,
+                                  Held.VALUE, e, lc,
                                   temporary=True),
                               loc=loc)
         if fresh_arms is not None and _rec_result:
@@ -19681,12 +19690,12 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
             _witness("ifexpr.record_prvalue_name_arm")
             # The `?:` copies an existing object out of its lvalue arm: the
             # slot takes it as it takes that object, through the copy sema
-            # declared for it (`Source.copy_declared`).
+            # declared for it (`copy_permitted`).
             return THIRIfExpr(result_type=result_t, cond=cond,
                               then=vals[0], orelse=vals[1],
                               form=Form.VALUE,
                               normalized=_select_result(
-                                  Held.STORAGE, e, lc, (vals[0], vals[1])),
+                                  Held.STORAGE, e, lc),
                               loc=loc)
         elif any(lvalue_arms):
             # One lvalue arm beside a fresh one: the fresh arm is
@@ -19717,7 +19726,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
                               then=arms[0], orelse=arms[1],
                               form=Form.BORROW,
                               normalized=_select_result(
-                                  Held.BORROWED, e, lc, (arms[0], arms[1])),
+                                  Held.BORROWED, e, lc),
                               loc=loc)
         elif _rec_result:
             note_detail("ifexpr.record_arm")
@@ -19862,7 +19871,7 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
     return THIRIfExpr(result_type=slot if slot is not None else rtype,
                       cond=cond, then=then, orelse=orelse, form=form,
                       normalized=_select_result(_held_of_form(form), e,
-                                                lc, (then, orelse)),
+                                                lc),
                       loc=loc)
 
 def _lower_int_literal(value: int, result_type: TpyType, lc: '_LowerCtx',

@@ -1,0 +1,3 @@
+main.py:36: warning: copies A | None into owned storage; use copy() to make this explicit
+main.py:41: warning: copies A | B into owned storage; use copy() to make this explicit
+main.py:46: warning: copies A into owned storage; use copy() to make this explicit

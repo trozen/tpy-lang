@@ -569,6 +569,19 @@ class TpyType:
             return td.is_value_type
         return False
 
+    def copy_is_cheap(self) -> bool:
+        """Whether a copy of this type is known to cost no more than its
+        move: a value type whose copy allocates nothing, and every member
+        it holds in place (a tuple's, an Optional's, a union's) likewise. An
+        indirection copies its handle, never its referent. An open type
+        parameter is never known cheap, whatever its bound: it may be
+        instantiated at `str`."""
+        if not self.is_value_type() or self.is_expensive_copy():
+            return False
+        if is_indirection_type(self):
+            return True
+        return all(t.copy_is_cheap() for t in self.inner_types())
+
     def is_trivially_destructible(self) -> bool:
         """Return True if the C++ type has a trivial destructor.
 
@@ -1094,7 +1107,7 @@ class TypeParamRef(TpyType):
         if self.kind == TypeParamKind.INT:
             # INT type params are std::size_t values
             return True
-        if self.bound is not None and isinstance(self.bound, NominalType) and self.bound.qualified_name() == "tpy.ValueType":
+        if is_value_type_bound(self.bound):
             return True
         # Unknown at definition time - the trait decides at C++ instantiation
         return False
@@ -1103,6 +1116,9 @@ class TypeParamRef(TpyType):
         # Any instantiation, a value-bounded one included, may carry a class
         # with `__del__`; only an INT param is a plain number.
         return self.kind != TypeParamKind.INT
+
+    def copy_is_cheap(self) -> bool:
+        return self.kind == TypeParamKind.INT
 
     def value_ops_run_user_code(self) -> bool:
         return self.kind != TypeParamKind.INT
@@ -4582,6 +4598,25 @@ def type_param_names(t: TpyType) -> frozenset[str]:
     else:
         inner = list(t.inner_types())
     return frozenset().union(*(type_param_names(i) for i in inner))
+
+
+def is_value_type_bound(bound: 'TpyType | None') -> bool:
+    """Whether a type parameter's bound is `ValueType`: every
+    instantiation is a value type."""
+    return (isinstance(bound, NominalType)
+            and bound.qualified_name() == "tpy.ValueType")
+
+
+def without_type_param_bounds(t: TpyType) -> TpyType:
+    """`t` with every type parameter's bound dropped: the type as an
+    unbounded body reads it, whatever bound a signature attached."""
+    if isinstance(t, TypeParamRef):
+        return t if t.bound is None else TypeParamRef(t.name, kind=t.kind)
+    inners = t.inner_types()
+    new = tuple(without_type_param_bounds(i) for i in inners)
+    if any(n is not o for n, o in zip(new, inners)):
+        return t.with_inner_types(new)
+    return t
 
 
 def attach_type_param_bounds(t: TpyType, bounds: dict[str, 'NominalType']) -> TpyType:

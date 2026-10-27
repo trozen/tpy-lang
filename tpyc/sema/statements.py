@@ -63,7 +63,8 @@ from ..parse import (
     TpySetComprehension,
     is_stable_address_lvalue,
 )
-from ..coercions import Coercion, CoercionContext, int_payload
+from ..coercions import (Coercion, CoercionContext, int_payload,
+                         peel_identity_coercions)
 from ..namespace import BindingKind, NameBinding
 from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
@@ -153,7 +154,8 @@ from .numeric_lattice import same_width_family
 from .type_join import (expression_spelling, operand_spelling,
                         python_type_name, user_type_name,
                         wider_store_message)
-from .compatibility import TupleSink, inferred_field_slot, owned_tuple_slots
+from .compatibility import (TupleSink, inferred_field_slot,
+                            owned_tuple_slots, result_owns_storage)
 from .context import (
     BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS,
     CLASS_CONSTANT_CONTEXT, PENDING_CONTAINER_TYPES, element_index_key,
@@ -210,6 +212,13 @@ _BLOCK_KEYWORD = {
     TpyWith: "with",
     TpyMatch: "match",
 }
+
+
+def _converts(value: TpyExpr, written: TpyExpr) -> bool:
+    """Whether the coercions `coerce_expr` recorded between the written
+    return value and the slot convert it -- an identity str-family coercion
+    (`String` into `str`: both spell std::string) does not."""
+    return peel_identity_coercions(value, written) is not written
 
 
 def _declares_here(stmt: TpyStmt, name: str) -> bool:
@@ -1155,9 +1164,11 @@ class StatementAnalyzer:
             if value_leaves(ret_type):
                 self.pend.defer(stmt, (ret_type,),
                                 lambda ts: setattr(stmt, "value_type", ts[0]))
-            self._mark_finally_deferred_return(stmt, ret_type, expected)
+            written = stmt.value
             stmt.value = self.compat.coerce_expr(stmt.value, ret_type, expected, "return value",
                                                   coercion_ctx=CoercionContext.RETURN, is_return=True)
+            self._mark_finally_deferred_return(stmt, written, ret_type,
+                                               expected)
             # Track return-type context for pending list/dict/set deduction
             self.deduction.mark_container_return_context(stmt.value, expected)
             # Warn when a method copies a str field on return
@@ -1201,10 +1212,13 @@ class StatementAnalyzer:
                 isinstance(returned_name, TpyName)
                 and own_tuple_target(own_expected) is not None
                 and self.compat.reads_capture(returned_name.name))
+            if not captured_tuple:
+                # A result owning a leaf is an owning sink, `Own` spelled
+                # or not (an Optional of an `Own`-element tuple).
+                self.compat.register_owned_result(
+                    erased_source(stmt.value), own_expected, TupleSink.RETURN)
             if isinstance(own_expected, OwnType) and not captured_tuple:
                 own_source = erased_source(stmt.value)
-                self.compat.register_owned_result(own_source, own_expected,
-                                                  TupleSink.RETURN)
                 if self.compat.is_copy_call(own_source):
                     self._warn_unnecessary_return_copy(own_source)
                 else:
@@ -1390,7 +1404,8 @@ class StatementAnalyzer:
                 or registry.get_record(name) is not None
                 or registry.get_enum(name) is not None)
 
-    def _mark_finally_deferred_return(self, stmt: TpyReturn, ret_type: TpyType,
+    def _mark_finally_deferred_return(self, stmt: TpyReturn, value: TpyExpr,
+                                      ret_type: TpyType,
                                       expected: TpyType) -> None:
         """`return <name>` under a non-suspending finally: for eligible
         reference-type shapes, keep the auto-move mark (the exception-path
@@ -1416,7 +1431,7 @@ class StatementAnalyzer:
         """
         # A returned Own param is consumed by the return whatever capture
         # takes it (a finally that rebinds it keeps an eager one).
-        for _, leaf in tuple_literal_leaves(stmt.value):
+        for _, leaf in tuple_literal_leaves(value):
             if isinstance(leaf, TpyName):
                 self.ctx.mark_own_param_consumed(leaf.name)
                 # The last-use mark does not see a finally's reads through an
@@ -1424,21 +1439,25 @@ class StatementAnalyzer:
                 # reading a moved-from object: always refuse.
                 if leaf in self.ctx.finally_rebound_returns:
                     self._check_eager_return_copyable(leaf, leaf)
-        if isinstance(stmt.value, TpyTupleLiteral):
-            self._mark_finally_deferred_tuple_return(stmt, expected)
+        if isinstance(value, TpyTupleLiteral):
+            self._mark_finally_deferred_tuple_return(stmt, value, expected)
             return
-        if (isinstance(stmt.value, TpyName)
-                and self._mark_finally_deferred_tuple_name(stmt, expected)):
+        # The capture moves the local itself out after the chain, so a name
+        # the return converts (other than an identity coercion) stays eager.
+        if not isinstance(value, TpyName) or _converts(stmt.value, value):
             return
-        if not (isinstance(stmt.value, TpyName)
-                and stmt.value in self.ctx.finally_return_candidates
-                and self._defers_to_settlement(stmt.value.name)):
+        if self._mark_finally_deferred_tuple_name(stmt, value, expected):
+            return
+        if not (value in self.ctx.finally_return_candidates
+                and self._defers_to_settlement(value.name)):
             return
         exp = unwrap_ref_type(expected)
         val = unwrap_readonly(unwrap_own(unwrap_ref_type(ret_type)))
-        declared = self._declared_binding(stmt.value.name)
+        declared = self._declared_binding(value.name)
         eligible = False
-        if isinstance(exp, OwnType) and not exp.wrapped.is_value_type():
+        if (result_owns_storage(exp)
+                and not unwrap_own(exp).copy_is_cheap()
+                and not isinstance(exp, OptionalType)):
             eligible = self._own_slot_deferrable(declared, val)
         elif isinstance(exp, OptionalType) and not exp.uses_pointer_repr():
             # Shape B: pointer-repr Optional local returned as the storage
@@ -1455,14 +1474,15 @@ class StatementAnalyzer:
                 eligible = (isinstance(inner, TupleType)
                             and any(isinstance(unwrap_readonly(et), OwnType)
                                     and not unwrap_readonly(
-                                        unwrap_own(et)).is_value_type()
+                                        unwrap_own(et)).copy_is_cheap()
                                     for et in inner.element_types))
         if eligible:
-            restored = stmt.value not in self.ctx.all_last_uses
-            self.ctx.all_last_uses.add(stmt.value)
+            restored = value not in self.ctx.all_last_uses
+            self.ctx.all_last_uses.add(value)
             stmt.finally_deferred_capture = True
+            stmt.finally_deferred_name = value
             self.compat.record_owning_read(FinallyCapture(
-                stmt.value.name, stmt.value, stmt, None,
+                value.name, value, stmt, None,
                 restored_last_use=restored))
 
     def _defers_to_settlement(self, name: str) -> bool:
@@ -1517,11 +1537,12 @@ class StatementAnalyzer:
                  or declared.uses_pointer_repr())
             and not is_protocol_type(declared))
         return (declared_ok
-                and not val.is_value_type()
+                and not val.copy_is_cheap()
                 and not isinstance(val, (OptionalType, UnionType, TupleType))
                 and not is_protocol_type(val))
 
     def _mark_finally_deferred_tuple_return(self, stmt: TpyReturn,
+                                            value: TpyTupleLiteral,
                                             expected: TpyType) -> None:
         """The tuple-literal twin of shape A, per member: a member that is an
         owned reference-type local at an `Own` element slot is deferred like
@@ -1535,7 +1556,7 @@ class StatementAnalyzer:
         if not isinstance(exp, TupleType):
             return
         paths: list[tuple[int, ...]] = []
-        leaves_all = tuple_literal_leaves(stmt.value)
+        leaves_all = tuple_literal_leaves(value)
         # A name the tuple holds twice cannot be one pending alias per slot:
         # it keeps the eager capture, where the explicit-copy rule applies
         # exactly as it does without a finally.
@@ -1554,9 +1575,10 @@ class StatementAnalyzer:
             if slot is None:
                 continue
             payload = owned_payload(slot)
-            owned = whole_owned or payload is not None
+            owned = (whole_owned or payload is not None
+                     or result_owns_storage(slot))
             slot_t = payload if payload is not None else unwrap_readonly(slot)
-            if not owned or slot_t.is_value_type():
+            if not owned or slot_t.copy_is_cheap():
                 continue
             leaf_t = self.ctx.get_expr_type(leaf)
             if leaf_t is None:
@@ -1567,7 +1589,7 @@ class StatementAnalyzer:
                 paths.append(path)
         if not paths:
             return
-        leaves = dict(tuple_literal_leaves(stmt.value))
+        leaves = dict(tuple_literal_leaves(value))
         for path in paths:
             restored = leaves[path] not in self.ctx.all_last_uses
             self.ctx.all_last_uses.add(leaves[path])
@@ -1580,13 +1602,12 @@ class StatementAnalyzer:
         stmt.finally_deferred_capture = True
 
     def _mark_finally_deferred_tuple_name(self, stmt: TpyReturn,
+                                          value: TpyName,
                                           expected: TpyType) -> bool:
         """`return t` of an owned tuple local into an owning tuple slot: the
         whole tuple is the deferred member (path `()`), captured like the
         scalar `return b` when the lowering finds the local's storage is the
         return's own C++ type, else kept eager."""
-        value = stmt.value
-        assert isinstance(value, TpyName)
         exp = unwrap_readonly(unwrap_ref_type(expected))
         whole_owned = isinstance(exp, OwnType)
         if whole_owned:
@@ -1595,6 +1616,9 @@ class StatementAnalyzer:
             return False
         if not (whole_owned or any(
                 (payload := owned_payload(et)) is not None
+                # Not `copy_is_cheap`: whether a value-only local's C++ is
+                # the slot's own (no per-element conversion) is decided
+                # only in the lowering, so such a tuple stays eager.
                 and not payload.is_value_type()
                 for et in exp.element_types)):
             return False
@@ -3377,6 +3401,7 @@ class StatementAnalyzer:
             for ret, path in entry[1]:
                 if path is None or path == ():
                     ret.finally_deferred_capture = False
+                    ret.finally_deferred_name = None
                     ret.finally_deferred_leaves = ()
                     leaf = ret.value
                     while isinstance(leaf, TpyCoerce):
@@ -6762,6 +6787,12 @@ class StatementAnalyzer:
         stamp_bind_kind(self.ctx, stmt, stmt.name, stmt.init, var_type,
                         rebind=existing_type is not None)
         bt.rebind_borrower(stmt.name, stmt.init)
+        if (stmt.init is not None and var_type is not None
+                and self.compat.settles_body_local(stmt.name, module=True)):
+            # The binding is an owning sink of what it owns (`SinkRead.binds`).
+            self.compat.register_sink(stmt.init, unwrap_ref_type(var_type),
+                                      TupleSink.LOCAL, per_leaf=True,
+                                      binds=stmt)
         # Bound async-METHOD coroutine: stable-lvalue receiver + borrow
         # registration. Keyed on the init shape alone so every binding
         # form (fresh, annotated-erased, rebind) is covered, and placed
@@ -7106,7 +7137,7 @@ class StatementAnalyzer:
                 # The targets own the elements the source hands over where
                 # the read consumes it: the read's record says which move.
                 self.compat.register_sink(stmt.value, rhs_type,
-                                          TupleSink.LOCAL, per_leaf=True)
+                                          TupleSink.UNPACK, per_leaf=True)
                 source_consumed = self.compat.claim_name_move(stmt.value)
                 if self.compat.holds_reference_leaf(rhs_type):
                     self.ctx.assert_slot_effect("an unpack's ownership claim")
@@ -8113,6 +8144,15 @@ class StatementAnalyzer:
             self._mark_rebound_roots(inner_target, stmt.value, rebind=True)
             stamp_bind_kind(self.ctx, stmt, stmt.target.name, bind_value,
                             bind_type, rebind=True)
+            if (target_type is not None
+                    and self.compat.settles_body_local(
+                        stmt.target.name, module=True)):
+                # The binding is an owning sink of what it owns
+                # (`SinkRead.binds`).
+                self.compat.register_sink(
+                    stmt.value, unwrap_ref_type(target_type),
+                    TupleSink.LOCAL, per_leaf=True,
+                    binds=stmt)
             _register_tuple_binding_borrows(
                 self.ctx, stmt.target.name, stmt.value, target_type)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
@@ -8388,7 +8428,15 @@ class StatementAnalyzer:
             spelled = next((pending[name][0] for pending
                             in self.ctx.func.pending_return_borrows
                             if name in pending), None)
-            if spelled is not None:
+            declared = self._declared_binding(name)
+            if (spelled is not None and declared is not None
+                    and declared.is_value_type()):
+                # Only reference types were ever deferred, so `del` of a
+                # value under a pending return compiled; the eager capture
+                # keeps that. Allowing it for references would change what
+                # compiles.
+                self._decline_deferred_return(name, stmt)
+            elif spelled is not None:
                 raise self.ctx.error(
                     f"cannot delete '{name}' in this finally block: an "
                     f"enclosed '{spelled}' still borrows it (the value "

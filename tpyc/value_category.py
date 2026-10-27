@@ -255,7 +255,12 @@ def call_hands_back_value(call: TpyExpr) -> bool:
         return False
     if call.result_form.by_value:
         return True
-    fi = call.resolved_function_info
+    return _declares_own_return(call.resolved_function_info)
+
+
+def _declares_own_return(fi: 'FunctionInfo | None') -> bool:
+    """The callee's declared return is `Own[...]` (which sema strips off
+    the call's type)."""
     rt = getattr(fi, "return_type", None) if fi is not None else None
     return (isinstance(rt, TpyType)
             and isinstance(unwrap_readonly(unwrap_ref_type(
@@ -264,7 +269,8 @@ def call_hands_back_value(call: TpyExpr) -> bool:
 
 def lends_pointer_form_result(analyzer: 'ValueCategoryAnalyzer',
                               expr: TpyExpr) -> bool:
-    """Whether a call hands back the pointer BORROW form -- a pointer-repr
+    """Whether a call (an operator or a `__getitem__` subscript is its
+    dunder's call) hands back the pointer BORROW form -- a pointer-repr
     Optional (`T*`) or a pointer-variant union (`Union<A*, B*>`) -- of
     storage the callee lent. The return rule refuses a fresh value at such
     a return (`Own[...]` is the by-value spelling), so only
@@ -280,10 +286,14 @@ def lends_pointer_form_result(analyzer: 'ValueCategoryAnalyzer',
             and not is_bool_type(analyzer.get_expr_type(expr))):
         return (lends_pointer_form_result(analyzer, expr.left)
                 or lends_pointer_form_result(analyzer, expr.right))
-    if (not isinstance(expr, (TpyCall, TpyMethodCall))
-            or call_hands_back_value(expr)):
+    link = _borrow_link(expr)
+    if link is None:
         return False
-    fi = expr.resolved_function_info
+    fi = link[0]
+    if (call_hands_back_value(expr)
+            if isinstance(expr, (TpyCall, TpyMethodCall))
+            else _declares_own_return(fi)):
+        return False
     if fi is not None and fi.is_constructor:
         return False
     t = analyzer.get_expr_type(expr)

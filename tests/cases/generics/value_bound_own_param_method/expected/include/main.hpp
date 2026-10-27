@@ -46,7 +46,7 @@ inline Cell<T>::Cell(T item) : item(std::move(item)) {}
 //     return 1
 template<::tpy::ValueType T>
 inline int32_t Cell<T>::replace(T item) {
-    this->item = item;
+    this->item = std::move(item);
     return 1;
 }
 

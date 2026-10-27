@@ -9,7 +9,7 @@ from dataclasses import replace as dc_replace
 from contextlib import AbstractContextManager, nullcontext
 from typing import Callable, Optional, Sequence
 
-from ..typesys import resolve_int_literals
+from ..typesys import is_value_type_bound, resolve_int_literals
 from ..typesys import (
     make_readonly,
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, VoidType, VOID,
@@ -101,7 +101,7 @@ from .storage_walk import StorageKey
 from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
-from .compatibility import TypeCompatibility
+from .compatibility import TupleSink, TypeCompatibility
 from .capture_copies import CopyReason, warn_closure_captures
 from .list_literals import IterableHelper
 from .local_deduction import LocalTypeDeduction
@@ -1514,11 +1514,9 @@ class SemanticAnalyzer:
         if payload.is_value_type():
             return True
         # Generic T bounded to ValueType: same as value type
-        if isinstance(payload, TypeParamRef):
-            bound = self.type_ops.get_type_param_bound(payload.name)
-            if (bound is not None and isinstance(bound, NominalType)
-                    and bound.qualified_name() == "tpy.ValueType"):
-                return True
+        if isinstance(payload, TypeParamRef) and is_value_type_bound(
+                self.type_ops.get_type_param_bound(payload.name)):
+            return True
         # @nocopy types are lifetime-significant: taking Own[T] to
         # consume-by-drop (hand it off and let it drop) is a legitimate
         # ownership use, so don't flag it. The drop lands at the CALLER's
@@ -1718,11 +1716,20 @@ class SemanticAnalyzer:
             if not isinstance(fn, TpyFunction):
                 continue
             with self.ctx.reenter(parked) as state:
+                sources = list(state.pending_generic_yield_sources)
                 fn.generic_yield_borrows = all(
                     not ephemeral and not self.compat.is_dangling_return(
                         value, gen_yield=True, assume_unknown_calls_safe=False)
-                    for value, ephemeral in state.pending_generic_yield_sources)
+                    for value, ephemeral in sources)
                 state.pending_generic_yield_sources.clear()
+                if not fn.generic_yield_borrows:
+                    # The frame stores what it yields: each yield is an
+                    # owning sink, registered now that its slot is settled
+                    # (the body settled first, so it reads its verdicts).
+                    slot = OwnType(unwrap_ref_type(fn.generator_yield_type))
+                    for value, _ephemeral in sources:
+                        self.compat.register_owned_result(
+                            value, slot, TupleSink.YIELD)
         self.ctx.deferred_generic_yield_settles.clear()
 
     def _analyze_function(self, func: TpyFunction, *,

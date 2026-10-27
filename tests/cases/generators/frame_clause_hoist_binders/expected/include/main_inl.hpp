@@ -535,7 +535,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_optional::__ne
         for (; __beg_0 != __end_0; ++__beg_0) {
             int32_t i = *__beg_0;
             auto __tup_1 = ::tpyapp::main::opt_pair();
-            n = std::get<0>(__tup_1);
+            n = std::move(std::get<0>(__tup_1));
             s = std::move(std::get<1>(__tup_1));
         }
         __state = S_RESUME_0;

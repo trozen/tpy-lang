@@ -91,6 +91,23 @@ would. A tuple literal's rvalue elements at a borrow slot are built by value
 into the lambda's argument and lent from its parameter; any other record
 element lent out of a temporary is refused (`tuple.lend_from_temporary`),
 an Optional or union one is lent from the parameter.
+Every copy of an existing object a conversion makes is checked once, in
+`convert` (`_copy_permitted`): the plan names each leaf it copies by its path
+in the converted read (`Plan.copied`), and the read's record (`Source.record`)
+must permit it -- a leaf sema's record copies or a `copy()` spells, the root
+path for a whole copy (`SourceRecord.copy_permitted`), or a leaf it moves a
+new value into (`SourceRecord.fresh`) -- else the conversion refuses
+(`copy_undeclared`).
+It runs at assignments, arguments and results; a member-init is not yet
+checked. Its population is the reference leaves (`is_reference_leaf`, sema's
+test: an open `T` counts, whatever its bound -- that a `ValueType` bound
+makes its copy unobservable is sema's decision, a VALUE leaf of the record;
+the lowering reads no bound) the destination slot
+owns (`owned_reference_paths`), and for each of them the read's record has a
+leaf: a leaf with none is an internal error (`copy.no_record`), never a second
+rule. A source holding no existing object -- a construction, a literal, a
+fresh call result -- is no exemption: its record's MOVE leaves are not
+`borrowed`, which permits their copy.
 Comparison across forms stays in the runtime (`format.hpp`):
 `tuple_eq`/`tuple_lt`/`tuple_elem_eq`/`tuple_cmp_ref`.
 

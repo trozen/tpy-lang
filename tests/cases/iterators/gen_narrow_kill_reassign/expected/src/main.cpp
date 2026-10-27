@@ -37,7 +37,7 @@ std::expected<std::string, ::tpy::StopIteration> __gen_gen::__next__() {
     case S_RESUME_0: {  // after: yield "int:" + str(a + 1)
         const auto& __a = std::get<::tpy::BigInt>(a);
         auto __tup_1 = ::tpyapp::main::remake();
-        a = std::get<0>(__tup_1);
+        a = std::move(std::get<0>(__tup_1));
         n = std::move(std::get<1>(__tup_1));
         __state = S_RESUME_1;
         return "rebound";

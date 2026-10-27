@@ -1432,6 +1432,9 @@ class TpyReturn(TpyStmt):
     # the inline finally chain and materializes (moves) the return value
     # after it, so finally mutations stay visible (CPython aliasing).
     finally_deferred_capture: bool = False
+    # With the stamp on a returned name: that name, under the identity
+    # coercions the return may wrap it in.
+    finally_deferred_name: Optional['TpyName'] = None
     # With the stamp on a returned tuple literal: the index paths of the
     # members that are such locals (each captured by pointer before the
     # chain); every other member is evaluated into a temporary there.

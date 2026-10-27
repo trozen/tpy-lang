@@ -173,7 +173,7 @@ void container_ternary() {
 void getter_member() {
     G g = G();
     H h = H();
-    h.q = std::tuple<int32_t, C>{1, C(g.get())};
+    h.q = std::tuple<int32_t, C>{1, g.get()};
     g.c.v = 33;
     std::cout << "getter_member" << " " << std::get<1>(h.q).v << "\n" << ::tpy::check_signals;
 }

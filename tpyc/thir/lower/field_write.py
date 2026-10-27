@@ -701,7 +701,8 @@ def read_stored(v: TpyExpr, dest: Slot, lc: _LowerCtx,
         copy_row = _lower_copy_record(v, lc, declared, slot_type=copy_slot,
                                       loc=getattr(v, "loc", None))
         if copy_row is not None:
-            return StoredRead(stamped(copy_row, lc), row="record_copy")
+            return StoredRead(stamped(copy_row, lc, record_of=v),
+                              row="record_copy")
         ctor_peel = copy_ctor_rvalue_source(v, analyzer)
         if ctor_peel is not None:
             return StoredRead(_lower_expr(

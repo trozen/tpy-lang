@@ -15,8 +15,10 @@ from typing import Callable
 
 import pytest
 
+from ..codegen_cpp.context import ThirRejectError
 from ..compilation_context import activate_compiler
 from ..identity_map import IdentityMap
+from ..parse.nodes import SourceLocation
 from ..typesys import INT32, NominalType, TupleType
 from . import nodes as th
 from .lower import iter_module_callables, lower_function
@@ -29,7 +31,9 @@ from .nodes import (
     Form, THIRExpr, THIRFieldAccess, THIRLiteral, THIRName, THIRSelf,
     THIRSubscript,
 )
+from ..sema.source_records import Leaf, LeafPermission, SourceRecord
 from .source import (UNBOUND, BindingForm, BindingRepr, Held, Source,
+                     copy_permitted,
                      TraitAbi)
 from .testutil import _compile, _entry, lower_bodies
 from .validate import _iter_children
@@ -124,6 +128,40 @@ def test_reference_slot_refuses_a_dying_source(held: Held,
     assert convert(node, slot, None) == Refuse("borrow_source")
     lvalue = replace(node, source=Source(held=Held.BORROWED))
     assert not isinstance(convert(lvalue, slot, None), Refuse)
+
+
+def test_owned_reference_leaf_without_a_record_is_an_internal_error(
+        ) -> None:
+    # Sema decides every reference leaf an owning slot takes: a read
+    # reaching one with no record is a lowering bug, never a fallback rule.
+    slot = Slot(_REC, SlotConstruct.ASSIGN, holds=SlotHolds.OWNS)
+    x = _binding("x", pointer=False)
+    node = replace(THIRName(result_type=_REC, name="x", form=Form.STORAGE),
+                   source=Source(held=Held.STORAGE, binding=x))
+    with pytest.raises(ThirRejectError) as err:
+        convert(node, slot, None)
+    assert err.value.reason == "copy.no_record"
+    assert str(err.value).startswith(
+        "internal error: no ownership decision for the value 'x' stored by "
+        "an assignment")
+    recorded = replace(node, source=Source(
+        held=Held.STORAGE, binding=x,
+        record=SourceRecord({(): Leaf(False, True, LeafPermission.MOVE)})))
+    convert(recorded, slot, None)
+    # A tuple slot names the element path.
+    tt = TupleType((TupleType((_REC, INT32)), INT32))
+    tslot = Slot(tt, SlotConstruct.RETURN, holds=SlotHolds.OWNS)
+    tnode = replace(THIRName(result_type=tt, name="x", form=Form.STORAGE,
+                             loc=SourceLocation(line=7, column=4)),
+                    source=Source(held=Held.STORAGE, binding=x))
+    with pytest.raises(ThirRejectError) as terr:
+        convert(tnode, tslot, None)
+    assert str(terr.value).startswith(
+        "internal error: no ownership decision for tuple element 0.0 of "
+        "the value 'x' at line 7 stored by a return")
+    # A slot owning no reference leaf asks for none.
+    borrows = Slot(_REC, SlotConstruct.ASSIGN, holds=SlotHolds.BORROWS)
+    convert(node, borrows, None)
 
 
 def _lc(*, readonly: bool):
@@ -721,7 +759,9 @@ _PAIR = TupleType((_REC, INT32))
 # A parent whose every fact is set, so each leaf shows which it inherits.
 _PARENT = Source(held=Held.STORAGE, const=True, movable=True,
                  must_copy=True, captured=True, temporary=True,
-                 copy_declared=True, analyzed_type=_PAIR, named_type=_PAIR,
+                 record=SourceRecord({(): Leaf(True, True,
+                                               LeafPermission.EXPLICIT)}),
+                 analyzed_type=_PAIR, named_type=_PAIR,
                  binding=_binding("t", pointer=False))
 
 
@@ -756,26 +796,27 @@ def test_pointer_leaf_has_its_pointees_const_and_lifetime() -> None:
 
 @pytest.mark.parametrize("layout", ["inline", "pointer", "trait"])
 def test_unknown_leaf_facts_grant_nothing(layout: str) -> None:
-    # The parent's whole-value move and copy permission are not a leaf's:
-    # what the layout does not state grants no move and no copy.
+    # The parent's whole-value move is not a leaf's: what the layout does
+    # not state grants no move.
     leaf = element_source(
         _PARENT, 1, held=Held.VALUE, pointer=layout == "pointer",
         trait=TraitAbi.VAL_OR_PTR if layout == "trait" else None)
-    assert not leaf.movable and not leaf.copy_declared
-    assert leaf.pointee_owned is None and not leaf.undeclared
+    assert not leaf.movable
+    # The parent's copy permission covers every leaf.
+    assert copy_permitted(leaf) == frozenset({()})
+    assert leaf.pointee_owned is None
     assert leaf.analyzed_type == INT32
 
 
 def test_layout_facts_are_the_producers() -> None:
     # What the producer states -- the occurrence's move, the pointee's
-    # ownership, an undeclared read -- is kept as stated.
+    # ownership -- is kept as stated.
     leaf = element_source(_PARENT, 0, held=Held.BORROWED, pointer=True,
                           movable=True, pointee_owned=True)
     assert leaf.movable and leaf.pointee_owned is True
     leaf = element_source(_PARENT, 0, held=Held.BORROWED, pointer=True,
-                          pointee_owned=False, undeclared=True)
+                          pointee_owned=False)
     assert not leaf.movable and leaf.pointee_owned is False
-    assert leaf.undeclared
 
 
 @pytest.mark.parametrize("pointer", [False, True])

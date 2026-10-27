@@ -1,0 +1,5 @@
+call_member 1 9
+live_member 1 9
+live_nested 1 9
+param_member 9 1
+self_local 1 7

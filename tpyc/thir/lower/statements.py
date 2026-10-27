@@ -139,7 +139,7 @@ from ...type_def_registry import (
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.alias_rebind import bare_tuple
-from ...sema.source_records import Disposition, read_record, verdict
+from ...sema.source_records import read_record, verdict
 from ...sema.call_lends import expr_lends_storage
 from ...sema.context import UnnamedHolder
 from ...sema.aug_hold import holds_by_value
@@ -182,7 +182,7 @@ from ...liveness import (
 )
 from ...value_category import (
     binds_owned_value, call_hands_back_value, call_result_holdable, call_returns_cpp_ref, for_source_is_rvalue,
-    CONTAINER_LITERAL_NODES, is_rvalue_source, wants_move,
+    CONTAINER_LITERAL_NODES, is_rvalue_source,
     property_access_returns_cpp_ref,
     async_return_form, AsyncReturnForm,
 )
@@ -318,7 +318,8 @@ from .context import (
 )
 from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
     _declared_call_at_owning_elem, declared_call_elem_copy_ok,
-    own_element_copy_type, _chained_subscript_recv_type, _container_comp_arg,
+    own_element_copy_member, own_element_payload,
+    _chained_subscript_recv_type, _container_comp_arg,
     _value_opt_scalar_elem_arg, copy_construct_source,
     _print_tuple_record_elem, _borrow_tuple_local_type, _container_lit_elem_ok,
     _assert_narrow_info, _borrow_dunder_source,
@@ -6631,8 +6632,11 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
                 mslot = _unwrap_own(ret_ost.element_types[i])
                 mbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     mslot)))
-                if verdict(analyzer.ctx, sub).disposition is Disposition.COPY:
-                    if own_element_copy_type(sub, analyzer) != mbare:
+                copied = own_element_copy_member(
+                    sub, own_element_payload(ret_ost.element_types[i]),
+                    analyzer)
+                if copied is not None:
+                    if not copied:
                         note_detail("return.own_element_copy_source")
                         ok = False
                         break
@@ -6661,8 +6665,10 @@ def _return_tuple_literal(v: TpyTupleLiteral, stmt: TpyStmt, ret_slot: 'Slot',
                     v.elements[i], "copy", _unwrap_own(
                         ret_ost.element_types[i]), lc, declared,
                     getattr(v.elements[i], "loc", None))
-                if (verdict(analyzer.ctx, v.elements[i]).disposition
-                    is Disposition.COPY)
+                if own_element_copy_member(
+                    v.elements[i], own_element_payload(
+                        ret_ost.element_types[i]),
+                    analyzer) is not None
                 else _lower_container_elem(
                     v.elements[i], _unwrap_own(ret_ost.element_types[i]),
                     lc, declared, tuple_elem=True)
@@ -7030,7 +7036,7 @@ def _lower_resumable_return_value(ret: TpyReturn, lc: '_LowerCtx',
             and _node_moves(raw_value)):
         vt = lc.analyzer.get_expr_type(ret.value)
         vt = unwrap_readonly(vt) if vt is not None else None
-        if vt is not None and wants_move(vt):
+        if vt is not None and not vt.copy_is_cheap():
             value = THIRMove(result_type=value.result_type, value=value,
                              loc=getattr(ret, "loc", None))
     return value
@@ -7200,9 +7206,6 @@ def _owned_elem_movable(stmt: TpyTupleUnpack, i: int, el: Source,
     moves it: a pointer element whose pointee no read record covers, or a
     borrowed one, has no object to take, and an element the read does not
     move would be copied where the target owns."""
-    if el.pointer_held and el.undeclared:
-        note_detail("ptr_tuple.undeclared_sink")
-        raise ThirUnsupported(stmt_reject_reason(stmt), loc=loc)
     if not el.movable:
         if el.pointer_held and isinstance(stmt.value, TpyName):
             note_detail("ptr_tuple.borrowed_path_sink")
@@ -8487,7 +8490,7 @@ def _return_carries_value(stmt: TpyReturn, lc: _LowerCtx) -> bool:
 
 
 def _finally_deferred_recipe(
-        value, lc: _LowerCtx, declared: dict,
+        ret: TpyReturn, lc: _LowerCtx, declared: dict,
         loc) -> 'THIRFinallyDeferredReturn | None':
     """The two-recipe table over the lc binding facts; None for a stamped
     shape the table does not cover (the caller rejects).
@@ -8496,9 +8499,10 @@ def _finally_deferred_recipe(
     Shape B (storage-Optional slot off a pointer-repr Optional local):
     `auto* p = name;` ... `::tpy::ptr_to_optional_move(p)`.
     """
-    # Sema stamps only bare TpyName values; the isinstance keeps a future
-    # sema widening rejecting here instead of mislowering.
-    if not isinstance(value, TpyName):
+    # Sema stamps a name under identity coercions only (`String` into `str`:
+    # both spell std::string, so `std::move(*p)` converts at the return).
+    value = ret.finally_deferred_name
+    if value is None:
         return None
     name = value.name
     if _deferred_name_renamed(name, lc, declared):
@@ -8759,7 +8763,7 @@ def _resumable_deferred_recipe(ret: TpyReturn, lc: _LowerCtx,
         recipe = _finally_deferred_tuple_recipe(ret, value, lc, declared,
                                                 getattr(ret, "loc", None))
     else:
-        recipe = _finally_deferred_recipe(ret.value, lc, declared,
+        recipe = _finally_deferred_recipe(ret, lc, declared,
                                           getattr(ret, "loc", None))
     if recipe is None:
         note_detail("return.finally_deferred_capture")
@@ -12768,7 +12772,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             return _lower_deferred_tuple_return(stmt, scope, lc, declared,
                                                 loc)
         if stmt.finally_deferred_capture and not stmt.finally_deferred_leaves:
-            deferred = _finally_deferred_recipe(stmt.value, lc, declared, loc)
+            deferred = _finally_deferred_recipe(stmt, lc, declared, loc)
             if deferred is None:
                 # Stamped but outside the two recipes (a rename layer on the
                 # name, a slot shape the table does not cover): reject
@@ -13720,7 +13724,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     result_type=lc.analyzer.get_expr_type(it),
                     cond=it_cond, then=it_arms[0], orelse=it_arms[1],
                     form=Form.VALUE,
-                    normalized=_select_result(Held.VALUE, it, lc, it_arms,
+                    normalized=_select_result(Held.VALUE, it, lc,
                                               temporary=True),
                     loc=getattr(it, "loc", None))
             else:

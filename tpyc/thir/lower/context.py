@@ -931,6 +931,10 @@ def _slot_holds(declared: TpyType, st: TpyType, cls: SlotClass,
         return SlotHolds.BORROWS
     if form in (BindingForm.POINTER, BindingForm.POINTER_UNION):
         return SlotHolds.POINTER
+    if form is BindingForm.STORAGE_OPT:
+        # The local binds the storage Optional it reads by reference
+        # (`auto&`), as a getter's storage reference does.
+        return SlotHolds.BORROWS
     bare = unwrap_readonly(unwrap_send_sync(declared))
     if rep is Representation.TRAIT:
         return (SlotHolds.OWNS if isinstance(bare, OwnType)

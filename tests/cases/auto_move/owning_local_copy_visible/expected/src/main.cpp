@@ -144,7 +144,7 @@ std::vector<Box> comp_bare(const std::vector<Box>& ws) {
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
             const auto& b = *__beg_0;
-            __result.push_back(std::move(b));
+            __result.push_back(b);
         }
         std::move(__result);
     });

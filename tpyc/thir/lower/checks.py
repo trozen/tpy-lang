@@ -51,7 +51,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
 )
-from ...typesys import (peel_binding, pointer_repr_optional,
+from ...typesys import (owned_payload, peel_binding, pointer_repr_optional,
                        pointer_variant_union, repr_shape)
 from ...typesys import (
     param_may_be_written,
@@ -6417,11 +6417,29 @@ def tuple_elem_payload(slot: TpyType) -> TpyType:
         bare.inner if isinstance(bare, OptionalType) else bare))
 
 
+def own_element_payload(slot: TpyType) -> TpyType:
+    """The object an `Own`-element tuple member slot holds: an owned
+    element's payload (`owned_payload`), else the bare slot."""
+    payload = owned_payload(slot)
+    return payload if payload is not None else unwrap_readonly(
+        unwrap_ref_type(unwrap_send_sync(_unwrap_own(slot))))
+
+
+def own_element_copy_member(member: TpyExpr, payload: TpyType,
+                            analyzer) -> 'bool | None':
+    """A tuple-literal member its record copies whole (a borrowed member
+    sema declared a copy of): whether it builds as its explicit
+    `copy(member)` of `payload` would. None for any other member, which
+    moves, passes or is copied under its own `copy()`."""
+    if verdict(analyzer.ctx, member).disposition is not Disposition.COPY:
+        return None
+    return own_element_copy_type(member, analyzer) == payload
+
+
 def own_element_copied(member: TpyExpr, payload: TpyType, analyzer) -> bool:
     """A borrowed tuple element sema declared a copy of: it builds as its
     explicit `copy(member)` would."""
-    return (verdict(analyzer.ctx, member).disposition is Disposition.COPY
-            and own_element_copy_type(member, analyzer) == payload)
+    return own_element_copy_member(member, payload, analyzer) is True
 
 
 def tuple_elem_constructed(member: TpyExpr, slot: TpyType,
@@ -6953,13 +6971,17 @@ def record_disposition(value: TpyExpr, analyzer) -> 'Disposition | None':
     if analyzer.ctx.read_bindings.get(inner) is None:
         return None
     disposition = verdict(analyzer.ctx, inner).disposition
-    if disposition is Disposition.NONE:
-        return None
-    t = analyzer.ctx.get_expr_type(inner)
-    if t is not None and is_dyn_protocol(unwrap_readonly(unwrap_ref_type(
-            unwrap_send_sync(_unwrap_own(t))))):
+    if disposition is Disposition.NONE or dyn_local_read(inner, analyzer):
         return None
     return disposition
+
+
+def dyn_local_read(inner: TpyExpr, analyzer) -> bool:
+    """A read of a `@dynamic` local: its move has no render, so no
+    record moves it (BUGS.md#dyn-local-own-arg-ill-formed)."""
+    t = analyzer.ctx.get_expr_type(inner)
+    return t is not None and is_dyn_protocol(unwrap_readonly(unwrap_ref_type(
+        unwrap_send_sync(_unwrap_own(t)))))
 
 
 def _own_opt_ptr_name_move_arg_facts(

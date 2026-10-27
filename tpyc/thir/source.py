@@ -13,7 +13,7 @@ can name the type and every consumer can read it without a cycle.
 """
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Set as AbstractSet
+from collections.abc import Callable, Set as AbstractSet
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING
@@ -24,6 +24,8 @@ from ..typesys import (OwnType, TpyType, TupleType, UnionType, unwrap_readonly,
 
 if TYPE_CHECKING:
     from ..codegen_cpp.forms import LoopBinding
+    from ..sema.context import ElemPath
+    from ..sema.source_records import SourceRecord
     from .lower.context import FrameLocalClass, ValueOptKind
     from .nodes import THIRTupleLayout
 
@@ -74,16 +76,18 @@ class SelectResult:
     (a view arm and a literal arm make a view)."""
     held: Held
     temporary: bool
-    # It copies an existing object only where each arm is fresh or sema
-    # declared that arm's copy (`arms_copy_declared`).
-    copy_declared: bool = False
 
 
-def arms_copy_declared(arms: 'Iterable[Source]') -> bool:
-    """`SelectResult.copy_declared`: a select hands back one of its arms,
-    so it copies an existing object only where each arm is fresh (dies
-    with its statement) or sema declared that arm's copy."""
-    return all(a.temporary is True or a.copy_declared for a in arms)
+def path_permitted(path: 'ElemPath',
+                   permitted: 'frozenset[ElemPath]') -> bool:
+    """Whether a copy of the leaf at `path` lies under a permitted path."""
+    return any(path[:len(p)] == p for p in permitted)
+
+
+def copy_permitted(s: 'Source') -> 'frozenset[ElemPath]':
+    """The leaf paths of this existing object sema permits a copy of (its
+    record's `SourceRecord.copy_permitted`)."""
+    return s.record.copy_permitted if s.record is not None else frozenset()
 
 
 class BindingForm(Enum):
@@ -563,21 +567,16 @@ class Source:
     # The type sema analyzed the source expression at (`get_expr_type`),
     # before lowering settled a still-pending literal type.
     analyzed_type: TpyType | None = None
-    # The owning sink's record copies this existing object whole
-    # (`SourceRecord.disposition` COPY): the only copy
-    # of one a result spells. A select's holds where each arm is fresh or
-    # declares its own.
-    copy_declared: bool = False
+    # The record sema published for the read (`read_record`), an
+    # element's its whole's under it (`SourceRecord.under`); None where it
+    # published none, or the Source was built without asking.
+    record: 'SourceRecord | None' = None
     # The type a copy of this value constructs -- the source's own type,
     # never the slot's: a slot-typed copy of a subclass direct-initializes
     # the base and can pick a user constructor taking the subclass. Set for
     # a record-like value and for a read sema declared a copy of; the sink
     # spells it.
     copy_type: TpyType | None = None
-    # A pointer element of a pointer-tuple NAME read at its last use that
-    # no owning sink's record covers (`verdict`): it is not movable,
-    # and a sink that would move it refuses.
-    undeclared: bool = False
     # A tuple source's LEAF (`elems[i]`, built by `element_source`) held
     # through an open `T`'s trait (`val_or_ptr_t<T>`): a pointer or a value
     # as the instantiation decides. None for a leaf held inline or as a bare
@@ -645,8 +644,6 @@ def element_source(parent: Source, index: int, *,
                    trait: 'TraitAbi | None' = None,
                    const: bool = False, movable: bool = False,
                    pointee_owned: 'bool | None' = None,
-                   undeclared: bool = False,
-                   copy_declared: bool = False,
                    own: 'Source | None' = None) -> Source:
     """THE constructor of a tuple source's leaf (`Source.elems[index]`):
     the element projected from its `parent` Source plus the layout's answer
@@ -661,9 +658,9 @@ def element_source(parent: Source, index: int, *,
     literal's element) is that expression's Source (`own`), with the
     layout's representation.
 
-    What the layout does not state is unknown and grants nothing: no move
-    (`movable`, `pointee_owned` None), no copy permission
-    (`copy_declared`, the read record's verdict on the leaf)."""
+    What the layout does not state is unknown and grants no move
+    (`movable`, `pointee_owned` None). The leaf's record is the parent's
+    under it (`SourceRecord.under`)."""
     if own is not None:
         # An element the literal holds inline is its storage, whatever form
         # the expression it was built from reads in.
@@ -677,9 +674,9 @@ def element_source(parent: Source, index: int, *,
     return Source(held=held, pointer_held=pointer, trait=trait,
                   const=const or (inline and parent.const),
                   movable=movable, pointee_owned=pointee_owned,
-                  undeclared=undeclared,
                   must_copy=parent.must_copy,
-                  copy_declared=copy_declared,
+                  record=(parent.record.under(index)
+                          if parent.record is not None else None),
                   captured=parent.captured,
                   temporary=parent.temporary if inline else None,
                   named_type=_element_type(parent.named_type, index),

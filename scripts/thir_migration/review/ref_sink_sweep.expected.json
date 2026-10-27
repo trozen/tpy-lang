@@ -31,7 +31,7 @@
  ],
  "array_i__async__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [ra"
  ],
  "array_i__async__global_name__decl_alias": [
@@ -261,7 +261,7 @@
  ],
  "array_i__ctor__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__ctor__closure_capture__decl_alias": [
@@ -621,7 +621,7 @@
  ],
  "array_i__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   ""
  ],
  "array_i__ctor__temp_field__decl_alias": [
@@ -686,7 +686,7 @@
  ],
  "array_i__fn__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__fn__closure_capture__decl_alias": [
@@ -1081,7 +1081,7 @@
  ],
  "array_i__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   ""
  ],
  "array_i__fn__temp_field__decl_alias": [
@@ -1146,7 +1146,7 @@
  ],
  "array_i__gen__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [ra"
  ],
  "array_i__gen__borrow_method__yield_borrow": [
@@ -1386,7 +1386,7 @@
  ],
  "array_i__meth__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__meth__closure_capture__decl_alias": [
@@ -1781,7 +1781,7 @@
  ],
  "array_i__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   ""
  ],
  "array_i__meth__temp_field__decl_alias": [
@@ -1851,7 +1851,7 @@
  ],
  "array_i__nested__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   "%t: tuple[Array[int32, 2], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][coerce(lit(0) -> int32)] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])])"
  ],
  "array_i__nested__global_name__decl_alias": [
@@ -2216,7 +2216,7 @@
  ],
  "array_i__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
   ""
  ],
  "array_i__nested__temp_field__decl_alias": [
@@ -2286,7 +2286,7 @@
  ],
  "bytearray__async__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__async__global_name__decl_alias": [
@@ -2551,7 +2551,7 @@
  ],
  "bytearray__ctor__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__ctor__closure_capture__decl_alias": [
@@ -3031,7 +3031,7 @@
  ],
  "bytearray__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__ctor__temp_field__decl_alias": [
@@ -3096,7 +3096,7 @@
  ],
  "bytearray__fn__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__fn__closure_capture__decl_alias": [
@@ -3626,7 +3626,7 @@
  ],
  "bytearray__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__fn__temp_field__decl_alias": [
@@ -3691,7 +3691,7 @@
  ],
  "bytearray__gen__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__gen__borrow_method__yield_borrow": [
@@ -3966,7 +3966,7 @@
  ],
  "bytearray__meth__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__meth__closure_capture__decl_alias": [
@@ -4496,7 +4496,7 @@
  ],
  "bytearray__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__meth__temp_field__decl_alias": [
@@ -4566,7 +4566,7 @@
  ],
  "bytearray__nested__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__nested__ctor_rvalue__decl_alias": [
@@ -5066,7 +5066,7 @@
  ],
  "bytearray__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
   ""
  ],
  "bytearray__nested__temp_field__decl_alias": [
@@ -5136,7 +5136,7 @@
  ],
  "deref_list__async__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__async__global_name__decl_alias": [
@@ -5401,7 +5401,7 @@
  ],
  "deref_list__ctor__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__ctor__closure_capture__decl_alias": [
@@ -5881,7 +5881,7 @@
  ],
  "deref_list__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__ctor__temp_field__decl_alias": [
@@ -5946,7 +5946,7 @@
  ],
  "deref_list__fn__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__fn__closure_capture__decl_alias": [
@@ -6476,7 +6476,7 @@
  ],
  "deref_list__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__fn__temp_field__decl_alias": [
@@ -6541,7 +6541,7 @@
  ],
  "deref_list__gen__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__gen__borrow_method__yield_borrow": [
@@ -6816,7 +6816,7 @@
  ],
  "deref_list__meth__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__meth__closure_capture__decl_alias": [
@@ -7346,7 +7346,7 @@
  ],
  "deref_list__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__meth__temp_field__decl_alias": [
@@ -7416,7 +7416,7 @@
  ],
  "deref_list__nested__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.marker.deref.recv_shape",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__nested__ctor_rvalue__decl_alias": [
@@ -7916,7 +7916,7 @@
  ],
  "deref_list__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_list__nested__temp_field__decl_alias": [
@@ -7986,7 +7986,7 @@
  ],
  "deref_rec__async__borrow_method__tuple_elem": [
   "reject:stmt.expr_stmt:field.receiver_shape",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__async__global_name__decl_alias": [
@@ -8251,7 +8251,7 @@
  ],
  "deref_rec__ctor__borrow_method__tuple_elem": [
   "reject:stmt.expr_stmt:field.receiver_shape",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__ctor__closure_capture__decl_alias": [
@@ -8731,7 +8731,7 @@
  ],
  "deref_rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__ctor__temp_field__decl_alias": [
@@ -8796,7 +8796,7 @@
  ],
  "deref_rec__fn__borrow_method__tuple_elem": [
   "reject:stmt.expr_stmt:field.receiver_shape",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__fn__closure_capture__decl_alias": [
@@ -9326,7 +9326,7 @@
  ],
  "deref_rec__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__fn__temp_field__decl_alias": [
@@ -9391,7 +9391,7 @@
  ],
  "deref_rec__gen__borrow_method__tuple_elem": [
   "reject:stmt.expr_stmt:field.receiver_shape",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__gen__borrow_method__yield_borrow": [
@@ -9666,7 +9666,7 @@
  ],
  "deref_rec__meth__borrow_method__tuple_elem": [
   "reject:stmt.expr_stmt:field.receiver_shape",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__meth__closure_capture__decl_alias": [
@@ -10196,7 +10196,7 @@
  ],
  "deref_rec__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__meth__temp_field__decl_alias": [
@@ -10266,7 +10266,7 @@
  ],
  "deref_rec__nested__borrow_method__tuple_elem": [
   "reject:stmt.expr_stmt:field.receiver_shape",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__nested__ctor_rvalue__decl_alias": [
@@ -10766,7 +10766,7 @@
  ],
  "deref_rec__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "deref_rec__nested__temp_field__decl_alias": [
@@ -10836,7 +10836,7 @@
  ],
  "dict_si__async__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw])"
  ],
  "dict_si__async__global_name__decl_alias": [
@@ -11101,7 +11101,7 @@
  ],
  "dict_si__ctor__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   "%t: tuple[dict[str, int32], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "dict_si__ctor__closure_capture__decl_alias": [
@@ -11521,7 +11521,7 @@
  ],
  "dict_si__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   ""
  ],
  "dict_si__ctor__temp_field__decl_alias": [
@@ -11586,7 +11586,7 @@
  ],
  "dict_si__fn__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   "%t: tuple[dict[str, int32], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "dict_si__fn__closure_capture__decl_alias": [
@@ -12046,7 +12046,7 @@
  ],
  "dict_si__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   ""
  ],
  "dict_si__fn__temp_field__decl_alias": [
@@ -12111,7 +12111,7 @@
  ],
  "dict_si__gen__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow][str('z')] = coerce(lit(9) -> int32) [4] print(call(len [tpy::__len__], [method_call(*%b, v_m, [])]) [raw]) yield_value"
  ],
  "dict_si__gen__borrow_method__yield_borrow": [
@@ -12386,7 +12386,7 @@
  ],
  "dict_si__meth__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   "%t: tuple[dict[str, int32], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw])"
  ],
  "dict_si__meth__closure_capture__decl_alias": [
@@ -12846,7 +12846,7 @@
  ],
  "dict_si__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   ""
  ],
  "dict_si__meth__temp_field__decl_alias": [
@@ -12916,7 +12916,7 @@
  ],
  "dict_si__nested__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   "%t: tuple[dict[str, int32], int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow][str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [method_call(%b, v_m, [])]) [raw]) call(n"
  ],
  "dict_si__nested__global_name__decl_alias": [
@@ -13346,7 +13346,7 @@
  ],
  "dict_si__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
   ""
  ],
  "dict_si__nested__temp_field__decl_alias": [
@@ -13415,9 +13415,9 @@
   ""
  ],
  "gen_rec__async__borrow_method__tuple_elem": [
-  "ok",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
-  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(me"
+  ""
  ],
  "gen_rec__async__global_name__decl_alias": [
   "ok",
@@ -13680,9 +13680,9 @@
   "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, ["
  ],
  "gen_rec__ctor__borrow_method__tuple_elem": [
-  "ok",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
+  ""
  ],
  "gen_rec__ctor__closure_capture__decl_alias": [
   "ok",
@@ -14130,7 +14130,7 @@
   "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
   ""
  ],
@@ -14195,9 +14195,9 @@
   ""
  ],
  "gen_rec__fn__borrow_method__tuple_elem": [
-  "ok",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
+  ""
  ],
  "gen_rec__fn__closure_capture__decl_alias": [
   "ok",
@@ -14690,7 +14690,7 @@
   ""
  ],
  "gen_rec__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
   ""
  ],
@@ -14755,9 +14755,9 @@
   "[2] held [%argtmp(auto&& #N){method_call(*%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(method_call(*%b, v_m, ["
  ],
  "gen_rec__gen__borrow_method__tuple_elem": [
-  "ok",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
-  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(me"
+  ""
  ],
  "gen_rec__gen__borrow_method__yield_borrow": [
   "sema:Cannot yield local or temporary as reference. Reference type 'Box[R]' is yielded",
@@ -15030,9 +15030,9 @@
   ""
  ],
  "gen_rec__meth__borrow_method__tuple_elem": [
-  "ok",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
+  ""
  ],
  "gen_rec__meth__closure_capture__decl_alias": [
   "ok",
@@ -15525,7 +15525,7 @@
   ""
  ],
  "gen_rec__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
   ""
  ],
@@ -15595,9 +15595,9 @@
   ""
  ],
  "gen_rec__nested__borrow_method__tuple_elem": [
-  "ok",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
+  ""
  ],
  "gen_rec__nested__ctor_rvalue__decl_alias": [
   "ok",
@@ -16060,7 +16060,7 @@
   ""
  ],
  "gen_rec__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
+  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
   "",
   ""
  ],
@@ -16131,7 +16131,7 @@
  ],
  "list_i__async__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__async__global_name__decl_alias": [
@@ -16396,7 +16396,7 @@
  ],
  "list_i__ctor__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__ctor__closure_capture__decl_alias": [
@@ -16846,7 +16846,7 @@
  ],
  "list_i__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__ctor__temp_field__decl_alias": [
@@ -16911,7 +16911,7 @@
  ],
  "list_i__fn__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__fn__closure_capture__decl_alias": [
@@ -17406,7 +17406,7 @@
  ],
  "list_i__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__fn__temp_field__decl_alias": [
@@ -17471,7 +17471,7 @@
  ],
  "list_i__gen__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__gen__borrow_method__yield_borrow": [
@@ -17746,7 +17746,7 @@
  ],
  "list_i__meth__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__meth__closure_capture__decl_alias": [
@@ -18241,7 +18241,7 @@
  ],
  "list_i__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__meth__temp_field__decl_alias": [
@@ -18311,7 +18311,7 @@
  ],
  "list_i__nested__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__nested__dict_subscript__decl_alias": [
@@ -18776,7 +18776,7 @@
  ],
  "list_i__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
   ""
  ],
  "list_i__nested__temp_field__decl_alias": [
@@ -18846,7 +18846,7 @@
  ],
  "list_r__async__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__async__global_name__decl_alias": [
@@ -19076,7 +19076,7 @@
  ],
  "list_r__ctor__borrow_method__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__ctor__closure_capture__decl_alias": [
@@ -19466,7 +19466,7 @@
  ],
  "list_r__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__ctor__temp_field__decl_alias": [
@@ -19531,7 +19531,7 @@
  ],
  "list_r__fn__borrow_method__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__fn__closure_capture__decl_alias": [
@@ -19961,7 +19961,7 @@
  ],
  "list_r__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__fn__temp_field__decl_alias": [
@@ -20026,7 +20026,7 @@
  ],
  "list_r__gen__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__gen__borrow_method__yield_borrow": [
@@ -20266,7 +20266,7 @@
  ],
  "list_r__meth__borrow_method__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__meth__closure_capture__decl_alias": [
@@ -20696,7 +20696,7 @@
  ],
  "list_r__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__meth__temp_field__decl_alias": [
@@ -20766,7 +20766,7 @@
  ],
  "list_r__nested__borrow_method__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__nested__dict_subscript__decl_alias": [
@@ -21166,7 +21166,7 @@
  ],
  "list_r__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "",
+  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
   ""
  ],
  "list_r__nested__temp_field__decl_alias": [
@@ -21236,7 +21236,7 @@
  ],
  "rec__async__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow].x = binop(*%t[0] [borrow].x, +, lit(1)) [4] print(method_call(*%b, v_m, []).x [raw])"
  ],
  "rec__async__global_name__decl_alias": [
@@ -21501,7 +21501,7 @@
  ],
  "rec__ctor__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   "%t: tuple[R, int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow].x = binop(%t[0] [borrow].x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__ctor__closure_capture__decl_alias": [
@@ -22011,7 +22011,7 @@
  ],
  "rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "rec__ctor__temp_field__decl_alias": [
@@ -22076,7 +22076,7 @@
  ],
  "rec__fn__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   "%t: tuple[R, int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow].x = binop(%t[0] [borrow].x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__fn__closure_capture__decl_alias": [
@@ -22636,7 +22636,7 @@
  ],
  "rec__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "rec__fn__temp_field__decl_alias": [
@@ -22701,7 +22701,7 @@
  ],
  "rec__gen__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] *%t[0] [borrow].x = binop(*%t[0] [borrow].x, +, lit(1)) [4] print(method_call(*%b, v_m, []).x [raw]) yield_values: [0] coerce(lit(0) -"
  ],
  "rec__gen__borrow_method__yield_borrow": [
@@ -22976,7 +22976,7 @@
  ],
  "rec__meth__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   "%t: tuple[R, int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow].x = binop(%t[0] [borrow].x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__meth__closure_capture__decl_alias": [
@@ -23536,7 +23536,7 @@
  ],
  "rec__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "rec__meth__temp_field__decl_alias": [
@@ -23606,7 +23606,7 @@
  ],
  "rec__nested__borrow_method__tuple_elem": [
   "ok",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   "%t: tuple[R, int32] = tuple(method_call(%b, v_m, []), lit(1)) %t[0] [borrow].x = binop(%t[0] [borrow].x, +, lit(1)) print(method_call(%b, v_m, []).x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__ctor_rvalue__decl_alias": [
@@ -24136,7 +24136,7 @@
  ],
  "rec__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
   ""
  ],
  "rec__nested__temp_field__decl_alias": [
@@ -24441,7 +24441,7 @@
  ],
  "set_i__async__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__async__global_name__decl_alias": [
@@ -24706,7 +24706,7 @@
  ],
  "set_i__ctor__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__ctor__closure_capture__decl_alias": [
@@ -25156,7 +25156,7 @@
  ],
  "set_i__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__ctor__temp_field__decl_alias": [
@@ -25221,7 +25221,7 @@
  ],
  "set_i__fn__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__fn__closure_capture__decl_alias": [
@@ -25716,7 +25716,7 @@
  ],
  "set_i__fn__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__fn__temp_field__decl_alias": [
@@ -25781,7 +25781,7 @@
  ],
  "set_i__gen__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__gen__borrow_method__yield_borrow": [
@@ -26056,7 +26056,7 @@
  ],
  "set_i__meth__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__meth__closure_capture__decl_alias": [
@@ -26551,7 +26551,7 @@
  ],
  "set_i__meth__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__meth__temp_field__decl_alias": [
@@ -26621,7 +26621,7 @@
  ],
  "set_i__nested__borrow_method__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__nested__dict_subscript__decl_alias": [
@@ -27086,7 +27086,7 @@
  ],
  "set_i__nested__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "",
+  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
   ""
  ],
  "set_i__nested__temp_field__decl_alias": [

@@ -19,7 +19,6 @@ from ..nodes import (
     THIRStubCallee, THIRStubContract, THIRStubIdentity, THIRSubscript, declared_param_type, receiver_param,
 )
 from ..scalar_leaves import native_container_subject, record_owner
-from .context import SlotPosition, slot_for
 from .predicates import param_passing
 from .storage import borrowed_record
 
@@ -145,15 +144,13 @@ def callable_signature(types: tuple[TpyType, ...], return_type: TpyType,
                        passings: tuple[ParamPassing, ...] | None, analyzer: 'SemanticAnalyzer', *,
                        follows_receiver: bool = False, getter: bool = False) -> THIRCallableSignature:
     """The one constructor of a callable's contract, for a definition and
-    for every call that binds one: the result's representation, its layout
-    (`result_slot`) and, for a property getter (`getter`), whether it hands
-    back its storage by reference are decided here from the return type."""
-    signature = THIRCallableSignature(
+    for every call that binds one: the result's representation and, for a
+    property getter (`getter`), whether it hands back its storage by
+    reference are decided here from the return type."""
+    return THIRCallableSignature(
         types, return_type, borrowed_result, passings, return_representation(return_type),
         result_follows_receiver=follows_receiver,
         storage_reference_result=getter and property_getter_returns_storage_ref(return_type))
-    return replace(signature, result_slot=slot_for(None, SlotPosition.RETURN, analyzer,
-                                                   signature=signature))
 
 
 def definition_signature(types: tuple[TpyType, ...], return_type: TpyType,

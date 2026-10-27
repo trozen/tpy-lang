@@ -67,6 +67,18 @@ int32_t via_nested_tuple(Box& b) {
     return b.val;
 }
 
+// def via_double_nested_tuple(b: Box) -> int32:
+//     # Two literal levels down: the member's copy is recorded at its full path
+//     # (`0.0.1`), as one level down is.
+//     q = ((make_mixed(b), 1), 2)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\.0\.1\)/)
+//     q[0][0][1].val = 31
+//     return b.val
+int32_t via_double_nested_tuple(Box& b) {
+    std::tuple<std::tuple<std::tuple<Box, Box>, int32_t>, int32_t> q = std::tuple<std::tuple<std::tuple<Box, Box>, int32_t>, int32_t>{std::tuple<std::tuple<Box, Box>, int32_t>{[] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<Box, Box>{std::move(std::get<0>(__t)), (*std::get<1>(__t))}; }(::tpyapp::main::make_mixed(b)), 1}, 2};
+    std::get<1>(std::get<0>(std::get<0>(q))).val = 31;
+    return b.val;
+}
+
 // def via_dict_comprehension(b: Box) -> int32:
 //     d = {i: make_mixed(b) for i in range(1)}  # tpyc: warning(/copies Box into owned storage/)
 //     d[0][1].val = 29
@@ -143,6 +155,7 @@ int32_t via_field(Box& b) {
 //     print(via_nested_tuple(Box(2)), via_comprehension(Box(2)))
 //     print(via_loop_var(Box(2)), via_field(Box(2)))
 //     print(via_dict_comprehension(Box(2)), via_ternary_source(Box(2), Box(3), True))
+//     print(via_double_nested_tuple(Box(2)))
 void main() {
     Box __tmp_1 = Box(2);
     Box __tmp_2 = Box(2);
@@ -160,6 +173,8 @@ void main() {
     Box __tmp_10 = Box(2);
     Box __tmp_11 = Box(3);
     std::cout << ::tpyapp::main::via_dict_comprehension(__tmp_9) << " " << ::tpyapp::main::via_ternary_source(__tmp_10, __tmp_11, true) << "\n" << ::tpy::check_signals;
+    Box __tmp_12 = Box(2);
+    std::cout << ::tpyapp::main::via_double_nested_tuple(__tmp_12) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -1,0 +1,6 @@
+main.py:330: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:68: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:68: warning: copies A into owned storage (tuple element 1.1); use copy() to make this explicit ('t' is bound to existing storage at line 67)
+main.py:71: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:71: warning: copies A into owned storage (tuple element 1.1); use copy() to make this explicit
+main.py:153: warning: lambda at line 153 may keep its own copy of 'x'; changes made after it is created may not be seen

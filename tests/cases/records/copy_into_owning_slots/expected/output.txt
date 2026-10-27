@@ -1,0 +1,7 @@
+member_init 1 2
+field 2 3
+return 3 4
+field_fresh 5
+member_init_fresh 6
+return_fresh 7
+local_fresh 8

@@ -575,8 +575,8 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
     }
     bool is_https = (parts.scheme == "https");
     auto __tup_1 = ::tpystd::tplib::requests::_encode_body(data, files, json);
-    std::optional<::tpy::Bytes> body = std::get<0>(__tup_1);
-    std::optional<std::string> body_ctype = std::get<1>(__tup_1);
+    std::optional<::tpy::Bytes> body = std::move(std::get<0>(__tup_1));
+    std::optional<std::string> body_ctype = std::move(std::get<1>(__tup_1));
     ::tpy::ordered_map<std::string, std::string> hdrs = ::tpystd::tplib::requests::_prepare_headers(headers, auth, body_ctype);
     double now = ::tpy::time_time();
     if ((!(hdrs.contains("Cookie")))) {

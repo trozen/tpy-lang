@@ -22,7 +22,9 @@ from dataclasses import dataclass, replace
 from typing import Iterable
 from enum import Enum, auto
 
-from ...sema.alias_rebind import bare_tuple, peel_slot
+from ...sema.alias_rebind import (bare_tuple, is_reference_leaf, leaves_at,
+                                  peel_slot, reference_paths)
+from ...sema.context import ElemPath, paths_overlap
 from ...sema.dyn_erasure import dyn_forward_ok
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import has_view_param_form, owned_from_view_explicit
@@ -64,9 +66,10 @@ from ..nodes import (
     BOUND_SOURCE_READ,
     THIRTupleLiteral,
 )
-from ..reject import ThirUnsupported, note_detail
+from ..reject import ThirUnsupported, internal_error
 from ..source import (BindingForm, BindingRepr, Held, MoveRow, Source,
-                      TraitAbi, tuple_elems)
+                      TraitAbi, copy_permitted, path_permitted,
+                      tuple_elems)
 from .context import (Slot, SlotConstruct, SlotHolds, SlotLifetime,
                       SlotPosition, lends_elements, slot_for, storage_type)
 from .checks import _covariant_record_upcast_ok, _record_slice_upcast_ok
@@ -111,16 +114,9 @@ class Plan:
     # `THIRCopy`, whose C++ spelling the sink supplies (`spelled`).
     copy_type: TpyType | None = None
     # The leaves the plan copies out of existing storage -- none a moved
-    # leaf authorizes -- each as (the type it lands in, whether its own
-    # read record permits the copy: an element-wise conversion's leaf sema
-    # warned).
-    copied: tuple[tuple[TpyType, bool], ...] = ()
-
-
-def _unpermitted(types: 'Iterable[TpyType]'
-                 ) -> tuple[tuple[TpyType, bool], ...]:
-    """Copied leaves no read record of their own permits."""
-    return tuple((t, False) for t in types)
+    # leaf authorizes -- each as its path in the converted read and the
+    # type it lands in (`_copy_permitted` checks them).
+    copied: tuple[tuple[ElemPath, TpyType], ...] = ()
 
 
 def spelled(plan: Plan, render) -> THIRExpr:
@@ -161,11 +157,37 @@ def _lendable(s: Source) -> bool:
     return s.temporary is False and s.held in _DURABLE_HELD
 
 
-def _copy_declared(s: Source, under: Source, explicit_copy: bool) -> bool:
-    """The copy-permission rule: a copy of an existing object into owned
+def _copy_declared(s: Source, under: Source) -> bool:
+    """Whether sema declared a copy of the whole read (`copy()` spells it
+    or its record copies it whole)."""
+    return () in copy_permitted(s) or () in copy_permitted(under)
+
+
+def _copy_permitted(plan: Plan, slot: 'Slot', s: Source,
+                    under: Source) -> 'ElemPath | None':
+    """THE copy-permission rule: a copy of an existing object into owned
     storage is built only where `copy()` spells it or sema declared it
-    (`Source.copy_declared`) -- CPython would hand the object itself on."""
-    return explicit_copy or s.copy_declared or under.copy_declared
+    (`copy_permitted`) -- CPython would hand the object itself on. The
+    leaves it governs are the reference leaves (`is_reference_leaf`) the
+    plan copies into a leaf the slot owns (`owned_reference_paths`, the
+    record check's population): an open `T` among them too. The path of
+    the first such leaf no permitted path covers; None where every copy
+    is permitted."""
+    permitted = (copy_permitted(s) | copy_permitted(under)
+                 | _fresh(s) | _fresh(under))
+    owned = owned_reference_paths(slot)
+    for path, t in plan.copied:
+        if (is_reference_leaf(t)
+                and paths_overlap(path, owned)
+                and not path_permitted(path, permitted)):
+            return path
+    return None
+
+
+def _fresh(s: Source) -> frozenset[ElemPath]:
+    """The leaves the read's record moves a new value into: copying one
+    copies no existing object (`SourceRecord.fresh`)."""
+    return s.record.fresh if s.record is not None else frozenset()
 
 
 # --- type relations ----------------------------------------------------------
@@ -348,14 +370,17 @@ def _elems_by_pointer(s: Source, src_t: TupleType) -> list[bool]:
 
 
 def _owned_by_pointer(s: Source, src_t: 'TpyType | None',
-                      slot: Slot) -> tuple[TpyType, ...]:
-    """The elements a slot owns that a tuple source holds only as a
-    pointer: moving the tuple copies their pointees."""
+                      slot: Slot) -> tuple[tuple[ElemPath, TpyType], ...]:
+    """The leaves of the elements a slot owns that a tuple source holds
+    only as a pointer: moving the tuple copies their pointees."""
     if (slot.elems is None or not isinstance(src_t, TupleType)
             or len(src_t.element_types) != len(slot.elems)):
         return ()
-    return tuple(e.type for e, p in zip(slot.elems, _elems_by_pointer(s, src_t))
-                 if e.holds is SlotHolds.OWNS and p)
+    return tuple(
+        leaf for i, (e, p) in enumerate(zip(slot.elems,
+                                            _elems_by_pointer(s, src_t)))
+        if e.holds is SlotHolds.OWNS and p
+        for leaf in leaves_at(e.type, (i,)))
 
 
 def _owned_elem_by_pointer(s: Source, src_t: 'TpyType | None',
@@ -363,14 +388,6 @@ def _owned_elem_by_pointer(s: Source, src_t: 'TpyType | None',
     """Whether a tuple source holds an element the slot owns only as a
     pointer: a by-value tuple cannot take it as it renders."""
     return bool(_owned_by_pointer(s, src_t, slot))
-
-
-def _is_object(t: TpyType) -> bool:
-    """A reference-type object at every instantiation: a record, a
-    container, a tuple / Optional / union holding one. An indirection holds
-    none, and an open `T` is the instantiation's to copy or lend."""
-    return contains_reference_type(t, open_params_as_values=True,
-                                   held_only=True)
 
 
 def _existing_object(s: Source) -> bool:
@@ -542,7 +559,7 @@ class ElemRead:
         if (src.temporary is None and rs is not None
                 and rs.temporary is False and rs.held in _DURABLE_HELD):
             src = replace(src, temporary=False)
-        if src.movable and not worth_moving(self.type):
+        if src.movable and unwrap_readonly(self.type).copy_is_cheap():
             src = replace(src, movable=False)
         object.__setattr__(node, "source", src)
         node._restamp_reads()
@@ -592,22 +609,12 @@ def _elem_takes(el: Source, take: TupleTake, dead: bool) -> bool:
     return dead and inline
 
 
-def worth_moving(t: TpyType) -> bool:
-    """A value whose move differs from its copy: an object, a buffer, a
-    tuple holding either, an open `T` (a scalar copies as cheaply as it
-    moves)."""
-    t = unwrap_readonly(t)
-    return (isinstance(t, TypeParamRef) or not t.is_value_type()
-            or t.is_expensive_copy() or contains_reference_type(t))
-
-
 @dataclass(frozen=True)
 class Built:
-    """A tuple built element by element, and each object one of its owned
-    elements copies out of existing storage, with whether that element's
-    own read record declares the copy."""
+    """A tuple built element by element, and each leaf one of its owned
+    elements copies out of existing storage (`Plan.copied`)."""
     expr: THIRExpr
-    copied: tuple[tuple[TpyType, bool], ...] = ()
+    copied: tuple[tuple[ElemPath, TpyType], ...] = ()
 
 
 def upcast_base(expr: THIRExpr, member: TpyType,
@@ -653,7 +660,7 @@ def _build_tuple(receiver: THIRExpr, layout: TupleType,
                  take: TupleTake, dead: bool) -> 'Built | Refuse':
     st = storage_type(_slot_tuple(slot.declared or slot.type))
     out: list[THIRExpr] = []
-    copied: list[tuple[TpyType, bool]] = []
+    copied: list[tuple[ElemPath, TpyType]] = []
     for i, (el, et, es) in enumerate(zip(elems, layout.element_types,
                                          slot.elems)):
         # An element read has no source location of its own: it is the
@@ -671,10 +678,7 @@ def _build_tuple(receiver: THIRExpr, layout: TupleType,
                     "supported; bind the value to a variable first"))
             return plan
         out.append(plan.expr)
-        # A copy out of existing storage is the element's read record's to
-        # permit (sema warned it).
-        copied.extend((t, el.copy_declared) for t, _ok in plan.copied
-                      if _is_object(t))
+        copied.extend(((i,) + p, t) for p, t in plan.copied)
     spelled = (_slot_tuple(slot.declared)
                if slot.elements_by_result else None)
     return Built(THIRTupleLiteral(
@@ -758,8 +762,9 @@ def _to_borrow_tuple(expr: THIRExpr, s: Source, slot: Slot, types, *,
     lift = any(w and not p for w, p in zip(want_ptr, src_ptr))
     own = any(e.holds is SlotHolds.OWNS and p
               for e, p in zip(slot.elems, src_ptr))
-    owned = [e.type for e in slot.elems
-             if e.holds is SlotHolds.OWNS and _is_object(e.type)]
+    owned = tuple(leaf for i, e in enumerate(slot.elems)
+                  if e.holds is SlotHolds.OWNS and is_reference_leaf(e.type)
+                  for leaf in leaves_at(e.type, (i,)))
     owns_object = bool(owned)
     mv = (owns_object and not explicit_copy and s.held is not Held.FRESH
           and tuple_moves(s, movable=movable))
@@ -782,8 +787,7 @@ def _to_borrow_tuple(expr: THIRExpr, s: Source, slot: Slot, types, *,
         built = per_element(expr, slot, types, take=TupleTake.COPY)
         if isinstance(built, Refuse):
             return built
-        return Plan(built.expr, Effect.LIFT, copied=_unpermitted(
-            t for t, _ok in built.copied))
+        return Plan(built.expr, Effect.LIFT, copied=built.copied)
     if not lift:
         if owns_object and not mv and implicit and not s.captured:
             # The result's own `return` would move the id-expression sema
@@ -795,7 +799,7 @@ def _to_borrow_tuple(expr: THIRExpr, s: Source, slot: Slot, types, *,
         # The result's own construction copies each element it owns.
         return Plan(expr, Effect.PASS,
                     copied=(() if mv or not _existing_object(s)
-                            else _unpermitted(owned)))
+                            else owned))
     if s.temporary is False and s.held not in _DURABLE_HELD:
         # Nothing outlives a source held in no storage; a temporary's lend
         # is refused per element (`_lendable` at each element's slot).
@@ -962,21 +966,13 @@ def elementwise_plan(expr: THIRExpr, slot: Slot, types) -> Plan | None:
     `SourceRecord.element_moves`) moves out of its object at the read's
     last use, one some binding borrows is copied in (or kept as a pointer
     where the slot borrows it), a value element moves with the tuple. The
-    plan states every leaf it copies in with that leaf's permission: a
-    pointer leaf's copy is its read record's (sema warned it), an inline
-    leaf's has none of its own. None for a source with no element facts --
-    and for one owning no pointee it can move, which converts whole."""
+    plan states every leaf it copies in (`Plan.copied`). None for a source
+    with no element facts -- and for one owning no pointee it can move,
+    which converts whole."""
     elems = expr.source.elems if expr.source is not None else None
     if (elems is None or slot.elems is None
             or len(elems) != len(slot.elems)):
         return None
-    keeps = [_slot_borrows(es) for es in slot.elems]
-    if any(el.pointer_held and el.undeclared and not keeps_pointer
-           for el, keeps_pointer in zip(elems, keeps)):
-        # An owning sink sema declared no read for: neither the move nor
-        # the copy of the element is a verdict sema made.
-        note_detail("ptr_tuple.undeclared_sink")
-        raise ThirUnsupported("expr.name", loc=expr.loc)
     if not moves_an_object(elems):
         return None
     built = per_element(expr, slot, types, take=TupleTake.PER_ELEMENT)
@@ -1043,28 +1039,78 @@ def _storage_lift(value: THIRExpr, member: TpyType, *, move: bool = False,
                            move=move, materialize=materialize, loc=loc)
 
 
+# The constructs whose conversion checks its copies (`_copy_permitted`).
+# A member-init is not yet checked: one local-binding cell still copies
+# undeclared there (TODO.md, "tuples convert per element through
+# `convert`").
+_CONSTRUCT_WORDS = {SlotConstruct.ASSIGN: "an assignment",
+                    SlotConstruct.PASS: "an argument",
+                    SlotConstruct.RETURN: "a return"}
+_COPY_CHECKED = frozenset(_CONSTRUCT_WORDS)
+
+
 def convert(expr: THIRExpr, slot: Slot, types, *,
             explicit_copy: bool = False) -> Plan | Refuse:
     """The render of `expr` at `slot`. `explicit_copy`: the source is
     copied, never moved -- the argument of a `copy()` the caller peeled, or
     a borrowed source whose copy sema warned about. A result spells that
-    copy (`T(x)`); a field's assignment performs it.
+    copy (`T(x)`); a field's assignment performs it. It grants no copy:
+    that is the read's record (`copy_permitted`).
 
-    A result that would copy an existing object no `copy()` spells and sema
-    did not declare refuses (`copy_undeclared`): CPython would hand the
-    object itself back. Decided once, on the leaves the plan says it
-    copies; a store's copy is its store check's."""
+    A conversion that would copy an existing object no `copy()` spells and
+    sema did not declare refuses (`copy_undeclared`): CPython would hand
+    the object itself on. Decided once, on the leaves the plan says it
+    copies (`_copy_permitted`)."""
     plan = _convert(expr, slot, types, explicit_copy=explicit_copy)
-    if isinstance(plan, Refuse) or slot.construct is not SlotConstruct.RETURN:
+    if isinstance(plan, Refuse) or slot.construct not in _COPY_CHECKED:
         return plan
     s = expr.source
     under = expr.uncoerced.source
-    if _copy_declared(s, under, explicit_copy) or under.must_copy:
+    _check_records(expr, slot, s, under)
+    if _copy_permitted(plan, slot, s, under) is None:
         return plan
-    if s.held is not Held.FRESH and any(
-            _is_object(t) and not ok for t, ok in plan.copied):
-        return Refuse("copy_undeclared")
-    return plan
+    return Refuse("copy_undeclared")
+
+
+def owned_reference_paths(slot: Slot, prefix: ElemPath = ()
+                          ) -> frozenset[ElemPath]:
+    """The reference leaf paths (`is_reference_leaf`, sema's test) the
+    slot owns: an OWNS leaf, a tuple's per element slot; none of a
+    borrow-form tuple, whose elements are held by result."""
+    if slot.elems is not None:
+        out: set[ElemPath] = set()
+        for i, e in enumerate(slot.elems):
+            out |= owned_reference_paths(e, prefix + (i,))
+        return frozenset(out)
+    if slot.holds is not SlotHolds.OWNS:
+        return frozenset()
+    if bare_tuple(slot.type) is not None:
+        return frozenset(prefix + p for p in reference_paths(slot.type))
+    return frozenset({prefix}) if is_reference_leaf(slot.type) else frozenset()
+
+
+def _check_records(expr: THIRExpr, slot: Slot, s: Source,
+                   under: Source) -> None:
+    """Every reference leaf the destination owns has its outcome in the
+    read's record: sema decided it. A leaf without one is an internal
+    error."""
+    owned = owned_reference_paths(slot)
+    if not owned:
+        return
+    rec = s.record if s.record is not None else under.record
+    lacking = sorted(p for p in owned
+                     if rec is None or not paths_overlap(p, rec.leaves))
+    if lacking:
+        value = f"the value '{s.name}'" if s.name else "the value"
+        where = "" if lacking == [()] else "tuple element " + ", ".join(
+            ".".join(str(i) for i in p) for p in lacking) + " of "
+        loc = getattr(expr, "loc", None)
+        line = f" at line {loc.line}" if loc is not None else ""
+        raise internal_error(
+            "copy.no_record",
+            f"no ownership decision for {where}{value}{line} stored by "
+            f"{_CONSTRUCT_WORDS[slot.construct]}", loc)
+
 
 
 def _convert(expr: THIRExpr, slot: Slot, types, *,
@@ -1096,7 +1142,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         # moved out explicitly.
         return Plan(as_base(expr, lands, types, moved=moves) or expr,
                     Effect.PASS,
-                    copied=((lands, False),) if copies else ())
+                    copied=tuple(leaves_at(lands, ())) if copies else ())
 
     # A tuple holding an element the slot owns by pointer does not take
     # the source as it renders: each pointee is copied in (the borrow ->
@@ -1139,7 +1185,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
             return Refuse("union_view_insert")
         if under.held in (Held.STORAGE, Held.FRESH):
             return Refuse("borrow_source")
-    declared = _copy_declared(s, under, explicit_copy)
+    declared = _copy_declared(s, under)
     if lends_elements(slot):
         return _to_borrow_tuple(expr, s, slot, types,
                                 movable=under.movable and not under.must_copy,
@@ -1317,7 +1363,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
                 return Plan(THIRCopy(result_type=rt_lowered, value=expr,
                                      form=Form.STORAGE, loc=expr.loc),
                             Effect.COPY, copy_type=s.copy_type,
-                            copied=((member, False),))
+                            copied=tuple(leaves_at(member, ())))
 
     param_t = s.param_type
     if param_t is not None and _opt_view_arg_shim(param_t, st, types):
@@ -1352,9 +1398,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         if not tuple_forms_differ(expr, slot, types):
             return Plan(expr.moved() if mv else expr,
                         Effect.MOVE if mv else Effect.COPY,
-                        copied=_unpermitted(
-                            _owned_by_pointer(s, rt_lowered, slot)
-                            if mv else (member,)))
+                        copied=(_owned_by_pointer(s, rt_lowered, slot)
+                                if mv else tuple(leaves_at(member, ()))))
         built = per_element(
             expr, slot, types,
             take=TupleTake.MOVE_WHOLE if mv else TupleTake.COPY)
@@ -1413,7 +1458,7 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         return Plan(_storage_lift(expr.moved() if mv else expr, member,
                                   loc=expr.loc),
                     Effect.MOVE if mv else Effect.COPY,
-                    copied=() if mv else ((member, False),))
+                    copied=() if mv else tuple(leaves_at(member, ())))
     if isinstance(member, TypeParamRef) and (
             slot.construct is SlotConstruct.RETURN or (direct and not mv)):
         # A member-init constructs an open `T` from the param form itself;
@@ -1444,8 +1489,8 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
         if isinstance(inner, Refuse):
             return inner
         return Plan(inner.expr, Effect.MOVE if mv else Effect.COPY,
-                    copied=_unpermitted(_owned_by_pointer(s, rt_lowered, slot)
-                                        if mv else (member,)))
+                    copied=(_owned_by_pointer(s, rt_lowered, slot)
+                            if mv else tuple(leaves_at(member, ()))))
     # A reference-axis source is the object itself: nothing to
     # materialize (`THIRFormConvert.materialize`).
     moves = mv
@@ -1464,11 +1509,11 @@ def _convert(expr: THIRExpr, slot: Slot, types, *,
              else None)
     if based is not None:
         return Plan(based, Effect.MOVE if moves else Effect.COPY,
-                    copied=() if moves else _unpermitted((member,)))
+                    copied=() if moves else tuple(leaves_at(member, ())))
     return Plan(_storage_lift(value, member, move=moves,
                               materialize=False if obj else None,
                               loc=expr.loc),
                 Effect.MOVE if moves or value is not expr else Effect.COPY,
-                copied=_unpermitted(_owned_by_pointer(s, rt_lowered, slot)
-                                    if value is not expr
-                                    else () if moves else (member,)))
+                copied=(_owned_by_pointer(s, rt_lowered, slot)
+                        if value is not expr
+                        else () if moves else tuple(leaves_at(member, ()))))

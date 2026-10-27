@@ -158,6 +158,7 @@ from ...type_def_registry import (
 )
 from ...sema.numeric_lattice import widen_numeric_types
 from ...coercions import (BIGINT_NARROW, Coercion, CoercionContext,
+                          IDENTITY_STR_COERCIONS,
                           context_free_wrap_template)
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
@@ -261,23 +262,6 @@ _MEMBERSHIP_OPS = frozenset({"in", "not in"})
 _INT_LIT_COERCION = "int_literal_to_fixed_int"
 
 _FLOAT_LIT_COERCION = "float_literal_to_float"
-
-# `String` (a concat result) into a `str` slot: identity in EVERY position (the
-# Coercion carries no codegen lambda -- both sides spell std::string, and a str
-# ARG slot's std::string_view converts implicitly), so it lowers as a
-# THIRCoerce passthrough. The other str-family coercions are position-dependent
-# (materializing at some sinks) -- see _coerce_disposition.
-_STRING_TO_STR_COERCION = "string_to_str"
-
-# Str-family coercions whose target is a VIEW: the result borrows the source's
-# buffer, so the coerce renders its inner bare at every position.
-_VIEW_TARGET_STR_COERCIONS = frozenset({"str_to_strview", "string_to_strview"})
-
-# Str-family coercions that are identity in EVERY position (no codegen lambda):
-# both sides of string_to_str spell std::string; the two *_to_strview arms feed
-# a std::string_view slot every source converts into implicitly.
-_IDENTITY_STR_COERCIONS = (frozenset({_STRING_TO_STR_COERCION})
-                           | _VIEW_TARGET_STR_COERCIONS)
 
 # The float32-targeted float literal: an identity lambda whose `f`-suffix
 # render comes from the literal seeing the coerce TARGET, so lowering retypes
@@ -396,7 +380,7 @@ def _coerce_disposition(e: TpyCoerce, *,
     if name in (_INT_LIT_COERCION, _FLOAT_LIT_COERCION,
                 _FLOAT32_LIT_COERCION, _BIGINT_LIT_COERCION):
         return "identity"
-    if name in _IDENTITY_STR_COERCIONS:
+    if name in IDENTITY_STR_COERCIONS:
         return "identity"
     if name == "bytes_to_bytesview":
         # A bytes NAME/slice source is already the `std::span<const
@@ -703,15 +687,6 @@ def _type_param_value_slot(t: 'TpyType | None') -> bool:
     `Ref[T]` wrapper spells its own decoration, both of which reopen the
     question this row answers."""
     return isinstance(t, TypeParamRef) and t.kind is TypeParamKind.TYPE
-
-def _int_type_param_value(t: 'TpyType | None') -> bool:
-    """A value read of an INT-kind type param (`N` under `[N: int]`). Its C++
-    spelling is the non-type template parameter -- a `std::size_t` constant
-    that renders as the bare name in every value position -- so a slot whose
-    render passes a scalar bare passes this bare too. Distinct from
-    `_eligible_scalar`: `N` carries no TPy-side fixed width, so nothing may
-    derive a cast or a range from it."""
-    return isinstance(t, TypeParamRef) and t.kind is TypeParamKind.INT
 
 def _own_type_param_slot(t: 'TpyType | int | None') -> bool:
     """True if `t` is `Own[T]` for a bare generic type-param `T` -- the

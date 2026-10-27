@@ -107,7 +107,7 @@ std::tuple<int32_t, std::tuple<int32_t, P>> ret_nested(const P& p) {
 // def ret_call(h: Holder) -> Own[tuple[Own[P], int32]]:
 //     return (h.first(), 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
 std::tuple<P, int32_t> ret_call(Holder& h) {
-    return std::tuple<P, int32_t>{P(h.first()), 1};
+    return std::tuple<P, int32_t>{h.first(), 1};
 }
 
 // # return: a tuple local by name, and through an alias
@@ -323,7 +323,7 @@ int32_t arg_fields_optional(const Holder& h) {
 // def arg_call(h: Holder) -> int32:
 //     return take((h.first(), h.b))  # tpyc: warning(/argument 't' tuple element 0\)/) warning(/argument 't' tuple element 1\)/)
 int32_t arg_call(Holder& h) {
-    return ::tpyapp::main::take(std::tuple<P, P>{P(h.first()), P(h.b)});
+    return ::tpyapp::main::take(std::tuple<P, P>{h.first(), P(h.b)});
 }
 
 // # argument: a tuple local passed by name

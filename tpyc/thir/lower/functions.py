@@ -19,7 +19,6 @@ from ...parse.nodes import (
     TpyBinOp,
     TpyBoolLiteral,
     TpyCall,
-    TpyCoerce,
     TpyExpr,
     TpyExprStmt,
     TpyFieldAccess,
@@ -41,6 +40,7 @@ from ...parse.nodes import (
     is_base_init_call,
     is_init_trivia,
 )
+from ...coercions import peel_identity_coercions
 from ... import qnames
 from ...namespace import BindingKind
 from ...prescan import scan_reassigned_vars, scope_bound_names
@@ -118,7 +118,6 @@ from ..nodes import (
 from .predicates import (
     _value_record_slot,
     _peel_coerce,
-    _IDENTITY_STR_COERCIONS,
     _eligible_char,
     _eligible_ptr_value,
     _eligible_scalar,
@@ -1519,9 +1518,7 @@ def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -
     # An identity str-family coerce renders its inner bare in EVERY position
     # (`super().__init__(message)` on a `String` param into a `str` base
     # slot: both sides spell std::string), so the shape rows key the inner.
-    while (isinstance(a, TpyCoerce)
-           and a.coercion.name in _IDENTITY_STR_COERCIONS):
-        a = a.expr
+    a = peel_identity_coercions(a)
     at = analyzer.get_expr_type(a)
     if _eligible_scalar(at):
         return True

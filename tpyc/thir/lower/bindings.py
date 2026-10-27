@@ -867,7 +867,8 @@ def _owned_reference_elements(own: BindingOwnership,
     """Per top-level element of a binding of tuple `tt`, whether it is a
     reference element every leaf of which the binding owns (`own`)."""
     return tuple(
-        TupleType._element_is_pointer_repr(et)
+        (TupleType._element_is_pointer_repr(et)
+         or TupleType._element_is_val_or_ptr(et))
         and own.owns(tt, [p for p in leaf_paths(tt) if p[:1] == (i,)])
         for i, et in enumerate(tt.element_types))
 

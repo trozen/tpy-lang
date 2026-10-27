@@ -1,3 +1,3 @@
 main.py:19: warning: Own[T] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:19: warning: Own[T] param 'y' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:20: error: in function 'run': rebinding 'p' while it owns element 0, a generic type parameter, is not yet supported here; bind the new value to a name of its own
+main.py:22: error: in function 'run': 'p' is stored elsewhere (a parameter, a loop variable or a borrowed value), or was deleted, so the object the rebind of 'p' creates needs storage of its own, which is not yet supported here; bind the new value to a name of its own

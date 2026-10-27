@@ -24,6 +24,8 @@ int32_t via_dict_literal(Box& b);
 int32_t via_setitem(Box& b);
 // def via_nested_tuple(b: Box) -> int32:
 int32_t via_nested_tuple(Box& b);
+// def via_double_nested_tuple(b: Box) -> int32:
+int32_t via_double_nested_tuple(Box& b);
 // def via_dict_comprehension(b: Box) -> int32:
 int32_t via_dict_comprehension(Box& b);
 // def via_ternary_source(b: Box, c: Box, flag: bool) -> int32:

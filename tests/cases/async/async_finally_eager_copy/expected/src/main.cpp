@@ -27,11 +27,11 @@ namespace tpyapp::main {
         {
             bool __fin_ran_1 = false;
             try {
-                ::tpy::BigInt __tpy_async_ret_1 = total;
+                auto* __tpy_retp_1 = &(total);
                 __fin_ran_1 = true;
                 std::cout << "done" << "\n" << ::tpy::check_signals;
                 __state = S_DONE;
-                return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret_1));
+                return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(*__tpy_retp_1));
             } catch (...) {
                 if (!__fin_ran_1) {
                     std::cout << "done" << "\n" << ::tpy::check_signals;
@@ -58,9 +58,9 @@ void main() {
     std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::total_up(3))) << "\n" << ::tpy::check_signals;
 }
 
-// # A movable (BigInt) local returned under a NON-suspending finally: the
-// # eager pre-finally capture must not move (the snapshot pins the bare
-// # render `= total;`) -- only the direct-ready site moves. The annotation
+// # A movable (BigInt) local returned under a NON-suspending finally: nothing
+// # moves before the finally -- the capture takes a borrow there and moves
+// # after the chain, into the ready result. The annotation
 // # makes total a genuine BigInt; an inferred int32 would render through a
 // # BigInt(...) coercion, which the bare-name gate excludes at every site.
 // import asyncio

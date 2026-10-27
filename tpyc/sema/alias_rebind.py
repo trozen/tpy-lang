@@ -64,6 +64,7 @@ from ..typesys import (
     drop_own_marker, make_readonly, owned_payload, pointer_repr_optional, unwrap_optional_own, unwrap_own,
     unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
+    without_type_param_bounds,
 )
 from ..value_category import (binds_owned_value, call_operands,
                               getitem_call_of, peel_coerce)
@@ -148,15 +149,16 @@ def bare_tuple(t: TpyType | None) -> TupleType | None:
     return bare if isinstance(bare, TupleType) else None
 
 
-def _leaves_at(et: TpyType, path: ElemPath
-               ) -> Iterator[tuple[ElemPath, TpyType]]:
+def leaves_at(et: TpyType, path: ElemPath
+              ) -> Iterator[tuple[ElemPath, TpyType]]:
     """Every leaf of a value of type `et` at `path` with its payload type:
     the members of a nested tuple, any other type itself. The one walk
-    over a tuple's leaves (`leaf_paths`, `reference_paths`)."""
+    over a tuple's leaves (`leaf_paths`, `reference_paths`, the
+    conversion's copied leaves)."""
     e = peel_slot(et)
     if isinstance(e, TupleType):
         for i, sub in enumerate(e.element_types):
-            yield from _leaves_at(sub, path + (i,))
+            yield from leaves_at(sub, path + (i,))
     else:
         # An `Own[T] | None` leaf owns its payload `T` as an `Own[T]` leaf
         # does; only nullability tells them apart.
@@ -171,15 +173,24 @@ def leaf_paths(slot: TpyType | None,
     one path `prefix` of a value that is no tuple."""
     if slot is None:
         return frozenset({prefix})
-    return frozenset(p for p, _e in _leaves_at(slot, prefix))
+    return frozenset(p for p, _e in leaves_at(slot, prefix))
+
+
+def is_reference_leaf(t: TpyType) -> bool:
+    """THE test of a leaf an owning slot copies or moves as an object: a
+    payload that is no value type -- an open type parameter included,
+    whatever its bound (`T`, `T | None`, `T | int32`): that a `ValueType`
+    bound makes its copy unobservable is sema's decision, stated in the
+    record as a VALUE leaf."""
+    return not without_type_param_bounds(peel_slot(t)).is_value_type()
 
 
 def _paths_at(et: TpyType, path: ElemPath) -> frozenset[ElemPath]:
     """The reference paths of a tuple element of type `et` at `path`: its
-    own when it is a reference leaf (an open type parameter included: it
-    may be one), its members' when it is a nested value tuple."""
-    return frozenset(p for p, e in _leaves_at(et, path)
-                     if not e.is_value_type())
+    own when it is a reference leaf (`is_reference_leaf`), its members'
+    when it is a nested value tuple."""
+    return frozenset(p for p, e in leaves_at(et, path)
+                     if is_reference_leaf(e))
 
 
 def reference_paths(slot: TpyType | None,
@@ -310,6 +321,9 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
     if bare is None or expr is None:
         return None
     init = peel_coerce(expr)
+    if isinstance(init, TpyNoneLiteral):
+        # An Optional tuple slot's `None` holds no object to lend.
+        return frozenset()
     if isinstance(init, TpyIfExpr):
         return frozenset().union(*(
             tuple_borrowed_paths(ctx, arm, bare, prefix,
@@ -326,7 +340,13 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
                 # reference instantiation (`param_to_storage`), as the
                 # binding-borrow registry reads it: it lends, unless fresh
                 # or handed over (`Own`).
-                if (i < len(caps) and caps[i] is TupleElemCapture.VALUE
+                # A literal no capture was decided for (a walrus's) holds a
+                # value-typed element by value, the capture rule's first
+                # answer.
+                held_by_value = (caps[i] is TupleElemCapture.VALUE
+                                 if i < len(caps)
+                                 else not caps and et.is_value_type())
+                if (held_by_value
                         and not (m is not None
                                  and isinstance(unwrap_readonly(
                                      unwrap_ref_type(et)), TypeParamRef)
@@ -343,6 +363,10 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
     if isinstance(init, (TpyCall, TpyMethodCall)):
         if incoming is not None:
             return incoming.call_lent_paths(init, bare, prefix)
+        if init.result_form.copies_operand:
+            # A fresh copy of a lent operand: what a binding of it holds is
+            # its own (`warn_value_call_binding` tells the copy).
+            return frozenset()
         return declared_call_paths(init, bare, prefix)
     if isinstance(init, TpyNamedExpr):
         # A walrus denotes the name it binds, never the value it was given.
@@ -437,7 +461,11 @@ def declared_call_paths(call: 'TpyCall | TpyMethodCall', slot: TupleType,
     fi = call.resolved_function_info
     if fi is None or fi.return_type is None:
         return reference_paths(slot, prefix)
-    return _declared_borrowed(fi.return_type, slot, prefix)
+    ret = unwrap_readonly(fi.return_type)
+    if isinstance(ret, OptionalType):
+        # A tuple slot takes the Optional's payload: its markers say.
+        ret = ret.inner
+    return _declared_borrowed(ret, slot, prefix)
 
 
 def tuple_source_elem_owned(ctx: 'SemanticContext', expr: TpyExpr | None,
@@ -617,8 +645,26 @@ def rebinds_owning_tuple(ctx: 'SemanticContext', func: 'TpyFunction | None',
     if func is None or name not in reassigned or name in excluded:
         return False
     bindings = tuple_name_bindings(ctx, func, name)
-    return bool(bindings) and any(any(ctx.tuple_elem_owned.get(b) or ())
+    return bool(bindings) and any(_owns_pointer_element(ctx, b)
                                   for b in bindings)
+
+
+def _owns_pointer_element(ctx: 'SemanticContext',
+                          b: 'TpyVarDecl | TpyAssign') -> bool:
+    """Whether binding `b` holds an element of its own that a pointer
+    tuple keeps as a pointer: an element held as `val_or_ptr_t<T>` (an open
+    `T`, `_element_is_val_or_ptr`) is the instantiation's to hold by value
+    or by reference, so a tuple local owning one stays storage and copies
+    it, hedged (BUGS.md#generic-tuple-local-lending-call-no-lift) -- while
+    the tuple has a storage form, which one holding a pointer-repr element
+    does not (`has_pointer_repr_element`)."""
+    value = b.init if isinstance(b, TpyVarDecl) else b.value
+    t = bare_tuple(ctx.get_expr_type(value)) if value is not None else None
+    storage = t is not None and not t.has_pointer_repr_element()
+    return any(own and not (storage and i < len(t.element_types)
+                            and TupleType._element_is_val_or_ptr(
+                                peel_slot(t.element_types[i])))
+               for i, own in enumerate(ctx.tuple_elem_owned.get(b) or ()))
 
 
 def _kept_places(ctx: 'SemanticContext', value: TpyExpr

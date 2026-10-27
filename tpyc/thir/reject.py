@@ -295,6 +295,15 @@ def _strict_error(component: RejectComponent, node: object, where: str | None,
                            component=component, reason=reason)
 
 
+def internal_error(reason: str, message: str,
+                   loc: 'SourceLocation | None') -> 'ThirRejectError':
+    """The diagnostic of a lowering invariant sema should have kept: an
+    internal error, never a retry -- it is raised, not noted."""
+    from ..codegen_cpp.context import ThirRejectError
+    return ThirRejectError(f"internal error: {message}", loc=loc,
+                           reason=reason)
+
+
 def _walk(root: object):
     # Parse-tree nodes only: a TpyType carries no landmark and can be shared
     # or cyclic, so the walk would not terminate on one.

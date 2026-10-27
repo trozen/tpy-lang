@@ -1,0 +1,2 @@
+main.py:15: warning: may copy tuple[Own[T], A] into owned storage if not a value type; use copy() to make this explicit
+main.py:15: error: in function 'closure': this construct is not yet supported by C++ code generation (stmt.return:return.tuple_source)

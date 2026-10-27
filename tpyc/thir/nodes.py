@@ -40,7 +40,6 @@ if TYPE_CHECKING:
     from .storage_facts import THIRStorageFacts
     # The shared binding tags carry no runtime dependency on codegen here.
     from ..codegen_cpp.forms import LocalBinding
-    from .lower.context import Slot
 
 
 class Form(Enum):
@@ -1026,11 +1025,6 @@ class THIRCallableSignature:
     # (`std::optional<T>&`, `::tpy::Union<A, B>&`) where any other callable
     # returns the pointer form by value (`property_getter_returns_storage_ref`).
     storage_reference_result: bool = False
-    # The result's layout as a slot (`slot_for` at RETURN, built once with
-    # the signature by `callable_signature`): what each element of a tuple
-    # result holds and how it is represented. None for a `None` result. A
-    # view of the fields above, so it takes no part in equality.
-    result_slot: 'Slot | None' = field(default=None, compare=False)
 
     def hands_over(self, result_type: TpyType) -> bool:
         """Whether a call of this signature yielding `result_type` hands the

@@ -723,6 +723,22 @@ def build_record_self_type(record: TpyRecord, qname: str | None = None) -> Nomin
     return NominalType(record.name, _module_qname=qname)
 
 
+def _unshadowed_bounds(class_bounds: 'dict[str, NominalType] | None',
+                       method_type_params: 'list[str] | None',
+                       method_bounds: dict
+                       ) -> 'dict[str, NominalType]':
+    """The class's type-parameter bounds a method's signature carries: a
+    type parameter the method declares itself shadows the class's and
+    carries its own bound, or none (`def take[T](...)` in
+    `class V[T: ValueType]`)."""
+    own = set(method_type_params or ())
+    out = {n: b for n, b in (class_bounds or {}).items() if n not in own}
+    out.update((n, b) for n, b in method_bounds.items()
+               if n in own and n in (class_bounds or {})
+               and isinstance(b, NominalType))
+    return out
+
+
 def receiver_self_type(record: 'TpyRecord | RecordInfo', registry) -> TpyType:
     """The type `self` and `Self` name in a method of `record`: the record's
     own Self type, or the enum for an enum's companion record."""
@@ -2112,12 +2128,15 @@ class TypeRegistrar:
             # Propagate resolved types back to AST so analyzer/codegen see concrete types.
             # Attach class-level type param bounds to TypeParamRef instances so that
             # codegen can check bounds (e.g. T: ValueType) without context lookup.
-            if record.type_param_bounds:
+            class_bounds = _unshadowed_bounds(record.type_param_bounds,
+                                              method.type_params,
+                                              method.type_param_bounds)
+            if class_bounds:
                 method_params = [
-                    (n, attach_type_param_bounds(t, record.type_param_bounds))
+                    (n, attach_type_param_bounds(t, class_bounds))
                     for n, t in method_params
                 ]
-                method_return = attach_type_param_bounds(method_return, record.type_param_bounds)
+                method_return = attach_type_param_bounds(method_return, class_bounds)
             # Validate that auto_readonly[T] in return type is only on @auto_readonly methods.
             # With parser cloning, clones always have auto_readonly=False and their return types
             # already have AutoReadonlyType resolved. If a user writes auto_readonly[T]
@@ -2354,11 +2373,14 @@ class TypeRegistrar:
         if record.type_param_bounds:
             for method_list in methods.values():
                 for i, func_info in enumerate(method_list):
+                    class_bounds = _unshadowed_bounds(
+                        record.type_param_bounds, func_info.type_params,
+                        func_info.type_param_bounds)
                     new_params = [
-                        dc_replace(p, type=attach_type_param_bounds(p.type, record.type_param_bounds))
+                        dc_replace(p, type=attach_type_param_bounds(p.type, class_bounds))
                         for p in func_info.params
                     ]
-                    new_return = attach_type_param_bounds(func_info.return_type, record.type_param_bounds)
+                    new_return = attach_type_param_bounds(func_info.return_type, class_bounds)
                     if (any(np.type is not op.type for np, op in zip(new_params, func_info.params))
                             or new_return is not func_info.return_type):
                         method_list[i] = dc_replace(

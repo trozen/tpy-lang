@@ -1,5 +1,5 @@
 # A value-bound generic (`T: ValueType`) whose ctor and a method write an
-# `Own[T]` param into a `T` field: the member-init moves it, the method copies.
+# `Own[T]` param into a `T` field: each moves it at its last use.
 from tpy import int32, Own, ValueType
 
 

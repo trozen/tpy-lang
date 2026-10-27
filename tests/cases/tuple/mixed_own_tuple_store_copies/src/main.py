@@ -57,6 +57,14 @@ def via_nested_tuple(b: Box) -> int32:
     return b.val
 
 
+def via_double_nested_tuple(b: Box) -> int32:
+    # Two literal levels down: the member's copy is recorded at its full path
+    # (`0.0.1`), as one level down is.
+    q = ((make_mixed(b), 1), 2)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\.0\.1\)/)
+    q[0][0][1].val = 31
+    return b.val
+
+
 def via_dict_comprehension(b: Box) -> int32:
     d = {i: make_mixed(b) for i in range(1)}  # tpyc: warning(/copies Box into owned storage/)
     d[0][1].val = 29
@@ -105,6 +113,7 @@ def main() -> None:
     print(via_nested_tuple(Box(2)), via_comprehension(Box(2)))
     print(via_loop_var(Box(2)), via_field(Box(2)))
     print(via_dict_comprehension(Box(2)), via_ternary_source(Box(2), Box(3), True))
+    print(via_double_nested_tuple(Box(2)))
 
 
 main()

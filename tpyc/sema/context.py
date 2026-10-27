@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from .slot_hint import SlotHint
 
 from ..typesys import (
+    is_value_type_bound,
     global_tuple_binding_type, disambiguated_pair,
     TpyType, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewTypeFamily, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, TupleType,
@@ -1246,6 +1247,12 @@ def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
 ElemPath = tuple[int, ...]
 
 
+def paths_overlap(path: ElemPath, paths: Iterable[ElemPath]) -> bool:
+    """Whether the leaf at `path` lies under one of `paths` or above it:
+    a whole leaf `()` overlaps every path."""
+    return any(path[:len(p)] == p or p[:len(path)] == path for p in paths)
+
+
 def direct_elements(paths: Iterable[ElemPath]) -> frozenset[int]:
     """The top-level elements that are themselves one of the element
     `paths` -- a reference leaf at `(i,)`, not one nested under `i`."""
@@ -1270,8 +1277,7 @@ class NonOwningBind:
         """The line of the first binding borrowing at, above or under
         element `path`."""
         for elems, line in self.binds:
-            if elems is None or any(path[:len(e)] == e or e[:len(path)] == path
-                                    for e in elems):
+            if elems is None or paths_overlap(path, elems):
                 return line
         return None
 
@@ -3521,13 +3527,14 @@ class SemanticContext:
     def type_param_bound(self, type_param_name: str) -> 'TpyType | None':
         """The declared bound for a type parameter in the current context.
 
-        The enclosing function's own bounds win over the enclosing record's,
-        so a method that shadows a class param reads its own.
+        A type parameter the enclosing function declares shadows the
+        enclosing record's, bounded or not.
         """
         func = self.func.current_function
         if (func is not None and isinstance(func, TpyFunction)
-                and type_param_name in func.type_param_bounds):
-            return func.type_param_bounds[type_param_name]
+                and (type_param_name in func.type_param_bounds
+                     or type_param_name in func.type_params)):
+            return func.type_param_bounds.get(type_param_name)
         if (self.record_ctx.type_param_bounds
                 and type_param_name in self.record_ctx.type_param_bounds):
             return self.record_ctx.type_param_bounds[type_param_name]
@@ -3554,12 +3561,8 @@ class SemanticContext:
         params = own_copy.reference_source_params(typ)
         if not params:
             return False
-        for name in params:
-            bound = self.type_param_bound(name)
-            if (not isinstance(bound, NominalType)
-                    or bound.qualified_name() != qnames.VALUE_TYPE):
-                return False
-        return True
+        return all(is_value_type_bound(self.type_param_bound(name))
+                   for name in params)
 
     def defer_own_copy_verdict(
         self, display: 'TpyType', target: 'TpyType', dest: str,
