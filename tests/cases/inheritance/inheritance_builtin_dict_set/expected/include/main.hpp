@@ -31,11 +31,21 @@ struct Counter : ::tpy::ordered_map<std::string_view, int32_t> {
     // def __init__(self, label: str) -> None:
     Counter() = default;
     explicit Counter(std::string_view label);
+
+    void __repr_into__(std::ostream& os) const {
+        ::tpy::print_base_of<::tpy::ordered_map<std::string_view, int32_t>>(os, "Counter", *this);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream os;
+        __repr_into__(os);
+        return os.str();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
-    ::tpy::print_object_default(os, "Counter", obj);
+    obj.__repr_into__(os);
     return os;
 }
 
@@ -44,11 +54,21 @@ struct Tags : ::tpy::ordered_set<int32_t> {
 
     // def __init__(self) -> None:
     Tags();
+
+    void __repr_into__(std::ostream& os) const {
+        ::tpy::print_base_of<::tpy::ordered_set<int32_t>>(os, "Tags", *this);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream os;
+        __repr_into__(os);
+        return os.str();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tags";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tags& obj) {
-    ::tpy::print_object_default(os, "Tags", obj);
+    obj.__repr_into__(os);
     return os;
 }
 

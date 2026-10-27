@@ -18,7 +18,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_optional_own, unwrap_send_sync,
     get_covariant_params, PtrType,
     bare_name, qualify_shadowed_nominals,
-    emits_default_ctor, init_is_default_ctor,
+    emits_default_ctor, init_is_default_ctor, record_owner,
     type_value_init_indeterminate,
 )
 from ..parse import (
@@ -30,6 +30,7 @@ from ..parse import (
     collect_name_refs, collect_top_level_local_names, expr_reads_self_field,
 )
 from ..identity_map import IdentityMap
+from ..modules.type_resolution import is_native_iterable
 from ..namespace import Namespace
 from ..sema.registration import build_record_self_type, receiver_self_type
 
@@ -640,6 +641,18 @@ class RecordGenerator:
                 base_name = record_info.inherits_init_from.to_cpp_base_name()
                 parent_cpp_short = base_name.rsplit("::", 1)[-1]
                 out.write(f"{INDENT}using {parent_cpp}::{parent_cpp_short};\n")
+                registry = self.ctx.analyzer.registry
+                if (registry.inherits_template_init(record_info)
+                        and registry.get_record_for_type(
+                            record_info.inherits_init_from)
+                        is registry.init_owner(record_info)):
+                    # A builtin base's `__init__` builds the base value, and
+                    # C++ does not inherit the base's copy / move ctors, so a
+                    # subclass's `super().__init__(...)` reaches the base
+                    # through this one.
+                    out.write(
+                        f"{INDENT}explicit {cpp_rec_name}({parent_cpp} __base)"
+                        f" : {parent_cpp}(std::move(__base)) {{}}\n")
             if record_info and (record_info.is_nocopy or record_info.has_del
                                 or record_info.has_copy):
                 if emits_default_ctor(record_info):
@@ -675,6 +688,10 @@ class RecordGenerator:
         has_iter = any(m.name == "__iter__" for m in record.methods)
         if has_next and not has_iter:
             out.write(f"\n{INDENT}auto& __iter__() {{ return *this; }}\n")
+        if has_iter and self._overrides_inherited_range(record):
+            # The base's begin()/end() stays visible in C++; every consumer
+            # must run this class's `__iter__`, as a loop over it does.
+            out.write(f"{INDENT}using tpy_iter_dunder = void;\n")
 
         # Synthesize begin()/end() from __span__() so span-backed user types
         # satisfy std::ranges::input_range. The returned span's iterators
@@ -769,6 +786,26 @@ class RecordGenerator:
             )
 
         has_str_repr = self._record_has_str_repr(record_info)
+        native_repr = self._inherited_native_repr(record_info)
+        if native_repr is not None:
+            base_cpp = self.types.type_to_cpp(native_repr)
+            # Streamed, so a printed container element writes it in place.
+            out.write(
+                f"\n{INDENT}void __repr_into__(std::ostream& os) const {{\n"
+                f"{INDENT}{INDENT}::tpy::print_base_of<{base_cpp}>(os, "
+                f'"{bare_name(record.name)}", *this);\n'
+                f"{INDENT}}}\n"
+                f"\n{INDENT}std::string __repr__() const {{\n"
+                f"{INDENT}{INDENT}std::ostringstream os;\n"
+                f"{INDENT}{INDENT}__repr_into__(os);\n"
+                f"{INDENT}{INDENT}return os.str();\n"
+                f"{INDENT}}}\n")
+        elif self._shadows_inherited_repr_into(record_info):
+            # print_element prefers an inherited streaming repr; the
+            # record's own `__repr__` is the one that runs.
+            out.write(
+                f"\n{INDENT}void __repr_into__(std::ostream& os) const {{ "
+                f"os << __repr__(); }}\n")
         python_module = self.ctx.analyzer.ctx.module_name
         qualified_name = f"{python_module}.{record.name}"
         out.write(
@@ -1241,29 +1278,66 @@ class RecordGenerator:
         out.write(f"{INDENT}}};\n\n")
 
     def _record_has_str_repr(self, record_info: RecordInfo | None) -> tuple[bool, bool]:
-        """Return (has_str, has_repr) for a record, walking non-native ancestors.
+        """(has_str, has_repr) for a record: whether the class in its MRO
+        defining `__str__` / `__repr__` (`mro_method_definer`) is a TPy
+        class, whose method the record's C++ answers as a member.
 
         Operator<< prefers __str__ then __repr__; if neither is found in the
-        chain we fall back to the field-by-field default. Native ancestors
-        are skipped: BaseException.__str__ would otherwise override the
-        default for user Exception subclasses.
+        chain we fall back to the field-by-field default. A native class's
+        `__str__` (BaseException's) is not one: an Exception subclass prints
+        the default; a native `__repr__` free function is
+        `_inherited_native_repr`'s.
         """
         if record_info is None:
             return False, False
-        has_str = bool(record_info.get_method_overloads("__str__"))
-        has_repr = bool(record_info.get_method_overloads("__repr__"))
-        if has_str and has_repr:
-            return True, True
-        for anc in self.ctx.analyzer.registry.iter_ancestor_records(record_info):
-            if anc.is_native:
-                continue
-            if not has_str and anc.get_method_overloads("__str__"):
-                has_str = True
-            if not has_repr and anc.get_method_overloads("__repr__"):
-                has_repr = True
-            if has_str and has_repr:
-                break
-        return has_str, has_repr
+        registry = self.ctx.analyzer.registry
+
+        def tpy_defined(name: str) -> bool:
+            found = registry.mro_method_definer(record_info, name)
+            return found is not None and not found[1].is_native
+
+        return tpy_defined("__str__"), tpy_defined("__repr__")
+
+    def _inherited_native_repr(self, record_info: RecordInfo | None
+                               ) -> 'TpyType | None':
+        """The ancestor, as the record spells it, whose `__repr__` the
+        record runs when that `__repr__` is a native free function (a
+        builtin base's: `class Sub(dict[K, V])`), else None. C++ inherits no
+        free function, so the record gets a member forwarding to it."""
+        if record_info is None:
+            return None
+        found = self.ctx.analyzer.registry.mro_method_definer(
+            record_info, "__repr__")
+        if found is None or found[0] is None:
+            return None
+        anc_type, anc = found
+        if not any(fi.native_function
+                   for fi in anc.get_method_overloads("__repr__")):
+            return None
+        return anc_type
+
+    def _shadows_inherited_repr_into(self, record_info: RecordInfo | None
+                                     ) -> bool:
+        """Whether the record defines its own TPy `__repr__` while an
+        ancestor's C++ streams one (`_inherited_native_repr`)."""
+        if record_info is None:
+            return False
+        registry = self.ctx.analyzer.registry
+        found = registry.mro_method_definer(record_info, "__repr__")
+        if found is None or found[0] is not None or found[1].is_native:
+            return False
+        return any(self._inherited_native_repr(anc) is not None
+                   for _, anc in registry.iter_mro_entries(record_info))
+
+    def _overrides_inherited_range(self, record: TpyRecord) -> bool:
+        """Whether `record` iterates by a TPy `__iter__` while an ancestor
+        it inherits a C++ range from iterates natively (`is_native_iterable`)."""
+        registry = self.ctx.analyzer.registry
+        record_info = registry.get_record(record.name)
+        if record_info is None or is_native_iterable(record_owner(record_info), registry):
+            return False
+        return any(is_native_iterable(anc_type, registry)
+                   for anc_type, _ in registry.iter_mro_entries(record_info))
 
     def _gen_record_ostream(
         self, out: TextIO, record: TpyRecord,
@@ -1300,6 +1374,9 @@ class RecordGenerator:
 
         if has_str:
             out.write(f"{INDENT}os << obj.__str__();\n")
+        elif self._inherited_native_repr(
+                self.ctx.analyzer.registry.get_record(record.name)) is not None:
+            out.write(f"{INDENT}obj.__repr_into__(os);\n")
         elif has_repr:
             out.write(f"{INDENT}os << obj.__repr__();\n")
         else:

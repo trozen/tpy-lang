@@ -51,6 +51,7 @@ int32_t _bundled_ca_count();
 struct SSLError : ::tpy::OSError {
 
     using ::tpy::OSError::OSError;
+    explicit SSLError(::tpy::OSError __base) : ::tpy::OSError(std::move(__base)) {}
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<SSLError>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }

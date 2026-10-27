@@ -4,15 +4,37 @@
 namespace tpyapp::main {
 
 
+// def inherited() -> None:
+//     s = Sub[Point](Point(1, 2))
+//     # Field read, write and method call through an inherited __deref__.
+//     print("inherited", s.x, s.sum())  # tpyc: ok
+//     s.x = 5  # tpyc: ok
+//     print("inherited-write", s.v.x, s.sum())
+//     ls = Sub[list[int32]]([1])
+//     # A container stub method through the inherited __deref__.
+//     ls.append(2)  # tpyc: ok
+//     print("inherited-stub", len(ls.v))
+void inherited() {
+    Sub<Point> s = Sub<Point>(Point(1, 2));
+    std::cout << "inherited" << " " << s.__deref__().x << " " << s.__deref__().sum() << "\n" << ::tpy::check_signals;
+    s.__deref__().x = 5;
+    std::cout << "inherited-write" << " " << s.v.x << " " << s.__deref__().sum() << "\n" << ::tpy::check_signals;
+    Sub<std::vector<int32_t>> ls = Sub<std::vector<int32_t>>(std::vector<int32_t>{1});
+    ls.__deref__().push_back(2);
+    std::cout << "inherited-stub" << " " << ::tpy::__len__(ls.v) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     pt: Point = Point(10, 20)
 //     r: Ref = Ref(pt)
 //     # Method call through user-defined __deref__
 //     print(r.sum())
+//     inherited()
 void main() {
     Point pt = Point(10, 20);
     Ref r = Ref(pt);
     std::cout << r.__deref__().sum() << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::inherited();
 }
 
 // main()

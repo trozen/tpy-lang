@@ -4,7 +4,7 @@
 
 def main() -> None:
     xs = [1, 2]
-    print(list(xs, xs))  # tpyc: error(/takes 1 positional argument/)
+    print(list(xs, xs))  # tpyc: error(/No matching overload for 'list' with argument types \(list\[int32\], list\[int32\]\)/)
 
 
 main()

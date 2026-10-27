@@ -117,16 +117,6 @@ concept any_repr_capable = requires(const T& t) {
     { ::tpy::__repr__(t) } -> std::convertible_to<std::string>;
 };
 
-// Mirror tpy::to_bool's acceptance criteria. Going through `tpy::to_bool`
-// itself would instantiate its `static_assert(false, ...)` for
-// non-capable T at concept-check time and break compilation.
-template <typename T>
-concept any_to_bool_capable =
-    std::is_same_v<T, std::monostate> ||
-    std::is_constructible_v<bool, T> ||
-    requires(const T& t) { { t.empty() } -> std::convertible_to<bool>; } ||
-    requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; };
-
 template <typename T>
 concept any_eq_capable = requires(const T& a, const T& b) {
     { a == b } -> std::convertible_to<bool>;
@@ -200,14 +190,9 @@ constexpr void (*repr_slot_for() noexcept)(std::string&, const std::any&) {
 
 template <typename T>
 constexpr bool (*to_bool_slot_for() noexcept)(const std::any&) {
-    if constexpr (any_to_bool_capable<T>) {
-        return +[](const std::any& a) -> bool {
-            return ::tpy::to_bool(std::any_cast<const T&>(a));
-        };
-    } else {
-        // Python default: objects without __bool__/__len__ are truthy.
-        return +[](const std::any&) -> bool { return true; };
-    }
+    return +[](const std::any& a) -> bool {
+        return ::tpy::to_bool(std::any_cast<const T&>(a));
+    };
 }
 
 template <typename T>

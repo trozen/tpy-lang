@@ -418,7 +418,7 @@ void converts(int32_t a32, int64_t a64, int64_t wide) {
     ::tpy::BytesView data = ::tpy::bytes_literal("hello", 5);
     {
         try {
-            std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 256))) << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::print_bool(::tpy::bytes_contains(data, 256)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "converts bytes ValueError" << "\n" << ::tpy::check_signals;
         }
@@ -838,7 +838,7 @@ void bytes_widths(uint32_t u32, int64_t i64, uint64_t u64, const ::tpy::BigInt& 
     }
     {
         try {
-            std::cout << ::tpy::print_bool((::tpy::bytes_contains(bv, i64))) << "\n" << ::tpy::check_signals;
+            std::cout << ::tpy::print_bool(::tpy::bytes_contains(bv, i64)) << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "bytes view contains ValueError" << "\n" << ::tpy::check_signals;
         }

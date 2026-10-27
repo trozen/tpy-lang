@@ -20,6 +20,7 @@ void main();
 struct Fatal : ::tpy::SystemExit {
 
     using ::tpy::SystemExit::SystemExit;
+    explicit Fatal(::tpy::SystemExit __base) : ::tpy::SystemExit(std::move(__base)) {}
 
     // def __str__(self) -> str:
     std::string __str__() const;

@@ -51,7 +51,7 @@ bool second_has_auth(::tpy::BytesView location) {
     ::tpy::Bytes second = d.recv(65536);
     b.close();
     d.close();
-    return (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("Authorization:", 14)));
+    return ::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("Authorization:", 14));
 }
 
 // def main() -> None:

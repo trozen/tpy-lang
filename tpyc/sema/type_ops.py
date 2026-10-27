@@ -22,6 +22,7 @@ from ..typesys import (
     is_callable_type, is_integer_type, is_float_type,
     is_void_like_type,
     is_open_type_param_return, contains_type_param, coro_struct_owner,
+    type_param_names,
     strip_template_repr, resolve_int_literals, INT_TYPE_ARG_MAX,
 )
 from ..coercions import resolve_coercion, CoercionContext
@@ -1363,22 +1364,16 @@ class TypeOperations:
         if record is None:
             return None
 
-        # NominalType carries type_args directly; pending containers
-        # (PendingListType etc.) need extract_type_params to surface them.
+        # A NominalType receiver binds each method at its MRO owner
+        # (`bind_inherited_method`); pending containers (PendingListType
+        # etc.) have no ancestors and need extract_type_params to surface
+        # their own args.
         type_subst: dict[str, TpyType] = {}
-        if record.type_params:
-            if isinstance(arg_type, NominalType) and arg_type.type_args:
-                type_subst = dict(zip(record.type_params, arg_type.type_args))
-            else:
-                extracted = builtin_modules.extract_type_params(arg_type)
-                type_subst = {tp: extracted[tp] for tp in record.type_params if tp in extracted}
+        if record.type_params and not isinstance(arg_type, NominalType):
+            extracted = builtin_modules.extract_type_params(arg_type)
+            type_subst = {tp: extracted[tp] for tp in record.type_params if tp in extracted}
 
         def _substitute(t: TpyType) -> TpyType:
-            # Propagate the record's class type params into nested
-            # positions: e.g. for Future[int32].poll's return type
-            # `Poll[T]`, we want `Poll[int32]`. Recursing here matters
-            # for any generic record whose protocol-conforming method
-            # returns or accepts a compound type wrapping the class T.
             t = unwrap_ref_type(t)
             if not type_subst:
                 return t
@@ -1389,6 +1384,9 @@ class TypeOperations:
             for method_info in self.ctx.registry.get_method_overloads_with_parents(record, method_sig.name):
                 if len(method_info.params) != len(method_sig.params):
                     continue
+                if isinstance(arg_type, NominalType):
+                    _, method_info = self.bind_inherited_method(
+                        method_info, arg_type)
                 ret = _substitute(method_info.return_type)
                 self.match_type_with_inference(method_sig.return_type, ret, inferred)
                 for (_, proto_ptype), (_, record_ptype) in zip(
@@ -2275,8 +2273,55 @@ class TypeOperations:
 
         return False
 
+    def declaring_class_params(self, method: FunctionInfo) -> set[str] | None:
+        """The type params of the record declaring `method` -- the only
+        class params a same-named method type param can shadow -- or None
+        when the method names no declaring record."""
+        if not method.owning_type_qname:
+            return None
+        owner = self.ctx.registry.find_record_by_qname(method.owning_type_qname)
+        if owner is None:
+            return None
+        return set(owner.type_params or ())
+
+    def method_param_renames(
+        self, method: FunctionInfo, type_subst: dict[str, 'TpyType | int'],
+        in_scope: Sequence[str] = (),
+    ) -> dict[str, str]:
+        """The method's own type params `substitute_method_type_params`
+        renames under `type_subst`, old name -> new name. `in_scope` names
+        the type params of the record the view is read from, which the
+        method's own params must not capture either."""
+        if not method.type_params:
+            return {}
+        class_params = self.declaring_class_params(method) or set()
+        # Hygiene: a method's own type param named like a type param the
+        # substitution brings in (`list.__contains__[U, ..]` viewed from
+        # `class GL[U](list[U])`, whose class `T` maps to `GL`'s `U`) is
+        # renamed, so a later substitution at the receiver's args (`U ->
+        # float`) cannot capture it.
+        brought_in: set[str] = set(in_scope)
+        for k, v in type_subst.items():
+            if isinstance(v, TpyType) and not (
+                    isinstance(v, TypeParamRef) and v.name == k):
+                brought_in |= type_param_names(v)
+        renamed: dict[str, str] = {}
+        if brought_in:
+            taken = (set(type_subst) | brought_in | set(method.type_params)
+                     | class_params)
+            for tp in method.type_params:
+                if (tp in brought_in and tp not in type_subst
+                        and tp not in class_params):
+                    i = 1
+                    while f"{tp}_{i}" in taken:
+                        i += 1
+                    renamed[tp] = f"{tp}_{i}"
+                    taken.add(renamed[tp])
+        return renamed
+
     def substitute_method_type_params(
-        self, method: FunctionInfo, type_subst: dict[str, TpyType]
+        self, method: FunctionInfo, type_subst: dict[str, TpyType],
+        in_scope: Sequence[str] = (),
     ) -> FunctionInfo:
         """Substitute type parameters in a method signature.
 
@@ -2284,10 +2329,16 @@ class TypeOperations:
         as identity mappings (U -> TypeParamRef(U)).  This is needed because
         substitute_type_params raises SemanticError for unknown params, and
         method-level params aren't in the class substitution dict.
+        `in_scope`: see `method_param_renames`.
         """
+        class_params = (self.declaring_class_params(method)
+                        if method.type_params else None) or set()
+        renamed = self.method_param_renames(method, type_subst, in_scope)
         effective_subst = dict(type_subst)
         for tp in method.type_params:
-            if tp not in effective_subst:
+            if tp in renamed:
+                effective_subst[tp] = TypeParamRef(renamed[tp])
+            elif tp not in effective_subst:
                 effective_subst[tp] = TypeParamRef(tp)
         substituted_params = [
             dc_replace(p, type=self.substitute_param_type(p.type, effective_subst))
@@ -2295,11 +2346,15 @@ class TypeOperations:
         ]
         substituted_return = self.substitute_type_params(method.return_type, effective_subst)
 
+        shadowed = {tp for tp in method.type_params
+                    if tp in type_subst and tp in class_params}
+
         # Substitute type params in bounds
         substituted_bounds = {}
         if method.type_param_bounds:
             for param_name, bound in method.type_param_bounds.items():
-                substituted_bounds[param_name] = self.substitute_type_params(bound, effective_subst)
+                substituted_bounds[renamed.get(param_name, param_name)] = (
+                    self.substitute_type_params(bound, effective_subst))
 
         return FunctionInfo(
             name=method.name,
@@ -2330,8 +2385,14 @@ class TypeOperations:
             # instantiated inner from the substituted return_type.
             async_inner_return=method.async_inner_return,
             is_builtin_function=method.is_builtin_function,
-            type_params=method.type_params,
-            type_param_bounds=substituted_bounds if substituted_bounds else method.type_param_bounds,
+            # A class-shadowed param (`list.__ne__[T: Equatable]`) is the
+            # class's, so the class substitution binds it (`T -> U`) and the
+            # view has no longer to infer it; its bound stays on `root`,
+            # which the class-bound check reads.
+            type_params=[renamed.get(tp, tp) for tp in method.type_params
+                         if tp not in shadowed],
+            type_param_bounds={k: v for k, v in substituted_bounds.items()
+                               if k not in shadowed},
             linkage=method.linkage,
             native_name=method.native_name,
             native_function=method.native_function,
@@ -2357,13 +2418,12 @@ class TypeOperations:
             canonical_fi=method.root,
         )
 
-    def bind_inherited_coro_method(
-        self, method: FunctionInfo, receiver: TpyType,
-        receiver_record: 'RecordInfo | None',
+    def bind_inherited_method(
+        self, method: FunctionInfo, receiver: NominalType,
     ) -> 'tuple[NominalType, FunctionInfo]':
-        """Resolve an async/iterator dunder fetched via the parent-walk
+        """Resolve a method fetched via the parent-walk
         (`get_method_overloads_with_parents`, which does not substitute type
-        args) to its MRO-bound owner and signature.
+        args) to its MRO-bound owner and signature at `receiver`.
 
         The bound owner (e.g. `Box[int32]` for a `Box[T]` method inherited by a
         concrete subclass) supplies the concrete args codegen needs to name the
@@ -2373,7 +2433,7 @@ class TypeOperations:
         substituted with that binding (unchanged when the owner has no args).
         """
         owner = coro_struct_owner(
-            method.owning_type_qname, receiver, receiver_record)
+            method.owning_type_qname, receiver, self.ctx.registry)
         subst = self.build_type_substitution(owner)
         if subst:
             method = self.substitute_method_type_params(method, subst)
@@ -2384,7 +2444,8 @@ class TypeOperations:
         record_info = self.ctx.registry.get_record_for_type(typ)
         if not record_info:
             return None
-        overloads = record_info.get_method_overloads("__deref__")
+        overloads = self.ctx.registry.get_method_overloads_with_parents(
+            record_info, "__deref__")
         if not overloads:
             return None
         method = call_ranking(self.ctx, self.protocols, self,
@@ -2392,9 +2453,12 @@ class TypeOperations:
             overloads, [], is_readonly_receiver=is_readonly)
         if method is None:
             return None
-        type_subst = self.build_type_substitution(typ)
-        if type_subst:
-            method = self.substitute_method_type_params(method, type_subst)
+        if isinstance(typ, NominalType):
+            _, method = self.bind_inherited_method(method, typ)
+        else:
+            type_subst = self.build_type_substitution(typ)
+            if type_subst:
+                method = self.substitute_method_type_params(method, type_subst)
         return unwrap_ref_type(method.return_type)
 
     def get_deref_coercion_target(self, typ: TpyType) -> TpyType | None:

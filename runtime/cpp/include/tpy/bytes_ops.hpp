@@ -120,6 +120,15 @@ inline std::ostream& operator<<(std::ostream& os, const ByteArrayPrinter& bp) {
     return os;
 }
 
+// A bytearray subclass's repr names the subclass: `Sub(b'xy')`.
+inline std::ostream& print_as_base(std::ostream& os, std::string_view class_name,
+                                   const ByteArray& base) {
+    os << class_name << '(';
+    detail::write_bytes_repr(os, BytesView(std::span<const uint8_t>(base)),
+                             /*escape_single=*/true);
+    return os << ')';
+}
+
 // __str__ / __repr__ overloads for raw Bytes / BytesView. Needed for
 // generic dispatch (e.g. tpy::Any storing bytes), where the BytesPrinter
 // wrapper isn't available at the call site.
@@ -191,7 +200,7 @@ inline void bytearray_append(Buf& self, const T& v) {
 // bytes_from_int_iterable) and appends to a live `bytearray`.
 template<typename Buf, typename Arg>
 void bytes_extend_int_iterable(Buf& self, Arg&& arg) {
-    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
         if constexpr (std::ranges::sized_range<std::remove_cvref_t<Arg>>) {
             self.reserve(self.size() + std::ranges::size(arg));
         }
@@ -533,7 +542,7 @@ TPY_ALWAYS_INLINE void bytearray_setitem(ByteArray& b, int32_t index, int32_t va
 /// basic slice, an empty `values` deletes the selected bytes (a list raises
 /// there instead), any other size must match the selection.
 template<typename Range>
-    requires std::ranges::input_range<const Range>
+    requires ::tpy::native_input_range<const Range>
 void bytearray_set_stepped_slice(ByteArray& b, Slice sl, const Range& values) {
     int32_t start = sl.start.value_or(SLICE_NONE);
     int32_t stop = sl.stop.value_or(SLICE_NONE);

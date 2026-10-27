@@ -302,7 +302,7 @@ inline bool Schedule::__eq__(const Schedule& other) const {
 }
 
 inline std::string Schedule::__repr__() const {
-    return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::list_to_str(this->events), ::tpy::repr_of(this->default_duration), ::tpy::repr_of(this->deadline));
+    return std::format("Schedule(events={}, default_duration={}, deadline={})", ::tpy::repr_of(this->events), ::tpy::repr_of(this->default_duration), ::tpy::repr_of(this->deadline));
 }
 
 inline Schedule Schedule::from_json(std::string_view __s) {

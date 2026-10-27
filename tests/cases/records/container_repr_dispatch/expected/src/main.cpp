@@ -82,7 +82,7 @@ void main() {
     std::cout << ::tpy::repr_of(r) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(std::array<Both, 1>{b}) << "\n" << ::tpy::check_signals;
     std::vector<StrOnly> bs = ::tpy::make_vector<StrOnly>(std::move(s));
-    std::string bs_str = ::tpy::list_to_str(bs);
+    std::string bs_str = std::string(::tpy::__str__(bs));
     std::cout << ::tpy::print_bool(((::tpy::str_startswith(bs_str, "[<StrOnly object at 0x") || ::tpy::str_startswith(bs_str, "[<__main__.StrOnly object at 0x")) && ::tpy::str_endswith(bs_str, ">]"))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter(std::array<ReprOnly, 1>{r}) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::TuplePrinter(std::tuple<Both*, ReprOnly*>{&(b), &(r)}) << "\n" << ::tpy::check_signals;

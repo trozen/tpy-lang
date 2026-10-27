@@ -27,7 +27,7 @@ from ..value_category import peel_coerce
 from ..type_def_registry import protocol_info_of
 from ..typesys import (
     FunctionInfo, ImplicitReadonly, MutationCallEdge, NominalType,
-    ReadonlyType, TpyType,
+    ReadonlyType, RecordInfo, TpyType,
     is_bodyless_binding, is_dyn_protocol, is_protocol_type, unwrap_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
     receiver_lends_handle,
@@ -160,32 +160,27 @@ def call_mutates_receiver(fi: FunctionInfo, *, handle_climbs: bool = False) -> b
                 or fi.is_auto_readonly_mutable_clone)
 
 
-def _builtin_overload_invalidates(m: FunctionInfo) -> bool:
-    # The mutable clone of an @auto_readonly accessor (values/items) hands
-    # out a borrow but does not mutate the receiver.
-    return (not m.is_readonly and m.native_mutates != "elements"
-            and not m.is_auto_readonly_mutable_clone)
-
-
-def _user_overload_invalidates(m: FunctionInfo) -> bool:
-    # Inferred structural mutation: only a method that directly structurally
-    # mutates self (append/insert/del on self's fields) can invalidate
+def _overload_invalidates(m: FunctionInfo) -> bool:
+    # A bodyless binding (a builtin's method) answers by its declaration;
+    # a bodied method by the structural mutation inferred from its body --
+    # only a method that directly grows / shrinks self's storage invalidates
     # references; getters and field-only writes are safe. None means not yet
     # analyzed (forward ref) -> conservative. Indirect structural mutation
     # through same-class method calls is not detected here
     # (BUGS.md#transitive-receiver-growth-unchecked): Phase 2 propagation
-    # runs after body analysis.
-    # A stub has no body to infer from: its declaration is the fact. The
-    # mutable clone of an @auto_readonly pair shares its body with the const
-    # clone, so it cannot mutate its receiver's structure either.
+    # runs after body analysis. The mutable clone of an @auto_readonly pair
+    # hands out a borrow but does not mutate its receiver.
     if (m.is_readonly or m.native_mutates == "elements"
             or m.is_auto_readonly_mutable_clone):
         return False
+    if is_bodyless_binding(m):
+        return True
     smp = m.root.direct_structural_mutated_params
     return smp is None or -1 in smp
 
 
-def _builtin_record_of(ctx: SemanticContext, obj_type: TpyType):
+def _builtin_record_of(ctx: SemanticContext,
+                       obj_type: TpyType) -> RecordInfo | None:
     qname = obj_type.qualified_name()
     return ctx.registry.get_builtin_record(qname) if qname else None
 
@@ -193,51 +188,50 @@ def _builtin_record_of(ctx: SemanticContext, obj_type: TpyType):
 def is_invalidating_method(ctx: SemanticContext, obj_type: TpyType,
                            method_name: str) -> bool:
     """Check if a method invalidates iterators/references on a container,
-    looked up BY NAME among the type's own methods (the explicit `g.m()`
-    path; an inherited method is not found --
-    BUGS.md#explicit-inherited-method-no-loan-warning).
+    looked up BY NAME through the receiver's MRO (the explicit `g.m()`
+    path), so an inherited method answers by the class that defines it.
 
-    For builtin types (list, dict, set, etc.): a method invalidates if it
-    is non-readonly AND does not declare `@native(mutates="elements")`.
-    For user-defined types: its inferred direct structural mutation, or the
-    same declaration on a stub.
+    Each overload answers by `_overload_invalidates`: its declaration
+    when it has no body, else its inferred direct structural mutation.
     """
-    builtin_record = _builtin_record_of(ctx, obj_type)
-    if builtin_record is not None:
-        return any(_builtin_overload_invalidates(m)
-                   for m in builtin_record.get_method_overloads(method_name))
-    record = ctx.registry.get_record_for_type(obj_type)
-    if record is None:
+    owner = _method_definer(ctx, obj_type, method_name)
+    if owner is None:
         return False
-    return any(_user_overload_invalidates(m)
-               for m in record.get_method_overloads(method_name))
+    return any(_overload_invalidates(m)
+               for m in owner.get_method_overloads(method_name))
+
+
+def _method_definer(ctx: SemanticContext, obj_type: TpyType,
+                    method_name: str) -> RecordInfo | None:
+    record = (_builtin_record_of(ctx, obj_type)
+              or ctx.registry.get_record_for_type(obj_type))
+    if record is None:
+        return None
+    found = ctx.registry.mro_method_definer(record, method_name)
+    return found[1] if found is not None else None
 
 
 def method_writes_receiver(ctx: SemanticContext, obj_type: TpyType,
                            method_name: str) -> bool:
     """Whether calling `method_name` on an `obj_type` receiver may write
-    it: some overload of that name is not `@readonly`. A name the type does
-    not define answers True -- the caller is asking a syntactic candidate
-    and cannot prove it harmless."""
-    record = (_builtin_record_of(ctx, obj_type)
-              or ctx.registry.get_record_for_type(obj_type))
-    overloads = record.get_method_overloads(method_name) if record is not None else []
+    it: some overload of that name (resolved through the MRO) is not
+    `@readonly`. A name the type does not define answers True -- the
+    caller is asking a syntactic candidate and cannot prove it harmless."""
+    owner = _method_definer(ctx, obj_type, method_name)
+    overloads = owner.get_method_overloads(method_name) if owner is not None else []
     return not overloads or any(not m.is_readonly for m in overloads)
 
 
-def callee_invalidates(ctx: SemanticContext, obj_type: TpyType,
-                       callee: FunctionInfo) -> bool:
+def callee_invalidates(callee: FunctionInfo) -> bool:
     """`is_invalidating_method` for a callee already resolved (through the
     MRO), so an inherited dunder is answered by its own facts."""
-    if _builtin_record_of(ctx, obj_type) is not None:
-        return _builtin_overload_invalidates(callee)
-    return _user_overload_invalidates(callee)
+    return _overload_invalidates(callee)
 
 
 def _invalidates(ctx: SemanticContext, obj_type: TpyType, method: str,
                  callee: FunctionInfo | None) -> bool:
     if callee is not None:
-        return callee_invalidates(ctx, obj_type, callee)
+        return callee_invalidates(callee)
     return is_invalidating_method(ctx, obj_type, method)
 
 

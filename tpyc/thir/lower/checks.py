@@ -257,6 +257,7 @@ from .predicates import (
     _bytes_family_ref,
     _f1_container_ref,
     _f1_record,
+    _record_slice_upcast_ok,
     record_like,
     _method_rvalue_record_like,
     _union_member_match,
@@ -323,6 +324,7 @@ from .predicates import (
     _owned_viewfam_elem,
     _peel_coerce,
     _plain_member_call_markers_ok,
+    base_part_receiver_type,
     _plain_method_fi_ok,
     _plain_or_opt_own_slot,
     _plain_own_slot,
@@ -2606,24 +2608,6 @@ def _covariant_record_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
     return (isinstance(vt, NominalType) and isinstance(target, NominalType)
             and analyzer.compat.is_covariant_generic_upcast(vt, target))
 
-def _record_slice_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
-                            analyzer) -> bool:
-    """`vt -> target` is a plain SUBCLASS upcast at a record slot, where the
-    C++ assign slices to the base -- the narrowing sema admits for ASSIGN /
-    INIT / RETURN under its "upcast narrows" warning, so the divergence from
-    CPython (which keeps the derived object) is declared, not silent. The
-    source keeps its own spelling; `operator=` does the slicing.
-
-    Distinct from `_covariant_record_upcast_ok`, which is
-    representation-PRESERVING and loses nothing. A polymorphic base never
-    reaches here: sema rejects a `@dynamic`-protocol rvalue at a record slot
-    before lowering."""
-    return (isinstance(vt, NominalType) and isinstance(target, NominalType)
-            and vt != target and _f1_record(vt, analyzer)
-            and _f1_record(target, analyzer)
-            and analyzer.registry.is_subclass_of(vt, target))
-
-
 def _container_storage_field(t) -> bool:
     """A reference-axis container FIELD type the container-literal slices
     admit: an instantiated `list` / `dict` / `set` / `Array`, or `bytearray`.
@@ -3336,7 +3320,10 @@ def _user_record_setitem_ok(
         return False
     idx_type = analyzer.get_expr_type(sub.index)
     idx_ok = (_resolved_scalar(idx_type, analyzer)
-              or _resolved_viewfam_value(idx_type, analyzer) is not None)
+              or _resolved_viewfam_value(idx_type, analyzer) is not None
+              # An open-K key inside a generic body (`self[k] = v`) renders
+              # by name per instantiation, as a container write's does.
+              or _is_type_param_slot(idx_type))
     if not idx_ok:
         return False
     vbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vslot)))
@@ -3355,6 +3342,12 @@ def _user_record_setitem_ok(
             analyzer.get_expr_type(sub))))
         return (_eligible_scalar(et) or _eligible_char(et)
                 or _eligible_enum(et, analyzer) is not None
+                # An open-V NAME inside a generic body: forwarded by name,
+                # copied or moved per instantiation (sema warns the copy).
+                or (_is_type_param_slot(et) and isinstance(stmt.value, TpyName)
+                    and stmt.value.name in declared
+                    and stmt.value.name not in pointers
+                    and stmt.value.name not in narrowed)
                 or (record_like(et, analyzer)
                     and _record_setitem_record_source(stmt.value, et,
                                                       declared, pointers,
@@ -8546,6 +8539,21 @@ def _method_receiver_type(recv: TpyExpr, locals_: dict[str, TpyType],
     t = analyzer.get_expr_type(recv)
     return resolve_pending_container(t, analyzer) or t
 
+def _receiver_type(recv: TpyExpr, base_part: 'TpyType | None',
+                   locals_: dict[str, TpyType],
+                   analyzer) -> 'TpyType | None':
+    """The type a method call's receiver dispatches on: the base whose part
+    of `*this` a base-part call runs on (`base_part_receiver_type`), else the
+    written receiver's (`_method_receiver_type`)."""
+    if base_part is not None:
+        return base_part
+    return _method_receiver_type(recv, locals_, analyzer)
+
+def _call_receiver_type(e: TpyMethodCall, locals_: dict[str, TpyType],
+                        analyzer) -> 'TpyType | None':
+    return _receiver_type(e.obj, base_part_receiver_type(e), locals_,
+                          analyzer)
+
 def _indirect_field_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                                 analyzer,
                                 pointers: "AbstractSet[str]") -> bool:
@@ -9304,14 +9312,18 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     if parent is not None:
         # `super().m(args)` / `Base.m(self, args)` -> `this->Base::m(args)`
         # (the super/unbound-self arms; sema strips `self` from
-        # the unbound form's args). The parent spells via its own `to_cpp()`,
-        # so an F1 base and a generic instance
+        # the unbound form's args). The kind names `Base::m` only: lowering
+        # prefixes the body's receiver, which a resumable frame stores as
+        # `__self` (`__self.Base::m(args)`).
+        # The parent spells via its own `to_cpp()`, so an F1 base and a
+        # generic instance
         # (`Base<T>` inside a generic child) are both safe. The GENERIC
         # method form (`this->Base<T>::template m<U>(args)`) rides its own
-        # kind so lowering composes the targs via lc.render_type; native /
-        # cpp_template spellings reject.
-        if (fi.cpp_template is not None or fi.native_function
-                or fi.native_name
+        # kind so lowering composes the targs via lc.render_type. A bodyless
+        # callee runs on the base part instead (`base_part_receiver_type`);
+        # a user operator dunder's shared spelling is no binding, so it
+        # takes the qualified call too.
+        if (is_bodyless_binding(fi)
                 or fi.linkage != FunctionLinkage.DEFAULT
                 or not isinstance(parent, NominalType)):
             return None
@@ -9322,14 +9334,14 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                                for t in e.inferred_type_args)):
                 return None
             return ("super_generic",
-                    f"this->{parent.to_cpp()}::template "
+                    f"{parent.to_cpp()}::template "
                     f"{escape_cpp_name(e.method)}")
         if not _f1_record(parent, analyzer):
             # The non-generic form keeps its F1 pin (a native/cross-module
             # base may spell differently than bare to_cpp).
             return None
         return ("qualified",
-                f"this->{parent.to_cpp()}::{escape_cpp_name(e.method)}")
+                f"{parent.to_cpp()}::{escape_cpp_name(e.method)}")
     if e.is_static_call:
         if e.builtin_module_call is not None:
             return None
@@ -10737,11 +10749,15 @@ class MethodCallFacts(NamedTuple):
     method: str
     fi: 'FunctionInfo | None'
     plain: bool
+    # The base a `super()` call to a bodyless method runs on; an operator or
+    # subscript spelling never has one.
+    base_part: 'TpyType | None' = None
 
     @classmethod
     def of(cls, e: TpyMethodCall) -> 'MethodCallFacts':
         return cls(e.obj, e.method, e.resolved_function_info,
-                   _plain_member_call_markers_ok(e, targs_ok=True))
+                   _plain_member_call_markers_ok(e, targs_ok=True),
+                   base_part_receiver_type(e))
 
 
 def _borrow_form_at_storage_slot(fi: 'FunctionInfo | None', index: int,
@@ -10789,7 +10805,7 @@ def _method_call_arg_ok(
     if _borrow_form_at_storage_slot(call.fi, index, ptype):
         return note_detail("method.arg_shape")
 
-    recv_type = _method_receiver_type(call.recv, locals_, analyzer)
+    recv_type = _receiver_type(call.recv, call.base_part, locals_, analyzer)
     fam = _method_recv_family(recv_type, analyzer, tparam_bounds, call.method)
     if fam is not None:
         return fam.arg_ok(a, ptype, locals_, analyzer,
@@ -13712,7 +13728,7 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
     union_subject_ret_ok = use.admits(SinkForm.UNION_SUBJECT)
     recv = e.obj  # a name or a one-level field access -- checked by the caller
     recv_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        _method_receiver_type(recv, locals_, analyzer))))
+        _call_receiver_type(e, locals_, analyzer))))
     if isinstance(recv_t, OwnType):
         recv_t = unwrap_readonly(recv_t.wrapped)
     # An Optional-ptr borrow receiver dispatches methods on the inner record
@@ -14327,12 +14343,13 @@ def _inherited_container_base(recv_type: 'TpyType | None',
     if not (isinstance(t, NominalType) and t.is_user_record):
         return None
     ri = analyzer.registry.get_record_for_type(t)
-    if ri is None or ri.get_method(method) is not None:
+    if ri is None:
         return None
-    for p in ri.parents:
-        if _builtin_container_type(p, analyzer):
-            return p
-    return None
+    # The class the call resolves to through the MRO, at any depth.
+    found = analyzer.registry.mro_method_definer(ri, method)
+    if found is None or found[0] is None:
+        return None
+    return found[0] if _builtin_container_type(found[0], analyzer) else None
 
 
 def _container_method_recv(recv_type: 'TpyType | None', analyzer,
@@ -14939,8 +14956,8 @@ def _raw_record_method_fi(call: MethodCallFacts,
     (`bound_method_overload`). `_tparam_slot_temp_arg` keys its temp
     decision on the RAW param being a bare T."""
     return bound_method_overload(
-        _raw_record_overloads(_method_receiver_type(call.recv, locals_,
-                                                    analyzer),
+        _raw_record_overloads(_receiver_type(call.recv, call.base_part,
+                                             locals_, analyzer),
                               call.method, analyzer),
         call.fi)
 

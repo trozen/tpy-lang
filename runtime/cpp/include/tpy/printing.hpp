@@ -7,6 +7,7 @@
 #pragma once
 
 #include <array>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <iostream>
@@ -86,6 +87,14 @@ void print_element(std::ostream& os, const ::tpy::Union<Ts...>& elem);
 template <typename T>
 void print_element(std::ostream& os, const T& elem) {
     os << ::tpy::repr_of(elem);
+}
+
+// A record whose repr streams (a builtin-base subclass's inherited
+// `__repr__`, generated as `__repr_into__`) writes in place, with no string.
+template <typename T>
+    requires requires(const T& t, std::ostream& o) { t.__repr_into__(o); }
+void print_element(std::ostream& os, const T& elem) {
+    elem.__repr_into__(os);
 }
 
 // A `T*` element is a tuple / Optional borrow slot, not a raw address to
@@ -327,6 +336,23 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
     }
 }
 
+// A record whose base is a builtin type (`class Sub(dict[K, V])`) prints as
+// that base; a base whose repr names its class (a set) names the record's.
+// `print_as_base` takes the base object; the record reaches it only through
+// `print_base_of`, whose base is named, since the record's own operator<< is
+// the caller and handing the record itself in would recurse.
+template<typename B>
+inline std::ostream& print_as_base(std::ostream& os, std::string_view, const B& base) {
+    return os << ValuePrinter<B>(base);
+}
+
+template<typename B, typename R>
+    requires (std::derived_from<R, B> && !std::same_as<R, B>)
+inline std::ostream& print_base_of(std::ostream& os, std::string_view class_name,
+                                   const R& obj) {
+    return print_as_base(os, class_name, static_cast<const B&>(obj));
+}
+
 // --- Tuple printing (Python-style: (a, b) or (a,) for single-element) ---
 
 namespace detail {
@@ -396,6 +422,30 @@ std::string __str__(const std::tuple<Ts...>& t) {
 template <typename... Ts>
 std::string __repr__(const std::tuple<Ts...>& t) {
     return tuple_to_str(t);
+}
+
+// --- __str__ / __repr__ overloads for list: the `list.__repr__` its stub
+// declares, which str() / repr() / an f-string reach through the generic
+// Stringable / Representable path ---
+
+template <typename T, typename A>
+std::string __str__(const std::vector<T, A>& v) {
+    return list_to_str(v);
+}
+
+template <typename T, typename A>
+std::string __repr__(const std::vector<T, A>& v) {
+    return list_to_str(v);
+}
+
+template <typename T, std::size_t N>
+std::string __str__(const std::array<T, N>& v) {
+    return list_to_str(v);
+}
+
+template <typename T, std::size_t N>
+std::string __repr__(const std::array<T, N>& v) {
+    return list_to_str(v);
 }
 
 // --- print(*xs): items whose count is known only at run time ---

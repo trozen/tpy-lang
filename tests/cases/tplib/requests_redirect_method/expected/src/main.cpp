@@ -55,8 +55,8 @@ std::tuple<::tpy::Bytes, bool, bool> run_redirect(::tpy::BytesView status_line) 
     b.close();
     d.close();
     ::tpy::Bytes request_line = ::tpy::__getitem__(::tpy::bytes_split(second, ::tpy::bytes_literal("\r\n", 2)), 0);
-    bool has_body = (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("{\"x\":1}", 7)));
-    bool has_content_type = (::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("text/plain", 10)));
+    bool has_body = ::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("{\"x\":1}", 7));
+    bool has_content_type = ::tpy::bytes_contains_sub(second, ::tpy::bytes_literal_owned("text/plain", 10));
     return std::tuple<::tpy::Bytes, bool, bool>{request_line, has_body, has_content_type};
 }
 

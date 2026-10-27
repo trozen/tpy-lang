@@ -98,7 +98,10 @@ def call_operands(expr: TpyExpr) -> CallOperands | None:
         fi, obj, args = expr.resolved_function_info, None, expr.args
         kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyMethodCall):
-        fi, obj, args = expr.resolved_function_info, expr.obj, expr.args
+        # A base-part call (`super().m()`, `Base.m(self)`) runs on `self`.
+        obj = (expr.explicit_receiver if expr.explicit_receiver is not None
+               else expr.obj)
+        fi, args = expr.resolved_function_info, expr.args
         kwargs = expr.kwargs or {}
     elif isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
         rb = expr.resolved_binop

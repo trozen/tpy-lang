@@ -1,0 +1,57 @@
+main.py:246: warning: Method 'Dog.speak' hides 'Animal.speak' -- any 'Animal' reference will call 'Animal.speak', not 'Dog.speak' (differs from Python's dynamic dispatch); make 'Animal' a @dynamic protocol for runtime dispatch
+main.py:281: warning: Method 'Counter.__getitem__' hides 'dict.__getitem__' -- any 'dict' reference will call 'dict.__getitem__', not 'Counter.__getitem__' (differs from Python's dynamic dispatch)
+main.py:438: warning: Method 'EqL.__eq__' hides 'list.__eq__' -- any 'list' reference will call 'list.__eq__', not 'EqL.__eq__' (differs from Python's dynamic dispatch)
+main.py:446: warning: Method 'EqD.__eq__' hides 'dict.__eq__' -- any 'dict' reference will call 'dict.__eq__', not 'EqD.__eq__' (differs from Python's dynamic dispatch)
+main.py:446: warning: Method 'EqD.__repr__' hides 'dict.__repr__' -- any 'dict' reference will call 'dict.__repr__', not 'EqD.__repr__' (differs from Python's dynamic dispatch)
+main.py:497: warning: Method 'EqGL.__eq__' hides 'list.__eq__' -- any 'list' reference will call 'list.__eq__', not 'EqGL.__eq__' (differs from Python's dynamic dispatch)
+main.py:542: warning: Method 'NoPt.__eq__' hides 'Pt.__eq__' -- any 'Pt' reference will call 'Pt.__eq__', not 'NoPt.__eq__' (differs from Python's dynamic dispatch); make 'Pt' a @dynamic protocol for runtime dispatch
+main.py:542: warning: Method 'NoPt.__hash__' hides 'Pt.__hash__' -- any 'Pt' reference will call 'Pt.__hash__', not 'NoPt.__hash__' (differs from Python's dynamic dispatch); make 'Pt' a @dynamic protocol for runtime dispatch
+main.py:637: warning: Method 'Sevens.__iter__' hides 'list.__iter__' -- any 'list' reference will call 'list.__iter__', not 'Sevens.__iter__' (differs from Python's dynamic dispatch)
+main.py:726: warning: Method 'SevStr.__iter__' hides 'list.__iter__' -- any 'list' reference will call 'list.__iter__', not 'SevStr.__iter__' (differs from Python's dynamic dispatch)
+main.py:734: warning: Method 'SevSet.__iter__' hides 'set.__iter__' -- any 'set' reference will call 'set.__iter__', not 'SevSet.__iter__' (differs from Python's dynamic dispatch)
+main.py:742: warning: Method 'SevDict.__iter__' hides 'dict.__iter__' -- any 'dict' reference will call 'dict.__iter__', not 'SevDict.__iter__' (differs from Python's dynamic dispatch)
+main.py:768: warning: Method 'NamedL.__repr__' hides 'list.__repr__' -- any 'list' reference will call 'list.__repr__', not 'NamedL.__repr__' (differs from Python's dynamic dispatch)
+main.py:847: warning: Method 'OvL.__len__' overrides 'list.__len__' but the override is non-polymorphic. 'list'-typed references will call 'list.__len__', not 'OvL.__len__'.
+main.py:1003: warning: Method 'SupL.append' hides 'list.append' -- any 'list' reference will call 'list.append', not 'SupL.append' (differs from Python's dynamic dispatch)
+main.py:1003: warning: Method 'SupL.__eq__' hides 'list.__eq__' -- any 'list' reference will call 'list.__eq__', not 'SupL.__eq__' (differs from Python's dynamic dispatch)
+main.py:1019: warning: Method 'SupD.__setitem__' hides 'dict.__setitem__' -- any 'dict' reference will call 'dict.__setitem__', not 'SupD.__setitem__' (differs from Python's dynamic dispatch)
+main.py:1024: warning: Method 'SupM.append' hides 'SupL.append' -- any 'SupL' reference will call 'SupL.append', not 'SupM.append' (differs from Python's dynamic dispatch); make 'SupL' a @dynamic protocol for runtime dispatch
+main.py:1029: warning: Method 'SupTop.append' hides 'list.append' -- any 'list' reference will call 'list.append', not 'SupTop.append' (differs from Python's dynamic dispatch)
+main.py:1034: warning: Method 'SupU.append' hides 'list.append' -- any 'list' reference will call 'list.append', not 'SupU.append' (differs from Python's dynamic dispatch)
+main.py:1039: warning: Method 'SupBag.append' hides 'list.append' -- any 'list' reference will call 'list.append', not 'SupBag.append' (differs from Python's dynamic dispatch)
+main.py:1052: warning: Method 'SupQ.__add__' hides 'SupP.__add__' -- any 'SupP' reference will call 'SupP.__add__', not 'SupQ.__add__' (differs from Python's dynamic dispatch); make 'SupP' a @dynamic protocol for runtime dispatch
+main.py:26: warning: may copy V into container if not a value type; use copy() to make this explicit
+main.py:37: warning: may copy V into container if not a value type; use copy() to make this explicit
+main.py:344: warning: may copy V into container if not a value type; use copy() to make this explicit
+main.py:817: warning: may copy U elements if not a value type; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:1013: warning: 'SupL' passed as 'list[int32]': calls through parameter 'other' of list.__eq__ run 'list.append', not 'SupL.append' (static dispatch)
+main.py:1041: warning: may copy T into owned storage if not a value type; use copy() to make this explicit
+main.py:66: warning: upcast narrows 'CSub' to 'Base[str, int32]' -- only 'Base[str, int32]' fields and methods will be accessible; keep the concrete type or make 'Base[str, int32]' a @dynamic protocol
+main.py:70: warning: upcast narrows 'DSub' to 'dict[str, int32]' -- only 'dict[str, int32]' fields and methods will be accessible; keep the concrete type or make 'dict[str, int32]' a @dynamic protocol
+main.py:130: warning: upcast narrows 'GSub[str, int32]' to 'Base[str, int32]' -- only 'Base[str, int32]' fields and methods will be accessible; keep the concrete type or make 'Base[str, int32]' a @dynamic protocol
+main.py:171: warning: isinstance() check against descendant type 'DSub' on 'dict[str, int32]' folds to False (static dispatch; use @dynamic for runtime type checks)
+main.py:303: warning: 'Dog' passed as 'Animal': calls through 'a' run 'Animal.speak', not 'Dog.speak' (static dispatch)
+main.py:307: warning: 'Counter' passed as 'dict[str, int32]': calls through 'm' run 'dict.__getitem__', not 'Counter.__getitem__' (static dispatch)
+main.py:388: warning: upcast narrows 'DSub' to 'dict[str, int32]' -- only 'dict[str, int32]' fields and methods will be accessible; keep the concrete type or make 'dict[str, int32]' a @dynamic protocol
+main.py:391: warning: upcast narrows 'LSub' to 'list[int32]' -- only 'list[int32]' fields and methods will be accessible; keep the concrete type or make 'list[int32]' a @dynamic protocol
+main.py:394: warning: upcast narrows 'SSub' to 'set[int32]' -- only 'set[int32]' fields and methods will be accessible; keep the concrete type or make 'set[int32]' a @dynamic protocol
+main.py:430: warning: copies DBare into owned storage; use copy() to make this explicit
+main.py:467: warning: 'EqL' passed as 'list[int32]': calls through parameter 'other' of list.__ne__ run 'list.__eq__', not 'EqL.__eq__' (static dispatch)
+main.py:473: warning: 'EqD2' passed as 'dict[str, int32]': calls through parameter 'other' of dict.__ne__ run 'dict.__eq__', not 'EqD.__eq__' (static dispatch)
+main.py:473: warning: copies EqD2 into owned storage; use copy() to make this explicit
+main.py:484: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:521: warning: 'EqGL[int32]' passed as 'list[int32]': calls through parameter 'other' of list.__ne__ run 'list.__eq__', not 'EqGL.__eq__' (static dispatch)
+main.py:555: warning: 'NoPt' passed as 'Pt': calls through parameter 'value' of list.count run 'Pt.__eq__', not 'NoPt.__eq__' (static dispatch)
+main.py:556: warning: 'NoPt' passed as 'Pt': calls through parameter 'elem' of set.discard run 'Pt.__eq__', not 'NoPt.__eq__' (static dispatch)
+main.py:557: warning: 'NoPt' passed as 'Pt': calls through parameter 'key' of dict.get run 'Pt.__eq__', not 'NoPt.__eq__' (static dispatch)
+main.py:559: warning: 'EqL' passed as 'list[int32]': calls through parameter 'value' of list.count run 'list.__eq__', not 'EqL.__eq__' (static dispatch)
+main.py:561: warning: 'EqL' passed as 'list[int32]': calls through parameter 'other' of list.__eq__ run 'list.__eq__', not 'EqL.__eq__' (static dispatch)
+main.py:633: warning: 'Dog' passed as 'Animal': calls through parameter 'a' of Shelter.__init__ run 'Animal.speak', not 'Dog.speak' (static dispatch)
+main.py:634: warning: 'Dog' passed as 'Animal': calls through parameter 'a' of Shelter.admit run 'Animal.speak', not 'Dog.speak' (static dispatch)
+main.py:694: warning: Mutation of 'l' while iterating over it ('append' invalidates the iterator)
+main.py:696: warning: Mutation of 'l' while borrowed ('append' may invalidate references)
+main.py:778: warning: copies NamedL into owned storage; use copy() to make this explicit
+main.py:862: warning: copies Yes elements; use copy_iter() to make this explicit
+main.py:863: warning: copies SBare elements; use copy_iter() to make this explicit
+main.py:899: warning: copies Emp elements; use copy_iter() to make this explicit
+main.py:999: warning: Mutation of 'd' while borrowed ('grow' may invalidate references)

@@ -216,7 +216,7 @@ inline bool Container::__eq__(const Container& other) const {
 }
 
 inline std::string Container::__repr__() const {
-    return std::format("Container(label={}, items={})", ::tpy::repr_of(this->label), ::tpy::list_to_str(this->items));
+    return std::format("Container(label={}, items={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->items));
 }
 void __tpy_init();
 } // namespace tpyapp::main

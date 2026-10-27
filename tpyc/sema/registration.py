@@ -179,15 +179,18 @@ def _declared_native_members(record: RecordInfo) -> NativeMembers | str | None:
 
 def _is_valid_type_param_bound(t: 'TpyType') -> bool:
     """A bound usable on a type parameter: a protocol (capability or
-    @dynamic), a sibling/enclosing type param (`U: T`), or a user-record
-    class (`U: Animal`). The latter two are subtype bounds for
-    representational coercion; the C++-upcast soundness they promise is
-    enforced at instantiation, not at registration."""
+    @dynamic), a sibling/enclosing type param (`U: T`), or a class
+    (`U: Animal`, `U: dict[str, int32]`). The latter two are subtype
+    bounds for representational coercion; the C++-upcast soundness they
+    promise is enforced at instantiation, not at registration."""
     if is_protocol_type(t):
         return True
     if isinstance(t, TypeParamRef):
         return True
-    return isinstance(t, NominalType) and t.is_user_record
+    if not (isinstance(t, NominalType) and t.is_record):
+        return False
+    td = type_def_of(t)
+    return td is not None and td.record is not None
 
 
 _LINKAGE_MAP = {
@@ -3013,6 +3016,8 @@ class TypeRegistrar:
         # targeted non-polymorphic warning) and are skipped by _check_method_hiding.
         override_method_names = {m.name for m in record.methods if m.is_override}
 
+        record_info.hides_parent_methods = frozenset(
+            m.name for m in record.methods if m.hides_parent)
         # Check for method hiding (child defines method with same name as parent)
         if record_info.parents:
             self._check_method_hiding(record, record_info, override_method_names)
@@ -3812,42 +3817,32 @@ class TypeRegistrar:
         In Python, methods use dynamic dispatch (virtual by default).
         In C++, methods use static dispatch (non-virtual by default).
         This causes different behavior when a parent method calls self.method().
+        Which redefinitions count is `ProtocolChecker.statically_hidden`, the
+        fact the upcast warning reads too.
 
         skip_names: method names to skip (e.g. @override methods handled separately).
         """
-        if not record_info.parents:
-            return
-
-        # Methods explicitly marked as hiding parent versions
-        hides = {m.name for m in record.methods if m.hides_parent}
-
-        # Check each method defined in this class
         for method_name in record_info.methods:
-            if method_name in ("__init__", "__del__"):
-                continue  # constructor/destructor hiding is expected
             if skip_names and method_name in skip_names:
                 continue  # @override methods are checked (with better messages) separately
-            if method_name in hides:
+            ancestor = self._mro_ancestor_with_method(record_info, method_name)
+            if ancestor is None:
                 continue
-
-            # Check if any MRO ancestor has this method
-            ancestor_with_method = self._find_mro_ancestor_with_method(record_info, method_name)
-            if ancestor_with_method:
-                # If this method is part of a @dynamic protocol implemented
-                # (transitively) by any ancestor, codegen emits it as `override`
-                # on a real virtual slot -- not a hide. Suppress the warning.
-                if self._method_is_transitively_dynamic_protocol_member(
-                        record_info, method_name):
-                    continue
-                self.ctx.warning(
-                    f"Method '{record.name}.{method_name}' hides "
-                    f"'{ancestor_with_method}.{method_name}' -- any "
-                    f"'{ancestor_with_method}' reference will call "
-                    f"'{ancestor_with_method}.{method_name}', not "
-                    f"'{record.name}.{method_name}' (differs from Python's dynamic dispatch); "
-                    f"make '{ancestor_with_method}' a @dynamic protocol for runtime dispatch",
-                    record
-                )
+            hidden = self.protocols.statically_hidden(record_info, method_name, ancestor)
+            if hidden is None:
+                continue
+            # A builtin class cannot be made a @dynamic protocol.
+            remedy = ("" if hidden.is_native else
+                      f"; make '{hidden.name}' a @dynamic protocol for runtime dispatch")
+            self.ctx.warning(
+                f"Method '{record.name}.{method_name}' hides "
+                f"'{hidden.name}.{method_name}' -- any "
+                f"'{hidden.name}' reference will call "
+                f"'{hidden.name}.{method_name}', not "
+                f"'{record.name}.{method_name}' (differs from Python's dynamic dispatch)"
+                f"{remedy}",
+                record
+            )
 
     def _check_override_annotations(self, record: TpyRecord, record_info: RecordInfo) -> None:
         """Validate @override-annotated methods.
@@ -3858,7 +3853,8 @@ class TypeRegistrar:
         override_methods = {m.name: m for m in record.methods if m.is_override}
 
         for method_name, method in override_methods.items():
-            found_in_parent = self._find_mro_ancestor_with_method(record_info, method_name)
+            parent_info = self._mro_ancestor_with_method(record_info, method_name)
+            found_in_parent = parent_info.name if parent_info is not None else None
 
             # Check each explicitly implemented protocol for the method
             found_in_protocol: str | None = None
@@ -3878,43 +3874,35 @@ class TypeRegistrar:
                     method.loc or record.loc,
                 )
 
-            # Non-polymorphic warning: only for parent class overrides (not protocol implementations).
-            # Constructors/destructors are skipped -- they are never polymorphically dispatched.
-            if found_in_parent and method_name not in ("__init__", "__del__"):
-                already_dynamic = found_in_dynamic_protocol
-                suffix = "" if already_dynamic else " Use a @dynamic protocol for runtime dispatch."
+            # Non-polymorphic warning: only for parent class overrides (not
+            # protocol implementations), on the lost-override fact the hiding
+            # and upcast warnings read.
+            hidden = (self.protocols.statically_hidden(
+                record_info, method_name, parent_info)
+                if parent_info is not None else None)
+            if hidden is not None:
+                # Nothing to suggest when the method already dispatches
+                # dynamically, or the parent is a builtin class.
+                suffix = ("" if found_in_dynamic_protocol or hidden.is_native
+                          else " Use a @dynamic protocol for runtime dispatch.")
                 self.ctx.warning_from_loc(
-                    f"Method '{record.name}.{method_name}' overrides '{found_in_parent}.{method_name}' "
-                    f"but the override is non-polymorphic. '{found_in_parent}'-typed references "
-                    f"will call '{found_in_parent}.{method_name}', not '{record.name}.{method_name}'."
+                    f"Method '{record.name}.{method_name}' overrides '{hidden.name}.{method_name}' "
+                    f"but the override is non-polymorphic. '{hidden.name}'-typed references "
+                    f"will call '{hidden.name}.{method_name}', not '{record.name}.{method_name}'."
                     f"{suffix}",
                     method.loc or record.loc,
                 )
 
-    def _find_mro_ancestor_with_method(self, record_info: RecordInfo, method_name: str) -> str | None:
-        """Find the nearest MRO ancestor (excluding record_info itself) that defines method_name."""
+    def _mro_ancestor_with_method(self, record_info: RecordInfo,
+                                  method_name: str) -> RecordInfo | None:
         for anc_rec in self.ctx.registry.iter_ancestor_records(record_info):
             # No reference typed as a non-base ancestor can hold this record,
             # so there is nothing for a same-named method to hide or override.
             if not self.ctx.registry.is_struct_base(record_info, anc_rec):
                 continue
             if anc_rec.get_method(method_name) is not None:
-                return anc_rec.name
+                return anc_rec
         return None
-
-    def _method_is_transitively_dynamic_protocol_member(
-            self, record_info: RecordInfo, method_name: str) -> bool:
-        """True iff method_name appears in a @dynamic protocol implemented by
-        the record or any ancestor (transitively).
-
-        Used to suppress the "method hides ancestor" warning when codegen will
-        emit the method as `override` on a virtual @dynamic-protocol slot.
-        """
-        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
-            for sig in self.protocols.collect_protocol_methods(proto_info):
-                if sig.name == method_name:
-                    return True
-        return False
 
     def _is_inheritable_builtin(self, typ: TpyType) -> bool:
         """Check if a type is a builtin type that can be inherited from."""

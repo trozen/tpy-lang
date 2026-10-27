@@ -7,13 +7,35 @@
 
 namespace tpyapp::main {
 
+struct Speaker;
+// @dynamic
+// class Speaker(Protocol):
+template<typename T>
+concept __Speaker_Concept__ = requires(T& t) {
+    { t.speak() } -> std::convertible_to<std::string_view>;
+};
+
+struct Speaker {
+    virtual std::string speak() = 0;
+    virtual ~Speaker() = default;
+};
+
+} // namespace tpyapp::main
+
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Speaker> : std::true_type {};
+
+namespace tpyapp::main {
+
 struct Animal;
 struct Dog;
+struct Parrot;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def describe(a: Animal) -> str:
 std::string describe(const Animal& a);
+// def describe_ptr(a: Ptr[Animal]) -> str:
+std::string describe_ptr(Animal* a);
 // def main() -> None:
 void main();
 
@@ -55,6 +77,42 @@ inline std::ostream& operator<<(std::ostream& os, const Dog& obj) {
     return os;
 }
 
+// class Parrot(Animal, Speaker):  # tpyc: warning(/'Parrot.speak' hides 'Animal.speak'/)
+struct Parrot : Animal, Speaker {
+
+    // def __init__(self, name: str) -> None:
+    Parrot() = default;
+    explicit Parrot(std::string_view name);
+
+    // def speak(self) -> str:
+    std::string speak() override;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Parrot";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Parrot& obj) {
+    ::tpy::print_object_default(os, "Parrot", obj);
+    return os;
+}
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Speaker_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    std::string speak() override { return std::string(inner.speak()); }
+};
+
+template<tpyapp::main::__Speaker_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Speaker, T> : tpyapp::main::Speaker {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    std::string speak() override { return std::string(inner.speak()); }
+};
+
+namespace tpyapp::main {
+
 
 // def __init__(self, name: str) -> None:
 //     self.name = name
@@ -77,6 +135,16 @@ inline Dog::Dog(std::string_view name, std::string_view breed)
 //     return "Woof!"
 inline std::string Dog::speak() const {
     return "Woof!";
+}
+
+// def __init__(self, name: str) -> None:
+//     super().__init__(name)
+inline Parrot::Parrot(std::string_view name) : Animal(name) {}
+
+// def speak(self) -> str:
+//     return "Hello!"
+inline std::string Parrot::speak() {
+    return "Hello!";
 }
 void __tpy_init();
 } // namespace tpyapp::main

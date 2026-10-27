@@ -408,7 +408,7 @@ inline bool Polygon::__eq__(const Polygon& other) const {
 }
 
 inline std::string Polygon::__repr__() const {
-    return std::format("Polygon(vertices={})", ::tpy::list_to_str(this->vertices));
+    return std::format("Polygon(vertices={})", ::tpy::repr_of(this->vertices));
 }
 
 inline Drawing::Drawing(std::string_view title, std::vector<Point>&& shapes)
@@ -420,7 +420,7 @@ inline bool Drawing::__eq__(const Drawing& other) const {
 }
 
 inline std::string Drawing::__repr__() const {
-    return std::format("Drawing(title={}, shapes={})", ::tpy::repr_of(this->title), ::tpy::list_to_str(this->shapes));
+    return std::format("Drawing(title={}, shapes={})", ::tpy::repr_of(this->title), ::tpy::repr_of(this->shapes));
 }
 
 inline Wrapper::Wrapper(NamedPoint&& inner) : inner(std::move(inner)) {}
@@ -452,7 +452,7 @@ inline bool Container::__eq__(const Container& other) const {
 }
 
 inline std::string Container::__repr__() const {
-    return std::format("Container(items={})", ::tpy::list_to_str(this->items));
+    return std::format("Container(items={})", ::tpy::repr_of(this->items));
 }
 
 inline MultiList::MultiList(std::vector<Point>&& points, std::vector<std::string>&& labels)
@@ -464,7 +464,7 @@ inline bool MultiList::__eq__(const MultiList& other) const {
 }
 
 inline std::string MultiList::__repr__() const {
-    return std::format("MultiList(points={}, labels={})", ::tpy::list_to_str(this->points), ::tpy::list_to_str(this->labels));
+    return std::format("MultiList(points={}, labels={})", ::tpy::repr_of(this->points), ::tpy::repr_of(this->labels));
 }
 
 inline DictOfDC::DictOfDC(::tpy::ordered_map<std::string, Point>&& items) : items(std::move(items)) {}
@@ -474,7 +474,7 @@ inline bool DictOfDC::__eq__(const DictOfDC& other) const {
 }
 
 inline std::string DictOfDC::__repr__() const {
-    return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
+    return std::format("DictOfDC(items={})", ::tpy::repr_of(this->items));
 }
 
 inline TupleMixed::TupleMixed(std::tuple<Point, int32_t> pair) : pair(std::move(pair)) {}

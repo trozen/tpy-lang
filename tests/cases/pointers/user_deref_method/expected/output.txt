@@ -1,1 +1,4 @@
 30
+inherited 1 3
+inherited-write 5 7
+inherited-stub 2

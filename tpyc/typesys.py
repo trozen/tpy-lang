@@ -2282,7 +2282,7 @@ def type_contains_own(typ: 'TpyType', _under_optional: bool = False,
 
 def coro_struct_owner(owning_type_qname: 'str | None',
                       receiver: 'NominalType',
-                      receiver_record: 'RecordInfo | None' = None) -> 'NominalType':
+                      registry: 'TypeRegistry') -> 'NominalType':
     """Owner NominalType for naming a method's coro / resumable-frame struct.
 
     The struct is emitted once, for the method's DEFINING record. When the
@@ -2293,21 +2293,16 @@ def coro_struct_owner(owning_type_qname: 'str | None',
     the receiver is returned unchanged, preserving class-level type_args.
 
     A generic base needs its concrete type args too (`__coro_Box_fetch<int32_t>`,
-    not a bare `__coro_Box_fetch`). The receiver's MRO carries that binding --
-    `IntBox(Box[int32])` records `Box[int32]` in `mro_ancestors` -- so when a
-    `receiver_record` is supplied, re-base onto the matching bound ancestor.
-    Without it (or for a non-generic base, where the ancestor has no type args)
-    fall back to the bare base name.
+    not a bare `__coro_Box_fetch`): the receiver's instantiation of the
+    defining record (`ancestor_instance`) -- `IntBox(Box[int32])` answers
+    `Box[int32]`. Falls back to the bare base name when the receiver has
+    no such ancestor.
     """
     if owning_type_qname is None or owning_type_qname == receiver.qualified_name():
         return receiver
-    if receiver_record is not None:
-        for anc in receiver_record.mro_ancestors:
-            if (isinstance(anc, NominalType)
-                    and anc.qualified_name() == owning_type_qname):
-                return anc
     base_name = owning_type_qname.rsplit(".", 1)[-1]
-    return NominalType(base_name, _module_qname=owning_type_qname)
+    bare = NominalType(base_name, _module_qname=owning_type_qname)
+    return registry.ancestor_instance(receiver, bare) or bare
 
 
 def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
@@ -8012,6 +8007,9 @@ class RecordInfo:
     is_movable: bool = True         # False if a field/parent is non-movable and no __move__; derived by sema
     move_override: bool | None = None  # False from @nomove; None = structural auto-derive
     builtin_type_key: str | None = None  # e.g. "builtins.list" -- links .py class to type_factory
+    # Methods this class declares as meant to hide an ancestor's (a macro's
+    # synthesized `__eq__` on a subclass): never a lost override.
+    hides_parent_methods: frozenset[str] = frozenset()
     virtual_raise: bool = False  # @virtual_raise: `raise X(args)` routes through the dispatching C++ __raise__, not a fresh throw
     module: str | None = None  # Public module name (collapses private submodules via public_module_name); used for qualified_name() and codegen C++ namespace
     defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records
@@ -8923,7 +8921,13 @@ def is_bodyless_binding(fn) -> bool:
     Such a binding has no body sema could have analyzed, so no per-parameter
     mutation fact exists for it either: what it declares (`@readonly`) and
     what its signature says are all there is.
+
+    A user operator dunder is no binding: its `cpp_template` is the
+    operator spelling its overload set shares (`_shares_set_spelling`),
+    which names the call, not a missing body.
     """
+    if isinstance(fn, FunctionInfo) and fn.root._shares_set_spelling:
+        return False
     return binds_runtime_symbol(fn) or (fn.is_stub and not fn.is_export)
 
 
@@ -9923,9 +9927,7 @@ class TypeRegistry:
         with each parent's already-computed mro_ancestors, restated through
         the parent edge by `compose(parent_type, parent_info, entries)`:
         `H[W](G[list[W]])` stores `G[list[W]]`, so `K(H[int32])` stores
-        `G[list[int32]]`. Parents that are builtin TpyTypes (non-user
-        records) are treated as leaves -- they contribute themselves but no
-        further ancestors.
+        `G[list[int32]]`. A builtin base (`dict`) is a base like any other.
 
         Callers are responsible for storing the result on record_info.mro_ancestors
         and for surfacing C3LinearizationError as a user-facing diagnostic.
@@ -9934,9 +9936,7 @@ class TypeRegistry:
             return []
         bases_with_mros: list[tuple[TpyType, list[TpyType]]] = []
         for p in record.parents:
-            parent_info = None
-            if isinstance(p, NominalType) and p.is_user_record:
-                parent_info = self.get_record_for_type(p)
+            parent_info = self.get_record_for_type(p) if isinstance(p, NominalType) else None
             if parent_info is not None:
                 bases_with_mros.append(
                     (p, compose(p, parent_info, list(parent_info.mro_ancestors))))
@@ -9957,10 +9957,9 @@ class TypeRegistry:
         ancestries: list[list[TpyType]] = []
         for p in record.parents:
             ancestry: list[TpyType] = [p]
-            if isinstance(p, NominalType) and p.is_user_record:
-                p_info = self.get_record_for_type(p)
-                if p_info is not None:
-                    ancestry.extend(p_info.mro_ancestors)
+            p_info = self.get_record_for_type(p) if isinstance(p, NominalType) else None
+            if p_info is not None:
+                ancestry.extend(p_info.mro_ancestors)
             ancestries.append(ancestry)
 
         def _type_label(t: TpyType) -> str:
@@ -9978,11 +9977,70 @@ class TypeRegistry:
                             )
         return None
 
-    def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
-        """Check if child is a strict subclass of parent (walking the MRO).
+    def ancestor_entry(self, record: RecordInfo, target: 'TpyType'
+                       ) -> 'tuple[int, TpyType] | None':
+        """Where `target`'s class sits in `record`'s MRO: its distance (0 for
+        `record` itself, 1 for the first ancestor) and its entry spelled in
+        `record`'s own type parameters. Every class counts, a builtin base
+        (`dict`) or a user record alike. None when `record` is no
+        `target`."""
+        if not isinstance(target, NominalType) or target.is_protocol:
+            return None
+        owner = record_owner(record)
+        if same_class(owner, target):
+            return 0, owner
+        for i, (anc_type, _) in enumerate(self.iter_mro_entries(record)):
+            # Parent references recorded pre-qname-mint may be bare; `target`
+            # may be qname-bearing (see `same_class`).
+            if same_class(anc_type, target):
+                return i + 1, anc_type
+        return None
 
-        Compares name + type_args at each level so generic parents are
-        matched correctly (e.g. IntContainer -> Container[int32]).
+    def _ancestor_hit(self, child: 'TpyType', target: 'TpyType'
+                      ) -> 'tuple[int, NominalType] | None':
+        if not isinstance(child, NominalType) or child.is_protocol:
+            return None
+        if not isinstance(target, NominalType) or target.is_protocol:
+            return None
+        if same_class(child, target):
+            return 0, child
+        record = self.get_record_for_type(child)
+        if record is None:
+            return None
+        hit = self.ancestor_entry(record, target)
+        if hit is None:
+            return None
+        distance, entry = hit
+        if record.type_params and child.type_args:
+            entry = substitute_type_params_structural(
+                entry, dict(zip(record.type_params, child.type_args)))
+        assert isinstance(entry, NominalType)
+        return distance, entry
+
+    def ancestor_instance(self, child: 'TpyType', target: 'TpyType'
+                          ) -> 'NominalType | None':
+        """The instantiation of `target`'s class among `child`'s ancestors
+        (`child` included), `child`'s type arguments substituted in:
+        `Sub[str, int32]` under `class Sub[K, V](dict[K, V])` answers
+        `dict[str, int32]` for `dict`. None when `child` is no `target`.
+        The one is-a relation: subclassing, isinstance and class patterns
+        read it."""
+        hit = self._ancestor_hit(child, target)
+        return hit[1] if hit is not None else None
+
+    def _instance_distance(self, child: 'TpyType', target: 'TpyType') -> int | None:
+        # A bare `target` names its class at any type arguments.
+        hit = self._ancestor_hit(child, target)
+        if hit is None:
+            return None
+        distance, inst = hit
+        assert isinstance(target, NominalType)
+        if target.type_args and inst.type_args != target.type_args:
+            return None
+        return distance
+
+    def is_subclass_of(self, child: 'TpyType', parent: 'TpyType') -> bool:
+        """Check if child is a strict subclass of parent (`ancestor_instance`).
         Returns False for child == parent; use `is_subclass_of_or_equal`
         when same-type should count.
         """
@@ -9991,23 +10049,13 @@ class TypeRegistry:
     def subclass_distance(self, child: 'TpyType', parent: 'TpyType') -> int | None:
         """How far `parent` is from `child` in `child`'s MRO (1 for the
         first ancestor), or None when `child` is no strict subclass of it."""
-        if not (isinstance(child, NominalType) and child.is_user_record
-                and isinstance(parent, NominalType) and parent.is_user_record):
-            return None
-        child_info = self.get_record_for_type(child)
-        if child_info is None:
-            return None
-        # Parent references recorded pre-qname-mint may be bare; `parent`
-        # may be qname-bearing (see `same_class`).
-        for i, ancestor in enumerate(child_info.mro_ancestors):
-            if same_base_type(ancestor, parent):
-                return i + 1
-        return None
+        distance = self._instance_distance(child, parent)
+        return distance if distance else None
 
     def is_subclass_of_or_equal(self, child: 'TpyType', parent: 'TpyType') -> bool:
         """True if child is parent or a subclass of parent. Mirrors Python's
         `isinstance(x, type(x)) is True` and `issubclass(T, T) is True`."""
-        return child == parent or self.is_subclass_of(child, parent)
+        return child == parent or self._instance_distance(child, parent) is not None
 
     def is_subclass_of_record(self, child: RecordInfo, parent: RecordInfo) -> bool:
         """Check if child record inherits from parent (by record identity)."""
@@ -10024,6 +10072,15 @@ class TypeRegistry:
             if anc.defines_own_init:
                 return anc
         return None
+
+    def inherits_template_init(self, record: RecordInfo) -> bool:
+        """Whether `record` runs an ancestor's `@cpp_template` `__init__` (a
+        builtin base's: `class A(list[int32])` with no `__init__`), which
+        builds the base VALUE rather than running a C++ constructor."""
+        owner = self.init_owner(record)
+        return (owner is not None and owner is not record
+                and any(fi.cpp_template
+                        for fi in owner.get_method_overloads("__init__")))
 
     def base_init_duty(self, child: RecordInfo, base: TpyType) -> BaseInitDuty:
         """What `child`'s `__init__` (a hand-written one, or one a macro
@@ -10094,6 +10151,25 @@ class TypeRegistry:
             if anc.get_method_overloads(method):
                 return anc_type, anc
         return None
+
+    def answers_str_or_repr(self, record: RecordInfo) -> bool:
+        """Whether the `__str__` or `__repr__` the MRO resolves for `record`
+        is one its C++ answers as a member (what `::tpy::__str__` calls):
+        its own, a TPy ancestor's, or a native base's `__repr__` free
+        function, which the record forwards to. A native member such as
+        BaseException's `__str__` is not one."""
+        if record.declares_str_or_repr():
+            return True
+        for name in ("__str__", "__repr__"):
+            found = self.mro_method_definer(record, name)
+            if found is None:
+                continue
+            anc = found[1]
+            if not anc.is_native or (name == "__repr__" and any(
+                    fi.native_function
+                    for fi in anc.get_method_overloads(name))):
+                return True
+        return False
 
     def method_owner(self, record: RecordInfo, method: str) -> RecordInfo:
         """The class whose own table defines `method` for a call naming
@@ -10200,9 +10276,9 @@ class TypeRegistry:
 
     def is_instance_of(self, tpy_type: 'TpyType', record: RecordInfo) -> bool:
         """`tpy_type` is a `record` instance at any type arguments
-        (`Box[str]` under `Box`) -- by the record's identity, never by its
-        short name."""
-        return same_class(tpy_type, record_owner(record))
+        (`Box[str]` under `Box`), a subclass's included -- by the record's
+        identity (`ancestor_instance`), never by its short name."""
+        return self.ancestor_instance(tpy_type, record_owner(record)) is not None
 
     def receiver_record(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """The record whose methods and properties a receiver of `tpy_type`

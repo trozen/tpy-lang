@@ -10,15 +10,33 @@ std::string describe(const Animal& a) {
     return a.speak();
 }
 
+// def describe_ptr(a: Ptr[Animal]) -> str:
+//     if a is not None:
+//         return a.speak()
+//     return ""
+std::string describe_ptr(Animal* a) {
+    if ((a != nullptr)) {
+        return a->speak();
+    }
+    return "";
+}
+
 // def main() -> None:
 //     d: Dog = Dog("Rex", "Lab")
-//     # ARG context intentionally does not emit a per-call-site warning;
-//     # the def-site warning on line 11 already flagged the hiding. Static
-//     # dispatch: Animal.speak is called, not Dog.speak (divergence from CPython).
-//     print(describe(d))
+//     # The call site warns too: through 'a' the override is lost (static
+//     # dispatch runs Animal.speak, not Dog.speak -- divergence from CPython).
+//     print(describe(d))  # tpyc: warning(/calls through 'a' run 'Animal.speak', not 'Dog.speak'/)
+//     # The pointer parameter dispatches statically too.
+//     print(describe_ptr(d))  # tpyc: warning(/'Dog' passed as 'Animal': calls through 'a'/)
+//     # Speaker is Parrot's protocol, not Animal's: through 'a' the call is static.
+//     p = Parrot("Polly")
+//     print(describe(p))  # tpyc: warning(/calls through 'a' run 'Animal.speak', not 'Parrot.speak'/)
 void main() {
     Dog d = Dog("Rex", "Lab");
     std::cout << ::tpyapp::main::describe(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe_ptr(&d) << "\n" << ::tpy::check_signals;
+    Parrot p = Parrot("Polly");
+    std::cout << ::tpyapp::main::describe(p) << "\n" << ::tpy::check_signals;
 }
 
 // main()

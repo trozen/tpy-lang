@@ -388,10 +388,13 @@ def method_stub_callee(fi: FunctionInfo | None, receiver: TpyType | None, analyz
             or bare.qualified_name() != fi.owning_type_qname or len(bare.type_args) != len(record.type_params)):
         return None
     bound: list[TpyType] = []
-    for name in fi.type_params:
+    # The declaration's type params: an instantiated view no longer lists
+    # the class-shadowed ones its substitution bound.
+    decl = fi.root
+    for name in decl.type_params:
         if name not in record.type_params:
             return None
-        if name in fi.type_param_bounds:
+        if name in decl.type_param_bounds:
             argument = bare.type_args[record.type_params.index(name)]
             if not isinstance(argument, TpyType):
                 return None

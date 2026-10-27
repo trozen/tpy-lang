@@ -16,12 +16,12 @@ namespace tpyapp::main {
 //     print(str(d))
 void main() {
     std::vector<Point> pts = {Point(::tpy::BigInt(1), ::tpy::BigInt(2)), Point(::tpy::BigInt(3), ::tpy::BigInt(4))};
-    std::cout << ::tpy::list_to_str(pts) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(pts)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::list_to_str(pts)) << "\n" << ::tpy::check_signals;
     auto t = std::tuple<Point, ::tpy::BigInt>{Point(::tpy::BigInt(5), ::tpy::BigInt(6)), ::tpy::BigInt(7)};
     std::cout << ::tpy::tuple_to_str(std::tuple<Point*, ::tpy::BigInt>{&(std::get<0>(t)), std::get<1>(t)}) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, Point> d = ::tpy::ordered_map<std::string, Point>({{"origin", Point(::tpy::BigInt(0), ::tpy::BigInt(0))}});
-    std::cout << ::tpy::dict_to_str(d) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(d)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

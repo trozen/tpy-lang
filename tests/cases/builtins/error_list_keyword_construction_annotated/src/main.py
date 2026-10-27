@@ -5,7 +5,7 @@ from tpy import int32
 
 def main() -> None:
     xs = [1, 2]
-    ys: list[int32] = list(iterable=xs)  # tpyc: error(/'list' parameter 'iterable' is positional-only/)
+    ys: list[int32] = list(iterable=xs)  # tpyc: error(/No matching overload for 'list' with argument types \(iterable=/)
     print(ys)
 
 

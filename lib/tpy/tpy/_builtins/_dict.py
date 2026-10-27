@@ -2,7 +2,7 @@ __tpy__ = {"mod": "native",
            "cpp_namespace": "tpystd::builtins"}
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, auto_readonly, dispatch
-from .._core._types import int32, NativeIterable
+from .._core._types import int32, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
@@ -67,6 +67,13 @@ class dict_items[K, V](Iterable[tuple[K, V]], NativeIterable[tuple[K, V]]):
 @builtin_type("builtins.dict")
 @native("tpy::ordered_map", indirecting=True, elements=True)
 class dict[K, V](Iterable[K], NativeIterable[K]):
+    @dispatch
+    @pure
+    @readonly
+    @cpp_template("::tpy::ordered_map<{K}, {V}>()")
+    def __init__(self) -> None: ...
+
+    @dispatch
     @pure
     @readonly
     @cpp_template("::tpy::dict_construct<{K}, {V}>({0})")
@@ -105,6 +112,21 @@ class dict[K, V](Iterable[K], NativeIterable[K]):
     @pure
     @readonly
     def __contains__(self, key: readonly[K]) -> bool: ...
+
+    @native("tpy::__repr__", function=True)
+    @pure
+    @readonly
+    def __repr__(self) -> str: ...
+
+    @cpp_template("{self} == {0}")
+    @pure
+    @readonly
+    def __eq__[V: Equatable](self, other: readonly[dict[K, V]]) -> bool: ...
+
+    @native("tpy::container_ne", function=True)
+    @pure
+    @readonly
+    def __ne__[V: Equatable](self, other: readonly[dict[K, V]]) -> bool: ...
 
     @dispatch
     @native("tpy::dict_get", function=True, element_effect="lookup")

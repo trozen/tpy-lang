@@ -1,1 +1,1 @@
-main.py:12: error: Method 'sort' requires type parameter 'T' to satisfy 'Comparable', but 'Foo' does not conform
+main.py:12: error: Method 'sort' requires its type argument to satisfy 'Comparable', but 'Foo' does not conform

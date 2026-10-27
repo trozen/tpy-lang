@@ -102,7 +102,7 @@ inline bool Dog::__eq__(const Dog& other) const {
 }
 
 inline std::string Dog::__repr__() const {
-    return std::format("Dog(tags={})", ::tpy::list_to_str(this->tags));
+    return std::format("Dog(tags={})", ::tpy::repr_of(this->tags));
 }
 
 inline Cat::Cat(std::vector<std::string>&& tags) : tags(std::move(tags)) {}
@@ -112,7 +112,7 @@ inline bool Cat::__eq__(const Cat& other) const {
 }
 
 inline std::string Cat::__repr__() const {
-    return std::format("Cat(tags={})", ::tpy::list_to_str(this->tags));
+    return std::format("Cat(tags={})", ::tpy::repr_of(this->tags));
 }
 
 inline Bird::Bird(std::vector<std::string>&& tags) : tags(std::move(tags)) {}
@@ -122,7 +122,7 @@ inline bool Bird::__eq__(const Bird& other) const {
 }
 
 inline std::string Bird::__repr__() const {
-    return std::format("Bird(tags={})", ::tpy::list_to_str(this->tags));
+    return std::format("Bird(tags={})", ::tpy::repr_of(this->tags));
 }
 void __tpy_init();
 } // namespace tpyapp::main

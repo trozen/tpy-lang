@@ -15,8 +15,7 @@ from ..typesys import (
     TypeParamRef, IntLiteralType, AnyType,
     UnionType, repr_shape, readonly_access, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
     is_protocol_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
-    LiteralType, LiteralValue, is_any_int_type,
-
+    LiteralType, LiteralValue, is_any_int_type, binds_runtime_symbol,
 )
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
@@ -436,11 +435,13 @@ class NarrowingTracker:
                     or (isinstance(node, TpyCall)
                         and node.isinstance_var is None
                         and node.func_name not in ("isinstance", "len"))
-                    # A membership test calling `__contains__`, and a pull
-                    # of an iteration source running TPy code, are calls no
-                    # node kind shows.
+                    # A membership test calling a TPy `__contains__`, and a
+                    # pull of an iteration source running TPy code, are calls
+                    # no node kind shows.
                     or (isinstance(node, TpyBinOp)
-                        and node.contains_call is not None)
+                        and node.contains_call is not None
+                        and not binds_runtime_symbol(
+                            node.contains_call.resolved_function_info))
                     or node.pull_runs_code):
                 found = True
             return not found

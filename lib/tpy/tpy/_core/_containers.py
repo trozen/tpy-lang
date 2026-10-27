@@ -4,7 +4,7 @@ from .._typing import Self, Iterator, Iterable
 from tpy import Span, Ptr
 from .._bootstrap._decorators import readonly, auto_readonly, pure, nocopy, Own, dispatch
 from .._bootstrap._extern import native, cpp_template, builtin_type
-from ._types import int32, Comparable, Deref, Spannable, NativeIterable
+from ._types import int32, Comparable, Equatable, Deref, Spannable, NativeIterable
 
 
 @builtin_type("tpy.Span")
@@ -56,6 +56,11 @@ class Span[T](Iterable[T], NativeIterable[T], Spannable[T]):
 
     @native("tpy::__setitem__", function=True, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
+
+    @native("tpy::seq_contains", function=True, element_effect="lookup")
+    @pure
+    @readonly
+    def __contains__[U, T: Equatable](self, value: U, /) -> bool: ...
 
     @native("tpy::as_span", function=True)
     @pure
@@ -151,10 +156,30 @@ class Array[T, N: int](Iterable[T], NativeIterable[T], Spannable[T]):
     @native("tpy::__setitem__", function=True, element_access=unchecked_set)
     def __setitem__(self, index: int32, value: Own[T]) -> None: ...
 
+    @native("tpy::seq_contains", function=True, element_effect="lookup")
+    @pure
+    @readonly
+    def __contains__[U, T: Equatable](self, value: U, /) -> bool: ...
+
     @native("tpy::as_span", function=True)
     @pure
     @readonly
     def __span__(self) -> Span[readonly[T]]: ...
+
+    @native("tpy::__repr__", function=True)
+    @pure
+    @readonly
+    def __repr__(self) -> str: ...
+
+    @cpp_template("{self} == {0}")
+    @pure
+    @readonly
+    def __eq__[T: Equatable](self, other: readonly[Array[T, N]]) -> bool: ...
+
+    @native("tpy::container_ne", function=True)
+    @pure
+    @readonly
+    def __ne__[T: Equatable](self, other: readonly[Array[T, N]]) -> bool: ...
 
 
 @builtin_type("tpy.Ptr")

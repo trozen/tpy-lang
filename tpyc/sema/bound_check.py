@@ -53,6 +53,7 @@ def raise_if_class_param_bound_violated(
     protocol_checker: Callable[[TpyType, TpyType], bool],
     error_fn: Callable[[str, object], Exception],
     loc_node: object,
+    builtin_owner: bool = False,
 ) -> None:
     """Raise a sema diagnostic if the receiver doesn't satisfy a class-shadowed
     method type-param bound. The diagnostic format is canonical -- every
@@ -64,9 +65,26 @@ def raise_if_class_param_bound_violated(
     )
     if violation is None:
         return
+    raise error_fn(bound_violation_text(method_info.name, violation,
+                                        builtin_owner=builtin_owner),
+                   loc_node)
+
+
+def builtin_owned(method_info: FunctionInfo,
+                  find_record: Callable[[str], object]) -> bool:
+    """Whether the method is declared on a builtin type's stub."""
+    qname = method_info.root.owning_type_qname
+    record = find_record(qname) if qname else None
+    return getattr(record, "builtin_type_key", None) is not None
+
+
+def bound_violation_text(method_name: str,
+                         violation: tuple[str, TpyType, TpyType], *,
+                         builtin_owner: bool = False) -> str:
+    """The one bound-violation diagnostic. A builtin type's stub names its
+    type parameters for itself (`list[T]`), not for the user, so its
+    parameter goes unnamed."""
     tp, bound, concrete = violation
-    raise error_fn(
-        f"Method '{method_info.name}' requires type parameter '{tp}' to satisfy "
-        f"'{bound}', but '{concrete}' does not conform",
-        loc_node,
-    )
+    subject = "its type argument" if builtin_owner else f"type parameter '{tp}'"
+    return (f"Method '{method_name}' requires {subject} to satisfy "
+            f"'{bound}', but '{concrete}' does not conform")

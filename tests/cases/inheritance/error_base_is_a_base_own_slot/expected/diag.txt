@@ -1,0 +1,2 @@
+main.py:13: warning: Own[dict[str, int32]] param 'm' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:19: error: Type mismatch in argument 'm': expected dict[str, int32], got Counts

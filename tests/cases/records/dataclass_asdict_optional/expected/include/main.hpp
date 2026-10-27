@@ -230,7 +230,7 @@ inline bool PointList::__eq__(const PointList& other) const {
 }
 
 inline std::string PointList::__repr__() const {
-    return std::format("PointList(items={})", ::tpy::list_to_str(this->items));
+    return std::format("PointList(items={})", ::tpy::repr_of(this->items));
 }
 
 inline Line::Line(Point&& start, Point&& end)
@@ -275,7 +275,7 @@ inline bool LabeledPoints::__eq__(const LabeledPoints& other) const {
 }
 
 inline std::string LabeledPoints::__repr__() const {
-    return std::format("LabeledPoints(items={})", ::tpy::dict_to_str(this->items));
+    return std::format("LabeledPoints(items={})", ::tpy::repr_of(this->items));
 }
 void __tpy_init();
 } // namespace tpyapp::main

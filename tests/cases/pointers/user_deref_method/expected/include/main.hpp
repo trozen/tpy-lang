@@ -9,9 +9,13 @@ namespace tpyapp::main {
 
 struct Point;
 struct Ref;
+template<typename T> struct Holder;
+template<typename U> struct Sub;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def inherited() -> None:
+void inherited();
 // def main() -> None:
 void main();
 
@@ -64,6 +68,48 @@ inline std::ostream& operator<<(std::ostream& os, const Ref& obj) {
     return os;
 }
 
+// class Holder[T]:
+template<typename T>
+struct Holder {
+    // v: T
+    T v;
+
+    // def __init__(self, v: Own[T]) -> None:
+    Holder() = default;
+    explicit Holder(::tpy::own_param_t<T> v);
+
+    // def __deref__(self) -> T:
+    ::tpy::val_or_ref_t<T> __deref__();
+
+    // def __deref__(self) -> T:
+    ::tpy::val_or_cref_t<T> __deref__() const;
+
+    auto operator*() -> decltype(__deref__());
+
+    auto operator*() const -> decltype(__deref__());
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// class Sub[U](Holder[U]):
+template<typename U>
+struct Sub : Holder<U> {
+
+    using Holder<U>::Holder;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sub";
+};
+
+template<typename U>
+inline std::ostream& operator<<(std::ostream& os, const Sub<U>& obj) {
+    ::tpy::print_object_default(os, "Sub", obj);
+    return os;
+}
+
 
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
@@ -103,5 +149,35 @@ inline auto Ref::operator*() -> decltype(__deref__()) {
 inline auto Ref::operator*() const -> decltype(__deref__()) {
     return __deref__();
 }
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline Holder<T>::Holder(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
+// def __deref__(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Holder<T>::__deref__() {
+    return this->v;
+}
+
+// def __deref__(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Holder<T>::__deref__() const {
+    return this->v;
+}
+
+template<typename T>
+inline auto Holder<T>::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+template<typename T>
+inline auto Holder<T>::operator*() const -> decltype(__deref__()) {
+    return __deref__();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

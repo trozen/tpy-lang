@@ -93,6 +93,7 @@ from ..faces import witness as _witness
 from ..validate import validate_constructor, validate_function
 from ..nodes import (
     THIRBaseInit,
+    THIRCall,
     THIRInheritedConstructor,
     THIRConstructor,
     THIRExpr,
@@ -145,9 +146,11 @@ from .checks import (
     _nondef_ctor_field,
 )
 from .expressions import (
+    _lower_call_arg,
     _lower_expr,
     _union_source_layout,
 )
+from .callables import stub_callee
 from .field_write import lower_member_init_value
 from .statements import (
     _lower_stmts,
@@ -1040,13 +1043,14 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         # the emitted ctor through a base initializer, and the struct header
         # naming it belongs to the printer layer. With no base-init call in the
         # body there is nothing for the MIL to spell, so the tail emits
-        # identically. `super().__init__([1, 2, 3])` DOES reach one (the
-        # element-seeding spelling compiles and runs), so the base-init reject
-        # is load-bearing, not defensive: the MIL would have to spell the
-        # container base's own initializer, which the tail cannot render.
+        # identically. A base-init call to it renders the base's resolved
+        # stub `__init__` template at the member-init position
+        # (`_lower_base_init`); any other base-init call to a non-F1 base
+        # has no MIL spelling.
         if (any(not _builtin_container_type(p, analyzer)
                 and not _f1_record(p, analyzer) for p in ri.parents)
-                or any(is_base_init_call(s) for s in init_method.body)):
+                or any(is_base_init_call(s) and not _stub_template_base_init(s)
+                       for s in init_method.body)):
             note("ctor.non_f1_base")
             return None
     if (init_method.is_overload_stub or init_method.native_function
@@ -1647,6 +1651,47 @@ def _lower_base_init_arg(a: TpyExpr, lc: _LowerCtx,
     # A value-opt param passes WHOLE into the base slot (bare name).
     return _lower_expr(a, lc, declared, allow_whole_optional=True)
 
+def _stub_template_base_init(stmt: TpyStmt) -> bool:
+    """A base-init call that resolved to a stub's `@cpp_template` `__init__`
+    (a builtin base's: `super().__init__([1, 2])` under
+    `class L(list[int32])`)."""
+    expr = getattr(stmt, "expr", None)
+    if not (is_base_init_call(stmt) and isinstance(expr, TpyMethodCall)):
+        return False
+    fi = expr.resolved_function_info
+    return fi is not None and bool(fi.cpp_template)
+
+
+def _lower_stub_base_init(expr: TpyMethodCall, ri: RecordInfo, base_type: TpyType,
+                          declared: dict[str, TpyType],
+                          lc: _LowerCtx) -> 'THIRBaseInit | None':
+    """The base initializer of a call that resolved to a stub's template
+    `__init__` (sema substituted the base's type arguments): the template
+    is the base's construction, so it initializes the base -- bare when it
+    is the base's own default construction, else as the base's argument."""
+    analyzer = lc.analyzer
+    fi = expr.resolved_function_info
+    base_info = analyzer.registry.get_record_for_type(base_type)
+    if (fi is None or base_info is None or expr.kwargs
+            or expr.double_star_unpack is not None
+            or len(expr.args) != len(fi.params)):
+        return None
+    base_cpp = record_base_cpp(ri, base_type)
+    if not fi.params:
+        # The stub's zero-argument `__init__` is the type's default
+        # construction, whichever class on the way inherits it.
+        _witness("baseinit.stub_default")
+        return THIRBaseInit(base_cpp=base_cpp, args=(), base=record_owner(base_info))
+    args = tuple(_lower_call_arg(a, p.type, lc, declared, callee_fi=fi, arg_index=i)
+                 for i, (a, p) in enumerate(zip(expr.args, fi.params)))
+    _witness("baseinit.stub_template")
+    init = THIRCall(result_type=base_type, callee="__init__", args=args,
+                    cpp_template=fi.cpp_template,
+                    stub_callee=stub_callee(fi, base_type, analyzer, arity=len(args)),
+                    constructs=True, loc=expr.loc)
+    return THIRBaseInit(base_cpp=base_cpp, args=(init,), base=record_owner(base_info))
+
+
 def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType],
                      lc: _LowerCtx) -> 'tuple[THIRBaseInit, TpyType] | None':
     """Lower one base-init call to `(THIRBaseInit, base_type)`, or None outside the
@@ -1665,8 +1710,19 @@ def _lower_base_init(stmt: TpyStmt, ri: RecordInfo, declared: dict[str, TpyType]
     if not isinstance(expr, TpyMethodCall):
         return None
     base_type = expr.base_init_direct_base
-    if base_type is None or not _f1_record(base_type, analyzer):
+    if base_type is None:
         return None
+    # Which class DEFINES the `__init__` decides the form: a stub's template
+    # initializes the direct base whether that base is the builtin class or
+    # a user class inheriting its constructor through the MRO.
+    base_info = analyzer.registry.get_record_for_type(base_type)
+    if not _f1_record(base_type, analyzer) or (
+            base_info is not None
+            and analyzer.registry.inherits_template_init(base_info)):
+        if not _stub_template_base_init(stmt):
+            return None
+        init = _lower_stub_base_init(expr, ri, base_type, declared, lc)
+        return (init, base_type) if init is not None else None
     if expr.kwargs or expr.double_star_unpack is not None:
         return None
     args: list[THIRExpr] = []

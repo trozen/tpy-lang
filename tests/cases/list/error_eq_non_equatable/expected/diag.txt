@@ -1,0 +1,1 @@
+main.py:14: error: Method '__eq__' requires its type argument to satisfy 'Equatable', but 'Foo' does not conform

@@ -12,10 +12,10 @@ import re
 import dataclasses
 
 from ..typesys import (
-    same_class,
+    same_class, record_owner,
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
-    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, UnionType, RecursiveAliasInstanceType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
+    ListRepeatType, GenExprType, make_list, TupleType, OptionalType, UnionType, RecursiveAliasInstanceType, PtrType, IntLiteralType, FloatLiteralType, AnyType, AliasRef, NoneType, PendingListType, PendingContainerType, UnknownElementType, BIGINT, FLOAT,
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
@@ -138,12 +138,17 @@ _PART_WISE: tuple[tuple[type, frozenset[str],
     (TupleType, frozenset({qnames.HASHABLE, qnames.COMPARABLE,
                            qnames.EQUATABLE, qnames.VALUE_TYPE}),
      lambda t: t.element_types),
-    # Copying a union or Optional copies the alternative it holds; Hashable /
+    # Copying a union or Optional copies the alternative it holds, and
+    # comparing two compares the alternatives they hold (by value across
+    # alternatives, `::tpy::Union`'s rule; None equals only None); Hashable /
     # Comparable over one keep the answer of the arms below.
-    (UnionType, frozenset({qnames.VALUE_TYPE}), lambda t: t.members),
-    (OptionalType, frozenset({qnames.VALUE_TYPE}), lambda t: (t.inner,)),
+    (UnionType, frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}),
+     lambda t: t.members),
+    (OptionalType, frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}),
+     lambda t: (t.inner,)),
     # A generic recursive alias holds its body under the instance's arguments.
-    (RecursiveAliasInstanceType, frozenset({qnames.VALUE_TYPE}), _alias_body),
+    (RecursiveAliasInstanceType,
+     frozenset({qnames.VALUE_TYPE, qnames.EQUATABLE}), _alias_body),
 )
 
 
@@ -241,18 +246,13 @@ class ProtocolChecker:
         """
         if is_protocol_type(bound):
             return self.type_conforms_to_protocol(actual, bound)
-        if isinstance(bound, NominalType) and bound.is_user_record:
-            return actual == bound or self.ctx.registry.is_subclass_of(actual, bound)
         if isinstance(bound, TypeParamRef):
             # Unsubstituted bound (a sibling/enclosing type param that wasn't
             # resolved to a concrete type at this site). Identity is all that
             # is provable here.
             return actual == bound
-        # Builtin nominal bound (e.g. `U: T` substituted to `int32`): identity
-        # is sufficient since builtins don't have a user-visible class hierarchy.
-        if actual == bound:
-            return True
-        return False
+        # A class bound, user record or builtin (`U: dict[str, int32]`).
+        return actual == bound or self.ctx.registry.is_subclass_of(actual, bound)
 
     def classify_protocol_conformance(
         self, actual: TpyType, protocol: NominalType,
@@ -376,6 +376,20 @@ class ProtocolChecker:
                     and protocol.type_args and len(protocol.type_args) == 1):
                 return ProtocolConformanceKind.EXPLICIT
             return self.classify_protocol_conformance(make_list(actual.element_type), protocol)
+        # None equals only None; a recursive alias's self-reference compares
+        # as its body does (the in-progress guard answers the cycle).
+        if protocol.qualified_name() == qnames.EQUATABLE:
+            if isinstance(actual, NoneType):
+                return ProtocolConformanceKind.EXPLICIT
+            if isinstance(actual, AliasRef):
+                body = self.ctx.registry.resolve_alias_ref(actual)
+                return (self.classify_protocol_conformance(body, protocol)
+                        if body is not None else None)
+
+        # A dict / set literal conforms as the container it spells.
+        if isinstance(actual, PendingContainerType):
+            return self.classify_protocol_conformance(
+                actual.spelled(actual.parts()), protocol)
 
         # GenExprType: satisfies Iterable[T] and Iterator[T]
         if isinstance(actual, GenExprType):
@@ -463,7 +477,8 @@ class ProtocolChecker:
         # whose codegen template handles both branches via the runtime.
         if protocol.qualified_name() == qnames.STRINGABLE:
             record_info = self.ctx.registry.get_record_for_type(actual)
-            if record_info is not None and record_info.declares_str_or_repr():
+            if (record_info is not None
+                    and self.ctx.registry.answers_str_or_repr(record_info)):
                 return ProtocolConformanceKind.EXPLICIT
 
         # Unified lookup - all protocols (builtin and user) are in the registry
@@ -845,8 +860,14 @@ class ProtocolChecker:
                 # so Box[NotHashable] should NOT conform to Hashable just because
                 # Box has __hash__. type_subst has its TypeParamRef chains already
                 # resolved above, so multi-level inheritance sees the concrete T.
+                # The bound shadows the params of the class defining the
+                # method (an inherited one's: list's `T` under `GL[U]`).
+                definer = self.ctx.registry.mro_method_definer(
+                    record_info, method_name)
+                definer_params = (definer[1].type_params if definer is not None
+                                  else record_info.type_params)
                 if type_subst and find_method_class_param_bound_violation(
-                    method, record_info.type_params, type_subst,
+                    method, definer_params, type_subst,
                     self.type_conforms_to_protocol,
                 ) is not None:
                     continue
@@ -1196,11 +1217,13 @@ class ProtocolChecker:
 
     def lookup_record_method_overloads(
         self, record_info: RecordInfo, method_name: str
-    ) -> tuple[list[FunctionInfo], dict[str, TpyType | int]]:
+    ) -> tuple[list[FunctionInfo], dict[str, TpyType | int] | None]:
         """Look up all overloads for a method in a record, including inherited methods.
 
         Returns (overloads, type_subst) where type_subst should be applied to
-        substitute parent type parameters with concrete types.
+        substitute parent type parameters with concrete types: None for the
+        record's own method, the declaring ancestor's (empty for a
+        non-generic one) for an inherited one.
 
         For inherited methods from builtin types with multiple overloads (like pop()),
         this returns all overloads so proper overload resolution can be done.
@@ -1209,11 +1232,59 @@ class ProtocolChecker:
         # two conflicting definitions here, so first-match-wins is safe.
         found = self.ctx.registry.mro_method_definer(record_info, method_name)
         if found is None:
-            return ([], {})
+            return ([], None)
         owner_type, owner = found
         return (owner.get_method_overloads(method_name),
                 self.get_parent_type_subst(owner_type, owner)
-                if owner_type is not None else {})
+                if owner_type is not None else None)
+
+    def is_dynamic_protocol_member(self, record_info: RecordInfo,
+                                   method_name: str) -> bool:
+        """True iff method_name appears in a @dynamic protocol implemented by
+        the record or any ancestor (transitively): such a method is emitted
+        as `override` on a virtual slot, so a base reference dispatches it
+        dynamically."""
+        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
+            for sig in self.collect_protocol_methods(proto_info):
+                if sig.name == method_name:
+                    return True
+        return False
+
+    def statically_hidden(self, cls: RecordInfo, name: str,
+                          base: RecordInfo) -> RecordInfo | None:
+        """The class whose `name` a `base`-typed reference runs where Python
+        runs `cls.name` -- the lost-override fact every hiding / override /
+        upcast warning reads. None for `__init__` / `__del__`, a declared
+        hide (`hides_parent_methods`), or a @dynamic protocol member."""
+        reg = self.ctx.registry
+        if (name in ("__init__", "__del__") or name in cls.hides_parent_methods
+                or not reg.is_struct_base(cls, base)):
+            return None
+        found = reg.mro_method_definer(base, name)
+        if found is None or self.is_dynamic_protocol_member(base, name):
+            return None
+        return found[1]
+
+    def lost_override(self, child: TpyType, base: TpyType
+                      ) -> tuple[str, str] | None:
+        """The first method `child` overrides from its ancestor `base` that a
+        `base`-typed reference still runs statically (`statically_hidden`),
+        as (`'Base.m'`, `'Child.m'`): the method `base` resolves and the one
+        Python would run on the object. None when there is none."""
+        reg = self.ctx.registry
+        sub = reg.get_record_for_type(child)
+        base_rec = reg.get_record_for_type(base)
+        if sub is None or base_rec is None:
+            return None
+        for cls in (sub, *reg.iter_ancestor_records(sub)):
+            if cls is base_rec or not (cls is sub
+                                       or reg.is_subclass_of_record(cls, base_rec)):
+                continue
+            for name in cls.methods:
+                hidden = self.statically_hidden(cls, name, base_rec)
+                if hidden is not None:
+                    return f"{hidden.name}.{name}", f"{cls.name}.{name}"
+        return None
 
     def get_parent_type_subst(
         self, parent_type: TpyType, parent_info: RecordInfo
@@ -1240,14 +1311,26 @@ class ProtocolChecker:
         `compute_mro_ancestors`), plus the substitution from the ancestor's
         parameters to it. Falls back to an unparameterized nominal when the
         ancestor is not in the MRO."""
-        for anc_type, anc_info in self.ctx.registry.iter_mro_entries(current_rec):
-            if anc_info is ancestor_info:
-                return anc_type, self.get_parent_type_subst(anc_type, ancestor_info)
-        parent_type = NominalType(
-            ancestor_info.name,
-            _module_qname=ancestor_info.qualified_name(),
-        )
+        parent_type: TpyType = record_owner(ancestor_info)
+        hit = self.ctx.registry.ancestor_entry(current_rec, parent_type)
+        if hit is not None and hit[0] > 0:
+            parent_type = hit[1]
         return parent_type, self.get_parent_type_subst(parent_type, ancestor_info)
+
+    def ancestor_subst_at(
+        self, ancestor_subst: dict[str, TpyType | int],
+        type_subst: dict[str, TpyType | int],
+    ) -> dict[str, TpyType | int]:
+        """An ancestor's substitution (`resolve_ancestor_instantiation`,
+        spelled in the child's type parameters) at a child instantiation
+        `type_subst`: the map to the ancestor's instance (`ancestor_instance`)
+        at that instantiation."""
+        if not type_subst:
+            return dict(ancestor_subst)
+        # An `N: int` param's binding is a plain int -- nothing to substitute.
+        return {k: (self.type_ops.substitute_type_params(v, type_subst)
+                    if isinstance(v, TpyType) else v)
+                for k, v in ancestor_subst.items()}
 
     def get_protocol_conformance_issues(self, record_type: NominalType, protocol: NominalType) -> list[str]:
         """Get human-readable list of conformance issues for a record against a protocol.

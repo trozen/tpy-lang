@@ -1,0 +1,98 @@
+gen 2 7 ag True True
+conc 2 7 True True
+local 1 8
+multi 1 7 True True
+dict 2 7 2 ad
+list 2 9 2
+set 2 2
+isinstance True True False True True True
+isinstance-desc False
+match base
+match dict
+optional 1 -1
+optional-after 3
+union 1 7
+union int 5
+bound 1 2 1
+return 1 5 1 6
+dispatch rex
+dispatch q
+dispatch tom
+dispatch 0
+in True True True False True True
+iter k 18 9 9
+alias 1 4 True
+generic True 2 2 7
+generic-user 4 1
+ctor 0 0 0 1 0 0
+print {'a': 1} [2] SBare({3}) SBare()
+eq True False True False False
+print-nested [{'a': 1}] (SBare({3}), [2])
+print-str {'a': 1} SBare({3}) [2]
+eq-mixed True False False
+eq-override False False
+eq-override-dict True True EqD! [EqD!]
+plain-eq True True True 1 1 True
+generic-eq True False
+generic-mixed True True
+generic-override False False
+generic-fn True False
+array-elems True False False True
+positions p [18] True False
+exc logged
+exc logged
+bytearray BSub(b'A')
+dispatch-sites rex rex
+iter-override 7 7 [7] 7 {7} [7] [7] 7
+truth True False True False True n
+truth-while 1
+truth-filter [1, 2]
+multi-builtin [1] 1
+seeded [1, 2] 2
+in-override True False True
+iter-builtins [(0, 7)] [(7, 7)] [7]
+iter-consumers [7] s [7] ['k'] True True
+own-repr Named! Named! [Named!] (Named!,)
+opt-truth n n n True True
+seeded-multi [1] [] [1, 9]
+ro-eq True
+dyn-override 2
+union-count 1 1 1
+bytearray-noinit 1 66
+seeded-kinds {'a': 1} 1 [1, 2] 2 2 3
+opt-truth n n n True True
+opt-truth y n n False True
+opt-kinds n n True True
+opt-kinds n n True True
+opt-kinds y y False False
+ro-eq-kinds True False False True
+truth-consumers True True [[]] 1 3
+cross-needle True False True False
+bytearray-in True False True False True
+literal-args [2] [3] [Pr(1)]
+literal-in True False True False 1
+empty-method 1 y y
+explicit-contains True False True
+super-append 6 1 1 [1]
+super-eq True
+super-eq-after False 2
+super-setitem 5 1
+super-two-level 12 1 11 1
+super-unbound 101 1 super-generic 7 1
+super-user-dunder 30
+super-virtual-dunder 30
+super-frame-gen [3, 4, 6]
+super-frame-async 13
+super-clear 0 0 0 0 0 0 0 0
+super-borrow 5 6
+super-borrow-self 9
+nongeneric-base 1.5
+inherited-sorted ['a', 'b'] [1, 3]
+inherited-reversed 0
+inherited-reversed 1
+inherited-reversed 3
+inherited-list ['b', 'a', 'c', 'z'] 3
+inherited-static 5
+inherited-static-generic 7
+inherited-static-own 1.5 2.5 3.5
+inherited-await 7 8

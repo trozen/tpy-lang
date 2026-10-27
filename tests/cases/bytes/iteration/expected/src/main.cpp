@@ -33,8 +33,8 @@ void main() {
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 0)) << "\n" << ::tpy::check_signals;
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, 2)) << "\n" << ::tpy::check_signals;
     std::cout << static_cast<int>(::tpy::bytes_getitem(data, -1)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 65))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpy::bytes_contains(data, 0))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::bytes_contains(data, 65)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(::tpy::bytes_contains(data, 0)) << "\n" << ::tpy::check_signals;
     ::tpy::BytesView a = ::tpy::bytes_literal("hello", 5);
     ::tpy::BytesView b2 = ::tpy::bytes_literal(" world", 6);
     std::cout << ::tpy::BytesPrinter((::tpy::bytes_concat(a, b2))) << "\n" << ::tpy::check_signals;

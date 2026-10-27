@@ -7285,4 +7285,4 @@ def sub_struct_qualname(
     return rcfg.frame_struct_qualname(
         types, owner, method, inferred_type_args,
         module_qual=module_qual, extra_template_args=extra_template_args,
-        shape=rcfg.ResumableShape.ASYNC, loc=loc)
+        shape=rcfg.ResumableShape.ASYNC)

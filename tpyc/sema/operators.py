@@ -34,7 +34,9 @@ if TYPE_CHECKING:
     from .compatibility import TypeCompatibility
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
 
-from .bound_check import raise_if_class_param_bound_violated
+from .bound_check import (bound_violation_text, builtin_owned,
+                          find_method_class_param_bound_violation)
+from .pending_num import leaves_as_numbers
 
 
 # C++ templates for user-defined dunder methods (used for unified operator resolution)
@@ -194,7 +196,7 @@ class OperatorResolver:
         self.protocols = protocols
         self.compat = compat
 
-    def _check_class_bounds(
+    def check_class_bounds(
         self, method: FunctionInfo, receiver_type: TpyType,
         class_subst: dict[str, 'TpyType | int'], loc_node,
     ) -> None:
@@ -205,20 +207,52 @@ class OperatorResolver:
         sema-level error matches what codegen's `requires` clause catches at
         C++ instantiation time.
         """
+        violation = self.class_bound_violation(method, receiver_type,
+                                               class_subst)
+        if violation is not None:
+            raise self.ctx.error(
+                bound_violation_text(
+                    method.name, violation,
+                    builtin_owner=builtin_owned(
+                        method, self.ctx.registry.find_record_by_qname)),
+                loc_node)
+
+    def class_bound_violation(
+        self, method: FunctionInfo, receiver_type: TpyType,
+        class_subst: dict[str, 'TpyType | int'],
+    ) -> 'tuple[str, TpyType, TpyType] | None':
+        """The class-shadowed method bound the receiver misses, as
+        (param, bound, concrete), or None."""
+        # The bound as declared: a substituted view no longer lists the
+        # class-shadowed params it bound.
+        method = method.root
         # Cheap method-level guard first: short-circuits the common case
         # (every operator dispatch where the matched method has no bounds).
         if not method.type_param_bounds:
-            return
+            return None
         # readonly[Box[T]] conforms to any protocol Box[T] does -- mirror that
         # unwrap here so the bound check operates on the inner record.
         record = self.ctx.registry.get_record_for_type(unwrap_readonly(receiver_type))
-        if record is None or not record.type_params:
-            return
-        raise_if_class_param_bound_violated(
+        if record is None:
+            return None
+        # The class whose params the bound shadows: the receiver's own, or
+        # the ancestor an inherited dunder comes from, whose params bind
+        # through the receiver's (`class GL[U](list[U])`: list's `T` is `U`).
+        found = self.ctx.registry.mro_method_definer(record, method.name)
+        if found is not None:
+            owner_type, record = found
+            if owner_type is not None:
+                class_subst = self.protocols.ancestor_subst_at(
+                    self.protocols.get_parent_type_subst(owner_type, record),
+                    class_subst)
+        if not record.type_params:
+            return None
+        # A part whose numbers are not decided yet meets the bound as every
+        # width it may settle to does, as at the method-call path.
+        return find_method_class_param_bound_violation(
             method, record.type_params, class_subst,
-            self.protocols.type_conforms_to_protocol,
-            self.ctx.error, loc_node,
-        )
+            lambda t, bound: self.protocols.type_conforms_to_protocol(
+                leaves_as_numbers(t), bound))
 
     def _resolve_pending_types(self, tpy_type: TpyType) -> TpyType:
         """Resolve pending/structural types (PendingListType, LiteralType).
@@ -367,7 +401,7 @@ class OperatorResolver:
         # Bound check before substitution rewrites `method` (bounds are on the
         # original FunctionInfo and indexed by class-shadow names). Raises on
         # violation -- the resolver never returns a result carrying one.
-        self._check_class_bounds(method, receiver_type, type_subst, loc_node)
+        self.check_class_bounds(method, receiver_type, type_subst, loc_node)
         if type_subst:
             new_params = [
                 dc_replace(p, type=substitute_type_params_simple(p.type, type_subst))
@@ -727,7 +761,7 @@ class OperatorResolver:
                 method = overloads[0]
                 class_subst = _type_entries(
                     self._build_type_subst(effective_type, effective_type))
-                self._check_class_bounds(method, effective_type, class_subst, loc_node)
+                self.check_class_bounds(method, effective_type, class_subst, loc_node)
                 return ResolvedUnaryop(method=method)
 
         return None

@@ -2,13 +2,20 @@ __tpy__ = {"mod": "native",
            "cpp_namespace": "tpystd::builtins"}
 from .._typing import Self, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, Own, dispatch
-from .._core._types import int32, NativeIterable
+from .._core._types import int32, Equatable, NativeIterable
 from .._bootstrap._extern import native, cpp_template, builtin_type
 
 
 @builtin_type("builtins.set")
 @native("tpy::ordered_set", indirecting=True, elements=True)
 class set[T](Iterable[T], NativeIterable[T]):
+    @dispatch
+    @pure
+    @readonly
+    @cpp_template("::tpy::ordered_set<{T}>()")
+    def __init__(self) -> None: ...
+
+    @dispatch
     @pure
     @readonly
     @cpp_template("::tpy::set_construct<{T}>({0})")
@@ -103,6 +110,21 @@ class set[T](Iterable[T], NativeIterable[T]):
 
     @native("tpy::set_symmetric_difference_update", function=True, element_effect="insert")
     def symmetric_difference_update(self, other: set[T], /) -> None: ...
+
+    @native("tpy::__repr__", function=True)
+    @pure
+    @readonly
+    def __repr__(self) -> str: ...
+
+    @cpp_template("{self} == {0}")
+    @pure
+    @readonly
+    def __eq__[T: Equatable](self, other: readonly[set[T]]) -> bool: ...
+
+    @native("tpy::container_ne", function=True)
+    @pure
+    @readonly
+    def __ne__[T: Equatable](self, other: readonly[set[T]]) -> bool: ...
 
     # Operators (same as named methods)
     @native("tpy::set_union", function=True)

@@ -98,11 +98,21 @@ struct Bag : std::vector<int32_t> {
     // def __init__(self, n: int32) -> None:  # tpyc: ok
     Bag() = default;
     explicit Bag(int32_t n);
+
+    void __repr_into__(std::ostream& os) const {
+        ::tpy::print_base_of<std::vector<int32_t>>(os, "Bag", *this);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream os;
+        __repr_into__(os);
+        return os.str();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
-    ::tpy::print_object_default(os, "Bag", obj);
+    obj.__repr_into__(os);
     return os;
 }
 

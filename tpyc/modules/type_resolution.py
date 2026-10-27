@@ -25,25 +25,6 @@ from tpyc.type_def_registry import is_span, is_span_iter, is_copy_iter, is_own_i
 from tpyc.modules.defs import ParamDef, MethodDef
 
 
-def _compose_parent_subst(
-    parent: "NominalType", parent_info: "RecordInfo",
-    type_subst: "dict[str, TpyType]",
-) -> "dict[str, TpyType]":
-    """Extend type_subst with parent's type-parameter bindings from parent.type_args.
-
-    Each parent_info.type_params[i] maps to parent.type_args[i], composed through
-    the existing subst so TypeParamRefs from the child level get resolved first.
-    """
-    result = dict(type_subst)
-    if parent.type_args and parent_info.type_params:
-        for param_name, arg in zip(parent_info.type_params, parent.type_args):
-            if isinstance(arg, TypeParamRef) and arg.name in type_subst:
-                result[param_name] = type_subst[arg.name]
-            else:
-                result[param_name] = arg
-    return result
-
-
 # ---------------------------------------------------------------------------
 # Concrete type name resolution
 # ---------------------------------------------------------------------------
@@ -218,11 +199,45 @@ ITERABLE_PROTOCOL_QNAMES = frozenset({
     "tpy.NativeIterable", "tpy.Spannable",
 })
 
+def _method_definer_subst(
+    tpy_type: "TpyType", method: str, registry: "TypeRegistry",
+) -> "tuple[RecordInfo, TpyType, dict[str, TpyType]] | None":
+    """The class whose own table defines `method` for a `tpy_type` receiver
+    (`mro_method_definer`: the receiver's class, else the nearest ancestor,
+    a builtin base included), with the substitution of that class's type
+    parameters at `tpy_type`'s instance of it (`ancestor_instance`, also
+    returned). None when no class in the MRO defines it."""
+    from tpyc.typesys import record_owner
+
+    record = registry.get_record_for_type(tpy_type)
+    if record is None:
+        return None
+    found = registry.mro_method_definer(record, method)
+    if found is None:
+        return None
+    owner_type, owner = found
+    inst: "TpyType | None" = (tpy_type if owner_type is None
+                              else registry.ancestor_instance(tpy_type, record_owner(owner)))
+    if inst is None:
+        return None
+    subst: dict[str, TpyType] = {}
+    if isinstance(inst, NominalType) and owner.type_params:
+        subst.update((name, arg) for name, arg in zip(owner.type_params, inst.type_args)
+                     if isinstance(arg, TpyType))
+    return owner, inst, subst
+
+
 def is_native_iterable(tpy_type: "TpyType", registry: "TypeRegistry") -> bool:
-    """Check if type extends NativeIterable (uses range-based for in C++)."""
+    """Check if type extends NativeIterable (uses range-based for in C++).
+
+    Decided by the class whose `__iter__` a loop over `tpy_type` runs (an
+    override on a subclass wins over a native base's), never by ancestry."""
     record = registry.get_record_for_type(tpy_type)
     if record is None:
         return False
+    found = registry.mro_method_definer(record, "__iter__")
+    if found is not None:
+        record = found[1]
     # Builtin types: check extends_protocols strings
     if record.extends_protocols:
         if any(ext.startswith("NativeIterable") for ext in record.extends_protocols):
@@ -274,29 +289,16 @@ def get_extends_protocol_type_arg(
 
 def get_error_return_next_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "TpyType | None":
     """If type has __next__() with @error_return(StopIteration), return element type T."""
-    from tpyc.typesys import NominalType, unwrap_ref_type
-
-    tpy_type = unwrap_ref_type(tpy_type)
-    if not isinstance(tpy_type, NominalType) or not tpy_type.is_user_record:
-        return None
-    return _find_error_return_next_element(tpy_type.name, tpy_type.type_args, registry)
-
-
-def _find_error_return_next_element(
-    record_name: str, type_args: "list[TpyType] | None", registry: "TypeRegistry",
-) -> "TpyType | None":
-    """Walk a record's method table (and parent chain) looking for __next__() with error_return."""
     from tpyc.typesys import NominalType, OwnType, TypeParamRef, unwrap_ref_type
 
-    record = registry.find_record(record_name)
-    if record is None:
+    tpy_type = unwrap_ref_type(tpy_type)
+    if not isinstance(tpy_type, NominalType):
         return None
-
-    type_subst: dict[str, "TpyType"] = {}
-    if record.type_params and type_args:
-        type_subst = dict(zip(record.type_params, type_args))
-
-    for method in record.get_method_overloads("__next__"):
+    found = _method_definer_subst(tpy_type, "__next__", registry)
+    if found is None:
+        return None
+    owner, _, type_subst = found
+    for method in owner.get_method_overloads("__next__"):
         if method.error_return_type == "builtins.StopIteration" and len(method.params) == 0:
             inner = unwrap_ref_type(method.return_type)
             if isinstance(inner, OwnType):
@@ -304,21 +306,6 @@ def _find_error_return_next_element(
             if isinstance(inner, TypeParamRef) and inner.name in type_subst:
                 return type_subst[inner.name]
             return inner
-
-    # Walk each parent chain (first match wins; diamond-free guarantees uniqueness)
-    for parent in record.parents:
-        if not (isinstance(parent, NominalType) and parent.is_user_record):
-            continue
-        parent_args = list(parent.type_args) if parent.type_args else None
-        if type_subst and parent_args:
-            parent_args = [
-                type_subst[a.name] if isinstance(a, TypeParamRef) and a.name in type_subst else a
-                for a in parent_args
-            ]
-        result = _find_error_return_next_element(parent.name, parent_args, registry)
-        if result is not None:
-            return result
-
     return None
 
 
@@ -328,48 +315,29 @@ def get_iter_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
     A readonly container is iterable through its inner type; callers that need
     the element readonly-projected (for-loop, the unified accessor) reproject
     themselves, so unwrap here and return the bare element.
+
+    The `__iter__` is the one a loop runs (`_method_definer_subst`): the
+    type's own, else the nearest ancestor's -- a builtin base's included --
+    at the type's instance of that ancestor. allow_protocol_return=True:
+    `__iter__() -> Iterator[T]` (user records and the builtin stubs: list,
+    dict, set, Span, Array, Range, str) is recognized structurally -- this
+    is the single iteration-protocol entry point (see
+    docs/ITERATOR_DESIGN.md).
     """
-    from tpyc.typesys import NominalType, unwrap_ref_type
+    from tpyc.typesys import unwrap_ref_type
 
     tpy_type = unwrap_readonly(unwrap_ref_type(tpy_type))
-    # Try user records (walks parent chain).
-    # allow_protocol_return=True: user __iter__ returning Iterator[T] is recognized.
-    if isinstance(tpy_type, NominalType) and tpy_type.is_user_record:
-        # Qname-first (get_record_for_type), not the local-only get_record(name):
-        # a type reached through a cross-module return that the current module
-        # never imported by name is absent from the local `records` dict, but
-        # its RecordInfo -- carrying the type_params needed to bind a generic
-        # __iter__() -> Iterator[T] element -- is reachable via its qname.
-        record = registry.get_record_for_type(tpy_type)
-        if record is not None:
-            type_subst: dict[str, "TpyType"] = {"Self": tpy_type}
-            if record.type_params and tpy_type.type_args:
-                type_subst.update(zip(record.type_params, tpy_type.type_args))
-            result = _find_record_iter_element(record, type_subst, registry,
-                                               allow_protocol_return=True)
-            if result is not None:
-                return result
-
-    # Try builtin types via registry.
-    # allow_protocol_return=True: builtin __iter__() stubs return Iterator[T]
-    # (e.g. list, dict, set, Span, Array, Range, str) and sema recognizes them
-    # structurally -- this is the single iteration-protocol entry point (see
-    # docs/ITERATOR_DESIGN.md).
-    record = registry.get_record_for_type(tpy_type)
-    if record is not None:
-        # extract_type_params handles NominalType.type_args as well as
-        # structural wrappers (PtrType.pointee, etc.) via each type's
-        # get_element_type() hook.
-        # Include Self so that __iter__(self) -> Self substitutes to the
-        # record's own type (used by SpanIter and similar self-iterator types).
-        type_subst_b = extract_type_params(tpy_type)
-        type_subst_b["Self"] = tpy_type
-        result = _find_record_iter_element(record, type_subst_b, registry,
-                                           allow_protocol_return=True)
-        if result is not None:
-            return result
-
-    return None
+    found = _method_definer_subst(tpy_type, "__iter__", registry)
+    if found is None:
+        return None
+    owner, inst, type_subst = found
+    # A builtin's structural parameters (`Span`'s settled element) win.
+    type_subst.update(extract_type_params(inst))
+    # Include Self so that __iter__(self) -> Self substitutes to the
+    # receiver's own type (used by SpanIter and similar self-iterator types).
+    type_subst["Self"] = tpy_type
+    return _find_iter_method_element(owner.get_method_overloads("__iter__"), type_subst,
+                                     registry, allow_protocol_return=True)
 
 
 def _ancestor_iter_element(
@@ -492,36 +460,6 @@ def _iterable_element_type_inner(tpy_type: "TpyType", registry: "TypeRegistry") 
     return None
 
 
-def _find_record_iter_element(
-    record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
-    *, allow_protocol_return: bool = False,
-) -> "TpyType | None":
-    """Check if record (or its parents) has __iter__() returning a concrete iterator; return element type."""
-    from tpyc.typesys import NominalType, TypeParamRef
-
-    result = _find_iter_method_element(record.get_method_overloads("__iter__"), type_subst, registry,
-                                       allow_protocol_return=allow_protocol_return)
-    if result is not None:
-        return result
-
-    # Walk each parent chain (first match wins)
-    for parent in record.parents:
-        if not (isinstance(parent, NominalType) and parent.is_user_record):
-            continue
-        # Qname-first: an inherited member from a base declared in a module the
-        # current one never imported by name is still reachable by qname.
-        parent_info = registry.get_record_for_type(parent)
-        if parent_info is None:
-            continue
-        parent_subst = _compose_parent_subst(parent, parent_info, type_subst)
-        result = _find_record_iter_element(parent_info, parent_subst, registry,
-                                           allow_protocol_return=allow_protocol_return)
-        if result is not None:
-            return result
-
-    return None
-
-
 def _find_iter_method_element(
     methods: "list[MethodDef | FunctionInfo]", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
     *, allow_protocol_return: bool = False,
@@ -583,15 +521,13 @@ def _find_iter_method_element(
                 # No substitution context: a bare type param is meaningless.
                 return elem
 
-        # User-defined iterator with error_return __next__
-        if isinstance(ret, NominalType) and ret.is_user_record:
-            iter_type_args = ret.type_args
-            if iter_type_args and type_subst:
-                iter_type_args = [
+        # An iterator with an error_return __next__
+        if isinstance(ret, NominalType) and not ret.is_protocol:
+            if ret.type_args and type_subst:
+                ret = NominalType(ret.name, tuple(
                     type_subst.get(a.name, a) if isinstance(a, TypeParamRef) else a
-                    for a in iter_type_args
-                ]
-            elem = _find_error_return_next_element(ret.name, iter_type_args, registry)
+                    for a in ret.type_args), False, ret._module_qname)
+            elem = get_error_return_next_element_type(ret, registry)
             if elem is not None:
                 return elem
 
@@ -608,27 +544,21 @@ def get_span_element_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "Tpy
 
 
 def get_span_return_type(tpy_type: "TpyType", registry: "TypeRegistry") -> "NominalType | None":
-    """If type has __span__() -> Span[T] or Span[readonly[T]], return the full Span NominalType."""
-    from tpyc.typesys import NominalType, TypeParamRef
-
-    # Qname-first (like get_iter_element_type): one lookup resolves both a user
-    # record reached cross-module without a name-import and builtins (list,
-    # Array, Span, ...). The old local-only get_record(name) missed a
-    # __span__-bearing record that the current module never imported by name.
-    record = registry.get_record_for_type(tpy_type)
-    if record is None:
+    """If type has __span__() -> Span[T] or Span[readonly[T]], return the full Span NominalType
+    -- the `__span__` the type resolves (`_method_definer_subst`), an
+    ancestor's included."""
+    found = _method_definer_subst(tpy_type, "__span__", registry)
+    if found is None:
         return None
-    type_subst: dict[str, "TpyType"] = {}
-    if record.type_params and isinstance(tpy_type, NominalType) and tpy_type.type_args:
-        type_subst = dict(zip(record.type_params, tpy_type.type_args))
-    return _find_span_method_return_type(record, type_subst, registry)
+    owner, _, type_subst = found
+    return _find_span_method_return_type(owner, type_subst)
 
 
 def _find_span_method_return_type(
-    record: "RecordInfo", type_subst: "dict[str, TpyType]", registry: "TypeRegistry",
+    record: "RecordInfo", type_subst: "dict[str, TpyType]",
 ) -> "NominalType | None":
     """Check if record has __span__() returning Span[T]/Span[readonly[T]], and return the Span NominalType."""
-    from tpyc.typesys import NominalType, TypeParamRef, make_span
+    from tpyc.typesys import TypeParamRef, make_span
 
     for method in record.get_method_overloads("__span__"):
         if len(method.params) != 0:
@@ -639,24 +569,9 @@ def _find_span_method_return_type(
         if is_span(ret):
             # Use inner element (unwrapped) for TypeParamRef resolution,
             # then reconstruct with the original readonly-ness.
-            from tpyc.typesys import unwrap_readonly, is_readonly_span
+            from tpyc.typesys import is_readonly_span
             elem = unwrap_readonly(ret.type_args[0])
             if isinstance(elem, TypeParamRef) and elem.name in type_subst:
                 elem = type_subst[elem.name]
             return make_span(elem, is_readonly=is_readonly_span(ret))
-
-    # Walk each parent chain (first match wins)
-    for parent in record.parents:
-        if not (isinstance(parent, NominalType) and parent.is_user_record):
-            continue
-        # Qname-first: an inherited member from a base declared in a module the
-        # current one never imported by name is still reachable by qname.
-        parent_info = registry.get_record_for_type(parent)
-        if parent_info is None:
-            continue
-        parent_subst = _compose_parent_subst(parent, parent_info, type_subst)
-        result = _find_span_method_return_type(parent_info, parent_subst, registry)
-        if result is not None:
-            return result
-
     return None

@@ -1,0 +1,5 @@
+dict 1 2 2
+list 1 2 2
+set 1 2 2
+record 0 2 3
+method 0 1

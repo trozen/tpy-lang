@@ -25,7 +25,7 @@ bool pet_list_eq(const std::vector<Pet>& xs, const std::vector<Pet>& ys) {
 // def tag_list_ne(xs: list[Labelled], ys: list[Labelled]) -> bool:  # free function
 //     return xs != ys  # tpyc: ok
 bool tag_list_ne(const std::vector<Labelled>& xs, const std::vector<Labelled>& ys) {
-    return (xs != ys);
+    return (::tpy::container_ne(xs, ys));
 }
 
 

@@ -5,7 +5,7 @@
 
 def main() -> None:
     xs = [1, 2]
-    print(list(iterable=xs))  # tpyc: error(/'list' parameter 'iterable' is positional-only/)
+    print(list(iterable=xs))  # tpyc: error(/No matching overload for 'list' with argument types \(iterable=/)
 
 
 main()

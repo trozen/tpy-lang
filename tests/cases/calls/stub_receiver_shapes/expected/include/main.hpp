@@ -57,11 +57,21 @@ struct Tagged : ::tpy::ByteArray {
 
     // def __init__(self) -> None:
     Tagged();
+
+    void __repr_into__(std::ostream& os) const {
+        ::tpy::print_base_of<::tpy::ByteArray>(os, "Tagged", *this);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream os;
+        __repr_into__(os);
+        return os.str();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
-    ::tpy::print_object_default(os, "Tagged", obj);
+    obj.__repr_into__(os);
     return os;
 }
 
@@ -72,11 +82,21 @@ struct TaggedList : std::vector<int32_t> {
 
     // def __init__(self) -> None:
     TaggedList();
+
+    void __repr_into__(std::ostream& os) const {
+        ::tpy::print_base_of<std::vector<int32_t>>(os, "TaggedList", *this);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream os;
+        __repr_into__(os);
+        return os.str();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.TaggedList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const TaggedList& obj) {
-    ::tpy::print_object_default(os, "TaggedList", obj);
+    obj.__repr_into__(os);
     return os;
 }
 

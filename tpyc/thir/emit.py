@@ -1596,16 +1596,16 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                                    _emit_expr(e.operand, state))
     if isinstance(e, THIRMembership):
         # The resolved_contains arm: `(recv.contains(needle))`, the
-        # negation wrapping the already-parenthesized find expr. A bytes
-        # container's `__contains__` is a native FREE function, so it renders
-        # `(::tpy::name(recv, needle))` instead.
-        if e.ranges_contains:
-            # `is_native_in` fallback: a bare `::tpy::seq_contains(recv,
-            # needle)`, negation a `!` prefix (no outer parens). ONE spelling
-            # for every needle kind: the helper's own legs decide whether
+        # negation wrapping the already-parenthesized find expr.
+        if e.free_function:
+            # A runtime free function: `[!]fn(recv, needle)`, the bare
+            # `::tpy::seq_contains` when none was resolved. ONE spelling for
+            # every needle kind: the sequence helper's own legs decide whether
             # identity is observable, so an open-`T` needle gets the right
             # answer at each instantiation.
-            call = (f"::tpy::seq_contains({_emit_expr(e.receiver, state)}, "
+            fn = (qualify_native_name(e.method_cpp) if e.method_cpp
+                  else "::tpy::seq_contains")
+            call = (f"{fn}({_emit_expr(e.receiver, state)}, "
                     f"{_emit_expr(e.needle, state)})")
             return f"!{call}" if e.negate else call
         if e.iter_loop:
@@ -1622,13 +1622,8 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
                     f"{{ __found = true; break; }} }} "
                     f"__found; }})")
             return f"!{loop}" if e.negate else loop
-        if e.free_function:
-            inner = (f"({qualify_native_name(e.method_cpp)}"
-                     f"({_emit_expr(e.receiver, state)}, "
-                     f"{_emit_expr(e.needle, state)}))")
-        else:
-            inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
-                     f"({_emit_expr(e.needle, state)}))")
+        inner = (f"({_emit_expr(e.receiver, state)}.{e.method_cpp}"
+                 f"({_emit_expr(e.needle, state)}))")
         return f"(!{inner})" if e.negate else inner
     if isinstance(e, THIRStrMembership):
         # The str `.find()` arm: `(s.find(needle) != npos)`, or
@@ -1735,7 +1730,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         if e.mode is TruthinessMode.RECORD_LEN:
             return f"(::tpy::__len__({inner}) != 0)"
         if e.mode is TruthinessMode.PTR_TRUTHY:
-            return f"::tpy::ptr_truthy({inner})"
+            by = ("::tpy::truthy_by_len"
+                  if e.pointee_mode is TruthinessMode.RECORD_LEN
+                  else "::tpy::truthy_by_bool")
+            return f"::tpy::ptr_truthy<{by}>({inner})"
         raise THIRCodeGenError(f"unknown truthiness mode: {e.mode}")
     if isinstance(e, THIROptViewArg):
         # `_maybe_convert_opt_view_param`'s same-TPy-type ARG split: the

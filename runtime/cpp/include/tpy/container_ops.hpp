@@ -133,7 +133,7 @@ auto list_slice(Container&& c, BasicSlice sl) {
  * Indices are clamped (Python semantics).
  */
 template<typename T, typename Range>
-    requires std::ranges::input_range<const Range>
+    requires ::tpy::native_input_range<const Range>
 void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Range& values) {
     auto len = static_cast<std::ptrdiff_t>(vec.size());
     std::ptrdiff_t i = start, j = stop;
@@ -206,7 +206,7 @@ void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Rang
 
 /// BasicSlice overload: unpacks start/stop from the slice object.
 template<typename T, typename Range>
-    requires std::ranges::input_range<const Range>
+    requires ::tpy::native_input_range<const Range>
 void list_set_slice(std::vector<T>& vec, BasicSlice sl, const Range& values) {
     list_set_slice(vec, sl.start.value_or(0), sl.stop.value_or(SLICE_END), values);
 }
@@ -357,7 +357,7 @@ void set_extended_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_
  * Exception: step==1 is equivalent to basic slice assignment (allows resize).
  */
 template<typename T, typename Range>
-    requires std::ranges::input_range<const Range>
+    requires ::tpy::native_input_range<const Range>
 void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_t step, const Range& values) {
     // step==1 is equivalent to basic slice assignment (allows resize)
     if (step == 1) {
@@ -371,7 +371,7 @@ void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, in
 
 /// Slice overload: unpacks start/stop/step from the slice object.
 template<typename T, typename Range>
-    requires std::ranges::input_range<const Range>
+    requires ::tpy::native_input_range<const Range>
 void list_set_stepped_slice(std::vector<T>& vec, Slice sl, const Range& values) {
     list_set_stepped_slice(vec, sl.start.value_or(SLICE_NONE),
                            sl.stop.value_or(SLICE_NONE),
@@ -431,7 +431,7 @@ void list_remove(std::vector<T>& v, const U& value) {
  * Returns `v`, the object `list.__iadd__` hands back.
  */
 template<typename T, typename Container>
-    requires std::ranges::input_range<std::remove_cvref_t<Container>>
+    requires ::tpy::native_input_range<std::remove_cvref_t<Container>>
 std::vector<T>& list_extend(std::vector<T>& v, Container&& other) {
     v.insert(v.end(), other.begin(), other.end());
     return v;
@@ -498,6 +498,21 @@ int32_t list_count(const std::vector<T>& v, const U& value) {
     return static_cast<int32_t>(
         std::count_if(v.begin(), v.end(),
                       [&](const T& e) { return key_eq(e, value); }));
+}
+
+// Python's `!=` of a builtin container (the `__ne__` its stub declares): the
+// container's own equality, taken at the base, so a subclass overriding
+// `__eq__` alone keeps the inherited `__ne__` -- C++ would rewrite `a != b`
+// through that subclass's `operator==`. The dict and set overloads live
+// beside their types (dict_ops.hpp, set_ops.hpp).
+template<typename T>
+bool container_ne(const std::vector<T>& a, const std::vector<T>& b) {
+    return !(a == b);
+}
+
+template<typename T, std::size_t N>
+bool container_ne(const std::array<T, N>& a, const std::array<T, N>& b) {
+    return !(a == b);
 }
 
 /**

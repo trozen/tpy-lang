@@ -89,7 +89,7 @@ void section_fstring() {
 //     print("container:", xs)
 void section_container() {
     std::vector<::tpy::Bytes> xs = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("\n", 1)};
-    std::cout << "container:" << " " << ::tpy::list_to_str(xs) << "\n" << ::tpy::check_signals;
+    std::cout << "container:" << " " << ::tpy::repr_of(xs) << "\n" << ::tpy::check_signals;
     std::cout << "container:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
 }
 

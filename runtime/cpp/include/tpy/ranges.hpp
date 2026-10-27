@@ -201,7 +201,7 @@ Container collect(Iter&& iter) {
  */
 template<typename Container, typename Arg>
 Container construct(Arg&& arg) {
-    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
         return from_range<Container>(std::forward<Arg>(arg));
     } else {
         return collect<Container>(::tpy::iter_of(arg));
@@ -217,7 +217,7 @@ Container construct(Arg&& arg) {
  */
 template<typename Container, typename Arg>
 void extend(Container& c, Arg&& arg) {
-    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
         c.insert(c.end(), std::ranges::begin(arg), std::ranges::end(arg));
     } else {
         auto&& __iter = ::tpy::iter_of(arg);

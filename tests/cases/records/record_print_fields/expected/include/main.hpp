@@ -59,7 +59,7 @@ inline bool Config::__eq__(const Config& other) const {
 }
 
 inline std::string Config::__repr__() const {
-    return std::format("Config(flag={}, ratio={}, items={}, tags={}, pair={})", ::tpy::repr_of(this->flag), ::tpy::repr_of(this->ratio), ::tpy::list_to_str(this->items), ::tpy::dict_to_str(this->tags), ::tpy::tuple_to_str(this->pair));
+    return std::format("Config(flag={}, ratio={}, items={}, tags={}, pair={})", ::tpy::repr_of(this->flag), ::tpy::repr_of(this->ratio), ::tpy::repr_of(this->items), ::tpy::repr_of(this->tags), ::tpy::tuple_to_str(this->pair));
 }
 void __tpy_init();
 } // namespace tpyapp::main

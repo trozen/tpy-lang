@@ -743,6 +743,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
     "call.const_receiver",          # readonly variant ranked on a mutable receiver:
                                     # `static_cast<const T&>(recv)`
+    "call.base_part_receiver",      # `super().append(x)` to a binding: the base
+                                    # part of `*this`, `static_cast<Base&>(*this)`
     "aug.held",                     # `c[f()] OP= v` -> a target part whose
                                     # repetition shows held in a temp the read
                                     # and the store both read
@@ -917,6 +919,8 @@ THIR_FACES: frozenset[str] = frozenset({
     # all the target-less bare renders of _extract_base_inits.
     "baseinit.nonscalar_arg",
     "baseinit.none_slot_spelling",  # None arg spelled from the base slot ({} / nullopt / nullptr)
+    "baseinit.stub_default",       # base init resolving to a stub __init__ that is the base's default ctor
+    "baseinit.stub_template",      # base init rendering a stub __init__'s template as the base's argument
     # An own-field init demoted from the MIL to the ctor body because its
     # source reads something not bound at member-init time (a nested-def
     # name, a body local, a walrus) -- demoted rather than rejecting the
@@ -2210,7 +2214,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # native-set membership with no resolved __contains__ member (a
     # `readonly[set]`) -> the `is_native_in` fallback
     # `[!]::tpy::seq_contains(s, x)`.
-    "binop.set_ranges_membership",
+    "binop.free_contains",
     # bytes/BytesView membership (`needle in b` -> the native free-function
     # `::tpy::bytes_contains[_sub](b, needle)`, single-byte vs substring form).
     "binop.bytes_membership",

@@ -52,7 +52,7 @@ ordered_set<T> set_collect(Iter&& iter) {
 // `__iter__()` returns.
 template<typename T, typename Arg>
 ordered_set<T> set_construct(Arg&& arg) {
-    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
         return set_from_range<T>(std::forward<Arg>(arg));
     } else {
         return set_collect<T>(::tpy::iter_of(arg));
@@ -234,11 +234,6 @@ int32_t __len__(const ordered_set<T>& s) {
     return s.size();
 }
 
-template<typename T>
-bool __bool__(const ordered_set<T>& s) {
-    return !s.empty();
-}
-
 // -- Printing ---------------------------------------------------------------
 
 namespace detail {
@@ -275,6 +270,13 @@ std::string set_to_str(const ordered_set<T>& s) {
     return oss.str();
 }
 
+// `set.__repr__` (the stub's), as list's in printing.hpp.
+template<typename T>
+std::string __str__(const ordered_set<T>& s) { return set_to_str(s); }
+
+template<typename T>
+std::string __repr__(const ordered_set<T>& s) { return set_to_str(s); }
+
 // Nested container support
 namespace detail {
 template<typename T>
@@ -282,6 +284,20 @@ void print_element(std::ostream& os, const ordered_set<T>& elem) {
     os << SetPrinter<T>(elem);
 }
 }  // namespace detail
+
+// `container_ne` (container_ops.hpp) for a set.
+template<typename T>
+bool container_ne(const ordered_set<T>& a, const ordered_set<T>& b) {
+    return !(a == b);
+}
+
+// A set subclass's repr names the subclass: `Sub({1, 2})`, `Sub()`.
+template<typename T>
+std::ostream& print_as_base(std::ostream& os, std::string_view class_name,
+                            const ordered_set<T>& base) {
+    if (base.empty()) return os << class_name << "()";
+    return os << class_name << '(' << SetPrinter<T>(base) << ')';
+}
 
 // ValuePrinter specialization so sets inside generic containers print correctly
 template<typename T>

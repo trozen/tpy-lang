@@ -330,10 +330,10 @@ class TpyBinOp(TpyExpr):
     right: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     resolved_contains: 'FunctionInfo | None' = None  # Set by sema for 'in'/'not in' with __contains__
-    # Set by sema when the `__contains__` winner is a TPy method: the call
-    # `right.__contains__(left)` the test is, carrying the winner substituted
-    # at the receiver as an explicit call does. Not a child: its operands
-    # are this node's.
+    # Set by sema with `resolved_contains`: the call `right.__contains__(left)`
+    # the test is, carrying the winner substituted at the receiver as an
+    # explicit call does (a runtime-bound winner's needle unconverted). Not a
+    # child: its operands are this node's.
     contains_call: 'TpyMethodCall | None' = None
     typed_dict_in_field: str | None = None  # Set by sema: "key" in TypedDict -> field presence check
     typed_dict_in_always_true: bool = False  # Set by sema: total=True field, fold to True
@@ -607,9 +607,10 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     static_call_owner: Optional['RecordInfo'] = None
     super_parent_type: Optional[TpyType] = None  # Set by sema for super().method() calls
     unbound_self_parent_type: Optional[TpyType] = None  # Set by sema for BaseN.method(self, ...) calls on an ancestor
-    # Set by sema on `BaseN.method(self, ...)`: the written `self`, the call's
-    # receiver -- its first written positional, out of `args`
-    # (`ArgBinding.receiver`).
+    # Set by sema on a base-part call: the `self` it runs on. For
+    # `BaseN.method(self, ...)` the written `self`, its first written
+    # positional, out of `args` (`ArgBinding.receiver`); for
+    # `super().method(...)` a `self` read standing for the proxy.
     explicit_receiver: 'TpyExpr | None' = field(default=None, compare=False,
                                                 repr=False)
     # Set by sema on a parent-initializer call (`super().__init__(...)` /

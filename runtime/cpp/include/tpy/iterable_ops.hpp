@@ -36,7 +36,7 @@ namespace tpy {
 // -- list_extend for non-range iterables ------------------------------------
 
 template<typename T, typename Container>
-    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+    requires (!::tpy::native_input_range<std::remove_reference_t<Container>>)
 std::vector<T>& list_extend(std::vector<T>& v, Container&& other) {
     auto&& r = ::tpy::iter_range(other);
     auto end = r.end();
@@ -47,7 +47,7 @@ std::vector<T>& list_extend(std::vector<T>& v, Container&& other) {
 // -- list_set_slice for non-range iterables ---------------------------------
 
 template<typename T, typename Container>
-    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+    requires (!::tpy::native_input_range<std::remove_reference_t<Container>>)
 void list_set_slice(std::vector<T>& vec, BasicSlice sl, Container&& other) {
     std::vector<T> tmp;
     auto&& r = ::tpy::iter_range(other);
@@ -60,7 +60,7 @@ void list_set_slice(std::vector<T>& vec, BasicSlice sl, Container&& other) {
 // -- list_set_stepped_slice for non-range iterables -------------------------
 
 template<typename T, typename Container>
-    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+    requires (!::tpy::native_input_range<std::remove_reference_t<Container>>)
 void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Container&& other) {
     // CPython rejects a zero step before it runs the right-hand iterator.
     if (sl.step.value_or(1) == 0) raise_value_error("slice step cannot be zero");
@@ -75,7 +75,7 @@ void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Container&& other) {
 // -- bytearray_set_stepped_slice for non-range iterables --------------------
 
 template<typename Container>
-    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+    requires (!::tpy::native_input_range<std::remove_reference_t<Container>>)
 void bytearray_set_stepped_slice(ByteArray& b, Slice sl, Container&& other) {
     // CPython rejects a zero step before it runs the right-hand iterator.
     if (sl.step.value_or(1) == 0) raise_value_error("slice step cannot be zero");
@@ -89,7 +89,7 @@ void bytearray_set_stepped_slice(ByteArray& b, Slice sl, Container&& other) {
 // -- str_join for non-range iterables ---------------------------------------
 
 template<typename Container>
-    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+    requires (!::tpy::native_input_range<std::remove_reference_t<Container>>)
 inline std::string str_join(std::string_view sep, Container&& items) {
     std::string result;
     bool first = true;

@@ -167,7 +167,7 @@ inline bool Group::__eq__(const Group& other) const {
 }
 
 inline std::string Group::__repr__() const {
-    return std::format("Group(label={}, members={})", ::tpy::repr_of(this->label), ::tpy::list_to_str(this->members));
+    return std::format("Group(label={}, members={})", ::tpy::repr_of(this->label), ::tpy::repr_of(this->members));
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -78,7 +78,7 @@ public:
 // reference is copied -- no pull can go through it.
 template<typename C>
 class iter_cursor {
-    using R = decltype(tpy::__iter__(std::declval<C&>()));
+    using R = decltype(tpy::iter_dunder(std::declval<C&>()));
     static constexpr bool aliased =
         std::is_lvalue_reference_v<R> && !std::is_const_v<std::remove_reference_t<R>>;
     using held_t = std::conditional_t<aliased, std::remove_reference_t<R>*,
@@ -90,8 +90,8 @@ public:
         else return held_.has();
     }
     void seed(C& c) {
-        if constexpr (aliased) held_ = std::addressof(tpy::__iter__(c));
-        else held_.fill([&]() -> R { return tpy::__iter__(c); });
+        if constexpr (aliased) held_ = std::addressof(tpy::iter_dunder(c));
+        else held_.fill([&]() -> R { return tpy::iter_dunder(c); });
     }
     decltype(auto) next() { return held_->__next__(); }
 };
@@ -135,7 +135,7 @@ public:
     // that CPython runs at the combinator call. The combinator calls start()
     // on its sources in argument order.
     void start() {
-        if constexpr (is_self_iterator_v<C>) (void)tpy::__iter__(src_);
+        if constexpr (is_self_iterator_v<C>) (void)tpy::iter_dunder(src_);
         else if constexpr (separate_user_iterator<C>) cur_.seed(src_);
     }
 
@@ -211,7 +211,7 @@ public:
     // Runs __iter__ now, in the combinator's argument order: the iterator
     // points into the caller's object, so nothing here needs to wait.
     void start() {
-        if constexpr (is_self_iterator_v<C>) (void)tpy::__iter__(*src_);
+        if constexpr (is_self_iterator_v<C>) (void)tpy::iter_dunder(*src_);
         else cur_.seed(*src_);
     }
 
@@ -444,10 +444,12 @@ public:
 namespace detail {
 // Requires homogeneous begin/end (same iterator type) so enumerate_direct_iter
 // can store both as CppIter. Excludes next_iter_mixin-derived types whose
-// begin() returns NextIterator<...> but end() returns NextSentinel.
+// begin() returns NextIterator<...> but end() returns NextSentinel. A class
+// overriding an inherited range's `__iter__` iterates by that override.
 template<typename T>
 concept has_begin_end = requires(T& t) { t.begin(); t.end(); }
-    && std::same_as<decltype(std::declval<T&>().begin()), decltype(std::declval<T&>().end())>;
+    && std::same_as<decltype(std::declval<T&>().begin()), decltype(std::declval<T&>().end())>
+    && !::tpy::iterates_by_dunder<T>;
 
 // Extract Nth parameter type from a callable (function pointer, lambda, std::function).
 // Used by map_multi_iter to forward Own[T] args as rvalue refs.
@@ -505,8 +507,8 @@ auto builtin_enumerate(Iterable& iterable, int32_t start = 0) {
     if constexpr (detail::has_begin_end<Iterable>) {
         return enumerate_direct_iter<Iterable>(iterable, start);
     } else {
-        return enumerate_iter<detail::iter_member_t<decltype(tpy::__iter__(iterable))>>(
-            tpy::__iter__(iterable), start);
+        return enumerate_iter<detail::iter_member_t<decltype(tpy::iter_dunder(iterable))>>(
+            tpy::iter_dunder(iterable), start);
     }
 }
 
@@ -676,7 +678,7 @@ auto builtin_zip(Cs&... cs) {
     } else {
         // Braces: __iter__ is observable, and only a braced list evaluates
         // left to right.
-        return zip_iter<detail::iter_member_t<decltype(tpy::__iter__(cs))>...>{tpy::__iter__(cs)...};
+        return zip_iter<detail::iter_member_t<decltype(tpy::iter_dunder(cs))>...>{tpy::iter_dunder(cs)...};
     }
 }
 
@@ -708,7 +710,7 @@ class reversed_iter : public next_iter_mixin<reversed_iter<Seq>, detail::getitem
     Seq& seq_;
     int32_t index_;
 public:
-    reversed_iter(Seq& seq) : seq_(seq), index_(tpy::__len__(seq) - 1) {}
+    reversed_iter(Seq& seq) : seq_(seq), index_(tpy::len_dunder(seq) - 1) {}
 
     std::expected<step_t, StopIteration> __next__() {
         if (index_ < 0) return tpy::make_unexpected(StopIteration{});
@@ -730,7 +732,7 @@ class owning_reversed_iter
     Seq owned_;
     int32_t index_;
 public:
-    owning_reversed_iter(Seq&& seq) : owned_(std::move(seq)), index_(tpy::__len__(owned_) - 1) {}
+    owning_reversed_iter(Seq&& seq) : owned_(std::move(seq)), index_(tpy::len_dunder(owned_) - 1) {}
 
     // An index into the owned sequence: nothing points into it, so it moves
     // at any time. Never copied -- a copy would duplicate the sequence.
@@ -821,8 +823,8 @@ public:
 // lvalue: iterate via __iter__/__next__() protocol.
 template<typename U, typename Fn, typename Iterable>
 auto builtin_map(Fn&& fn, Iterable& iterable) {
-    return map_iter<U, detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
-        tpy::__iter__(iterable), std::forward<Fn>(fn));
+    return map_iter<U, detail::iter_member_t<decltype(tpy::iter_dunder(iterable))>, std::decay_t<Fn>>(
+        tpy::iter_dunder(iterable), std::forward<Fn>(fn));
 }
 
 // rvalue: own the container to prevent dangling iterators
@@ -911,9 +913,9 @@ template<typename U, typename Fn, typename... Its>
 auto builtin_map_n(Fn&& fn, Its&... its) {
     // Spelled, not deduced: CTAD would decay a self-iterator's `Self&` into a
     // copy. Braces keep the observable __iter__ calls left to right.
-    using Iters = std::tuple<detail::iter_member_t<decltype(tpy::__iter__(its))>...>;
+    using Iters = std::tuple<detail::iter_member_t<decltype(tpy::iter_dunder(its))>...>;
     return map_multi_iter<U, std::decay_t<Fn>, Iters>(
-        Iters{tpy::__iter__(its)...}, std::forward<Fn>(fn));
+        Iters{tpy::iter_dunder(its)...}, std::forward<Fn>(fn));
 }
 
 // Variadic factory: at least one iterable is a temporary. Per argument, own
@@ -1057,8 +1059,8 @@ auto builtin_filter(Fn&& fn, Iterable& iterable) {
         return filter_direct_iter<Iterable, std::decay_t<Fn>>(
             std::forward<Fn>(fn), iterable);
     } else {
-        return filter_iter<detail::iter_member_t<decltype(tpy::__iter__(iterable))>, std::decay_t<Fn>>(
-            tpy::__iter__(iterable), std::forward<Fn>(fn));
+        return filter_iter<detail::iter_member_t<decltype(tpy::iter_dunder(iterable))>, std::decay_t<Fn>>(
+            tpy::iter_dunder(iterable), std::forward<Fn>(fn));
     }
 }
 

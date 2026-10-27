@@ -28,11 +28,21 @@ struct MyList : std::vector<int32_t> {
     // def __init__(self, name: str) -> None:
     MyList() = default;
     explicit MyList(std::string_view name);
+
+    void __repr_into__(std::ostream& os) const {
+        ::tpy::print_base_of<std::vector<int32_t>>(os, "MyList", *this);
+    }
+
+    std::string __repr__() const {
+        std::ostringstream os;
+        __repr_into__(os);
+        return os.str();
+    }
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
-    ::tpy::print_object_default(os, "MyList", obj);
+    obj.__repr_into__(os);
     return os;
 }
 

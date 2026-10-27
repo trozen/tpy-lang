@@ -60,8 +60,8 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
-from ...typesys import (make_readonly, peel_binding, pointer_repr_optional,
-                       readonly_access)
+from ...typesys import (is_bodyless_binding, make_readonly, peel_binding,
+                       pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
@@ -2110,7 +2110,7 @@ def _resolved_bytes_value(t: TpyType | None, analyzer) -> TpyType | None:
     return None
 
 def _declares_str_or_repr(t: TpyType | None, analyzer) -> bool:
-    """`RecordInfo.declares_str_or_repr` for the type's record, a pending
+    """`TypeRegistry.answers_str_or_repr` for the type's record, a pending
     bytes local resolved first."""
     if t is None:
         return False
@@ -2120,7 +2120,7 @@ def _declares_str_or_repr(t: TpyType | None, analyzer) -> bool:
     if not isinstance(t, NominalType):
         return False
     rec = analyzer.registry.get_record_for_type(t)
-    return rec is not None and rec.declares_str_or_repr()
+    return rec is not None and analyzer.registry.answers_str_or_repr(rec)
 
 def _resolved_viewfam_value(t: TpyType | None, analyzer) -> TpyType | None:
     """The resolved str- OR bytes-family slice value -- the two view families
@@ -2829,8 +2829,8 @@ def _opt_record_dunder(t: TpyType | None, analyzer) -> bool:
     if inner is None:
         return False
     rec = analyzer.registry.get_record_for_type(inner)
-    return bool(rec and (rec.get_method_overloads("__bool__")
-                         or rec.get_method_overloads("__len__")))
+    return bool(rec and any(analyzer.registry.mro_method_definer(rec, m) is not None
+                            for m in ("__bool__", "__len__")))
 
 def _storage_form_opt_source(e: TpyExpr, analyzer,
                              storage_opt_locals: set[str]) -> bool:
@@ -2910,9 +2910,10 @@ def _truthiness_mode(t: TpyType | None, analyzer) -> TruthinessMode | None:
         return None
     record = analyzer.registry.get_record_for_type(u)
     if record:
-        if record.get_method_overloads("__bool__"):
+        # Python's truth test: `__bool__` anywhere in the MRO, else `__len__`.
+        if analyzer.registry.mro_method_definer(record, "__bool__") is not None:
             return TruthinessMode.RECORD_BOOL
-        if record.get_method_overloads("__len__"):
+        if analyzer.registry.mro_method_definer(record, "__len__") is not None:
             return TruthinessMode.RECORD_LEN
     if isinstance(u, NominalType) and u.is_user_record:
         return TruthinessMode.ALWAYS_TRUE
@@ -3814,7 +3815,8 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     if u is None:
         return False
     ri = analyzer.registry.get_record_for_type(u)
-    return ri is not None and bool(ri.get_method_overloads("__deref__"))
+    return ri is not None and bool(
+        analyzer.registry.get_method_overloads_with_parents(ri, "__deref__"))
 
 
 def _deref_wrapper_record_ok(u: 'TpyType | None', analyzer) -> bool:
@@ -3994,7 +3996,8 @@ def _user_deref_stub_method_ok(e: TpyExpr, declared: dict[str, TpyType],
     if not (isinstance(u, NominalType) and _f1_record(u, analyzer)):
         return False
     ri = analyzer.registry.get_record_for_type(u)
-    return ri is not None and bool(ri.get_method_overloads("__deref__"))
+    return ri is not None and bool(
+        analyzer.registry.get_method_overloads_with_parents(ri, "__deref__"))
 
 def _deref_member_call_ok(e: TpyMethodCall) -> bool:
     """The marker and callee half shared by the auto-deref member-call arms
@@ -4048,7 +4051,8 @@ def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
     if u is None:
         return False
     ri = analyzer.registry.get_record_for_type(u)
-    return ri is not None and bool(ri.get_method_overloads("__deref__"))
+    return ri is not None and bool(
+        analyzer.registry.get_method_overloads_with_parents(ri, "__deref__"))
 
 def _record_storage_return(t: TpyType | None, analyzer) -> 'NominalType | None':
     """The storage-form REFERENCE return slot (`-> Own[Box]` -> C++ `Box` by
@@ -6241,7 +6245,9 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
         idx_type = resolve_int_literals(idx_type,
                                         analyzer.ctx.default_int_for_literal)
     idx_ok = (_resolved_scalar(idx_type, analyzer)
-              or _resolved_viewfam_value(idx_type, analyzer) is not None)
+              or _resolved_viewfam_value(idx_type, analyzer) is not None
+              # An open-K key inside a generic body renders by name.
+              or _is_type_param_slot(idx_type))
     recv_ok = ((isinstance(sub.obj, TpyName) and sub.obj.name in locals_
                 and (sub.obj.name not in pointers or ptr_recv_ok
                      or opt_ptr_recv_ok))
@@ -8487,6 +8493,7 @@ def _container_compare_pair(op: str, lt: TpyType | None,
         return bool(is_set(lb))
     return bool(is_list(lb) or is_dict(lb) or is_set(lb) or is_array(lb))
 
+
 def _any_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     """Two `Any` compare operands (`a == b` / `a != b`): `tpy::Any`'s own
     equality operator, the rb=None bare-operator arm -- `(a == b)` on both
@@ -8533,8 +8540,16 @@ def _record_compare_pair(lt: TpyType | None, rt: TpyType | None,
         return False
     recv = _record_compare_operand(getattr(rb, "receiver_type", None))
     # The receiver is the side sema pinned into `{self}`.
-    return recv is not None and _record_compare_operand(
-        rt if rb.is_reverse else lt) == recv
+    if recv is not None:
+        return _record_compare_operand(rt if rb.is_reverse else lt) == recv
+    # A builtin's dunder resolved with a record (a subclass) at its
+    # parameter: `plain == sub` on `list.__eq__`, the receiver side the
+    # class sema resolved it on (a list literal decided as an Array is not).
+    recv_side, arg_side = (rt, lt) if rb.is_reverse else (lt, rt)
+    return (recv_side is not None
+            and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_side)))
+            == unwrap_readonly(unwrap_ref_type(rb.receiver_type))
+            and _record_compare_operand(arg_side) is not None)
 
 
 def _compare_op_dunders(op: str) -> tuple[str, ...]:
@@ -10412,6 +10427,25 @@ def _own_borrow_call_temp_slot(a: TpyExpr, w: TpyType,
     return w if at is not None and at == w else None
 
 
+def _record_slice_upcast_ok(vt: 'TpyType | None', target: 'TpyType | None',
+                            analyzer) -> bool:
+    """`vt -> target` is a plain SUBCLASS upcast at a record slot, where the
+    C++ assign slices to the base -- the narrowing sema admits for ASSIGN /
+    INIT / RETURN under its "upcast narrows" warning, so the divergence from
+    CPython (which keeps the derived object) is declared, not silent. The
+    source keeps its own spelling; `operator=` does the slicing.
+
+    Distinct from `_covariant_record_upcast_ok`, which is
+    representation-PRESERVING and loses nothing. A polymorphic base never
+    reaches here: sema rejects a `@dynamic`-protocol rvalue at a record slot
+    before lowering. The base is any class on the reference axis: a record,
+    or a builtin container base (`class Sub(dict[K, V])`)."""
+    return (isinstance(vt, NominalType) and isinstance(target, NominalType)
+            and vt != target and _f1_record(vt, analyzer)
+            and (_f1_record(target, analyzer) or _f1_container_ref(target))
+            and analyzer.registry.is_subclass_of(vt, target))
+
+
 def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                           analyzer,
                           locals_: 'dict[str, TpyType] | None' = None,
@@ -10554,9 +10588,9 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
                      and (is_str_type(at) or is_str_view_type(at)
                           or is_string_type(at))) else None
     if _f1_record(w, analyzer):
-        # Same-nominal is a slice guard: sema rejects an upcast into an Own
-        # slot outright, so no other pairing reaches codegen.
-        return w if at == w else None
+        # A subclass object copies its base part into the slot (the insert's
+        # `const T&` binds it; sema warns the copy).
+        return w if at == w or _record_slice_upcast_ok(at, w, analyzer) else None
     if isinstance(w, RecursiveAliasInstanceType):
         # A generic-instance wrapper payload (`Holder(seed)` at
         # `Own[Tree[int32]]`): the same copy+move cascade as the record
@@ -10588,7 +10622,8 @@ def _own_lvalue_temp_slot(a: TpyExpr, ptype: TpyType | None,
         # A literal-seeded local's read is still a PendingListType here;
         # resolve it before the same-type compare.
         at_res = resolve_pending_container(at, analyzer) or at
-        return w if at_res == wu else None
+        return (w if at_res == wu or _record_slice_upcast_ok(at_res, wu, analyzer)
+                else None)
     if is_dyn_protocol(wu):
         # An already-erased `unique_ptr<P>` payload (`Box(initial)` off an
         # `Own[P]` param -- the classifier's 'forward' verdict): the same
@@ -11582,6 +11617,20 @@ def _instantiation_call_fi(e: TpyCall) -> 'FunctionInfo | None':
         return None
     return fi
 
+def base_part_receiver_type(e: TpyMethodCall) -> 'TpyType | None':
+    """The base a `super().m(args)` / `Base.m(self, args)` call runs `m` on,
+    when `m` has no TPy body (`is_bodyless_binding`): such a callee has no member
+    body to name as `this->Base::m`, so the call is an ordinary member call
+    whose receiver is the base part of `*this`. None for any other call.
+    Not a twin of the `this->Base::m` arm: a bodied base method needs the
+    qualified call to bypass a subclass's virtual override, while a bodyless
+    one is non-virtual, so `static_cast<Base&>(*this)` is the same call."""
+    parent = e.super_parent_type or e.unbound_self_parent_type
+    fi = e.resolved_function_info
+    if parent is None or fi is None or not is_bodyless_binding(fi):
+        return None
+    return parent
+
 def _plain_member_call_markers_ok(e: TpyMethodCall, *,
                                   targs_ok: bool = False) -> bool:
     """No special-emit marker: every marker takes a different method-call
@@ -11596,8 +11645,10 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
     set it."""
     if e.kwargs or e.double_star_unpack is not None:
         return False
-    return not (e.is_static_call or e.super_parent_type is not None
-                or e.unbound_self_parent_type is not None
+    return not (e.is_static_call
+                or ((e.super_parent_type is not None
+                     or e.unbound_self_parent_type is not None)
+                    and base_part_receiver_type(e) is None)
                 or e.user_module_call is not None
                 or e.builtin_module_call is not None
                 or e.typed_dict_get_field is not None

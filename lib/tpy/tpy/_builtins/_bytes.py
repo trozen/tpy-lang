@@ -283,6 +283,11 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __eq__(self, other: bytearray) -> bool: ...
 
+    @native("tpy::container_ne", function=True)
+    @readonly
+    @pure
+    def __ne__(self, other: bytearray) -> bool: ...
+
     @cpp_template("{self} < {0}")
     @readonly
     @pure

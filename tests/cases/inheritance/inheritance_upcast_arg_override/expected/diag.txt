@@ -1,1 +1,5 @@
-main.py:11: warning: Method 'Dog.speak' hides 'Animal.speak' -- any 'Animal' reference will call 'Animal.speak', not 'Dog.speak' (differs from Python's dynamic dispatch); make 'Animal' a @dynamic protocol for runtime dispatch
+main.py:17: warning: Method 'Dog.speak' hides 'Animal.speak' -- any 'Animal' reference will call 'Animal.speak', not 'Dog.speak' (differs from Python's dynamic dispatch); make 'Animal' a @dynamic protocol for runtime dispatch
+main.py:37: warning: Method 'Parrot.speak' hides 'Animal.speak' -- any 'Animal' reference will call 'Animal.speak', not 'Parrot.speak' (differs from Python's dynamic dispatch); make 'Animal' a @dynamic protocol for runtime dispatch
+main.py:47: warning: 'Dog' passed as 'Animal': calls through 'a' run 'Animal.speak', not 'Dog.speak' (static dispatch)
+main.py:49: warning: 'Dog' passed as 'Animal': calls through 'a' run 'Animal.speak', not 'Dog.speak' (static dispatch)
+main.py:52: warning: 'Parrot' passed as 'Animal': calls through 'a' run 'Animal.speak', not 'Parrot.speak' (static dispatch)

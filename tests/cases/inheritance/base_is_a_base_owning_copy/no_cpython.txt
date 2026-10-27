@@ -1,0 +1,1 @@
+A subclass object stored into an owning base-typed slot (a field, a container element) is copied, with the copy warning, where CPython stores a reference to the same object; this case pins that the copy is independent, so its output differs from CPython by design.

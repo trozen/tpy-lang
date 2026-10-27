@@ -24,6 +24,7 @@
 #include <utility>
 #include <vector>
 
+#include "dunder.hpp"
 #include "next_iter.hpp"
 
 namespace tpy {
@@ -223,10 +224,9 @@ const T& max3(const T& a, const T& b, const T& c) {
 
 // -- truthiness helper --
 
-// Priority: implicit/explicit bool conversion > .empty() > __bool__() method.
-// Primitives (int, bool, float, BigInt) match branch 1.
-// std::string/string_view match branch 2.
-// User records with __bool__() match branch 3.
+// Primitives (int, bool, float, BigInt) are their own bool conversion; every
+// object -- a container, a class deriving one, a user record -- takes Python's
+// truth test through the dunder customization points.
 template<typename T>
 bool to_bool(const T& x) {
     if constexpr (std::is_same_v<T, std::monostate>) {
@@ -235,12 +235,13 @@ bool to_bool(const T& x) {
         return false;
     } else if constexpr (std::is_constructible_v<bool, T>) {
         return static_cast<bool>(x);
-    } else if constexpr (requires { x.empty(); }) {
-        return !x.empty();
-    } else if constexpr (requires { x.__bool__(); }) {
-        return x.__bool__();
+    } else if constexpr (requires { ::tpy::bool_dunder(x); }
+                         || requires { ::tpy::len_dunder(x); }) {
+        return ::tpy::truthy(x);
+    } else if constexpr (requires { std::tuple_size<T>::value; }) {
+        return std::tuple_size<T>::value > 0;
     } else {
-        static_assert(false, "to_bool: type has no bool conversion, empty(), or __bool__()");
+        return true;
     }
 }
 
@@ -364,6 +365,7 @@ std::vector<T> builtin_sorted_key(Iter&& iterable, KeyFn&& key, bool reverse = f
 template<typename Iter, typename T>
 concept stable_elements =
     std::ranges::forward_range<std::remove_reference_t<Iter>>
+    && !::tpy::iterates_by_dunder<Iter>
     && std::is_lvalue_reference_v<
         std::ranges::range_reference_t<std::remove_reference_t<Iter>>>
     && std::same_as<

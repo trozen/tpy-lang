@@ -56,7 +56,7 @@ using step_elem_member_t = std::remove_reference_t<decltype(
 // (BUGS.md#frame-stored-iter-copied).
 template<typename Slot, typename S>
 void resumable_iter_init(Slot& slot, S& src) {
-    if constexpr (!is_self_iterator_v<S>) slot.emplace(::tpy::__iter__(src));
+    if constexpr (!is_self_iterator_v<S>) slot.emplace(::tpy::iter_dunder(src));
 }
 
 template<typename Slot, typename S>

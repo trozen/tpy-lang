@@ -13,7 +13,7 @@ from typing import Callable, Iterable, Iterator, Literal, NamedTuple, Sequence, 
 
 from ..holders import IterHolder
 from ..identity_map import IdentityMap
-from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
+from ..typesys import canonical_readonly, make_readonly
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target, strip_own_type_args
 from ..typesys import binds_runtime_symbol, body_function_info
@@ -118,7 +118,6 @@ from .local_deduction import (collect_pending_source_types,
                               mark_pending_list_mutated,
                               note_pending_elem_read, pending_elem_read)
 from .operators import OperatorAmbiguity
-from .bound_check import raise_if_class_param_bound_violated
 from .overloads import CallShape, OverloadAmbiguityError, pins_const_receiver
 from .type_ops import frame_yield_may_borrow
 from .registration import referent_type
@@ -771,7 +770,7 @@ class ExpressionAnalyzer:
                 return iterator
             owner = coro_struct_owner(
                 fi.owning_type_qname, recv_inner,
-                self.ctx.registry.get_record_for_type(recv_inner))
+                self.ctx.registry)
             # Inside a generic class's own body the owner's args are its
             # open parameters: the struct is spelled by the class template's
             # member context there, not from a call site.
@@ -1325,12 +1324,15 @@ class ExpressionAnalyzer:
     def membership_step(self, lc: ContainerCells | None) -> str | None:
         """The part of cell container `lc` the operand of `in` is looked
         up at: the one its stub's `__contains__` names, or with no
-        `__contains__` the one its `__iter__` yields, which `in` then
-        compares the operand with (a list's element)."""
+        `__contains__` naming no part (a sequence's, which compares any
+        needle) the one its `__iter__` yields, which `in` then compares the
+        operand with (a list's element)."""
         if lc is None:
             return None
         if container_calls(self.ctx, lc.tree, "__contains__", 1):
-            return self.lookup_step(lc, "__contains__")
+            step = self.lookup_step(lc, "__contains__")
+            if step is not None:
+                return step
         return iterated_step(self.ctx, lc.tree)
 
     def decide_for_lookup(self, container: TpyExpr, t: TpyType,
@@ -3110,11 +3112,8 @@ class ExpressionAnalyzer:
                         # Map back to the original (un-substituted) method for codegen
                         idx = subst_overloads.index(matched)
                         original_method = contains_overloads[idx]
-                        raise_if_class_param_bound_violated(
-                            original_method, right_record.type_params, type_subst,
-                            self.protocols.type_conforms_to_protocol,
-                            self.ctx.error, expr,
-                        )
+                        self.operators.check_class_bounds(
+                            original_method, right_type, type_subst, expr)
                         # `x in h` is an `h.__contains__(x)` call on h.
                         credit_implicit_receiver_call(
                             self.ctx, expr.right, right_type, original_method,
@@ -3136,22 +3135,22 @@ class ExpressionAnalyzer:
                                 left_type, lookup, "membership test",
                                 loc=expr.loc, source_expr=expr.left)
                             return BOOL
-                        if binds_runtime_symbol(original_method):
-                            # A native container's lookup compares the
+                        runtime = binds_runtime_symbol(original_method)
+                        if not runtime:
+                            # A TPy `__contains__` receives the needle as
+                            # the explicit `h.__contains__(x)` call does, so
+                            # its conversion to the parameter is the one C++
+                            # sees. A native container's lookup compares the
                             # needle by value (an out-of-range `int` is
                             # simply absent), so it is not converted.
-                            return BOOL
-                        # A TPy `__contains__` receives the needle as the
-                        # explicit `h.__contains__(x)` call does, so its
-                        # conversion to the parameter is the one C++ sees.
-                        needle_args = [expr.left]
-                        self.calls.receive_winner_args(
-                            None, needle_args, [left_type],
-                            matched.params[:1], original_method)
-                        expr.left = needle_args[0]
-                        self.calls.commit_facts(
-                            expr, matched,
-                            CallOperands(matched, None, needle_args))
+                            needle_args = [expr.left]
+                            self.calls.receive_winner_args(
+                                None, needle_args, [left_type],
+                                matched.params[:1], original_method)
+                            expr.left = needle_args[0]
+                            self.calls.commit_facts(
+                                expr, matched,
+                                CallOperands(matched, None, needle_args))
                         expr.contains_call = TpyMethodCall(
                             obj=expr.right, method="__contains__",
                             args=[expr.left], resolved_function_info=matched,
@@ -3160,9 +3159,11 @@ class ExpressionAnalyzer:
                             loc=expr.loc)
                         self.ctx.set_expr_type(expr.contains_call,
                                                matched.return_type)
-                        # It runs TPy code: the kills of the explicit call.
-                        self.narrowing.invalidate_for_code_run(
-                            expr.contains_call)
+                        if not runtime:
+                            # It runs TPy code: the kills of the explicit
+                            # call.
+                            self.narrowing.invalidate_for_code_run(
+                                expr.contains_call)
                         return BOOL
                     # No __contains__ overload matched. Defer to
                     # check_type_compatible: it raises for genuine mismatches
@@ -3420,8 +3421,24 @@ class ExpressionAnalyzer:
         method = result.method
         if (result.promotion is not None or result.widens_operand
                 or len(method.params) != 1
-                or result.receiver_type is None
-                or not answers_as_call(result.receiver_type)):
+                or result.receiver_type is None):
+            return None
+        # The operand is an argument of the dunder whichever way the
+        # operator renders: a subclass instance there takes the upcast's
+        # lost-override warning, as at a call. Sema resolves the left
+        # operand's dunder first, while Python asks a right operand whose
+        # class overrides the reflected dunder first (`plain == sub`).
+        param = self.operators.received_params(result)[0]
+        actual = unwrap_readonly(unwrap_own(unwrap_ref_type(operand_type)))
+        expected = unwrap_readonly(unwrap_ref_type(param.type))
+        if (isinstance(actual, NominalType)
+                and isinstance(expected, NominalType)
+                and self.ctx.registry.is_subclass_of(actual, expected)):
+            self.compat.warn_lost_override_arg(
+                actual, expected,
+                self.calls.param_label(method.root, param.name),
+                operand, None)
+        if not answers_as_call(result.receiver_type):
             return None
         args = [operand]
         self.calls.receive_winner_args(
@@ -3709,8 +3726,8 @@ class ExpressionAnalyzer:
                     or is_enum_type(effective_type)):
                 return BOOL
             record = self.ctx.registry.get_record_for_type(effective_type)
-            if record and (record.get_method_overloads("__bool__")
-                           or record.get_method_overloads("__len__")):
+            if record and any(self.ctx.registry.mro_method_definer(record, m) is not None
+                              for m in ("__bool__", "__len__")):
                 return BOOL
             raise self.ctx.error(f"Invalid operand type for 'not': {effective_type} (expected bool, numeric, or type with __bool__/__len__)", expr)
 
@@ -4611,7 +4628,7 @@ class ExpressionAnalyzer:
                 if owner_type is not None:
                     expr.awaited_method_owner_type = coro_struct_owner(
                         mfi.owning_type_qname, owner_type,
-                        self.ctx.registry.get_record_for_type(owner_type))
+                        self.ctx.registry)
                 if mfi.return_type is not None:
                     self.ctx.func.current_awaited_subframes.append(mfi)
                     inner = self._unwrap_awaitable_return(mfi.return_type)
@@ -4746,25 +4763,20 @@ class ExpressionAnalyzer:
         a non-readonly `__poll__` mutates the awaitable, so awaiting a durable
         operand (`await self` / `await self.field`) mutates the operand's root.
         """
-        from ..typesys import NominalType, TpyType as _TpyType
         # Structural: look up the record and check for a __poll__ method
         # whose signature matches Awaitable[T].
         record_info = self.ctx.registry.get_record_for_type(typ)
         if record_info is None:
             return (None, True)
-        poll_overloads = record_info.get_method_overloads("__poll__")
+        poll_overloads = self.ctx.registry.get_method_overloads_with_parents(
+            record_info, "__poll__")
         if not poll_overloads:
             return (None, True)
-        # Pick the first overload whose return type is Poll[T] for some T.
-        # Substitute the record's class-level type params with typ.type_args
-        # so `Future[int32]` returns int32, not the type-var T.
-        from ..typesys import unwrap_ref_type
-        type_subst: dict[str, _TpyType] = {}
-        if record_info.type_params and len(typ.type_args) == len(record_info.type_params):
-            for tp, arg in zip(record_info.type_params, typ.type_args):
-                if isinstance(arg, _TpyType):
-                    type_subst[tp] = arg
+        # Pick the first overload whose return type is Poll[T] for some T,
+        # read at the receiver's binding of its declaring record.
         for fi in poll_overloads:
+            if isinstance(typ, NominalType):
+                _, fi = self.type_ops.bind_inherited_method(fi, typ)
             ret = fi.return_type
             if ret is None:
                 continue
@@ -4779,11 +4791,7 @@ class ExpressionAnalyzer:
             if (isinstance(ret, NominalType)
                     and ret._module_qname == qnames.POLL
                     and len(ret.type_args) == 1):
-                # Recursively substitute T -> typ.type_args[i] -- handles
-                # both bare TypeParamRef and nested shapes like list[T],
-                # tuple[T, U], etc.
-                return (substitute_type_params_simple(ret.type_args[0], type_subst),
-                        bool(fi.is_readonly))
+                return (ret.type_args[0], bool(fi.is_readonly))
         return (None, True)
 
     def _method_call_receiver_type(self, call) -> 'NominalType | None':
@@ -6949,7 +6957,7 @@ class ExpressionAnalyzer:
         expr.written_index = expr.index
         expr.index = self.compat.coerce_expr(
             expr.index, key_type, index, f"argument '{name}'",
-            coercion_ctx=CoercionContext.ARG)
+            coercion_ctx=CoercionContext.ARG, param=f"'{name}'")
 
     def _protocol_getitem_index(
             self, protocol: NominalType) -> tuple[str, TpyType] | None:

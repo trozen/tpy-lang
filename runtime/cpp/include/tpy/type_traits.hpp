@@ -13,6 +13,7 @@
 #include <iterator>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -120,6 +121,19 @@ concept ReferenceType = !ValueType<T>;
 // standard concept or add a static_assert in the requires-clause emit path.
 template<typename T>
 concept Copyable = std::is_copy_constructible_v<T>;
+
+// --- Ranges a consumer iterates directly ---
+
+// A standard input range a consumer (sum, list(), str.join, extend, ...) may
+// iterate through begin()/end(). A class declaring `tpy_iter_dunder` iterates
+// by its own `__iter__` although it inherits a range -- the compiler declares
+// it on a `class L(list[T])` that overrides `__iter__`, whose override every
+// Python consumer calls.
+template<typename R>
+concept iterates_by_dunder = requires { typename std::remove_cvref_t<R>::tpy_iter_dunder; };
+
+template<typename R>
+concept native_input_range = std::ranges::input_range<R> && !iterates_by_dunder<R>;
 
 // --- Lossless entry conversion ---
 

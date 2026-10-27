@@ -313,7 +313,7 @@ inline const Container& str_join_pieces(const Container& items) {
 }  // namespace detail
 
 template<typename Container>
-    requires std::ranges::input_range<const Container>
+    requires ::tpy::native_input_range<const Container>
 inline std::string str_join(std::string_view sep, const Container& items) {
     std::string result;
     const auto& pieces = detail::str_join_pieces(items);

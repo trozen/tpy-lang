@@ -3744,9 +3744,14 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
-            # An alias of a named container, or of a container field.
+            # An alias of a named container, or of a container field. A
+            # subclass object (`x: dict[K, V] = sub`) is a record whose
+            # container base MIR does not model as one.
             native_container=(native_container(vtype, is_const, lc.analyzer)
-                              if isinstance(src, THIRName) or native_container_field(src) else None),
+                              if (isinstance(src, THIRName)
+                                  and native_container_subject(src.result_type)
+                                  == native_container_subject(vtype))
+                              or native_container_field(src) else None),
             storage_borrow=storage_borrow(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)

@@ -82,6 +82,7 @@ void _put_u32le(::tpy::ByteArray& out, uint32_t v);
 struct BadGzipFile : ::tpy::OSError {
 
     using ::tpy::OSError::OSError;
+    explicit BadGzipFile(::tpy::OSError __base) : ::tpy::OSError(std::move(__base)) {}
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<BadGzipFile>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }

@@ -442,7 +442,7 @@ def _membership(e: THIRExpr) -> str:
         tmp = " [temp]" if e.need_temp else ""
         return f"tuple_{neg}({_expr(e.left)}, [{_exprs(e.elements)}]){tmp}"
     how = ("free" if e.free_function
-           else "ranges" if e.ranges_contains else "method")
+           else "method")
     return (f"{neg}[{how}]({_expr(e.needle)}, {_expr(e.receiver)}"
             f", {e.method_cpp!r})")
 

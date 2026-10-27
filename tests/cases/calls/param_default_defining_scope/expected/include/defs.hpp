@@ -628,7 +628,7 @@ inline bool Made::__eq__(const Made& other) const {
 }
 
 inline std::string Made::__repr__() const {
-    return std::format("Made(p={}, ys={}, c={})", ::tpy::repr_of(this->p), ::tpy::dict_to_str(this->ys), ::tpy::repr_of(this->c));
+    return std::format("Made(p={}, ys={}, c={})", ::tpy::repr_of(this->p), ::tpy::repr_of(this->ys), ::tpy::repr_of(this->c));
 }
 
 // def __init__(self) -> None:
@@ -665,7 +665,7 @@ inline bool MadeLater::__eq__(const MadeLater& other) const {
 }
 
 inline std::string MadeLater::__repr__() const {
-    return std::format("MadeLater(xs={}, list={})", ::tpy::list_to_str(this->xs), ::tpy::repr_of(this->list));
+    return std::format("MadeLater(xs={}, list={})", ::tpy::repr_of(this->xs), ::tpy::repr_of(this->list));
 }
 
 inline Rec::Rec(int32_t n) : n(n) {}

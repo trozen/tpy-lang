@@ -1043,6 +1043,8 @@ class TypeCompatibility:
         coercion_ctx: CoercionContext | None = None,
         target_is_storage_form: bool = False,
         landing: 'UnionLanding | None' = None,
+        *,
+        param: str | None = None,
     ) -> Optional[Coercion]:
         """Check if actual type is compatible with expected type.
 
@@ -1062,11 +1064,11 @@ class TypeCompatibility:
         if self.ctx.slot_step_commits():
             return self._check_type_compatible(
                 actual, expected, context, loc, source_expr, is_return,
-                coercion_ctx, target_is_storage_form, landing)
+                coercion_ctx, target_is_storage_form, landing, param=param)
         with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
             return self._check_type_compatible(
                 actual, expected, context, loc, source_expr, is_return,
-                coercion_ctx, target_is_storage_form, landing)
+                coercion_ctx, target_is_storage_form, landing, param=param)
 
     def _check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -1074,6 +1076,8 @@ class TypeCompatibility:
         is_return: bool, coercion_ctx: CoercionContext | None,
         target_is_storage_form: bool,
         landing: 'UnionLanding | None' = None,
+        *,
+        param: str | None = None,
     ) -> Optional[Coercion]:
         """`check_type_compatible`, its writes made only where the slot
         step commits (`SemanticContext.slot_step_commits`)."""
@@ -1099,7 +1103,7 @@ class TypeCompatibility:
                 loc)
         # A check that produces the coercion is where a list literal's
         # element is decided by the typed container it meets.
-        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, landing=landing)
+        result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, landing=landing, param=param)
         if isinstance(result, CompatError):
             # A literal-seeded local takes its type from what is stored in
             # it, never from a use: say what declares the type the use wants.
@@ -1237,6 +1241,7 @@ class TypeCompatibility:
         *,
         slot_readonly: bool = False,
         landing: 'UnionLanding | None' = None,
+        param: str | None = None,
     ) -> CompatResult:
         """Core type compatibility check.
 
@@ -1348,14 +1353,14 @@ class TypeCompatibility:
             return self._check_compat(
                 unwrap_send_sync(actual), expected.wrapped, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                landing=landing)
+                landing=landing, param=param)
         if isinstance(actual, (SendType, SyncType)):
             # Marker-typed value into an unmarked slot: the marker only adds
             # a guarantee, so it converts freely to the bare type.
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr,
                 is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                landing=landing)
+                landing=landing, param=param)
         # CallableType (Fn and Callable): inner param/return types may carry
         # Own/Ref qualifiers from FI that don't affect callable contract compatibility.
         if (is_callable_type(actual)
@@ -1384,7 +1389,7 @@ class TypeCompatibility:
                     self.ctx.set_expr_type(source_expr, resolved)
                 return self._check_compat(
                     resolved, expected, context, loc, source_expr,
-                    is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                    is_return, coercion_ctx, target_is_storage_form, sink_owns, param=param)
             return CompatError(
                 f"Type mismatch in {context}: '{actual.record_name}' has unresolved type "
                 f"arguments; call a constraining method first or add explicit type arguments",
@@ -1398,13 +1403,13 @@ class TypeCompatibility:
             return self._check_compat(
                 unwrap_ref_type(actual), expected.wrapped, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                slot_readonly=slot_readonly, landing=landing)
+                slot_readonly=slot_readonly, landing=landing, param=param)
         # Strip Ref from actual too (Ref[T] is compatible with T)
         if isinstance(actual, RefType):
             return self._check_compat(
                 actual.wrapped, expected, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                slot_readonly=slot_readonly, landing=landing)
+                slot_readonly=slot_readonly, landing=landing, param=param)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
@@ -1419,8 +1424,7 @@ class TypeCompatibility:
                 actual_inner = PtrType(actual_inner.inner_pointee)
             return self._check_compat(
                 actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns, slot_readonly=True, landing=landing
-            )
+                sink_owns, slot_readonly=True, landing=landing, param=param)
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
         # Exceptions: value types (copies), readonly protocols (Sized,
@@ -1441,7 +1445,7 @@ class TypeCompatibility:
                     TupleType(tuple(make_readonly(e)
                                     for e in actual.wrapped.element_types)),
                     expected, context, loc, source_expr, is_return, coercion_ctx,
-                    target_is_storage_form, sink_owns, landing=landing)
+                    target_is_storage_form, sink_owns, landing=landing, param=param)
                 if isinstance(result, CompatError) and result.copy_admits:
                     result.tuple_copy_remedy = True
                 return result
@@ -1462,8 +1466,7 @@ class TypeCompatibility:
                     )
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns, landing=landing
-            )
+                sink_owns, landing=landing, param=param)
 
         # None -> Optional[T] / Ptr[T] / Ptr[readonly[T]]: always compatible
         if isinstance(actual, NoneType) and isinstance(expected, (OptionalType, PtrType)):
@@ -1541,7 +1544,7 @@ class TypeCompatibility:
         # Union[A, B] -> Union[A, B, C]: each actual member must match some expected member
         if isinstance(actual, UnionType) and isinstance(expected, UnionType):
             for member in actual.members:
-                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                result = self._check_compat(member, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, param=param)
                 if isinstance(result, CompatError):
                     return result
             return None
@@ -1570,10 +1573,10 @@ class TypeCompatibility:
                 return self._check_compat(
                     actual_unwrapped, expected, context, loc, source_expr,
                     is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                    landing=landing)
+                    landing=landing, param=param)
             for member in _union_member_order(actual_unwrapped, union_members):
                 with self.ctx.probe_slot_scope(ProbeSlot.QUERY):
-                    result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+                    result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, param=param)
                 if (isinstance(result, Coercion) and result.narrows_checked
                         and is_fixed_int_type(unwrap_own(actual))):
                     # A union stores a fixed-width value as one of its
@@ -1586,7 +1589,7 @@ class TypeCompatibility:
                         # goes to: what the check writes about the value is
                         # written against that member, not against one
                         # tried and refused.
-                        result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+                        result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, param=param)
                         if landing is not None:
                             landing.member = member
                     return result
@@ -1661,10 +1664,10 @@ class TypeCompatibility:
                     and not isinstance(actual_inner.inner, OwnType)):
                 inner_result = self._check_compat(
                     actual_inner.inner, expected.inner, context, loc,
-                    source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                    source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, param=param)
                 if inner_result is None:
                     return None
-            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly, param=param)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
@@ -1867,17 +1870,20 @@ class TypeCompatibility:
                 return None
 
         # Inheritance: Child -> Parent (implicit value upcast, C++ handles slicing/ref binding)
-        if (isinstance(actual, NominalType) and actual.is_user_record
-                and isinstance(expected, NominalType) and expected.is_user_record):
+        if isinstance(actual, NominalType) and isinstance(expected, NominalType):
             if self.ctx.registry.is_subclass_of(actual, expected):
+                msg = None
                 if (coercion_ctx in (CoercionContext.ASSIGN,
                                      CoercionContext.INIT,
                                      CoercionContext.RETURN)
                         and self.ctx.slot_step_commits()):
-                    self.ctx.assert_slot_effect("an upcast warning")
                     msg = (f"upcast narrows '{actual}' to '{expected}' -- "
                            f"only '{expected}' fields and methods will be accessible; "
                            f"keep the concrete type or make '{expected}' a @dynamic protocol")
+                elif coercion_ctx == CoercionContext.ARG:
+                    msg = self._lost_override_arg_msg(actual, expected, param)
+                if msg is not None:
+                    self.ctx.assert_slot_effect("an upcast warning")
                     if source_expr is not None:
                         self.ctx.warning(msg, source_expr)
                     else:
@@ -1893,6 +1899,10 @@ class TypeCompatibility:
             if isinstance(expected, PtrType) and isinstance(expected.inner_pointee, NominalType):
                 if _ptr_readonly_compatible(actual, expected):
                     if self._is_covariant_target(actual.inner_pointee, expected.inner_pointee):
+                        if coercion_ctx == CoercionContext.ARG:
+                            self.warn_lost_override_arg(
+                                actual.inner_pointee, expected.inner_pointee,
+                                param, source_expr, loc)
                         return None
 
         # Ptr[U] -> Ptr[B] where U is a type param whose subtype bound reaches
@@ -2073,20 +2083,18 @@ class TypeCompatibility:
                 return self._check_compat(actual, ew, context, loc,
                                           source_expr, is_return,
                                           coercion_ctx, target_is_storage_form, sink_owns,
-                                          landing=landing)
+                                          landing=landing, param=param)
             # Subclass coercion excluded: Child -> Own[Base] stores Child by value as
             # Base, silently slicing the object. Same invariance as container elements.
-            # Only applies when record names differ (different types, not parametric covariance).
-            if (isinstance(actual, NominalType) and actual.is_user_record
-                    and isinstance(expected.wrapped, NominalType) and expected.wrapped.is_user_record
-                    and actual.name != expected.wrapped.name):
+            # Only applies to a strict subclass, not parametric covariance.
+            if self.ctx.registry.is_subclass_of(actual, expected.wrapped):
                 return CompatError(
                     f"Type mismatch in {context}: expected {expected.wrapped}, got {actual}", loc)
-            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, landing=landing)
+            return self._check_compat(actual, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, landing=landing, param=param)
 
         # Allow Own[T] -> T coercion (receiving an owned value)
         if isinstance(actual, OwnType):
-            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, landing=landing)
+            return self._check_compat(actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, landing=landing, param=param)
 
         # Tuple-to-tuple: same length, element-wise compatible
         if isinstance(actual, TupleType) and isinstance(expected, TupleType):
@@ -2133,8 +2141,7 @@ class TypeCompatibility:
                     source_expr=None if i in decided else sub,
                     is_return=is_return,
                     coercion_ctx=coercion_ctx, target_is_storage_form=True,
-                    sink_owns=True,
-                )
+                    sink_owns=True, param=param)
                 if isinstance(result, CompatError):
                     return result
             return None
@@ -2233,11 +2240,7 @@ class TypeCompatibility:
                 # Element type widening (e.g. int32 -> int32|None, int32 -> int64).
                 # Subclass coercion excluded: storing Child in list[Base] silently
                 # slices objects (same invariance as dict/set).
-                both_records = (
-                    isinstance(actual_elem, NominalType) and actual_elem.is_user_record
-                    and isinstance(e_elem, NominalType) and e_elem.is_user_record
-                )
-                if both_records:
+                if self.ctx.registry.is_subclass_of(actual_elem, e_elem):
                     # Explicit error: avoid leaking PendingList internal repr in the generic message.
                     return CompatError(self.mismatch_text(context, [e_elem], actual_elem), loc)
                 else:
@@ -2247,8 +2250,7 @@ class TypeCompatibility:
                     result = self._check_compat(
                         actual_elem, e_elem,
                         context, loc, source_expr, is_return, coercion_ctx,
-                        target_is_storage_form=True, sink_owns=True,
-                    )
+                        target_is_storage_form=True, sink_owns=True, param=param)
                     if not isinstance(result, CompatError):
                         return None  # element coercion is a probe, not propagated
                     # Definite mismatch: report it cleanly (see both_records above).
@@ -2442,7 +2444,7 @@ class TypeCompatibility:
             # covariance check.
             actual_is_addr_taker = (
                 isinstance(actual, NominalType)
-                and (actual.is_user_record or is_dyn_protocol(actual))
+                and (actual.is_record or is_dyn_protocol(actual))
             )
             if actual_is_addr_taker:
                 # Identity shortcut (actual == inner_pointee) only fires for
@@ -2461,6 +2463,9 @@ class TypeCompatibility:
                     if ((actual_is_dyn and actual == expected.inner_pointee)
                             or self._is_covariant_target(actual, expected.inner_pointee)):
                         coercion = UPCAST_TO_CONST_PTR
+                if coercion is not None and ctx == CoercionContext.ARG:
+                    self.warn_lost_override_arg(actual, expected.inner_pointee,
+                                                param, source_expr, loc)
         if coercion is None:
             # Address-of a reference-bound generic param: `&fp` yields `W*` =
             # `Ptr[W]`. Identity only (same type param), mirroring the @dynamic
@@ -2517,7 +2522,7 @@ class TypeCompatibility:
                             ro_err = self._check_compat(
                                 deref_target, expected, context, loc, None,
                                 is_return, coercion_ctx,
-                                target_is_storage_form, sink_owns)
+                                target_is_storage_form, sink_owns, param=param)
                     if ro_err is not None:
                         return ro_err
                     coercion = DEREF_COERCION
@@ -2661,6 +2666,8 @@ class TypeCompatibility:
         coercion_ctx: CoercionContext, is_return: bool = False,
         target_is_storage_form: bool = False,
         inferred_slot: 'InferredSlot | None' = None,
+        *,
+        param: str | None = None,
     ) -> TpyExpr:
         """Wrap expr in a coercion node if a conversion is needed.
 
@@ -2669,6 +2676,8 @@ class TypeCompatibility:
         pointer-repr-Optional address-take mark is suppressed.
         inferred_slot: the slot's type is a type argument an earlier call
         inferred (`site_coercion` refuses a narrowing into it).
+        param: the parameter an argument lands in, as a diagnostic names it
+        (`'a'`; `parameter 'object' of list.append` for a builtin's).
 
         A slot step that does not commit (`SemanticContext.slot_step_commits`)
         validates the conversion and hands `expr` back untouched: its
@@ -2749,6 +2758,7 @@ class TypeCompatibility:
             coercion_ctx=coercion_ctx,
             target_is_storage_form=target_is_storage_form,
             landing=landing,
+            param=param,
         )
         if not commits:
             return source
@@ -4537,7 +4547,7 @@ class TypeCompatibility:
                         and self.ctx.slot_step_commits()):
                     self.ctx.mark_representational_param(origin_param)
                 return True
-            if isinstance(bound, NominalType) and bound.is_user_record:
+            if isinstance(bound, NominalType) and bound.is_record:
                 if self._is_covariant_target(bound, parent):
                     if (origin_param is not None
                             and self.ctx.slot_step_commits()):
@@ -4571,6 +4581,34 @@ class TypeCompatibility:
                                        "return", loc) is None
                     or isinstance(expected.return_type, VoidType))
 
+    def _lost_override_arg_msg(self, actual: TpyType, expected: TpyType,
+                               param: str | None) -> str | None:
+        # A parameter keeps the object (it binds by reference or pointer),
+        # so only a method the subclass overrides tells the static dispatch
+        # through the base apart from Python's.
+        if not self.ctx.slot_step_commits():
+            return None
+        lost = self.protocols.lost_override(actual, expected)
+        if lost is None:
+            return None
+        base_def, sub_def = lost
+        through = param if param else "the parameter"
+        return (f"'{actual}' passed as '{expected}': calls through "
+                f"{through} run '{base_def}', not '{sub_def}' "
+                f"(static dispatch)")
+
+    def warn_lost_override_arg(self, actual: TpyType, expected: TpyType,
+                               param: str | None, source_expr: TpyExpr | None,
+                               loc: SourceLocation | None) -> None:
+        msg = self._lost_override_arg_msg(actual, expected, param)
+        if msg is None:
+            return
+        self.ctx.assert_slot_effect("an upcast warning")
+        if source_expr is not None:
+            self.ctx.warning(msg, source_expr)
+        else:
+            self.ctx.warning_from_loc(msg, loc)
+
     def _is_covariant_target(self, child: TpyType, parent: TpyType) -> bool:
         """Check if child -> parent is valid for covariant conversion.
 
@@ -4586,10 +4624,8 @@ class TypeCompatibility:
                 if self.protocols and self.protocols.type_conforms_to_protocol(child, parent):
                     return True
             return False
-        # Class inheritance
-        if child.is_user_record and parent.is_user_record:
-            return self.ctx.registry.is_subclass_of(child, parent)
-        return False
+        # Class inheritance, any class (a builtin base included)
+        return self.ctx.registry.is_subclass_of(child, parent)
 
     def is_local_shadow(self, name: str) -> bool:
         """Check if a name is bound in a local scope, shadowing a global:

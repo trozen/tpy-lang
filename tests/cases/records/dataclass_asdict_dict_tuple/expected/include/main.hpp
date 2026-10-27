@@ -135,7 +135,7 @@ inline bool DictOfDC::__eq__(const DictOfDC& other) const {
 }
 
 inline std::string DictOfDC::__repr__() const {
-    return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
+    return std::format("DictOfDC(items={})", ::tpy::repr_of(this->items));
 }
 
 inline TupleOfDC::TupleOfDC(std::tuple<Point, int32_t> pair) : pair(std::move(pair)) {}

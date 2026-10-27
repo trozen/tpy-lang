@@ -9,6 +9,6 @@ class Foo:
 
 def main() -> None:
     a: list[Foo] = [Foo(1), Foo(2)]
-    result = Foo(1) in a  # tpyc: error(/Foo.*Equatable/)
+    result = Foo(1) in a  # tpyc: error(/Equatable.*Foo/)
 
 main()

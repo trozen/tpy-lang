@@ -10,6 +10,13 @@ from .._bootstrap._extern import native, cpp_template, builtin_type
 @builtin_type("builtins.list")
 @native("std::vector", indirecting=True, elements=True)
 class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spannable[T]):
+    @dispatch
+    @pure
+    @readonly
+    @cpp_template("std::vector<{T}>()")
+    def __init__(self) -> None: ...
+
+    @dispatch
     @pure
     @readonly
     @cpp_template("::tpy::construct<std::vector<{T}>>({0})")
@@ -100,6 +107,11 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @readonly
     def index[T: Equatable](self, value: T, /) -> int32: ...
 
+    @native("tpy::seq_contains", function=True, element_effect="lookup")
+    @pure
+    @readonly
+    def __contains__[U, T: Equatable](self, value: U, /) -> bool: ...
+
     @native("tpy::list_count", function=True, element_effect="lookup")
     @pure
     @readonly
@@ -115,6 +127,21 @@ class list[T](Iterable[T], NativeIterable[T], NativeRangeConstructible[T], Spann
     @pure
     @readonly
     def copy(self) -> Own[list[T]]: ...
+
+    @native("tpy::__repr__", function=True)
+    @pure
+    @readonly
+    def __repr__(self) -> str: ...
+
+    @cpp_template("{self} == {0}")
+    @pure
+    @readonly
+    def __eq__[T: Equatable](self, other: readonly[list[T]]) -> bool: ...
+
+    @native("tpy::container_ne", function=True)
+    @pure
+    @readonly
+    def __ne__[T: Equatable](self, other: readonly[list[T]]) -> bool: ...
 
     @native("tpy::list_concat", function=True)
     @pure

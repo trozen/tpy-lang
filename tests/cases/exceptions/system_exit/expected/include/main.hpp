@@ -75,6 +75,7 @@ inline std::ostream& operator<<(std::ostream& os, const Guard& obj) {
 struct Leave : ::tpy::SystemExit {
 
     using ::tpy::SystemExit::SystemExit;
+    explicit Leave(::tpy::SystemExit __base) : ::tpy::SystemExit(std::move(__base)) {}
 
     [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Leave>(*this); }
     [[noreturn]] void __raise__() const override { throw *this; }

@@ -67,7 +67,7 @@ ordered_map<K, V> dict_collect_pairs(Iter&& iter) {
 // `__iter__()` returns.
 template<typename K, typename V, typename Arg>
 ordered_map<K, V> dict_construct(Arg&& arg) {
-    if constexpr (std::ranges::input_range<std::remove_cvref_t<Arg>>) {
+    if constexpr (::tpy::native_input_range<std::remove_cvref_t<Arg>>) {
         return dict_from_pairs<K, V>(std::forward<Arg>(arg));
     } else {
         return dict_collect_pairs<K, V>(::tpy::iter_of(arg));
@@ -419,6 +419,13 @@ std::string dict_to_str(const ordered_map<K, V>& m) {
     return oss.str();
 }
 
+// `dict.__repr__` (the stub's), as list's in printing.hpp.
+template<typename K, typename V>
+std::string __str__(const ordered_map<K, V>& m) { return dict_to_str(m); }
+
+template<typename K, typename V>
+std::string __repr__(const ordered_map<K, V>& m) { return dict_to_str(m); }
+
 // -- View printing ----------------------------------------------------------
 
 template<typename K, typename V>
@@ -460,6 +467,12 @@ std::ostream& operator<<(std::ostream& os, const dict_items_view<K, V>& v) {
         os << ')';
     }
     return os << "])";
+}
+
+// `container_ne` (container_ops.hpp) for a dict.
+template<typename K, typename V>
+bool container_ne(const ordered_map<K, V>& a, const ordered_map<K, V>& b) {
+    return !(a == b);
 }
 
 }  // namespace tpy

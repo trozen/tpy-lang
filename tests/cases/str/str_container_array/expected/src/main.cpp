@@ -22,8 +22,8 @@ void show_span(std::span<int32_t> s) {
 //     show_span(a)
 void main() {
     std::array<int32_t, 3> a = {10, 20, 30};
-    std::cout << ::tpy::list_to_str(a) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::list_to_str(a) << "\n" << ::tpy::check_signals;
+    std::cout << std::string(::tpy::__str__(a)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::repr_of(a) << "\n" << ::tpy::check_signals;
     std::cout << std::format("{}", ::tpy::list_to_str(a)) << "\n" << ::tpy::check_signals;
     std::cout << std::format("array={}", ::tpy::list_to_str(a)) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show_span(::tpy::as_mut_span(a));

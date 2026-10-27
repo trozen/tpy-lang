@@ -46,7 +46,6 @@ from ..parse.nodes import (
     stmts_have_any_suspension as _stmts_have_any_suspension,
     stmts_have_any_return as _stmts_have_any_return,
 )
-from ..typesys import TypeParamRef
 from .context import (CodeGenError, FrameSourceUnnameable, escape_cpp_name,
                       module_to_cpp_namespace, resumable_struct_name)
 
@@ -438,8 +437,6 @@ class ResumableShape(Enum):
 
 _SHAPE_PREFIX = {ResumableShape.ASYNC: "__coro_",
                  ResumableShape.GENERATOR: "__gen_"}
-_SHAPE_MEMBER = {ResumableShape.ASYNC: "async method",
-                 ResumableShape.GENERATOR: "generator method"}
 
 
 def frame_struct_name(name: str, owner_record: 'str | None' = None,
@@ -471,8 +468,7 @@ def frame_struct_qualname(
         inferred_type_args: 'tuple[TpyType, ...] | None' = None,
         *, module_qual: str | None = None,
         extra_template_args: 'list[str] | None' = None,
-        shape: ResumableShape = ResumableShape.ASYNC,
-        loc=None) -> str:
+        shape: ResumableShape = ResumableShape.ASYNC) -> str:
     """The C++ name of the frame struct a call site embeds, qualified so it
     is spellable from the module doing the embedding. `types` is the
     TypeResolver.
@@ -506,21 +502,6 @@ def frame_struct_qualname(
             if owner_module and owner_module != types.ctx.analyzer.ctx.module_name:
                 ns_qual = f"::{module_to_cpp_namespace(owner_module)}::"
         if owner.type_args:
-            # A call site must name the base frame struct with concrete type
-            # args. An unbound TypeParamRef here means the MRO-resolved
-            # owner's args were not bound to concrete types -- compute_mro_
-            # ancestors spells each ancestor in the record's own type params,
-            # so a generic subclass of a generic base (Child[U](Box[U]))
-            # leaves them unbound for its instantiation. Emit a clean
-            # diagnostic rather than ill-formed C++.
-            if any(isinstance(ta, TypeParamRef) for ta in owner.type_args):
-                raise CodeGenError(
-                    f"inherited {_SHAPE_MEMBER[shape]} on generic base "
-                    f"'{owner.name}' is not yet supported here: its type "
-                    "parameters are not bound to concrete types (this happens "
-                    "with a generic subclass of a generic base, or a "
-                    "multi-level generic inheritance chain); flatten the "
-                    "hierarchy or make the base concrete", loc=loc)
             inner_cpps = [types.type_to_cpp(ta)
                           for ta in owner.type_args]
             owner_args_suffix = "<" + ", ".join(inner_cpps) + ">"

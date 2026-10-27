@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //         return 1
 //     return 0
 ::tpy::BigInt if_test(const Flag* c) {
-    if (::tpy::ptr_truthy(c)) {
+    if (::tpy::ptr_truthy<::tpy::truthy_by_bool>(c)) {
         return ::tpy::BigInt(1);
     }
     return ::tpy::BigInt(0);
@@ -20,7 +20,7 @@ namespace tpyapp::main {
 //         return 10
 //     return 11
 ::tpy::BigInt not_test(const Flag* c) {
-    if ((!(::tpy::ptr_truthy(c)))) {
+    if ((!(::tpy::ptr_truthy<::tpy::truthy_by_bool>(c)))) {
         return ::tpy::BigInt(10);
     }
     return ::tpy::BigInt(11);
@@ -31,7 +31,7 @@ namespace tpyapp::main {
 //         return 20
 //     return 21
 ::tpy::BigInt and_test(const Flag* c, const Flag* d) {
-    if ((::tpy::ptr_truthy(c) && ::tpy::ptr_truthy(d))) {
+    if ((::tpy::ptr_truthy<::tpy::truthy_by_bool>(c) && ::tpy::ptr_truthy<::tpy::truthy_by_bool>(d))) {
         return ::tpy::BigInt(20);
     }
     return ::tpy::BigInt(21);
@@ -47,7 +47,7 @@ namespace tpyapp::main {
 ::tpy::BigInt while_test(Flag* c) {
     Flag* x = c;
     int32_t n = 0;
-    while (::tpy::ptr_truthy(x)) {
+    while (::tpy::ptr_truthy<::tpy::truthy_by_bool>(x)) {
         n = ::tpy::add_check<int32_t>(n, 1);
         x = nullptr;
     }
@@ -59,7 +59,7 @@ namespace tpyapp::main {
 //         return 1
 //     return 0
 ::tpy::BigInt len_test(const Bag* b) {
-    if (::tpy::ptr_truthy(b)) {
+    if (::tpy::ptr_truthy<::tpy::truthy_by_len>(b)) {
         return ::tpy::BigInt(1);
     }
     return ::tpy::BigInt(0);
@@ -83,7 +83,7 @@ Flag* observe(Counter& cnt, Flag& f) {
 ::tpy::BigInt call_test(Flag& f) {
     Counter cnt = Counter();
     int32_t r;
-    if (::tpy::ptr_truthy(::tpyapp::main::observe(cnt, f))) {
+    if (::tpy::ptr_truthy<::tpy::truthy_by_bool>(::tpyapp::main::observe(cnt, f))) {
         r = 1;
     } else {
         r = 0;

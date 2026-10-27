@@ -289,11 +289,8 @@ void __delitem__(T& x, K&& k) {
 // tpy::__bool__
 // =============================================
 
-// Overload: ordered_map (dict)
-template<typename K, typename V>
-bool __bool__(const ordered_map<K, V>& m) {
-    return !m.empty();
-}
+// No overload for dict / set: neither defines `__bool__` in Python, so their
+// truth test (and a subclass's `__len__` override) goes through `__len__`.
 
 // Default template: user types that define __bool__() method
 template<typename T>
@@ -302,22 +299,77 @@ bool __bool__(const T& x) {
     return x.__bool__();
 }
 
+// =============================================
+// Customization points: __bool__ / __len__ / truthiness
+// =============================================
+
+// The one entry every runtime consumer (to_bool, all / any, filter(None, ..),
+// Optional pointer truthiness, reversed) reaches a dunder through. The class's
+// own member dunder wins -- a user record's, or an override on a class
+// deriving a builtin container -- else the free overload of the builtin it is
+// or derives from. The free call is unqualified: argument-dependent lookup at
+// instantiation also sees overloads declared after this header (`ordered_set`'s
+// in set_ops.hpp), through a derived class's base.
+namespace dunder_detail {
+template<typename T>
+concept member_bool = requires(const T& t) { { t.__bool__() } -> std::convertible_to<bool>; };
+template<typename T>
+concept member_len = requires(const T& t) { t.__len__(); };
+template<typename T>
+concept free_bool = requires(const T& t) { { __bool__(t) } -> std::convertible_to<bool>; };
+template<typename T>
+concept free_len = requires(const T& t) { { __len__(t) } -> std::convertible_to<int32_t>; };
+
+struct bool_fn {
+    template<typename T>
+        requires member_bool<T> || free_bool<T>
+    bool operator()(const T& x) const {
+        if constexpr (member_bool<T>) return static_cast<bool>(x.__bool__());
+        else return __bool__(x);
+    }
+};
+
+struct len_fn {
+    template<typename T>
+        requires member_len<T> || free_len<T>
+    int32_t operator()(const T& x) const {
+        // The member-forwarding overload validates the result (>= 0, BigInt
+        // narrowed) for every consumer.
+        if constexpr (member_len<T>) return ::tpy::__len__(x);
+        else return __len__(x);
+    }
+};
+} // namespace dunder_detail
+
+inline constexpr dunder_detail::bool_fn bool_dunder{};
+inline constexpr dunder_detail::len_fn len_dunder{};
+
+// Python's truth test of an object: `__bool__` when it has one, else
+// `__len__() != 0`, else true.
+template<typename T>
+bool truthy(const T& x) {
+    if constexpr (requires { bool_dunder(x); }) return bool_dunder(x);
+    else if constexpr (requires { len_dunder(x); }) return len_dunder(x) != 0;
+    else return true;
+}
+
 // Pointer-repr Optional truthiness (Python `if p:` on a `Record | None`):
 // null is falsy, otherwise the pointee's Python truthiness. Kept as a single
 // evaluation of `p` so it is correct in loop conditions and side-effecting
-// operands, where a hoisted null-check-plus-deref temp would go stale. The
-// dispatch order mirrors codegen's record truthiness: __bool__, else
-// __len__ != 0, else the object-default (a non-None instance is truthy).
-template<typename T>
+// operands, where a hoisted null-check-plus-deref temp would go stale. `By`
+// is the dunder the compiler resolved through the pointee's MRO.
+struct truthy_by_bool {
+    template<typename T>
+    static bool test(const T& v) { return bool_dunder(v); }
+};
+struct truthy_by_len {
+    template<typename T>
+    static bool test(const T& v) { return len_dunder(v) != 0; }
+};
+
+template<typename By, typename T>
 inline bool ptr_truthy(const T* p) {
-    if (p == nullptr) return false;
-    if constexpr (requires { { p->__bool__() } -> std::convertible_to<bool>; }) {
-        return p->__bool__();
-    } else if constexpr (requires { p->__len__(); }) {
-        return ::tpy::__len__(*p) != 0;
-    } else {
-        return true;
-    }
+    return p != nullptr && By::test(*p);
 }
 
 // =============================================
@@ -815,11 +867,23 @@ inline auto __iter__(const char* x) {
     return __iter__(std::string_view(x));
 }
 
+namespace detail {
+// A class derived from std::vector / std::array (a `class L(list[T])`) binds the
+// overloads above only through a derived-to-base conversion, so the generic
+// overload's exact `const T&` match would otherwise win: const elements, and
+// an rvalue would be iterated after it dies.
+template<typename T>
+concept vector_or_array_based =
+    requires(T& t) { []<typename U>(std::vector<U>&) {}(t); }
+    || requires(T& t) { []<typename U, std::size_t N>(std::array<U, N>&) {}(t); };
+} // namespace detail
+
 // Generic overload: any C++ range type not covered above (e.g., tpy::Range<T>)
 // Constrained to types without __iter__() to avoid ambiguity with user types.
 template<typename T>
     requires std::ranges::input_range<const T>
           && (!requires(const T& t) { t.__iter__(); })
+          && (!detail::vector_or_array_based<T>)
 auto __iter__(const T& x) {
     using ElemT = std::remove_cvref_t<decltype(*x.begin())>;
     return native_iterator<decltype(x.begin()), ElemT>{x.begin(), x.end()};
@@ -841,15 +905,31 @@ decltype(auto) __iter__(const T& x) {
     return x.__iter__();
 }
 
+// The `__iter__` customization point, beside `bool_dunder` / `len_dunder`: a
+// member `__iter__` wins by overload ranking (an exact match over the
+// container overloads' derived-to-base conversion, and the generic range
+// overload excludes it), and the unqualified call lets argument-dependent
+// lookup see free overloads declared after this header.
+namespace dunder_detail {
+struct iter_fn {
+    template<typename X>
+        requires requires(X&& x) { __iter__(std::forward<X>(x)); }
+    decltype(auto) operator()(X&& x) const {
+        return __iter__(std::forward<X>(x));
+    }
+};
+} // namespace dunder_detail
+
+inline constexpr dunder_detail::iter_fn iter_dunder{};
+
 // Iterator-protocol type helpers for spelling resumable for-loop frame fields
 // (the iterator slot and the per-step result slot) without the nested decltype
-// formulas inline. Defined after every free `__iter__` overload so the
-// qualified `::tpy::__iter__` lookup inside `iter_type_t` sees the full set.
+// formulas inline, through `iter_dunder`.
 // The iterator slot is a decayed VALUE: a stored iterator an `__iter__()`
 // hands back by reference is copied into the frame
 // (BUGS.md#frame-stored-iter-copied).
 template<typename S>
-using iter_type_t = std::decay_t<decltype(::tpy::__iter__(std::declval<S&>()))>;
+using iter_type_t = std::decay_t<decltype(::tpy::iter_dunder(std::declval<S&>()))>;
 template<typename It>
 using iter_next_t = decltype(std::declval<It&>().__next__());
 template<typename S>
@@ -875,17 +955,18 @@ using iter_member_t = std::conditional_t<
 // named begin/end is not one.
 template<typename X>
 concept range_for_iterable =
-    requires(X& x) {
+    (requires(X& x) {
         *x.begin();
         x.begin() != x.end();
         ++std::declval<decltype(x.begin())&>();
     }
-    || std::ranges::range<X&>;
+    || std::ranges::range<X&>)
+    && !::tpy::iterates_by_dunder<X>;
 
 // A type that steps with __next__() and has no __iter__() is its own iterator.
 template<typename X>
 concept bare_next_iterator =
-    requires(X& x) { x.__next__(); } && !requires(X& x) { ::tpy::__iter__(x); };
+    requires(X& x) { x.__next__(); } && !requires(X& x) { ::tpy::iter_dunder(x); };
 
 // The begin()/end() face of the iterator an iterable's __iter__() returned,
 // held in the form it came in: any reference aliases the iterator (a const
@@ -907,7 +988,7 @@ struct iter_protocol_range {
 template<typename X>
 decltype(auto) iter_of(X& x) {
     if constexpr (detail::bare_next_iterator<X>) return (x);
-    else return ::tpy::__iter__(x);
+    else return ::tpy::iter_dunder(x);
 }
 
 // An lvalue only: the protocol face holds an iterator that may point into
@@ -973,9 +1054,9 @@ using const_join_t = typename detail::const_join<Ts...>::type;
 // returned by value.
 template<typename S>
 inline constexpr bool is_self_iterator_v =
-    std::is_lvalue_reference_v<decltype(::tpy::__iter__(std::declval<S&>()))>
+    std::is_lvalue_reference_v<decltype(::tpy::iter_dunder(std::declval<S&>()))>
     && std::is_same_v<
-           std::remove_reference_t<decltype(::tpy::__iter__(std::declval<S&>()))>, S>;
+           std::remove_reference_t<decltype(::tpy::iter_dunder(std::declval<S&>()))>, S>;
 
 // A record tpyc compiled, as opposed to a runtime or @native type.
 template<typename T>

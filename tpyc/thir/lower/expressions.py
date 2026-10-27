@@ -479,6 +479,7 @@ from .predicates import (
     _peel_coerce,
     _type_family_tag,
     _plain_member_call_markers_ok,
+    base_part_receiver_type,
     _plain_method_fi_ok,
     _plain_or_opt_own_slot,
     _plain_own_slot,
@@ -821,6 +822,7 @@ from .checks import (
     _method_nonname_receiver_ok,
     _record_getitem_call_ok,
     _method_receiver_type,
+    _call_receiver_type,
     _native_call_arg_ok,
     _container_slot_call_rvalue_arg,
     _native_container_call_arg,
@@ -3951,9 +3953,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 use=_ExprUse(result=_ExprResultUse.RECEIVER)),),
             cpp_template=td_tpl,
             loc=loc)
-    # A `__contains__`-unresolved native-set membership renders
-    # `::tpy::seq_contains` (set by the membership gate below).
-    ranges_contains = False
+    # A runtime free-function `__contains__` (or none resolved over a native
+    # iterable) renders `[!]fn(recv, needle)` (set by the membership gate
+    # below).
+    free_contains = False
     # A REFERENCE-typed needle, which is what admits the record leg of that
     # gate -- the render is the same for every needle kind.
     record_needle = False
@@ -4419,57 +4422,64 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     elif e.op in _MEMBERSHIP_OPS:
         fi = e.resolved_contains
         lt = _declared_type(e.left, declared, analyzer)
-        if fi is None:
-            # No resolved `__contains__` member (list/array/span have
-            # none): the `is_native_in` arm renders
-            # `::tpy::seq_contains(recv, x)`. Any native NativeIterable
-            # receiver (set/list/array/span) with a scalar / owned-str needle;
-            # the universal iterator-loop form is a later rung.
+        lt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
+                   if lt is not None else None)
+        if lt_bare is not None:
+            lt_bare = resolve_pending_container(lt_bare, analyzer) or lt_bare
+
+        def _seq_needle_ok() -> bool:
+            # The needles `::tpy::seq_contains` compares; a reference-typed
+            # one is admitted where the haystack's elements can be it -- the
+            # helper's identity leg supplies Python's `x is e` half.
+            return bool(
+                _resolved_scalar(lt, analyzer)
+                or _resolved_viewfam_value(lt, analyzer) is not None
+                # An open-T needle inside a generic body (`key in
+                # self._data` on `dict[T, int]`): the needle renders by
+                # name per instantiation and the helper picks the identity
+                # leg per instantiation too.
+                or (_is_type_param_slot(lt)
+                    and _witness("binop.contains_tparam_needle"))
+                # A pointer-repr tuple-LITERAL needle: the per-element
+                # storage conversion over the borrow-form literal render
+                # (the compare pair's sibling).
+                or (isinstance(e.left, TpyTupleLiteral)
+                    and isinstance(lt_bare, TupleType)
+                    and lt_bare.has_pointer_repr_element())
+                or (_value_tuple_needle_ok(lt_bare, analyzer)
+                    and _witness("binop.contains_tuple_needle"))
+                # A RECORD or container needle (`p in item.pts`): sema
+                # already required the element to be Equatable, so its
+                # `operator==` exists.
+                or (record_like(lt_bare, analyzer)
+                    and _witness("binop.contains_record_needle")))
+
+        if fi is None or fi.native_function:
+            # A runtime FREE-function `__contains__` (list / Array / Span
+            # declare `::tpy::seq_contains`), inherited or not, renders
+            # `name(recv, x)` with the sequence helper's needle rule; the
+            # resolved dunder decides, so a subclass overriding `__iter__`
+            # still tests containment as CPython's `list.__contains__` does.
+            # With none resolved, `::tpy::seq_contains(recv, x)` over any
+            # receiver the RESOLVED `__iter__` iterates natively, else the
+            # universal iterator loop.
             rt = _declared_type(e.right, declared, analyzer)
             rt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
                        if rt is not None else None)
             rec = (analyzer.registry.get_record_for_type(rt_bare)
                    if rt_bare is not None else None)
-            lt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
-                       if lt is not None else None)
-            # str/bytes iterate as char/byte sequences so they qualify as
-            # native-iterable, but membership on them is SUBSTRING (`.find() !=
-            # npos`), not element-containment (`seq_contains`) -- that
-            # is the str/bytes-membership arms' job, so exclude them here.
-            native_recv = (rec is not None and rec.is_native
-                           and is_native_iterable(rt_bare, analyzer.registry)
-                           and _resolved_str_value(rt, analyzer) is None
-                           and _resolved_bytes_value(rt, analyzer) is None)
-            # A record needle is a reference type, so Python's `x is e` leg
-            # of containment is observable on it -- which is what admits the
-            # form here; the render is the same helper every needle takes.
-            record_needle = native_recv and record_like(lt_bare, analyzer)
-            if (native_recv
-                    and (_resolved_scalar(lt, analyzer)
-                         or _resolved_viewfam_value(lt, analyzer) is not None
-                         # An open-T needle inside a generic body (`key in
-                         # self._data` on `dict[T, int]`): the needle
-                         # renders by name per instantiation and the helper
-                         # picks the identity leg per instantiation too.
-                         or (_is_type_param_slot(lt)
-                             and _witness("binop.contains_tparam_needle"))
-                         # A pointer-repr tuple-LITERAL needle: the
-                         # per-element storage conversion over the borrow-form
-                         # literal render (the compare pair's sibling).
-                         or (isinstance(e.left, TpyTupleLiteral)
-                             and isinstance(lt_bare, TupleType)
-                             and lt_bare.has_pointer_repr_element())
-                         or (_value_tuple_needle_ok(lt_bare, analyzer)
-                             and _witness("binop.contains_tuple_needle"))
-                         # A RECORD needle (`p in item.pts`): sema already
-                         # required the element to be Equatable, so the
-                         # record's `friend operator==` exists, and the
-                         # helper's identity leg supplies the `x is e` half
-                         # of Python's containment for it.
-                         or (record_needle
-                             and _witness("binop.contains_record_needle")))):
-                ranges_contains = True
-            elif ((rec is not None and not rec.is_native
+            # str / bytes membership is SUBSTRING (or byte) search, the
+            # str / bytes arms' job -- a shape those arms refuse stays
+            # refused rather than taking the element-containment helper.
+            seq_recv = (rec is not None
+                        and (fi is not None
+                             or is_native_iterable(rt_bare,
+                                                   analyzer.registry))
+                        and _resolved_str_value(rt, analyzer) is None
+                        and _resolved_bytes_value(rt, analyzer) is None)
+            if seq_recv and _seq_needle_ok():
+                free_contains = True
+            elif fi is None and ((rec is not None and not rec.is_native
                    # A structural protocol param (`target in items` on
                    # `Iterable[T]`): the is_native_in test admits only
                    # `tpy.NativeIterable` to the `seq_contains` render, so
@@ -4495,8 +4505,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 iter_loop = True
             else:
                 reject()
-        elif (e.typed_dict_in_field is not None
-                or fi.cpp_template or fi.native_function):
+        elif e.typed_dict_in_field is not None or fi.cpp_template:
             reject()
         elif not binds_runtime_symbol(fi):
             # A plain USER `__contains__` (record / generic record): sema
@@ -4513,74 +4522,59 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                   and _container_field_bare_read(e.right, declared,
                                                  analyzer)
                   and _witness("binop.contains_field_recv"))):
-            if isinstance(e.right, TpyName):
-                if e.right.name not in declared:
-                    reject()
-                ct = unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(declared[e.right.name])))
-                if isinstance(ct, OwnType):
-                    # An `Own[container]` binding (the movable loop var)
-                    # spells the payload in C++, so the `.contains` member
-                    # composes on the bare name exactly as for a plain
-                    # container name -- the receiver peel the family gate
-                    # and the record arm already do.
-                    ct = unwrap_readonly(ct.wrapped)
-            else:
-                # A SET-LITERAL rvalue receiver (`d in {date(..), date(..)}`)
-                # renders its spelled ctor and takes the same `.contains`
-                # member (the literal's own lowering gates the elements); a
-                # FIELD haystack's expression type is the same container.
-                ct = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    analyzer.get_expr_type(e.right))))
-                if ct is not None:
-                    ct = resolve_pending_container(ct, analyzer) or ct
+            if isinstance(e.right, TpyName) and e.right.name not in declared:
+                reject()
             # A str or bytes needle renders bare into `contains(...)`
             # (literal / view name / owned local -- the container's transparent
             # lookup absorbs the form), exactly like a scalar needle. An
             # F1-RECORD needle name reads bare the same way (the record-keyed
-            # set/dict slice). A VIEW-keyed container (`set[StrView]`) threads
-            # view_key_target into the needle's literal render (the
-            # static-storage pin) -- not lowered yet, so it rejects.
-            lt_bare = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(lt)))
-                       if lt is not None else None)
-            if not ((is_dict(ct) or is_set(ct))
-                    and (_resolved_scalar(lt, analyzer)
-                         or (isinstance(e.left, TpyName)
-                             and record_like(lt_bare, analyzer))
-                         # An open-T needle inside a generic body (`key in
-                         # self._data` on `dict[K, V]`): the needle renders
-                         # by name per instantiation, the sequence row's
-                         # sibling.
-                         or (_is_type_param_slot(lt)
-                             and _witness("binop.contains_member_tparam_needle"))
-                         # A record ctor RVALUE needle (`time(0) in {time(0),
-                         # time(1)}`) renders bare inside `contains(...)` just
-                         # like the name row -- it is a value position, so the
-                         # ctor's own emit is the whole render.
-                         or (record_like(lt_bare, analyzer)
-                             and _record_rvalue_source_shape(e.left, analyzer))
-                         or (_resolved_str_value(lt, analyzer) is not None
-                             and ((_vkc := view_key_target(ct)) is None
-                                  # A STR-VIEW key target: a str needle
-                                  # (literal / view name) renders bare
-                                  # either way -- the pin is a no-op for
-                                  # the str family.
-                                  or (is_str_view_type(_vkc)
-                                      and bool(_witness(
-                                          "binop.contains_view_key")))))
-                         or (_resolved_bytes_value(lt, analyzer) is not None
-                             and view_key_target(ct) is None)
-                         # A BYTES literal needle at a BYTES-VIEW key
-                         # target: the static view spelling
-                         # (`contains(::tpy::bytes_literal("hello", 5))`)
-                         # -- the needle lowering retags it below.
-                         or (isinstance(_peel_coerce(e.left), TpyBytesLiteral)
-                             and (_vkb := view_key_target(ct)) is not None
-                             and is_bytes_view_type(_vkb)
-                             and bool(_witness(
-                                 "binop.contains_view_key")))
-                         or (_value_tuple_needle_ok(lt_bare, analyzer)
-                             and _witness("binop.contains_tuple_needle")))):
+            # set/dict slice). A VIEW key (`set[StrView]`) -- the parameter
+            # of the resolved `__contains__`, whichever class in the
+            # receiver's MRO declares it -- threads into the needle's literal
+            # render (the static-storage pin).
+            key_slot = (unwrap_readonly(unwrap_ref_type(
+                e.contains_call.resolved_function_info.params[0].type))
+                if e.contains_call is not None else None)
+            key_view = (key_slot if key_slot is not None
+                        and (is_str_view_type(key_slot)
+                             or is_bytes_view_type(key_slot)) else None)
+            if not ((_resolved_scalar(lt, analyzer)
+                       or (isinstance(e.left, TpyName)
+                           and record_like(lt_bare, analyzer))
+                       # An open-T needle inside a generic body (`key in
+                       # self._data` on `dict[K, V]`): the needle renders
+                       # by name per instantiation, the sequence row's
+                       # sibling.
+                       or (_is_type_param_slot(lt)
+                           and _witness("binop.contains_member_tparam_needle"))
+                       # A record ctor RVALUE needle (`time(0) in {time(0),
+                       # time(1)}`) renders bare inside `contains(...)` just
+                       # like the name row -- it is a value position, so the
+                       # ctor's own emit is the whole render.
+                       or (record_like(lt_bare, analyzer)
+                           and _record_rvalue_source_shape(e.left, analyzer))
+                       or (_resolved_str_value(lt, analyzer) is not None
+                           and (key_view is None
+                                # A STR-VIEW key target: a str needle
+                                # (literal / view name) renders bare
+                                # either way -- the pin is a no-op for
+                                # the str family.
+                                or (is_str_view_type(key_view)
+                                    and bool(_witness(
+                                        "binop.contains_view_key")))))
+                       or (_resolved_bytes_value(lt, analyzer) is not None
+                           and key_view is None)
+                       # A BYTES literal needle at a BYTES-VIEW key
+                       # target: the static view spelling
+                       # (`contains(::tpy::bytes_literal("hello", 5))`)
+                       # -- the needle lowering retags it below.
+                       or (isinstance(_peel_coerce(e.left), TpyBytesLiteral)
+                           and key_view is not None
+                           and is_bytes_view_type(key_view)
+                           and bool(_witness(
+                               "binop.contains_view_key")))
+                       or (_value_tuple_needle_ok(lt_bare, analyzer)
+                           and _witness("binop.contains_tuple_needle")))):
                 reject()
         elif (isinstance(e.right, TpyMethodCall)
               and _dict_view_iterable_ok(
@@ -4659,8 +4653,8 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             negate=e.op == "not in",
             wrap_receiver_sv=isinstance(e.right, TpyStrLiteral),
             loc=loc)
-    if e.op in _MEMBERSHIP_OPS and ranges_contains:
-        _witness("binop.set_ranges_membership")
+    if e.op in _MEMBERSHIP_OPS and free_contains:
+        _witness("binop.free_contains")
         # A container FIELD haystack (`item in self.xs`) reads bare into
         # `::tpy::seq_contains(this->xs, item)` -- prechecked here rather
         # than admitted at RECEIVER in the ladder, which would also re-route
@@ -4686,15 +4680,35 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # same reason).
             needle = _lower_expr(e.left, lc, declared, use=_ExprUse(
                 slot_target=_bytes_read_view_slot(e.left, analyzer)))
+            hay_t = analyzer.get_expr_type(e.right)
+            elem_t = (get_iterable_element_type(
+                unwrap_readonly(unwrap_ref_type(unwrap_send_sync(hay_t))),
+                analyzer.registry) if hay_t is not None else None)
+            if elem_t is not None:
+                # The helper deduces its needle, which a bare `{..}` cannot
+                # bind: a literal needle spells the element it is compared
+                # with.
+                elem_t = unwrap_readonly(unwrap_ref_type(elem_t))
+                needle = _spell_brace(
+                    needle, resolve_pending_container(elem_t, analyzer)
+                    or elem_t, lc)
+        receiver = _lower_expr(e.right, lc, declared, use=_MEMBERSHIP_RECV,
+                               field_prechecked=recv_prechecked)
+        hay_t = analyzer.get_expr_type(e.right)
+        if hay_t is not None:
+            # A list-literal haystack is the helper's deduced argument.
+            hay_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(hay_t)))
+            receiver = _spell_brace(
+                receiver, resolve_pending_container(hay_t, analyzer) or hay_t,
+                lc)
         return THIRMembership(
             result_type=rtype,
-            receiver=_lower_expr(e.right, lc, declared,
-                                 use=_MEMBERSHIP_RECV,
-                                 field_prechecked=recv_prechecked),
+            receiver=receiver,
             needle=needle,
-            method_cpp="",
+            method_cpp=(e.resolved_contains.native_name
+                        if e.resolved_contains is not None else ""),
             negate=e.op == "not in",
-            ranges_contains=True,
+            free_function=True,
             loc=loc)
     if e.op in _MEMBERSHIP_OPS and iter_loop:
         # The universal loop over the bare receiver name; the scalar needle
@@ -7931,7 +7945,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           # receiver and index only, so a record element slot
                           # never renders an element read here.
                           or (use.result is _ExprResultUse.SETITEM_TARGET
-                              and record_like(rtype, analyzer))
+                              and (record_like(rtype, analyzer)
+                                   or _is_type_param_slot(rtype)))
                           # A CONTAINER returned by reference: the element
                           # lvalue a builtin nested element is, bare in every
                           # value position.
@@ -8586,6 +8601,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # construct actually blocked.
                     raise ex.with_context(
                         f"expr.fstring:{ex.reason}") from None
+                part_t = analyzer.get_expr_type(part.expr)
+                if part_t is not None:
+                    # A list literal is the runtime to_str helper's deduced
+                    # argument.
+                    part_t = unwrap_readonly(unwrap_ref_type(
+                        unwrap_send_sync(part_t)))
+                    lowered_part = _spell_brace(
+                        lowered_part,
+                        resolve_pending_container(part_t, analyzer) or part_t,
+                        lc)
                 if (wrap is None and isinstance(lowered_part, THIRLiteral)
                         and type(lowered_part.value) is int
                         and is_big_int_type(
@@ -11106,6 +11131,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # over the composed callee (`Cls<CA>::template m<MA>`).
             callee_cpp = mk[1] if mk[0] in ("qualified", "generic_qualified",
                                             "super_generic") else None
+            member_shaped = (e.super_parent_type is not None
+                             or e.unbound_self_parent_type is not None)
+            if member_shaped and callee_cpp is not None:
+                # `Base::m` on this body's receiver: `this` in a method, the
+                # stored `__self` reference in a resumable frame.
+                callee_cpp = (lc.self_cpp
+                              + ("->" if lc.self_is_pointer else ".")
+                              + callee_cpp)
             mk_targs = (tuple(lc.render_type(unwrap_ref_type(t))
                               for t in e.inferred_type_args)
                         if mk[0] in ("generic_qualified", "super_generic")
@@ -11125,9 +11158,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         kind=(mk if mk[0] == "template"
                               else ("plain", "")),
                         temp_args=temp_args,
-                        member_shaped=(e.super_parent_type is not None
-                                       or e.unbound_self_parent_type
-                                       is not None),
+                        member_shaped=member_shaped,
                         # GENERIC module callees run the same first-pass
                         # hoist (`auto __tmp_N = {literal};` before
                         # `cycle<int32_t>(__tmp_N)`); only
@@ -11157,8 +11188,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # every path (the iterable-override gates reject literal fis, so it
         # stays None there).
         lit_member = method_literal_mangled_cpp(e, analyzer)
+        base_recv = base_part_receiver_type(e)
         if not iterable_override:
-            if isinstance(e.obj, TpyName):
+            if base_recv is not None:
+                # The base part of `*this` (`_base_part_receiver`).
+                pass
+            elif isinstance(e.obj, TpyName):
                 if e.obj.name not in declared:
                     note_detail("method.recv.name_absent")
                     raise ThirUnsupported(call_reject_reason("expr.method_call"))
@@ -11218,7 +11253,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                  # into the deref); narrowed names keep their own spells.
                  and e.obj.name not in lc.narrow.narrowed
                  and e.obj.name not in lc.inline_narrowed)
-                or (isinstance(e.obj, (TpyCall, TpyMethodCall))
+                or (base_recv is None
+                    and isinstance(e.obj, (TpyCall, TpyMethodCall))
                     and is_rvalue_source(analyzer, e.obj)))
             if fi is None:
                 # A post-sema function-macro-synthesized member call carries
@@ -11320,7 +11356,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                   "({0})"),
                     loc=loc)
 
-            recv_type = _method_receiver_type(e.obj, declared, analyzer)
+            recv_type = _call_receiver_type(e, declared, analyzer)
             stmt_position = (result_use is _ExprResultUse.DISCARD
                              or use.admits(SinkForm.TRUTHY_DISCARD))
             storage_ret_ok = result_use is _ExprResultUse.STORAGE
@@ -11449,7 +11485,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         _mnu = (_assign_narrowed_union_recv(e.obj, declared, lc)
                 if isinstance(e.obj, TpyName) else None)
         enum_wrap = _enum_companion_wrap(e, lc)
-        if (fi is not None and fi.is_generator
+        if base_recv is not None:
+            recv_lowered = _base_part_receiver(base_recv, lc, declared, loc)
+        elif (fi is not None and fi.is_generator
                 and gen_recv_ctor_temp(e.obj, lc.analyzer)):
             # The generator-factory receiver lift: the frame/peephole
             # captures the receiver by reference, so the ctor rvalue hoists
@@ -16494,9 +16532,16 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # element path (move-source / nocopy elements) is NOT lowered at
         # the arg position -- reject rather than risk a wrong render.
         slot = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-        return _lower_literal_arg(
+        lowered = _lower_literal_arg(
             a, slot, lc, declared,
             "container-literal arg on the make_vector path")
+        if callee_fi is not None and binds_runtime_symbol(callee_fi):
+            # A runtime symbol's C++ signature is its own: it may deduce the
+            # slot (`list_index`'s `const U&`, `dict_pop_default`'s
+            # `DefArg`), which a bare `{..}` cannot bind. The spelled brace
+            # is the same prvalue.
+            return _spell_brace(lowered, slot, lc)
+        return lowered
     if (isinstance(a, (TpyArrayLiteral, TpySetLiteral))
             and not protocol_slots
             and _native_iterable_literal_arg(a, ptype, lc.analyzer)):
@@ -17825,6 +17870,28 @@ def _const_receiver(recv: THIRExpr, recv_t: 'TpyType | None',
         form=recv.form, loc=recv.loc)
 
 
+def _base_part_receiver(base: TpyType, lc: '_LowerCtx',
+                        declared: dict[str, TpyType], loc) -> THIRExpr:
+    """The base part of `*this` a base-part call runs on
+    (`base_part_receiver_type`): `static_cast<Base&>(*this)`, const in a body
+    whose `self` is const, so the binding sees the base and not the
+    subclass's own overrides."""
+    self_t = declared.get(lc.self_receiver) if lc.self_receiver else None
+    const = (lc.self_receiver is not None
+             and _const_borrow_name(lc.self_receiver, lc))
+    _witness("call.base_part_receiver")
+    self_node = stamped(THIRSelf(result_type=self_t if self_t is not None else base,
+                                 form=Form.BORROW, cpp=lc.self_cpp,
+                                 pointer=lc.self_is_pointer,
+                                 deref=lc.self_is_pointer, loc=loc), lc)
+    t = make_readonly(base) if const else base
+    return THIRCoerce(
+        result_type=t, expr=self_node, coercion_name="base_part",
+        wrap=(f"static_cast<{'const ' if const else ''}"
+              f"{lc.render_type(base)}&>({{0}})"),
+        form=Form.BORROW, loc=loc)
+
+
 def _lower_call_receiver(obj: TpyExpr, lc: '_LowerCtx',
                          declared: dict[str, TpyType], *, allow_temps: bool,
                          forms: frozenset[SinkForm],
@@ -18451,7 +18518,9 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
         _witness("truthy.ptr_truthy")
         return THIRTruthy(
             result_type=BOOL, mode=TruthinessMode.PTR_TRUTHY,
-            operand=operand, deref=False, loc=getattr(e, "loc", None))
+            operand=operand, deref=False,
+            pointee_mode=_truthiness_mode(_opt_record_inner(et), lc.analyzer),
+            loc=getattr(e, "loc", None))
     if isinstance(e, TpyName) and e.name in declared:
         du = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             declared[e.name])))

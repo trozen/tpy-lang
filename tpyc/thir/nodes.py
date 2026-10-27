@@ -827,12 +827,14 @@ class THIRTruthy(THIRExpr):
     hoisted-temp LHS) has no THIR shape: that whole
     position rejects at `valuesel.lhs_truthy`, so restore an operand-less form
     here if that gate is ever widened. `deref` is the indirect-record
-    adjustment applied before dunder dispatch.
+    adjustment applied before dunder dispatch. `pointee_mode` is the
+    PTR_TRUTHY pointee's resolved dunder (RECORD_BOOL / RECORD_LEN).
     `result_type` is always bool; VALUE form.
     """
     mode: TruthinessMode
     operand: THIRExpr
     deref: bool = False
+    pointee_mode: TruthinessMode | None = None
 
 
 @dataclass(frozen=True)
@@ -872,44 +874,31 @@ class THIROwnOptRebuild(THIRExpr):
 
 @dataclass(frozen=True)
 class THIRMembership(THIRExpr):
-    """A `needle in c` / `needle not in c` test over a dict/set container name
-    whose `__contains__` is a plain @native member -- `(c.contains(needle))`,
-    optionally negated `(!(c.contains(needle)))`. `method_cpp` is the
-    member spelling (the
-    `@native("contains")` name). The needle renders bare: the admitted
-    containers carry fixed-int / owned-str keys and scalar set members, never a
-    StrView key, so no view-key target applies and the needle takes the
-    plain value render. `result_type` is always bool; VALUE form.
+    """A `needle in c` / `needle not in c` test whose containment is decided
+    by the receiver's resolved `__contains__` (or, with none, by its
+    iteration). `result_type` is always bool; VALUE form. Three spellings:
 
-    When `free_function` is set (a bytes/BytesView container, whose
-    `__contains__` is a native FREE function), the emit is
-    `(::tpy::<method_cpp>(receiver, needle))` instead -- receiver and needle as
-    call arguments, `method_cpp` the un-qualified native name (qualified at
-    emit). Picks `bytes_contains` (single-byte needle) or `bytes_contains_sub`
-    (bytes-substring needle) per the resolved overload; the needle renders in
-    its owned form.
-
-    When `ranges_contains` is set (a native container whose
-    `__contains__` is NOT a resolved member -- e.g. a
-    `readonly[set[T]]`, whose readonly wrapper strips the resolved member), the
-    emit is `[!]::tpy::seq_contains(receiver, needle)` -- no outer parens, the
-    negation a bare `!` prefix. `method_cpp` is unused in this form. The helper
-    owns Python's whole containment rule (`x is e or x == e`): it tests address
-    identity first where needle and element can be the same object and is
-    `==`-only otherwise, so the needle's value form is the RUNTIME's decision,
-    not a second render spelling here.
-
-    When `iter_loop` is set (a user iterable with no `__contains__`, driven
-    by the universal `__iter__`+`__next__` protocol), the emit is the
-    fixed statement-expression loop (`({ auto&& __itr = ::tpy::__iter__(
-    recv); ... __found; })`), negation the same bare `!` prefix.
-    `method_cpp` is unused in this form too."""
+    - a native MEMBER (`@native("contains")` on dict / set): `method_cpp` is
+      the member name, the emit `(c.contains(needle))`, negated
+      `(!(c.contains(needle)))`.
+    - `free_function`: a runtime FREE function (`@native(.., function=True)`:
+      list / Array / Span's `::tpy::seq_contains`, bytes' `bytes_contains` /
+      `bytes_contains_sub`), or none resolved over a native iterable
+      (`method_cpp` empty: `::tpy::seq_contains`). The emit is
+      `[!]fn(receiver, needle)`, the negation a bare `!` prefix. The sequence
+      helper owns Python's whole containment rule (`x is e or x == e`), so
+      the needle's value form is the RUNTIME's decision, not a render
+      spelling here.
+    - `iter_loop`: a user iterable with no `__contains__`, driven by the
+      universal `__iter__`+`__next__` protocol -- the fixed
+      statement-expression loop (`({ auto&& __itr = ::tpy::__iter__(recv);
+      ... __found; })`), negation the same bare `!` prefix; `method_cpp`
+      unused."""
     receiver: THIRExpr
     needle: THIRExpr
     method_cpp: str
     negate: bool = False
     free_function: bool = False
-    ranges_contains: bool = False
     iter_loop: bool = False
 
 

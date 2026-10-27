@@ -1,1 +1,3 @@
-main.py:7: error: 'list' takes 1 positional argument(s), got 2
+main.py:7: error: No matching overload for 'list' with argument types (list[int32], list[int32])
+  'list()' takes 0 positional argument(s), got 2
+  'list(iterable: Iterable[Own[T]], /)' takes 1 positional argument(s), got 2

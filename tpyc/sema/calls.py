@@ -13,7 +13,7 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
-    make_readonly, substitute_cpp_ret,
+    make_readonly, substitute_cpp_ret, bound_as_spelled,
     declares_no_writes, param_may_be_written,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
@@ -438,7 +438,7 @@ def _ctor_placement(ctor: FunctionInfo, written: CallSource,
     return bound.addresses()
 
 
-def _resolve_cpp_template_type_params(
+def resolve_cpp_template_type_params(
     fi: FunctionInfo,
     type_params: dict[str, TpyType] | None = None,
     result_type: TpyType | None = None,
@@ -918,7 +918,7 @@ class CallAnalyzer:
         """`fi` with its `@cpp_template` type placeholders resolved: `{T}`
         by the receiver's type argument (`subst`), `{cpp}` by its
         (substituted) return type."""
-        return _resolve_cpp_template_type_params(
+        return resolve_cpp_template_type_params(
             fi, subst or None, result_type=fi.return_type, ctx=self.ctx)
 
     def _restore_readonly_arg(self, arg: TpyExpr, arg_type: TpyType,
@@ -1263,7 +1263,7 @@ class CallAnalyzer:
                                                  CoercionContext.ARG)
             td_call.args[k] = self.compat.coerce_expr(
                 arg, arg_type, fld.type, f"argument '{fld.name}'",
-                coercion_ctx=CoercionContext.ARG)
+                coercion_ctx=CoercionContext.ARG, param=f"'{fld.name}'")
         self.ctx.set_expr_type(td_call, td_type)
         # Built analyzed: the receive meets it through its record.
         self.expr.note_analysis(td_call, td_type, None)
@@ -1443,10 +1443,7 @@ class CallAnalyzer:
         if owner is not None and owner is not record:
             _, owner_subst = self.protocols.resolve_ancestor_instantiation(
                 record, owner)
-            # An `N: int` param's binding is a plain int -- nothing to substitute.
-            subst = {k: (self.type_ops.substitute_type_params(v, type_subst)
-                         if isinstance(v, TpyType) and type_subst else v)
-                     for k, v in owner_subst.items()}
+            subst = self.protocols.ancestor_subst_at(owner_subst, type_subst)
         resolved = (self.type_ops.substitute_method_type_params(ctor, subst)
                     if subst else ctor)
         return resolved, subst
@@ -1954,7 +1951,7 @@ class CallAnalyzer:
                             # (Ref already stripped), not inferred_params which
                             # may contain val_or_ref wrappers.
                             clean_params = extract_type_params(result_type)
-                            expr.resolved_function_info = _resolve_cpp_template_type_params(
+                            expr.resolved_function_info = resolve_cpp_template_type_params(
                                 ctor, clean_params, result_type=result_type, ctx=self.ctx)
                         self._validate_lvalue_params(expr)
                         self._check_ctor_arg_compatibility(expr, ctor, written, typed, inferred_params)
@@ -1970,7 +1967,7 @@ class CallAnalyzer:
                             expr.call_type = hint
                             if ctor.cpp_template or ctor.native_function:
                                 hint_params = extract_type_params(hint)
-                                expr.resolved_function_info = _resolve_cpp_template_type_params(
+                                expr.resolved_function_info = resolve_cpp_template_type_params(
                                     ctor, hint_params, result_type=hint, ctx=self.ctx)
                             self._validate_lvalue_params(expr)
                             self._check_ctor_arg_compatibility(expr, ctor, written, typed, inferred_params)
@@ -2898,8 +2895,10 @@ class CallAnalyzer:
     ) -> bool:
         """Fold isinstance(var, check_types) against a concrete var_type.
 
-        Walks the user-record inheritance chain via TypeRegistry.is_subclass_of,
-        so `isinstance(child, Parent)` is True when Parent is any ancestor.
+        Walks the inheritance chain via TypeRegistry.is_subclass_of_or_equal
+        (`ancestor_instance`), so `isinstance(child, Parent)` is True when
+        Parent is any ancestor, a builtin base included, and a bare generic
+        (`dict`) matches its class at any type arguments.
         Downcast checks (`isinstance(parent, Child)`) fold to False with a
         warning -- tpyc uses static dispatch, so any slicing at the boundary
         has already removed the Child fields. Every offending check type
@@ -2912,6 +2911,8 @@ class CallAnalyzer:
         analyzed once but instantiated per concrete type.
         """
         reg = self.ctx.registry
+        # A container literal not decided yet is the container it spells.
+        var_type = bound_as_spelled(var_type, lists=True)
         result = False
         for ct in check_types:
             if reg.is_subclass_of_or_equal(var_type, ct):
@@ -2958,7 +2959,8 @@ class CallAnalyzer:
                 f"use the @dynamic protocol type directly for runtime dispatch.",
                 expr,
             )
-        if not (isinstance(bound, NominalType) and bound.is_user_record):
+        if not (isinstance(bound, NominalType) and bound.is_record
+                and self.ctx.registry.get_record_for_type(bound) is not None):
             raise self.ctx.error(
                 f"isinstance() on type parameter '{tp.name}' bounded by "
                 f"'{bound}' is not supported: only non-polymorphic class "
@@ -2978,8 +2980,9 @@ class CallAnalyzer:
         record = self.ctx.registry.get_record_for_type(typ)
         if record is None:
             return False
-        return (bool(record.get_method_overloads("upgrade"))
-                and not record.get_method_overloads("__deref__"))
+        methods = self.ctx.registry.get_method_overloads_with_parents
+        return (bool(methods(record, "upgrade"))
+                and not methods(record, "__deref__"))
 
     def _validate_polymorphic_subclass_dispatch(
         self,
@@ -3245,6 +3248,12 @@ class CallAnalyzer:
         for t in check_types:
             hits = [m for m in effective_type.members
                     if self._isinstance_member_match(m, t)]
+            # The member the check names wins over its subclasses' members:
+            # narrowing to several members is not supported
+            # (BUGS.md#isinstance-base-union-subclass-member-false).
+            exact = [m for m in hits if m == t]
+            if exact:
+                hits = exact
             if not hits:
                 non_members.append(t)
             elif len(hits) > 1:
@@ -3652,7 +3661,7 @@ class CallAnalyzer:
             feeds[i] = owning_slot
             self.compat.check_type_compatible(
                 arg_t, owning_slot, f"argument '{p.name}'", source_expr=arg,
-                coercion_ctx=CoercionContext.ARG)
+                coercion_ctx=CoercionContext.ARG, param=f"'{p.name}'")
         return feeds
 
     def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
@@ -3952,7 +3961,7 @@ class CallAnalyzer:
                 typed)
             ctor, fully_checked = accepted[index]
             if fully_checked and (ctor.cpp_template or ctor.native_function):
-                expr.resolved_function_info = _resolve_cpp_template_type_params(
+                expr.resolved_function_info = resolve_cpp_template_type_params(
                     ctor, inferred, result_type=expr.call_type, ctx=self.ctx)
             return ctor
         self._refuse_unbound_ctor(expr, record_info, written, typed)
@@ -4550,7 +4559,7 @@ class CallAnalyzer:
         cast = proven_cast(self.ctx, arg, ctor, source, target, value_range)
         if cast is not None:
             return cast
-        return _resolve_cpp_template_type_params(ctor, result_type=target,
+        return resolve_cpp_template_type_params(ctor, result_type=target,
                                                  ctx=self.ctx)
 
     def _analyze_template_constructor(self, expr: TpyCall, record: RecordInfo,
@@ -4605,7 +4614,7 @@ class CallAnalyzer:
                 expr, expr.func_name, ctor, arg_types)
             self.fill_positional_call(expr, ctor, {}, written)
             ret = record_type or ctor.return_type
-            expr.resolved_function_info = _resolve_cpp_template_type_params(ctor, result_type=ret, ctx=self.ctx)
+            expr.resolved_function_info = resolve_cpp_template_type_params(ctor, result_type=ret, ctx=self.ctx)
             self._check_cast_safe(expr, ctor, arg_types, ret)
             # Borrowing views (StrView/BytesView/Span/SpanIter) need call_type
             # populated so downstream dangling/provenance checks can see
@@ -4632,7 +4641,9 @@ class CallAnalyzer:
             arg_type = arg_types[0]
             if isinstance(arg_type, NominalType):
                 arg_record = self.ctx.registry.get_record_for_type(arg_type)
-                if arg_record and arg_record.get_method_overloads("__len__"):
+                mro_definer = self.ctx.registry.mro_method_definer
+                if (arg_record and mro_definer(arg_record, "__bool__") is None
+                        and mro_definer(arg_record, "__len__") is not None):
                     expr.resolved_function_info = FunctionInfo(
                         name="__len__",
                         params=[ParamInfo(pname, arg_type)],
@@ -5987,7 +5998,7 @@ class CallAnalyzer:
                 with self.expr.step_scope(call), \
                         self.ctx.probe_slot_scope(probing):
                     out.append(self._receive_arg(
-                        i, args, given, param, call=call,
+                        i, args, given, param, call=call, declared=declared,
                         declared_types=declared_types, readonly=readonly,
                         fresh_own=fresh_own,
                         char_literal_init=char_literal_init,
@@ -6111,10 +6122,23 @@ class CallAnalyzer:
                             if inferred_slots else None),
             param_indices=order)
 
+    def param_label(self, declared: FunctionInfo | None,
+                    pname: str) -> str:
+        """Parameter `pname` of callee `declared` as a diagnostic names it:
+        `'a'` for a free function, and with its method for a method of any
+        class (`parameter 'object' of list.append`, not a class `object`)."""
+        owner = (self.ctx.registry.find_record_by_qname(
+            declared.owning_type_qname)
+            if declared is not None and declared.owning_type_qname else None)
+        if owner is None:
+            return f"'{pname}'"
+        return f"parameter '{pname}' of {owner.name}.{declared.name}"
+
     def _receive_arg(self, i: int, args: list[TpyExpr],
                      given: TpyType | None,
                      param: 'ParamInfo | tuple[str, TpyType]', *,
                      call: 'TpyExpr | TpyStmt | None',
+                     declared: FunctionInfo | None,
                      declared_types: 'list[TpyType] | None', readonly: bool,
                      fresh_own: str, char_literal_init: bool,
                      value_ptr: bool, builtin_form: bool, own_checks: bool,
@@ -6160,7 +6184,8 @@ class CallAnalyzer:
             args[i] = self.compat.coerce_expr(
                 arg, arg_type, check_ptype, context,
                 coercion_ctx=CoercionContext.ARG,
-                inferred_slot=inferred_slot)
+                inferred_slot=inferred_slot,
+                param=self.param_label(declared, pname))
         if vpc:
             args[i] = self._address_of_arg(args[i], arg, ptype, pname, call)
         if own_checks:

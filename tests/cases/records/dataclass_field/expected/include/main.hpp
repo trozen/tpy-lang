@@ -121,7 +121,7 @@ inline bool Config::__eq__(const Config& other) const {
 }
 
 inline std::string Config::__repr__() const {
-    return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value), ::tpy::list_to_str(this->tags), ::tpy::dict_to_str(this->lookup));
+    return std::format("Config(name={}, value={}, tags={}, lookup={})", ::tpy::repr_of(this->name), ::tpy::repr_of(this->value), ::tpy::repr_of(this->tags), ::tpy::repr_of(this->lookup));
 }
 
 inline Canvas::Canvas(std::string_view name, Point&& origin)

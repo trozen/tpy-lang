@@ -40,7 +40,7 @@ std::vector<std::string> walk_rows(std::string_view root) {
             }
             std::vector<std::string> dn = ::tpy::construct<std::vector<std::string>>(dirnames);
             ::tpy::sort_in_place(dn);
-            rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(rel, " dirs=")), ::tpy::list_to_str(dn))), " files=")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__(filenames)))));
+            rows.push_back((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat(rel, " dirs=")), std::string(::tpy::__str__(dn)))), " files=")), ::tpy::fixed_to_str<int32_t>(::tpy::__len__(filenames)))));
         }
     }
     ::tpy::sort_in_place(rows);

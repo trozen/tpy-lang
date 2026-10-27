@@ -18,7 +18,7 @@ from ..typesys import (
     RecordInfo, InitInheritBlock, InitInheritBlocker,
     contains_type_param, contains_pending_leaf,
     FloatLiteralType, resolve_int_literals,
-    PendingContainerType,
+    PendingContainerType, same_class, record_owner,
 )
 from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyStrLiteral, TpyStmt,
@@ -35,14 +35,14 @@ from .compatibility import InferredSlot, inferred_receiver
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_borrowing_view_type, protocol_info_of
-from .bound_check import raise_if_class_param_bound_violated
+from .bound_check import builtin_owned, raise_if_class_param_bound_violated
 from .arg_binding import (
     ArgBinding, Candidate, CallSource, SlotKind, adopt_temp_call, candidate_of, relayout,
     source_view,
     temp_call_args,
 )
 from .calls import (
-    call_shape,
+    call_shape, resolve_cpp_template_type_params,
     validate_type_param_bounds,
     resolve_inferred_type_arg,
 )
@@ -1286,6 +1286,19 @@ class MethodAnalyzer:
 
         self._reject_inherited_classmethod(expr, record_info, overloads)
 
+        owner = self.ctx.registry.method_owner(record_info, expr.method)
+        if owner is not record_info:
+            # An inherited static is spelled in its defining ancestor's
+            # params (`G[T]`); rebind it to `record_info`'s own, renaming
+            # the method's own params off them so the class args cannot
+            # capture one (`Child[U](Base[int32])`, `pick[U]`).
+            _, ancestor_subst = self.protocols.resolve_ancestor_instantiation(
+                record_info, owner)
+            if ancestor_subst or record_info.type_params:
+                overloads = [self.type_ops.substitute_method_type_params(
+                    fi, ancestor_subst, in_scope=record_info.type_params)
+                    for fi in overloads]
+
         if record_info.is_generic():
             return self._analyze_generic_static_method_call(expr, record_info, overloads)
 
@@ -1435,6 +1448,9 @@ class MethodAnalyzer:
             return_type = self._resolve_and_check_args(
                 fake_expr, overloads, type_subst)
 
+        if method_name == "__init__":
+            self._settle_base_init_template(fake_expr, type_subst)
+
         # Readonly self: a @readonly context calling a non-readonly ancestor
         # method would mutate self through a const receiver.
         is_readonly_context = (
@@ -1471,7 +1487,11 @@ class MethodAnalyzer:
         # classes are added, this needs overload resolution per-candidate with
         # inference (similar to _analyze_builtin_function_overloads).
         method = overloads[0]
-        class_type_params = set(record_info.type_params) if record_info.type_params else set()
+        # A method type param is a class param only in the DECLARING
+        # record's scope, as on the instance path.
+        declared = self.type_ops.declaring_class_params(method)
+        class_type_params = (declared if declared is not None
+                             else set(record_info.type_params or ()))
         new_method_params = [tp for tp in (method.type_params or []) if tp not in class_type_params]
 
         # Merge class type params + method's own type params into a single virtual FunctionInfo.
@@ -1799,7 +1819,9 @@ class MethodAnalyzer:
             target = target.inner
         target = unwrap_readonly(unwrap_ref_type(target))
 
-        if not self.ctx.registry.is_instance_of(target, info.record_info):
+        # The pending instance's own class, not an ancestor: its type
+        # arguments are read off `target` position by position.
+        if not same_class(target, record_owner(info.record_info)):
             return None
         if not target.type_args or len(target.type_args) != len(info.type_params):
             return None
@@ -1934,18 +1956,10 @@ class MethodAnalyzer:
                 f"so it has no '{expr.method}()'", expr)
         self._reject_inherited_classmethod(expr, record_info, overloads)
         instance_subst = self.type_ops.build_type_substitution(obj_type)
-        if inherited_subst and instance_subst:
-            # An `N: int` param's binding is a plain int -- nothing to
-            # substitute (and substitute_type_params would crash on it).
-            type_subst = {
-                k: (self.type_ops.substitute_type_params(v, instance_subst)
-                    if isinstance(v, TpyType) else v)
-                for k, v in inherited_subst.items()
-            }
-        elif inherited_subst:
-            type_subst = inherited_subst
-        else:
-            type_subst = instance_subst
+        # An inherited method sees only its declaring record's params: the
+        # receiver's own may share a name with the method's type params.
+        type_subst = (self.protocols.ancestor_subst_at(inherited_subst, instance_subst)
+                      if inherited_subst is not None else instance_subst)
 
         method_info = overloads[0]
 
@@ -1987,12 +2001,14 @@ class MethodAnalyzer:
         - New params: type params not in the class (e.g. U on def transform[U])
         - Constrained class params: class type params with an additional method-level bound
         """
-        # Classify against every param the receiver's instantiation binds, not
-        # just the receiver record's own params: an inherited method's class
-        # params live on the DECLARING base and reach here only as keys of the
-        # composed class_subst, so a shadowed `def m[T: Bound]` called through
-        # a subclass must classify as constrained, not as a fresh param.
-        class_type_params = set(record_info.type_params or ()) | set(class_subst)
+        # A method type param is a class param only in the DECLARING record's
+        # scope, as the substitution's hygiene reads it: `list.__contains__[U,
+        # T]` seen through `class GL[U](list[U])` keeps its own `U` fresh,
+        # whatever the receiver's params are named.
+        declared = self.type_ops.declaring_class_params(method_info)
+        class_type_params = (
+            declared if declared is not None
+            else set(record_info.type_params or ()) | set(class_subst))
         new_params = [tp for tp in method_info.type_params if tp not in class_type_params]
         constrained_class_params = [tp for tp in method_info.type_params if tp in class_type_params]
 
@@ -2022,6 +2038,8 @@ class MethodAnalyzer:
             lambda t, bound: self.protocols.type_conforms_to_protocol(
                 leaves_as_numbers(t), bound),
             self.ctx.error, expr,
+            builtin_owner=builtin_owned(
+                method_info, self.ctx.registry.find_record_by_qname),
         )
 
         if not new_params:
@@ -2041,8 +2059,11 @@ class MethodAnalyzer:
         )
 
         # Pre-substitute class params in the method signature so inference
-        # only needs to resolve new params
+        # only needs to resolve new params; a new param the substitution
+        # renames (hygiene) is inferred under its new name.
+        renames: dict[str, str] = {}
         if class_subst:
+            renames = self.type_ops.method_param_renames(partial_func, class_subst)
             partial_func = self.type_ops.substitute_method_type_params(partial_func, class_subst)
 
         # Infer new params from arguments or explicit type args. The LHS-hint
@@ -2052,7 +2073,8 @@ class MethodAnalyzer:
         has_wildcards = expr.type_args and None in expr.type_args
         if expr.type_args and not has_wildcards:
             return self._generic_method_tail(
-                expr, method_info, new_params, partial_func, class_subst)
+                expr, method_info, new_params, partial_func, class_subst,
+                renames)
         # The arguments the method's type parameters are inferred from stay
         # open until the resolved parameters decide them.
         written = source_view(expr)
@@ -2061,12 +2083,14 @@ class MethodAnalyzer:
                        *(e for _, e in written.keywords)],
                 method_info.name, scored=False):
             return self._generic_method_tail(
-                expr, method_info, new_params, partial_func, class_subst)
+                expr, method_info, new_params, partial_func, class_subst,
+                renames)
 
     def _generic_method_tail(
         self, expr: TpyMethodCall, method_info: FunctionInfo,
         new_params: list[str], partial_func: FunctionInfo,
         class_subst: dict[str, TpyType | int],
+        renames: dict[str, str],
     ) -> TpyType:
         """`_analyze_generic_method_call` from the method-level type
         arguments on: inferred (or taken from explicit ones), bound-checked
@@ -2085,12 +2109,12 @@ class MethodAnalyzer:
                 # Partial explicit -- seed + explicit positional args drive
                 # the per-arg hint; wildcards leave the seed binding in place.
                 method_subst, binding = self._infer_method_subst_with_seed(
-                    expr, partial_func, method_info, new_params,
+                    expr, partial_func, method_info, new_params, renames,
                     explicit_type_args=expr.type_args,
                 )
         else:
             method_subst, binding = self._infer_method_subst_with_seed(
-                expr, partial_func, method_info, new_params,
+                expr, partial_func, method_info, new_params, renames,
                 explicit_type_args=None,
             )
 
@@ -2131,6 +2155,7 @@ class MethodAnalyzer:
         partial_func: FunctionInfo,
         method_info: FunctionInfo,
         new_params: list[str],
+        renames: dict[str, str],
         explicit_type_args: tuple['TpyType | None', ...] | None,
     ) -> 'tuple[dict[str, TpyType], ArgBinding]':
         """Analyze args with an LHS-hint seed and run method-param inference;
@@ -2145,7 +2170,8 @@ class MethodAnalyzer:
         """
         merged_seed = self.type_ops.seed_subst_from_return_hint(
             partial_func, self.expr.slot_hint_for(expr),
-        ).with_explicit(new_params, explicit_type_args)
+        ).with_explicit([renames.get(tp, tp) for tp in new_params],
+                        explicit_type_args)
 
         # Inference reads the written arguments each parameter binds, typed
         # as every generic call's are (a lambda at its callable parameter).
@@ -2164,7 +2190,8 @@ class MethodAnalyzer:
                 f"Cannot infer type arguments for method '{method_info.name}'. "
                 f"Specify explicitly: .{method_info.name}[{', '.join(new_params)}](...)",
                 expr)
-        return method_subst, binding
+        back = {new: old for old, new in renames.items()}
+        return {back.get(tp, tp): t for tp, t in method_subst.items()}, binding
 
     def _is_protocol_method_readonly(self, protocol: NominalType, method_name: str) -> bool:
         """Check if a protocol method is readonly (per-method or protocol-level).
@@ -2353,6 +2380,11 @@ class MethodAnalyzer:
         # Must be set before arg resolution: mutation-call-edge recording
         # treats super() receivers as self for self-mutation propagation.
         expr.super_parent_type = parent_type
+        # The object the call runs on is `self`, which the `super()` proxy
+        # stands for: a borrow of the result lends it as `self.m()`'s does.
+        receiver = TpyName(name="self", loc=expr.obj.loc)
+        self.expr.analyze_expr(receiver)
+        expr.explicit_receiver = receiver
 
         # Check if the method has its own type parameters (generic method)
         method_info = overloads[0]
@@ -2366,11 +2398,25 @@ class MethodAnalyzer:
                 type_subst)
         else:
             return_type = self._resolve_and_check_args(expr, overloads, type_subst)
+        if expr.method == "__init__":
+            self._settle_base_init_template(expr, type_subst)
         if is_readonly_context and not expr.resolved_function_info.is_readonly:
             raise self.ctx.error(
                 f"Cannot call non-readonly method '{expr.method}' on readonly reference",
                 expr)
         return return_type
+
+    def _settle_base_init_template(self, expr: TpyMethodCall,
+                                   type_subst: dict) -> None:
+        """A base initializer that resolved to a stub's `@cpp_template`
+        `__init__` (a builtin base's) renders that template at the
+        member-init position, spelled at the base's instantiation."""
+        fi = expr.resolved_function_info
+        if fi is None or not fi.cpp_template:
+            return
+        expr.resolved_function_info = resolve_cpp_template_type_params(
+            fi, {k: v for k, v in type_subst.items() if isinstance(v, TpyType)},
+            ctx=self.ctx)
 
     def _check_message_base_init(self, expr: TpyMethodCall,
                                  child_rec: RecordInfo) -> None:

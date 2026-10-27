@@ -59,7 +59,7 @@ void main() {
     std::cout << ::tpy::print_bool((a > a)) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> d = ::tpy::ordered_set<int32_t>({3, 2, 1});
     std::cout << ::tpy::print_bool((a == d)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::container_ne(a, b))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int32_t> e = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::set_update(e, b);
     std::cout << ::tpy::SetPrinter(e) << "\n" << ::tpy::check_signals;

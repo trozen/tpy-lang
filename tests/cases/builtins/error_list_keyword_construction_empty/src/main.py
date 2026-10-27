@@ -3,7 +3,7 @@
 
 
 def main() -> None:
-    print(list(iterable=[]))  # tpyc: error(/'list' parameter 'iterable' is positional-only/)
+    print(list(iterable=[]))  # tpyc: error(/No matching overload for 'list' with argument types \(iterable=/)
 
 
 main()

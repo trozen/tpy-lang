@@ -25330,29 +25330,29 @@
   ""
  ],
  "rec_own__mut__subclass_local__ctor": [
-  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){%s0}]) print(%k0.tag [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subclass_local__fn": [
-  "reject:expr.call:call.arg_shape.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subclass_local__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subclass_local__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subclass_local__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subclass_local__nested": [
   "reject:expr.call:call.ctor_arg.own_record_f1",
@@ -25360,14 +25360,14 @@
   ""
  ],
  "rec_own__mut__subclass_local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subclass_local__static": [
-  "reject:expr.call:call.arg_shape.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__mut__subscript__ctor": [
   "reject:expr.call:call.ctor_arg.own_record_f1",
@@ -26290,29 +26290,29 @@
   ""
  ],
  "rec_own__ro__subclass_local__ctor": [
-  "reject:expr.call:call.ctor_arg.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(R move){%s0}]) print(%k0.tag [raw]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subclass_local__fn": [
-  "reject:expr.call:call.arg_shape.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subclass_local__gen": [
-  "reject:expr.call:call.generic_arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subclass_local__genrec": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subclass_local__meth": [
-  "reject:expr.method_call:method.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subclass_local__nested": [
   "reject:expr.call:call.ctor_arg.own_record_f1",
@@ -26320,14 +26320,14 @@
   ""
  ],
  "rec_own__ro__subclass_local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subclass_local__static": [
-  "reject:expr.call:call.arg_shape.own_record_f1",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(R move){%s0}]) print(%s0.x <R::x> [raw])"
  ],
  "rec_own__ro__subscript__ctor": [
   "reject:expr.call:call.ctor_arg.own_record_f1",

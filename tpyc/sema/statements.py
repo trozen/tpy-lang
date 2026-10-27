@@ -898,7 +898,7 @@ class StatementAnalyzer:
                 return erased_or_reject()
             owner = coro_struct_owner(
                 fi.owning_type_qname, recv_inner,
-                self.ctx.registry.get_record_for_type(recv_inner))
+                self.ctx.registry)
         module_qual = None
         if (owner is None and fi.originating_module is not None
                 and fi.originating_module != self.ctx.module_name):
@@ -3861,8 +3861,8 @@ class StatementAnalyzer:
         # An inherited __aiter__ reports its self-type with a generic base's
         # unbound T; bind it so aiter_type carries concrete args.
         if isinstance(iterable_inner, NominalType):
-            _, aiter_info = self.type_ops.bind_inherited_coro_method(
-                aiter_info, iterable_inner, record_info)
+            _, aiter_info = self.type_ops.bind_inherited_method(
+                aiter_info, iterable_inner)
         if aiter_info.is_async:
             raise self.ctx.error(
                 f"`__aiter__` on '{iterable_inner}' must be a sync "
@@ -3892,8 +3892,8 @@ class StatementAnalyzer:
         # it must be __anext__'s DEFINING record (an ancestor when the iterator
         # inherits it), since the struct exists only there. Binding also gives
         # the loop variable the concrete element type instead of a base's T.
-        stmt.async_aiter_type, anext_info = self.type_ops.bind_inherited_coro_method(
-            anext_info, aiter_type, aiter_record)
+        stmt.async_aiter_type, anext_info = self.type_ops.bind_inherited_method(
+            anext_info, aiter_type)
         if not anext_info.is_async:
             raise self.ctx.error(
                 f"`__anext__` on '{aiter_type}' must be `async def` "
@@ -4073,10 +4073,10 @@ class StatementAnalyzer:
             # type is concrete and codegen can name the async sub-coro struct.
             enter_owner = exit_owner = None
             if isinstance(ctx_type, NominalType):
-                enter_owner, enter_info = self.type_ops.bind_inherited_coro_method(
-                    enter_info, ctx_type, record_info)
-                exit_owner, exit_info = self.type_ops.bind_inherited_coro_method(
-                    exit_info, ctx_type, record_info)
+                enter_owner, enter_info = self.type_ops.bind_inherited_method(
+                    enter_info, ctx_type)
+                exit_owner, exit_info = self.type_ops.bind_inherited_method(
+                    exit_info, ctx_type)
 
             # A borrowed manager whose __[a]enter__ / __[a]exit__ mutates
             # self must be bound non-const, so mark its durable root mutated
