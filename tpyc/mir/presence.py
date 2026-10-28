@@ -88,10 +88,6 @@ def _combine(left: Facts, right: Facts | None) -> Facts | None:
     return frozenset(result.items())
 
 
-def _under(place: MIRPlace, prefix: MIRPlace) -> bool:
-    return place.root == prefix.root and place.projections[:len(prefix.projections)] == prefix.projections
-
-
 def _wrapper(payload: MIRPlace) -> MIRPlace:
     """The place of the wrapper a payload projection selects from."""
     return MIRPlace(payload.root, payload.projections[:-1])
@@ -139,7 +135,7 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots:
                       layouts: MIRRecords, resolve: Resolve) -> _State:
     """A selection on a wrapper field (a projected place) dies where the
     statement retargets its place -- a write of the place or of a prefix
-    of it under its root (`_under`): which object the place names changes,
+    of it under its root (`MIRPlace.lies_under`): which object the place names changes,
     not a reach question -- or where storage the statement replaces
     (`replacement_events`, a call's writes as this state sees the call)
     reaches the
@@ -165,7 +161,7 @@ def _kill_field_facts(state: _State, stmt: MIRStatement, point: MIRPoint, slots:
         # follows its own assignments, never a field write's reach.
         if not fact_place.projections:
             return False
-        if target is not None and _under(fact_place, target):
+        if target is not None and fact_place.lies_under(target):
             return True
         if written is None:
             return True
@@ -234,11 +230,11 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
             case _:
                 known = dict(present).get(value.source)
         # The write replaces every selection made at or under the written place.
-        present = frozenset(f for f in present if not _under(f[0], written))
+        present = frozenset(f for f in present if not f[0].lies_under(written))
         valid -= (aliases or {}).get(written, frozenset())
         conditions = {}
         for slot, outcomes in state.conditions.items():
-            kept = tuple(None if facts is None else frozenset(f for f in facts if not _under(f[0], written))
+            kept = tuple(None if facts is None else frozenset(f for f in facts if not f[0].lies_under(written))
                          for facts in outcomes)
             _remember(conditions, slot, (kept[0], kept[1]), present)
         if known is not None:

@@ -1,1 +1,4 @@
 main.py:45: warning: returns a copy of str field 'self.name'; use -> StrView for zero-copy access or -> String to silence this warning
+main.py:94: warning: this call may move the elements of 'self.items', but the iteration over 'self.items' still walks them and continues on line 92; iterate over a copy ('copy(self.items)'), or make the changes after the loop
+main.py:262: warning: this call may move the elements of 'c.items', but the iteration over 'c.items' still walks them and continues on line 260; iterate over a copy ('copy(c.items)'), or make the changes after the loop
+main.py:279: warning: this call may move the elements of 'c.items', but the iteration over 'c.items' still walks them and continues on line 277; iterate over a copy ('copy(c.items)'), or make the changes after the loop

@@ -9,7 +9,9 @@ from enum import Enum, auto
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
 from ..typesys import NominalType, Representation, TpyType
-from .call_contract import MIRCallSummary, MIRGlobalId, MIRParameterBinding, path_projections
+from .call_contract import (
+    MIRCallSummary, MIRGlobalId, MIRLoanTransfer, MIRParameterBinding, path_projections, path_step,
+)
 from .shapes import (
     MIRUnionPayload, MIRWalk, Projection, lent_prefix, walk, walk_to,
 )
@@ -109,6 +111,9 @@ class MIRSlot:
     # rebound from (a constructor's `self`, bound to its result): a place
     # through it is that storage's.
     bound_storage: 'MIRSlotId | None' = None
+    # A temporary's source expression, recorded where the lowering creates
+    # it: what a diagnostic spells storage no name reaches by. No MIR fact.
+    span: SourceLocation | None = field(default=None, compare=False)
 
     @property
     def type(self) -> TpyType:
@@ -143,6 +148,10 @@ class MIRSlot:
 class MIRPlace:
     root: MIRSlotId
     projections: tuple[Projection, ...] = ()
+
+    def lies_under(self, prefix: 'MIRPlace') -> bool:
+        """This place is `prefix` or a place under it, step for step."""
+        return self.root == prefix.root and self.projections[:len(prefix.projections)] == prefix.projections
 
 
 def place_walk(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot], records: MIRRecords) -> MIRWalk:
@@ -267,6 +276,14 @@ def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
     (owned, borrowed, or a view)."""
     argument = slots[call.arguments[parameter]]
     return MIRPlace(argument.id, path_projections(argument.shape, path))
+
+
+def transfer_member(call: MIRCall, transfer: MIRLoanTransfer, slots: Mapping[MIRSlotId, MIRSlot]
+                    ) -> tuple[MIRPlace, Projection]:
+    """Where a callee's loan transfer lands in the caller: the place of the
+    record (`call_place` of the path up to its member) and the view member
+    stored in it."""
+    return call_place(call, transfer.holder, transfer.path[:-1], slots), path_step(transfer.path[-1])
 
 
 @dataclass(frozen=True)
@@ -485,6 +502,9 @@ def statement_call(stmt: MIRStatement) -> MIRCall | None:
 class MIRGoto:
     target: MIRBlockId
     loc: SourceLocation | None = None
+    # Where a statement list's fall-through leaves the scope it opened: its
+    # last statement, recorded by the lowering for a diagnostic. No MIR fact.
+    exit_loc: SourceLocation | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -542,6 +562,9 @@ class MIRFunction:
     # The container types whose definitions the body registered beside its
     # record layouts: what container storage's definition check reads.
     containers: tuple[TpyType, ...] = ()
+    # The callable's Python name (`Owner.name` for a method), what a
+    # diagnostic calls the body. No MIR fact.
+    source_name: str | None = field(default=None, compare=False)
 
     @cached_property
     def record_layouts(self) -> MIRRecords:

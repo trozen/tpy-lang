@@ -1,3 +1,8 @@
 main.py:119: warning: Mutation of 'ln.a' while borrowed (field assignment may invalidate references)
+main.py:119: warning: this assignment overwrites 'ln.a' in place, but 'held' still refers to it and sees the new value on line 120; copy what 'held' refers to first, or use 'held' before this assignment
 main.py:134: warning: Mutation of 'f.line' while borrowed (field assignment may invalidate references)
+main.py:134: warning: this assignment overwrites 'f.line' in place, but 'held' still refers to it and sees the new value on line 135; copy what 'held' refers to first, or use 'held' before this assignment
+main.py:142: warning: this call overwrites 'f.line.a' in place, but 'held' still refers to it and sees the new value on line 143; copy what 'held' refers to first, or use 'held' before this call
+main.py:150: warning: this call overwrites 'ln.a' in place, but 'held' still refers to it and sees the new value on line 151; copy what 'held' refers to first, or use 'held' before this call
 main.py:227: warning: Own[Line] param 'src' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:254: warning: this call overwrites 'f.line' in place, but 'held' still refers to it and sees the new value on line 255; copy what 'held' refers to first, or use 'held' before this call

@@ -33,7 +33,7 @@ from .nodes import (
 from .value import MIRRecords, MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError, container_members
 from .retention import analyze_retention
 from .storage import analyze_storage
-from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
+from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_escapes, dump_escapes
 from .summaries import summarize_function
 from .testutil import (
     as_declared, Redeclared, records_of, no_layouts, bind_parameters, borrowed_shape, bound, leaf_shape, reaccess,
@@ -395,7 +395,7 @@ def test_a_view_member_write_needs_a_view_holder(program: _Program) -> None:
 
 def test_a_body_loan_stored_in_the_caller_s_object_escapes(program: _Program) -> None:
     fn = _lowered(program, "fill")
-    (escape,) = analyze_store_escapes(prepared(fn))
+    (escape,) = analyze_escapes(prepared(fn)).stores
     _, write = _view_write(fn)
     assert escape.kind is MIRStorageConflictKind.STORE_ESCAPE
     assert escape.origin == _named(fn, "buf")
@@ -409,7 +409,7 @@ def test_a_body_loan_stored_in_an_own_parameter_s_object_escapes(program: _Progr
     # The handed-over object is the callee's, but the caller's temporary
     # outlives the call; a parameter's loan stored there is no transfer.
     fn = _lowered(program, "own_local")
-    (escape,) = analyze_store_escapes(prepared(fn))
+    (escape,) = analyze_escapes(prepared(fn)).stores
     assert escape.origin == _named(fn, "buf") and escape.holder.root == fn.slots[0].id
     assert program.verdicts["own_local"].summary.reason == "summary stores a loan of the body's storage"
     assert _summary(program, "own_store").transfers == frozenset()

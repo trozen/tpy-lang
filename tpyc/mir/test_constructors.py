@@ -20,7 +20,7 @@ from .nodes import (
     MIRStorageWrite, MIRStorageWriteMode, MIRWrap, statement_call,
 )
 from .shapes import MIRDeref
-from .storage_evidence import analyze_store_escapes
+from .storage_evidence import analyze_escapes
 from .validate import MIRDefiniteAssignmentError, statement_reads, value_may_raise
 from .value import MIRFieldId, MIRValidationError, value_shape
 from .testutil import bind_parameters, compiled_definitions, construct, leaf_shape, no_layouts, prepared, reslot
@@ -295,7 +295,7 @@ def test_a_view_of_the_constructors_own_copy_escapes_with_the_record() -> None:
     with activate_compiler(compiler):
         fn = lower_constructor(ctor, MIRBodyId("constructors", "escape"))
         assert isinstance(fn, MIRFunction), fn
-        (escape,) = analyze_store_escapes(prepared(fn))
+        (escape,) = analyze_escapes(prepared(fn)).stores
     value = next(s for s in fn.slots if s.name == "value")
     assert escape.origin == MIRPlace(value.id)
 
@@ -412,7 +412,7 @@ def test_an_initialization_is_checked_against_the_fields_state(entry) -> None:
     # its body returns: the body's conflict, not its certificate's refusal.
     own_view = lower_constructor(ctors["OwnView"], MIRBodyId("constructors", "OwnView"), definitions=definitions)
     assert isinstance(own_view, MIRFunction), own_view
-    (escape,) = analyze_store_escapes(prepared(own_view))
+    (escape,) = analyze_escapes(prepared(own_view)).stores
     assert escape.origin == MIRPlace(next(s.id for s in own_view.slots if s.name == "s"))
 
 

@@ -10163,10 +10163,11 @@ and consuming call/return boundaries remain outside its internal coverage.
 `uv run tpyc --dump-mir program.py` exposes the supported CFGs for user modules
 and explicit reasons for uncovered or unavailable bodies. It uses actual
 emitted THIR, writes no generated files and does not execute the program.
-Every compile that emits C++ runs MIR after codegen for one diagnostic, the
-argument-alias warning ("Argument-Alias Warning" below); there is no MIR
-borrow checker otherwise, current provenance checks remain authoritative, and
-callable admission remains planned.
+Every compile that emits C++ runs MIR after codegen over every body it
+lowers, for two advisory diagnostics: the argument-alias warning
+("Argument-Alias Warning" below) and the lifetime hazards MIR proves ("MIR
+Lifetime Warnings" below); current provenance checks remain authoritative,
+and callable admission remains planned.
 
 M3.1 adds internal backward may-liveness for that bounded subset, visible in
 `--dump-mir` as block entry/exit and statement-boundary live sets. Projected
@@ -10493,6 +10494,69 @@ two((h, h.q))         # def two(t: tuple[H, Q]) writes t[0].q, reads t[1] -- war
 ```
 
 A tuple literal's element is spelled as written (`h.q`), a named tuple's member by its index (`t[0]`), a union's payload as the union name itself (`u`, `u.q`), and two members of one tuple parameter by their indices (`t[0]`, `t[1]`). Two alternatives of one union parameter are never both present, so they never warn against each other. The remedy is judged by the type of the member the callee still uses, not the wrapper's (a tuple is a value type even when it lends a record): a record member takes `copy()`. A tuple or union argument takes no `copy()` call in place -- a tuple element lent out of a temporary and a `copy()` written as a union argument do not compile yet (`BUGS.md#record-field-to-wrapper-parameter-rejects`) -- so the copy is bound to a local first and passed: `v = copy(h.q)`, then `tup(h, (v, 1))`; a named tuple is rebuilt around it (`v = copy(t[0])`, then `(v, t[1])`); a union argument passes it whole (`v = copy(u)`, then `heldunion(v, u)`). An Optional keeps the `copy(o)` spelling above, which does not compile yet in either form (`BUGS.md#optional-member-own-copy-no-render`).
+
+### MIR Lifetime Warnings (Working, advisory)
+
+Where MIR lowers a body (free functions, methods, constructors, properties, `@auto_readonly` twins, `@error_return` bodies; not module-level code, generators, `async def`, comprehensions, closures, generic or overloaded bodies, `with`), each lifetime hazard it can prove is warned at the statement that causes it, in Python terms, naming the later read (or the return) and a fix. The program still builds: the warning is advisory, sema's checks stay authoritative, and a warning sema also gives for the same line (a list grown while iterated) is reported by both.
+
+```python
+def local_buf(flag: bool) -> None:
+    buf = mk("a")
+    t = Tok(buf, 1)        # Tok.s: StrView
+    if flag:
+        buf = mk("b")      # warning: this assignment frees the old value of 'buf', but 't.s' still
+                           #   views it and is read on line 6; give the new value its own name, or make
+                           #   'Tok.s' an owned 'str'
+    print(t.s)
+
+def grow(self) -> int32:
+    for x in self.items:
+        if x < 0:
+            self.items.append(x)  # warning: this call may move the elements of 'self.items', but the
+                                  #   iteration over 'self.items' still walks them and continues on line 2;
+                                  #   iterate over a copy ('copy(self.items)'), or make the changes after the loop
+
+def block_view(c: bool) -> bool:
+    v: StrView = "x"
+    if c:
+        buf = mk("a")
+        v = buf            # warning: 'buf' is freed at the end of this block, but 'v' still views it and is
+                           #   read on line 6; create 'buf' before the block
+    return v == "x"
+
+def __init__(self, c: str) -> None:
+    self.v = first(mk(c))  # warning: the temporary 'mk(c)' lives only until the end of this statement,
+                           #   but 'self.v' keeps a view of it; make 'C.v' an owned 'str'
+
+def fill(t: Tok, c: str) -> None:
+    buf = mk(c)
+    t.s = buf              # warning: 'buf' is freed when 'fill' returns, but 't.s' keeps a view of it; ...
+
+def reassigned(s: str) -> StrView:
+    s = s + "x"
+    return s               # warning: the return type 'StrView' lends the result, but 's' is created inside
+                           #   'reassigned' and freed when it returns; return an owned 'str' instead
+
+p = ln.a                   # a record field: replacing it rewrites the record where it lies
+ln.a = Point(9, "new")     # warning: this assignment overwrites 'ln.a' in place, but 'p' still refers to it
+                           #   and sees the new value on line 3; copy what 'p' refers to first, or use 'p' before ...
+```
+
+What is warned -- a hazard MIR proves on its own facts:
+
+- **the storage reaches what the holder keeps, for certain**: every place the write (or the end of storage) may land on reaches everything the holder may keep there -- not a loan the caller passed in, not two parameters that might be one object, not "some element" of a list against "some element" of it; a returned borrow comes from exactly one object of the body;
+- **the use is reached** (a replacement, the end of a block or of a temporary): every path from the statement reads the affected member (`t.s`, not `t.n`) before the holder is rebound or the function returns; a read is a plain use in the body -- passing the holder to a call is not one. "Read on line N" holds on every path where the calls in between return normally: a call that always raises does not yet cut the path, a known false warning (`BUGS.md#mir-warning-after-always-raising-call`, TODO.md "calls with no normal return");
+- **the escape is reached** (a store into the caller's object): every path from the store reaches a normal return with nothing rewriting the stored member, and the escaping loan is the only one it holds there. A store into an `Own[R]` parameter's object warns only when the body returns or hands on that object.
+
+What stays silent -- MIR keeps each as evidence in its verdict (`--dump-mir`, `# tpyc: mir(conflict ...)`) without proving it, and silence is not a safety claim (each known bug keeps its BUGS.md entry):
+
+- a read only on some paths (`if c: buf = mk("b")` then `if not c: return len(v)`), a read only through a call (`size(t)`), a read through an alias whose referents a branch join widened;
+- which element (`p = xs[i]; xs[j] = P(1)`, `BUGS.md#setitem-write-under-live-element-borrow`), a dict store under its own iteration (`BUGS.md#dict-grows-during-own-iteration`);
+- what the caller passes (`def f(t: Tok, xs: list[str]): xs[0] = ...; print(t.s)`, `BUGS.md#borrowed-arg-into-mutated-storage`), escapes only on a raise path, writes into a parameter's object that MIR joins rather than replaces;
+- a store escape on only some paths (a returned record that keeps a dead local's view on one branch only: `if flag: return t` ... `return u`);
+- and, safe: `t.s = tmp; t.s = "safe"`, `old = t.s; t.s = tmp; t.s = old`, a callee that resets the view before the read, `len(v)` of a stale view.
+
+The CLI analyzes every body MIR lowers. A place no source name or expression spells reads "a temporary value" (the test harness fails on one instead). Generated C++ is unchanged.
 
 ## Open Questions
 

@@ -121,7 +121,7 @@ def grow_under_iter(c: Counter) -> int32:  # tpyc: mir(conflict /replacement/)
     total = 0
     for x in c.elems:
         if x > 100:
-            c.push(x)  # tpyc: warning(/while iterating over it/)
+            c.push(x)  # tpyc: warning(/while iterating over it/) warning(/this call may move the elements of 'c.items'/)
         total += x
     return total
 
@@ -183,7 +183,7 @@ def twin_items_grow(c: Counter) -> int32:  # tpyc: mir(conflict /replacement/)
     total = 0
     for x in c.view_items():
         if x > 100:
-            c.push(x)  # tpyc: warning(/while iterating over it/)
+            c.push(x)  # tpyc: warning(/while iterating over it/) warning(/this call may move the elements of 'c.items'/)
         total += x
     return total
 

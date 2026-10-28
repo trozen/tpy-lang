@@ -6,7 +6,7 @@ from dataclasses import replace
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse import SourceLocation
-from ..thir.nodes import COMPARISON_OPS, THIRBorrowedRecord, THIRStubCallee, THIRStubContract
+from ..thir.nodes import COMPARISON_OPS, THIRStubCallee, THIRStubContract
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
     MIRClass, leaf_constant, modeled_field, owned_constant, owned_value_type,
@@ -23,14 +23,13 @@ from .nodes import (
     MIRFunction, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRRvalue, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRBodyKind, MIRGlobalId,
     MIRStorageWrite, MIRStorageWriteMode, MIRStorageInit,
-    MIRStatement, MIRRegionId, MIREdge, MIRIsAlternative, MIRUnionExtract,
+    MIRStatement, MIRRegionId, MIRIsAlternative, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint,
     statement_target, place_shape, view_member, MIRWrap, builds_base, initialized_places,
 )
 from .value import (
     AGGREGATE_CLASSES, CONTAINER_CLASSES, MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape,
-    MIRValidationError, admitted_members, member_compatible, require_valid as _require, shape_problem, thir_member,
-    with_access, SUM_CLASSES, WRAPPER_CLASSES, member_binds, wrapper_compatible, caller_storage,
+    MIRValidationError, admitted_members, member_compatible, require_valid as _require, shape_problem, with_access, SUM_CLASSES, WRAPPER_CLASSES, member_binds, wrapper_compatible, caller_storage,
 )
 from .coverage import primitive_operand, read_leaf, slot_representation, view_compatible
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -188,6 +187,13 @@ def statement_reads(stmt: MIRStatement) -> tuple[MIRSlotId, ...]:
             return (*operands(value), target.root) if target.projections else operands(value)
         case _:
             raise MIRValidationError("unknown instruction")
+
+
+def statement_read_places(stmt: MIRStatement) -> tuple[MIRPlace, ...]:
+    """The places a statement's operands read (`statement_reads` at the
+    place each reads: a read, copy or borrow of a place; a whole slot
+    otherwise), never its target."""
+    return tuple(place if place is not None else MIRPlace(sid) for sid, place in _operand_places(stmt))
 
 
 def statement_may_raise(stmt: MIRStatement, slots: 'Mapping[MIRSlotId, MIRSlot]', records: MIRRecords) -> bool:

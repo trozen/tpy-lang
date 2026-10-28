@@ -48,7 +48,7 @@ Tok& pick(Tok& a, Tok& b, bool flag) {
 //     t = Tok(buf, 1)  # tpyc: mir_borrows(t.s, buf)
 //     u = t  # tpyc: mir_borrows(u.s, buf)
 //     if flag:
-//         buf = mk(k + 1)
+//         buf = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'buf'/)
 //     print("alias_replaced", u.s)
 void alias_replaced(int32_t k, bool flag) {
     std::string buf = ::tpyapp::main::mk(k);
@@ -71,7 +71,7 @@ void alias_replaced(int32_t k, bool flag) {
 //     print("copied_rebind", t.n)
 //     t = Tok(b, 2)  # tpyc: mir_borrows(t.s, b)
 //     if flag:
-//         a = mk(k + 2)
+//         a = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'a'/)
 //     print("copied_rebind", u.s, t.s)
 void copied_rebind(int32_t k, bool flag) {
     std::string a = ::tpyapp::main::mk(k);
@@ -193,7 +193,7 @@ int32_t callee_reads_late(int32_t k, bool flag) {
 //     b = Buf(mk(k))
 //     t = Tok(b.buf, 1)  # tpyc: mir_borrows(t.s, b.buf)
 //     if flag:
-//         setbuf(b, k)
+//         setbuf(b, k)  # tpyc: warning(/this call frees the old value of 'b.buf'/)
 //     print("callee_replaces", t.s)
 void callee_replaces(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));

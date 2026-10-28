@@ -1,1 +1,4 @@
+main.py:91: warning: this assignment frees the old value of 'buf', but 'u.s' still views it and is read on line 92; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:106: warning: this assignment frees the old value of 'a', but 't.s' still views it and is read on line 107; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:173: warning: this call frees the old value of 'b.buf', but 't.s' still views it and is read on line 174; copy what 't.s' views first, or use 't.s' before this call, or make 'Tok.s' an owned 'str'
 main.py:234: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

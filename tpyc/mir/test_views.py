@@ -26,7 +26,7 @@ from .nodes import (
 )
 from .shapes import MIRDeref
 from .value import MIRField, MIRFieldId, MIRHolding, MIRValidationError
-from .storage_evidence import MIRStorageConflictKind, analyze_return_escapes
+from .storage_evidence import MIRStorageConflictKind, analyze_escapes
 from .testutil import bind_parameters, reslot, prepared
 from .prepare import validate_function
 
@@ -349,7 +349,7 @@ def test_return_escape_is_discovered_for_every_lowered_body(active) -> None:
     escape, = analyses.escapes
     assert escape.kind is MIRStorageConflictKind.RETURN_ESCAPE and escape.origin == MIRPlace(_slot(fn, "t").id)
     # The undamaged body returns a view of its parameter: no escape.
-    assert analyze_return_escapes(prepared(_fn(active, "escape_source"))) == ()
+    assert analyze_escapes(prepared(_fn(active, "escape_source"))).returns == ()
 
 
 # --- summaries --------------------------------------------------------------------------

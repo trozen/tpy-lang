@@ -8,4 +8,5 @@ main.py:278: warning: argument 'h.p' is what 'H.clear_read' modifies through par
 main.py:290: warning: argument 'h.p' is what 'replace_read' modifies through parameter 'h' while it still uses 'p'; pass a copy ('copy(h.p)') or restructure so the call does not hand over both
 main.py:299: warning: argument 'h.p' is what 'relay' modifies through parameter 'h' while it still uses 'p'; pass a copy ('copy(h.p)') or restructure so the call does not hand over both
 main.py:320: warning: argument 'o' points into 'h.p', which 'wr' modifies through parameter 'p' while it still uses 'q'; pass a copy ('copy(o)') or restructure so the call does not hand over both
+main.py:333: warning: this call may move the elements of 'q.items', but the iteration over 'q.items' still walks them and continues on line 332; iterate over a copy ('copy(q.items)'), or make the changes after the loop
 main.py:409: warning: argument 't' contains 't.text', which 'retext_view' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(t)') or restructure so the call does not hand over both

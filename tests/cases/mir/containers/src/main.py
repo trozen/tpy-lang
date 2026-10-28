@@ -69,7 +69,7 @@ class Pts:
         p = self.ps[0]  # tpyc: mir_borrows(p, self.ps[elements])
         x = self.ps
         if flag:
-            x.append(Point(7))  # tpyc: mir_write(x[structure])
+            x.append(Point(7))  # tpyc: mir_write(x[structure]) warning(/this call may move the elements of 'x'/)
         return p.x
 
     # method: safe sibling -- the element holder is dead at the growth; the growth through
@@ -111,7 +111,7 @@ def grow_if(ps: list[Point], flag: bool) -> None:  # tpyc: mir(covered) mir_summ
 def kept(ps: list[Point], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
     p = ps[0]
     if flag:
-        ps.append(Point(2))  # tpyc: warning(/Mutation of 'ps'/)
+        ps.append(Point(2))  # tpyc: warning(/Mutation of 'ps'/) warning(/this call may move the elements of 'ps'/)
     return p.x
 
 
@@ -129,7 +129,7 @@ def iterate_and_grow(xs: list[int32]) -> int32:  # tpyc: mir(conflict /replaceme
     t = 0
     for x in xs:
         if x < 0:
-            xs.append(x)  # tpyc: warning(/Mutation of 'xs'/)
+            xs.append(x)  # tpyc: warning(/Mutation of 'xs'/) warning(/this call may move the elements of 'xs'/)
         t += x
     return t
 
@@ -146,7 +146,7 @@ def iterate_then_grow(xs: list[int32]) -> int32:  # tpyc: mir(covered)
 # free function: the structure write arrives through a callee's summary
 def forwarded(ps: list[Point], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
     p = ps[0]
-    grow_if(ps, flag)  # tpyc: warning(/borrowed container/)
+    grow_if(ps, flag)  # tpyc: warning(/borrowed container/) warning(/this call may move the elements of 'ps'/)
     return p.x
 
 
@@ -223,7 +223,7 @@ def alias_iter_grow(xs: list[int32]) -> int32:  # tpyc: mir(conflict /replacemen
     t = 0
     for v in ys:
         if v < 0:
-            xs.append(v)  # tpyc: mir_write(xs[structure])
+            xs.append(v)  # tpyc: mir_write(xs[structure]) warning(/this call may move the elements of 'xs'/)
         t += v
     return t
 
@@ -248,7 +248,7 @@ def grow_ints(ys: list[int32], flag: bool) -> None:  # tpyc: mir(covered) mir_su
 def field_iter_callee(r: Bag, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
     t = 0
     for v in r.items:
-        grow_ints(r.items, flag)
+        grow_ints(r.items, flag)  # tpyc: warning(/this call may move the elements of 'r.items'/)
         t += v
     return t
 
@@ -460,7 +460,7 @@ def rack_items(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement
     p = r.items[0]
     if flag:
         # with flag true `p` would dangle: the old buffer is freed
-        r.items = [Point(3)]  # tpyc: warning(/Mutation of 'r.items' while borrowed/)
+        r.items = [Point(3)]  # tpyc: warning(/Mutation of 'r.items' while borrowed/) warning(/this assignment frees the old value of 'r.items'/)
     return p.x
 
 
@@ -468,7 +468,7 @@ def rack_rec(r: Rack, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
     p = r.rec
     if flag:
         # with flag true `p` would alias the replaced field, not keep the old Point
-        r.rec = Point(3)  # tpyc: warning(/Mutation of 'r.rec' while borrowed/)
+        r.rec = Point(3)  # tpyc: warning(/Mutation of 'r.rec' while borrowed/) warning(/this assignment overwrites 'r.rec' in place/)
     return p.x
 
 

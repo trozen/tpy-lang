@@ -17,6 +17,7 @@ from .prepare import MIRPrepared, validated_presence
 from .reach import BEGINS, MIRReferent, reaches, storage_events, storage_exclusions
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .value import MIRValidationError
+from .witness import MIRHazard, MIRHazardKind
 
 
 class MIRScopeEndKind(Enum):
@@ -146,18 +147,28 @@ class MIRScopeInspection:
     ends: MIRScopeEnds | MIRNotCovered
     conflicts: tuple[MIRScopeConflict, ...] | MIRNotCovered
     freshness: tuple[MIRPresenceIssue, ...]
+    # One per ended storage and holder with a conflict, for the witness.
+    hazards: tuple[MIRHazard, ...] = ()
 
 
 def inspect_scope_lifetimes(prepared: MIRPrepared) -> MIRScopeInspection:
     """Inspect retained aliases; a stale payload access never prepares
     (`prepare.prepare` refuses an unproven selection)."""
     ends = _scope_ends(prepared)
-    conflicts = _scope_conflicts(prepared, ends)
-    return MIRScopeInspection(prepared.function, ends, conflicts, prepared.presence.issues)
+    found = _scope_findings(prepared, ends)
+    if isinstance(found, MIRNotCovered):
+        return MIRScopeInspection(prepared.function, ends, found, prepared.presence.issues)
+    return MIRScopeInspection(prepared.function, ends, found[0], prepared.presence.issues, found[1])
 
 
 def _scope_conflicts(prepared: MIRPrepared,
                      ends: MIRScopeEnds | MIRNotCovered) -> tuple[MIRScopeConflict, ...] | MIRNotCovered:
+    found = _scope_findings(prepared, ends)
+    return found if isinstance(found, MIRNotCovered) else found[0]
+
+
+def _scope_findings(prepared: MIRPrepared, ends: MIRScopeEnds | MIRNotCovered
+                    ) -> tuple[tuple[MIRScopeConflict, ...], tuple[MIRHazard, ...]] | MIRNotCovered:
     fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
     for result in (prepared.presence, liveness, dependencies, ends):
         if isinstance(result, MIRNotCovered):
@@ -173,6 +184,7 @@ def _scope_conflicts(prepared: MIRPrepared,
     exclusions = storage_exclusions(slots, fn.record_layouts)
     regions = MIRRegionFlow(fn)
     conflicts = []
+    hazards: list[MIRHazard] = []
     for edge, events in ends.ends.items():
         target = regions.edges[edge].target
         # At a body exit, a loan stored in the caller's object is a store escape.
@@ -186,10 +198,14 @@ def _scope_conflicts(prepared: MIRPrepared,
             places = event.payloads if slots[event.storage.root].shape.scalar_wrapper else (event.storage,)
             for ended in sorted(places, key=_place):
                 for holder, refs in retained_holders:
-                    for retained in sorted(refs, key=lambda r: (r.external, _place(r.place))):
-                        if reaches(MIRReferent(ended), retained, exclusions):
-                            conflicts.append(MIRScopeConflict(edge, ended, holder, retained))
-    return tuple(conflicts)
+                    found = [MIRScopeConflict(edge, ended, holder, retained)
+                             for retained in sorted(refs, key=lambda r: (r.external, _place(r.place)))
+                             if reaches(MIRReferent(ended), retained, exclusions)]
+                    conflicts.extend(found)
+                    if found:
+                        hazards.append(MIRHazard(MIRHazardKind.SCOPE_END, edge, ended,
+                                                 frozenset({MIRReferent(ended)}), holder, (refs,)))
+    return tuple(conflicts), tuple(hazards)
 
 
 def dump_scope_inspection(result: MIRScopeInspection) -> str:

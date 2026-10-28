@@ -115,7 +115,7 @@ def ring_push_in_loop(r: Ring[int32], flag: bool) -> int32:  # tpyc: mir(conflic
     t = 0
     for v in r:
         if flag:
-            r.push(9)  # tpyc: warning(/'push' invalidates the iterator/)
+            r.push(9)  # tpyc: warning(/'push' invalidates the iterator/) warning(/this call may move the elements of 'r'/)
         t += v
     return t
 

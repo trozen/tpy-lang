@@ -91,7 +91,7 @@ class Counter:
         t = 0
         for x in self.items:
             if go:
-                self.push(x)
+                self.push(x)  # tpyc: warning(/this call may move the elements of 'self.items'/)
             t += x
         return t
 
@@ -259,7 +259,7 @@ def grow_under_iter(c: Counter, go: bool) -> int32:  # tpyc: mir(conflict /repla
     t = 0
     for x in c.items:
         if go:
-            c.push(x)
+            c.push(x)  # tpyc: warning(/this call may move the elements of 'c.items'/)
         t += x
     return t
 
@@ -276,7 +276,7 @@ def free_grow_under_iter(c: Counter, go: bool) -> int32:  # tpyc: mir(conflict /
     t = 0
     for x in c.items:
         if go:
-            push_free(c, x)
+            push_free(c, x)  # tpyc: warning(/this call may move the elements of 'c.items'/)
         t += x
     return t
 

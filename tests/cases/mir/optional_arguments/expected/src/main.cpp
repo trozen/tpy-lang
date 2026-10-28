@@ -459,7 +459,7 @@ void grow(P* p) {
 // def grow_under_iter(q: P) -> int32:  # tpyc: mir(conflict /replacement/)
 //     n = 0
 //     for x in q.items:
-//         grow(q)
+//         grow(q)  # tpyc: warning(/this call may move the elements of 'q.items'/)
 //         n += x
 //     return n
 int32_t grow_under_iter(P& q) {

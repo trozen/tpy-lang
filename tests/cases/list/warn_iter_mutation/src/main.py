@@ -185,7 +185,7 @@ def test_outer_loan_survives_inner_while() -> None:
     for x in items:
         while i < 2:
             i += 1
-        items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+        items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/) warning(/this call may move the elements of 'items'/)
 
 def test_else_clause_ok() -> None:
     """The `else` clause runs after the iterator is done -- mutating there is fine."""

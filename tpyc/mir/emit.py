@@ -128,6 +128,7 @@ class _SlotRecord:
     loc: object = None
     destination: bool = False
     bound_storage: MIRSlotId | None = None
+    span: object = None
 
     @property
     def type(self) -> TpyType:
@@ -269,7 +270,8 @@ class Fragment:
         root.records[sid] = _SlotRecord(sid, shape, kind, name, alias_source=alias_source, global_id=global_id,
                                         storage_duration=storage_duration,
                                         writable=writable, loc=loc, destination=destination,
-                                        bound_storage=bound_storage)
+                                        bound_storage=bound_storage,
+                                        span=loc if kind is MIRSlotKind.TEMPORARY else None)
         return sid
 
     def adopt(self, sid: MIRSlotId, storage_duration: object = None) -> MIRSlotId:
@@ -290,6 +292,12 @@ class Fragment:
     def slot(self, shape: MIRShape, kind: MIRSlotKind = MIRSlotKind.TEMPORARY, name: str | None = None, *,
              storage_duration: object = None, **facts: object) -> MIRSlotId:
         return self.adopt(self.record(shape, kind, name, **facts), storage_duration)
+
+    def expression_span(self, sid: MIRSlotId, value: 'Fragment') -> None:
+        """Storage a statement fills from `value` is spelled by that expression."""
+        record = self.root.records[sid]
+        if record.kind is MIRSlotKind.TEMPORARY and value.value is not None and value.value.loc is not None:
+            record.span = value.value.loc
 
     def scope_storage(self, region: RegionHandle) -> object:
         if self is not self.root:
@@ -402,6 +410,11 @@ class Fragment:
               storage_write: MIRStorageWrite | None = None
               ) -> None:
         target = MIRPlace(dest) if isinstance(dest, MIRSlotId) else dest
+        if not target.projections:
+            record = self.root.records.get(target.root)
+            # A temporary created without its expression takes its first value's.
+            if record is not None and record.kind is MIRSlotKind.TEMPORARY and record.span is None:
+                record.span = loc
         self.append(MIRAssign(target, value, loc, storage_write))
 
     def end(self, term: MIRTerminator) -> None:
@@ -675,7 +688,8 @@ class Fragment:
 def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, callees: tuple[object, ...],
              result: object, layouts: MIRRecords,
              parameter_bindings: tuple[MIRParameterBinding, ...] = (),
-             return_representation: Representation | None = None) -> tuple[MIRFunction, _FirstPhase]:
+             return_representation: Representation | None = None,
+             source_name: str | None = None) -> tuple[MIRFunction, _FirstPhase]:
     """The body built, closed and numbered: a reachable end returns (a
     non-void body's refuses), then assembly; with its structure check and
     presence without field selections (`first_phase`), which its
@@ -696,7 +710,7 @@ def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, 
             raise MIRFallthroughError("non-void fallthrough")
         body.end(MIRReturn())
     fn = _Assembly(body, reachable).function(return_type, kind, callees, result, layouts,
-                                                            parameter_bindings, return_representation)
+                                                            parameter_bindings, return_representation, source_name)
     return fn, first_phase(fn)
 
 
@@ -847,7 +861,8 @@ class _Assembly:
                        alias_source=self.remap(record.alias_source), global_id=record.global_id,
                        storage_duration=self.duration(record.storage_duration),
                        residence=self.region(record.residence) if record.residence is not None else None,
-                       destination=record.destination, bound_storage=self.remap(record.bound_storage))
+                       destination=record.destination, bound_storage=self.remap(record.bound_storage),
+                       span=record.span)
 
     # --- the function ------------------------------------------------------
 
@@ -886,7 +901,8 @@ class _Assembly:
     def function(self, return_type: TpyType, kind: object, callees: tuple[object, ...], result: object,
                  layouts: MIRRecords,
                  parameter_bindings: tuple[MIRParameterBinding, ...] = (),
-                 return_representation: Representation | None = None) -> MIRFunction:
+                 return_representation: Representation | None = None,
+                 source_name: str | None = None) -> MIRFunction:
         emitter = self.emitter
         operations = self.operations()
         emitter.borrow_operations = operations
@@ -911,7 +927,7 @@ class _Assembly:
                          callees, result,
                          body_may_raise(blocks, frozen, layouts),
                          parameter_bindings, layouts.fields, return_representation,
-                         tuple(sorted(layouts.containers, key=str)))
+                         tuple(sorted(layouts.containers, key=str)), source_name)
         return fn
 
 

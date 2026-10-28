@@ -188,7 +188,7 @@ void two_owners(Counter& c, Gauge& g) {
 //     t = 0
 //     for x in c.items:
 //         if go:
-//             c.push(x)
+//             c.push(x)  # tpyc: warning(/this call may move the elements of 'c.items'/)
 //         t += x
 //     return t
 int32_t grow_under_iter(Counter& c, bool go) {
@@ -220,7 +220,7 @@ void push_free(Counter& c, int32_t v) {
 //     t = 0
 //     for x in c.items:
 //         if go:
-//             push_free(c, x)
+//             push_free(c, x)  # tpyc: warning(/this call may move the elements of 'c.items'/)
 //         t += x
 //     return t
 int32_t free_grow_under_iter(Counter& c, bool go) {

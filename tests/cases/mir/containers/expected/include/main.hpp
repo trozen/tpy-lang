@@ -343,7 +343,7 @@ inline Pts::Pts() : ps(std::vector<Point>{Point(1), Point(2)}) {}
 //     p = self.ps[0]  # tpyc: mir_borrows(p, self.ps[elements])
 //     x = self.ps
 //     if flag:
-//         x.append(Point(7))  # tpyc: mir_write(x[structure])
+//         x.append(Point(7))  # tpyc: mir_write(x[structure]) warning(/this call may move the elements of 'x'/)
 //     return p.x
 inline int32_t Pts::alias_grow(bool flag) {
     Point& p = ::tpy::__getitem__(this->ps, 0);

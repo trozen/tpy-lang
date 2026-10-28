@@ -296,14 +296,14 @@ def test_only_two_parameters_external_storage_is_an_obligation() -> None:
 
 def test_a_mir_failure_costs_only_its_body_and_never_fails_the_compile(compiled, monkeypatch) -> None:
     compiler, entry, ctx = compiled
-    real = compiler_module.body_alias_warnings
+    real = compiler_module.body_warnings
 
-    def broken(fn, analyses, program, sites):
+    def broken(fn, analyses, program, sites, **kwargs):
         if fn.id.declaration.startswith("assigned@"):
             raise RuntimeError("MIR defect")
-        return real(fn, analyses, program, sites)
+        return real(fn, analyses, program, sites, **kwargs)
 
-    monkeypatch.setattr(compiler_module, "body_alias_warnings", broken)
+    monkeypatch.setattr(compiler_module, "body_warnings", broken)
     before = list(entry.analyzer.diagnostics)
     try:
         heard: list[str] = []
@@ -317,7 +317,7 @@ def test_a_mir_failure_costs_only_its_body_and_never_fails_the_compile(compiled,
         entry.analyzer.diagnostics[:] = before
 
 
-@pytest.mark.parametrize("stage", ["mir_analysis", "alias_check_bodies"])
+@pytest.mark.parametrize("stage", ["mir_analysis", "lowered_bodies"])
 def test_a_failure_before_any_body_returns_no_warnings(compiled, monkeypatch, stage) -> None:
     compiler, entry, ctx = compiled
 
@@ -327,7 +327,7 @@ def test_a_failure_before_any_body_returns_no_warnings(compiled, monkeypatch, st
     if stage == "mir_analysis":
         monkeypatch.setattr(compiler, "mir_analysis", broken)
     else:
-        monkeypatch.setattr(compiler_module, "alias_check_bodies", broken)
+        monkeypatch.setattr(compiler_module, "lowered_bodies", broken)
     before = list(entry.analyzer.diagnostics)
     heard: list[str] = []
     assert compiler.report_mir_warnings([(entry, ctx)], on_failure=heard.append) == []

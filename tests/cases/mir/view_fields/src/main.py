@@ -88,7 +88,7 @@ def alias_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replace
     t = Tok(buf, 1)  # tpyc: mir_borrows(t.s, buf)
     u = t  # tpyc: mir_borrows(u.s, buf)
     if flag:
-        buf = mk(k + 1)
+        buf = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'buf'/)
     print("alias_replaced", u.s)
 
 
@@ -103,7 +103,7 @@ def copied_rebind(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacem
     print("copied_rebind", t.n)
     t = Tok(b, 2)  # tpyc: mir_borrows(t.s, b)
     if flag:
-        a = mk(k + 2)
+        a = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'a'/)
     print("copied_rebind", u.s, t.s)
 
 
@@ -170,7 +170,7 @@ def callee_replaces(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replac
     b = Buf(mk(k))
     t = Tok(b.buf, 1)  # tpyc: mir_borrows(t.s, b.buf)
     if flag:
-        setbuf(b, k)
+        setbuf(b, k)  # tpyc: warning(/this call frees the old value of 'b.buf'/)
     print("callee_replaces", t.s)
 
 

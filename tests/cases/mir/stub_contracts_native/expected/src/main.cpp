@@ -90,7 +90,7 @@ void ring_grow(::ProbeRing<int32_t>& r) {
 //     t = 0
 //     for v in r:
 //         if flag:
-//             r.push(9)  # tpyc: warning(/'push' invalidates the iterator/)
+//             r.push(9)  # tpyc: warning(/'push' invalidates the iterator/) warning(/this call may move the elements of 'r'/)
 //         t += v
 //     return t
 int32_t ring_push_in_loop(::ProbeRing<int32_t>& r, bool flag) {

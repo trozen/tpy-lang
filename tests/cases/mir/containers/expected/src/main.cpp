@@ -52,7 +52,7 @@ void grow_if(std::vector<Point>& ps, bool flag) {
 // def kept(ps: list[Point], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 //     p = ps[0]
 //     if flag:
-//         ps.append(Point(2))  # tpyc: warning(/Mutation of 'ps'/)
+//         ps.append(Point(2))  # tpyc: warning(/Mutation of 'ps'/) warning(/this call may move the elements of 'ps'/)
 //     return p.x
 int32_t kept(std::vector<Point>& ps, bool flag) {
     Point& p = ::tpy::__getitem__(ps, 0);
@@ -81,7 +81,7 @@ int32_t kept_after_use(std::vector<Point>& ps) {
 //     t = 0
 //     for x in xs:
 //         if x < 0:
-//             xs.append(x)  # tpyc: warning(/Mutation of 'xs'/)
+//             xs.append(x)  # tpyc: warning(/Mutation of 'xs'/) warning(/this call may move the elements of 'xs'/)
 //         t += x
 //     return t
 int32_t iterate_and_grow(std::vector<int32_t>& xs) {
@@ -122,7 +122,7 @@ int32_t iterate_then_grow(std::vector<int32_t>& xs) {
 // # free function: the structure write arrives through a callee's summary
 // def forwarded(ps: list[Point], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 //     p = ps[0]
-//     grow_if(ps, flag)  # tpyc: warning(/borrowed container/)
+//     grow_if(ps, flag)  # tpyc: warning(/borrowed container/) warning(/this call may move the elements of 'ps'/)
 //     return p.x
 int32_t forwarded(std::vector<Point>& ps, bool flag) {
     Point& p = ::tpy::__getitem__(ps, 0);
@@ -253,7 +253,7 @@ int32_t dict_write_after_loop(::tpy::ordered_map<std::string, int32_t>& d) {
 //     t = 0
 //     for v in ys:
 //         if v < 0:
-//             xs.append(v)  # tpyc: mir_write(xs[structure])
+//             xs.append(v)  # tpyc: mir_write(xs[structure]) warning(/this call may move the elements of 'xs'/)
 //         t += v
 //     return t
 int32_t alias_iter_grow(std::vector<int32_t>& xs) {
@@ -308,7 +308,7 @@ void grow_ints(std::vector<int32_t>& ys, bool flag) {
 // def field_iter_callee(r: Bag, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
 //     t = 0
 //     for v in r.items:
-//         grow_ints(r.items, flag)
+//         grow_ints(r.items, flag)  # tpyc: warning(/this call may move the elements of 'r.items'/)
 //         t += v
 //     return t
 int32_t field_iter_callee(Bag& r, bool flag) {
@@ -688,7 +688,7 @@ int32_t nested(const std::vector<std::vector<int32_t>>& xss) {
 //     p = r.items[0]
 //     if flag:
 //         # with flag true `p` would dangle: the old buffer is freed
-//         r.items = [Point(3)]  # tpyc: warning(/Mutation of 'r.items' while borrowed/)
+//         r.items = [Point(3)]  # tpyc: warning(/Mutation of 'r.items' while borrowed/) warning(/this assignment frees the old value of 'r.items'/)
 //     return p.x
 int32_t rack_items(Rack& r, bool flag) {
     Point& p = ::tpy::__getitem__(r.items, 0);
@@ -702,7 +702,7 @@ int32_t rack_items(Rack& r, bool flag) {
 //     p = r.rec
 //     if flag:
 //         # with flag true `p` would alias the replaced field, not keep the old Point
-//         r.rec = Point(3)  # tpyc: warning(/Mutation of 'r.rec' while borrowed/)
+//         r.rec = Point(3)  # tpyc: warning(/Mutation of 'r.rec' while borrowed/) warning(/this assignment overwrites 'r.rec' in place/)
 //     return p.x
 int32_t rack_rec(Rack& r, bool flag) {
     Point& p = r.rec;

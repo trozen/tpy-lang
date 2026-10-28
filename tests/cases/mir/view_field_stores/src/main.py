@@ -109,7 +109,7 @@ def direct_write_source(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /re
     t = Tok(a, 1)
     t.s = b
     if flag:
-        b = mk(k + 2)
+        b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b'/)
     print("direct_write_source", t.s)
 
 
@@ -117,7 +117,7 @@ def direct_write_source(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /re
 # (BUGS.md#record-view-field-escapes-local-buffer)
 def fill(t: Tok, k: int32) -> None:  # tpyc: mir(conflict /store_escape/) mir_summary(opaque /^summary stores a loan of the body's storage$/)
     buf = mk(k)
-    t.s = buf
+    t.s = buf  # tpyc: warning(/'buf' is freed when 'fill' returns/)
 
 
 # free function: a literal's static storage stored into the caller's record
@@ -168,7 +168,7 @@ def outer_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replace
     a = mk(k)
     o = Outer(Tok(a, 1), 2)
     if flag:
-        a = mk(k + 1)
+        a = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'a'/)
     print("outer_replaced", o.inner.s)
 
 
@@ -183,7 +183,7 @@ def made_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacem
     b = mk(k)
     t = make(b)  # tpyc: mir_borrows(t.s, b)
     if flag:
-        b = mk(k + 1)
+        b = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b'/)
     print("made_replaced", t.s)
 
 
@@ -191,7 +191,7 @@ def made_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacem
 # (BUGS.md#record-view-field-escapes-local-buffer)
 def make_local(k: int32) -> Own[Tok]:  # tpyc: mir(conflict /store_escape/)
     buf = mk(k)
-    return Tok(buf, 3)
+    return Tok(buf, 3)  # tpyc: warning(/'buf' is freed when 'make_local' returns/)
 
 
 # free function: the result keeps the argument's own stored loan on the path that does not store
@@ -240,7 +240,7 @@ def ident_kept(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement
     b = Buf(mk(k))
     t = ident(Tok(b.text, 1))
     if flag:
-        b.text = mk(k + 1)
+        b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text'/)
     print("ident_kept", t.s)  # tpyc: mir_borrows(t.s, b.text)
 
 
@@ -257,7 +257,7 @@ def make_replace(s: str, b: Buf, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict 
 # warned at the call: make_replace's no-alias obligation (BUGS.md#record-view-member-source-replaced)
 def made_replace(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
     b = Buf(mk(k))
-    t = make_replace(b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'make_replace' modifies/)
+    t = make_replace(b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'make_replace' modifies/) warning(/this call frees the old value of 'b.text'/)
     print("made_replace", t.s)
 
 
@@ -355,7 +355,7 @@ def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /rep
     t = Tok(b.text, 1)
     w = Wrap(copy(t))
     if flag:
-        b.text = mk(k + 1)
+        b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text'/)
     print("wrap_copy_replaced", w.t.s, t.n)
 
 
@@ -673,7 +673,7 @@ def nested_read(o: Holder) -> StrView:  # tpyc: mir(covered) mir_summary(known)
 # (BUGS.md#record-view-field-escapes-local-buffer)
 def member_param_local(o: Holder, k: int32) -> None:  # tpyc: mir(conflict /store_escape/)
     buf = mk(k)
-    o.inner = R(buf, buf)
+    o.inner = R(buf, buf)  # tpyc: warning(/'buf' is freed when 'member_param_local' returns/)
 
 
 # free function: the same into an Own parameter's object, which is the caller's temporary
@@ -709,7 +709,7 @@ def member_from_call(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /repla
     o = Holder(R("member", "static"))
     o.inner = make_r(src)
     if flag:
-        src = mk(k + 1)
+        src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src'/)
     print("member_from_call", o.inner.s)
 
 

@@ -21,7 +21,7 @@ from ..thir.scalar_leaves import (
     owned_value_type, primitive_leaf, primitive_owned_leaf, record_type, storage_leaf, value_class,
     view_compatible, view_leaf,
 )
-from ..type_def_registry import ParamPassing, int_traits_of, zero_value_of
+from ..type_def_registry import ParamPassing, int_traits_of, record_info_of, zero_value_of
 from ..typesys import (
     BOOL, INT32, NominalType, TpyType,
     NoneType, OptionalType, ReadonlyType, Representation, TupleType, VoidType,
@@ -71,6 +71,12 @@ def _declared_const(stmt: th.THIRVarDecl | th.THIRPtrLocalDecl) -> bool:
     """A declaration's const verdict: its binding's, for a record and a
     container alike (a container's pointer-slot declaration spells none)."""
     return stmt.binding.const if isinstance(stmt.binding, BindingRepr) else stmt.is_const
+
+
+def _last_loc(stmts: tuple[th.THIRStmt, ...]) -> object:
+    """A diagnostic names the end of a block by its last statement: the
+    goto leaving the block carries the whole compound statement's span."""
+    return stmts[-1].loc if stmts else None
 
 
 def _literal(expr: th.THIRExpr) -> bool:
@@ -1346,7 +1352,18 @@ class _Lowering:
             kind=MIRBodyKind.CONSTRUCTOR if self.constructor is not None else function_body_kind(fn),
             callees=callees, result=self.result, layouts=self.layouts(),
             parameter_bindings=tuple(self.parameter_bindings),
-            return_representation=self.return_representation)
+            return_representation=self.return_representation, source_name=self.source_name())
+
+    def source_name(self) -> str:
+        """The callable's Python name, `Owner.name` for a method, the owner
+        by the name its user wrote (an enum's methods live on a companion
+        record)."""
+        fn = self.fn
+        owner = fn.resolved_callee.identity.owner if fn.resolved_callee is not None else None
+        if owner is None or "." in fn.name:
+            return fn.name
+        record = record_info_of(fn.receiver.type) if fn.receiver is not None else None
+        return f"{record.display_name if record is not None else owner.rsplit('.', 1)[-1]}.{fn.name}"
 
     def constructor_entry(self) -> MIRSlotId:
         """The record a constructor builds: storage of the body begun at
@@ -1477,6 +1494,7 @@ class _Lowering:
         """An Optional's payload built into its own record storage, lent through a holder."""
         loc, storage_shape, holder_shape = backing
         storage = f.slot(storage_shape, storage_duration=duration)
+        f.expression_span(storage, value)
         f.write(storage, f.splice(value), loc, write)
         reference = f.holder(holder_shape, MIRBorrow(MIRPlace(storage)), loc)
         return MIRWrap(1, MIRPlace(reference))
@@ -1522,6 +1540,7 @@ class _Lowering:
             self.fill_site(f, loc, f.adopt(slot), storage, value)
             return f
         f.adopt(storage, self.declared_storage(f, placement, missing))
+        f.expression_span(storage, value)
         with f.full_expression(value):
             f.write(storage, f.splice(value), loc, MIRStorageWrite(MIRStorageWriteMode.INITIALIZE))
         f.write(f.adopt(slot), MIRBorrow(MIRPlace(storage)), loc)
@@ -1546,6 +1565,7 @@ class _Lowering:
         the sum (a `wrapper_copy`). The holder is rebound within the full
         expression, so the line rebinds it where it fills the sum."""
         holder = self.mir.records[slot].shape
+        f.expression_span(storage, value)
         with f.full_expression(value):
             lent = f.fill_sum(storage, f.splice(value), loc)
             f.write(slot, self.wrapper_copy(MIRPlace(storage), holder) if holder.cls is MIRClass.OPTIONAL
@@ -4087,7 +4107,7 @@ class _Lowering:
                         f.current = block
                         self.sequence(f, body)
                         if f.current is not None:
-                            f.end(MIRGoto(bridge.id, loc))
+                            f.end(MIRGoto(bridge.id, loc, _last_loc(stmt.body)))
                     f.current = normal
                     if stmt.orelse:
                         self.scoped_into(f, orelse)
@@ -4098,11 +4118,11 @@ class _Lowering:
                     f.current = then
                     self.scoped_into(f, body)
                     if f.current is not None:
-                        f.end(MIRGoto(head.id, loc))
+                        f.end(MIRGoto(head.id, loc, _last_loc(stmt.body)))
                     f.current = normal
                     self.scoped_into(f, orelse)
                 if f.current is not None:
-                    f.end(MIRGoto(after.id, loc))
+                    f.end(MIRGoto(after.id, loc, _last_loc(stmt.orelse)))
                 f.current = after
                 return f
             case th.THIRBreak() | th.THIRContinue():
@@ -4155,22 +4175,22 @@ class _Lowering:
         if self.planned:
             self.planned_if(f, arms, orelse, has_else)
             return f
-        (loc, hoists, _, condition, then, _), = arms
+        (loc, hoists, _, condition, then, _, _), = arms
         self.place_hoists(f, hoists, loc)
         cond = f.full_expression_value(condition)
         yes, no = f.block(), f.block()
         f.branch(cond, yes.id, no.id, loc)
         exits = []
-        for block, arm in ((yes, then), (no, orelse)):
+        for block, arm, body in ((yes, then, stmt.then_body), (no, orelse, stmt.else_body)):
             f.current = block
             self.scoped_into(f, arm)
             if f.current is not None:
-                exits.append(f.current)
+                exits.append((f.current, _last_loc(body)))
         if exits:
             join = f.block()
-            for block in exits:
+            for block, last in exits:
                 f.current = block
-                f.end(MIRGoto(join.id, loc))
+                f.end(MIRGoto(join.id, loc, last))
             f.current = join
         else:
             f.current = None
@@ -4196,7 +4216,7 @@ class _Lowering:
                 orelse = self.scoped(stmt.else_body, loops)
             rest, has_else = [], bool(stmt.else_body)
         arm = (stmt.loc, hoists, self.statement_temporaries(stmt), condition, then,
-               self.temp_scope(stmt, "condition"))
+               self.temp_scope(stmt, "condition"), stmt)
         return [arm, *rest], orelse, has_else
 
     def planned_if(self, f: Fragment, arms: list[tuple], orelse: list[Fragment], has_else: bool) -> None:
@@ -4204,7 +4224,7 @@ class _Lowering:
         join = f.block()
 
         def arm(index: int) -> None:
-            loc, hoists, temporaries, condition, then, _ = arms[index]
+            loc, hoists, temporaries, condition, then, _, node = arms[index]
             if index:
                 # An elif is an If of its own, whose hoists are planned too.
                 self.place_hoists(f, hoists, loc)
@@ -4216,7 +4236,7 @@ class _Lowering:
             f.current = yes
             self.scoped_into(f, then)
             if f.current is not None:
-                f.end(MIRGoto(join.id, loc))
+                f.end(MIRGoto(join.id, loc, _last_loc(node.then_body)))
             f.current = no
             if index + 1 < len(arms):
                 # A continuing condition with temporaries opens a scope of its own.
@@ -4230,7 +4250,7 @@ class _Lowering:
                 if has_else:
                     self.scoped_into(f, orelse)
                 if f.current is not None:
-                    f.end(MIRGoto(join.id, loc))
+                    f.end(MIRGoto(join.id, loc, _last_loc(node.else_body) if has_else else None))
 
         arm(0)
         f.current = join
@@ -4523,14 +4543,14 @@ class _Lowering:
                     f.write(slot, MIRRead(MIRPlace(counter)), loc)
                 self.sequence(f, body)
             if f.current is not None:
-                f.end(MIRGoto(advance.id, loc))
+                f.end(MIRGoto(advance.id, loc, _last_loc(stmt.body)))
             f.current = advance
             f.write(counter, MIRRangeAdvance(counter, step), loc)
             f.end(MIRGoto(head.id, loc))
         f.current = normal
         self.scoped_into(f, orelse)
         if f.current is not None:
-            f.end(MIRGoto(after.id, loc))
+            f.end(MIRGoto(after.id, loc, _last_loc(stmt.orelse)))
         f.current = after
         return f
 
@@ -4612,14 +4632,14 @@ class _Lowering:
             f.write(slot, MIRIteratorRead(cursor), loc)
             self.sequence(f, body)
         if f.current is not None:
-            f.end(MIRGoto(advance.id, loc))
+            f.end(MIRGoto(advance.id, loc, _last_loc(stmt.body)))
         f.current = advance
         f.write(cursor, MIRIteratorAdvance(cursor), loc)
         f.end(MIRGoto(head.id, loc))
         f.current = normal
         self.scoped_into(f, orelse)
         if f.current is not None:
-            f.end(MIRGoto(after.id, loc))
+            f.end(MIRGoto(after.id, loc, _last_loc(stmt.orelse)))
         f.current = after
         return f
 

@@ -439,7 +439,7 @@ void test_read_only_ok() {
 //     for x in items:
 //         while i < 2:
 //             i += 1
-//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
+//         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/) warning(/this call may move the elements of 'items'/)
 void test_outer_loan_survives_inner_while() {
     std::vector<int32_t> items = {1, 2};
     int32_t i = 0;

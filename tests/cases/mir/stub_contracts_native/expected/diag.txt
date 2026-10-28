@@ -1,1 +1,2 @@
 main.py:118: warning: Mutation of 'r' while iterating over it ('push' invalidates the iterator)
+main.py:118: warning: this call may move the elements of 'r', but the iteration over 'r' still walks them and continues on line 116; iterate over a copy ('copy(r)'), or make the changes after the loop

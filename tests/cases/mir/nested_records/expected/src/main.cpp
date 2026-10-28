@@ -47,7 +47,7 @@ int32_t mutate_through_member(Line& ln) {
 // # free function, conflict: the member replaced while a holder borrows it
 // def replace_live(ln: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 //     held = ln.a  # tpyc: mir_borrows(held, ln.a)
-//     ln.a = Point(9, "new")  # tpyc: warning(/Mutation of 'ln.a' while borrowed/)
+//     ln.a = Point(9, "new")  # tpyc: warning(/Mutation of 'ln.a' while borrowed/) warning(/this assignment overwrites 'ln.a' in place/)
 //     return held.x > 0
 bool replace_live(Line& ln) {
     Point& held = ln.a;
@@ -70,7 +70,7 @@ bool alias_external(const Line& left, Line& right) {
 // # free function, conflict: replacing an ancestor reaches a holder two members down
 // def replace_ancestor(f: Frame) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 //     held = f.line.first()
-//     f.line = Line(Point(1, "a"), Point(2, "b"), 0)  # tpyc: warning(/Mutation of 'f.line' while borrowed/) mir_write(f.line)
+//     f.line = Line(Point(1, "a"), Point(2, "b"), 0)  # tpyc: warning(/Mutation of 'f.line' while borrowed/) mir_write(f.line) warning(/this assignment overwrites 'f.line' in place/)
 //     return held.x > 0
 bool replace_ancestor(Frame& f) {
     const Point& held = f.line.first();
@@ -79,10 +79,10 @@ bool replace_ancestor(Frame& f) {
 }
 
 // # free function, conflict: a member method's published write under the holder's prefix
-// # (unwarned divergence: BUGS.md#field-loan-whole-record-callee-unchecked)
+// # (warned (advisory); still filed: BUGS.md#field-loan-whole-record-callee-unchecked)
 // def member_receiver(f: Frame) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 //     held = f.line.first()
-//     f.line.reset(9)
+//     f.line.reset(9)  # tpyc: warning(/this call overwrites 'f.line.a' in place/)
 //     return held.x > 0
 bool member_receiver(Frame& f) {
     const Point& held = f.line.first();
@@ -91,10 +91,10 @@ bool member_receiver(Frame& f) {
 }
 
 // # free function, conflict: the member replaced through the callee's summary
-// # (unwarned divergence: BUGS.md#field-loan-whole-record-callee-unchecked)
+// # (warned (advisory); still filed: BUGS.md#field-loan-whole-record-callee-unchecked)
 // def reset_live(ln: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 //     held = ln.a
-//     ln.reset(4)  # tpyc: mir_write(ln.a)
+//     ln.reset(4)  # tpyc: mir_write(ln.a) warning(/this call overwrites 'ln.a' in place/)
 //     return held.x > 0
 bool reset_live(Line& ln) {
     Point& held = ln.a;
@@ -250,11 +250,11 @@ int32_t hand_over_callers() {
 }
 
 // # free caller, conflict: a holder under the member a callee replaces by a move
-// # (unwarned divergence: BUGS.md#field-loan-whole-record-callee-unchecked)
+// # (warned (advisory); still filed: BUGS.md#field-loan-whole-record-callee-unchecked)
 // def adopt_live() -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 //     f = Frame(build(5), 1)
 //     held = f.line.first()
-//     adopt(f, build(8))
+//     adopt(f, build(8))  # tpyc: warning(/this call overwrites 'f.line' in place/)
 //     return held.x > 0
 bool adopt_live() {
     Frame f = Frame(::tpyapp::main::build(5), 1);

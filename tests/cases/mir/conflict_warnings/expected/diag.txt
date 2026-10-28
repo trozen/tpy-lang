@@ -1,0 +1,27 @@
+main.py:53: warning: this assignment frees the old value of 'buf', but 't.s' still views it and is read on line 54; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:78: warning: Mutation of 'self.items' while iterating over it ('append' invalidates the iterator)
+main.py:78: warning: this call may move the elements of 'self.items', but the iteration over 'self.items' still walks them and continues on line 76; iterate over a copy ('copy(self.items)'), or make the changes after the loop
+main.py:96: warning: this call may move the elements of 'ps', but 'p' still refers to them and is used on line 97; look it up again after this call, or copy what 'p' refers to first
+main.py:105: warning: 'buf' is freed at the end of this block, but 'v' still views it and is read on line 106; create 'buf' before the block
+main.py:120: warning: the temporary 'mk(c)' lives only until the end of this statement, but 't.s' still views it and is read on line 121; bind 'mk(c)' to a variable before this statement, or make 'Tok.s' an owned 'str'
+main.py:134: warning: 'buf' is freed when 'fill' returns, but 't.s' keeps a view of it; make 'Tok.s' an owned 'str'
+main.py:147: warning: the temporary 'mk(c)' lives only until the end of this statement, but 'self.v' keeps a view of it; make 'C.v' an owned 'str'
+main.py:153: warning: the return type 'StrView' lends the result, but 's' is created inside 'reassigned' and freed when it returns; return an owned 'str' instead
+main.py:175: warning: 'buf' is freed when 'Holder.view' returns, but 'self.s' keeps a view of it; make 'Holder.s' an owned 'str'
+main.py:183: warning: this assignment frees the old value of 'buf', but 't.s' still views it and is read on line 184; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:264: warning: the temporary 'mk(c)' lives only until the end of this statement, but 't.s' still views it and is read on line 265; bind 'mk(c)' to a variable before this statement, or make 'Tok.s' an owned 'str'
+main.py:273: warning: the temporary 'mk(c)' lives only until the end of this statement, but 't.s' still views it and is read on line 274; bind 'mk(c)' to a variable before this statement, or make 'Tok.s' an owned 'str'
+main.py:292: warning: copies Named into field; use copy() to make this explicit
+main.py:96: warning: Mutation of 'ps' while borrowed ('append' may invalidate references)
+main.py:315: warning: this assignment frees the old value of 'ln.a', but 'v' still views it and is read on line 316; copy what 'v' views first, or use 'v' before this assignment
+main.py:323: warning: Mutation of 'f.pts' while borrowed (field assignment may invalidate references)
+main.py:323: warning: this assignment frees the old value of 'f.pts', but 'p' still refers to it and is used on line 324; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:332: warning: Mutation of 'f.pts' while borrowed (field assignment may invalidate references)
+main.py:332: warning: this assignment overwrites 'f.pts' in place, but 'p' still refers to it and sees the new value on line 333; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:341: warning: Mutation of 'f.pts' while borrowed (field assignment may invalidate references)
+main.py:341: warning: this assignment overwrites 'f.pts' in place, but 'p' still refers to it and sees the new value on line 342; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:353: warning: Mutation of 'f' while borrowed (field assignment may invalidate references)
+main.py:353: warning: this assignment overwrites 'f.pts' in place, but 'lst' still refers to it and sees the new value on line 354; copy what 'lst' refers to first, or use 'lst' before this assignment
+main.py:361: warning: Mutation of 'ln.a' while borrowed (field assignment may invalidate references)
+main.py:361: warning: this assignment overwrites 'ln.a' in place, but 'p' still refers to it and sees the new value on line 362; copy what 'p' refers to first, or use 'p' before this assignment
+main.py:375: warning: this assignment frees the old value of 'buf', but 't.s' still views it and is read on line 377; give the new value its own name, or make 'Tok.s' an owned 'str'

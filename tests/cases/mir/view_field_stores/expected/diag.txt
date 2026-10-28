@@ -1,4 +1,11 @@
+main.py:112: warning: this assignment frees the old value of 'b', but 't.s' still views it and is read on line 113; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:120: warning: 'buf' is freed when 'fill' returns, but 't.s' keeps a view of it; make 'Tok.s' an owned 'str'
+main.py:171: warning: this assignment frees the old value of 'a', but 'o.inner.s' still views it and is read on line 172; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:186: warning: this assignment frees the old value of 'b', but 't.s' still views it and is read on line 187; give the new value its own name, or make 'Tok.s' an owned 'str'
+main.py:194: warning: 'buf' is freed when 'make_local' returns, but 's' of the returned 'Tok' keeps a view of it; make 'Tok.s' an owned 'str'
+main.py:243: warning: this assignment frees the old value of 'b.text', but 't.s' still views it and is read on line 244; copy what 't.s' views first, or use 't.s' before this assignment, or make 'Tok.s' an owned 'str'
 main.py:260: warning: argument 'b.text' is what 'make_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
+main.py:260: warning: this call frees the old value of 'b.text', but 't.s' still views it and is read on line 261; copy what 't.s' views first, or use 't.s' before this call, or make 'Tok.s' an owned 'str'
 main.py:266: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:273: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:283: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
@@ -6,7 +13,10 @@ main.py:303: warning: Own[R] param 'b' is never consumed (not stored in a field,
 main.py:318: warning: copies R into owned storage; use copy() to make this explicit
 main.py:323: warning: Own[Buf] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:334: warning: copies Buf into owned storage; use copy() to make this explicit
+main.py:358: warning: this assignment frees the old value of 'b.text', but 'w.t.s' still views it and is read on line 359; copy what 'w.t.s' views first, or use 'w.t.s' before this assignment, or make 'Tok.s' an owned 'str'
 main.py:405: warning: argument 'b.text' is what 'store_and_replace' modifies through parameter 'b' while it still uses 's'; bind it to a local first ('v = b.text') or restructure so the call does not hand over both
 main.py:440: warning: Mutation of 't' while borrowed (field assignment may invalidate references)
 main.py:566: warning: Mutation of 'o.inner' while borrowed (field assignment may invalidate references)
+main.py:676: warning: 'buf' is freed when 'member_param_local' returns, but 'o.inner.s' keeps a view of it; make 'R.s' an owned 'str'
 main.py:682: warning: Own[Holder] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:712: warning: this assignment frees the old value of 'src', but 'o.inner.s' still views it and is read on line 713; give the new value its own name, or make 'R.s' an owned 'str'

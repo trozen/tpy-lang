@@ -76,7 +76,7 @@ void direct_write(int32_t k) {
 //     t = Tok(a, 1)
 //     t.s = b
 //     if flag:
-//         b = mk(k + 2)
+//         b = mk(k + 2)  # tpyc: warning(/this assignment frees the old value of 'b'/)
 //     print("direct_write_source", t.s)
 void direct_write_source(int32_t k, bool flag) {
     std::string a = ::tpyapp::main::mk(k);
@@ -93,7 +93,7 @@ void direct_write_source(int32_t k, bool flag) {
 // # (BUGS.md#record-view-field-escapes-local-buffer)
 // def fill(t: Tok, k: int32) -> None:  # tpyc: mir(conflict /store_escape/) mir_summary(opaque /^summary stores a loan of the body's storage$/)
 //     buf = mk(k)
-//     t.s = buf
+//     t.s = buf  # tpyc: warning(/'buf' is freed when 'fill' returns/)
 void fill(Tok& t, int32_t k) {
     std::string buf = ::tpyapp::main::mk(k);
     t.s = buf;
@@ -166,7 +166,7 @@ int32_t outer_read(int32_t k) {
 //     a = mk(k)
 //     o = Outer(Tok(a, 1), 2)
 //     if flag:
-//         a = mk(k + 1)
+//         a = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'a'/)
 //     print("outer_replaced", o.inner.s)
 void outer_replaced(int32_t k, bool flag) {
     std::string a = ::tpyapp::main::mk(k);
@@ -190,7 +190,7 @@ Tok make(std::string_view s) {
 //     b = mk(k)
 //     t = make(b)  # tpyc: mir_borrows(t.s, b)
 //     if flag:
-//         b = mk(k + 1)
+//         b = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b'/)
 //     print("made_replaced", t.s)
 void made_replaced(int32_t k, bool flag) {
     std::string b = ::tpyapp::main::mk(k);
@@ -205,7 +205,7 @@ void made_replaced(int32_t k, bool flag) {
 // # (BUGS.md#record-view-field-escapes-local-buffer)
 // def make_local(k: int32) -> Own[Tok]:  # tpyc: mir(conflict /store_escape/)
 //     buf = mk(k)
-//     return Tok(buf, 3)
+//     return Tok(buf, 3)  # tpyc: warning(/'buf' is freed when 'make_local' returns/)
 Tok make_local(int32_t k) {
     std::string buf = ::tpyapp::main::mk(k);
     return Tok(buf, 3);
@@ -283,7 +283,7 @@ Tok ident(Tok&& r) {
 //     b = Buf(mk(k))
 //     t = ident(Tok(b.text, 1))
 //     if flag:
-//         b.text = mk(k + 1)
+//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text'/)
 //     print("ident_kept", t.s)  # tpyc: mir_borrows(t.s, b.text)
 void ident_kept(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));
@@ -313,7 +313,7 @@ Tok make_replace(std::string_view s, Buf& b, bool flag) {
 // # warned at the call: make_replace's no-alias obligation (BUGS.md#record-view-member-source-replaced)
 // def made_replace(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     b = Buf(mk(k))
-//     t = make_replace(b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'make_replace' modifies/)
+//     t = make_replace(b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'make_replace' modifies/) warning(/this call frees the old value of 'b.text'/)
 //     print("made_replace", t.s)
 void made_replace(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));
@@ -448,7 +448,7 @@ int32_t wrap_copy(const Tok& t) {
 //     t = Tok(b.text, 1)
 //     w = Wrap(copy(t))
 //     if flag:
-//         b.text = mk(k + 1)
+//         b.text = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'b.text'/)
 //     print("wrap_copy_replaced", w.t.s, t.n)
 void wrap_copy_replaced(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));
@@ -881,7 +881,7 @@ std::string_view nested_read(const Holder& o) {
 // # (BUGS.md#record-view-field-escapes-local-buffer)
 // def member_param_local(o: Holder, k: int32) -> None:  # tpyc: mir(conflict /store_escape/)
 //     buf = mk(k)
-//     o.inner = R(buf, buf)
+//     o.inner = R(buf, buf)  # tpyc: warning(/'buf' is freed when 'member_param_local' returns/)
 void member_param_local(Holder& o, int32_t k) {
     std::string buf = ::tpyapp::main::mk(k);
     o.inner = R(buf, buf);
@@ -936,7 +936,7 @@ R make_r(std::string_view s) {
 //     o = Holder(R("member", "static"))
 //     o.inner = make_r(src)
 //     if flag:
-//         src = mk(k + 1)
+//         src = mk(k + 1)  # tpyc: warning(/this assignment frees the old value of 'src'/)
 //     print("member_from_call", o.inner.s)
 void member_from_call(int32_t k, bool flag) {
     std::string src = ::tpyapp::main::mk(k);

@@ -7,8 +7,10 @@ coupled callable contract, following `CALLABLE_CONTRACT_FEASIBILITY.md`.
 That approves the sequence, not the proposed admission restrictions or every
 implementation detail below. **M1's implementation scope was then approved and
 is implemented in `tpyc/mir/`.** Source acceptance and generated C++ are
-unchanged; since 2026-10-10 normal compilation runs MIR for one advisory
-warning ([argument-alias obligations](#argument-alias-obligations-the-first-mir-diagnostic)).
+unchanged; normal compilation runs MIR for advisory warnings: since
+2026-10-10 the argument-alias warning
+([argument-alias obligations](#argument-alias-obligations-the-first-mir-diagnostic)),
+since 2026-10-27 the lifetime hazards MIR proves (B6, evidence vs warning).
 
 The first increment builds and verifies a real control-flow graph from a small
 THIR subset. It does not check callable lifetimes yet. Later increments must
@@ -1993,7 +1995,35 @@ form facts, never on lists of accepted kinds.
   M5's single switch. The first advisory family landed early (2026-10-10,
   [argument-alias obligations](#argument-alias-obligations-the-first-mir-diagnostic)):
   a MIR warning beside sema's checks, which stay authoritative; it decides
-  nothing about authority.
+  nothing about authority. The second landed 2026-10-27: **evidence vs
+  warning.** Every conflict stays evidence (the verdict's conflict kinds,
+  `--dump-mir`, the storage certificate); only a *definite* hazard warns.
+  Each conflict-finding analysis (retention, scope lifetime, payload
+  lifetime, return and store escapes) emits one `witness.MIRHazard` per
+  event beside its unchanged conflicts, and `witness.decide` proves it or
+  leaves it evidence: strict reach over the full written and retained sets
+  (`reach.reaches_definitely`), a non-call read every path reaches before
+  the holder is rebound, a fresh store every path carries to a normal
+  return unrewritten (one warning per kill, affected root and holder,
+  `mir_diagnostics.hazard_warnings`). Not-definite classes -- a read on
+  some paths, element identity, caller-dependent aliasing, raise-path
+  escapes, joined writes into a parameter's object -- are precision items
+  (TODO.md), each a later promotion. A hazard sema also warns is reported
+  by both (decided 2026-10-28): no code matches one analysis's warnings
+  against the other's, and B6 removes the duplicate per family when it
+  hands that family to MIR; this split still decides nothing
+  about authority. **Gate for later units:** a unit that changes which bodies
+  lower, or MIR verdicts or conflicts, lists and classifies every corpus MIR
+  warning before landing, with zero false ones. How: regenerate the corpus
+  snapshots (`uv run pytest --update-snapshots`, through the hosts) and list
+  the MIR warning lines `git diff -- '*/diag.txt'` adds or removes (every
+  case's `diag.txt` records its MIR warnings); classify each by its program
+  (a valid input that reaches the hazard, else false). The 2026-10-27 unit
+  also ran a census driver that lives only in /tmp (`/tmp/agents/mrc/impl/warn.py`
+  and `run_warn.sh`): it compiles each corpus program that has a MIR conflict
+  (the survey's list), calls `Compiler.report_mir_warnings(..., strict=True)`
+  over its user modules and prints every warning; examples and the stdlib
+  render case are covered the same way.
 
 **Constraint on B1-B5**, so both B6 outcomes stay possible: evidence --
 structured conflict kinds, explicit unknowns, locations, complete obligation
@@ -4489,9 +4519,10 @@ Generated C++ is unchanged; only the diagnostic is new. Pinned by
   tracked, so a write to one element also flags a borrow of another (a
   constant-index false positive; see "Origins and write reach").
 - **Normal compilation.** `Compiler.report_mir_warnings` runs MIR over the
-  user modules' THIR after codegen, analyzing only bodies that call a callee
-  with obligations, and adds each `argument_alias` conflict as a warning
-  through the sema diagnostics stream (printed, replayed by the build cache,
+  user modules' THIR after codegen, analyzing every body MIR lowers (since
+  2026-10-27; before, only bodies calling a callee with obligations), and adds
+  each `argument_alias` conflict and each definite lifetime hazard as a
+  warning through the sema diagnostics stream (printed, replayed by the build cache,
   recorded in a case's `diag.txt`). A MIR exception drops only that body's
   warnings; the test harness runs it strictly, so an exception fails the case.
   The remedy is named by the argument's type: bind an `int` / `str` argument

@@ -1230,7 +1230,20 @@ Existing defects remain in BUGS.md; this section groups the architectural work.
   invalidation checks whose extent the general graph cannot express.
   Temporary materialization should eventually carry its owner and required
   lifetime into lowering. This is architectural work, not a prerequisite
-  for the Optional or mutation-edge fixes above.
+  for the Optional or mutation-edge fixes above. Worked example
+  (2026-10-28): `t = Tok(first(mk(c)), 1)` (`Tok.s: StrView`, `first`
+  lends its argument) renders `Tok t = Tok(first(mk(c)), 1);` and MIR
+  warns that the temporary `mk(c)` ends with the statement while `t.s`
+  views it (`tests/cases/mir/conflict_warnings`, `temp_view`); CPython
+  keeps the string alive through `t.s`. A temporary whose lent value the
+  bound name keeps should be owned at the binding's scope -- the hoist
+  `r = head(mk())` already gets (`std::vector<Rec> __tmp_1 = mk(); Rec& r
+  = head(__tmp_1);`), reached through a constructor argument the record
+  stores -- which also retires sema's "Cannot bind StrView ... to a
+  temporary view source" refusal (BUGS.md#strview-field-view-of-temporary)
+  and BUGS.md#optional-reseat-borrow-of-temporary-rejects. A rebinding in
+  a loop or an escape past the scope still needs the block-escape hoist
+  (BUGS.md#block-local-escapes-through-outer-alias).
 
 - **[tooling] Freeze a small capability corpus across revisions.** Select
   representative existing cases and review witnesses; retain their sources
@@ -1717,6 +1730,8 @@ carries some THIR-aligned *cleanups* that are cheap to do opportunistically
 alongside related feature work; only the big-rock deferrals live here.
 
 - **[MIR] A mixed const/mutable pointer slot never written through could be `const T*`.** Today such a slot rejects at its read-only source (`BUGS.md#hoist-const-from-name-wide-borrow-bit`); MIR's fact that no write reaches the slot through any alias, element, loan or call lets the planner's const fixpoint (`_plan_const`) take the const pointer instead.
+- **[MIR] Promote evidence-only conflict classes to warnings (precision items, 2026-10-27).** MIR warns only definite hazards (`tpyc/mir/witness.py`, docs/LANGUAGE_FEATURES.md "MIR Lifetime Warnings"); every other conflict stays evidence and prints nothing. Each class below is its own unit that moves conflicts into "definite", re-running the classification gate (every corpus warning classified, zero false ones) before it lands: (1) **path-sensitive reads** -- a read only on the paths where the kill happened (`if c: buf = mk("b")` ... `if not c: return len(v)` is safe; a flag, an `is not None`, a `break` guard), and reads through an alias whose referents a branch join widened (`v = t.s` after `if c: t.s = buf`); (2) **element identity** -- `p = xs[i]; xs[j] = P(1)` (BUGS.md#setitem-write-under-live-element-borrow), today "some element" against "some element"; (3) **caller-dependent aliasing** -- a parameter's view member against a write through another parameter (BUGS.md#borrowed-arg-into-mutated-storage), callers MIR does not lower; (4) **reads through calls** -- `size(t)` reads nothing in the witness, since a summary carries no read facts (a stub's declared contract could supply them); (5) **raise-path escapes** -- a store left in the caller's object when a later statement raises; (6) **strong updates into one parameter object** -- writes the dependency pass joins instead of replacing; (7) **member liveness** -- a holder kept live by a member the body never reads again (per-slot liveness). The rebinds the witness reads come from the statement target plus `reach.storage_events`; a payload-end hazard has no corpus witness yet. Pending: whether MIR or sema warns a hazard both see (11 corpus sites; today both). (8) **calls with no normal return** -- a callee whose summary has no feasible normal return (it always raises) still continues the witness's path, so a read after `fail()` counts as reached and the store before it as escaping to a return (`fail(); print(t.s)`); such a call should cut the path, which needs a "never returns normally" fact on the summary (known false warnings today: BUGS.md#mir-warning-after-always-raising-call). (9) **escapes on only some paths** -- a store escape that happens on one path only (a returned record that keeps a dead local's loan on one branch and returns another record or re-points the member on the other: `if flag: return t ... return u`, `if flag: t.adopt(q.s)`) is silent, since rule 3 asks every path from the store to escape; a may-escape warning needs its own noise measurement.
+- **[MIR] P1: a loop cursor holds a position, not its container's elements (2026-10-27).** `dependencies.py` projects a native iterator onto its container's `[structure]` and `[elements]`; any element write in the loop then "replaces" what the cursor holds, so `for k in t: t[k] = 5` and `for x in xs: xs[0] = 7` conflict through the cursor. The cursor should retain `[structure]` only, element loans coming from the read's result, with a per-type "may grow" fact so a dict insert stays a structure write (it changes MIR verdicts and today erases the dict-insert evidence, BUGS.md#dict-grows-during-own-iteration, which is why it is its own unit and was kept out of the warnings unit).
 
 - **MIR (analysis-only): the place / loan model.** Order (approved
   2026-09-29): breadth-first, `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first
@@ -2231,6 +2246,12 @@ alongside related feature work; only the big-rock deferrals live here.
         (~10 callers), Optional containers (~10), `Own[P | None]` (5),
         a BigInt `int | None` (~3), `Optional[BaseException]` (2).
       - `match` on an Optional (19 bodies).
+      - A pointer-repr Optional local re-pointed at a record parameter or
+        `self` (`current: Cell | None = a; current = b`, `saved = self`):
+        THIR lowers them once the reseat source arms are shared
+        (`current = &(b);`, `saved = &((*this));`), and MIR refuses the
+        rebind ("unsupported optional reseat", `optional_assignment` admits
+        only the OPT_NONE kind of a pointer-local rebind).
       - The payload record's own definition refused (17 bodies).
       - Payloads holding a loan ("wrapper holds a borrow").
       - A callee returning its payload as a borrowed record
@@ -2419,6 +2440,45 @@ alongside related feature work; only the big-rock deferrals live here.
   - Retention beyond view members: a summary publishes a kept loan only as
     a loan transfer into a view member (`MIRLoanTransfer`); a callee
     keeping one in a container element or a wrapper stays refused.
+  - Held iterator steps (`BUGS.md#generator-resume-overwrites-held-yield`,
+    designed 2026-10-27 and parked: `tpy-m2/notes/mir-held-step/`, two
+    rejected designs with every reviewer's probe). The rule that held: an
+    iterator handle is modeled like a native container whose elements are
+    its steps -- a step borrows `g[elements]`, an advance writes
+    `g[structure]`, so held steps die and an alias `h = g` survives. In
+    order, it needs: (1) loans kept in containers and opaque objects (the
+    item above and view fields slice 4): a generator handle retains its
+    frame's captures, a list or `StrView` step lends what it holds, and a
+    step of one generator must die when another advance grows the list it
+    reads; (2) nested container and record-with-record-field elements
+    (list steps); (3) captured / resume effects in call summaries (B5): an
+    advance writes what the handle captured, transitively through wrapper
+    generators (`relay2(relay(g))`), symbolically through a helper
+    `adv(g)` and instantiated at its caller -- not "a write of an object
+    writes what it borrows", which stays false for passive holders; also
+    the output-effect opacity of a printing helper (item below, (a)) and
+    list-typed globals; (4) the THIR common set (about 150 lines, no C++
+    change: iterator-handle value form, `__iter__` / `__next__` callees on
+    `THIRForIterProto`, stub `borrows=` / `element_of=` on stub callees,
+    resolved callees for generators and Iterator-parameter functions with
+    the frame's retained parameters, the alias fact on `h = g`, sema's
+    `pull_runs_code`; `notes/mir-held-step/thir_inventory.md`), coordinated
+    with the THIR owner; (5) the conservative consumer check and its
+    diagnostic (an `Iterator[T]` parameter's producer is unknown, so its
+    advance stays conservative); (6) precise generator-body summaries (B4)
+    to remove the conservative false warnings (a step that really points
+    into the caller's list, `iter(cs)`). Kept out until a contract says
+    "advancing the wrapper advances its arguments": `zip` / `enumerate`
+    (the same stub retention facts would otherwise admit them). A bounded
+    slice first (argument-free local generators advanced in one body) was
+    measured and dropped 2026-10-27 (`notes/mir-held-step/survey_v3_a.md`,
+    `survey_v3_b.md`): the corpus survey found no such body holding a
+    reference step across an advance, and it is unsound without an
+    environment effect -- an argument-free generator can yield into a
+    global that another generator's advance rewrites (probe
+    `/tmp/agents/mhs/v3/a/q1b.py`), so (3) must also cover "an advance that
+    runs code writes globals" for every external loan, parameters included.
+    Only record and list steps are bug-prone; `str` / `int32` steps copy.
   - Nested container elements beyond one hop ("unsupported native
     container element"): `xss[0][0]`, `for v in rows[i]:` -- the shapes of
     `BUGS.md#elem-index-certainty-ignores-rebinds`, the `rows[0]` face of

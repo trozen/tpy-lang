@@ -1,5 +1,7 @@
 main.py:37: warning: returns a copy of str field 'self.name'; use -> StrView for zero-copy access or -> String to silence this warning
 main.py:85: warning: copies Inner into field; use copy() to make this explicit
+main.py:124: warning: this call may move the elements of 'c.items', but the iteration over 'c.elems' still walks them and continues on line 122; iterate over a copy ('copy(c.items)'), or make the changes after the loop
+main.py:186: warning: this call may move the elements of 'c.items', but the iteration over 'c.view_items()' still walks them and continues on line 184; iterate over a copy ('copy(c.items)'), or make the changes after the loop
 main.py:203: warning: copies Counter into field; use copy() to make this explicit
 main.py:124: warning: Mutation of 'c' while iterating over it ('push' invalidates the iterator)
 main.py:134: warning: Mutation of 'c' while borrowed ('push' may invalidate references)

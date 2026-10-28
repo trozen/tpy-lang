@@ -21,5 +21,6 @@ main.py:141: warning: Mutation of 't[...]' while iterating over it ('append' inv
 main.py:146: warning: Mutation of 'rows[...]' while iterating over it (element assignment invalidates the iterator)
 main.py:151: warning: Mutation of 'rows' while iterating over it ('append' invalidates the iterator)
 main.py:188: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
+main.py:188: warning: this call may move the elements of 'items', but the iteration over 'items' still walks them and continues on line 185; iterate over a copy ('copy(items)'), or make the changes after the loop
 main.py:207: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
 main.py:221: warning: Mutation of 'cube[...]' may hit the element being iterated ('append' may invalidate the iterator)

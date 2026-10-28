@@ -81,7 +81,7 @@ from .symbol_binding import (
 from .mir.collect import call_definitions
 from .mir.definitions import MIRDefinitions
 from .mir_workspace import MIRProgram, analyze_call_workspace
-from .mir_diagnostics import CallSites, alias_check_bodies, analyze_alias_body, body_alias_warnings
+from .mir_diagnostics import CallSites, analyze_source, body_warnings, lowered_bodies
 
 if TYPE_CHECKING:
     from .codegen_cpp.context import CodeGenContext
@@ -4308,13 +4308,14 @@ class Compiler:
         """Add MIR's warnings over `collect_thir` results to each module's
         diagnostics, in source order among sema's, and return them.
 
-        The warnings are the `argument_alias` conflicts of each body's
+        The warnings are each body's `argument_alias` conflicts and its
+        definite lifetime hazards (`mir_diagnostics.body_warnings`) over its
         analyses (`collect.lower_and_analyze`): the verdict pass's, which a
         caller inside `mir_analysis` passes as `analyzed` (by the module's
-        tree) with its `program`; otherwise the bodies that call a callee
-        with obligations are analyzed here, over a workspace built here when
-        no `program` is given. One call site warns once, though the clone
-        bodies of an `@auto_readonly` def each find it.
+        tree) with its `program`; otherwise every lowered body is analyzed
+        here (`lowered_bodies`), over a workspace built here when no
+        `program` is given. One site warns once, though the clone bodies of
+        an `@auto_readonly` def each find it.
 
         MIR is advisory in a compile: an exception inside it costs only that
         body's warnings and never fails the build (`strict` lets it
@@ -4340,17 +4341,17 @@ class Compiler:
                     for pair in analyzed.get(compiled.ast, ())]
         else:
             try:
-                sources = list(alias_check_bodies(
+                sources = list(lowered_bodies(
                     ((compiled.ast, compiled.analyzer, ctx, compiled.name)
                      for compiled, ctx in collected if compiled.analyzer is not None),
-                    program, self.thir_reject_by_node))
+                    self.thir_reject_by_node))
             except Exception as failure:
                 if strict:
                     raise
                 if on_failure is not None:
                     on_failure(f"MIR body enumeration skipped: {failure!r}")
                 return []
-            work = [(by_tree[module], lambda source=source: analyze_alias_body(source, program))
+            work = [(by_tree[module], lambda source=source: analyze_source(source, program))
                     for module, source in sources]
         order: IdentityMap[TpyModule, int] = IdentityMap(
             (compiled.ast, index) for index, (compiled, _ctx) in enumerate(collected))
@@ -4363,7 +4364,7 @@ class Compiler:
                 if pair is None:
                     continue
                 site = sites.setdefault(compiled.ast, CallSites(compiled.ast, compiled.analyzer))
-                warnings = body_alias_warnings(*pair, program, site)
+                warnings = body_warnings(*pair, program, site, strict=strict)
             except Exception as failure:
                 if strict:
                     raise

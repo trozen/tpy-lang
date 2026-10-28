@@ -27,7 +27,7 @@
 | Ordinary iteration | M3.19 models native iterator identities and dependencies; M3.20 connects unit-step int32 range CFG; M3.21 connects fixed borrowed native scalar/record sources, readonly and retained aliases ([iteration plan](MIR_M3_ORDINARY_FOR_PLAN.md)); protocol iteration and other shapes remain open |
 | Remaining M3 scope | [Completion checklist](MIR_M3_COMPLETION_PLAN.md): storage lifecycle, additional CFG positions, cleanup, suspension and complete holder propagation; each open item is scheduled under a breadth-first B-step |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
-| MIR advisory loan checker (default mode) | First family landed: the argument-alias warning (normal compilation runs MIR for it; [plan](MIR_ANALYSIS_PLAN.md#argument-alias-obligations-the-first-mir-diagnostic)); the rest is step B6 of the [breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order), which also decides per-family vs single authority transition |
+| MIR advisory loan checker (default mode) | Two families landed: the argument-alias warning ([plan](MIR_ANALYSIS_PLAN.md#argument-alias-obligations-the-first-mir-diagnostic)) and the lifetime hazards MIR proves (2026-10-27; definite conflicts warn, the rest stays evidence), over every body normal compilation lowers; the rest is step B6 of the [breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order), which also decides per-family vs single authority transition |
 | MIR safe opt-in enforcement mode | Not started |
 | MIR-backed codegen | Not started |
 | Retirement of old sema/codegen ownership logic | Not started |

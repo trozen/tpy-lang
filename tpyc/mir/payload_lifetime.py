@@ -9,7 +9,9 @@ from .nodes import MIRAssign, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint
 from .presence import MIRPresenceIssue
 from .prepare import MIRPrepared, validated_presence
 from .reach import storage_events, sum_payload_ends
+from .reach import MIRReferent
 from .value import MIRValidationError
+from .witness import MIRHazard, MIRHazardKind
 
 
 @dataclass(frozen=True)
@@ -64,18 +66,28 @@ class MIRPayloadInspection:
     ends: MIRPayloadEnds | MIRNotCovered
     conflicts: tuple[MIRPayloadConflict, ...] | MIRNotCovered
     freshness: tuple[MIRPresenceIssue, ...]
+    # One per ended payload and holder, for the witness.
+    hazards: tuple[MIRHazard, ...] = ()
 
 
 def inspect_payload_lifetimes(prepared: MIRPrepared) -> MIRPayloadInspection:
     """Inspect stale aliases without admitting them as valid MIR; a stale
     payload access never prepares (`prepare.prepare`)."""
     ends = _payload_ends(prepared)
-    conflicts = _payload_conflicts(prepared, ends)
-    return MIRPayloadInspection(prepared.function, ends, conflicts, prepared.presence.issues)
+    found = _payload_findings(prepared, ends)
+    if isinstance(found, MIRNotCovered):
+        return MIRPayloadInspection(prepared.function, ends, found, prepared.presence.issues)
+    return MIRPayloadInspection(prepared.function, ends, found[0], prepared.presence.issues, found[1])
 
 
 def _payload_conflicts(prepared: MIRPrepared,
                        ends: MIRPayloadEnds | MIRNotCovered) -> tuple[MIRPayloadConflict, ...] | MIRNotCovered:
+    found = _payload_findings(prepared, ends)
+    return found if isinstance(found, MIRNotCovered) else found[0]
+
+
+def _payload_findings(prepared: MIRPrepared, ends: MIRPayloadEnds | MIRNotCovered
+                      ) -> tuple[tuple[MIRPayloadConflict, ...], tuple[MIRHazard, ...]] | MIRNotCovered:
     fn, liveness, dependencies = prepared.function, prepared.liveness, prepared.dependencies
     for result in (prepared.presence, liveness, dependencies, ends):
         if isinstance(result, MIRNotCovered):
@@ -87,6 +99,7 @@ def _payload_conflicts(prepared: MIRPrepared,
         if isinstance(result, MIRNotCovered):
             return MIRNotCovered(fn.id, "payload conflicts", f"{result.node_kind}: {result.reason}", result.loc)
     conflicts: list[MIRPayloadConflict] = []
+    hazards: list[MIRHazard] = []
     for point, payloads in ends.ends.items():
         incoming = dependencies.referents[point]
         live_after = dependencies.live(incoming, liveness.points[MIRPoint(point.block, point.index + 1)])
@@ -95,7 +108,9 @@ def _payload_conflicts(prepared: MIRPrepared,
             retained = {ref.place for ref in refs if not ref.external}
             for place in sorted(payloads & retained, key=_place):
                 conflicts.append(MIRPayloadConflict(point, place, holder))
-    return tuple(conflicts)
+                hazards.append(MIRHazard(MIRHazardKind.PAYLOAD_END, point, place,
+                                         frozenset({MIRReferent(place)}), holder, (refs,)))
+    return tuple(conflicts), tuple(hazards)
 
 
 def dump_payload_inspection(result: MIRPayloadInspection) -> str:

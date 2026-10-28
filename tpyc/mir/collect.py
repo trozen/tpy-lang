@@ -4,6 +4,7 @@ codegen left behind. Every emitted body of a module has exactly one
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+from functools import cached_property
 from enum import Enum, auto
 from types import MappingProxyType
 
@@ -14,8 +15,7 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
-from ..thir.scalar_leaves import MIRClass, value_class
-from ..typesys import TpyType, unwrap_readonly
+from ..typesys import TpyType
 from .call_contract import MIRAliasObligation, MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
 from .definitions import MIRDefinitions, view_members
@@ -28,11 +28,11 @@ from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
 from .lower import MIRLoweredStorage, lower_callable
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCopy, MIRFunction, MIRNotCovered,
-    MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCopy, MIRFunction, MIRNotCovered,
+    MIRPlace, MIRSlot, MIRSlotId, MIRStorageWriteMode, function_body_kind, source_order, statement_target,
     place_shape,
 )
-from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRShape
+from .value import MIRRecordLayout, MIRShape
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )
@@ -42,15 +42,17 @@ from .retention import (
 )
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .shapes import (
-    MIRContainerElements, MIRContainerStructure, MIRTupleIndex, MIRUnionPayload, object_prefix,
-    optional_payload, sole_payload,
+    MIRUnionPayload, object_prefix,
+    optional_payload,
 )
 from .reach import storage_destination
+from .place_text import AnnotationSpelling, MIRStorageNames
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
-    MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
+    MIRStorageConflict, MIRStorageVerdict, analyze_escapes, dump_escapes,
 )
+from .witness import MIRHazard, MIRHazardKind, MIRWitness, decide, dump_witness_cap
 from ..mir_workspace import MIRCallWorkspace, callable_identity
 
 
@@ -180,12 +182,28 @@ class MIRAnalyses:
     # MIR analyzes checks each, and the body keeps them as `alias_obligation`
     # conflicts, apart from its replacements.
     obligations: frozenset[MIRAliasObligation] = frozenset()
+    # The preparation the analyses ran over, and every hazard they emitted
+    # beside their conflicts (`witness.MIRHazard`): what the witness reads.
+    prepared: MIRPrepared | None = None
+    hazards: tuple[MIRHazard, ...] = ()
 
     @property
     def retention_classes(self) -> MIRRetentionClasses | None:
         if isinstance(self.retention, MIRNotCovered):
             return None
         return classify_retention(self.retention, self.obligations)
+
+    @cached_property
+    def witnesses(self) -> tuple[MIRWitness, ...]:
+        """Each hazard the body answers for, decided (`witness.decide`): a
+        replacement only where the body answers for it (a published no-alias
+        obligation is its callers' to check)."""
+        if not isinstance(self.prepared, MIRPrepared):
+            return ()
+        classes = self.retention_classes
+        answered = set(classes.replacements) if classes is not None else set()
+        return decide(self.prepared, [h for h in self.hazards
+                                      if h.kind is not MIRHazardKind.REPLACEMENT or answered & set(h.conflicts)])
 
     @property
     def gaps(self) -> tuple[tuple[str, MIRNotCovered], ...]:
@@ -227,10 +245,13 @@ def analyze_body(fn: MIRFunction, prepared: MIRPrepared | MIRNotCovered,
         return MIRAnalyses(prepared, prepared, prepared, MIRScopeInspection(fn, prepared, prepared, ()), prepared,
                            prepared, MIRPayloadInspection(fn, prepared, prepared, ()), prepared, prepared,
                            obligations)
-    return MIRAnalyses(prepared.liveness, prepared.dependencies, analyze_storage(prepared),
-                       inspect_scope_lifetimes(prepared), analyze_call_effects(prepared), analyze_retention(prepared),
-                       inspect_payload_lifetimes(prepared), analyze_return_escapes(prepared),
-                       analyze_store_escapes(prepared), obligations)
+    events, scope, effects = analyze_storage(prepared), inspect_scope_lifetimes(prepared), analyze_call_effects(prepared)
+    retention, payload = analyze_retention(prepared), inspect_payload_lifetimes(prepared)
+    escapes = analyze_escapes(prepared)
+    hazards = (*(retention.hazards if isinstance(retention, MIRRetention) else ()), *scope.hazards,
+               *payload.hazards, *escapes.hazards)
+    return MIRAnalyses(prepared.liveness, prepared.dependencies, events, scope, effects, retention, payload,
+                       escapes.returns, escapes.stores, obligations, prepared, hazards)
 
 
 def published_obligations(summary: MIRSummaryResult | None) -> frozenset[MIRAliasObligation]:
@@ -478,9 +499,6 @@ def enumerate_bodies(module: TpyModule, analyzer: SemanticAnalyzer, ctx: CodeGen
 
 # --- line facts -------------------------------------------------------------------
 
-_SELECTORS = {MIRSlotKind.PARAMETER: "param", MIRSlotKind.LOCAL: "local", MIRSlotKind.GLOBAL: "global"}
-
-
 class MIRWriteKind(Enum):
     """What a write lands in, as the `mir_owned` / `mir_borrowed`
     annotations read it: owned storage, a borrowed holder, an inert leaf."""
@@ -546,94 +564,6 @@ class MIRLineFacts:
     ambiguous: Mapping[str, tuple[str, ...]] = MappingProxyType({})
 
 
-def _reached_types(fn: MIRFunction) -> set[TpyType]:
-    """The types a body's places can hold a record of: its slots' values
-    and their members, and its layouts' records and fields."""
-    types: set[TpyType] = set()
-    stack = [slot.shape for slot in fn.slots]
-    while stack:
-        shape = stack.pop()
-        if shape is not None:
-            types.add(unwrap_readonly(shape.type))
-            stack.extend(shape.members)
-    for layout in fn.records:
-        types.add(layout.type)
-        types.update(unwrap_readonly(f.type) for f in layout.fields)
-    return types
-
-
-class _Spelling:
-    """Spells places of one body. A field is spelled by its name unless the
-    record holding it declares that name under two owners; then by
-    `Owner.name`, and the bare spelling is recorded as ambiguous with every
-    owner's spelling."""
-
-    def __init__(self, fn: MIRFunction) -> None:
-        self.slots = {slot.id: slot for slot in fn.slots}
-        # Per record the body reaches: each field name two owners declare, to its owners.
-        self.shadowed: dict[TpyType, dict[str, tuple[str, ...]]] = {}
-        for typ in _reached_types(fn):
-            owners: dict[str, list[str]] = {}
-            for f in fn.record_fields.get(typ, ()):
-                owners.setdefault(f.id.name, []).append(f.id.owner.name)
-            shadowed = {n: tuple(sorted(o)) for n, o in owners.items() if len(o) > 1}
-            if shadowed:
-                self.shadowed[typ] = shadowed
-        self.ambiguous: dict[str, set[str]] = {}
-
-    def owners(self, holder: TpyType | None, field: MIRFieldId) -> tuple[str, ...]:
-        if holder is not None:
-            return self.shadowed.get(holder, {}).get(field.name, ())
-        # A record reached through a wrapper member: any record declaring the field decides.
-        return next((names[field.name] for names in self.shadowed.values()
-                     if field.owner.name in names.get(field.name, ())), ())
-
-    def __call__(self, place: MIRPlace, names: Mapping[MIRPlace, str]) -> str | None:
-        """`place` spelled from the name `names` gives the storage it lies
-        in: its root slot's, or an owned sum payload's (`r` for the record a
-        rebind of `r` filled)."""
-        slot = self.slots.get(place.root)
-        holder: TpyType | None = slot.type if slot is not None else None
-        projections = place.projections
-        root = names.get(MIRPlace(place.root))
-        if sole_payload(place.projections[:1]) and (name := names.get(MIRPlace(place.root, projections[:1]))):
-            root, projections = name, projections[1:]
-            holder = slot.shape.members[place.projections[0].alternative].type
-        if root is None:
-            return None
-        text = bare = root
-        alternatives = [root]
-        for projection in projections:
-            match projection:
-                case MIRField(id=field):
-                    owners = self.owners(holder, field)
-                    text += f".{field.owner.name}.{field.name}" if owners else f".{field.name}"
-                    bare += f".{field.name}"
-                    alternatives = [f"{a}.{o}.{field.name}" for a in alternatives for o in owners] if owners else [
-                        f"{a}.{field.name}" for a in alternatives]
-                    holder = unwrap_readonly(projection.type)
-                    continue
-                case MIRTupleIndex(index=index):
-                    step = f"[{index}]"
-                case MIRUnionPayload(alternative=alternative):
-                    # Annotations spell an Optional's payload by its name.
-                    held = None if holder is None else value_class(unwrap_readonly(holder))
-                    step = "[payload]" if optional_payload(held, projection) else f"[alt{alternative}]"
-                case MIRContainerStructure():
-                    step = "[structure]"
-                case MIRContainerElements():
-                    step = "[elements]"
-                case _:
-                    continue  # a dereference stays on the record it points at
-            text += step
-            bare += step
-            alternatives = [a + step for a in alternatives]
-            holder = None
-        if text != bare:
-            self.ambiguous.setdefault(bare, set()).update(alternatives)
-        return text
-
-
 def _value_write(shape: MIRShape) -> MIRWriteKind | None:
     """What a write of a value of `shape` lands in: owned storage, a holder
     of storage elsewhere (a pointer, a container view), an inert leaf."""
@@ -676,38 +606,12 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
         return None
     slots = {slot.id: slot for slot in fn.slots}
     records = fn.record_layouts
-    _spell = _Spelling(fn)
-    by_name: dict[str, dict[str, list[MIRSlotId]]] = {}
-    for slot in fn.slots:
-        selector = _SELECTORS.get(slot.kind)
-        if selector is not None and slot.name is not None:
-            by_name.setdefault(slot.name, {}).setdefault(selector, []).append(slot.id)
-    names = {name: {selector: name if len(selectors) == 1 else f"{selector}({name})" for selector in selectors}
-             for name, selectors in by_name.items()}
-    named = {sid: names[name][selector]
-             for name, selectors in by_name.items() for selector, ids in selectors.items() for sid in ids}
-    # Unnamed storage takes the name of the first named holder borrowing it,
-    # first in the source, never by block number: the whole storage, or the
-    # payload of an owned sum (the record a fill moved in).
-    candidates: dict[MIRPlace, list[tuple[tuple[int, int, int], str, int | None]]] = {}
-    for block in fn.blocks:
-        for stmt in block.statements:
-            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow) and not stmt.target.projections
-                    and stmt.target.root in named and (source := stmt.value.source).root not in named
-                    and (not source.projections
-                         or sole_payload(source.projections) and slots[source.root].shape.owned_sum)):
-                candidates.setdefault(source, []).append(
-                    (source_order(stmt.loc), named[stmt.target.root], stmt.loc.line if stmt.loc else None))
-    bindings: dict[MIRPlace, tuple[str, int | None]] = {
-        place: min(found)[1:] for place, found in candidates.items()}
-    bound = [name for name, _line in bindings.values()]
-    holders = {MIRPlace(sid): name for sid, name in named.items()}
+    _spell = AnnotationSpelling(fn)
+    naming = MIRStorageNames(fn)
+    names, named = naming.names, naming.named
     # Every storage's one name, a holder's own or a binding's: a write event
     # and a borrow of the same storage spell it alike.
-    storage = dict(holders)
-    for place, (name, line) in bindings.items():
-        # A name rebound to fresh storage names several objects; the binding line tells them apart.
-        storage[place] = name if bound.count(name) == 1 else f"{name}@{line}"
+    holders, storage = naming.holders, naming.storage
 
     def referent(ref: MIRReferent) -> str:
         if static_referent(ref):
@@ -827,4 +731,5 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
         lines.append(dump_payload_ends(analyses.payload.ends))
         lines.append(dump_payload_inspection(analyses.payload))
         lines.append(dump_escapes(analyses.escapes, analyses.store_escapes))
+        lines.append(dump_witness_cap(analyses.witnesses))
     return "\n".join(lines) if lines else "(no emitted bodies in this module)\n"

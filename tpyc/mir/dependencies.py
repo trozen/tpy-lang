@@ -20,7 +20,7 @@ from .nodes import (
     MIRConstruct, MIRCopy, MIRFunction, MIRIsAlternative, MIRMove, MIRNot, MIRNotCovered, MIRPlace, MIRRead, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRUnionExtract, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
     MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRReturn, statement_target, call_place, place_walk, view_member,
-    MIRWrap, place_shape, MIRPresentCall,
+    MIRWrap, place_shape, MIRPresentCall, transfer_member,
 )
 from .value import (
     MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRecords, MIRShape, MIRValidationError,
@@ -608,9 +608,8 @@ def apply_transfers(present: MIRPresentCall, state: dict[MIRPlace, frozenset[MIR
     while changed:
         changed = False
         for transfer in transfers:
-            member = path_step(transfer.path[-1])
-            objects = resolve_referents(call_place(call, transfer.holder, transfer.path[:-1], slots), state, slots,
-                                        records)
+            record, member = transfer_member(call, transfer, slots)
+            objects = resolve_referents(record, state, slots, records)
             if not objects:
                 raise MIRUnseededLoan(None, "call transfer into no object")
             for key in member_keys(objects, member, state, "call transfer into an object with no stored loan"):

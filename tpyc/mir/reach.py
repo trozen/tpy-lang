@@ -18,6 +18,7 @@ from .shapes import (
     REGION_STEPS, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRUnionPayload, MIRWalk, Projection,
     lent_members, object_path, object_selector, replacement_reach, walk, walk_to,
 )
+from .validate import reaches_element
 from .value import (
     AGGREGATE_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRRecords, MIRShape, RecordFields, lent_record,
 )
@@ -136,6 +137,22 @@ def reaches(written: MIRReferent, target: MIRReferent, distinct_external: Distin
     path, inclusive = replacement_reach(written.place.projections) or (written.place.projections, True)
     held = target.place.projections
     return held[:len(path)] == path and (inclusive or len(held) > len(path))
+
+
+def no_distinct_alias(written: MIRReferent, target: MIRReferent) -> bool:
+    """The definite oracle: two distinct external origins are never proven
+    one object."""
+    return False
+
+
+def reaches_definitely(written: MIRReferent, target: MIRReferent) -> bool:
+    """`reaches` with nothing left to the caller: neither side a stored loan
+    of the caller's (`held`, storage of no known place), no step between
+    two distinct external origins (`no_distinct_alias`), and not both in a
+    container's elements region, where element identity is not tracked."""
+    if written.held or target.held or reaches_element(written.place) and reaches_element(target.place):
+        return False
+    return reaches(written, target, no_distinct_alias)
 
 
 # --- the distinct-origin oracles ------------------------------------------------------

@@ -116,7 +116,7 @@ def mutate_through_member(ln: Line) -> int32:  # tpyc: mir(certified) mir_summar
 # free function, conflict: the member replaced while a holder borrows it
 def replace_live(ln: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
     held = ln.a  # tpyc: mir_borrows(held, ln.a)
-    ln.a = Point(9, "new")  # tpyc: warning(/Mutation of 'ln.a' while borrowed/)
+    ln.a = Point(9, "new")  # tpyc: warning(/Mutation of 'ln.a' while borrowed/) warning(/this assignment overwrites 'ln.a' in place/)
     return held.x > 0
 
 
@@ -131,23 +131,23 @@ def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /alia
 # free function, conflict: replacing an ancestor reaches a holder two members down
 def replace_ancestor(f: Frame) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
     held = f.line.first()
-    f.line = Line(Point(1, "a"), Point(2, "b"), 0)  # tpyc: warning(/Mutation of 'f.line' while borrowed/) mir_write(f.line)
+    f.line = Line(Point(1, "a"), Point(2, "b"), 0)  # tpyc: warning(/Mutation of 'f.line' while borrowed/) mir_write(f.line) warning(/this assignment overwrites 'f.line' in place/)
     return held.x > 0
 
 
 # free function, conflict: a member method's published write under the holder's prefix
-# (unwarned divergence: BUGS.md#field-loan-whole-record-callee-unchecked)
+# (warned (advisory); still filed: BUGS.md#field-loan-whole-record-callee-unchecked)
 def member_receiver(f: Frame) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
     held = f.line.first()
-    f.line.reset(9)
+    f.line.reset(9)  # tpyc: warning(/this call overwrites 'f.line.a' in place/)
     return held.x > 0
 
 
 # free function, conflict: the member replaced through the callee's summary
-# (unwarned divergence: BUGS.md#field-loan-whole-record-callee-unchecked)
+# (warned (advisory); still filed: BUGS.md#field-loan-whole-record-callee-unchecked)
 def reset_live(ln: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
     held = ln.a
-    ln.reset(4)  # tpyc: mir_write(ln.a)
+    ln.reset(4)  # tpyc: mir_write(ln.a) warning(/this call overwrites 'ln.a' in place/)
     return held.x > 0
 
 
@@ -247,11 +247,11 @@ def hand_over_callers() -> int32:  # tpyc: mir(covered) mir_summary(known)
 
 
 # free caller, conflict: a holder under the member a callee replaces by a move
-# (unwarned divergence: BUGS.md#field-loan-whole-record-callee-unchecked)
+# (warned (advisory); still filed: BUGS.md#field-loan-whole-record-callee-unchecked)
 def adopt_live() -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
     f = Frame(build(5), 1)
     held = f.line.first()
-    adopt(f, build(8))
+    adopt(f, build(8))  # tpyc: warning(/this call overwrites 'f.line' in place/)
     return held.x > 0
 
 

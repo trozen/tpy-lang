@@ -1,0 +1,23 @@
+local_buf a 1
+local_buf_named b
+local_buf_named a
+grow 3 3
+kept 1
+block_view True False
+temp_view_bound False
+fill_static lit
+overwritten safe b
+restore lit
+other_element 1
+through_param 3
+dict_insert 2
+kept_view k
+twin a
+twin 1 init
+error_body a
+error_body 1
+try_body a
+after_raise raised
+record_alias 1
+record_objects 1 1 1
+match_arm a

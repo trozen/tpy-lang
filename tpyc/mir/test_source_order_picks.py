@@ -21,7 +21,7 @@ from .nodes import (
 from ..thir.scalar_leaves import MIRClass
 from .value import MIRShape, MIRValidationError
 from .liveness import MIRPoint
-from .storage_evidence import MIRStorageVerdict, analyze_return_escapes
+from .storage_evidence import MIRStorageVerdict, analyze_escapes
 from ..mir_diagnostics import _member_argument, _steps_spelling, argument_aliases
 from ..parse.nodes import TpyFieldAccess, TpyIntLiteral, TpyName, TpyTupleLiteral
 from ..thir import nodes as th
@@ -78,11 +78,16 @@ def test_a_storage_gap_tie_breaks_on_where_its_slot_first_occurs(monkeypatch, fl
 def test_the_return_escape_refusal_is_at_the_first_return_in_the_source(monkeypatch, flip: bool) -> None:
     late, early = SourceLocation(9, 4), SourceLocation(5, 8)
     unknown = [late, early]
+    hazard = object()
     monkeypatch.setattr(storage_evidence, "_return_escapes",
-                        lambda prepared, dependencies: ((), unknown[::-1] if flip else unknown))
+                        lambda prepared, dependencies: ((), unknown[::-1] if flip else unknown, (hazard,)))
+    monkeypatch.setattr(storage_evidence, "_store_escapes", lambda prepared, dependencies: ((), ()))
     fn = SimpleNamespace(id=BODY)
-    found = analyze_return_escapes(SimpleNamespace(function=fn, dependencies=SimpleNamespace(function=fn)))
+    escapes = analyze_escapes(SimpleNamespace(function=fn, dependencies=SimpleNamespace(function=fn)))
+    found = escapes.returns
     assert isinstance(found, MIRNotCovered) and found.loc == early
+    # The verdict's return escapes are unknown; the other returns' hazards stand for the witness.
+    assert escapes.hazards == (hazard,)
 
 
 NAMING_SOURCE = """\

@@ -13,6 +13,7 @@ from .prepare import MIRPrepared, validated_presence
 from .reach import DistinctExternal, _origin, parameter_object, reaches, replacement_events, storage_exclusions
 from .shapes import distinct_lent_objects
 from .validate import reachable_blocks
+from .witness import MIRHazard, MIRHazardKind
 
 
 @dataclass(frozen=True)
@@ -31,6 +32,8 @@ class MIRRetentionConflict:
 class MIRRetention:
     function: MIRFunction
     conflicts: tuple[MIRRetentionConflict, ...]
+    # One per replaced place and holder with a conflict, for the witness.
+    hazards: tuple[MIRHazard, ...] = ()
 
 
 def static_referent(ref: MIRReferent) -> bool:
@@ -58,6 +61,7 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
     records = fn.record_layouts
     exclusions = storage_exclusions(slots, records)
     conflicts: list[MIRRetentionConflict] = []
+    hazards: list[MIRHazard] = []
     # The storage each reachable statement replaces (`replacement_events`),
     # at its point, the call's writes as the presence sees them.
     reached = reachable_blocks(fn)
@@ -85,8 +89,10 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
         # a callee's transfer, or the record it fills -- so the holders of
         # the state it leaves count too, and the filled object's own loans
         # before the holder rebinding to it is live.
-        holders = dependencies.live(incoming, live_after)
-        for leaf, refs in dependencies.live(outgoing, live_after).items():
+        live_in = dependencies.live(incoming, live_after)
+        live_out = dependencies.live(outgoing, live_after)
+        holders = dict(live_in)
+        for leaf, refs in live_out.items():
             holders[leaf] = holders.get(leaf, frozenset()) | refs
         # The stored loans of the replaced object: a root's, or those under a replaced member place.
         for key in dependencies.objects[target.root]:
@@ -99,14 +105,18 @@ def analyze_retention(prepared: MIRPrepared) -> MIRRetention | MIRNotCovered:
         for holder, refs in sorted(holders.items(), key=lambda item: _place(item[0])):
             if holder in rebinding:
                 continue
-            for written in sorted(affected, key=_referent_key):
-                for retained in sorted(refs, key=_referent_key):
-                    if reaches(written, retained, exclusions):
-                        conflicts.append(MIRRetentionConflict(point, written, holder, retained))
+            found = [MIRRetentionConflict(point, written, holder, retained)
+                     for written in sorted(affected, key=_referent_key)
+                     for retained in sorted(refs, key=_referent_key) if reaches(written, retained, exclusions)]
+            conflicts.extend(found)
+            if found:
+                hazards.append(MIRHazard(MIRHazardKind.REPLACEMENT, point, target, affected, holder,
+                                         (live_in.get(holder, frozenset()), live_out.get(holder, frozenset())),
+                                         conflicts=tuple(found)))
     conflicts.extend(_call_obligation_conflicts(fn, dependencies, slots, presence.calls, exclusions))
     # Stable: the replacement events keep their order within a statement.
     conflicts.sort(key=lambda c: (c.point.block.index, c.point.index))
-    return MIRRetention(fn, tuple(conflicts))
+    return MIRRetention(fn, tuple(conflicts), tuple(hazards))
 
 
 def _call_obligation_conflicts(fn: MIRFunction, dependencies: MIRDependencies,

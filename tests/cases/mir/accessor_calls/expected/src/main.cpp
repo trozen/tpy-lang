@@ -37,7 +37,7 @@ int32_t readonly_getter(const Counter& c) {
 //     total = 0
 //     for x in c.elems:
 //         if x > 100:
-//             c.push(x)  # tpyc: warning(/while iterating over it/)
+//             c.push(x)  # tpyc: warning(/while iterating over it/) warning(/this call may move the elements of 'c.items'/)
 //         total += x
 //     return total
 int32_t grow_under_iter(Counter& c) {
@@ -138,7 +138,7 @@ int32_t twin_via(const Counter& c) {
 //     total = 0
 //     for x in c.view_items():
 //         if x > 100:
-//             c.push(x)  # tpyc: warning(/while iterating over it/)
+//             c.push(x)  # tpyc: warning(/while iterating over it/) warning(/this call may move the elements of 'c.items'/)
 //         total += x
 //     return total
 int32_t twin_items_grow(Counter& c) {

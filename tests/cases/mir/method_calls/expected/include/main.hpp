@@ -603,7 +603,7 @@ inline void Counter::poke(Counter& other) {
 //     t = 0
 //     for x in self.items:
 //         if go:
-//             self.push(x)
+//             self.push(x)  # tpyc: warning(/this call may move the elements of 'self.items'/)
 //         t += x
 //     return t
 inline int32_t Counter::grow_under_iter(bool go) {
