@@ -5,6 +5,7 @@ Statement analysis including variable declarations, assignments, and control flo
 """
 
 from __future__ import annotations
+import enum
 from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
@@ -247,6 +248,164 @@ def _needs_provenance_tracking(t: TpyType) -> bool:
             or isinstance(t, PtrType)
             or is_borrowing_view_type(t)
             or isinstance(t, PendingViewType))
+
+
+def own_consume_key(ctx: SemanticContext, name: str) -> OwnSlot | None:
+    """The never-consumed credit a move out of `name` carries: the param
+    itself, or what the local `name` took from one."""
+    if name in ctx.func.current_param_names:
+        return OwnSlot(name)
+    return ctx.func.own_consume_aliases.get(name)
+
+
+class BindingOwns(enum.Enum):
+    """What a binding of a reference-type local holds (`record_name_binding`):
+    an object its source created, the object a name source handed over at
+    its last use, or a borrow."""
+    FRESH = "fresh"
+    MOVED = "moved"
+    BORROW = "borrow"
+
+
+def note_binding_loans(ctx: SemanticContext, name: str,
+                       var_type: TpyType | None, init: TpyExpr) -> None:
+    """What a binding of `name` to `init` borrows, and the copy a value
+    call's binding states, alike for a declaration and a walrus.
+
+    Views are value types in C++ but still carry a reference into foreign
+    storage, so a view local borrows its source exactly like a non-value
+    local does -- `v = a.strip()` registers the receiver borrow (the
+    temp-receiver warning, the mutate-while-borrowed check on a later
+    `a += ...`). An INFERRED str/bytes local registers no loan: every write
+    to what it views is a source-storage event the deduction answers by
+    owning the local. A spelled `StrView` / `BytesView` cannot fall back,
+    and keeps the loan and its mutate-while-borrowed diagnostic."""
+    borrow_storage = (None if isinstance(unwrap_readonly(var_type),
+                                         PendingViewType)
+                      else var_type)
+    bare_init = init.expr if isinstance(init, TpyCoerce) else init
+    if (borrow_storage is not None and borrow_storage.is_value_type()
+            and type_has_type_param(borrow_storage)):
+        # An open `T` local of a generic body: whether binding a fresh
+        # result copies a reference is the instantiation's question, so
+        # the binding states the hedged copy contract.
+        warn_value_call_binding(ctx, bare_init, f"local '{name}'")
+    if var_type is not None:
+        register_binding_loans(ctx, name, init, var_type)
+    if (borrow_storage is not None
+            and (not borrow_storage.is_value_type()
+                 or is_borrowing_view_type(unwrap_readonly(borrow_storage)))):
+        warn_value_call_binding(ctx, bare_init, f"local '{name}'")
+
+
+def record_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
+                        name: str, var_type: TpyType | None, init: TpyExpr,
+                        *, fresh: bool,
+                        init_type: TpyType | None) -> BindingOwns:
+    """The binding record of `name = init` (`fresh`: `name` binds for the
+    first time), alike for a declaration and a walrus: hoist eligibility
+    (`rvalue_vars`), the move-through of a name source at its last use, the
+    ownership record (`record_binding_ownership`) and the fresh-ctor fact."""
+    owns = _classify_name_binding(an, name, var_type, init, fresh=fresh,
+                                  init_type=init_type)
+    note_binding_loans(an.ctx, name, var_type, init)
+    return owns
+
+
+def _classify_name_binding(an: 'StatementAnalyzer | ExpressionAnalyzer',
+                           name: str, var_type: TpyType | None,
+                           init: TpyExpr, *, fresh: bool,
+                           init_type: TpyType | None) -> BindingOwns:
+    """`record_name_binding`'s ownership half."""
+    ctx = an.ctx
+    ctx.func.own_consume_aliases.pop(name, None)
+    if not an.compat.is_lvalue(init):
+        ctx.func.rvalue_vars.add(name)
+        if not record_binding_ownership(ctx, name, var_type, init,
+                                        lvalue=False):
+            return BindingOwns.BORROW
+        # Fresh-ctor local: a non-reassigned local whose sole binding is a
+        # constructor call of its exact static type. Its dynamic type is
+        # then provably its static type, so the polymorphic-slicing guard
+        # may move it into an owned poly slot (Box[P]) like a fresh-rvalue
+        # ctor at the store. current_reassigned_vars comes from a
+        # whole-function prescan (all branches), so ANY later rebind
+        # excludes the name here; a name that could hold a subclass value
+        # on some path was never added. var_type == init_type excludes a
+        # widening annotation.
+        if (name not in ctx.func.current_reassigned_vars
+                and isinstance(init, TpyCall)
+                and isinstance(init.func, TpyName)
+                and ctx.registry.get_record(init.func.name) is not None
+                and init_type is not None and var_type == init_type):
+            ctx.func.current_fresh_ctor_locals.add(name)
+        else:
+            ctx.func.current_fresh_ctor_locals.discard(name)
+        return BindingOwns.FRESH
+    # Move-through: an alias at the last use of its source takes the
+    # object over. Both target and source must be non-reassigned locals
+    # (reassigned ones become pointer locals in codegen).
+    hands_over = (var_type is not None
+                  and not var_type.is_value_type()
+                  and pointer_repr_optional(var_type) is None
+                  and not is_protocol_union(var_type)
+                  and not holds_generator_object(var_type))
+    reassigned = ctx.func.current_reassigned_vars
+    plain_bind = (isinstance(init, TpyName) and fresh
+                  and name not in reassigned and init.name not in reassigned)
+    if plain_bind and not hands_over:
+        # A value moves through with no owning slot to record.
+        an.compat.retract_hidden_borrowed_last_use(init)
+    if (plain_bind and hands_over
+            and an.compat.claim_name_move(init, OwnType(var_type))):
+        ctx.func.rvalue_vars.add(name)
+        note_owned_local(ctx, name, var_type)
+        ctx.func.move_through_vars.add(name)
+        # The source moved into this local, so consuming the local consumes
+        # what the source's Own param handed in.
+        key = own_consume_key(ctx, init.name)
+        if key is not None:
+            ctx.func.own_consume_aliases[name] = key
+        return BindingOwns.MOVED
+    ctx.func.rvalue_vars.discard(name)
+    record_binding_ownership(ctx, name, var_type, init, lvalue=True)
+    return BindingOwns.BORROW
+
+
+def record_binding_ownership(ctx: SemanticContext, name: str,
+                             var_type: TpyType | None, init: TpyExpr, *,
+                             lvalue: bool) -> bool:
+    """Whether a binding of `name` owns what it binds, recorded alike by
+    every binding form (a declaration, an assignment, a walrus): owned only
+    when the source genuinely creates a value (a constructor, an `Own`
+    return, a literal, an operator), never for an lvalue or a
+    borrow-producing call (a `T&` or pointer-form result), whose later
+    move-out would corrupt the aliased source. A borrow records the
+    statement-level borrow fact. Move-through is the declaration's own."""
+    if not lvalue and binds_owned_value(ctx, init):
+        note_owned_local(ctx, name, var_type)
+        return True
+    ctx.func.owned_locals.discard(name)
+    record_stmt_borrow_binding(ctx, name, var_type, init)
+    return False
+
+
+def note_binding_provenance(an: 'StatementAnalyzer | ExpressionAnalyzer',
+                            name: str, var_type: TpyType | None,
+                            init: TpyExpr) -> None:
+    """Where the value a binding of `name` holds comes from -- whether it
+    derives from a parameter, may be returned, and (a `Ptr`) is non-null --
+    recorded alike by every binding form: a declaration, an assignment, a
+    walrus. `an` is the analyzer doing the binding."""
+    if var_type is None:
+        return
+    if _needs_provenance_tracking(var_type):
+        derived, safe = an.compat.binding_durability(init)
+        an.init.mark_provenance(name, derived)
+        an.init.mark_safe_to_return(name, safe)
+    if isinstance(var_type, PtrType):
+        an.init.mark_non_null_ptr(name, expr_yields_non_null_ptr(
+            init, an.ctx.func.non_null_ptr_vars))
 
 
 def _register_call_result_borrow(ctx: SemanticContext, borrower: Holder,
@@ -1535,13 +1694,6 @@ class StatementAnalyzer:
         return (isinstance(bare, TupleType)
                 and index < len(bare.element_types)
                 and TupleType._element_is_pointer_repr(bare.element_types[index]))
-
-    def _own_consume_key(self, name: str) -> OwnSlot | None:
-        """The never-consumed credit a move out of `name` carries: the param
-        itself, or what the local `name` took from one."""
-        if name in self.ctx.func.current_param_names:
-            return OwnSlot(name)
-        return self.ctx.func.own_consume_aliases.get(name)
 
     def _declared_binding(self, name: str) -> 'TpyType | None':
         declared = (self.ctx.func.current_scope.lookup(name)
@@ -6927,25 +7079,6 @@ class StatementAnalyzer:
         # so a loan here could only warn about a borrow that no longer
         # exists. A spelled `StrView` / `BytesView` cannot fall back, and
         # keeps the loan and its mutate-while-borrowed diagnostic.
-        borrow_storage = (None if isinstance(unwrap_readonly(var_type), PendingViewType)
-                          else var_type)
-        if (stmt.init is not None and borrow_storage is not None
-                and borrow_storage.is_value_type()
-                and type_has_type_param(borrow_storage)):
-            # An open `T` local of a generic body: whether binding a fresh
-            # result copies a reference is the instantiation's question, so
-            # the binding states the hedged copy contract.
-            warn_value_call_binding(
-                self.ctx, stmt.init.expr if isinstance(stmt.init, TpyCoerce)
-                else stmt.init, f"local '{stmt.name}'")
-        if stmt.init is not None and var_type is not None:
-            register_binding_loans(self.ctx, stmt.name, stmt.init, var_type)
-        if (stmt.init is not None
-                and borrow_storage is not None
-                and (not borrow_storage.is_value_type()
-                     or is_borrowing_view_type(unwrap_readonly(borrow_storage)))):
-            init_unwrapped = stmt.init.expr if isinstance(stmt.init, TpyCoerce) else stmt.init
-            warn_value_call_binding(self.ctx, init_unwrapped, f"local '{stmt.name}'")
         if (stmt.init is not None
                 and stmt.name in self.ctx.func.current_reassigned_vars
                 and var_type is not None):
@@ -6963,79 +7096,11 @@ class StatementAnalyzer:
                 stmt.then_type_facts = self._filter_union_codegen_facts(facts)
         # Update rvalue status for hoist eligibility (both new vars and reassignments)
         if stmt.init:
-            self.ctx.func.own_consume_aliases.pop(stmt.name, None)
-            if self.compat.is_lvalue(stmt.init):
-                # Move-through: lvalue alias at last use of source promotes to rvalue.
-                # Both target and source must be non-reassigned Tier 1 locals
-                # (reassigned vars become T* pointer-locals in codegen).
-                hands_over = (var_type is not None
-                              and not var_type.is_value_type()
-                              and pointer_repr_optional(var_type) is None
-                              and not is_protocol_union(var_type)
-                              and not holds_generator_object(var_type))
-                plain_bind = (isinstance(stmt.init, TpyName)
-                              and existing_type is None
-                              and stmt.name not in self.ctx.func.current_reassigned_vars
-                              and stmt.init.name not in self.ctx.func.current_reassigned_vars)
-                if plain_bind and not hands_over:
-                    # A value moves through with no owning slot to record.
-                    self.compat.retract_hidden_borrowed_last_use(stmt.init)
-                if (plain_bind and hands_over
-                        and self.compat.claim_name_move(
-                            stmt.init, OwnType(var_type))):
-                    self.ctx.func.rvalue_vars.add(stmt.name)
-                    note_owned_local(self.ctx, stmt.name, var_type)
-                    self.ctx.func.move_through_vars.add(stmt.name)
-                    # The source moved into this local, so consuming the
-                    # local consumes what the source's Own param handed in.
-                    key = self._own_consume_key(stmt.init.name)
-                    if key is not None:
-                        self.ctx.func.own_consume_aliases[stmt.name] = key
-                else:
-                    self.ctx.func.rvalue_vars.discard(stmt.name)
-                    self.ctx.func.owned_locals.discard(stmt.name)
-                    record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
-            else:
-                self.ctx.func.rvalue_vars.add(stmt.name)
-                # Owned only when the init genuinely creates a value (constructor,
-                # Own return, literal, op). A borrow-producing init that codegen
-                # renders as a `T&` alias -- a reference-returning call, or a
-                # ternary/and-or of reference lvalues -- must NOT be owned, or a
-                # later move-out would corrupt the aliased source; nor may a
-                # call's pointer borrow form (`T*` Optional, pointer-variant
-                # union), which renders as a value but points into lent storage.
-                if binds_owned_value(self.ctx, stmt.init):
-                    note_owned_local(self.ctx, stmt.name, var_type)
-                    # Fresh-ctor local: a non-reassigned local whose sole binding
-                    # is a constructor call of its exact static type. Its dynamic
-                    # type is then provably its static type, so the
-                    # polymorphic-slicing guard may move it into an owned poly slot
-                    # (Box[P]) like a fresh-rvalue ctor at the store.
-                    # current_reassigned_vars comes from a whole-function prescan
-                    # (all branches, flat `declared` set), so ANY later rebind --
-                    # in this or any other branch -- excludes the name here. That
-                    # is why the set needs no per-branch save/restore: a name that
-                    # could hold a subclass value on some path was never added.
-                    # var_type == init_type excludes a widening annotation.
-                    if (stmt.name not in self.ctx.func.current_reassigned_vars
-                            and isinstance(stmt.init, TpyCall)
-                            and isinstance(stmt.init.func, TpyName)
-                            and self.ctx.registry.get_record(stmt.init.func.name) is not None
-                            and init_type is not None and var_type == init_type):
-                        self.ctx.func.current_fresh_ctor_locals.add(stmt.name)
-                    else:
-                        self.ctx.func.current_fresh_ctor_locals.discard(stmt.name)
-                else:
-                    self.ctx.func.owned_locals.discard(stmt.name)
-                    record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
-        if stmt.init and _needs_provenance_tracking(var_type):
-            derived, safe = self.compat.binding_durability(stmt.init)
-            self.init.mark_provenance(stmt.name, derived)
-            self.init.mark_safe_to_return(stmt.name, safe)
-        # Track non-null pointer provenance for null-check elision
-        if stmt.init and isinstance(var_type, PtrType):
-            is_non_null = expr_yields_non_null_ptr(stmt.init, self.ctx.func.non_null_ptr_vars)
-            self.init.mark_non_null_ptr(stmt.name, is_non_null)
+            record_name_binding(self, stmt.name, var_type, stmt.init,
+                                fresh=existing_type is None,
+                                init_type=init_type)
+        if stmt.init:
+            note_binding_provenance(self, stmt.name, var_type, stmt.init)
 
         # Scope escape check for variable declarations (new and reassignment)
         if stmt.init and not var_type.is_value_type():
@@ -7470,7 +7535,7 @@ class StatementAnalyzer:
             # Consumption marks only: the unpack's move is the
             # `claim_name_move` record taken above.
             if self.compat.is_last_use_move_candidate(stmt.value):
-                key = self._own_consume_key(stmt.value.name)
+                key = own_consume_key(self.ctx, stmt.value.name)
                 if key is None or key.index is not None:
                     self.compat.check_own_consumption(stmt.value)
                 else:
@@ -8052,24 +8117,15 @@ class StatementAnalyzer:
         # Disallow reassignment of non-value-type params and loop vars
         if isinstance(stmt.target, TpyName):
             # Update rvalue/ownership status for hoist eligibility and copy detection
-            if self.compat.is_lvalue(stmt.value):
+            lvalue = self.compat.is_lvalue(stmt.value)
+            if lvalue:
                 self.ctx.func.rvalue_vars.discard(stmt.target.name)
-                self.ctx.func.owned_locals.discard(stmt.target.name)
-                record_stmt_borrow_binding(
-                    self.ctx, stmt.target.name,
-                    self.ctx.get_expr_type(stmt.value), stmt.value)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.target.name)
-                # See the var-decl branch: owned only for a genuine value-creating
-                # init, not a borrow-producing one (a `T&` or pointer-form call).
-                if binds_owned_value(self.ctx, stmt.value):
-                    note_owned_local(self.ctx, stmt.target.name,
-                                     self.ctx.get_expr_type(stmt.value))
-                else:
-                    self.ctx.func.owned_locals.discard(stmt.target.name)
-                    record_stmt_borrow_binding(
-                        self.ctx, stmt.target.name,
-                        self.ctx.get_expr_type(stmt.value), stmt.value)
+            record_binding_ownership(
+                self.ctx, stmt.target.name,
+                self.ctx.get_expr_type(stmt.value), stmt.value,
+                lvalue=lvalue)
 
         # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):
@@ -8218,14 +8274,9 @@ class StatementAnalyzer:
             self._mark_bound_loop_var_sources(stmt.target.name, target_type,
                                               stmt.value)
 
-        if isinstance(stmt.target, TpyName) and _needs_provenance_tracking(target_type):
-            derived, safe = self.compat.binding_durability(stmt.value)
-            self.init.mark_provenance(stmt.target.name, derived)
-            self.init.mark_safe_to_return(stmt.target.name, safe)
-        # Track non-null pointer provenance for null-check elision
-        if isinstance(stmt.target, TpyName) and isinstance(target_type, PtrType):
-            is_non_null = expr_yields_non_null_ptr(stmt.value, self.ctx.func.non_null_ptr_vars)
-            self.init.mark_non_null_ptr(stmt.target.name, is_non_null)
+        if isinstance(stmt.target, TpyName):
+            note_binding_provenance(self, stmt.target.name, target_type,
+                                    stmt.value)
 
         # Mark as definitely assigned for plain name targets
         if isinstance(stmt.target, TpyName):

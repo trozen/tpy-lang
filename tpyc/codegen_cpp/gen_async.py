@@ -4056,7 +4056,6 @@ class AsyncCoroCodegen:
         # struct-emit time, before the body scope that would seed ctx with it.
         analyzer = self.ctx.analyzer
         borrow_decls = analyzer.function_stmt_borrow_decls.get(func, {})
-        ever_owned = analyzer.function_ever_owned_locals.get(func, set())
 
         exc_bindings: set[str] = set()
 
@@ -4088,6 +4087,21 @@ class AsyncCoroCodegen:
             if declared_call_const(self.ctx.analyzer, src) is not None:
                 return
             rcfg.record_const_source_edge(state, target, root_name(src))
+
+        def aliases_live_storage(ltype_bare: 'TpyType | None',
+                                 init: 'TpyExpr') -> bool:
+            # The one rule every binding form takes: a plain reference local
+            # bound to an lvalue is a `T*` alias of it, whether or not sema
+            # moved a last-use name source -- the frame keeps the source
+            # alive, so nothing is copied. A source rooted at an
+            # exception-handler binding (`e`, `e.inner`, ...) is handler-
+            # scoped and may not survive a suspension stably, so the frame
+            # keeps the owning copy; an owned-erased (Own[dyn P]) local moves
+            # on binding.
+            return (root_name(init) not in exc_bindings
+                    and not isinstance(ltype_bare, OwnType)
+                    and emit_prims.is_plain_nonvalue(self.ctx, ltype_bare)
+                    and not self.ctx.is_rvalue_source(init))
 
         def walk(stmts: 'list[TpyStmt]') -> None:
             for s in stmts:
@@ -4126,10 +4140,7 @@ class AsyncCoroCodegen:
                             unwrap_readonly(unwrap_ref_type(root_t)),
                             TupleType) if root_t is not None else False
                     if (ltype is not None and s.init is not None
-                            and not src_is_exc
-                            and not isinstance(ltype_bare, OwnType)
-                            and emit_prims.is_plain_nonvalue(self.ctx, ltype_bare)
-                            and not self.ctx.is_rvalue_source(s.init)):
+                            and aliases_live_storage(ltype_bare, s.init)):
                         aliases.add(s.name)
                         borrows_from(s.name, s.init)
                         if init_is_const():
@@ -4228,28 +4239,17 @@ class AsyncCoroCodegen:
                                 if elem_const:
                                     rcfg.mark_frame_const(state, tname)
                 # A walrus binds in expression position, so it is invisible to
-                # the statement arms above. Read sema's verdict rather than
-                # re-deriving one from the source shape: the sync walrus render
-                # is chosen from the same fact, so the frame field and the sync
-                # local agree on alias-vs-own for the same program.
+                # the statement arms above; it takes the declaration's rule.
                 for ne in walrus_bindings(s):
                     ltype = frame_local_types.get(ne.target)
-                    if ltype is None or ne.target not in borrow_decls:
+                    if ltype is None:
                         continue
-                    if ne.target in ever_owned:
-                        continue
-                    # Same handler-scoped exclusion the VarDecl row applies:
-                    # sema classifies a walrus off a caught exception as an
-                    # ordinary lvalue borrow, but the referent dies with the
-                    # catch block, so the frame keeps the owning copy.
-                    if root_name(ne.value) in exc_bindings:
-                        continue
-                    if not emit_prims.is_plain_nonvalue(
-                            self.ctx, unwrap_ref_type(ltype)):
+                    if not aliases_live_storage(unwrap_ref_type(ltype),
+                                                ne.value):
                         continue
                     aliases.add(ne.target)
                     borrows_from(ne.target, ne.value)
-                    if borrow_decls[ne.target]:
+                    if borrow_decls.get(ne.target, False):
                         rcfg.mark_frame_const(state, ne.target)
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():

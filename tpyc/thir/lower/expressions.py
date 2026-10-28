@@ -206,6 +206,9 @@ from ..source import (BindingConstruct, BindingForm, BindingRepr, Held,
                       elem_borrow_form_differs, element_source, tuple_elems,
                       SelectResult, Source, TraitAbi)
 from ..nodes import (
+    PtrSlotKind,
+    THIRAssign,
+    THIRPtrLocalRebind,
     THIRBorrowedRecord,
     THIROwnedRecord,
     hoists_declaration,
@@ -292,11 +295,11 @@ from . import bindings
 from .bindings import (_value_opt_kind, form_of, project_held,
                        walrus_owned_slot)
 from .predicates import (
+    _var_decl_type,
     _binding_form_tuple,
     _fold_literal_comparison,
     _nested_storage_tuple,
     tuple_stores_into,
-    _alias_call_source_ok,
     _call_storage_optional_return,
     receiver_is_const,
     _value_record_slot,
@@ -611,7 +614,7 @@ from .predicates import (
 from .convert import (converted, layout_tuple,
                       param_tuple_slot, store_slot, to_local)
 from .context import (FrameLocalClass, _call_arg_forms,
-                      _ExprResultUse, _ExprUse, _LowerCtx,
+                      _ExprResultUse, _ExprUse, _LowerCtx, _LowerScope,
                       SlotConstruct,
                       _recv_forms, _NO_FORMS, _LEND_OK, _TRANSIENT_OK,
                       _ONLY_BORROW_RET_PASSTHROUGH, _ONLY_BTUPLE_SLOT,
@@ -651,6 +654,7 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    BindingSource,
     CallForm,
     _storage_field_ternary,
     call_form,
@@ -8830,16 +8834,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             lc.storage_slots.stamp(node, e)
             return node
         # The walrus that declares its target's record pre-declares it; any
-        # other writes the binding in scope.
+        # other writes the binding in scope. A name hoisted ahead of its
+        # statement (out of a `try`) is the hoist's binding, which the walrus
+        # writes as the plain assignment there does.
         wrec = bindings.fresh_record(lc.table, e, e.target)
         if (e.target in lc.prescan.hoisted
                 and not (wrec is not None and wrec.rebind_slot)):
-            raise ThirUnsupported("expr.walrus")
+            wrec = None
         need_predecl = wrec is not None
-        borrow_decls = analyzer.function_stmt_borrow_decls.get(
-            lc.func, {})
-        ever_owned = analyzer.function_ever_owned_locals.get(
-            lc.func, set())
         # The pointer/slot/viewfam rungs are SYNC-only: a resumable body's
         # locals are frame fields (`(*b)` source reads, no named-row drain
         # for the predecls), a different render model -- only the
@@ -8852,10 +8854,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # case-block local in front of the field and the write would die
             # at the next suspension.
             return _lower_frame_walrus(e, vtu, lc, declared, loc)
+        rung_dyn = False
         if need_predecl:
             wform = wrec.form
             wal_value_opt = wrec.value_opt
             rung_alias = wrec.construct is BindingConstruct.POINTER
+            rung_dyn = wrec.construct is BindingConstruct.DYN
             rung_opt = wrec.construct is BindingConstruct.OPT_PTR
             rung_bslot = wrec.construct is BindingConstruct.BTUPLE_REBOUND
             rung_btuple = (wform is BindingForm.BORROW_TUPLE
@@ -8864,54 +8868,52 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             rung_vopt = wform is BindingForm.VALUE_OPT
             rung_value = wform is BindingForm.VALUE
         else:
-            # A write into the binding in scope, by its record: a pointer
-            # (a statement's hoist of a borrow) re-points, a value-repr
-            # Optional assigns in place, any other value the value tail
-            # (sema admits a walrus re-binding of no other non-value local).
-            trec = lc.binding(e.target)
-            wal_value_opt = trec.value_opt
-            rung_alias = (trec.pointer and is_plain_nonvalue(vtu)
-                          and record_like(vtu, analyzer))
-            rung_opt = (trec.pointer
-                        and _optional_ptr_borrow(vtu, analyzer) is not None)
-            rung_bslot = rung_btuple = rung_owned = False
+            # A write into the binding in scope (declared ahead of this
+            # statement: a `try` hoist, a branch-first binding) is the plain
+            # assignment's own write, its value read back out; a value
+            # binding, which that ladder does not write, takes the value-opt
+            # or the value tail below.
+            node = _walrus_existing_binding(e, vtu, lc, declared, loc)
+            if node is not None:
+                return node
+            wal_value_opt = lc.binding(e.target).value_opt
+            rung_alias = rung_opt = rung_bslot = rung_btuple = False
+            rung_owned = False
             rung_vopt = wal_value_opt is not None
             rung_value = True
-        if rung_alias:
-            # Borrow-alias pointer target (`(q := b)` on a record/container
-            # lvalue, `(v := h.view())` on a ref-returning call):
-            # `[const ]T* q = nullptr;` + `(q = &(v), *q)`; an
-            # already-pointer NAME source assigns bare -- a slot GLOBAL is one
-            # of those (its `T* g{}` slot is a pointer record), so it
-            # copies the slot pointer instead of addressing it.
+        if rung_alias or rung_dyn:
+            # A borrowing source binds as the declaration does; the walrus
+            # spells the binding as a pointer declared ahead of the
+            # expression and `(q = &(src), *q)`, since a reference cannot
+            # be declared inside one. An already-pointer NAME source (its
+            # read derefs) assigns bare.
+            from .statements import (_borrow_local_source,
+                                     _lower_dyn_erased_source)
             src = e.value
-            if isinstance(src, TpyName):
-                if src.name not in declared:
-                    note_detail("walrus.borrow_alias_shape")
-                    raise ThirUnsupported("expr.walrus")
-                lowered_value = _lower_expr(src, lc, declared)
-                already_ptr = lc.binding(src.name).pointer
-            elif (isinstance(src, (TpyCall, TpyMethodCall))
-                  and call_returns_cpp_ref(analyzer,
-                                           src.resolved_function_info)):
-                # A C++-ref-returning call source: the alias addresses the
-                # callee's referent (`&(h.view())`); the call's own
-                # lowering validates receiver/args.
-                lowered_value = _lower_expr(
-                    src, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-                already_ptr = False
-            elif _field_receiver_ok(src, declared, analyzer):
-                # A record / container FIELD source (`(q := h.inner)`): the
-                # alias addresses the member lvalue, the same storage-form
-                # read a borrow-local decl binds by reference.
-                lowered_value = _lower_field_source(src, lc, declared)
-                already_ptr = False
-                _witness("walrus.alias_field_src")
+            if rung_dyn:
+                lowered_value = (
+                    _lower_dyn_erased_source(src, lc, declared)
+                    if is_protocol_type(analyzer.get_expr_type(src))
+                    else None)
             else:
+                # The declaration's temporaries, where this position grants
+                # them: the target is declared at the same statement.
+                lowered_value = _borrow_local_source(
+                    BindingSource(e.target, src), lc, declared,
+                    allow_temps=use.allow_temps)
+            if lowered_value is None:
                 note_detail("walrus.borrow_alias_shape")
                 raise ThirUnsupported("expr.walrus")
-            if isinstance(lowered_value, THIRName) and lowered_value.deref:
+            # A pointer binding's source copies bare, as the plain
+            # assignment's pointer copy does; an owning `std::optional`
+            # source (a pointer record for its reads) is the object itself,
+            # whose address the pointer takes.
+            src_rec = (lc.binding(src.name) if isinstance(src, TpyName)
+                       else None)
+            already_ptr = (isinstance(lowered_value, THIRName)
+                           and src_rec is not None and src_rec.pointer
+                           and not src_rec.optional_storage)
+            if already_ptr:
                 # The comma form consumes the raw pointer; the value-read
                 # deref belongs to the `*n` tail, not the source.
                 lowered_value = replace(lowered_value, deref=False)
@@ -8919,7 +8921,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             cpp_type = None
             if need_predecl:
                 cpp_type = (("const " if wrec.const else "")
-                            + lc.render_type(vtu) + "*")
+                            + (dynamic_base_name(vtu, analyzer) if rung_dyn
+                               else lc.render_type(vtu))
+                            + "*")
             _witness("expr.walrus_ptr_alias")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -9060,10 +9064,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # reads deref `(*t)` and elements read STORAGE
             # (`std::get<i>((*t))`, dot access -- no borrow elements by
             # definition of owned-movable). Only a call or a comprehension
-            # constructs into the slot.
-            if not ((isinstance(e.value, (TpyCall, TpyMethodCall))
-                     and not call_returns_cpp_ref(
-                         analyzer, e.value.resolved_function_info))
+            # constructs into the slot; a name at its last use moves in, as
+            # into the declaration twin's owned local.
+            from .statements import (_LOCAL_MOVE_USE, _lower_storage_value,
+                                     _move_through_source)
+            moved = _move_through_source(BindingSource(e.target, e.value, loc),
+                                         vtu, lc)
+            if not (moved
+                    or (isinstance(e.value, (TpyCall, TpyMethodCall))
+                        and not call_returns_cpp_ref(
+                            analyzer, e.value.resolved_function_info))
                     or isinstance(e.value, TpyListComprehension)):
                 raise ThirUnsupported("expr.walrus")
             # Owned non-value walrus (`(fresh := make())` off an Own-return
@@ -9073,11 +9083,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # registration. A comprehension source lowers directly (the
             # main dispatch has no comp arm; the stmt-expr render is
             # position-independent).
-            if isinstance(e.value, TpyListComprehension):
+            if moved:
+                lowered_value: THIRExpr = _lower_storage_value(
+                    e.value, vtu, lc, declared, loc, use=_LOCAL_MOVE_USE,
+                    move=True)
+            elif isinstance(e.value, TpyListComprehension):
                 from .comprehensions import _lower_comprehension
                 comp_ptrs = _comp_shadow_pointers(lc.names_with("pointer"),
                                                   declared, analyzer)
-                lowered_value: THIRExpr = _lower_comprehension(
+                lowered_value = _lower_comprehension(
                     e.value, vtu, lc, declared, comp_ptrs)
             else:
                 lowered_value = _lower_expr(
@@ -12004,6 +12018,43 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
     return None
 
 
+def _walrus_existing_binding(e: 'TpyNamedExpr', vtu: TpyType,
+                             lc: '_LowerCtx', declared: dict[str, TpyType],
+                             loc) -> 'THIRWalrus | None':
+    """A walrus writing a reference-form binding already in scope: the
+    plain assignment's write (`_lower_existing_binding`), read back out --
+    `(p = <the write's value>, *p)`, or the bare pointer for a pointer-repr
+    Optional. None where that ladder writes nothing (a value binding)."""
+    from .statements import _lower_existing_binding, stamp_bindings
+    src = BindingSource(e.target, e.value, loc)
+    try:
+        node = _lower_existing_binding(
+            src, _var_decl_type(src, lc.analyzer), lc, declared,
+            _LowerScope(lc, declared), loc)
+    except ThirUnsupported as ex:
+        raise ThirUnsupported("expr.walrus", message=ex.message) from None
+    if node is None:
+        return None
+    if not isinstance(node, (THIRAssign, THIRPtrLocalRebind)) or (
+            isinstance(node, THIRPtrLocalRebind) and node.declares_local):
+        # A write that declares a local of its own has no expression form;
+        # no binding this ladder writes takes one today.
+        note_detail("walrus.rebind_write")
+        raise ThirUnsupported("expr.walrus")
+    _witness("expr.walrus_rebind")
+    walrus = THIRWalrus(
+        result_type=vtu, name=e.target, cpp_name=escape_cpp_name(e.target),
+        value=node.value, write=node,
+        tail=(None if pointer_repr_optional(declared.get(e.target))
+              is not None else "deref"),
+        loc=loc, binding=lc.binding(e.target))
+    # The write is of the binding in scope, not of a record this walrus
+    # declares.
+    stamp_bindings(node, None, lc)
+    lc.storage_slots.stamp(node, e)
+    return walrus
+
+
 def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
                         declared: dict[str, TpyType], loc) -> THIRExpr:
     """Walrus whose target is a resumable-frame FIELD: write the field,
@@ -12076,53 +12127,21 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
                           value=value, loc=loc)
     if lc.frame_local(e.target, FrameLocalClass.ALIAS_PTR):
-        # Bare `T*` alias field: point it at the LIVE source lvalue and read
-        # back through the deref tail (`(row = &(rows[i]), *row)`). Only
-        # proven-lvalue sources living past the suspension are admitted --
-        # the proven container element (the alias-bind arm's guards: an
-        # unproven-Optional / slice / rvalue-container element would take
-        # the address of a dying temporary), or a frame_slot NAME whose
-        # deref read is frame storage (`(x = &((*buf)), *x)`).
-        if (isinstance(e.value, TpyName)
-                and lc.frame_storage_name(e.value.name)):
-            value = _lower_expr(e.value, lc, declared,
-                                use=_ExprUse(pos=SinkPos.ALIAS_BIND))
-            declared[e.target] = vtu
-            _witness("expr.walrus_frame_alias_slot")
-            return THIRWalrus(result_type=vtu, name=e.target,
-                              cpp_name=cpp_name, value=value,
-                              tail="deref", addr_of=True, loc=loc)
-        if _alias_call_source_ok(e.value, analyzer):
-            # A BORROW-returning call (`(w := d.get(k, fb)).n`): its result
-            # is a lent operand living past the suspension, the source the
-            # frame decl's alias bind admits.
-            value = _lower_expr(e.value, lc, declared,
-                                use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
-            declared[e.target] = vtu
-            _witness("expr.walrus_frame_alias_call")
-            return THIRWalrus(result_type=vtu, name=e.target,
-                              cpp_name=cpp_name, value=value,
-                              tail="deref", addr_of=True, loc=loc)
-        if not (isinstance(e.value, TpySubscript)
-                and not e.value.needs_optional_runtime_check
-                and e.value.slice_function_info is None
-                and not isinstance(e.value.index, TpySlice)
-                and _subscript_container_recv_type(
-                    e.value.obj, declared, analyzer) is not None):
+        # Bare `T*` alias field: bound as the frame declaration binds it
+        # (`_alias_bind_source`), read back through the deref tail
+        # (`(row = &(rows[i]), *row)`; a pointer source assigns bare).
+        from .statements import _alias_bind_source
+        got = _alias_bind_source(BindingSource(e.target, e.value), lc,
+                                 declared, vtu)
+        if got is None:
             note_detail("walrus.frame_alias_src")
             raise ThirUnsupported("expr.walrus")
-        if (isinstance(e.value.obj, TpyName)
-                and lc.binding(e.value.obj.name).ptr_tuple is not None):
-            # An element of a rebound pointer tuple (`(a := p[0])`) is
-            # itself a pointer, not the lvalue this arm addresses; the plain
-            # body's walrus admits no element source either.
-            note_detail("walrus.frame_ptr_tuple_src")
-            raise ThirUnsupported("expr.walrus")
-        value = _lower_expr(e.value, lc, declared, subscript_prechecked=True)
+        value, is_pointer = got
         declared[e.target] = vtu
         _witness("expr.walrus_frame_alias")
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
-                          value=value, tail="deref", addr_of=True, loc=loc)
+                          value=value, tail="deref", addr_of=not is_pointer,
+                          loc=loc)
     if lc.frame_local(e.target, FrameLocalClass.BORROW_TUPLE):
         # Borrow-form tuple field (`std::tuple<..., T*> bt;`): the bare assign
         # with the name tail. Only a BORROWING call source is admitted -- its

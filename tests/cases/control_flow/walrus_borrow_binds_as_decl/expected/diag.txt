@@ -1,0 +1,1 @@
+main.py:319: warning: Result borrows from temporary argument 'a'; the temporary is destroyed at end-of-statement

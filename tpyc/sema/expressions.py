@@ -81,7 +81,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING, not_assigned_message
 from .. import qnames
-from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
+from .context import AnalysisRecord, ProbeSlot, GenericCallRoute, CompClauseRoute, CompTarget, GenericCtorRoute, GenericMethodRoute, StepRoute, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, ephemeral_borrow_root, contains_pending_leaf, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args, CallOperands
 from .arg_binding import peel_coercions, source_view
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
@@ -4831,6 +4831,9 @@ class ExpressionAnalyzer:
     def _analyze_named_expr(self, expr: TpyNamedExpr) -> TpyType:
         """Analyze walrus operator: (x := expr)."""
         name = expr.target
+        # Whether the binding record (`record_name_binding`) decided the
+        # hoist-eligibility fact.
+        recorded = False
         # A store into a local whose bindings decide its type takes a value
         # whose type is decided with it -- inside a comprehension too, whose
         # walrus binds the enclosing body's local (PEP 572).
@@ -4959,11 +4962,10 @@ class ExpressionAnalyzer:
             target_scope.define(name, resolved)
             if self.ctx.func.current_ns:
                 self.ctx.func.current_ns.bind_variable(name, declared)
-            # Mirror the VarDecl ownership classification for non-value
-            # bindings: a fresh rvalue is owned (feeds the branch-decl owned
-            # form and last-use moves); a borrow records the statement-level
-            # borrow fact and registers the alias for mutation tracking,
-            # exactly like `v = h.view()` would.
+            # A fresh rvalue is owned (feeds the branch-decl owned form and
+            # last-use moves); a borrow records the statement-level borrow
+            # fact and registers the alias for mutation tracking, by the one
+            # ownership record every binding form takes.
             owned = tuple_elem_owned(self.ctx, expr.value, resolved)
             if owned is not None:
                 self.ctx.tuple_elem_owned[expr] = owned
@@ -4982,23 +4984,25 @@ class ExpressionAnalyzer:
                 if holds_frame_object(resolved):
                     record_frame_binding_roots(
                         self.ctx, name, frame_binding_fact(expr.value, self.ctx), expr)
-                if binds_owned_value(self.ctx, expr.value):
-                    note_owned_local(self.ctx, name, resolved)
-                    warn_value_call_binding(self.ctx, expr.value, f"local '{name}'")
-                else:
-                    record_stmt_borrow_binding(self.ctx, name, resolved, expr.value)
-                    # Local import: statements imports this module.
-                    from .statements import register_binding_loans
-                    register_binding_loans(self.ctx, name, expr.value,
-                                           resolved)
+                # The declaration's binding record (`p = v`), the one every
+                # binding form takes. Local import: statements imports this
+                # module.
+                from .statements import record_name_binding
+                record_name_binding(self, name, resolved, expr.value,
+                                    fresh=True, init_type=value_type)
+                recorded = True
             result_type = _walrus_result_type(resolved, value_type,
                                               declared=declared)
 
         if rebinds:
             self.narrowing.update_after_write(name, resolved, value_type,
                                               expr.value)
+        # Local import: statements imports this module.
+        from .statements import note_binding_provenance
+        note_binding_provenance(self, name, resolved, expr.value)
         self.ctx.func.definitely_assigned.add(name)
-        self.ctx.func.rvalue_vars.add(name)
+        if not recorded:
+            self.ctx.func.rvalue_vars.add(name)
         if name not in self.ctx.func.var_scope_depth:
             self.ctx.declare_local(name, target_scope.depth)
 

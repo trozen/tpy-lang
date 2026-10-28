@@ -7,11 +7,12 @@ predictively traverse a body or expression before lowering.
 from __future__ import annotations
 import math
 from collections.abc import Sequence, Set as AbstractSet
-from dataclasses import field, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import Callable, NamedTuple
 from ...parse.nodes import (
     ResultForm,
+    SourceLocation,
     lambda_of,
     is_property_getter_read,
     FSTRING_CONV_REPR,
@@ -1824,11 +1825,27 @@ def _local_binding_shape(
     return LocalBinding.OTHER
 
 
-def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
+@dataclass(frozen=True, eq=False)
+class BindingSource:
+    """A binding form other than a declaration (a walrus), seen as the
+    declaration of its name from its source, which binds it by the
+    declaration's rules. It carries no annotation and no sema rebind
+    stamp, so the conservative answer stands for both. The binding
+    functions it reaches read only `name`, `init`, `loc`, `type` and
+    `rebind_storage` of either form."""
+    name: str
+    init: TpyExpr
+    loc: SourceLocation | None = None
+    type: None = None
+    rebind_storage: None = None
+
+
+def _borrow_local_binding(stmt: 'TpyVarDecl | BindingSource',
+                          target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
                           analyzer, pointers: 'AbstractSet[str]', lc, *,
                           rebound: bool) -> 'LocalBinding | None':
-    """The binding for a non-value local var-decl's *first* declaration, or None
+    """The binding for a non-value local's *first* binding, or None
     if it is outside the emit slice. The form decision comes from
     `_local_binding_shape`; the slice additionally requires a field-access source off an
     F1-record receiver and an F1-record local (REF_ALIAS / POINTER) / inner
@@ -9037,6 +9054,10 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
         if kind == "record" or record_like(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(analyzer.get_expr_type(recv)))), analyzer):
             return _witness("method.recv.select_record")
+        # A @dynamic walrus reads its target's object (`(p = &(..), *p)`),
+        # whose virtual call `.` spells as a record's does.
+        if kind == "dyn" and isinstance(recv, TpyNamedExpr):
+            return _witness("method.recv.walrus_dyn")
         return False
     # Every other receiver kind (a non-str literal, a container literal, a
     # comprehension) has no admitted row yet.
@@ -11022,10 +11043,11 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
                     and _field_receiver_ok(e.obj, locals_, analyzer)
                     and _witness("method.protocol_field_recv"))
                 # A FREE-call receiver with a @dynamic-protocol result
-                # (`make_parrot().name()`, `echo_readonly(dog).name()`):
+                # (`make_parrot().name()`, `echo_readonly(dog).name()`), or a
+                # @dynamic walrus (`(p := deref(rc)).name()`):
                 # the same verdict the nonname gate reached -- Own[P]
                 # arrows, borrow `P&` dots, off the bare inner render.
-                or (isinstance(e.obj, TpyCall)
+                or (isinstance(e.obj, (TpyCall, TpyNamedExpr))
                     and _method_nonname_receiver_ok(e.obj, locals_,
                                                     analyzer))):
             return note_detail("method.protocol.recv_shape")

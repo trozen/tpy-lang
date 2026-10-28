@@ -1,0 +1,48 @@
+free deref 11
+free box 11
+free elem 11
+free field 11
+free dyn 1
+method 11
+generator [0, 1, 1001] 101 1001
+generator owned elem 0
+generator owned elem 101
+generator owned elem 9
+generator finally 6
+async finally 7
+try scalar 4
+finally scalar 5
+try/except 3
+try owned finally
+try owned 4
+with 71
+error_return 81
+borrow then own 8 20
+temp source 5
+try fresh then borrow finally
+try fresh then borrow 11 11
+try name moves in 3
+try name moves finally
+try name moves 13
+over hoisted owner finally
+over hoisted owner 4 4
+name moves 6
+generator last use 3
+generator last use 4
+del 4
+async last use 4
+del 4
+try opt field finally
+try opt field 3
+branch fresh 7
+async 8
+closure 21
+try/finally 3
+try/finally result 3
+match 31
+lazy and True 41
+lazy ternary 4 4
+lazy and False 1
+lazy ternary 0 1
+returned 51
+module 61

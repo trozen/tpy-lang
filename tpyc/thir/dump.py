@@ -194,7 +194,9 @@ def _expr(e: THIRExpr) -> str:
         decl = f" [decl {e.cpp_type}]" if e.cpp_type is not None else ""
         slot = (f" [slot {e.reseat_slot}]" if e.reseat_slot is not None
                 else "")
-        return f"walrus({e.name}{decl}{slot}, {_expr(e.value)})"
+        value = _expr(e.value) if e.value is not None else "None"
+        write = " [write]" if e.write is not None else ""
+        return f"walrus({e.name}{decl}{slot}{write}, {value})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRValueSelect):

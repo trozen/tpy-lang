@@ -485,6 +485,11 @@ class THIRWalrus(THIRExpr):
     # of this site's own (`own_slot`, holding `fill_cpp`) that the pointer
     # aims at (`(p = &*(__slot_N = v), *p)`), as its rebinds' objects do.
     fill_cpp: 'str | None' = None
+    # A write of a binding declared ahead of the walrus (a `try` hoist): the
+    # plain assignment's own write node, which renders as the walrus's
+    # operands (`(<write>, *p)`); `value` is that write's value.
+    write: 'THIRAssign | THIRPtrLocalRebind | None' = field(
+        default=None, kw_only=True)
 
     @property
     def binding_slot_cpp(self) -> 'str | None':
@@ -2700,6 +2705,13 @@ class THIRPtrLocalRebind(THIRStmt):
     # The slot `own_slot_cpp` asks for (see THIRAssign.own_slot).
     own_slot: THIRRebindSlot | None = field(
         default=None, kw_only=True, compare=False, repr=False)
+
+    @property
+    def declares_local(self) -> bool:
+        """Whether the write declares a local of its own (the slotless union
+        reseat's value-variant slot), so it is statements, not one
+        expression."""
+        return self.kind is PtrSlotKind.UNION_INLINE_SLOT
 
     @property
     def bound_name(self) -> str:

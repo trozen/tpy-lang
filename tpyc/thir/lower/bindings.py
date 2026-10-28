@@ -35,7 +35,7 @@ from ...identity_map import IdentityMap, IdentitySet
 from ...modules.type_resolution import is_native_iterable
 from ...parse.nodes import (RebindStorage, TpyArrayLiteral,
                             TpyAsPattern,
-                            TpyAssign, TpyAwait, TpyCall, TpyCapturePattern,
+                            TpyAssign, TpyAwait, TpyBinOp, TpyCall, TpyCapturePattern,
                             TpyClassPattern, TpyCoerce,
                             TpyComprehensionGenerator, TpyDictComprehension,
                             TpyDelVar, TpyDictLiteral, TpyExpr, TpyFieldAccess,
@@ -1353,14 +1353,16 @@ def _decl_row(site, name, typ, inp: 'PlanInputs', visible):
 def _decl_local_binding(site, typ, inp: 'PlanInputs', visible
                         ) -> 'LocalBinding | None':
     """The borrow-local shape of a first non-value or Optional declaration
-    (checks.py `_borrow_local_binding`), None outside its rows."""
+    or walrus (checks.py `_borrow_local_binding`), None outside its rows."""
     if (site.init is None or typ is None
             or not (is_plain_nonvalue(typ) or isinstance(typ, OptionalType))):
         return None
     ctx = _PlanCtx(inp, visible, site.func or inp.func, (site.init,))
+    source = (_checks.BindingSource(site.node.target, site.init)
+              if site.kind == "walrus" else site.node)
     try:
         return _checks._borrow_local_binding(
-            site.node, typ, ctx.declared_view, inp.prescan, inp.analyzer,
+            source, typ, ctx.declared_view, inp.prescan, inp.analyzer,
             ctx.names_with("pointer"), ctx, rebound=site.storage.pointer)
     except ThirUnsupported:  # a refusal is no binding
         return None
@@ -1536,16 +1538,16 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
         return _mk(site, name, typ, F.VALUE, BC.DYN_OWN_ERASED,
                    effective_type=svt)
     if (not site.in_branch and isinstance(vtype, NominalType)
-            and is_dyn_protocol(vtype)):
-        if isinstance(svt_u, OwnType):
-            # The deferred-erasure coroutine frame local is a value
-            # `std::optional<frame>`, read as a pointer local like every
-            # @dynamic local.
-            return _mk(site, name, typ, F.DYN, BC.CORO_FRAME_LOCAL,
-                       pointer=True, coro_frame=True,
-                       move_exception=M.DYN)
-        return _mk(site, name, typ, F.DYN, BC.DYN, pointer=True,
+            and is_dyn_protocol(vtype) and isinstance(svt_u, OwnType)):
+        # The deferred-erasure coroutine frame local is a value
+        # `std::optional<frame>`, read as a pointer local like every
+        # @dynamic local.
+        return _mk(site, name, typ, F.DYN, BC.CORO_FRAME_LOCAL,
+                   pointer=True, coro_frame=True,
                    move_exception=M.DYN)
+    rec = _dyn_local_row(site, name, typ)
+    if rec is not None:
+        return rec
     # The nullable borrow tuple.
     if (not site.in_branch and _p._optional_borrow_tuple(vtype, an) is not None
             and name not in pre.hoisted and name not in pre.move_through
@@ -1656,6 +1658,16 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
     rest = _decl_tail_rows(site, name, typ, inp, visible, ctx, fixed)
     rec = _btuple_rebound_decl(site, name, typ, inp, ctx, fn, rest)
     return rec if rec is not None else rest
+
+
+def _dyn_local_row(site, name, typ) -> 'BindingRepr | None':
+    """A @dynamic protocol local's record, outside a branch only: the
+    pointer over the object it names, whichever form binds it."""
+    if (site.in_branch or not isinstance(typ, NominalType)
+            or not is_dyn_protocol(typ)):
+        return None
+    return _mk(site, name, typ, F.DYN, BC.DYN, pointer=True,
+               move_exception=M.DYN)
 
 
 def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
@@ -2576,8 +2588,10 @@ def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
         rec = _walrus_sync_kind(site, name, typ, vtu, inp, visible)
         # An escape-hoisted binder has a form only as the pointer over a
         # slot of its own, which the slot's placement before the loop makes
-        # the hoist.
-        if rec is not None and (name not in pre.hoisted or rec.rebind_slot):
+        # the hoist; a borrow it binds is a write of the hoist's binding.
+        if rec is not None and (name not in pre.hoisted
+                                or (rec.rebind_slot
+                                    and rec.construct is not BC.POINTER)):
             return rec
     if name in pre.hoisted:
         return _mk(site, name, typ, F.NONE, None)
@@ -2589,6 +2603,14 @@ def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
     return _mk(site, name, typ, F.NONE, None)
 
 
+def _select_source(init: 'TpyExpr | None', an) -> bool:
+    """A ternary or `and` / `or` select, not a borrow-returning operator
+    dunder (whose result is an operand's own storage)."""
+    return (isinstance(init, TpyIfExpr)
+            or (isinstance(init, TpyBinOp) and init.op in ("&&", "||")
+                and not _checks._borrow_dunder_source(init, an)))
+
+
 def _walrus_sync_kind(site, name, typ, vtu, inp: 'PlanInputs', visible
                       ) -> 'BindingRepr | None':
     """The sync-only walrus rungs; None past the last of them. A pointer is
@@ -2597,14 +2619,26 @@ def _walrus_sync_kind(site, name, typ, vtu, inp: 'PlanInputs', visible
     (`BTUPLE_REBOUND`)."""
     an, pre = inp.analyzer, inp.prescan
     func = site.func or inp.func
-    borrow_decls = an.function_stmt_borrow_decls.get(func, {})
     ever_owned = an.function_ever_owned_locals.get(func, set())
-    if (name in borrow_decls and name not in ever_owned
-            and is_plain_nonvalue(vtu)):
-        if not _p.record_like(vtu, an):
-            # The alias of a non-record has no form.
+    if is_plain_nonvalue(vtu):
+        # A borrowing source binds as the declaration's would; the one
+        # difference is the spelling, a pointer declared ahead of the
+        # expression, since a reference cannot be declared inside one.
+        dyn = _dyn_local_row(site, name, vtu)
+        if dyn is not None:
+            return dyn
+        bind = _decl_local_binding(site, vtu, inp, visible)
+        if _select_source(site.init, an):
+            # A select may hold a fresh operand in a slot that lives as
+            # long as its statement, which the walrus target outlives
+            # (BUGS.md#walrus-select-borrow-source-rejects).
             return _mk(site, name, typ, F.NONE, None)
-        return _mk(site, name, typ, F.POINTER, BC.POINTER, pointer=True)
+        if bind in (LocalBinding.REF_ALIAS, LocalBinding.POINTER):
+            if not _p.record_like(vtu, an):
+                # The alias of a non-record has no form.
+                return _mk(site, name, typ, F.NONE, None)
+            return _mk(site, name, typ, F.POINTER, BC.POINTER, pointer=True,
+                       rebind_slot=site.storage.pointer)
     if _p._optional_ptr_borrow(vtu, an) is not None:
         return _mk(site, name, typ, F.POINTER, BC.OPT_PTR, pointer=True)
     if isinstance(vtu, TupleType) and name in pre.reassigned:

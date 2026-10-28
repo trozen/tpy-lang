@@ -185,12 +185,13 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (optional_to_ptr / nullptr / bare ptr)
     "expr.walrus_btuple_emplace",   # hoisted borrow-tuple walrus with an
                                     # owning-call value: emplace + name tail
+    "expr.walrus_rebind",           # walrus writing a binding declared
+                                    # ahead of it (a `try` hoist): the plain
+                                    # assignment's write, read back out
     "expr.walrus_ptr_alias",        # borrow-alias pointer walrus target:
                                     # `[const ]T* n = nullptr;` +
                                     # `(n = &(v), *n)` (bare for a
                                     # pointer-name source)
-    "walrus.alias_field_src",       # ... off a record/container FIELD
-                                    # source: `(q = &(h.inner), *q)`
     "field.walrus_recv",            # field read off a walrus receiver
                                     # (`(q = &(b), *q).v`, dot access)
     "expr.walrus_value_opt",        # value-opt scalar walrus reassign:
@@ -628,6 +629,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # str/bytes-VALUE ternary or walrus receiver, bare render
     "method.recv.select_record",    # `(a if c else b).area()` -- a plain F1-record ternary /
                                     # walrus receiver, `.` access
+    "method.recv.walrus_dyn",       # `(p := deref(rc)).bump()` -- a @dynamic
+                                    # walrus receiver, `.` access (gate)
     "method.recv.binop",            # `(dt + td).isoformat()` -- a record-
                                     # result dunder-binop receiver (gate)
     "method.recv.binop_str",        # `(a + b).upper()` -- the str/bytes-VALUE
@@ -2983,10 +2986,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr.walrus_frame_opt_ptr",    # `T*` Optional field: `(m = v)`, with
                                     # the optional_to_ptr lift on a field src
     "expr.walrus_frame_alias",      # `T*` alias field: `(row = &(v), *row)`
-    "expr.walrus_frame_alias_slot", # `T*` alias field off a frame_slot NAME:
-                                    # `(x = &((*buf)), *x)`
-    "expr.walrus_frame_alias_call", # `T*` alias field off a BORROW call:
-                                    # `(w = &(dict_get_default(d, k, fb)), *w)`
     "expr.walrus_frame_btuple",     # borrow tuple field: `(bt = v, bt)`
     "expr.walrus_frame_rebind_ptr", # REBIND_PTR field off an rvalue, into
                                     # the site's field:
