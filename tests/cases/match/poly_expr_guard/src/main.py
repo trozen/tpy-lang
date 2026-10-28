@@ -1,4 +1,4 @@
-# Polymorphic match on a FIELD expression subject through the GUARDED path:
+# Polymorphic match on the object a FIELD holds, through the GUARDED path:
 # a guard + an `as` capture + a literal field-value sub-pattern, none of which
 # narrow the (nameless) subject -- the value is reached via the `as` binding.
 from typing import Protocol
@@ -36,7 +36,7 @@ class Owner:
 
 
 def describe(o: Owner) -> str:
-    match o.pet:  # tpyc: ok
+    match o.pet.get():  # tpyc: ok
         case Snake() as s if s.legs == 0:
             return "legless snake"
         case Dog(legs=4):

@@ -57,18 +57,18 @@ shape* s{};
 // end;
 double area(shape* s) {
     double __pascal_result = 0.0;
-    auto __match_subject_1 = ::tpy::deref_check(s).kind;
+    auto __match_subject_1 = ::tpy::assert_lent(::tpy::deref_check(s)).kind;
     switch (__match_subject_1) {
     case shapekind::sccircle: {
-        __pascal_result = ((((3.14159) * (::tpy::deref_check(s).radius))) * (::tpy::deref_check(s).radius));
+        __pascal_result = ((((3.14159) * (::tpy::assert_lent(::tpy::deref_check(s)).radius))) * (::tpy::assert_lent(::tpy::deref_check(s)).radius));
         break;
     }
     case shapekind::screct: {
-        __pascal_result = ((::tpy::deref_check(s).w) * (::tpy::deref_check(s).h));
+        __pascal_result = ((::tpy::assert_lent(::tpy::deref_check(s)).w) * (::tpy::assert_lent(::tpy::deref_check(s)).h));
         break;
     }
     case shapekind::sctri: {
-        __pascal_result = ((((0.5) * (::tpy::deref_check(s).a))) * (::tpy::deref_check(s).b));
+        __pascal_result = ((((0.5) * (::tpy::assert_lent(::tpy::deref_check(s)).a))) * (::tpy::assert_lent(::tpy::deref_check(s)).b));
         break;
     }
     }

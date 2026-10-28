@@ -1,7 +1,7 @@
-# match/case polymorphic dispatch reached through an owning wrapper's
-# deref view (Box[Pet]) plus guards. The arms dispatch on the deref
-# payload's dynamic type (the Box itself is never narrowed), and a failed
-# guard falls through to the next arm via the goto-label mechanism.
+# match/case polymorphic dispatch on the object an owning Box[Pet] holds
+# (`match b.get():`) plus guards. The arms dispatch on the object's dynamic
+# type, and a failed guard falls through to the next arm via the goto-label
+# mechanism.
 from typing import Protocol
 from tpy import dynamic
 from tplib import Box
@@ -31,7 +31,7 @@ class Bird(Pet):
 
 
 def describe(b: Box[Pet]) -> str:
-    match b:  # tpyc: ok
+    match b.get():  # tpyc: ok
         case Dog(n=k) if k > 0:
             return "dog+ " + str(k) + " legs=" + str(b.legs())
         case Dog():

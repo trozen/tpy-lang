@@ -60,8 +60,9 @@ from ...parse.nodes import (
     TpyVarargPack,
 )
 from ...typesys import binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
-from ...typesys import (drop_own_marker, is_open_type_param_return, make_readonly,
-                        param_takes_ownership)
+from ...typesys import (
+    drop_own_marker, dyn_protocol_borrow_result, is_open_type_param_return, make_readonly,
+    param_takes_ownership)
 from ...typesys import (
     ConcreteFrameType,
     AliasRef,
@@ -566,7 +567,6 @@ from .predicates import (
     _value_tuple_global,
     _value_tuple_return,
     _ru_container_literal_ok,
-    _dyn_borrow_return,
     _own_dyn_return,
     _own_genrec_return,
     _wrapper_borrow_return,
@@ -1179,7 +1179,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                              _ExprResultUse.BORROW_BIND)
                   and fi is not None
                   and (_own_dyn_return(fi.return_type) is not None
-                       or _dyn_borrow_return(fi.return_type) is not None)
+                       or dyn_protocol_borrow_result(fi.return_type) is not None)
                   and _witness("call.dyn_recv_ret"))
               # A wrapper-union BORROW-returning call composing in place
               # (`count(passthru(tree))` -- the `Expr&` result binds the
@@ -5281,10 +5281,19 @@ def _poly_cast_context(var: str, lc: '_LowerCtx',
         const = const or lc.binding("self").const
     else:
         cast_arg = (escape_cpp_name(var)
-                    if polymorphic_source_is_pointer(var_decl)
+                    if _poly_subject_is_pointer(var, lc, var_decl)
                     else f"&{escape_cpp_name(var)}")
     return const, cast_arg, polymorphic_source_inner(var_decl,
                                                      lc.analyzer.registry)
+
+
+def _poly_subject_is_pointer(var: str, lc: '_LowerCtx',
+                             var_decl: 'TpyType | None') -> bool:
+    """Whether a polymorphic dispatch subject NAME reads as the pointer the
+    cast takes: a pointer-shaped declared type (`Ptr[T]`, pointer-repr
+    `Optional[T]`) or a `@dynamic` local held behind its base pointer."""
+    return (polymorphic_source_is_pointer(var_decl)
+            or lc.binding(var).form is BindingForm.DYN)
 
 
 def _poly_cast_checks(var: str, members, lc: '_LowerCtx',
@@ -9266,8 +9275,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # `_narrow_variant_cpp` already gives the condition arms.
         if (e.isinstance_var is not None and e.isinstance_type is not None
                 and not e.isinstance_type_param
-                and not e.isinstance_is_protocol
-                and not e.isinstance_deref_depth):
+                and not e.isinstance_is_protocol):
             iv = e.isinstance_var
             du = declared.get(iv)
             dub = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(du)))
@@ -10614,40 +10622,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if (result_use is _ExprResultUse.CONDITION
                 and not is_bool_type(rtype)):
             raise ThirUnsupported(call_reject_reason("expr.method_call"))
-        if e.deref_narrowed_to is not None:
-            # A deref-view NARROWED member call (`b.bark()` under
-            # `isinstance(b, Dog)` through a Deref wrapper): the receiver
-            # reads the if-init cast pointer (`(*__b_ptr).bark()`), never
-            # the deref chain. First dispatch of the arm -- every later
-            # classifier fences deref_narrowed_to. Zero-arg plain methods
-            # and property getters only; other flavors reject.
-            dn_fi = e.resolved_function_info
-            if not (isinstance(e.obj, TpyName)
-                    and e.obj.name in lc.deref_view_spelled
-                    and dn_fi is not None
-                    and _plain_method_fi_ok(dn_fi, property_getter_ok=True)
-                    and not e.args and not e.kwargs
-                    and not dn_fi.params):
-                note_detail("method.deref_narrowed_shape")
-                raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            dn_str = _resolved_str_value(rtype, analyzer)
-            if dn_str is None:
-                dn_str = _resolved_bytes_value(rtype, analyzer)
-            _witness("method.deref_view_narrowed")
-            dn_bc = _bound_call_of(dn_fi, e.method)
-            return THIRMethodCall(
-                result_type=rtype if rtype is not None else VoidType(),
-                receiver=THIRName(
-                    result_type=analyzer.get_expr_type(e.obj),
-                    name=e.obj.name,
-                    cpp=lc.deref_view_spelled[e.obj.name],
-                    form=Form.VALUE, loc=loc),
-                method_cpp=dn_bc.method_cpp,
-                native_function_name=dn_bc.native_function_name,
-                cpp_template=dn_bc.cpp_template,
-                args=(),
-                form=_viewfam_result_form(dn_str),
-                loc=loc)
         if e.typed_dict_get_field is not None:
             # TypedDict `kwargs.get("k"[, default])` -- the typed-dict
             # arm: `.field.value_or(default)` (owned-str defaults
@@ -12266,7 +12240,7 @@ def _capture_entry_cpp(name: str, lc: '_LowerCtx',
     cpp = escape_cpp_name(name)
     if by_value and _uncopyable_capture(name, declared, lc):
         raise ThirUnsupported("lambda.capture_nocopy")
-    if name in lc.narrow.spelled or name in lc.deref_view_spelled:
+    if name in lc.narrow.spelled:
         # A poly-narrowed subject reads as `(*__p_ptr)` inside the closure --
         # a spelling no capture entry can bind.
         raise ThirUnsupported("lambda.capture_narrowed_view")
@@ -14572,8 +14546,7 @@ def _lower_static_isinstance(e: TpyCall, lc: '_LowerCtx',
     expression renders at every position. Shared by the truthy-condition
     arm and the value-position call arm; each witnesses its own face."""
     if not (e.isinstance_var is not None and e.isinstance_type_param
-            and e.isinstance_type is not None
-            and not e.isinstance_deref_depth):
+            and e.isinstance_type is not None):
         return None
     if isinstance(e.isinstance_type, UnionType):
         members = list(e.isinstance_type.members)

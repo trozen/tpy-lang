@@ -787,18 +787,19 @@ const T* optional_to_ptr(const std::optional<T>& opt) {
 /**
  * assert_lent - Hand back a call result the compiler bound as a borrow.
  *
- * An identity on a reference, no run-time effect. A call whose C++ returns a
- * value instead would leave the caller's reference bound to a temporary (a
- * `const&` silently extends a copy), so that case stops the build. No
- * [[nodiscard]]: a borrowed result may be discarded like any call.
+ * An identity on a reference, forced inline so no build mode pays a call.
+ * A call whose C++ returns a value instead would leave the caller's
+ * reference bound to a temporary (a `const&` silently extends a copy), so
+ * that case stops the build. No [[nodiscard]]: a borrowed result may be
+ * discarded like any call.
  */
 template<typename T>
-constexpr T& assert_lent(T& r) noexcept { return r; }
+TPY_ALWAYS_INLINE constexpr T& assert_lent(T& r) noexcept { return r; }
 
 // A separate overload rather than one forwarding function, so the static
 // assertion is the only diagnostic: the cast keeps the return well-formed.
 template<typename T> requires (!std::is_lvalue_reference_v<T>)
-constexpr T& assert_lent(T&& r) noexcept {
+TPY_ALWAYS_INLINE constexpr T& assert_lent(T&& r) noexcept {
     static_assert(std::is_lvalue_reference_v<T>,
                   "a call the compiler bound as a borrow returns a value; "
                   "return a reference, or declare the stub's result Own[...]");

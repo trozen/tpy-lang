@@ -90,7 +90,7 @@ from .alias_rebind import (bind_kind_of, note_tuple_elem_borrows,
                            tuple_elem_owned, unpack_target_records)
 from .binding_ownership import resolve_read, step_handover_paths
 from .compatibility import TupleSink
-from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
+from .narrowing import NarrowingTracker, truthy_operands
 from .flow_facts import Branch, FlowFacts
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
 from .list_elem import (Role, container_call, container_calls, iterated_step,
@@ -4198,14 +4198,7 @@ class ExpressionAnalyzer:
             if isinstance(deref_target, ReadonlyType):
                 is_readonly_obj = True
                 deref_target = deref_target.wrapped
-            # Deref-view narrowing: a field declared only on the narrowed
-            # subclass resolves through the cast (see the method-call path).
-            nsub = deref_view_narrowed(self.ctx, expr.obj, deref_target)
-            if nsub is not None:
-                expr.deref_narrowed_to = nsub
-                current_type = nsub
-            else:
-                current_type = deref_target
+            current_type = deref_target
             deref_depth += 1
 
         # D16 dynamic-attribute fallback: if the receiver is a record with

@@ -16,12 +16,12 @@ from ..typesys import (
     LiteralType, LiteralValue, LiteralTag, TypeParamRef,
     unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
     is_any_str_type, is_numeric_type, is_protocol_type,
-    polymorphic_source_inner, deref_dispatch_inner,
+    polymorphic_source_inner,
     same_class, record_owner,
 )
 from ..modules import _resolve_concrete_type_name
 from .flow_facts import FlowFacts
-from .protocols import dynamic_dispatch_type_conforms
+from .protocols import dynamic_dispatch_type_conforms, handle_payload_may_be
 from ..type_def_registry import (
     is_bool_type, is_fixed_int_type, is_big_int_type,
     is_str_category, is_char_type, is_float_category, is_bytes_category,
@@ -30,7 +30,8 @@ from ..type_def_registry import (
 )
 from .numeric_lattice import fixed_int_range_contains
 from ..parse import (
-    TpyName, TpyFieldAccess, TpySubscript, TpyMethodCall, TpyIntLiteral,
+    TpyName, TpyFieldAccess, TpySubscript, TpyMethodCall, TpyCall,
+    TpyIntLiteral,
     TpyAssign, TpyAugAssign, TpyNestedDef, TpyExpr, TpyStmt,
     TpyMatch, TpyMatchCase, TpyPattern, TpyWildcardPattern, TpyCapturePattern,
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
@@ -39,7 +40,8 @@ from ..parse.nodes import (
     name_path,
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
-from ..value_category import is_rvalue_source
+from ..value_category import is_rvalue_source, peel_coerce
+from .call_lends import borrow_declared_sources
 from .alias_rebind import stamp_capture_rebind
 from .scope_tracker import register_binder, unregister_binder
 from .context import record_stmt_borrow_binding, register_capture_alias_borrow
@@ -206,11 +208,10 @@ class MatchAnalyzer:
         is_optional = isinstance(effective_type, OptionalType)
         # @dynamic-protocol / polymorphic-class subject: dispatch by runtime
         # type via dynamic_cast, the match-statement sibling of isinstance
-        # subclass narrowing. Reuses the isinstance source detection so bare
-        # `Pet`, `Ptr[Pet]`, and owning-wrapper deref views all qualify. Takes
-        # precedence over the record/wrapper paths (a `Box[Pet]` is itself a
-        # record, but the arms dispatch on the deref payload's dynamic type).
-        poly_inner, poly_depth = self._poly_dispatch_source(effective_type)
+        # subclass narrowing. Reuses the isinstance source detection, so bare
+        # `Pet` and `Ptr[Pet]` qualify; a `Box[Pet]` handle is a record
+        # subject like any other (the arms test the handle, as in CPython).
+        poly_inner = self._poly_dispatch_source(effective_type)
         is_polymorphic = poly_inner is not None
         if not (is_union or is_enum or is_primitive or is_record
                 or is_optional or is_polymorphic):
@@ -489,7 +490,8 @@ class MatchAnalyzer:
             # types to tell an invalidating receiver method from one whose
             # readonly verdict only settles in Phase 2.
             if (aliasing_bindings
-                    and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript))):
+                    and isinstance(stmt.subject, (TpyFieldAccess, TpySubscript,
+                                                  TpyCall, TpyMethodCall))):
                 self._warn_arm_subject_mutation(case, stmt.subject)
 
             for name, scope, prev in reversed(pushed):
@@ -801,6 +803,13 @@ class MatchAnalyzer:
         """
         subj_parts = _expr_path_parts(subject)
         if subj_parts is None:
+            # A call subject bound by reference (`match h.b.get():`,
+            # `match deref(h.b):`) borrows the storage its result points
+            # into: its recorded borrow sources stand for the subject.
+            call = peel_coerce(subject)
+            if isinstance(call, (TpyCall, TpyMethodCall)):
+                for src in borrow_declared_sources(call) or ():
+                    self._warn_arm_subject_mutation(case, src.expr)
             return
         offender, deferred_calls = self._find_subject_mutation(
             case.body, case.guard, subj_parts)
@@ -887,27 +896,17 @@ class MatchAnalyzer:
             scan_expr(guard)
         return offender, deferred
 
-    def _poly_dispatch_source(
-        self, effective_type: TpyType,
-    ) -> tuple[TpyType | None, int]:
-        """If the match subject carries a @dynamic vtable reachable for
-        runtime dispatch, return (inner_root, deref_depth); else (None, 0).
+    def _poly_dispatch_source(self, effective_type: TpyType) -> TpyType | None:
+        """The @dynamic / polymorphic root the match subject dispatches on at
+        runtime, or None.
 
         Reuses the isinstance source detection: bare `Pet` / `Ptr[Pet]` resolve
-        via ``polymorphic_source_inner`` (depth 0); an owning wrapper
-        (`Box[Pet]` / `Rc[Pet]`) resolves through its `__deref__` view. Optional
-        is deliberately excluded -- `Optional[Pet]` dispatch additionally needs
-        a `None` arm, which is a separate (unimplemented) path."""
+        via ``polymorphic_source_inner``. Optional is deliberately excluded --
+        `Optional[Pet]` dispatch additionally needs a `None` arm, which is a
+        separate (unimplemented) path."""
         if isinstance(effective_type, OptionalType):
-            return None, 0
-        inner = polymorphic_source_inner(effective_type, self.ctx.registry)
-        if inner is not None:
-            return inner, 0
-        deref = deref_dispatch_inner(
-            effective_type, self.expr.type_ops, self.ctx.registry)
-        if deref is not None:
-            return deref[0], deref[1]
-        return None, 0
+            return None
+        return polymorphic_source_inner(effective_type, self.ctx.registry)
 
     def _analyze_pattern_polymorphic(
         self, pattern: TpyPattern, source_inner: TpyType,
@@ -968,6 +967,37 @@ class MatchAnalyzer:
 
     def _is_instance_of(self, t: TpyType, record: 'RecordInfo') -> bool:
         return self.ctx.registry.is_instance_of(t, record)
+
+    def _handle_hint(self, tested: TpyType, named: 'TpyType | None',
+                     subject: str) -> str:
+        """The hint an impossible class pattern's error carries when the
+        value it tests is a `__deref__` handle that may hold the class
+        (`case Dog():` on a `Box[Pet]`): the pattern tests the handle, as in
+        CPython, and `match deref(...)` tests the object it holds. `tested`
+        may be a union or Optional, whose members are each such a value."""
+        if named is None:
+            return ""
+        if isinstance(tested, UnionType):
+            candidates = list(tested.members)
+        elif isinstance(tested, OptionalType):
+            candidates = [tested.inner]
+        else:
+            candidates = [tested]
+        if not any(handle_payload_may_be(
+                c, named, self.expr.type_ops, self.stmts.protocols,
+                self.ctx.registry) for c in candidates):
+            return ""
+        if len(candidates) > 1 or tested is not candidates[0]:
+            # `deref(u)` of a union or Optional is not itself a spelling:
+            # the handle member has to be narrowed out first.
+            return ("; to match the object a handle holds, narrow to the "
+                    "handle and use match deref() on it")
+        return (f"; to match the object it holds, use match "
+                f"deref({subject})")
+
+    @staticmethod
+    def _subject_spelling(stmt: TpyMatch) -> str:
+        return stmt.subject.name if isinstance(stmt.subject, TpyName) else "..."
 
     def _analyze_class_pattern_polymorphic(
         self, pattern: TpyClassPattern, source_inner: TpyType,
@@ -1278,7 +1308,9 @@ class MatchAnalyzer:
         if not same_name:
             raise self.ctx.error(
                 f"'{name}' is not a member of union "
-                f"'{stmt.subject_type}'", pattern
+                f"'{stmt.subject_type}'"
+                + self._handle_hint(subject_type, resolved,
+                                    self._subject_spelling(stmt)), pattern
             )
         # A same-named member that is not the pattern's class is a distinct
         # (e.g. alias-imported) record.
@@ -1292,9 +1324,12 @@ class MatchAnalyzer:
     def _analyze_class_pattern_record(
         self, pattern: TpyClassPattern, subject_type: NominalType,
         bindings: dict[str, TpyType], stmt: TpyMatch,
+        hint_type: TpyType | None = None,
     ) -> None:
-        """Analyze a class pattern on a concrete record subject (field-value matching)."""
-        cls_name, record, _ = self._pattern_class(pattern)
+        """Analyze a class pattern on a concrete record subject (field-value
+        matching). `hint_type` is the subject's full type when `subject_type`
+        is its Optional payload, so the handle hint can say to narrow."""
+        cls_name, record, named = self._pattern_class(pattern)
         if record is None:
             raise self.ctx.error(f"unknown type '{cls_name}' in match pattern", pattern)
 
@@ -1309,7 +1344,9 @@ class MatchAnalyzer:
                 pat_disp, subj_disp = cls_name, subject_type.name
             raise self.ctx.error(
                 f"class pattern '{pat_disp}' does not match "
-                f"subject type '{subj_disp}'", pattern
+                f"subject type '{subj_disp}'"
+                + self._handle_hint(hint_type or subject_type, named,
+                                    self._subject_spelling(stmt)), pattern
             )
 
         pattern.resolved_type = subject_type
@@ -1566,7 +1603,8 @@ class MatchAnalyzer:
             if isinstance(inner, NominalType) and inner.is_user_record:
                 record = self.ctx.registry.get_record_for_type(inner)
                 if record is not None:
-                    self._analyze_class_pattern_record(pattern, inner, bindings, stmt)
+                    self._analyze_class_pattern_record(
+                        pattern, inner, bindings, stmt, hint_type=subject_type)
                     return
             raise self.ctx.error(
                 f"class pattern not valid for Optional inner type '{inner}'",
@@ -2163,7 +2201,9 @@ class MatchAnalyzer:
 
             raise self.ctx.error(
                 f"type '{cls_name}' is not a member of "
-                f"field union type '{field_type}'", sub_pattern
+                f"field union type '{field_type}'"
+                + self._handle_hint(field_type, pattern_type, "..."),
+                sub_pattern
             )
 
         if (isinstance(field_type, NominalType) and isinstance(pattern_type, NominalType)
@@ -2175,7 +2215,8 @@ class MatchAnalyzer:
             )
         raise self.ctx.error(
             f"type pattern '{cls_name}' does not match "
-            f"field type '{field_type}'", sub_pattern
+            f"field type '{field_type}'"
+            + self._handle_hint(field_type, pattern_type, "..."), sub_pattern
         )
 
     def _resolve_nested_class_fields(

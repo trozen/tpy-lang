@@ -1,5 +1,6 @@
-# Polymorphic match on a CONST field subject: in a @readonly method `self.pet`
-# is a const borrow, so the dynamic_cast must target `const Sub*` (const propagates).
+# Polymorphic match on the object a CONST field holds: in a @readonly method
+# `self.pet.get()` is a const borrow, so the dynamic_cast must target
+# `const Sub*` (const propagates).
 from typing import Protocol
 from tpy import dynamic, Own, readonly
 from tplib import Box
@@ -35,7 +36,7 @@ class Owner:
 
     @readonly
     def describe(self) -> str:
-        match self.pet:  # tpyc: ok
+        match self.pet.get():  # tpyc: ok
             case Dog():
                 return "dog"
             case Snake() as s:

@@ -13,6 +13,8 @@ import os as _os
 import sys as _sys
 import weakref as _weakref
 import typing as _typing
+import functools as _functools
+import types as _types
 
 # Version/implementation identification lives in `tpy.version` submodule
 # for API parity with the compiled side (see lib/tpy/tpy/version.py):
@@ -228,11 +230,98 @@ def _deref_target(obj):
     # AttributeError the compiled `deref(p)` and `Ptr[T]` -> `T` raise.
     if obj is None:
         raise AttributeError("'NoneType' object has no attribute '__deref__'")
+    # A pointer into a simulated heap allocation points at the object the
+    # allocation holds, not at the cell.
+    if getattr(type(obj), '__tpy_heap_slot__', False):
+        return object.__getattribute__(obj, '_value')
     return obj
+
+
+def _type_param_namespace(func) -> dict:
+    """The PEP 695 type parameters in scope of `func`: its own and those of
+    the classes its qualified name nests it in (`Handle[T].get`)."""
+    ns: dict = {}
+    obj = None
+    scope = getattr(func, '__globals__', {})
+    for part in getattr(func, '__qualname__', '').split('.')[:-1]:
+        obj = scope.get(part) if obj is None else getattr(obj, part, None)
+        if obj is None:
+            break
+        for p in getattr(obj, '__type_params__', ()):
+            ns[p.__name__] = p
+        scope = {}
+    for p in getattr(func, '__type_params__', ()):
+        ns[p.__name__] = p
+    return ns
+
+
+def _return_annotation(func):
+    raw = getattr(func, '__annotations__', {}).get('return')
+    if raw is None:
+        return None
+    # Only the return annotation is resolved: a parameter annotation naming
+    # a type defined later must not hide a valid `-> Ptr[T]`.
+    def only_return(): pass
+    only_return.__annotations__ = {'return': raw}
+    module_globals = getattr(func, '__globals__', {})
+    localns = _type_param_namespace(func)
+    for _ in range(8):
+        try:
+            return _typing.get_type_hints(
+                only_return, globalns=module_globals,
+                localns=localns).get('return')
+        except NameError as exc:
+            # A name nothing defines stands for some type that is no `Ptr`.
+            if exc.name is None or exc.name in localns:
+                return None
+            localns[exc.name] = object
+        except Exception:
+            return None
+    return None
+
+
+def _unalias(ann):
+    """A PEP 695 alias (`type P = Ptr[Point]`) stands for its value."""
+    alias_type = getattr(_typing, 'TypeAliasType', None)
+    while alias_type is not None and isinstance(ann, alias_type):
+        ann = ann.__value__
+    return ann
+
+
+_declares_ptr_cache: dict = {}
+
+
+def _declares_ptr(func) -> bool:
+    """Whether `func` declares a `Ptr` result (`Ptr[T]`, an alias of it,
+    `readonly[Ptr[T]]`, `Ptr[T] | None`), resolved from the annotation's
+    object, not its spelling. Resolved at the first call: a method's
+    annotation may name its own class, unbound while the body runs."""
+    cached = _declares_ptr_cache.get(func)
+    if cached is None:
+        ann = _unalias(_return_annotation(func))
+        if _typing.get_origin(ann) in (_typing.Union, _types.UnionType):
+            cached = any(_unalias(a) is Ptr for a in _typing.get_args(ann))
+        else:
+            cached = ann is Ptr
+        _declares_ptr_cache[func] = cached
+    return cached
+
+
+def _object_behind(result, func):
+    """What a function declared to return `T` hands back when its body
+    returns a pointer proxy: TPy reads a `Ptr[T]` returned at a `T` slot as
+    the object it points at, so CPython must too (`rc.get()` is the payload,
+    `isinstance(rc.get(), Dog)` tests it)."""
+    if not getattr(type(result), '__tpy_ptr_proxy__', False):
+        return result
+    if _declares_ptr(func):
+        return result
+    return result.__deref__()
 
 
 class _Ptr(Generic[T]):
     """Mutable pointer simulation."""
+    __tpy_ptr_proxy__ = True
 
     def __init__(self, obj: T):
         self._obj = obj
@@ -311,6 +400,7 @@ class _Ptr(Generic[T]):
 
 class _ConstPtr(Generic[T]):
     """Read-only pointer simulation."""
+    __tpy_ptr_proxy__ = True
 
     def __init__(self, obj: T):
         self._obj = obj
@@ -937,14 +1027,18 @@ class auto_readonly:
     """Decorator and type modifier for @auto_readonly methods.
 
     Supports @auto_readonly decorator and auto_readonly[T] subscript syntax.
-    In CPython, both forms are no-ops: the decorator returns the function unchanged
-    and the subscript returns the type argument unchanged.
+    In CPython the subscript returns the type argument unchanged; the
+    decorated method hands back the object a returned pointer proxy points
+    at, as TPy reads the declared `T` (`_object_behind`).
     """
     def __class_getitem__(cls, item):
         return _as_annotation(item)
 
     def __new__(cls, func):
-        return func
+        def method(*args, **kwargs):
+            return _object_behind(func(*args, **kwargs), func)
+        _functools.update_wrapper(method, func)
+        return method
 
 
 class auto_own:
@@ -1312,7 +1406,7 @@ def span(x):
 
 def deref(x):
     """Dereference a Deref[T] type to get the underlying value."""
-    return x.__deref__()
+    return _object_behind(x.__deref__(), type(x).__deref__)
 
 
 Fn = Callable

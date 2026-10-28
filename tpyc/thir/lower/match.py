@@ -30,7 +30,6 @@ from ...typesys import (
     OptionalType,
     TpyType,
     UnionType,
-    deref_dispatch_inner,
     polymorphic_source_inner,
     polymorphic_source_is_pointer,
     substitute_type_params_simple,
@@ -40,7 +39,8 @@ from ...typesys import (
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
 from ..source import BindingForm, BindingRepr, Held, NameFacts
-from ...value_category import call_returns_cpp_ref, is_rvalue_source
+from ...value_category import (call_hands_back_value, call_returns_cpp_ref,
+                               is_rvalue_source)
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.emit_prims import (
     match_subject_is_lvalue,
@@ -1182,7 +1182,12 @@ def _match_route(
         if isinstance(subj, TpyName):
             if subj.name not in declared:
                 return None
-            if (subj.name in pointers or subj.name in narrowed
+            # A `@dynamic` local's base pointer reads as the object (`(*p)`),
+            # which the subject binds by reference.
+            dyn_local = (subj.name in pointers
+                         and lc.binding(subj.name).form is BindingForm.DYN)
+            if ((subj.name in pointers and not dyn_local)
+                    or subj.name in narrowed
                     or subj.name in storage_tuple_locals):
                 return None
         hoist_types = _route_hoists(stmt, analyzer, declared, prescan, lc)
@@ -2182,13 +2187,12 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         loc=loc,
     )
 
-def _poly_cast_pair(cpp_type: str, narrowed_t, source_inner, depth: int,
+def _poly_cast_pair(cpp_type: str, narrowed_t, source_inner,
                     is_const: bool, analyzer, *,
                     ptr_source: bool = False) -> tuple[str, str]:
     """The `narrow_cast_rhs` render as a (prefix, suffix) pair around the
     emit-time subject spelling (`__match_subject_N` is numbered at emit).
-    The cast arg -- `&subject`, or `&(subject.__deref__()...)` for an
-    owning-wrapper deref view, or the subject BARE when it is already
+    The cast arg -- `&subject`, or the subject BARE when it is already
     pointer-shaped (`Ptr[T]` / pointer-repr `Optional[T]`) -- composes into
     the shared chokepoint's output, split on a placeholder no type render
     can contain."""
@@ -2198,8 +2202,6 @@ def _poly_cast_pair(cpp_type: str, narrowed_t, source_inner, depth: int,
     pre, suf = rhs.split(mark)
     if ptr_source:
         return pre, suf
-    if depth > 0:
-        return f"{pre}&(", f"{'.__deref__()' * depth}){suf}"
     return f"{pre}&", suf
 
 
@@ -2238,13 +2240,15 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
     if ptr_source:
         _witness("match.poly_ptr_subject")
     source_inner = polymorphic_source_inner(var_decl, analyzer.registry)
-    depth = 0
     if source_inner is None:
-        deref = deref_dispatch_inner(var_decl, analyzer.type_ops,
-                                     analyzer.registry)
-        if deref is None:
-            raise ThirUnsupported("match.poly_source", detail=True)
-        source_inner, depth = deref
+        raise ThirUnsupported("match.poly_source", detail=True)
+    if (isinstance(subj, (TpyCall, TpyMethodCall))
+            and not match_subject_is_lvalue(subj)
+            and not call_hands_back_value(subj)):
+        # A borrowed object the subject cannot bind by reference (a
+        # temporary receiver's `make().get()`) would be bound as a sliced
+        # copy, which no subclass arm matches.
+        raise ThirUnsupported("match.poly_subject_copy", detail=True)
     is_const = _poly_subject_const(subj, lc)
     arms: list[THIRMatchArm] = []
     for i, case in enumerate(_bindings.scoped(lc, stmt.cases)):
@@ -2277,7 +2281,7 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
                 cpp_type = lc.render_type(narrowed_t)
                 const_pfx = "const " if is_const else ""
                 pre, suf = _poly_cast_pair(cpp_type, narrowed_t,
-                                           source_inner, depth, is_const,
+                                           source_inner, is_const,
                                            analyzer, ptr_source=ptr_source)
                 ref_local = f"__case_{i}"
                 entry_extra["poly_cast"] = (
@@ -2317,7 +2321,7 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
                                               detail=True)
                     alt_cpp = lc.render_type(alt.resolved_type)
                     pre, suf = _poly_cast_pair(
-                        alt_cpp, alt.resolved_type, source_inner, depth,
+                        alt_cpp, alt.resolved_type, source_inner,
                         is_const, analyzer, ptr_source=ptr_source)
                     conds.append((f"({pre}", f"{suf} != nullptr)"))
                 _witness("match.poly_or_arm")

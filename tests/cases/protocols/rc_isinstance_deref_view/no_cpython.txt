@@ -1,3 +1,0 @@
-Deref-view isinstance is C++-only: in CPython isinstance(rc, Dog) checks the
-Rc wrapper type (always False), not the polymorphic payload. TPy gives the
-wrapper a deref-view, a deliberate divergence.

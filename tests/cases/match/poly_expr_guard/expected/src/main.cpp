@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(o: Owner) -> str:
-//     match o.pet:  # tpyc: ok
+//     match o.pet.get():  # tpyc: ok
 //         case Snake() as s if s.legs == 0:
 //             return "legless snake"
 //         case Dog(legs=4):
@@ -15,21 +15,21 @@ namespace tpyapp::main {
 //         case _:
 //             return "?"
 std::string describe(const Owner& o) {
-    auto& __match_subject_1 = o.pet;
-    if (const Snake* __mpoly_0 = dynamic_cast<const Snake*>(&(__match_subject_1.__deref__()))) {
+    auto& __match_subject_1 = o.pet.get();
+    if (const Snake* __mpoly_0 = dynamic_cast<const Snake*>(&__match_subject_1)) {
         const Snake& __case_0 = *__mpoly_0;
         auto& s = __case_0;
         if ((s.legs == 0)) {
             return "legless snake";
         }
     }
-    if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
+    if (const Dog* __mpoly_1 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_1 = *__mpoly_1;
         if (__case_1.legs == 4) {
             return "quadruped dog";
         }
     }
-    if (const Dog* __mpoly_2 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
+    if (const Dog* __mpoly_2 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_2 = *__mpoly_2;
         auto& d = __case_2;
         return (::tpy::str_concat("dog legs=", (d.legs).to_string()));

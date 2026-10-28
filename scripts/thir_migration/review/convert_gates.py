@@ -1021,7 +1021,6 @@ LEDGER_ATTRS = {
     "overload_literal_facts": "flow fact: the stub's literal values",
     "overload_narrowing": "narrowing: the stub's parameter types",
     "inline_narrowed": "narrowing: one condition's extraction",
-    "deref_view_spelled": "narrowing: a branch's deref-view spelling",
     "tparam_bounds": "type-parameter bounds, not a binding",
     "sema_movable_locals": "sema's verdict, an input of the planner",
 }

@@ -506,11 +506,6 @@ class TestAffectedFacts:
         r = _bound({"t": {"a.inner"}})
         assert r.affected_facts("a", {"t.v"}, own=False) == {"t.v"}
 
-    def test_deref_view_sits_beneath_its_receiver(self):
-        r = _bound({"t": {"a"}})
-        view = "a\x00deref"
-        assert r.affected_facts("t", {view}, own=False) == {view}
-
     def test_store_kills_a_bare_name_holding_the_slot(self):
         # `u = h.payload; h.payload = B()`: `u`'s own narrowing dies.
         r = _bound({"u": {"h.payload"}})

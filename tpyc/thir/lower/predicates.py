@@ -202,9 +202,9 @@ from ...codegen_cpp.protocols import (
 from ...sema.dyn_erasure import record_inherits_dynamic
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
-from ...prescan import literal_constant, parse_deref_view_key
+from ...prescan import literal_constant
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
-from ..source import Held, NameFacts
+from ..source import BindingForm, Held, NameFacts
 from ..faces import witness as _witness
 from ..nodes import (
     COMPARISON_OPS,
@@ -1097,19 +1097,6 @@ def _own_genrec_return(t: TpyType | None) -> 'TpyType | None':
     return inner if isinstance(inner, RecursiveAliasInstanceType) else None
 
 
-def _dyn_borrow_return(t: TpyType | None) -> 'NominalType | None':
-    """The @dynamic protocol of a BORROW-form protocol return slot
-    (`-> P` -> `P&`, `-> readonly[P]` -> `const P&`): the abstract base
-    returns by reference, so the routed sources are NAME reads (a borrow
-    param bare, a pointer-local/global deref) -- the return arm gates them.
-    None for structural protocols (`_protocol_auto_slot`'s family) and
-    every non-protocol slot."""
-    if t is None:
-        return None
-    u = unwrap_readonly(unwrap_send_sync(t))
-    return u if (isinstance(u, NominalType) and is_dyn_protocol(u)) else None
-
-
 def _own_dyn_return(t: TpyType | None) -> 'NominalType | None':
     """The @dynamic protocol under an `Own[P]` return slot
     (`std::unique_ptr<P>`). Keyed on the RAW wrapped type: an
@@ -1345,7 +1332,7 @@ def _isinstance_narrow_info(
     (`macro_expansion == True`, the last elif of an exhausted union): the
     condition renders `true` and the dead implicit-else is suppressed
     (`_condition_static_true`). Out of the slice: Any / polymorphic /
-    deref-view / type-param subjects (different extraction machinery),
+    type-param subjects (different extraction machinery),
     readonly-qualified subjects (the const-conversion chain), and
     global slots. A resumable FRAME member is in: its
     variant spelling (bare member, or the frame_slot `(*v)` deref) comes
@@ -1355,7 +1342,7 @@ def _isinstance_narrow_info(
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if cond.isinstance_type_param or cond.isinstance_deref_depth:
+    if cond.isinstance_type_param:
         return None
     me = cond.macro_expansion
     folded = isinstance(me, TpyBoolLiteral) and me.value is True
@@ -1385,8 +1372,7 @@ def _any_narrow_info(
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if (cond.isinstance_type_param or cond.isinstance_deref_depth
-            or cond.macro_expansion is not None):
+    if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
     var = cond.isinstance_var
     dt = declared.get(var)
@@ -1410,42 +1396,6 @@ def _any_narrow_info(
     return var, members
 
 
-def _deref_view_narrow_info(
-        cond: TpyExpr, declared: dict[str, TpyType], analyzer,
-) -> 'tuple[str, NominalType, TpyType, TpyType, int] | None':
-    """The deref-view isinstance if condition (`isinstance(b, Dog)` on a
-    Deref-wrapper NAME subject -- Box[Pet] / Rc[Pet] -- with
-    isinstance_deref_depth > 0): the payload narrows, the wrapper keeps
-    its own type (sema stamps the fact under deref_view_key(var), never
-    retyping the name). Returns (var, member, wrapper_decl,
-    dispatch_inner, depth) or None."""
-    if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
-            and cond.isinstance_type is not None):
-        return None
-    if (not cond.isinstance_deref_depth or cond.isinstance_type_param
-            or cond.macro_expansion is not None):
-        return None
-    member = cond.isinstance_type
-    if not isinstance(member, NominalType):
-        return None
-    var = cond.isinstance_var
-    dt = declared.get(var)
-    if dt is None:
-        return None
-    dtu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
-    depth = cond.isinstance_deref_depth
-    cur: 'TpyType | None' = dtu
-    for _ in range(depth):
-        if cur is None:
-            return None
-        cur = analyzer.type_ops.get_deref_target_type(cur)
-        if cur is not None:
-            cur = unwrap_readonly(cur)
-    if cur is None:
-        return None
-    return var, member, dtu, cur, depth
-
-
 def _poly_narrow_info(
         cond: TpyExpr, declared: dict[str, TpyType], analyzer,
 ) -> 'tuple[str, NominalType, TpyType] | None':
@@ -1455,13 +1405,11 @@ def _poly_narrow_info(
     narrowing to a strict subclass. Returns `(var, member, var_decl)` or
     None. The slice admits the BARE (`T&`) binding and the raw `Ptr[Base]`
     binding (the cast arg spells `&var` vs bare `var`, picked at lowering);
-    pointer-repr Optional (nullability machinery) / deref-view subjects,
-    tuple checks, negation, and compound conditions are out."""
+    pointer-repr Optional (nullability machinery) subjects, tuple checks, negation, and compound conditions are out."""
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if (cond.isinstance_type_param or cond.isinstance_deref_depth
-            or cond.macro_expansion is not None):
+    if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
     member = cond.isinstance_type
     if not isinstance(member, NominalType):
@@ -1490,8 +1438,7 @@ def _poly_narrow_multi_info(
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if (cond.isinstance_type_param or cond.isinstance_deref_depth
-            or cond.macro_expansion is not None):
+    if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
     var = cond.isinstance_var
     dt = _poly_subject_decl(declared.get(var))
@@ -1553,8 +1500,7 @@ def _poly_isinstance_value_info(
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if (cond.isinstance_type_param or cond.isinstance_deref_depth
-            or cond.macro_expansion is not None):
+    if cond.isinstance_type_param or cond.macro_expansion is not None:
         return None
     var = cond.isinstance_var
     if isinstance(declared.get(var), RefType):
@@ -1616,7 +1562,7 @@ def _narrow_fact_member(u: UnionType, facts: dict[str, TpyType],
 
 def _narrow_facts_ok(u: UnionType, facts: dict[str, TpyType], var: str) -> bool:
     """A branch facts map the slice can extract: facts describe only the checked
-    var (a compound condition or deref-view key would carry other entries), and
+    var (a compound condition would carry other entries), and
     each fact is a member of the union, a remaining union, or void."""
     for k, ft in facts.items():
         if k != var:
@@ -1634,20 +1580,6 @@ def _facts_have_concrete(facts: dict[str, TpyType]) -> bool:
         not (isinstance(ty, (UnionType, LiteralType)) or is_void_like_type(ty))
         and not is_protocol_type(ty)
         for ty in facts.values()
-    )
-
-def _facts_emit_alias(facts: dict[str, TpyType]) -> bool:
-    """Whether `emit_isinstance_extractions` would DECLARE an alias for these
-    branch facts: `_facts_have_concrete`'s rows minus the deref-view keys,
-    whose narrowing rides `deref_narrowed_to` with no local of its own.
-    A branch arm that emits no extraction must fence on this, or the alias
-    is silently dropped."""
-    return any(
-        parse_deref_view_key(k) is None
-        and not (isinstance(ty, (UnionType, LiteralType))
-                 or is_void_like_type(ty))
-        and not is_protocol_type(ty)
-        for k, ty in facts.items()
     )
 
 def _is_elif_link(outer: TpyIf, inner: TpyIf) -> bool:
@@ -1798,7 +1730,7 @@ def _post_if_ast_facts(stmt: TpyIf, declared: dict[str, TpyType], narrow,
       every construct that forces the hoist rejects first -- so admitting one
       of those admits a shape that must emit NO extraction while this map
       still names one.
-    - Neither this nor `_facts_emit_alias` applies
+    - Neither this nor `_facts_have_concrete` applies
       `emit_isinstance_extractions`' `overload_param_types` skip (the param is
       already the concrete type there), so both OVER-reject inside an
       @overload specialization. Over-rejection is a compile error, never wrong
@@ -1825,8 +1757,7 @@ def _post_if_ast_facts(stmt: TpyIf, declared: dict[str, TpyType], narrow,
                 or (_narrows_to_union_member(dt, ft)
                     and k not in narrow.narrowed and k not in narrow.spelled)):
             continue
-        if (isinstance(ft, UnionType) or is_void_like_type(ft)
-                or parse_deref_view_key(k) is not None):
+        if isinstance(ft, UnionType) or is_void_like_type(ft):
             # `emit_isinstance_extractions`' pure skips: no alias, no scope
             # change, so these keys need no extraction here.
             continue
@@ -1947,7 +1878,7 @@ def _reassert_bump_info(
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if cond.isinstance_type_param or cond.isinstance_deref_depth:
+    if cond.isinstance_type_param:
         return None
     me = cond.macro_expansion
     if not (isinstance(me, TpyBoolLiteral) and me.value is True):
@@ -3670,7 +3601,7 @@ def _subscript_field_recv_ok(e: TpyExpr, analyzer) -> bool:
     Marker-clean like every sibling subscript row. Four of the nine markers
     (property getter, dyn getattr, module var, class constant) early-return
     further up the field arm and could not reach here anyway, but
-    `deref_depth` / `deref_narrowed_to` DO reach it, and the render tail
+    `deref_depth` DOES reach it, and the render tail
     drops the `__deref__()` hops for a non-NAME receiver -- measured, on a
     shape no corpus case reaches."""
     if not isinstance(e, TpyFieldAccess) or not _field_markers_clean(e):
@@ -3714,7 +3645,6 @@ def _ptr_value_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
             or e.property_setter_call is not None
             or e.dyn_setattr_call is not None
             or e.unbound_self_parent_type is not None
-            or e.deref_narrowed_to is not None
             or e.needs_optional_runtime_check):
         return False
     recv = e.obj
@@ -3770,12 +3700,11 @@ def _user_deref_field_recv_ok(e: TpyExpr, declared: dict[str, TpyType],
     spells the indirect `recv->__deref__().field` -- the lowering keys the
     first hop on the pointer set like the method twin. NOT
     isinstance-narrowed; the record must carry a `__deref__` overload.
-    `deref_depth` is the auto-deref count (the chain length);
-    `deref_narrowed_to` (a deref-view cast) rejects. Read AND
+    `deref_depth` is the auto-deref count (the chain length). Read AND
     scalar-write target alike -- the chain render is position-independent."""
     if not isinstance(e, TpyFieldAccess):
         return False
-    if not e.deref_depth or e.deref_narrowed_to is not None:
+    if not e.deref_depth:
         return False
     if (e.module_var_access is not None or e.class_constant_owner is not None
             or e.dyn_getattr_call is not None
@@ -3938,7 +3867,7 @@ def _user_deref_stub_method_ok(e: TpyExpr, declared: dict[str, TpyType],
     reject."""
     if not isinstance(e, TpyMethodCall):
         return False
-    if not e.deref_depth or e.deref_narrowed_to is not None:
+    if not e.deref_depth:
         return False
     if e.kwargs or e.double_star_unpack is not None:
         return False
@@ -3979,8 +3908,6 @@ def _deref_member_call_ok(e: TpyMethodCall) -> bool:
     (through a `Ptr`, through a user Deref wrapper): a plain positional
     member call, or a property getter, which reaches the getter through the
     same hops; the receiver half is each arm's own."""
-    if e.deref_narrowed_to is not None:
-        return False
     if e.kwargs or e.double_star_unpack is not None:
         return False
     if (e.is_static_call or e.super_parent_type is not None
@@ -6909,7 +6836,6 @@ def _unbound_self_field_ok(e: TpyExpr) -> bool:
                 or e.property_setter_call is not None
                 or e.dyn_setattr_call is not None
                 or e.deref_depth
-                or e.deref_narrowed_to is not None
                 or e.needs_optional_runtime_check)
 
 def _field_receiver_or_unbound_self_ok(e: TpyExpr,
@@ -7242,7 +7168,6 @@ def _field_markers_clean(e: TpyFieldAccess, *,
                 or e.dyn_getattr_call is not None
                 or e.property_setter_call is not None or e.dyn_setattr_call is not None
                 or e.unbound_self_parent_type is not None or e.deref_depth
-                or e.deref_narrowed_to is not None
                 or (e.needs_optional_runtime_check and not allow_optional_check))
 
 def _field_decl_type(e: TpyFieldAccess, declared: dict[str, TpyType],
@@ -8159,7 +8084,7 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     assembler is how the `*args` leg below reached the loop-var question and
     not the standalone unpack, spelling `Box*` out of `varargs<const Holder>`.
 
-    The families: a const LOOP VAR (its record's `const_loop_var`, where the for-each
+    The families: a const `@dynamic` local, a const LOOP VAR (its record's `const_loop_var`, where the for-each
     head decides it -- it is in neither param set), an unmutated `*args` pack
     (its const-ness is the element flip, not a param verdict), a `@readonly`
     method's receiver (which never appears in the param-index verdict sets,
@@ -8180,6 +8105,10 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     verdict."""
     rec = lc.binding(name)
     if rec.const_loop_var:
+        return True
+    # A `@dynamic` local behind a const base pointer (`const Pet* p =
+    # &b.get();`, bound from a const source).
+    if rec.form is BindingForm.DYN and rec.const:
         return True
     # The `auto&&` storage alias of a const source keeps its const-ness in
     # the tuple set; a borrow tuple's element const is its record's.
@@ -8223,6 +8152,10 @@ def _poly_subject_const(expr: TpyExpr, lc) -> bool:
     # target `const Sub*` or the dynamic_cast casts away constness.
     if is_readonly_ptr(st):
         return True
+    if isinstance(expr, (TpyCall, TpyMethodCall)):
+        # A borrow-returning call subject (`match b.get():`) is const as
+        # any value bound from it is.
+        return _walrus_src_is_const(expr, lc)
     return const_place(expr, lc.analyzer.get_expr_type, lambda e, _stepped: (
         isinstance(e, TpyName)
         and (isinstance(lc.analyzer.get_expr_type(e), ReadonlyType)
@@ -11604,8 +11537,7 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
                 or e.typed_dict_get_field is not None
                 or e.is_callable_field or e.macro_expansion is not None
                 or ((e.type_args or e.inferred_type_args) and not targs_ok)
-                or e.deref_depth
-                or e.deref_narrowed_to is not None)
+                or e.deref_depth)
 
 def _plain_method_fi_ok(fi, *, generator_ok: bool = False,
                         property_getter_ok: bool = False,

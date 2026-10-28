@@ -1,8 +1,7 @@
-# Deref-view narrowing through an owning Rc[Pet] wrapper. isinstance(rc, Dog)
-# narrows the polymorphic payload reached via Rc's __deref__: rc.bark() (a Dog
-# method, not on the Pet protocol) resolves against Dog through the cast, while
-# rc.clone() stays an Rc method (the wrapper type is never narrowed). A
-# structural conformer (Cat) routes through the adapter cast.
+# isinstance on the object an Rc[Pet] holds, bound by name (`pet = rc.get()`):
+# pet.bark() (a Dog method, not on the Pet protocol) resolves against Dog
+# through the cast, while rc.clone() stays an Rc method. A structural
+# conformer (Cat) routes through the adapter cast.
 from typing import Protocol
 from tpy import dynamic
 from tplib.rc import Rc
@@ -36,13 +35,14 @@ class Cat:                       # structural conformer, no inheritance
 
 
 def describe(rc: Rc[Pet]) -> str:
-    if isinstance(rc, Dog):      # tpyc: ok
-        shared = rc.clone()      # clone() stays an Rc method (not narrowed)
+    pet = rc.get()
+    if isinstance(pet, Dog):     # tpyc: ok
+        shared = rc.clone()      # clone() stays an Rc method
         # A Dog property reads through the same cast as the method.
-        return "dog:" + rc.bark() + ":" + rc.loud + ":" + shared.name()  # tpyc: ok
-    if isinstance(rc, Cat):      # structural conformer through the deref view
-        return "cat:" + rc.name()
-    return "other:" + rc.name()
+        return "dog:" + pet.bark() + ":" + pet.loud + ":" + shared.name()  # tpyc: ok
+    if isinstance(pet, Cat):     # structural conformer
+        return "cat:" + pet.name()
+    return "other:" + pet.name()
 
 
 def main() -> None:

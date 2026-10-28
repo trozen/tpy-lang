@@ -19,6 +19,7 @@ from ..typesys import (
     impl_proto_matches_name, get_protocol_qname, unwrap_qualifiers,
     del_suppresses_default_ctor, is_void_like_type,
     unwrap_send_sync, unwrap_ref_type, unwrap_readonly, returns_cpp_reference_shape,
+    is_dynamic_dispatch_inner,
 )
 from ..coercions import is_protocol_safe_coercion, is_protocol_type_arg_widening
 
@@ -60,6 +61,33 @@ def dynamic_dispatch_type_conforms(
         return (protocols.directly_implements_dynamic(check_type, inner)
                 or protocols.type_conforms_to_protocol(check_type, inner))
     return registry.is_subclass_of_or_equal(check_type, inner)
+
+
+def handle_payload_may_be(
+    handle: TpyType, check_type: TpyType, type_ops: 'TypeOperations',
+    protocols: 'ProtocolChecker', registry: 'TypeRegistry',
+) -> bool:
+    """True if `check_type` can be the object a `__deref__` handle holds
+    (at any depth of the deref chain), though the handle itself is tested:
+    the shape `isinstance(rc, Dog)` / `case Dog():` on an `Rc[Pet]` that
+    always answers False and most likely meant `deref(rc)`."""
+    seen: list[TpyType] = []
+    current = unwrap_readonly(handle)
+    while current not in seen:
+        seen.append(current)
+        target = type_ops.get_deref_target_type(current)
+        if target is None:
+            return False
+        current = unwrap_readonly(target)
+        if (registry.is_subclass_of_or_equal(current, check_type)
+                or registry.is_subclass_of(check_type, current)):
+            return True
+        if (isinstance(current, NominalType)
+                and is_dynamic_dispatch_inner(current, registry)
+                and dynamic_dispatch_type_conforms(
+                    check_type, current, protocols, registry)):
+            return True
+    return False
 
 
 def _build_parent_protocol_subst(

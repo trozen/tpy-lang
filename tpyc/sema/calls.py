@@ -18,7 +18,6 @@ from ..typesys import (
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, PendingNumType, make_copy_iter, make_own_iter,
     is_polymorphic_class_type, is_dynamic_dispatch_inner, polymorphic_source_inner,
-    deref_dispatch_inner,
     IntLiteralType, resolve_int_literals,
     LiteralType, LiteralValue, LiteralTag, ListLiteralInfo, FunctionInfo, RecordInfo, TypeParamRef,
     PtrType, is_readonly_ptr, VoidType, is_void_like_type, ParamInfo, ReadonlyType,
@@ -99,7 +98,7 @@ from .narrowing import truthy_operands
 from .scope_tracker import lend_places
 from .alias_rebind import owned_slot_paths
 from .compatibility import InferredSlot, TupleSink
-from .protocols import dynamic_dispatch_type_conforms
+from .protocols import dynamic_dispatch_type_conforms, handle_payload_may_be
 from .type_ops import (ReturnSeed, _fills_none_arm, partial_substitute,
                        seeded_arg_hint)
 from .expressions import star_source_element_type
@@ -2901,9 +2900,11 @@ class CallAnalyzer:
         (`dict`) matches its class at any type arguments.
         Downcast checks (`isinstance(parent, Child)`) fold to False with a
         warning -- tpyc uses static dispatch, so any slicing at the boundary
-        has already removed the Child fields. Every offending check type
-        warns, so tuple forms like `isinstance(a, (Dog, Cat))` surface all
-        mistakes at once.
+        has already removed the Child fields. A `__deref__` handle (`Rc[Pet]`)
+        is tested itself, as in CPython; a check type only the object it holds
+        can be folds to False with a warning naming `deref()`. Every offending
+        check type warns, so tuple forms like `isinstance(a, (Dog, Cat))`
+        surface all mistakes at once.
 
         Type-parameter subjects do not reach here -- they are intercepted in
         `_analyze_isinstance` and lowered to a per-instantiation compile-time
@@ -2923,6 +2924,17 @@ class CallAnalyzer:
                     f"isinstance() check against descendant type '{ct}' on "
                     f"'{var_type}' folds to False (static dispatch; use "
                     f"@dynamic for runtime type checks)",
+                    expr,
+                )
+            elif handle_payload_may_be(var_type, ct, self.type_ops,
+                                       self.protocols, reg):
+                subject = expr.args[0]
+                spelled = (subject.name if isinstance(subject, TpyName)
+                           else "...")
+                self.ctx.warning(
+                    f"isinstance() tests the '{var_type}' handle, never a "
+                    f"'{ct}'; to test the object it holds, bind it first: "
+                    f"p = deref({spelled})",
                     expr,
                 )
         return result
@@ -2972,17 +2984,6 @@ class CallAnalyzer:
                                 else make_union(*check_types))
         expr.isinstance_type_param = True
         return BOOL
-
-    def _is_non_deref_handle(self, typ: TpyType) -> bool:
-        """True if `typ` is a non-owning handle to a payload reachable only via
-        `upgrade()` (e.g. Weak[Pet]): it exposes `upgrade()` but no
-        reference-returning `__deref__`, so it has no deref view to narrow."""
-        record = self.ctx.registry.get_record_for_type(typ)
-        if record is None:
-            return False
-        methods = self.ctx.registry.get_method_overloads_with_parents
-        return (bool(methods(record, "upgrade"))
-                and not methods(record, "__deref__"))
 
     def _validate_polymorphic_subclass_dispatch(
         self,
@@ -3204,30 +3205,6 @@ class CallAnalyzer:
             if polymorphic_source is not None and check_types:
                 return self._validate_polymorphic_subclass_dispatch(
                     polymorphic_source, check_types, first_arg.name, expr)
-            # Owning-wrapper source (Box[Pet]/Rc[Pet]): the dispatch object is
-            # the polymorphic payload reached through the wrapper's
-            # reference-returning __deref__, not the wrapper itself. Narrow the
-            # deref view (so `rc.bark()` resolves against the subclass while
-            # `rc.clone()` stays an Rc method) and tag the depth for codegen.
-            deref = deref_dispatch_inner(
-                effective_type, self.type_ops, self.ctx.registry)
-            if deref is not None and check_types:
-                inner, depth = deref
-                result = self._validate_polymorphic_subclass_dispatch(
-                    inner, check_types, first_arg.name, expr)
-                expr.isinstance_deref_depth = depth
-                return result
-            # Non-owning handle (e.g. Weak[Pet]): no deref view -- the payload
-            # is reachable only after `upgrade()`. Reject rather than silently
-            # folding to False, since the user clearly intends a payload check.
-            if check_types and self._is_non_deref_handle(effective_type):
-                raise self.ctx.error(
-                    f"isinstance() on '{effective_type}' is not supported: it "
-                    f"is a non-owning handle with no deref view. Call "
-                    f"'.upgrade()' first to obtain an owning handle (or None) "
-                    f"and isinstance-check that instead.",
-                    expr,
-                )
             # Non-union: compile-time evaluate against the static type,
             # walking the inheritance hierarchy. Reuse the narrowed-path
             # fold if it already ran so we don't warn twice.

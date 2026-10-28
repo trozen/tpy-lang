@@ -1,0 +1,1 @@
+main.py:36: warning: 'b' may be mutated by 'legs()' in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). Copy the bound values before the call

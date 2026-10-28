@@ -80,7 +80,8 @@ from ...parse.nodes import (
     is_super_del_call,
     read_names,
 )
-from ...typesys import (peel_binding, pointer_repr_optional, repr_shape,
+from ...typesys import (
+    dyn_protocol_borrow_result,peel_binding, pointer_repr_optional, repr_shape,
                        returns_cpp_reference_shape, store_takes_elements, without_readonly)
 from ...typesys import (
     CallableType,
@@ -163,9 +164,7 @@ from ...codegen_cpp.context import (escape_cpp_name,
 from ...codegen_cpp.protocols import narrow_cast_rhs
 from ...prescan import (
     collect_fact_kills,
-    deref_view_key,
     match_is_none,
-    parse_deref_view_key,
     scope_bound_names,
 )
 from ...typesys import (is_polymorphic_subclass_fact,
@@ -235,7 +234,7 @@ from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _tuple_name_elem_subscript, _container_del_recv, _slot_free_ptr_reseat_ok,
     _module_var_recv, _post_if_narrow_plan, _opt_view_arg_shim,
     _container_enum_spell, _container_scalar_read, _dict_view_iterable_ok,
-    _dyn_borrow_return, _elif_link, _eligible_char, _dyn_proto_ptr,
+    _elif_link, _eligible_char, _dyn_proto_ptr,
     _eligible_enum, _eligible_ptr_union, _eligible_ptr_union_wide,
     _eligible_wrapper_union, _ru_elem_ok, _union_storage_val_cpp,
     _eligible_ptr_value, _eligible_scalar, _eligible_value_union,
@@ -248,7 +247,7 @@ from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _single_member_of_family, _f1_tuple, _mixed_own_btuple_call,
     _renders_own_borrow_tuple, _nested_storage_tuple, _optional_borrow_tuple,
     _nullable_borrow_tuple_call, _alias_field_source_ok, _f2_reseat_ok,
-    _facts_have_concrete, _facts_emit_alias, _field_decl_type,
+    _facts_have_concrete, _field_decl_type,
     _narrowed_opt_container_field, _bound_call_of, _dunder_render,
     _subscript_call, _field_markers_clean, _field_receiver_ok,
     _chained_field_receiver_ok, _lvalue_chain_root, _typed_dict_recv_ok,
@@ -256,8 +255,8 @@ from .predicates import (_borrow_tuple_return_type, _own_genrec_return,
     _foreach_value_opt_elem, _is_borrow_ptr_local, _is_string_owned,
     _is_type_param_slot, _own_type_param_slot, _narrow_fact_member,
     _any_narrow_fact, _const_borrow_name, _poly_anchor_declared,
-    _deref_view_narrow_info, _poly_narrow_info, _poly_post_if_fact,
-    _poly_narrow_multi_info, _poly_subject_readonly, _narrow_facts_ok,
+    _poly_narrow_info, _poly_post_if_fact,
+    _poly_narrow_multi_info, _narrow_facts_ok,
     _any_narrow_facts_ok, _nonvalue_container_ret, _record_call_rvalue_operand,
     _callable_value, _optional_narrow_facts_ok, _opt_pointee_wide,
     _optional_ptr_borrow, _own_storage_opt_param,
@@ -364,6 +363,7 @@ from .expressions import (
     _narrow_member_cpp, _narrow_subject_const, _narrow_subject_is_ptr,
     _union_source_layout, _union_extraction, _inline_union_member,
     _narrow_variant_cpp, _poly_cast_checks, _poly_cast_context,
+    _poly_subject_is_pointer,
     _param_declared_type, _is_move_source, _node_moves, _lower_call_arg,
     _lower_char_targeted,
     _lower_class_const_write_target, _lower_copy_record, _lower_copy_special,
@@ -4858,7 +4858,8 @@ def _lower_coro_frame_local_decl(stmt: TpyVarDecl, lc: _LowerCtx,
 
 
 def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: TpyType,
-                             lc: _LowerCtx, declared: dict[str, TpyType],
+                             rec: BindingRepr, lc: _LowerCtx,
+                             declared: dict[str, TpyType],
                              loc) -> THIRPtrLocalDecl:
     """First decl of a @dynamic protocol local (`p: P = Concrete(...)`): a
     concrete/adapter `__slot_N{init}` storage + a protocol `Base* p =
@@ -4885,10 +4886,13 @@ def _lower_dyn_protocol_decl(stmt: TpyVarDecl, vtype: TpyType,
             note_detail("decl.dyn_protocol_erased")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         _witness("decl.dyn_protocol_erased")
+        # A const source (`ob.get()` on a const handle) is aliased const.
+        const_pfx = "const " if rec.const else ""
         return THIRPtrLocalDecl(
             name=stmt.name, resolved_type=vtype,
             kind=PtrSlotKind.DYN_PROTOCOL_ERASED, init=erased,
-            base_cpp=dynamic_base_name(vtype, analyzer), loc=loc)
+            base_cpp=const_pfx + dynamic_base_name(vtype, analyzer),
+            loc=loc)
     concrete_cpp = lc.render_type(concrete_type)
     if record_inherits_dynamic(concrete_type, vtype, analyzer.registry):
         slot_cpp = concrete_cpp  # direct inheritance -- plain concrete slot
@@ -4924,18 +4928,17 @@ def _lower_dyn_erased_source(init: TpyExpr, lc: _LowerCtx,
     """The deref'd source of an already-erased @dynamic assign (`p2 = p1`):
     `(*p1)` for a protocol pointer-local name, a bare `pet` for a `Pet&`
     param/reference, or a BORROW-returning call (`result: Pet = echo(dog)`
-    -> `Pet* result = &echo(dog);` -- the call renders bare, the decl's
+    -> `Pet* result = &echo(dog);`, `p = rc.get()` -- the call renders bare, the decl's
     `&` lift owns the address-of). Returns None for other source shapes
     (a protocol field / subscript keeps its own deref rules)."""
     src = _lower_ptr_name_src(init, lc, declared)
     if src is not None:
         return src
-    # FREE calls only: a bare-dyn-protocol METHOD return is
-    # sema-unconstructible today (registration rejects the annotation on
-    # methods), so a TpyMethodCall flavor would be an unwitnessable arm.
-    if isinstance(init, TpyCall):
+    # A method's borrow of a `@dynamic` payload is the generic `T` of a
+    # handle (`rc.get()` on `Rc[Pet]`) at that instantiation.
+    if isinstance(init, (TpyCall, TpyMethodCall)):
         fi = getattr(init, "resolved_function_info", None)
-        if fi is not None and _dyn_borrow_return(fi.return_type) is not None:
+        if fi is not None and dyn_protocol_borrow_result(fi.return_type) is not None:
             _witness("decl.dyn_erased_call")
             return _lower_expr(init, lc, declared,
                                use=_ExprUse(result=_ExprResultUse.RECEIVER))
@@ -5390,7 +5393,7 @@ def _single_fact_narrow(facts: dict, declared: dict[str, TpyType],
     if len(facts) != 1:
         return None
     var, ft = next(iter(facts.items()))
-    if (parse_deref_view_key(var) is not None or var not in declared
+    if (var not in declared
             or var in lc.narrow.narrowed or var in lc.narrow.spelled
             or var in lc.prescan.global_seeded):
         return None
@@ -5527,10 +5530,8 @@ def _seed_literal_facts(facts: dict, lc: _LowerCtx) -> 'dict | None':
     """LiteralType branch facts -> the flow-sensitive `lc.literal_facts`
     (the isinstance extractions' LiteralType row; ==/!= narrowing folds
     against these). Returns the saved map to restore at branch exit, or None
-    when no literal fact applies. Deref-view keys are skipped."""
-    lits = {k: v for k, v in facts.items()
-            if isinstance(v, LiteralType)
-            and parse_deref_view_key(k) is None}
+    when no literal fact applies."""
+    lits = {k: v for k, v in facts.items() if isinstance(v, LiteralType)}
     if not lits:
         return None
     saved = dict(lc.literal_facts)
@@ -5544,8 +5545,7 @@ def _literal_fact_fence(facts: dict, stmt, tag: str) -> None:
     lowering does not model (assert's persistent seed, the while-body seed)
     -- a compare under the fact would then render plain instead of
     folding."""
-    if any(isinstance(v, LiteralType) and parse_deref_view_key(k) is None
-           for k, v in facts.items()):
+    if any(isinstance(v, LiteralType) for v in facts.values()):
         note_detail(tag)
         raise ThirUnsupported(stmt_reject_reason(stmt))
 
@@ -6094,7 +6094,7 @@ def _folded_narrow_info(
     if not (isinstance(cond, TpyCall) and cond.isinstance_var is not None
             and cond.isinstance_type is not None):
         return None
-    if cond.isinstance_type_param or cond.isinstance_deref_depth:
+    if cond.isinstance_type_param:
         return None
     me = cond.macro_expansion
     if not isinstance(me, TpyBoolLiteral):
@@ -6236,59 +6236,6 @@ def _lower_dyn_narrow_if(stmt: TpyIf, pinfo, lc: _LowerCtx,
 
     # The if-init pointer's C++ scope is the whole `if`, both arms included,
     # so a narrowing nested in either must bump past it.
-    with lc.live_alias(ptr_local):
-        return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
-                                      declared, loc, loop_depth=loop_depth)
-
-
-def _lower_deref_view_narrow_if(stmt: TpyIf, dvinfo, lc: _LowerCtx,
-                                declared: dict[str, TpyType], loc, *,
-                                loop_depth: int = 0) -> THIRIf:
-    """The deref-view isinstance `if` (`isinstance(b, Dog)` through a
-    Deref wrapper): the C++17 if-init cast of the deref PAYLOAD pointer
-    (`Dog* __b_ptr = dynamic_cast<Dog*>(&(b.__deref__()));`), composed via
-    the shared narrow_cast_rhs chokepoint. The wrapper var is NOT retyped;
-    branch-body member calls carrying deref_narrowed_to read the payload
-    via lc.deref_view_spelled (`(*__b_ptr)`), and post-branch reads revert
-    to the deref chain."""
-    var, member, wrap_decl, dispatch_inner, depth = dvinfo
-    analyzer = lc.analyzer
-    cpp_type = lc.render_type(member)
-    const = (_const_borrow_name(var, lc)
-             or _poly_subject_readonly(declared.get(var)))
-    const_pfx = "const " if const else ""
-    ptr_local = _fresh_narrow_local(f"__{var}_ptr", lc.alias_taken())
-    _dv_base = (f"(*{escape_cpp_name(var)})" if lc.binding(var).pointer
-                else escape_cpp_name(var))
-    cast_arg = "&(" + _dv_base + ".__deref__()" * depth + ")"
-    cast_rhs = narrow_cast_rhs(cpp_type, member, dispatch_inner, cast_arg,
-                               is_const=const, analyzer=analyzer)
-    inner = stmt.condition
-    cond = THIRDynIsinstance(
-        result_type=analyzer.get_expr_type(inner),
-        init_cpp=f"{const_pfx}{cpp_type}* {ptr_local} = {cast_rhs}",
-        ptr_local=ptr_local,
-        loc=getattr(inner, "loc", None))
-    dkey = deref_view_key(var)
-
-    def fact_of(facts):
-        ft = facts.get(dkey)
-        return ft if ft == member else None
-
-    def branch_of(body, fact, alias_loc):
-        if fact is None:
-            return _lower_narrowed_branch(body, None, var, None, lc,
-                                          declared, alias_loc,
-                                          loop_depth=loop_depth)
-        lc.deref_view_spelled[var] = f"(*{ptr_local})"
-        try:
-            return _lower_narrowed_branch(body, None, var, None, lc,
-                                          declared, alias_loc,
-                                          loop_depth=loop_depth)
-        finally:
-            del lc.deref_view_spelled[var]
-
-    _witness("if.deref_view_narrow")
     with lc.live_alias(ptr_local):
         return _lower_narrow_if_shape(stmt, cond, fact_of, branch_of, lc,
                                       declared, loc, loop_depth=loop_depth)
@@ -9267,8 +9214,8 @@ def _decl_coro_frame_local(stmt, vtype, rec, scope, loc):
 
 
 def _decl_dyn(stmt, vtype, rec, scope, loc):
-    node = _lower_dyn_protocol_decl(stmt, vtype, scope.lc, scope.declared,
-                                    loc)
+    node = _lower_dyn_protocol_decl(stmt, vtype, rec, scope.lc,
+                                    scope.declared, loc)
     scope.declared[stmt.name] = vtype
     return node
 
@@ -12970,11 +12917,18 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             poly_ok = not (
                 bool(hoists)
                 # A pointer-SHAPED declared subject (raw Ptr / Optional-ptr
-                # borrow) is fine -- the cast arg spells the bare name; only
-                # a pointer-local whose DECL is not pointer-shaped (an F2
-                # rebind alias) keeps rejecting.
+                # borrow) or a `@dynamic` local's base pointer is fine -- the
+                # cast arg spells the bare name; only a pointer-local whose
+                # DECL is not pointer-shaped (an F2 rebind alias) keeps
+                # rejecting.
                 or (lc.binding(pvar).pointer
-                    and not polymorphic_source_is_pointer(declared.get(pvar)))
+                    and not _poly_subject_is_pointer(
+                        pvar, lc, declared.get(pvar)))
+                # A reseat of the base pointer inside a branch would leave
+                # the if-init cast stale.
+                or (lc.binding(pvar).form is BindingForm.DYN
+                    and (_body_writes_name(stmt.then_body, pvar)
+                         or _body_writes_name(stmt.else_body, pvar)))
                 # `self` is admitted, resumable included: `_poly_cast_context`
                 # spells its cast arg (`this` / `&__self`), and this arm's
                 # single-fact/then-only slice is exactly the if-INIT
@@ -12992,33 +12946,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_dyn_narrow_if(stmt, pinfo, lc, declared, loc,
                                         loop_depth=scope.loop_depth)
-        dvinfo = _deref_view_narrow_info(stmt.condition, declared, analyzer)
-        if dvinfo is not None:
-            dvar, dmember, _dwrap, _dinner, _ddepth = dvinfo
-            dkey = deref_view_key(dvar)
-            dv_ok = not (
-                bool(hoists)
-                or lc.func.is_generator or lc.func.is_async
-                # A rebind-slot POINTER local is admitted: the cast arg
-                # derefs (`&((*b).__deref__())`), an in-branch reseat
-                # invalidates the narrow through sema's marker (reads
-                # after it carry no deref_narrowed_to), and the plain
-                # deref chain re-renders through the pointer arms.
-                or (lc.binding(dvar).pointer
-                    and not lc.binding(dvar).rebind_slot)
-                or dvar in lc.prescan.global_seeded
-                or dvar in lc.narrow.narrowed
-                or dvar in lc.narrow.spelled
-                or dvar in lc.deref_view_spelled
-                or any(k != dkey for k in stmt.then_type_facts)
-                or stmt.then_type_facts.get(dkey) != dmember
-                or any(k == dkey for k in stmt.else_type_facts))
-            if not dv_ok:
-                note_detail("if.deref_view_shape")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
-            return _lower_deref_view_narrow_if(stmt, dvinfo, lc, declared,
-                                               loc,
-                                               loop_depth=scope.loop_depth)
         minfo = _poly_narrow_multi_info(stmt.condition, declared, analyzer)
         if minfo is not None:
             mvar, _mmembers, mdecl = minfo
@@ -13039,7 +12966,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             multi_ok = not (
                 bool(hoists)
                 or (lc.binding(mvar).pointer
-                    and not polymorphic_source_is_pointer(declared.get(mvar)))
+                    and not _poly_subject_is_pointer(
+                        mvar, lc, declared.get(mvar)))
                 # `self` rides `_poly_cast_context`'s spelling here too; the
                 # tuple form binds no alias, so the resumable rename that
                 # gates the single-fact arm does not apply.
@@ -13080,8 +13008,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # not reach (they read the `__self` alias); fenced.
                 or nvar == lc.self_receiver
                 or (lc.binding(nvar).pointer
-                    and not polymorphic_source_is_pointer(
-                        nanchored.get(nvar)))
+                    and not _poly_subject_is_pointer(
+                        nvar, lc, nanchored.get(nvar)))
                 or nvar in lc.prescan.global_seeded
                 or nvar in lc.narrow.spelled
                 # A then-entry or else-entry extraction has no emit on this
@@ -13113,14 +13041,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # A single-var concrete fact IS renderable: the branch carries
             # the extraction alias the narrowing arms would have emitted
             # (`_lower_narrowed_branch` below). Anything wider still rejects.
-            if _facts_emit_alias(stmt.then_type_facts):
+            if _facts_have_concrete(stmt.then_type_facts):
                 then_fact = _single_fact_narrow(stmt.then_type_facts,
                                                 declared, lc)
                 if then_fact is None:
                     note_detail("if.cond_facts_unmirrored")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
             if (stmt.else_body and _elif_link(stmt) is None
-                    and _facts_emit_alias(stmt.else_type_facts)):
+                    and _facts_have_concrete(stmt.else_type_facts)):
                 else_fact = _single_fact_narrow(stmt.else_type_facts,
                                                 declared, lc)
                 if else_fact is None:
@@ -13471,8 +13399,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             _literal_fact_fence(stmt.then_type_facts, stmt,
                                 "while.literal_fact")
             wfact = (_single_fact_narrow(stmt.then_type_facts, declared, lc)
-                     if _facts_emit_alias(stmt.then_type_facts) else None)
-            if _facts_emit_alias(stmt.then_type_facts) and wfact is None:
+                     if _facts_have_concrete(stmt.then_type_facts) else None)
+            if _facts_have_concrete(stmt.then_type_facts) and wfact is None:
                 # A while head extracts its facts at loop entry; no
                 # narrowing arm claimed this condition, and the facts are
                 # wider than the one-var extraction below renders.

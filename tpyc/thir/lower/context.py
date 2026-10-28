@@ -1695,7 +1695,6 @@ _FUNCTION_SCOPED_STATE = (
 # computed inside the scope while its computed-flag survives.
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
     "inline_narrowed",
-    "deref_view_spelled",
     "forwarded_map", "literal_facts",
     "frame_local_types",
     # An enclosing `@overload` stub's facts about ITS params: an inner param
@@ -1843,7 +1842,7 @@ class _LowerCtx:
     for those slots."""
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
-                 "deref_view_spelled", "forwarded_map",
+                 "forwarded_map",
                  "params", "in_nested_def", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name",
@@ -1991,11 +1990,6 @@ class _LowerCtx:
         # The enclosing finally / `with` regions whose exits stage a result
         # into a temporary before it is returned.
         self.staged_results: int = 0
-        # Deref-view narrowed subjects (the if-init cast local): branch-body
-        # member calls carrying deref_narrowed_to read the wrapper var via
-        # this spelling (`(*__b_ptr)`), never the deref chain. Registered
-        # per branch by the deref-view narrow-if arm.
-        self.deref_view_spelled: dict[str, str] = {}
         # Forwarded proto-param aliases (`xs = it`): the local's decl emits
         # nothing and every read renders the BACKING param's name
         # (codegen's generator_storage_name substitution). Resumable-only.

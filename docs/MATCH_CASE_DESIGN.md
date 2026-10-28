@@ -145,7 +145,7 @@ rejected (`tests/cases/match/nested_field_cond_tiers`,
 | Optional (`T \| None`) | if/elif with `has_value()`/`== nullptr` | Yes (T + None) |
 | Primitive (`int`, `str`, `bool`) | if/elif with `==` comparison | No (infinite domain) |
 | Record (concrete class) | if/elif on field values; goto for guards | No |
-| Polymorphic (`@dynamic` protocol / polymorphic class; bare, `Ptr[Pet]`, or `Box[Pet]`/`Rc[Pet]` deref view) | `dynamic_cast` / `dyn_adapter_cast` if/elif chain; goto for guards | Open hierarchy -- only via wildcard or a root-type arm |
+| Polymorphic (`@dynamic` protocol / polymorphic class; bare, `Ptr[Pet]`, or the object a handle holds: `match b.get():`) | `dynamic_cast` / `dyn_adapter_cast` if/elif chain; goto for guards | Open hierarchy -- only via wildcard or a root-type arm |
 
 ---
 
@@ -724,11 +724,14 @@ if (__match_subject == nullptr) {
 ### Polymorphic (`@dynamic` protocol / polymorphic class) subjects
 
 When the subject carries a `@dynamic`-rooted C++ vtable -- a bare `Pet`, a
-`Ptr[Pet]`, or the deref view of an owning wrapper (`Box[Pet]` / `Rc[Pet]`) --
-match dispatches by runtime type, the statement-level sibling of `isinstance`
-subclass narrowing. It reuses the same engine: the subject-source detection
-(`polymorphic_source_inner` / deref-dispatch peel), the cast-argument helpers
-(`polymorphic_cast_arg` / `deref_view_cast_arg`), and the cast-rhs builder
+`Ptr[Pet]`, or the object a handle holds (`match b.get():` /
+`match deref(b):` on a `Box[Pet]`) -- match dispatches by runtime type, the
+statement-level sibling of `isinstance` subclass narrowing. A handle subject
+itself (`match b:`) is a record subject like any other: `case Dog():` names
+a class the handle never is, so it is the impossible-class-pattern error,
+hinting `match deref(b)`. It reuses the same
+engine: the subject-source detection (`polymorphic_source_inner`), the
+cast-argument helper (`polymorphic_cast_arg`), and the cast-rhs builder
 (`ProtocolGenerator.dynamic_narrow_cast_rhs`, which picks `dynamic_cast` for an
 inheritance conformer vs `tpy::dyn_adapter_cast` for a structural conformer).
 
@@ -794,10 +797,12 @@ arm.
   `_` arm when it fails. A *named-constant* comparison (`case Dog(size=Big):`)
   is not yet emitted -- use a guard (`case Dog() if d.size == Big:`).
 - The subject may be an arbitrary expression -- a bare name, subscript, field,
-  rvalue call, or wrapper deref view. It is evaluated once into
-  `__match_subject` (`auto&` for an lvalue so a `case C() as v: v.f = ...` arm
-  writes through; `auto` for an rvalue so a temporary outlives the deref-view
-  cast), and the dynamic_cast chain runs off that binding. Only a bare-name
+  owned rvalue call, or a call returning a reference over lvalues
+  (`b.get()`, `deref(b)`). It is evaluated once into `__match_subject`
+  (`auto&` for an lvalue so a `case C() as v: v.f = ...` arm writes through;
+  `auto` for an owned rvalue), and the dynamic_cast chain runs off that
+  binding; a borrow no `auto&` can hold (`make_box().get()`) is refused
+  rather than bound as a sliced copy. Only a bare-name
   subject narrows the subject for in-arm reads (`p.speak()` resolves to the
   matched subclass); an expression subject reaches the narrowed value via
   `as` / a capture. This is a deliberate divergence from `isinstance`, which

@@ -1,0 +1,36 @@
+box: False
+box: True
+box: False
+rc: False
+rc: True
+arc: False
+arc: True
+arc: False
+weak: False True
+weak_subclass: False True
+arc_payload: woof 5
+arc_payload: through ap 5
+get: woof 1
+get: woof 2
+get: other cat
+deref: woof 12
+deref_readonly: woof
+deref: through rc 12
+deref_record: through bp 99
+match_get: woof
+match_deref: woof
+match_deref: cat
+box_get: dog woof
+box_get: other cat
+shadow_alias: woof 21
+shadow_alias: other cat 21
+rebind_handle: cat
+match_local: woof
+match_call_mutates: woof
+optional_box: none
+optional_box: False
+optional_box: woof
+upgrade: True
+user_deref: True
+user_deref: False
+ptr: True

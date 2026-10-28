@@ -185,9 +185,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # (optional_to_ptr / nullptr / bare ptr)
     "expr.walrus_btuple_emplace",   # hoisted borrow-tuple walrus with an
                                     # owning-call value: emplace + name tail
-    "if.deref_view_narrow",         # isinstance through a Deref wrapper:
-                                    # if-init cast of the payload pointer
-    "method.deref_view_narrowed",   # branch member call reads (*__b_ptr)
     "expr.walrus_ptr_alias",        # borrow-alias pointer walrus target:
                                     # `[const ]T* n = nullptr;` +
                                     # `(n = &(v), *n)` (bare for a

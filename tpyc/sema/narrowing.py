@@ -31,8 +31,7 @@ from .literal_utils import (
 )
 from .value_range import ValueRange
 from ..prescan import (
-    match_is_none, _expr_to_narrowing_key, deref_view_key,
-    parse_deref_view_key, object_leaves, storage_spelling,
+    match_is_none, _expr_to_narrowing_key, object_leaves, storage_spelling,
 )
 from ..namespace import BindingKind
 from ..diagnostics import OPTIONAL_VALUE_TRUTHINESS_WARNING
@@ -301,12 +300,6 @@ class NarrowingTracker:
         if isinstance(expr, TpyCall) and expr.isinstance_var is not None and expr.isinstance_type is not None:
             name = expr.isinstance_var
             check_type = expr.isinstance_type
-            # Deref-view narrowing (owning wrapper source): narrow the wrapper's
-            # polymorphic payload under a distinct key, leaving the wrapper
-            # variable's own type intact. The false branch can't narrow the
-            # payload (it might be any other subclass).
-            if expr.isinstance_deref_depth > 0:
-                return {deref_view_key(name): check_type}, {}
             effective = self.effective_union_type(name)
             # Any narrowing (D15): non-consuming -- the true branch sees the
             # variable as `check_type` (a borrow into the cell); the false
@@ -899,10 +892,6 @@ class NarrowingTracker:
     ) -> None:
         """Update flow facts after assigning/writing a variable."""
         self.ctx.func.narrowed_types.pop(name, None)
-        # A deref-view narrowing (isinstance through an owning wrapper) is keyed
-        # apart from the variable's own narrowing, so the pop above misses it;
-        # clear it too or a reassigned wrapper keeps the stale subclass cast.
-        self.ctx.func.narrowed_types.pop(deref_view_key(name), None)
         # Invalidate field narrowing facts rooted at this variable
         self._invalidate_field_facts(name)
         # Invalidate integer range facts for this variable
@@ -932,7 +921,6 @@ class NarrowingTracker:
         into it does."""
         func = self.ctx.func
         func.narrowed_types.pop(name, None)
-        func.narrowed_types.pop(deref_view_key(name), None)
         self._invalidate_field_facts(name)
         func.non_null_ptr_vars.discard(name)
         func.value_ranges.pop(name, None)
@@ -995,13 +983,11 @@ class NarrowingTracker:
     def _kill_written(self, key: str, *, own: bool,
                       keeps: TpyType | None = None) -> None:
         """Drop the field facts a write at `key` (a name or a field path)
-        reaches (`narrowing_kills`). Deref-view facts are left to the
-        callers that name them."""
+        reaches (`narrowing_kills`)."""
         func = self.ctx.func
         rel = func.in_place_writes
-        narrowed = [k for k in func.narrowed_types
-                    if parse_deref_view_key(k) is None]
-        for k in self.narrowing_kills(key, narrowed, own=own, keeps=keeps):
+        for k in self.narrowing_kills(key, list(func.narrowed_types),
+                                      own=own, keeps=keeps):
             del func.narrowed_types[k]
         # A deref earlier in the same statement (`o.p = q if o.p.x else o.p`
         # reads `o.p`) queues its fact for the statement's end, past this
@@ -1074,8 +1060,6 @@ class NarrowingTracker:
                                         is_copy=self.holds_copy):
                 del func.value_ranges[k]
             self._invalidate_len_ranges(key)
-            if not own:
-                func.narrowed_types.pop(deref_view_key(key), None)
 
     def invalidate_suspension_facts(self) -> None:
         """Kill facts a suspension may falsify: while a resumable frame is
@@ -1087,9 +1071,8 @@ class NarrowingTracker:
         bindings (a pointer value or value copy the caller cannot rebind)
         -- except the closure/rebindable-global set, which the call-site
         kill already models; reuse it. Everything rooted in shared storage
-        dies: field-path facts (the caller may hold the object), deref-view
-        facts (the wrapper payload may be replaced through another handle),
-        and len-symbolic ranges (the container may shrink, and a stale
+        dies: field-path facts (the caller may hold the object) and
+        len-symbolic ranges (the container may shrink, and a stale
         bound elides a needed bounds check).
         """
         self.invalidate_closure_written_facts()
@@ -1101,8 +1084,7 @@ class NarrowingTracker:
             # runs while the frame is suspended may rebind.
             for name in here.capture_params:
                 self.forget(name)
-        for k in [k for k in func.narrowed_types
-                  if "." in k or parse_deref_view_key(k) is not None]:
+        for k in [k for k in func.narrowed_types if "." in k]:
             del func.narrowed_types[k]
         for k in [k for k in func.non_null_ptr_vars if "." in k]:
             func.non_null_ptr_vars.discard(k)
@@ -1217,22 +1199,6 @@ class NarrowingTracker:
 
 
 # -- Module-level helpers for range fact dict operations ------------------
-
-def deref_view_narrowed(ctx, obj, deref_target: TpyType) -> 'NominalType | None':
-    """Deref-view narrowed subclass for receiver `obj` when the peeled payload
-    `deref_target` is a @dynamic-dispatch inner narrowed by an active
-    `if isinstance(<obj>, Sub):`. Shared by the method-call (methods.py) and
-    field-access (expressions.py) deref-chain resolvers."""
-    inner = unwrap_readonly(deref_target)
-    if not (isinstance(inner, NominalType)
-            and is_dynamic_dispatch_inner(inner, ctx.registry)):
-        return None
-    key = _expr_to_narrowing_key(obj)
-    if key is None:
-        return None
-    narrowed = ctx.func.narrowed_types.get(deref_view_key(key))
-    return narrowed if isinstance(narrowed, NominalType) else None
-
 
 def genexpr_written_names(expr: TpyExpr) -> set[str]:
     """The enclosing variables the generator expressions created in `expr`

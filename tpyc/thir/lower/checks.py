@@ -9162,7 +9162,7 @@ def _marker_reject(e: TpyMethodCall, analyzer) -> str:
         return "method.marker.static.plain"
     if e.type_args or e.inferred_type_args:
         return "method.marker.type_args"
-    if e.deref_depth or e.deref_narrowed_to is not None:
+    if e.deref_depth:
         return _deref_marker_reject(e, analyzer)
     return "method.marker.other"
 
@@ -9193,15 +9193,12 @@ def _static_generic_reject(e: TpyMethodCall, fi, analyzer) -> str:
     return base + kind + dep
 
 def _deref_marker_reject(e: TpyMethodCall, analyzer) -> str:
-    """Sub-split of a Deref-chain method call by its emit arm:
-    the narrowed-payload cast, the Ptr[T]
+    """Sub-split of a Deref-chain method call by its emit arm: the Ptr[T]
     receiver arm (`p->m` / `::tpy::none_attr(p, "m").m` -- no `.__deref__()`
     spelling), the builtin arm (cpp_template / native fi), or the plain
     member tail
     (`recv.__deref__()...m(args)` over the arg loop) -- split by
     receiver shape (bare name vs field/chain)."""
-    if e.deref_narrowed_to is not None:
-        return "method.marker.deref.narrowed"
     fi = e.resolved_function_info
     if fi is None:
         return "method.marker.deref.unresolved"
@@ -9283,7 +9280,6 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
                          and tuple(e.type_args)
                          == tuple(e.inferred_type_args)[:len(e.type_args)]))
             or e.deref_depth
-            or e.deref_narrowed_to is not None
             or e.needs_optional_runtime_check):
         return None
     fi = e.resolved_function_info

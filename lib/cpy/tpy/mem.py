@@ -117,6 +117,7 @@ class _SlotPtr:
     forwards to `_slots[0]`, matching TPy's `Ptr[T]` derefs-to-T semantics.
     """
     __slots__ = ('_storage',)
+    __tpy_ptr_proxy__ = True
 
     def __init__(self, storage):
         object.__setattr__(self, '_storage', storage)

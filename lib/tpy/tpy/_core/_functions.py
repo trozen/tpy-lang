@@ -14,7 +14,7 @@ def span[T](x: Spannable[T]) -> Span[readonly[T]]: ...
 
 @pure
 @readonly
-@native("tpy::deref_check")
+@native("tpy::deref_check", borrows=("x",))
 def deref[T](x: Deref[T]) -> T: ...
 
 @value_ptr_coercion

@@ -5,7 +5,7 @@ namespace tpyapp::main {
 
 
 // def describe(b: Box[Pet]) -> str:
-//     match b:  # tpyc: ok
+//     match b.get():  # tpyc: ok
 //         case Dog(n=k) if k > 0:
 //             return "dog+ " + str(k) + " legs=" + str(b.legs())
 //         case Dog():
@@ -13,17 +13,17 @@ namespace tpyapp::main {
 //         case _:
 //             return "other legs=" + str(b.legs())
 std::string describe(::tpystd::tplib::box::Box<Pet>& b) {
-    auto& __match_subject_1 = b;
-    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
+    auto& __match_subject_1 = b.get();
+    if (Dog* __mpoly_0 = dynamic_cast<Dog*>(&__match_subject_1)) {
         Dog& __case_0 = *__mpoly_0;
         auto& k = __case_0.n;
         if ((k > 0)) {
-            return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog+ ", (k).to_string())), " legs=")), (__case_0.legs()).to_string()));
+            return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog+ ", (k).to_string())), " legs=")), (b.__deref__().legs()).to_string()));
         }
     }
-    if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&(__match_subject_1.__deref__()))) {
+    if (Dog* __mpoly_1 = dynamic_cast<Dog*>(&__match_subject_1)) {
         Dog& __case_1 = *__mpoly_1;
-        return (::tpy::str_concat("dog0 legs=", (__case_1.legs()).to_string()));
+        return (::tpy::str_concat("dog0 legs=", (b.__deref__().legs()).to_string()));
     }
     {
         return (::tpy::str_concat("other legs=", (b.__deref__().legs()).to_string()));

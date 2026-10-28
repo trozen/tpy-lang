@@ -31,6 +31,10 @@ extern "C" int32_t widget_value(::Widget* w) {
 //     print("nullable:", widget_value(again))
 //     p = deref(pts)
 //     print("array:", p.x, p.y)
+//     # `p` borrows the C struct: the write is what the next read through the
+//     # pointer sees.
+//     p.x = 99
+//     print("array:", deref(pts).x)
 void main() {
     ::Widget* w = find_widget(1);
     std::cout << "nullable:" << " " << widget_value(w) << "\n" << ::tpy::check_signals;
@@ -41,8 +45,10 @@ void main() {
     }
     ::Widget* again = find_widget(1);
     std::cout << "nullable:" << " " << widget_value(again) << "\n" << ::tpy::check_signals;
-    ::Point p = ::tpy::deref_check(::g_pts);
+    ::Point& p = ::tpy::assert_lent(::tpy::deref_check(::g_pts));
     std::cout << "array:" << " " << p.x << " " << p.y << "\n" << ::tpy::check_signals;
+    p.x = 99;
+    std::cout << "array:" << " " << ::tpy::assert_lent(::tpy::deref_check(::g_pts)).x << "\n" << ::tpy::check_signals;
 }
 
 // from tpy.extern import native, native_global, export

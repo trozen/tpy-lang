@@ -1,5 +1,6 @@
-# Polymorphic match on a FIELD subject (`match o.pet:`, a Box[Animal] field):
-# arms dispatch on the deref payload's dynamic type; an `as` capture binds it.
+# Polymorphic match on the object a FIELD holds (`match o.pet.get():`, a
+# Box[Animal] field): arms dispatch on its dynamic type; an `as` capture
+# binds it.
 from typing import Protocol
 from tpy import dynamic, Own
 from tplib import Box
@@ -35,7 +36,7 @@ class Owner:
 
 
 def describe(o: Owner) -> str:
-    match o.pet:  # tpyc: ok
+    match o.pet.get():  # tpyc: ok
         case Dog():
             return "dog"
         case Snake() as s:

@@ -1,5 +1,6 @@
-# Polymorphic match on a SUBSCRIPT subject (`match animals[i]:`): dispatched via
-# dynamic_cast on the once-bound subject's Box deref view.
+# Polymorphic match on the object a list element holds
+# (`match animals[i].get():`): dispatched via dynamic_cast on the once-bound
+# subject.
 from typing import Protocol
 from tpy import dynamic
 from tplib import Box
@@ -28,7 +29,7 @@ class Snake(Animal):
 
 
 def describe(animals: list[Box[Animal]], i: int) -> str:
-    match animals[i]:  # tpyc: ok
+    match animals[i].get():  # tpyc: ok
         case Dog():
             return "dog"
         case Snake() as s:

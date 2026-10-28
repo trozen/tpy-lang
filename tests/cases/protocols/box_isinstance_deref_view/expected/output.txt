@@ -1,2 +1,0 @@
-dog:woof
-other:cat

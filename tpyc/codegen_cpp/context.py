@@ -2875,21 +2875,6 @@ class CodeGenContext:
             return escaped
         return f"&{escaped}"
 
-    def deref_dispatch_inner(self, var_decl: 'TpyType | None', depth: int) -> 'TpyType | None':
-        """Peel `depth` __deref__ steps off `var_decl` to recover the
-        dispatch inner (the @dynamic protocol / polymorphic class behind an
-        owning wrapper), so codegen can pick dynamic_cast vs dyn_adapter_cast
-        for a deref-view narrowing."""
-        cur = unwrap_readonly(var_decl) if var_decl is not None else None
-        type_ops = self.analyzer.type_ops
-        for _ in range(depth):
-            if cur is None:
-                return None
-            cur = type_ops.get_deref_target_type(cur)
-            if cur is not None:
-                cur = unwrap_readonly(cur)
-        return cur
-
     def is_indirect_name(self, expr: TpyExpr) -> bool:
         """Check if expression needs indirect access (-> / deref).
 

@@ -131,7 +131,7 @@ inline Owner::Owner(::tpystd::tplib::box::Box<Animal>&& pet) : pet(std::move(pet
 
 // @readonly
 // def describe(self) -> str:
-//     match self.pet:  # tpyc: ok
+//     match self.pet.get():  # tpyc: ok
 //         case Dog():
 //             return "dog"
 //         case Snake() as s:
@@ -139,11 +139,11 @@ inline Owner::Owner(::tpystd::tplib::box::Box<Animal>&& pet) : pet(std::move(pet
 //         case _:
 //             return "?"
 inline std::string Owner::describe() const {
-    auto& __match_subject_1 = this->pet;
-    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&(__match_subject_1.__deref__()))) {
+    auto& __match_subject_1 = this->pet.get();
+    if (const Dog* __mpoly_0 = dynamic_cast<const Dog*>(&__match_subject_1)) {
         const Dog& __case_0 = *__mpoly_0;
         return "dog";
-    } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&(__match_subject_1.__deref__()))) {
+    } else if (const Snake* __mpoly_1 = dynamic_cast<const Snake*>(&__match_subject_1)) {
         const Snake& __case_1 = *__mpoly_1;
         auto& s = __case_1;
         return (::tpy::str_concat("snake legs=", (s.legs).to_string()));

@@ -44,5 +44,9 @@ def main() -> None:
     print("nullable:", widget_value(again))
     p = deref(pts)
     print("array:", p.x, p.y)
+    # `p` borrows the C struct: the write is what the next read through the
+    # pointer sees.
+    p.x = 99
+    print("array:", deref(pts).x)
 
 main()

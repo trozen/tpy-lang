@@ -160,7 +160,7 @@ class InitTracker:
         # live rebind kills through every spelling: TODO.md "One fact-kill
         # helper"). A field store or a call reaches the written object under
         # every spelling the may-hold relation gives it, as the live path
-        # does; this sweep also clears deref-view keys and dotted range keys.
+        # does; this sweep also clears dotted range keys.
         # The interim sema form of TODO.md "Loop-carried value ranges over
         # MIR places": a name the body only steps one way keeps the bound on
         # the other side.

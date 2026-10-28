@@ -462,38 +462,6 @@ def int_literal_spelling(e: TpyExpr) -> str | None:
     return None
 
 
-# A deref-view narrowing rides `narrowed_types` under a distinct key: it
-# narrows the polymorphic payload reached through an owning wrapper's
-# reference-returning __deref__ (`if isinstance(rc, Dog): rc.bark()` resolves
-# `bark` against Dog through the deref, while `rc.clone()` stays an Rc method).
-# Keying it apart from the wrapper variable's own narrowing key leaves the
-# wrapper type untouched and lets the existing save/restore/merge-at-joins
-# machinery for narrowed_types apply unchanged -- exactly like field-path
-# narrowing keys. The NUL suffix cannot collide with any source-level dotted
-# path produced by _expr_to_narrowing_key.
-#
-# INVARIANT: a deref-view key is NOT a `name.`-dotted field path, so the
-# field-path prefix sweeps (NarrowingTracker._invalidate_field_facts and
-# friends) do NOT cover it. Any code that invalidates narrowed_types on a
-# write/mutation of `name` must also drop deref_view_key(name) explicitly (see
-# update_after_write); a prefix-scan alone silently leaves the deref-view fact
-# stale -- the bug class that null-derefs a reassigned wrapper.
-_DEREF_VIEW_SUFFIX = "\x00deref"
-
-
-def deref_view_key(narrowing_key: str) -> str:
-    """Map a receiver narrowing key to its deref-view narrowing key."""
-    return narrowing_key + _DEREF_VIEW_SUFFIX
-
-
-def parse_deref_view_key(key: str) -> 'str | None':
-    """If `key` is a deref-view narrowing key, return the receiver key it wraps;
-    otherwise None."""
-    if key.endswith(_DEREF_VIEW_SUFFIX):
-        return key[:-len(_DEREF_VIEW_SUFFIX)]
-    return None
-
-
 def match_is_none(expr: TpyExpr) -> tuple[str, bool] | None:
     """Match `v is None`, `v is not None`, `None is v`, `None is not v`.
 
@@ -758,8 +726,8 @@ def _subject_captures(pattern: TpyPattern) -> list[str]:
 
 def fact_key_root(key: str) -> str:
     """The variable a flow-fact or place key is about: the root of a field
-    path, of a deref-view key included."""
-    return (parse_deref_view_key(key) or key).split(".", 1)[0]
+    path."""
+    return key.split(".", 1)[0]
 
 
 # The three guards bound the closure's work on layouts the type system
@@ -1106,7 +1074,7 @@ class InPlaceWrites:
                        own: bool,
                        is_copy: Callable[[str], bool] | None = None
                        ) -> set[str]:
-        """The fact keys (deref-view keys included) a write at `key`
+        """The fact keys a write at `key`
         invalidates: those with a place of their object at or beneath a
         place of `key`.
 
@@ -1121,10 +1089,7 @@ class InPlaceWrites:
         for fk in fact_keys:
             if not own and fk == key:
                 continue
-            view_of = parse_deref_view_key(fk)
-            # The deref-view payload sits beneath its receiver.
-            f_root, f_tail = _split(view_of + "." + _DEREF_VIEW_SUFFIX
-                                    if view_of is not None else fk)
+            f_root, f_tail = _split(fk)
             if not f_tail and (not own or (is_copy is not None
                                            and is_copy(f_root))):
                 continue
@@ -1372,8 +1337,8 @@ class FactKills:
     resurrect facts the body kills: loop body entry (back-edge), except
     handler entry (mid-try exception), finally entry (any-path exception).
     """
-    # Names that may be rebound: kills the name's own facts, its deref-view
-    # fact, all field facts rooted at it, and its value range.
+    # Names that may be rebound: kills the name's own facts, all field facts
+    # rooted at it, and its value range.
     names: set[str] = field(default_factory=set)
     # Dotted field paths written directly (obj.field = ...), each with its
     # stores (None: a `del` or an augmented store): kills the path's facts
@@ -1387,7 +1352,7 @@ class FactKills:
     # The body contains a suspension point (yield / await / async for /
     # async with): re-entering it (back-edge) or leaving it mid-way
     # (handler/finally entry) crosses a suspension, so everything a
-    # suspension kills (field paths, deref views, len ranges,
+    # suspension kills (field paths, len ranges,
     # closure/global names) must die at the meet as well.
     suspends: bool = False
     # The body holds a call (a hidden one included): it may run a closure

@@ -287,9 +287,11 @@ Sub)` on a `Ptr[P]` (or a bare `P` borrow) dispatches at runtime via
 structural `Sub` is physically an `Adapter<P,Sub>` / `RefAdapter<P,Sub>`, so
 the helper tries both shapes and projects `.inner`); codegen picks the cast
 by `directly_implements_dynamic`. A check type that neither inherits nor
-structurally conforms is rejected (can never match). Owning wrappers
-(`Box[P]` / `Rc[P]`) dispatch the same way via deref-view narrowing on the
-payload pointer (`docs/LANGUAGE_FEATURES.md`, "Deref-view narrowing"). Static
+structurally conforms is rejected (can never match). A handle (`Box[P]` /
+`Rc[P]`) is tested as itself, as in CPython; the object it holds is tested
+by name (`p = rc.get(); isinstance(p, Sub)`, a `@dynamic` local whose base
+pointer is the cast input -- `docs/LANGUAGE_FEATURES.md`, "A handle is
+tested as itself"). Static
 (non-`@dynamic`) protocols are rejected as `Ptr` element types -- they
 have no runtime representation to dispatch through
 (`tpyc/sema/type_ops.py:265`).

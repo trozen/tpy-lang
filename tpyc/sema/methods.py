@@ -32,7 +32,6 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
 from .compatibility import InferredSlot, inferred_receiver
-from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_borrowing_view_type, protocol_info_of
 from .bound_check import builtin_owned, raise_if_class_param_bound_violated
@@ -1044,15 +1043,7 @@ class MethodAnalyzer:
             if isinstance(deref_target, ReadonlyType):
                 is_readonly_receiver = True
                 deref_target = deref_target.wrapped
-            # Deref-view narrowing: inside `if isinstance(rc, Dog):` the peeled
-            # payload is narrowed to the subclass so `bark` (a Dog method, not
-            # on the Pet protocol) resolves. Tag the node for the codegen cast.
-            nsub = deref_view_narrowed(self.ctx, expr.obj, deref_target)
-            if nsub is not None:
-                expr.deref_narrowed_to = nsub
-                current_type = nsub
-            else:
-                current_type = deref_target
+            current_type = deref_target
             deref_depth += 1
 
         raise self.ctx.error(f"Cannot call method '{expr.method}' on type {original_type}", expr)

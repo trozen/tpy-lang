@@ -28,7 +28,7 @@ from .typesys import (
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
-    param_takes_ownership, answers_as_call,
+    param_takes_ownership, answers_as_call, dyn_protocol_borrow_result,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -235,13 +235,15 @@ def declared_result_is_value(fi: 'FunctionInfo | None') -> bool:
     value-shaped one -- an Optional, a union, a tuple, a number -- is a
     fresh value the caller owns, even where its pointer representation
     would read as a borrowed `T*` from an undeclared callee. A bare open
-    `T` is not decided here: the instantiation may be a reference."""
+    `T` is not decided here: the instantiation may be a reference. A
+    `@dynamic` protocol result is its base by reference (`P&`)."""
     if (fi is None or not is_bodyless_binding(fi)
             or not fi.root.borrow_declared):
         return False
     rt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fi.return_type)))
     return (isinstance(rt, TpyType) and not isinstance(rt, TypeParamRef)
-            and not returns_cpp_reference_shape(rt))
+            and not returns_cpp_reference_shape(rt)
+            and dyn_protocol_borrow_result(rt) is None)
 
 
 def call_hands_back_value(call: TpyExpr) -> bool:

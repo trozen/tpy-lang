@@ -70,7 +70,7 @@ from ..symbol_binding import SymbolKind, lookup_imported
 from ..prescan import (
     bound_names_of, walrus_names_of, scope_bound_names, ScanResult,
     scan_reassigned_vars, collect_in_place_writes,
-    parse_deref_view_key, storage_spelling,
+    storage_spelling,
     FactKills, liveness_alias_sources,
     collect_nonlocals, closure_exports,
 )
@@ -3081,11 +3081,7 @@ class StatementAnalyzer:
             if (isinstance(_peel(self.narrowing.declared_type_for_name(name)), (UnionType, AnyType))
                 or isinstance(ty, LiteralType)
                 or is_protocol_type(ty)
-                or _polymorphic_subclass_fact(name, ty)
-                # Deref-view facts (key carries the deref suffix) drive the
-                # if-init cast-and-cache for owning wrappers; the wrapper var
-                # itself is never retyped, so they pass through verbatim.
-                or parse_deref_view_key(name) is not None)
+                or _polymorphic_subclass_fact(name, ty))
         }
 
     def _analyze_raise(self, stmt: TpyRaise) -> None:

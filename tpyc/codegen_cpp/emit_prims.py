@@ -28,7 +28,8 @@ from typing import (Callable, Container, Final, Iterator, Mapping, NoReturn,
 from ..namespace import Namespace
 from ..parse.nodes import (
     SourceLocation, TpyAsPattern, TpyBinOp, TpyBoolLiteral,
-    TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr, TpyFieldAccess,
+    TpyCall, TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr,
+    TpyFieldAccess,
     TpyFloatLiteral, TpyFunction,
     TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
     TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern, TpySetLiteral,
@@ -36,12 +37,11 @@ from ..parse.nodes import (
     TpyTupleLiteral, TpyTupleUnpack, TpyVarDecl,
     TpyWildcardPattern,
 )
-from ..prescan import parse_deref_view_key
 from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
                                   literal_value_from_expr)
 from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
-from ..typesys import pointer_repr_optional
+from ..typesys import pointer_repr_optional, dyn_protocol_borrow_result
 from ..typesys import (
     BIGINT, AnyType, IntLiteralType, LiteralType,
     NominalType, OptionalType,
@@ -54,7 +54,7 @@ from ..typesys import (
     polymorphic_subclass_into_optional,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
-from ..value_category import call_result_const, receiver_const
+from ..value_category import call_result_const, peel_coerce, receiver_const
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name
 from .variant_access import VariantAccess
 
@@ -545,11 +545,6 @@ def emit_isinstance_extractions(
         # on `int | str | None`) narrows to None, which has no value to bind.
         if isinstance(narrowed_type, UnionType) or is_void_like_type(narrowed_type):
             continue
-        # Deref-view facts don't retype the wrapper var -- no extraction
-        # local. The narrowed reads route through deref_narrowed_to (and the
-        # if-init's deref_view_init_locals); the wrapper stays its own type.
-        if parse_deref_view_key(var_name) is not None:
-            continue
         # LiteralType narrowing: track for dead branch elimination,
         # no std::get extraction needed.
         if isinstance(narrowed_type, LiteralType):
@@ -865,8 +860,9 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
 def returns_bare_reference(rt: 'TpyType | None') -> bool:
     """True when a return type lowers to a C++ lvalue reference (`T&` /
     `const T&`) -- a bare non-value reference type. Own (by-value move),
-    Optional / Ptr (pointer repr), protocols (auto / base), and value types
-    are prvalues / non-references and excluded."""
+    Optional / Ptr (pointer repr), structural protocols (auto), and value
+    types are prvalues / non-references and excluded; a `@dynamic` protocol
+    returns its base by reference."""
     if rt is None:
         return False
     rt = unwrap_readonly(rt)
@@ -877,7 +873,8 @@ def returns_bare_reference(rt: 'TpyType | None') -> bool:
         # `std::variant<...>`), not `T&`. Only a wrapper union returns by
         # reference (mirrors UnionType.to_cpp_return's needs_wrapper gate).
         return False
-    return not is_protocol_type(rt)
+    return (dyn_protocol_borrow_result(rt) is not None
+            or not is_protocol_type(rt))
 
 
 def match_subject_is_lvalue(expr: TpyExpr) -> bool:
@@ -890,18 +887,31 @@ def match_subject_is_lvalue(expr: TpyExpr) -> bool:
     returns a bare reference (an accessor like `h.get() -> Tree[T]`
     lowering to `Tree<T>&`) on an lvalue receiver also qualifies -- the
     reference aliases the receiver's storage, which outlives the match.
-    Other calls (by-value / Own returns, temporary receivers), literals,
-    and constructed temporaries do not."""
+    So does a whole subject that is a free call returning one over
+    lvalue arguments (`deref(b)`): its result can alias only what they
+    reach. Other calls (by-value / Own returns, temporary receivers),
+    literals, and constructed temporaries do not."""
+    if isinstance(expr, TpyCall):
+        # Only as the whole subject: a chain off a free call
+        # (`deref(s).kind`) has no subject rung that binds it.
+        fi = expr.resolved_function_info
+        return (fi is not None and returns_bare_reference(fi.return_type)
+                and not expr.kwargs
+                and all(_lvalue_place(peel_coerce(a)) for a in expr.args))
+    return _lvalue_place(expr)
+
+
+def _lvalue_place(expr: TpyExpr) -> bool:
     if isinstance(expr, TpyName):
         return True
     if isinstance(expr, TpyFieldAccess):
-        return match_subject_is_lvalue(expr.obj)
+        return _lvalue_place(expr.obj)
     if isinstance(expr, TpySubscript):
-        return match_subject_is_lvalue(expr.obj)
+        return _lvalue_place(expr.obj)
     if isinstance(expr, TpyMethodCall):
         fi = expr.resolved_function_info
         return (fi is not None and returns_bare_reference(fi.return_type)
-                and match_subject_is_lvalue(expr.obj))
+                and _lvalue_place(expr.obj))
     return False
 
 

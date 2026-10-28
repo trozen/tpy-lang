@@ -531,12 +531,6 @@ class TpyCall(TpyCallLike):
     isinstance_type: TpyType | None = None   # Set by sema: resolved type being checked for
     isinstance_is_protocol: bool = False     # Set by sema: protocol isinstance (if constexpr)
     isinstance_type_param: bool = False      # Set by sema: subject is a non-poly class-bounded type param -> compile-time tpy::isinstance_static
-    # Set by sema (>0) when the isinstance source is an owning wrapper
-    # (Box[Pet]/Rc[Pet]): the dispatch target is the polymorphic payload
-    # reached through `depth` reference-returning __deref__ steps, not the
-    # variable itself. Drives deref-view narrowing (the wrapper's own type is
-    # never narrowed) and the deref-payload-pointer cast in codegen.
-    isinstance_deref_depth: int = 0
     cast_target_type: TpyType | None = None  # Set by sema for typing.cast(T, x): the resolved target type
     cast_source_is_any: bool = False         # Set by sema for typing.cast: True iff source's static type is Any
     compile_time_assert: bool = False        # Set by sema for assert_send[T]()/assert_sync[T](): checked in sema, elided in codegen
@@ -630,10 +624,6 @@ class TpyMethodCall(TpyCallLike, NoneChecked):
     const_receiver: bool = False
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
-    # Set by sema to the narrowed subclass when this method resolves through a
-    # deref-view narrowing (`if isinstance(rc, Dog): rc.bark()`); codegen casts
-    # the deref payload pointer to it instead of emitting a plain __deref__ call.
-    deref_narrowed_to: TpyType | None = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
     # Set by sema: the expression this call IS, lowered in its place -- a
@@ -664,9 +654,6 @@ class TpyFieldAccess(TpyExpr, NoneChecked):
     field: str
     none_use: NoneUse | None = None  # Set by sema on every analysis: the receiver's None check
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before field lookup
-    # Set by sema to the narrowed subclass when this field access resolves
-    # through a deref-view narrowing; codegen casts the deref payload pointer.
-    deref_narrowed_to: TpyType | None = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     # Set by sema BEFORE the target of an assignment is analysed as a read:
     # the write position is the one place a property is not its getter, so
@@ -796,14 +783,13 @@ def become_method_call(node: TpyFieldAccess, *, method: str,
     is written -- nothing walks the body.
 
     The receiver-shape markers transfer: the getter is reached through the
-    same hops as the field lookup was (a `Ptr` receiver's deref, a narrowed
-    deref view, an unproven Optional), so the call carries exactly the
+    same hops as the field lookup was (a `Ptr` receiver's deref, an
+    unproven Optional), so the call carries exactly the
     markers `obj.getter()` would, and the method-call arms spell them.
     """
     call = TpyMethodCall(obj=node.obj, method=method, args=args, loc=node.loc)
     call.resolved_function_info = fi
     call.deref_depth = node.deref_depth
-    call.deref_narrowed_to = node.deref_narrowed_to
     call.ptr_non_null = node.ptr_non_null
     call.none_use = node.none_use
     node.__dict__.clear()

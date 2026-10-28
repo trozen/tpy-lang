@@ -1,0 +1,8 @@
+main.py:75: warning: isinstance() tests the 'Box[Pet]' handle, never a 'Dog'; to test the object it holds, bind it first: p = deref(b)
+main.py:77: warning: isinstance() tests the 'Box[Point]' handle, never a 'Point'; to test the object it holds, bind it first: p = deref(bp)
+main.py:81: warning: isinstance() tests the 'Rc[Pet]' handle, never a 'Dog'; to test the object it holds, bind it first: p = deref(rc)
+main.py:87: warning: isinstance() tests the 'Arc[Point]' handle, never a 'Point'; to test the object it holds, bind it first: p = deref(a)
+main.py:89: warning: isinstance() tests the 'Arc[Pet]' handle, never a 'Dog'; to test the object it holds, bind it first: p = deref(ap)
+main.py:225: warning: 'h.b' is mutated in this arm while pattern bindings borrow its storage; the bindings dangle (undefined behavior). Copy the bound values before mutating
+main.py:234: warning: isinstance() tests the 'Box[Pet]' handle, never a 'Dog'; to test the object it holds, bind it first: p = deref(ob)
+main.py:247: warning: isinstance() tests the 'Handle' handle, never a 'Point'; to test the object it holds, bind it first: p = deref(h)

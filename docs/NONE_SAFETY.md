@@ -310,9 +310,7 @@ inside the region. Re-check after the block (`if x is not None:` or
   (`BUGS.md#property-setter-sibling-write-invisible-to-loop-kill-set`,
   `BUGS.md#field-store-destructor-skips-fact-kill`,
   `BUGS.md#iadd-target-keeps-facts-beneath`); a `Ptr` argument skipped
-  by the call kill (`BUGS.md#ptr-or-tuple-argument-skips-fact-kill`); a
-  call that replaces a narrowed `Box` payload through its receiver
-  (`BUGS.md#deref-view-survives-receiver-call`).
+  by the call kill (`BUGS.md#ptr-or-tuple-argument-skips-fact-kill`).
 
 ## Planned (Detailed)
 
