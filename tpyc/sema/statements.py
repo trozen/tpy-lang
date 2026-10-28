@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Callable, Iterator, Mapping
 
 from ..holders import Holder, IterHolder
-from ..typesys import (pointer_repr_optional, pointer_variant_union,
+from ..typesys import (drop_own_marker, pointer_repr_optional, pointer_variant_union,
                        ResolvedBinop, store_slot_type, store_takes_elements, answers_as_call,
                        BASIC_SLICE, SLICE)
 from ..typesys import (
@@ -1491,6 +1491,35 @@ class StatementAnalyzer:
         (`_settle_finally_capture`), or an owned parameter's."""
         return (self.compat.settles_body_local(name)
                 or self.compat._is_owned_var(name))
+
+    def _denotes_owned_binding(self, expr: TpyExpr) -> bool:
+        """Whether `expr` is a whole binding that owns its value -- a name,
+        or a walrus, which denotes its target (`is_rvalue_source`) -- on
+        the ownership fact as far as the body has been read
+        (`_is_owned_var`): the body's settled fact comes only after its
+        last statement, past the point a declaration's type is formed."""
+        e = peel_coerce(expr)
+        name = (e.name if isinstance(e, TpyName)
+                else e.target if isinstance(e, TpyNamedExpr) else None)
+        return name is not None and self.compat._is_owned_var(name)
+
+    def _names_unowned_storage(self, expr: TpyExpr) -> bool:
+        """Whether `expr` names existing storage it does not own: a place
+        (`is_rvalue_source` false) that is no whole owning binding, or a
+        select each of whose arms is one or `None` (`t[0] if c else None`),
+        which the value category reads as fresh because its type carries
+        the `Own` marker. A select nested in an arm is not walked: the
+        lowering binds none (`expr.ifexpr`), so it keeps the marker."""
+        def unowned_place(a: TpyExpr) -> bool:
+            return (not isinstance(a, TpyIfExpr)
+                    and not is_rvalue_source(self.ctx, a)
+                    and not self._denotes_owned_binding(a))
+        e = peel_coerce(expr)
+        if isinstance(e, TpyIfExpr):
+            arms = [peel_coerce(a) for a in (e.then_expr, e.else_expr)]
+            places = [a for a in arms if not isinstance(a, TpyNoneLiteral)]
+            return bool(places) and all(unowned_place(a) for a in places)
+        return unowned_place(e)
 
     def _owned_element_is_pointer(self, name: str, index: int) -> bool:
         """Whether the tuple `name` this body OWNS holds element `index` as a
@@ -6590,6 +6619,26 @@ class StatementAnalyzer:
                         and (pi := protocol_info_of(inner)) is not None
                         and pi.is_dynamic):
                     var_type = var_type.wrapped
+            elif (isinstance(var_type, OptionalType)
+                    and not existing_type
+                    and unwrap_optional_own(var_type) is not None
+                    and self._names_unowned_storage(stmt.init)):
+                # The same for a new local bound to an `Own[P] | None`
+                # source naming existing storage it does not own: it binds
+                # `P | None` (a readonly payload stays: `readonly[P] |
+                # None`) and aliases it. A fresh value is the target's own
+                # storage, and a source that is a whole owning binding
+                # moves at its last use, so both keep the marker; a rebind
+                # stores into the slot its first binding declared.
+                var_type = drop_own_marker(var_type)
+                # Recorded on the decl: the init expr keeps the marker.
+                self.ctx.var_types[stmt] = var_type
+                select = peel_coerce(stmt.init)
+                if isinstance(select, TpyIfExpr):
+                    # A select of places is no fresh value: its own type
+                    # drops the marker too, so it reads as the borrow its
+                    # arms are.
+                    self.ctx.set_expr_type(select, var_type)
             elif (is_protocol_type(var_type)
                     and (pi := protocol_info_of(var_type)) is not None
                     and pi.is_dynamic

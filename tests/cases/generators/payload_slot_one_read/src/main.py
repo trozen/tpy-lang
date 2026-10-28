@@ -399,8 +399,7 @@ def move_lend_live() -> Iterator[tuple[Own[A], B]]:
 
 def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
     t = mk_aob()
-    # a lent Optional element: its payload's pointer (no read of it lowers
-    # yet, BUGS.md#lent-optional-tuple-element-match-ice)
+    # a lent Optional element: its payload's pointer
     yield t  # tpyc: ok
 
 

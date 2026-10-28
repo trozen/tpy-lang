@@ -1102,3 +1102,69 @@ def _comp_reads_expr(e) -> list:
         return True
     walk_expr_tree(e, visit)
     return out
+
+
+_OWN_OPT = """\
+def mk() -> Own[A] | None:
+    return A(1)
+g_o = mk()
+"""
+
+
+def _decl_type(ctx, func: TpyFunction, name: str):
+    decl = next(d for d in _nodes(func, TpyVarDecl) if d.name == name)
+    return ctx.var_types.get(decl) or ctx.get_expr_type(decl.init)
+
+
+def _copy_warnings(ctx) -> list[str]:
+    return [d.message for d in ctx.diagnostics
+            if d.level.value == "warning" and "into owned storage" in d.message]
+
+
+def test_owned_optional_name_source_keeps_its_marker() -> None:
+    # `y = x` over an owning `Own[A] | None` binding (a parameter, a local
+    # bound to a call's result) binds owned storage the read moves into: no
+    # copy warning. Codegen still refuses the declaration
+    # (BUGS.md#own-optional-target-alias-rejects); a walrus target is not
+    # recorded as owning yet (BUGS.md#own-optional-walrus-target-not-owned).
+    ctx, funcs = _module(_OWN_OPT + """\
+def f(x: Own[A] | None) -> Own[A] | None:
+    y = x
+    return y
+def d() -> Own[A] | None:
+    x = mk()
+    y = x
+    return y
+""")
+    for name in ("f", "d"):
+        assert "Own" in str(_decl_type(ctx, funcs[name], "y")), name
+    assert not _copy_warnings(ctx)
+
+
+def test_borrowed_optional_name_source_aliases() -> None:
+    # A name that does not own its `Own[A] | None` value (a module global a
+    # function reads) binds `A | None`: the target aliases it.
+    ctx, funcs = _module(_OWN_OPT + """\
+def f() -> int32:
+    y = g_o
+    return 0 if y is None else y.v
+""")
+    assert "Own" not in str(_decl_type(ctx, funcs["f"], "y"))
+
+
+def test_optional_rebind_stores_into_its_declared_slot() -> None:
+    # A rebind of an owning `Own[A] | None` local to a member copies into
+    # the slot its first binding declared (warned once); the local still
+    # owns it, so returning it moves.
+    ctx, _funcs = _module(_OWN_OPT + """\
+class H:
+    o: A | None
+    def __init__(self) -> None:
+        self.o = A(4)
+def g(h: H) -> Own[A] | None:
+    x = mk()
+    x = h.o
+    return x
+""")
+    warns = _copy_warnings(ctx)
+    assert len(warns) == 1 and "existing storage" not in warns[0], warns

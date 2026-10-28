@@ -827,9 +827,8 @@ inline std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __gen_move_lend_li
 
 // def move_lend_opt() -> Iterator[tuple[Own[A], B | None]]:
 //     t = mk_aob()
-//     # a lent Optional element: its payload's pointer (no read of it lowers
-//     # yet, BUGS.md#lent-optional-tuple-element-match-ice)
-//     yield t  # tpyc: ok                                                     # -> S_RESUME_0
+//     # a lent Optional element: its payload's pointer
+//     yield t  # tpyc: ok                                    # -> S_RESUME_0
 inline std::expected<std::tuple<A, B*>, ::tpy::StopIteration> __gen_move_lend_opt::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry

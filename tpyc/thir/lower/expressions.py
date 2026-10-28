@@ -60,7 +60,7 @@ from ...parse.nodes import (
     TpyVarargPack,
 )
 from ...typesys import binds_runtime_symbol, is_readonly_result_type, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
-from ...typesys import (is_open_type_param_return, make_readonly,
+from ...typesys import (drop_own_marker, is_open_type_param_return, make_readonly,
                         param_takes_ownership)
 from ...typesys import (
     ConcreteFrameType,
@@ -281,7 +281,8 @@ from ...codegen_cpp.forms import (is_plain_nonvalue, is_ptr_variant_union,
                                   reads_storage_form_optional)
 from . import binding_shadow
 from . import bindings
-from .bindings import _value_opt_kind, form_of, project_held
+from .bindings import (_value_opt_kind, form_of, project_held,
+                       walrus_owned_slot)
 from .predicates import (
     _binding_form_tuple,
     _fold_literal_comparison,
@@ -298,8 +299,8 @@ from .predicates import (
     _comp_shadow_pointers,
     _btuple_owning_call_init,
     _empty_instantiation_family,
-    _tuple_field_opt_elem_subscript,
-    _tuple_local_ptr_elem_subscript,
+    _tuple_opt_elem_subscript,
+    opt_element_none_subject,
     _template_positional_indices,
     _tparam_protocol_field_recv_ok,
     _tparam_protocol_field_over_field_ok,
@@ -616,7 +617,8 @@ from .context import (FrameLocalClass, _call_arg_forms,
                       ValueOptKind,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
-from .convert import Effect, Refuse, _existing_object, as_base, convert
+from .convert import (Effect, Refuse, _existing_object, _lendable,
+                      as_base, convert)
 
 
 # The coercion tag of a literal pinned at its overload's slot
@@ -2816,73 +2818,6 @@ def _lower_slice_recv(recv: TpyExpr, lc: '_LowerCtx',
                        field_prechecked=isinstance(recv, TpyFieldAccess))
 
 
-def _walrus_owned_slot(rec: BindingRepr) -> bool:
-    """A walrus's deferred-init `std::optional<T>` of an owned non-value:
-    read through its `(*x)` deref, where a hoist's owned slot (`pointer`
-    and `optional_storage`) and a rebound record's slot of its own
-    (`pointer`) read as the `T*` that aims at it."""
-    return (rec.site_kind == "walrus" and rec.form is BindingForm.OWNED_SLOT
-            and not rec.pointer)
-
-
-def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
-    """`std::get<N>(t)` is a bare `T*` (member access `->`) iff element N is a
-    plain non-value BORROW_REF
-    pointer-repr slot read from a borrow-form tuple. An owned (`Own`) or value element
-    is held by value in the tuple (`std::get` yields a `T&`, `.` access), and a storage
-    `auto&&` alias receiver likewise holds its elements by value -- both take `.`.
-    A REASSIGNED borrow-tuple WALRUS receiver reads its elements from the
-    COLLAPSED borrow type (`Own[T]` element -> `T*`, `->` access -- the
-    walrus arm registers the same collapsed binding)."""
-    res = _subscript_index_and_tuple(sub, lc.analyzer)
-    if res is None:
-        return False
-    recv_t, idx = res
-    if isinstance(sub.obj, TpyName):
-        # A literal-bound frame slot's ownership is not in the declared type,
-        # so the per-element verdict below reads the effective one.
-        _eff = lc.frame_own_tuple_type(sub.obj.name)
-        if isinstance(_eff, TupleType):
-            recv_t = _eff
-        if (lc.binding(sub.obj.name).storage_tuple
-                # A walrus-slot tuple (`std::optional<std::tuple<..>>`)
-                # holds its elements BY VALUE: `std::get<i>((*t))` yields
-                # a `T&`, `.` access -- the storage-alias rule.
-                or _walrus_owned_slot(lc.binding(sub.obj.name))):
-            return False
-        # A literal-bound local holds its VALUE-captured record elements
-        # inline (`t = (Box(1), b)` is `std::tuple<Box, Box*>`): the
-        # binding, not the type, says which element is a pointer. Asked
-        # after the storage registrations, which a comprehension or loop
-        # variable shadowing the name makes while it is in scope.
-        _inline = lc.binding(sub.obj.name).inline_elems
-        if _inline is not None and idx < len(_inline) and _inline[idx]:
-            return False
-        # A rebound tuple holding an element of its own is the pointer
-        # tuple whatever `Own` its declared type carries.
-        _ptf = lc.binding(sub.obj.name).ptr_tuple
-        if _ptf is not None:
-            recv_t = _ptf
-    elif isinstance(sub.obj, (TpyCall, TpyMethodCall)):
-        # A MIXED-own-tuple CALL receiver holds its ref elements as bare
-        # pointers (`std::get<1>(make_mixed(b))->val`) -- the mixed render
-        # survives in the call result itself.
-        if not _renders_own_borrow_tuple(sub.obj, lc.names_with("borrow_tuple_mixed"),
-                                         lc.analyzer):
-            return False
-    elif (isinstance(sub.obj, TpyNamedExpr)
-          and sub.obj.target in lc.prescan.reassigned):
-        collapsed = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-            collapse_tuple_own_elements(recv_t))))
-        if not isinstance(collapsed, TupleType):
-            return False
-        recv_t = collapsed
-    else:
-        return False
-    et = recv_t.element_types[idx]
-    return (et.value_form() is ValueForm.BORROW_REF
-            and TupleType._element_is_pointer_repr(et))
-
 def _record_read_fields(e: TpySubscript, rec_fi: 'FunctionInfo',
                         use: '_ExprUse', lc: '_LowerCtx',
                         declared: dict[str, TpyType]) -> dict:
@@ -2915,19 +2850,15 @@ def _getitem_render(e: TpySubscript, use: '_ExprUse', lc: '_LowerCtx',
     raise ThirUnsupported("subscript.unresolved_dunder", detail=True)
 
 
-def _subscript_result_form(sub: TpySubscript, rtype: TpyType, lc: '_LowerCtx') -> Form:
+def _subscript_result_form(rtype: TpyType, elem_pointer: bool) -> Form:
     """The form a tuple subscript result renders as. A value scalar is VALUE; a record
-    element is BORROW (a `T*`/`T&`). An Optional element read off a storage-tuple alias
-    or a storage-form tuple FIELD (`c.data[N]` -- elements held by value) is STORAGE
-    (`std::optional<T>`, lifted by the consumer via optional_to_ptr); off a
-    borrow tuple param it is already `T*` (BORROW)."""
+    element is BORROW (a `T*`/`T&`). An Optional element the tuple holds by value
+    is STORAGE (`std::optional<T>`, lifted by the consumer via optional_to_ptr); one
+    it holds as a pointer is already `T*` (BORROW)."""
     if not _is_borrow_form_name(rtype):
         return Form.VALUE
     inner = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
-    if (isinstance(inner, OptionalType)
-            and ((isinstance(sub.obj, TpyName)
-                  and lc.binding(sub.obj.name).storage_tuple)
-                 or isinstance(sub.obj, TpyFieldAccess))):
+    if isinstance(inner, OptionalType) and not elem_pointer:
         return Form.STORAGE
     return Form.BORROW
 
@@ -3007,7 +2938,8 @@ def _receiver_none_check(recv: THIRExpr, use: 'NoneUse',
                          form=Form.BORROW, loc=recv.loc)
 
 
-def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
+def _field_is_arrow(e: TpyFieldAccess, recv: THIRExpr,
+                    lc: '_LowerCtx') -> bool:
     """`recv->field` vs `recv.field`: a plain `T*` pointer-local (F2), a proven
     pointer-repr Optional borrow name (an Optional-ptr param / OPTIONAL_TO_PTR
     local -- both pointer records), or the `self` receiver (a `this` pointer)
@@ -3015,17 +2947,17 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
     the pointer set lowering tracks plus the method receiver. (An UNPROVEN
     Optional access never reaches this -- it takes the checked-receiver arm.)
 
-    A record-element tuple subscript receiver (`t[N].field`) renders `->` only when the
-    element is a borrow `T*` (`_subscript_yields_borrow_ptr`): a bare-reference element
-    off a borrow-form tuple param. An owned element (`std::get` yields `T&`) or a
-    storage `auto&&` alias receiver reads `.`."""
-    return _recv_is_arrow(e.obj, lc)
+    A tuple element receiver (`t[N].field`) renders `->` where the tuple holds
+    the element as a bare `T*` (the read's `reads_raw_pointer`), `.` where it
+    holds it inline."""
+    return _recv_is_arrow(e.obj, recv, lc)
 
 
-def _recv_is_arrow(obj: TpyExpr, lc: '_LowerCtx') -> bool:
-    """`_field_is_arrow`'s receiver rule, for any member reached off `obj`."""
+def _recv_is_arrow(obj: TpyExpr, recv: THIRExpr, lc: '_LowerCtx') -> bool:
+    """`_field_is_arrow`'s receiver rule, for any member reached off `obj`
+    (`recv` its lowered read)."""
     if isinstance(obj, TpySubscript):
-        return _subscript_yields_borrow_ptr(obj, lc)
+        return recv.reads_raw_pointer
     return _name_recv_is_arrow(obj, lc)
 
 def _is_own_param(name: str, lc: '_LowerCtx') -> bool:
@@ -4370,16 +4302,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                         else e.left)
         if (_is_none_compare_operand(e, declared, analyzer) is None
                 and _any_none_subject(e, declared, analyzer) is None
-                and not _opt_record_none_subject(e, lc)
-                # A ptr-Optional element off a MIXED own-borrow tuple
-                # LOCAL: the bare pointer compare (std::get already
-                # yields `Box*` -- no lift). One-sided None tests only.
-                and not (
-                    (isinstance(e.left, TpyNoneLiteral)
-                     != isinstance(e.right, TpyNoneLiteral))
-                    and _tuple_local_ptr_elem_subscript(
-                        _isn_operand, declared, lc.names_with("borrow_tuple_mixed"),
-                        analyzer))):
+                and not _opt_record_none_subject(e, lc)):
             reject()
     elif e.op in _MEMBERSHIP_OPS and isinstance(e.right, TpyTupleLiteral):
         # `x in (a, b, ...)` / `not in`: a tuple-literal membership expands to an
@@ -4827,39 +4750,21 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # (storage std::optional<T> whatever the repr) also takes has_value
         # over the bare member read -- the gate above already pinned the
         # receiver/marker shape, so the field lowers prechecked.
-        if _tuple_local_ptr_elem_subscript(operand, declared,
-                                           lc.names_with("borrow_tuple_mixed"),
-                                           analyzer):
-            # A ptr-Optional element subject off a MIXED own-borrow tuple
-            # LOCAL: std::get already yields the bare `Box*`, so the
-            # compare is the plain `std::get<1>(p) != nullptr` -- NO
-            # optional_to_ptr lift (the FIELD flavor's arm below keeps
-            # its FormConvert).
-            _witness("isnone.tuple_elem_bare")
+        if opt_element_none_subject(operand, declared, analyzer):
+            # An Optional element: the test where the lowered read holds it
+            # selects, the scalar twin's -- a pointer a tuple holds compares
+            # (`std::get<1>(p) != nullptr`), an optional a tuple or a
+            # container stores tests `has_value()` (`d["a"]`, `h.t[0]`) as
+            # a storage Optional field does.
+            elem = _lower_expr(operand, lc, declared,
+                               allow_whole_optional=True,
+                               subscript_prechecked=True)
+            _witness("isnone.opt_element")
             return THIRIsNone(
-                result_type=rtype,
-                operand=_lower_expr(operand, lc, declared,
-                                    subscript_prechecked=True),
+                result_type=rtype, operand=elem,
                 negate=e.op == "is not",
-                form=Form.VALUE,
-                loc=loc)
-        if _tuple_field_opt_elem_subscript(operand, declared, analyzer):
-            # A ptr-Optional tuple-field element subject: the pre-lifted
-            # pointer compare (`optional_to_ptr(std::get<0>(h.t)) ==
-            # nullptr`) -- the FormConvert BORROW carries the lift.
-            ot = analyzer.get_expr_type(operand)
-            _witness("isnone.tuple_elem_lift")
-            return THIRIsNone(
-                result_type=rtype,
-                operand=THIRFormConvert(
-                    result_type=unwrap_readonly(unwrap_ref_type(
-                        unwrap_send_sync(ot))),
-                    value=_lower_expr(operand, lc, declared,
-                                      subscript_prechecked=True),
-                    form=Form.BORROW, loc=loc),
-                negate=e.op == "is not",
-                form=Form.VALUE,
-                loc=loc)
+                value_repr=not elem.reads_raw_pointer,
+                form=Form.VALUE, loc=loc)
         if generic_opt_trait_name(operand, declared):
             # A generic `T | None` slot: the runtime's form-neutral reader,
             # since the template cannot know whether the slot is an optional
@@ -4888,13 +4793,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         elif is_field:
             _witness("narrow.ptr_field_test" if ptr_field
                      else "narrow.opt_field_test")
-        # A storage-form Optional container subscript subject (`d["a"] is
-        # not None`): the has_value test over the bare `__getitem__` read.
-        sub_storage = (isinstance(operand, TpySubscript)
-                       and reads_storage_form_optional(analyzer, operand))
-        if sub_storage:
-            _witness("isnone.subscript_storage")
-        value_repr = sub_storage or (is_field and not ptr_field) or (
+        value_repr = (is_field and not ptr_field) or (
             isinstance(operand, TpyName)
             and (_value_opt_binding_kind(operand.name, lc) is not None
                  # A storage-opt loop var / unpack target: the bare
@@ -4945,8 +4844,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             and _value_opt_rvalue(operand, lc.analyzer) is not None)
         lowered_operand = _lower_expr(
             operand, lc, declared, allow_whole_optional=True,
-            field_prechecked=is_field,
-            subscript_prechecked=sub_storage)
+            field_prechecked=is_field)
         if (isinstance(operand, TpyName)
                 and lc.binding(operand.name).global_slot
                 and isinstance(lowered_operand, THIRName)):
@@ -5465,7 +5363,7 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
     if use.admits(SinkForm.INDIRECT_READ) and _ptr_read_derefs(name, lc):
         return True
     if (lc.binding(name).frame_slot
-            or _walrus_owned_slot(lc.binding(name))):
+            or walrus_owned_slot(lc.binding(name))):
         return True
     if (lc.binding(name).pointer and binding_type is not None
             and use.result not in (_ExprResultUse.RECEIVER,
@@ -6120,12 +6018,14 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
         return _held_of_form(_member_read_form(t, _viewfam_of(t, an)))
     if isinstance(node, THIRSubscript):
         if node.tuple_index is not None:
-            # A tuple element: a value is VALUE; an Optional element of a
-            # tuple that holds its elements by value (a storage local, a
-            # field) names that element's storage; any other element is
-            # the borrow the tuple holds.
+            # A tuple element: a value is VALUE; any other is held as the
+            # tuple holds it (its leaf).
             if not _is_borrow_form_name(t):
                 return Held.VALUE
+            leaf = _receiver_leaf(stamped(node.receiver, lc),
+                                  node.tuple_index)
+            if leaf is not None:
+                return leaf.held
             recv = stamped(node.receiver, lc).source.held
             if (isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     t))), OptionalType) and recv is Held.STORAGE):
@@ -6333,9 +6233,14 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
             for i, et in enumerate(ets))
     eff = rec.effective_type
     inline_elems = rec.inline_elems
+    # A borrow-form frame slot holds the per-element ownership its declared
+    # type cannot spell (an `Own` element of a mixed slot is inline).
+    frame_own = (rec.frame_class is not None
+                 and parent.held is Held.BORROWED)
     if isinstance(eff, TupleType) and (
-            (inline_elems is not None
-             and len(inline_elems) == len(eff.element_types))
+            frame_own
+            or (inline_elems is not None
+                and len(inline_elems) == len(eff.element_types))
             # A borrow tuple holding a value element with a reference leaf
             # inline (a nested tuple) owns that element whatever its
             # pointers.
@@ -6351,12 +6256,23 @@ def _tuple_layout_elems(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
         ets = eff.element_types
         owned = _read_owned_elements(e, rec, lc, len(ets))
         if owned is None:
-            return None
+            if not frame_own:
+                return None
+            # A frame read no owning sink took moves no element.
+            owned = (False,) * len(ets)
         return tuple(
             element_source(parent, i, held=Held.STORAGE,
                            movable=movable and owned[i])
             if ((inline_elems is not None and inline_elems[i])
-                or not TupleType._element_is_pointer_repr(et))
+                or not (TupleType._element_is_pointer_repr(et)
+                        or (frame_own and (
+                            TupleType._element_is_val_or_ptr(et)
+                            or elem_borrow_form_differs(et)))))
+            else element_source(
+                parent, i, held=Held.BORROWED,
+                trait=(TraitAbi.VAL_OR_PTR
+                       if TupleType._element_is_val_or_ptr(et) else None))
+            if not TupleType._element_is_pointer_repr(et)
             else element_source(
                 parent, i, held=Held.BORROWED, pointer=True, const=rec.const,
                 movable=movable and owned[i], pointee_owned=owned[i])
@@ -6704,7 +6620,8 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
         # An element of a tuple is the leaf its whole holds -- the one
         # element-Source function a conversion's element reads take theirs
         # from -- read here with its own record's facts.
-        leaf = _tuple_leaf(lowered, lc)
+        leaf = _receiver_leaf(stamped(lowered.receiver, lc),
+                              lowered.tuple_index)
         if leaf is not None:
             source = replace(source, held=leaf.held, trait=leaf.trait,
                              pointee_owned=leaf.pointee_owned)
@@ -6713,14 +6630,18 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     return source
 
 
-def _tuple_leaf(node: THIRSubscript, lc: '_LowerCtx') -> 'Source | None':
-    """Element `node.tuple_index` of the tuple `node` reads, as its whole
-    holds it (`source.tuple_elems`)."""
-    receiver = stamped(node.receiver, lc)
-    layout = layout_tuple(receiver)
-    if layout is None or node.tuple_index >= len(layout.element_types):
+def _receiver_leaf(receiver: THIRExpr, index: int) -> 'Source | None':
+    """Element `index` of the lowered tuple `receiver`, as its whole holds
+    it: the one answer to how a tuple subscript's element is held. The
+    receiver's layout (`layout_tuple`), else the tuple sema analyzed it at
+    (a frame field's read is typed by its slot)."""
+    if receiver.source is None:
         return None
-    return tuple_elems(receiver.source, layout)[node.tuple_index]
+    layout = (layout_tuple(receiver)
+              or bare_tuple(receiver.source.analyzed_type))
+    if layout is None or index >= len(layout.element_types):
+        return None
+    return tuple_elems(receiver.source, layout)[index]
 
 
 def copied_type(t: 'TpyType | None', analyzer, *,
@@ -7644,7 +7565,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 or isinstance(receiver, THIRNarrowedRead) and receiver.union_extraction is not None) else None,
             receiver=receiver,
             field_cpp=_field_cpp(e),
-            is_arrow=_field_is_arrow(e, lc),
+            is_arrow=_field_is_arrow(e, receiver, lc),
             narrowed_deref=narrowed_opt,
             form=_member_read_form(rtype, fa_str),
             loc=loc,
@@ -7823,14 +7744,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # A record element a tuple holds as a pointer, read as its
             # object (`f(t[0])`): the pointer local's `(*p)` per element.
             # A receiver keeps the pointer for its `->`.
-            _ptr_elem_deref = (
-                use.result is not _ExprResultUse.RECEIVER
-                and record_like(_sub_elem_t, analyzer)
-                and _subscript_yields_borrow_ptr(e, lc))
-            if (not subscript_prechecked
+            deref_read = (use.result is not _ExprResultUse.RECEIVER
+                          and record_like(_sub_elem_t, analyzer))
+            shape_ok = not (
+                    not subscript_prechecked
                     and not _gen_elem_ref
                     and not _own_elem_bare
-                    and not _ptr_elem_deref
                     and _tuple_subscript_value_read(
                         e, declared, analyzer) is None
                     # A CONTAINER-element chain (`pairs[1][1]`): the
@@ -7853,7 +7772,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                              and e.obj.name in declared
                              and _wrapper_ref_tuple_return(
                                  declared.get(e.obj.name), analyzer)
-                             is not None)):
+                             is not None))
+            # An Optional element whose sink converts the optional (a
+            # pointer slot passes or lifts it, `convert`).
+            shape_ok = shape_ok or (
+                isinstance(_sub_elem_t, OptionalType)
+                and (use.admits(SinkForm.PTR_OPT_PASSTHROUGH)
+                     or use.admits(SinkForm.PTR_OPT_LIFT)))
+            if not shape_ok and not deref_read:
                 raise ThirUnsupported("subscript.tuple_shape", detail=True)
             # Tuple subscript -> `std::get<N>(t)`. Eligibility guaranteed a const index
             # and an eligible-tuple receiver; the shared helper re-derives the
@@ -7865,34 +7791,43 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # is `std::optional<T>` (STORAGE, lifted to `T*` by the consuming deref_check
             # via optional_to_ptr) -- off a borrow tuple it is already `T*` (BORROW).
             _recv_t, idx = tup
-            form = _subscript_result_form(e, rtype, lc)
             recv = _lower_expr(
                 e.obj, lc, declared,
                 # A container-element tuple receiver (`items[i][N]`)
                 # admits through the RECEIVER-position tuple-element row.
                 use=(_ExprUse(result=_ExprResultUse.RECEIVER)
                      if isinstance(e.obj, TpySubscript)
-                     # A MIXED-own-tuple CALL receiver renders bare via
-                     # the btuple-slot call admission
-                     # (`std::get<1>(make_mixed(b))`). Outside
-                     # `_recv_forms` for the same reason as the field
-                     # slice: one fixed render this arm decides, on an
-                     # axis the helper's two do not combine with.
+                     # A borrow-tuple CALL receiver -- a mixed own tuple
+                     # or one lending pointers -- renders bare via the
+                     # btuple-slot call admission
+                     # (`std::get<1>(make_mixed(b))`); each element's sink
+                     # decides whether its read may outlive the call.
+                     # Outside `_recv_forms` for the same reason as the
+                     # field slice: one fixed render this arm decides, on
+                     # an axis the helper's two do not combine with.
                      else (_ExprUse(result=_ExprResultUse.VALUE,
                                     pos=SinkPos.RECEIVER, forms=_ONLY_BTUPLE_SLOT)
                            if (isinstance(e.obj, (TpyCall,
                                                   TpyMethodCall))
-                               and _renders_own_borrow_tuple(
+                               and (_renders_own_borrow_tuple(
                                    e.obj, lc.names_with("borrow_tuple_mixed"),
-                                   lc.analyzer))
+                                   lc.analyzer)
+                                    or _f1_tuple(_recv_t, lc.analyzer)
+                                    is not None))
                            else _ExprUse())),
                 field_prechecked=isinstance(e.obj, TpyFieldAccess))
-            # The element's pointer-ness is the receiver's per-element
-            # Source where the receiver carries one (a tuple layout, a tuple
-            # literal); a receiver without one asks its spelling.
-            elems = recv.source.elems
+            leaf = _receiver_leaf(stamped(recv, lc), idx)
+            elem_pointer = leaf is not None and leaf.pointer_held
+            _ptr_elem_deref = deref_read and elem_pointer
+            if not shape_ok and not _ptr_elem_deref:
+                raise ThirUnsupported("subscript.tuple_shape", detail=True)
+            form = _subscript_result_form(rtype, elem_pointer)
             return THIRSubscript(
-                result_type=rtype,
+                # An `Own[P] | None` element reads as `P | None`: the read
+                # takes no ownership.
+                result_type=(drop_own_marker(rtype)
+                             if isinstance(_sub_elem_t, OptionalType)
+                             else rtype),
                 receiver=recv,
                 index=THIRLiteral(result_type=analyzer.get_expr_type(e.index),
                                   value=idx, loc=loc),
@@ -7902,9 +7837,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # A prechecked consumer spells the element's pointer-ness
                 # itself (`elem_pointer`), as the address-of coerce does.
                 deref=_ptr_elem_deref and not subscript_prechecked,
-                elem_pointer=(elems[idx].pointer_held
-                              if elems is not None and idx < len(elems)
-                              else _subscript_yields_borrow_ptr(e, lc)),
+                elem_pointer=elem_pointer,
                 loc=loc,
             )
         tuple_elem_recv = False
@@ -11585,11 +11518,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                           and lc.self_is_pointer
                           and e.obj.name not in lc.narrow.spelled)))
                 # A tuple-element record receiver: `std::get<N>(t)` is a
-                # bare `T*` off a borrow-form tuple (`t[0]->get()` spelled
-                # `std::get<0>(t)->get()`); a storage/owned element is a
-                # value (`.`) -- the field-access arrow's shared rule.
+                # bare `T*` where the tuple holds the element as one
+                # (`std::get<0>(t)->get()`); an inline element is a value
+                # (`.`) -- the field-access arrow's shared rule.
                 or (isinstance(e.obj, TpySubscript)
-                    and _subscript_yields_borrow_ptr(e.obj, lc))
+                    and recv_lowered.reads_raw_pointer)
                 # An `Own[@dynamic P]` receiver -- name or call rvalue --
                 # is a unique_ptr, so the member access arrows.
                 or _recv_own_dyn(e.obj, declared, analyzer)),
@@ -14049,21 +13982,13 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             lift = not _already_pointer_source(elem, lc)
         elif isinstance(elem, TpySubscript):
             # A container-element lvalue subscript lifts `&(<row render>)`
-            # (`&(::tpy::__getitem__(items, i))`). A subscript whose OBJECT
-            # is itself a borrow-form tuple already yields `T*`
-            # (`std::get<i>(t)`) -- the pass-through face, not sliced.
-            if _subscript_yields_borrow_ptr(elem, lc):
-                # `std::get<i>(p)` is already the element POINTER, so it
-                # passes through with no `&(...)` -- taking its address
-                # would build a `T**`. The shared helper is what decides
-                # that: a STORAGE-form tuple (an `auto&&` alias local) holds
-                # its elements by value, so `std::get` there is a `T&` and
-                # the address-of below is required.
-                _witness("btuple.elem_btuple_subscript")
-                lift = False
-                _btuple_elem_passthrough = True
-            else:
-                lift = not _already_pointer_source(elem, lc)
+            # (`&(::tpy::__getitem__(items, i))`). A tuple element the
+            # tuple holds as a pointer already yields `T*`
+            # (`std::get<i>(t)`) -- the pass-through face, decided on the
+            # lowered read below; one held inline takes the address-of.
+            lift = not _already_pointer_source(elem, lc)
+            _btuple_elem_passthrough = (
+                _subscript_index_and_tuple(elem, analyzer) is not None)
         else:
             note_detail("btuple.elem_source")
             raise ThirUnsupported("expr.tuple_literal")
@@ -14082,6 +14007,17 @@ def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
             elem, lc, declared,
             use=_ExprUse(result=_ExprResultUse.RECEIVER),
             subscript_prechecked=_btuple_elem_passthrough)
+        if _btuple_elem_passthrough:
+            if elem_lowered.reads_raw_pointer:
+                # `std::get<i>(p)` is already the element POINTER, so it
+                # passes through with no `&(...)` -- taking its address
+                # would build a `T**`.
+                _witness("btuple.elem_btuple_subscript")
+                lift = False
+            elif not _lendable(stamped(elem_lowered, lc).source):
+                # The address of an element of a dying tuple would dangle.
+                note_detail("btuple.elem_temporary_tuple")
+                raise ThirUnsupported("expr.tuple_literal")
         lowered.append(elem_lowered if lift
                        else _raw_pointer_slot(elem_lowered))
         if consuming and lift and _node_moves(elem_lowered):
@@ -15128,14 +15064,15 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         dkind, dslot = dc
         if dkind == "wrapper":
             _witness("arg.deref_coerce_wrapper")
+            wrapper = _lower_expr(
+                a.expr, lc, declared,
+                use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                             allow_temps=temp_args))
             return _self_recv_positioned(THIRMethodCall(
                 result_type=dslot,
-                receiver=_lower_expr(
-                    a.expr, lc, declared,
-                    use=_ExprUse(result=_ExprResultUse.RECEIVER,
-                                 allow_temps=temp_args)),
+                receiver=wrapper,
                 method_cpp="__deref__", args=(),
-                is_arrow=_recv_is_arrow(a.expr, lc),
+                is_arrow=_recv_is_arrow(a.expr, wrapper, lc),
                 loc=getattr(a, "loc", None)))
         inner = _lower_expr(a.expr, lc, declared,
                             use=_ExprUse(allow_temps=temp_args))
@@ -17428,11 +17365,17 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # bare record read is not a value leaf); the addr_of wrap is
             # the `&(...)` tail.
             _witness("optptr.subscript")
+            elem = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                               subscript_prechecked=True)
+            # A record element a tuple holds as a pointer already is it.
             return THIROptionalPtrArg(
-                result_type=ot, form=Form.BORROW,
-                value=_lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
-                                  subscript_prechecked=True),
-                addr_of=True, loc=loc)
+                result_type=ot, form=Form.BORROW, value=elem,
+                addr_of=not elem.reads_raw_pointer, loc=loc)
+        if opt_face == 'tuple_elem':
+            elem = _lower_expr(a, lc, declared, use=_NESTED_ARG_USE,
+                               subscript_prechecked=True)
+            _witness("optptr.pass" if elem.reads_raw_pointer else "optptr.lift")
+            return to_local(elem, ot, BindingForm.POINTER, lc.analyzer)
         if opt_face == 'container_temp':
             # A container LITERAL -- or a container-returning rvalue CALL --
             # at the Optional[container] slot: the spelled typed temp +
@@ -19007,6 +18950,13 @@ def _lower_ptr_opt_ternary_arm(arm: TpyExpr, popt: 'OptionalType',
                 and _optional_ptr_borrow_name(arm, declared, analyzer)
                 is not None):
             return _lower_expr(arm, lc, declared)
+        if _tuple_opt_elem_subscript(arm, declared, analyzer):
+            # An Optional element arm converts to the pointer as any
+            # element read does.
+            _witness("ifexpr.optptr_elem_lift")
+            return to_local(_lower_expr(arm, lc, declared,
+                                        subscript_prechecked=True),
+                            popt, BindingForm.POINTER, analyzer)
         if (isinstance(arm, TpyFieldAccess)
                 and _field_receiver_ok(arm, declared, analyzer)
                 and reads_storage_form_optional(analyzer, arm)):

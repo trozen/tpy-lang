@@ -60,7 +60,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
-from ...typesys import (is_bodyless_binding, make_readonly, peel_binding,
+from ...typesys import (drop_own_marker, is_bodyless_binding, make_readonly, peel_binding,
                        pointer_repr_optional, readonly_access)
 from ...typesys import element_access, element_access_getitem
 from ...typesys import (
@@ -5682,6 +5682,20 @@ def _ptr_tuple_field_compare_pair(
     return (pair[0], pair[1])
 
 
+def place_hops(e: TpyExpr, *, properties: bool = False
+               ) -> 'tuple[TpyExpr, list[TpyExpr]]':
+    """The subscript / field hops of a place chain (`root[i].f[j]`),
+    outermost first, and the expression they read off (coerces peeled).
+    `properties`: a `@property` read is a member hop too, for a caller that
+    asks of each hop whether it names storage the root outlives."""
+    hops: list[TpyExpr] = []
+    while (isinstance(e, (TpySubscript, TpyFieldAccess))
+           or (properties and is_property_getter_read(e))):
+        hops.append(e)
+        e = _peel_coerce(e.obj)
+    return e, hops
+
+
 def _subscript_index_and_tuple(sub: TpySubscript,
                                analyzer) -> 'tuple[TupleType, int] | None':
     """`(tuple_type, normalized_idx)` for a tuple subscript with a compile-time-const,
@@ -5730,7 +5744,7 @@ def _tuple_name_elem_subscript(sub: TpyExpr, declared: dict[str, TpyType],
     """A record element read off a tuple NAME (`b = p[1]`, `a = t[0]`,
     `o = p[0]` of an `Own` element): the REF_ALIAS decl binds the
     element's referent. Which render that is follows the name's layout,
-    decided once by `_subscript_yields_borrow_ptr`: a borrow-form name
+    decided once by the read's leaf (`THIRSubscript.elem_pointer`): a borrow-form name
     holds a plain element as `T*` (`(*std::get<1>(p))`); an `Own` element,
     and every element of a storage-form name (an `auto&&` alias, a loop
     variable, an `Own[tuple]` param), is held by value (`std::get<0>(t)`)."""
@@ -5806,7 +5820,7 @@ def _subscript_recv_tuple(e: TpyExpr, locals_: dict[str, TpyType],
         # A MIXED-own-tuple CALL receiver (`make_mixed(b)[1].val` ->
         # `std::get<1>(make_mixed(b))->val`): the call renders bare in
         # place; the element arrow comes from the mixed render
-        # (`_subscript_yields_borrow_ptr`'s call leg).
+        # (the read's leaf, `THIRSubscript.elem_pointer`).
         if not _renders_own_borrow_tuple(recv, frozenset(), analyzer):
             return None
     else:
@@ -7003,12 +7017,10 @@ def _lvalue_chain_root(e: TpyExpr, declared: dict[str, TpyType], analyzer,
     outlives a case block)."""
     if not isinstance(e, (TpyFieldAccess, TpySubscript)):
         return None
-    link = e
-    while (isinstance(link, (TpyFieldAccess, TpySubscript))
-           or is_property_getter_read(link)):
-        if not _lvalue_chain_hop_ok(link, declared, analyzer, pointers):
-            return None
-        link = link.obj
+    link, hops = place_hops(e, properties=True)
+    if not all(_lvalue_chain_hop_ok(hop, declared, analyzer, pointers)
+               for hop in hops):
+        return None
     root = link.name if isinstance(link, TpyName) else None
     if root is None or root not in declared:
         return None
@@ -8680,83 +8692,50 @@ def _value_opt_rvalue(e: TpyExpr, analyzer) -> 'OptionalType | None':
         return u
     return None
 
-def _tuple_field_opt_elem_subscript(init: TpyExpr,
-                                    declared: dict[str, TpyType],
-                                    analyzer) -> bool:
-    """A ptr-repr Optional element read off a TUPLE-typed field
-    (`first = h.t[0]` at `tuple[Optional[Box], Box]`): the storage element
-    lifts to the borrow `T*` via `optional_to_ptr(std::get<0>(h.t))` -- the
-    tuple-field sibling of the field-source OPTIONAL_TO_PTR lift. Literal
-    index only (the std::get spelling); the receiver is an admitted field
-    read whose bare type is a TupleType with a ptr-Optional element at that
-    index."""
-    if not (isinstance(init, TpySubscript)
-            and not isinstance(init.index, TpySlice)
-            and init.slice_function_info is None):
-        return False
-    if isinstance(init.obj, TpyName):
-        # The `Own[tuple]`-PARAM NAME sibling (`first = t[0]` on an
-        # `Own[tuple[P | None, ..]]` param): the binding is the storage
-        # tuple by value, so the element lifts
-        # `optional_to_ptr(std::get<0>(t))` exactly like a tuple FIELD's.
-        # Keyed to the Own-WRAPPED binding: a plain borrow-tuple param's
-        # element is already `T*` (no lift -- admitting it here routed a
-        # divergent render, caught by the standalone-bind pin), and a
-        # storage `auto&&` alias local stays unwitnessed.
-        bt = declared.get(init.obj.name)
-        btu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
-               if bt is not None else None)
-        if not (isinstance(btu, OwnType)
-                and isinstance(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(btu.wrapped))), TupleType)):
-            return False
-    elif not (isinstance(init.obj, TpyFieldAccess)
-              and _field_markers_clean(init.obj)
-              and _field_receiver_ok(init.obj, declared, analyzer)):
-        return False
-    rt = analyzer.get_expr_type(init.obj)
-    rtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
-           if rt is not None else None)
-    if not isinstance(rtu, TupleType):
-        return False
-    idx = fixed_int_literal_value_from_expr(init.index)
-    if idx is None or not (0 <= idx < len(rtu.element_types)):
-        return False
-    et = pointer_repr_optional(rtu.element_types[idx])
-    return (et is not None
-            and _f1_record(_unwrap_own(unwrap_readonly(et.inner)), analyzer))
-
-
-def _tuple_local_ptr_elem_subscript(init: TpyExpr,
-                                    locals_: dict[str, TpyType],
-                                    own_borrow_tuple_locals: 'AbstractSet[str]',
-                                    analyzer) -> bool:
-    """A ptr-repr Optional element read off a MIXED own-borrow tuple LOCAL
-    (`p[1]` on `p = make_mixed(b)` at `tuple[Own[Box], Box | None]`):
-    std::get already yields the bare `Box*` borrowed half, so consumers
-    bind / compare it DIRECTLY -- no optional_to_ptr lift (the FIELD /
-    Own-param flavor keeps its lift in `_tuple_field_opt_elem_subscript`).
-    Keyed on the own_borrow_tuple_locals BINDING set: a fully-owned
-    storage-tuple local stores `std::optional<Box>` at that slot (a
-    different, has_value render) and must stay out. Literal index only
-    (the std::get spelling)."""
+def _tuple_opt_elem_subscript(init: TpyExpr, declared: dict[str, TpyType],
+                               analyzer) -> bool:
+    """A constant-index read of a pointer-repr Optional element of a tuple
+    (`e = t[0]` at `tuple[Box | None, int32]`), whatever the receiver: how
+    the tuple holds the element is the lowered read's leaf (a `T*` passes,
+    a stored `std::optional<T>` lifts). A field receiver is an admitted
+    member read."""
     if not (isinstance(init, TpySubscript)
             and not isinstance(init.index, TpySlice)
             and init.slice_function_info is None
-            and isinstance(init.obj, TpyName)
-            and init.obj.name in own_borrow_tuple_locals):
+            and not init.needs_optional_runtime_check):
         return False
-    bt = locals_.get(init.obj.name)
-    btu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
-           if bt is not None else None)
-    if not isinstance(btu, TupleType):
+    if isinstance(init.obj, TpyFieldAccess) and not (
+            _field_markers_clean(init.obj)
+            and _field_receiver_ok(init.obj, declared, analyzer)):
         return False
-    idx = fixed_int_literal_value_from_expr(init.index)
-    if idx is None or not (0 <= idx < len(btu.element_types)):
+    res = _subscript_index_and_tuple(init, analyzer)
+    if res is None:
         return False
-    et = pointer_repr_optional(btu.element_types[idx])
+    # A tuple in a container's element (`ts[0]`, `ts[0].t`) stays out, as
+    # the record element's sibling does: a pointer bound into it is not
+    # tracked as a borrow of the container, which a resize would leave
+    # dangling (BUGS.md#tuple-elem-of-container-elem-bind-rejects).
+    if any(isinstance(hop, TpySubscript)
+           and _subscript_index_and_tuple(hop, analyzer) is None
+           for hop in place_hops(init.obj)[1]):
+        return False
+    tt, idx = res
+    et = pointer_repr_optional(drop_own_marker(tt.element_types[idx]))
     return (et is not None
-            and _f1_record(_unwrap_own(unwrap_readonly(et.inner)), analyzer))
+            and _f1_record(unwrap_readonly(et.inner), analyzer))
+
+
+def opt_element_none_subject(e: TpyExpr, declared: dict[str, TpyType],
+                             analyzer) -> bool:
+    """An Optional ELEMENT read as the subject of `is [not] None`: a
+    pointer-repr Optional element of a tuple (`t[0]`,
+    `_tuple_opt_elem_subscript`) or a storage-form Optional container
+    element (`d["a"]` on `dict[str, P | None]`). Where the lowered read
+    holds the element picks the test: a pointer compares, a stored
+    optional tests `has_value()`."""
+    return isinstance(e, TpySubscript) and (
+        _tuple_opt_elem_subscript(e, declared, analyzer)
+        or reads_storage_form_optional(analyzer, e))
 
 
 def _empty_instantiation_family(t: 'TpyType | None') -> bool:
@@ -8921,22 +8900,13 @@ def _is_none_compare_operand(e: TpyBinOp, locals_: dict[str, TpyType],
             and not _optional_field_none_subject(operand, locals_, analyzer)
             and _union_none_name(operand, locals_, analyzer) is None
             and _union_none_field(operand, locals_, analyzer) is None
-            # A ptr-Optional TUPLE-field element read (`h.t[0] is None`):
-            # the pre-lifted pointer compare
-            # (`optional_to_ptr(std::get<0>(h.t)) == nullptr`).
-            and not _tuple_field_opt_elem_subscript(operand, locals_,
-                                                    analyzer)
+            and not opt_element_none_subject(operand, locals_, analyzer)
             # A nullable borrow-form tuple LOCAL (`t: tuple[int, Box] |
             # None`, `std::optional<std::tuple<.., T*>>`): the has_value
             # test over the bare binding.
             and not (isinstance(operand, TpyName)
                      and _optional_borrow_tuple(locals_.get(operand.name),
                                                 analyzer) is not None)
-            # A STORAGE-form Optional container subscript (`d["a"] is not
-            # None` on `dict[str, P | None]` -- `__getitem__` returns
-            # `std::optional<P>`): the has_value test over the bare read.
-            and not (isinstance(operand, TpySubscript)
-                     and reads_storage_form_optional(analyzer, operand))
             # A `Ptr[T]`-returning CALL rvalue subject
             # (`_get_current_executor() is None`): the same type-agnostic
             # pointer compare (`== nullptr`) over the bare call render --
@@ -10683,6 +10653,11 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
                 or (isinstance(a, TpySetLiteral) and is_set(inner))):
             return 'container_temp'
         return None
+    if _tuple_opt_elem_subscript(a, declared, analyzer):
+        # An Optional element of a tuple: its read converts to the slot's
+        # pointer (passed where the tuple holds one, lifted where it stores
+        # the optional); the conversion decides whether the pointee binds.
+        return 'tuple_elem'
     if isinstance(a, TpySubscript):
         # Mirror _borrow_elem_subscript_shape (checks.py:561): reject the
         # unproven-Optional receiver (deref_check would be dropped) and any

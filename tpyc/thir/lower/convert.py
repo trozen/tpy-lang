@@ -311,6 +311,10 @@ def _to_pointer(expr: THIRExpr, s: Source, st: TpyType,
                                                unwrap_readonly(rt.inner),
                                                types):
         if s.held is Held.STORAGE and not s.pointer_held:
+            if not _lendable(s):
+                # The pointer into an optional that dies with the
+                # statement would dangle.
+                return Refuse("borrow_source")
             return Plan(THIRFormConvert(result_type=st, value=expr,
                                         form=Form.BORROW, loc=expr.loc),
                         Effect.LIFT)

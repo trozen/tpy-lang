@@ -698,10 +698,14 @@ def main() -> None:
     lr = lam(A(16))
     print("lambda", lr[0].v, lr[1])
     ho = HO((A(1), 2))
-    # no read of the lent Optional element lowers yet, so the alias is not
-    # observed here (BUGS.md#lent-optional-tuple-element-match-ice)
+    # the lent Optional element is the stored object's pointer: a write
+    # through it lands in `ho`
     orr = opt_get(ho)
-    print("optional", orr[1])
+    oe = orr[0]  # tpyc: ok
+    if oe is not None:
+        oe.v = 18
+    s = ho.o[0]
+    print("optional", orr[1], -1 if s is None else s.v)
     g1 = first((A(5), 6))
     print("generic.class", g1[0].v, g1[1])
     g2 = first_str()

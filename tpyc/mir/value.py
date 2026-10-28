@@ -213,6 +213,16 @@ class MIRShape:
                 and all(m is None or m.scalar_by_value or m.owns_storage for m in self.members))
 
     @property
+    def pointer_element(self) -> bool:
+        """A tuple member held as a bare pointer (`std::get<N>` yields
+        `T*`): a record held by pointer, or a pointer Optional -- the sum
+        `inline_sum` excludes, whose payload is a pointer."""
+        if self.cls is MIRClass.RECORD:
+            return self.is_pointer
+        return (self.cls is MIRClass.OPTIONAL
+                and any(m is not None and m.is_pointer for m in self.members))
+
+    @property
     def owned_sum(self) -> bool:
         """A sum held by value with an alternative that owns its storage
         (a record or a container held inline): the storage of that

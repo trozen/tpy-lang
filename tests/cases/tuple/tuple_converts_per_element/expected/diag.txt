@@ -18,6 +18,6 @@ main.py:351: warning: owned tuple param 't' is never consumed (not moved out by 
 main.py:359: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 356)
 main.py:365: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 363)
 main.py:697: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:724: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:726: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
-main.py:795: warning: copies readonly[A] into owned storage (tuple element 1); use copy() to make this explicit
+main.py:728: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:730: warning: copies A into owned storage (tuple element 0); use copy() to make this explicit
+main.py:799: warning: copies readonly[A] into owned storage (tuple element 1); use copy() to make this explicit

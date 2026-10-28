@@ -403,6 +403,15 @@ def _value_opt_kind(rec: BindingRepr | None, analyzer
     return None
 
 
+def walrus_owned_slot(rec: BindingRepr) -> bool:
+    """A walrus's deferred-init `std::optional<T>` of an owned non-value:
+    read through its `(*x)` deref, where a hoist's owned slot (`pointer`
+    and `optional_storage`) and a rebound record's slot of its own
+    (`pointer`) read as the `T*` that aims at it."""
+    return (rec.site_kind == "walrus" and rec.form is F.OWNED_SLOT
+            and not rec.pointer)
+
+
 def project_held(rec: BindingRepr | None, rtype: TpyType | None,
                  deref: bool, analyzer, param_names, owned_viewfam_params, *,
                  name: str | None = None, renamed: bool = False) -> Held:
@@ -433,6 +442,9 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
     if rec is not None and rec.ptr_tuple is not None:
         # Every element a pointer, whatever `Own` the declared type carries.
         return Held.BORROWED
+    if rec is not None and walrus_owned_slot(rec):
+        # The walrus's own `std::optional<T>` slot, read through its deref.
+        return Held.STORAGE
     if kind is ValueOptKind.SCALAR:
         return Held.VALUE
     if rec is not None and rec.frame_owned_view:
@@ -1285,7 +1297,6 @@ _DECL_SHAPE: dict[tuple[F, BC], LocalBinding] = {
     (F.POINTER, BC.OPT_CALL_PASSTHROUGH): LocalBinding.OPTIONAL_TO_PTR,
     (F.POINTER, BC.STORAGE_OPT_LIFT): LocalBinding.OPTIONAL_TO_PTR,
     (F.POINTER, BC.OPT_OWN_PARAM_LIFT): LocalBinding.OPTIONAL_TO_PTR,
-    (F.POINTER, BC.MIXED_ELEM_PTR): LocalBinding.OPTIONAL_TO_PTR,
     (F.STORAGE_TUPLE, BC.STORAGE_TUPLE_ALIAS):
         LocalBinding.STORAGE_TUPLE_ALIAS,
     (F.STORAGE_TUPLE, BC.STORAGE_TUPLE_CHAIN):
@@ -1581,14 +1592,6 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind):
                     ctx.declared_view.get(init.name), an) == vtype):
             return _mk(site, name, typ, F.POINTER, BC.OPT_OWN_PARAM_LIFT,
                        pointer=True, move_exception=M.ALIAS)
-    if (not site.in_branch and pointer_repr_optional(vtype) is not None
-            and fixed
-            and _p._tuple_local_ptr_elem_subscript(
-                init, ctx.declared_view, ctx.names_with("borrow_tuple_mixed"), an)):
-        # `decl.mixed_elem_ptr`: `e = p[1]` off a mixed own-borrow tuple
-        # local.
-        return _mk(site, name, typ, F.POINTER, BC.MIXED_ELEM_PTR, pointer=True,
-                   move_exception=M.ALIAS)
     # The `auto&&` storage-tuple alias (and its chain).
     rec = _storage_tuple_alias(site, name, typ, inp, visible, ctx)
     if rec is not None:

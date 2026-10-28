@@ -218,11 +218,14 @@ def test_missing_read_or_binding_fact_is_uncovered(artifacts: Artifacts) -> None
         assert isinstance(lower_function(bad, MIRBodyId("optionals", fn.name)), MIRNotCovered)
 
 
-@pytest.mark.parametrize("annotation,reason", [
-    ("Cell | None", "decl.reseat_param_source"),
-    ("Cell | Other", "decl.union_reseat_source"),
+@pytest.mark.parametrize("annotation,thir_reason,mir_reason", [
+    # The Optional local re-points at the parameter (`current = &(b);`);
+    # MIR does not cover the reseat.
+    ("Cell | None", None, "unsupported optional reseat"),
+    ("Cell | Other", "decl.union_reseat_source", None),
 ])
-def test_record_parameter_reseat_source_gate_is_unchanged(annotation: str, reason: str) -> None:
+def test_record_parameter_reseat_source_verdicts(annotation: str, thir_reason: str | None,
+                                                 mir_reason: str | None) -> None:
     source = SOURCE + """\
 class Other:
     value: int32
@@ -231,8 +234,17 @@ class Other:
     current = b
     return b.value
 """
-    _, reasons = _strict_reject(source)
-    _assert_rejects_at(reasons, "body:stmt.var_decl", reason)
+    if thir_reason is not None:
+        _, reasons = _strict_reject(source)
+        _assert_rejects_at(reasons, "body:stmt.var_decl", thir_reason)
+        return
+    compiler, modules = _compile(source)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(f for node, f in ctx.thir_functions.items() if node.name == "unsupported")
+        result = lower_function(fn, MIRBodyId("optionals", fn.name))
+    assert isinstance(result, MIRNotCovered), result
+    assert mir_reason in result.reason
 
 
 @pytest.mark.parametrize("annotation", [

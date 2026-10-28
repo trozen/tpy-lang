@@ -288,6 +288,8 @@ AUDIT_ALLOW_TESTS = {
                                   "a tuple binding's layout",
     ("_dies", "*"): "the Source stamp: a member / element read off a "
                     "temporary dies with it",
+    ("place_hops", "*"): "a place chain's own shape: the subscript and "
+                          "field hops are what the walk follows",
     ("_temporary", "*"): "the Source stamp: a select's lifetime is its "
                          "lowering's decision; a node with no parse node "
                          "is durable only where its kind says so",

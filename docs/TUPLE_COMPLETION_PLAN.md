@@ -303,8 +303,9 @@ per shape; the mixed tuple global (D2) waits on that entry.
     (2, c)))` at a free function's slot is step 3.
   - [x] `d["a"] = (b, 1)` -- U5 step 2 (`tests/cases/tuple/
     container_tuple_stores`)
-  - [ ] an `Optional` element local: `t: tuple[Box | None, int32] = (b, 1)`
-    [`decl.slot_type`]
+  - [x] an `Optional` element local: `t: tuple[Box | None, int32] = (b, 1)`
+    then `x = t[0]` -- the element-form unit (matrix cell
+    `x__optional_elem__T` now `ok`; `tests/cases/tuple/optional_element_reads`)
   - [ ] walrus of a tuple call: `(t := g(b))[1]` [`expr.walrus`]; a nested
     literal `(u := (1, (2, c)))` [`expr.walrus`] (sema warns the nested copy)
   - [x] a tuple local at an `Own[tuple[...]]` arg: `take(t)` -- U5 step 3

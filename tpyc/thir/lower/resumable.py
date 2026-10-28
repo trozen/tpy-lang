@@ -1292,8 +1292,8 @@ def frame_local_class(lname: str, ltype, kind, analyzer,
         # Box*>>`): writes emplace like any frame_slot; element reads
         # split per element off the deref'd slot -- `.` for the owned
         # element, `->` for the borrowed pointer -- keyed on the
-        # ELEMENT types exactly like the sync mixed alias's chooser
-        # (`_subscript_yields_borrow_ptr`).
+        # element's leaf exactly like the sync mixed alias's chooser
+        # (`THIRSubscript.elem_pointer`).
         return C.MIXED_TUPLE_SLOT
     if kind is K.SOURCE_FORM_SLOT:
         # The field's payload comes from the iteration source, so the

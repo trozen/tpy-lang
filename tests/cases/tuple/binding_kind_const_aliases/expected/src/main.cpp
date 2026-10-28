@@ -24,8 +24,7 @@ namespace tpyapp::main {
 }
 
 // # A for head: an Optional target off an unmutated list parameter. It only
-// # reads: the caller cannot name the element a second time without a copy
-// # (BUGS.md#list-tuple-optional-element-local-rejects).
+// # reads.
 // def head_opt(ts: list[tuple[Box | None, int]]) -> int:
 //     s = 0
 //     for a, n in ts:

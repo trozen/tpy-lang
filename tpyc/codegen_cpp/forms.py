@@ -178,8 +178,9 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
         getitem = getitem_call_of(expr)
         if getitem is not None:
             return call_returns_cpp_ref(analyzer, getitem)
-        # A tuple subscript pre-lifts to `T*` in codegen, so it is not a storage
-        # source (mirrors the tuple carve-out in is_storage_form_optional_source).
+        # A tuple element is not this form: how a tuple holds it is its
+        # lowered read's leaf (`THIRSubscript.elem_pointer`), which this
+        # parse-node question cannot see.
         obj_type = _expr_type(analyzer, expr.obj)
         return not (obj_type is not None
                     and isinstance(unwrap_qualifiers(obj_type), TupleType))

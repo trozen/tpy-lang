@@ -74,7 +74,9 @@ from ..nodes import (
     THIRMatchBinding,
     THIRSubscript,
 )
+from .convert import to_local
 from .predicates import (
+    _tuple_opt_elem_subscript,
     overload_match_fold,
     _container_scalar_read,
     _native_cond_scalar,
@@ -2454,6 +2456,14 @@ def _lower_optional_subject(stmt: TpyMatch, lc: _LowerCtx,
         return _lower_expr(stmt.subject, lc, declared), True
     if not isinstance(stmt.subject, (TpyFieldAccess, TpySubscript)):
         raise ThirUnsupported("match.optional_subject_shape", detail=True)
+    if _tuple_opt_elem_subscript(stmt.subject, declared, lc.analyzer):
+        # An Optional element of a tuple: its read converts to the pointer
+        # (passed where the tuple holds one, lifted where it stores the
+        # optional), bound by value -- the pointer, never the object.
+        _witness("match.optional_subject_lift")
+        elem = _lower_subscript_source(stmt.subject, lc, declared)
+        return to_local(elem, pointer_repr_optional(stmt.subject_type),
+                        BindingForm.POINTER, lc.analyzer), False
     # An Optional-typed intermediate link rejects inside the source lift
     # (`field.opt_receiver` / `subscript.opt_receiver` -- such a link needs a
     # None check the lift's prechecked recursion does not emit).

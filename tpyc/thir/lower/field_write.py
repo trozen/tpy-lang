@@ -125,7 +125,7 @@ from .expressions import (
     _lower_ru_literal,
     _lower_tuple_literal,
     _slot_literal_retype,
-    _subscript_yields_borrow_ptr,
+    _subscript_index_and_tuple,
     binding_of,
     named_type_of,
     stamped,
@@ -158,8 +158,8 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
                                 lc: _LowerCtx, ft: 'TpyType | None') -> bool:
     """A value-scalar field write through a borrow-tuple element
     (`t[1].val = 99` -> `std::get<1>(t)->val = 99;`): the target rides the
-    tuple-subscript field READ arm (the `_subscript_yields_borrow_ptr`
-    arrow) off an in-scope borrow-tuple NAME receiver; only value-scalar /
+    tuple-subscript field READ arm (its arrow is the read's leaf) off an
+    in-scope borrow-tuple NAME receiver; only value-scalar /
     char field slots admit (record/container slots carry write machinery
     this family does not render)."""
     target = stmt.target
@@ -169,12 +169,25 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             and _borrow_tuple_local_type(
                 target.obj.obj.name, declared,
                 lc.names_with("storage_tuple")) is not None
-            # Plain borrow elements only: an Optional element write needs
+            # Plain record elements only: an Optional element write needs
             # the deref_check machinery (rejects, pinned).
-            and _subscript_yields_borrow_ptr(target.obj, lc)):
+            and _plain_record_elem(target.obj, lc)):
         return False
     return bool((_eligible_scalar(ft) or _eligible_char(ft))
                 and _witness("assign.btuple_elem_field"))
+
+
+def _plain_record_elem(sub: TpySubscript, lc: _LowerCtx) -> bool:
+    """A constant-index tuple element whose type is a plain reference type
+    (no Optional): the element families the write row renders."""
+    res = _subscript_index_and_tuple(sub, lc.analyzer)
+    if res is None:
+        return False
+    tt, idx = res
+    et = tt.element_types[idx]
+    return (TupleType._element_is_pointer_repr(et)
+            and not isinstance(unwrap_readonly(unwrap_ref_type(
+                unwrap_send_sync(et))), OptionalType))
 
 
 @dataclass(frozen=True)

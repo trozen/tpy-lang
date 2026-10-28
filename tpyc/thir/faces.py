@@ -594,8 +594,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # container-method arm over a `.` receiver
     # Tuple-element F1-RECORD subscript receiver (`t[0].get()` -- std::get<N>
     # yields a `T*` off a borrow-form tuple param, `->`; a value element off
-    # a storage tuple local, `.` -- the arrow keyed on
-    # `_subscript_yields_borrow_ptr`, same as a field read over the element).
+    # a storage tuple local, `.` -- the arrow keyed on the lowered read's
+    # `elem_pointer`, same as a field read over the element).
     "method.recv.tuple_record_elem",
     # Tuple-element STR subscript receiver (`kv[0].lower()`): std::get<N>
     # feeds the view family's receiver slot positionally.
@@ -1471,8 +1471,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # `Any is [not] None`: the D15 typeid probe against std::monostate.
     "isnone.any_typeid",
     "isnone.global_slot",            # `g == nullptr` on the raw slot pointer
-    "isnone.subscript_storage",      # `d["a"] is not None` -> has_value over
-                                     # the storage-form __getitem__ read
+    "isnone.opt_element",            # `t[0] is None` / `d["a"] is None` on
+                                     # an Optional element: `!= nullptr` on a
+                                     # pointer the tuple holds, has_value on
+                                     # a stored optional
     "call.opt_callable_unwrap",      # `f(x)` on a `Callable | None` binding
                                      # -> `f.value()(x)` (declared-type keyed)
     "isnone.property_subject",       # `w.node is None` on a @property read
@@ -1488,12 +1490,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "binop.iter_membership",         # `x in b` on a user iterable with no
                                      # __contains__ -> the __iter__/__next__
                                      # statement-expression loop
-    "isnone.tuple_elem_lift",        # `h.t[0] is None` -> pre-lifted
-                                     # `optional_to_ptr(std::get<0>(h.t))
-                                     # == nullptr`
-    "isnone.tuple_elem_bare",        # `p[1] is None` off a mixed own-borrow
-                                     # tuple LOCAL -> the bare
-                                     # `std::get<1>(p) != nullptr` (no lift)
     "decl.mixed_elem_ptr",           # `e = p[1]` off a mixed own-borrow
                                      # tuple LOCAL -> `Box* e =
                                      # std::get<1>(p);` (bare, no lift)

@@ -5,7 +5,7 @@ finally ran
 finally 15 2
 async 15
 lambda 16 2
-optional 2
+optional 2 18
 generic.class 5 6
 generic.str s 7
 generic.twin 8 9

@@ -1,0 +1,2 @@
+main.py:134: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:496: warning: lambda at line 496 may keep its own copy of 't'; changes made after it is created may not be seen

@@ -1,0 +1,2 @@
+main.py:20: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:19: error: in function 'neg_tmp': this construct is not yet supported by C++ code generation (stmt.var_decl:decl.slot_type)

@@ -1,0 +1,62 @@
+bind literal 11
+bind param 12
+bind lent 13
+bind none True
+bind owned True
+bind readonly True
+isnone param False True
+isnone param True False
+isnone literal True
+isnone field False
+isnone then read 12
+method 20
+gen 1
+gen 21
+arg param 121
+arg field 213
+rebind 15
+rebind elem 122
+ternary 16
+match 17
+match lent 23
+owned sinks 107 True
+return 24
+return stored True
+rec arg 124
+rec print box1
+rec print 124
+rec mixed call 5 124
+rec walrus 5 125
+rec walrus rebound 9 2
+rec frame 3
+rec frame 18
+bind direct lent 30
+bind field 31
+bind alias 32
+bind own readonly True
+own param 33 44
+arg more 101 132 -1
+isnone more False True
+match none
+match more 35 36
+ternary field 37
+rebind rvalue 3 38
+rebind branch 9
+rebind branch after 39
+closure 40
+loop 6
+async 41
+try True
+try after 42
+lambda 142
+gen param 1
+gen param 2
+match steps 43
+branch method True
+branch method after 45
+branch alias 46
+branch param 47
+branch pointer tuple 48
+branch block tuple 49
+own ternary True 51 51
+own ternary False 2 -1

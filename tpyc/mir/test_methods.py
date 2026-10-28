@@ -263,18 +263,28 @@ def test_a_reference_parameter_holder_is_never_reseated(artifacts: Artifacts) ->
         uncovered(replace(fn, body=(alias, reseated, *rest)), "reference parameter reseat")
 
 
-@pytest.mark.parametrize("binding,reason", [
-    ("saved: Cell | Other = self", "decl.ptr_union_source"),
-    ("saved: Cell | Other = other\n        saved = self", "decl.union_reseat_source"),
-    ("saved: Cell | None = None\n        saved = self", "decl.opt_reseat_source"),
+@pytest.mark.parametrize("binding,thir_reason,mir_reason", [
+    ("saved: Cell | Other = self", "decl.ptr_union_source", None),
+    ("saved: Cell | Other = other\n        saved = self", "decl.union_reseat_source", None),
+    # The Optional local re-points at the receiver (`saved = &((*this));`);
+    # MIR does not cover the reseat.
+    ("saved: Cell | None = None\n        saved = self", None, "unsupported optional reseat"),
 ])
-def test_self_wrapper_captures_retain_frontend_gates(binding: str, reason: str) -> None:
+def test_self_wrapper_capture_verdicts(binding: str, thir_reason: str | None,
+                                       mir_reason: str | None) -> None:
     source = SOURCE.replace("    def owned_copy", f"""    def wrapper(self, other: Cell) -> int32:
         {binding}
         return 0
     def owned_copy""")
-    _, reasons = _strict_reject(source)
-    _assert_rejects_at(reasons, "body:stmt.var_decl", shape=reason)
+    if thir_reason is not None:
+        _, reasons = _strict_reject(source)
+        _assert_rejects_at(reasons, "body:stmt.var_decl", shape=thir_reason)
+        return
+    compiler, modules = _compile(source)
+    with activate_compiler(compiler):
+        _, ctx = compiler.generate_code_and_thir(_entry(modules))
+        fn = next(f for node, f in ctx.thir_functions.items() if node.name == "wrapper")
+    uncovered(fn, mir_reason)
 
 
 def test_self_optional_pointer_initializer_remains_uncovered(artifacts: Artifacts) -> None:

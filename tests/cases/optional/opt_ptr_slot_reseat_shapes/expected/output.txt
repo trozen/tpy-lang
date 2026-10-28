@@ -1,1 +1,7 @@
 2 9
+self reseat 7 7
+param reseat 5 5
+borrow call 11
+dunder 1213
+dunder gen [1, 2, 14]
+call ternary 615

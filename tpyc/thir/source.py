@@ -157,7 +157,6 @@ class BindingConstruct(Enum):
     OPT_PTR = "opt_ptr"
     OPTIONAL_TO_PTR = "optional_to_ptr"
     OPT_OWN_PARAM_LIFT = "opt_own_param_lift"
-    MIXED_ELEM_PTR = "mixed_elem_ptr"
     STORAGE_TUPLE_ALIAS = "storage_tuple_alias"
     STORAGE_TUPLE_CHAIN = "storage_tuple_chain"
     COMPREHENSION = "comprehension"

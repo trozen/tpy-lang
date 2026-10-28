@@ -9,13 +9,28 @@ namespace tpyapp::main {
 
 struct Inner;
 struct Box;
+struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_dunder_gen;
+
+// def param_reseat(a: Cell | None, b: Cell) -> int32:
+int32_t param_reseat(Cell* a, Cell& b);
 // def double_rvalue_reseat() -> int32:
 int32_t double_rvalue_reseat();
 // def lvalue_reseat(b: Box) -> int32:
 int32_t lvalue_reseat(Box& b);
+// def pick(c: Cell) -> Cell:
+Cell& pick(Cell& c);
+// def borrow_call(a: Cell) -> int32:
+int32_t borrow_call(Cell& a);
+// def dunder() -> int32:
+int32_t dunder();
+// def dunder_gen(a: Cell, b: Cell) -> Iterator[int32]:
+__gen_dunder_gen dunder_gen(Cell& a, Cell& b);
+// def call_ternary(a: Cell, b: Cell, flag: bool) -> int32:
+int32_t call_ternary(Cell& a, Cell& b, bool flag);
 // def main() -> None:
 void main();
 
@@ -51,6 +66,68 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class Cell:
+struct Cell {
+    // value: int32
+    int32_t value;
+
+    // def __init__(self, value: int32) -> None:
+    Cell() = default;
+    explicit Cell(int32_t value);
+
+    // def __add__(self, other: "Cell") -> "Cell":
+    const Cell& __add__(const Cell& other) const;
+
+    // def __neg__(self) -> "Cell":
+    const Cell& __neg__() const;
+
+    // def keep(self) -> int32:
+    int32_t keep();
+
+    friend const Cell& operator+(const Cell& lhs, const Cell& other) {
+        return lhs.__add__(other);
+    }
+
+    friend const Cell& operator-(const Cell& operand) {
+        return operand.__neg__();
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
+    ::tpy::print_object_default(os, "Cell", obj);
+    return os;
+}
+
+// def dunder_gen(a: Cell, b: Cell) -> Iterator[int32]:
+struct __gen_dunder_gen : public ::tpy::next_iter_mixin<__gen_dunder_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Cell& a;
+    Cell& b;
+    const Cell* p = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_dunder_gen(Cell& a, Cell& b)
+        : __state(S_INITIAL),
+          a(a),
+          b(b) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_dunder_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_dunder_gen&) {
+        return os << "<generator dunder_gen>";
+    }
+};
+
 
 // def __init__(self, value: int32) -> None:
 //     self.value = value
@@ -59,5 +136,37 @@ inline Inner::Inner(int32_t value) : value(value) {}
 // def __init__(self, inner: Own[Inner]) -> None:
 //     self.inner = inner
 inline Box::Box(Inner&& inner) : inner(std::move(inner)) {}
+
+// def __init__(self, value: int32) -> None:
+//     self.value = value
+inline Cell::Cell(int32_t value) : value(value) {}
+
+// def __add__(self, other: "Cell") -> "Cell":
+//     return self if self.value > other.value else other
+inline const Cell& Cell::__add__(const Cell& other) const {
+    return (((this->value > other.value)) ? ((*this)) : (other));
+}
+
+// def __neg__(self) -> "Cell":
+//     return self
+inline const Cell& Cell::__neg__() const {
+    return (*this);
+}
+
+// def keep(self) -> int32:
+//     # a method: the Optional local re-points at the receiver
+//     saved: Cell | None = None
+//     saved = self  # tpyc: ok
+//     if saved is not None:
+//         saved.value = 7
+//     return self.value
+inline int32_t Cell::keep() {
+    Cell* saved = nullptr;
+    saved = &((*this));
+    if ((saved != nullptr)) {
+        saved->value = 7;
+    }
+    return this->value;
+}
 void __tpy_init();
 } // namespace tpyapp::main

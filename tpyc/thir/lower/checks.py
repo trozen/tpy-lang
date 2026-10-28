@@ -275,7 +275,7 @@ from .predicates import (
     _nested_container_elem_type,
     _tuple_name_elem_subscript,
     _borrow_tuple_local_type,
-    _tuple_field_opt_elem_subscript,
+    _tuple_opt_elem_subscript,
     _field_receiver_ok,
     _field_receiver_or_unbound_self_ok,
     copy_call_arg,
@@ -1838,15 +1838,17 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         target_type, stmt.init, analyzer, name=stmt.name, rebound=rebound,
         hoisted=prescan.hoisted, move_through=prescan.move_through)
     if binding is LocalBinding.OTHER:
-        # A ptr-Optional element off a TUPLE-typed field (`first = h.t[0]`)
-        # classifies OTHER via the classifier's tuple carve-out (tuple-element
-        # reads are lifted at the consumer), but the decl IS
-        # that consumer: re-tag for the subscript-lift row
-        # (`Box* first = ::tpy::optional_to_ptr(std::get<0>(h.t));`).
-        if (stmt.name not in prescan.reassigned
-                and pointer_repr_optional(target_type) is not None
-                and _tuple_field_opt_elem_subscript(stmt.init, declared,
-                                                    analyzer)):
+        # A ptr-Optional element of a tuple (`first = t[0]`) classifies
+        # OTHER (`reads_storage_form_optional` answers no tuple element),
+        # but the decl IS its consumer: re-tag for the element row, which
+        # converts the lowered read to the pointer (`Box* first =
+        # std::get<0>(t);` where the tuple holds a pointer,
+        # `::tpy::optional_to_ptr(std::get<0>(h.t))` where it stores the
+        # optional). A hoisted name stays OTHER, as the field twin
+        # `e = h.o` does in `_local_binding_shape`.
+        if (pointer_repr_optional(target_type) is not None
+                and stmt.name not in prescan.hoisted
+                and _tuple_opt_elem_subscript(stmt.init, declared, analyzer)):
             return LocalBinding.OPTIONAL_TO_PTR
         # A pointer-repr Optional TERNARY source classifies OTHER
         # (`reads_storage_form_optional` does not walk ternary arms), but
@@ -7573,9 +7575,10 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     if face in ('none', 'select'):
         # A select's operands and form gate in its own lowering.
         return True
-    if face == 'subscript':
-        # `&(<lvalue record subscript>)` -- temp-free, so no flush position
-        # needed; the face verdict already pinned the lvalue-borrow shape.
+    if face in ('subscript', 'tuple_elem'):
+        # `&(<lvalue record subscript>)`, or a tuple's Optional element
+        # converted to the pointer -- temp-free, so no flush position
+        # needed; the face verdict already pinned the shape.
         return True
     if face == 'call_pass':
         # A borrow-returning call passed bare -- temp-free; the call's own
@@ -8731,7 +8734,7 @@ def _tuple_record_elem_subscript_recv(recv: TpyExpr,
     off a borrow-form tuple param (`->` access) or a value/`T&` element off a
     storage tuple local (`.` access); an `Own` element is held by value
     (`.` access); the method node's arrow decision reads
-    `_subscript_yields_borrow_ptr` so the two spell the right access.
+    the lowered read's `elem_pointer` so the two spell the right access.
     NAME receivers only, non-Optional record elements only."""
     if not isinstance(recv, TpySubscript) or recv.needs_optional_runtime_check:
         return False
@@ -15755,35 +15758,27 @@ def _expr_evaluation_inert(exprs: 'Sequence[TpyExpr]',
                for a in exprs)
 
 def _print_tuple_record_elem(a: TpyExpr, locals_: dict[str, TpyType],
-                             storage_tuple_locals: 'AbstractSet[str]',
-                             analyzer) -> 'str | None':
+                             analyzer) -> bool:
     """`print(t[1])` where the element is an F1 record: the record streams
-    through its emitted operator<<, and the only question is whether the
-    element read hands back the value or a pointer to it. Returns "deref" or
-    "bare", or None when the shape is outside the row.
-
-    A BORROW-form tuple holds `T*` elements, and print is a VALUE position, so
-    the referent streams (`(*std::get<1>(t))`); a STORAGE-form one holds the
-    element by value and streams bare (`std::get<0>(p.points)`). The split is
-    the same storage-vs-borrow evidence the arg rows use: a field read is
-    always a storage source, a NAME is one only when it is registered as such.
+    through its emitted operator<<; whether the element read hands back the
+    value or a pointer to it is the lowered read's (`reads_raw_pointer`): a
+    pointer element streams its referent (`(*std::get<1>(t))`), an inline
+    one bare (`std::get<0>(p.points)`). Whether the shape is in the row.
     The subscript twin of `print.record_call`."""
     if not isinstance(a, TpySubscript) or isinstance(a.index, TpySlice):
-        return None
+        return False
     recv = a.obj
     if isinstance(recv, TpyName):
         rt = locals_.get(recv.name)
-        storage = recv.name in storage_tuple_locals
     elif isinstance(recv, TpyFieldAccess) and _field_receiver_ok(
             recv, locals_, analyzer):
         rt = _field_decl_type(recv, locals_, analyzer)
-        storage = True
     else:
-        return None
+        return False
     rb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
           if rt is not None else None)
     if not (isinstance(rb, TupleType) and rb.has_pointer_repr_element()):
-        return None
+        return False
     at = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         analyzer.get_expr_type(a))))
     # A print-FORM selector, not an axis gate: the element streams through
@@ -15791,9 +15786,8 @@ def _print_tuple_record_elem(a: TpyExpr, locals_: dict[str, TpyType],
     # prints through the ListPrinter / DictPrinter wrap that no tuple-element
     # print row threads yet), so only a record takes the bare / deref form.
     if not _f1_record(at, analyzer):
-        return None
-    _witness("print.tuple_record_elem")
-    return "bare" if storage else "deref"
+        return False
+    return _witness("print.tuple_record_elem")
 
 
 def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:

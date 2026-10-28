@@ -33,7 +33,7 @@ void main() {
     std::cout << std::get<1>(h.t).val << "\n" << ::tpy::check_signals;
     Box* n = nullptr;
     h.set(std::tuple<const Box*, const Box*>{n, &(y)});
-    std::cout << ::tpy::print_bool((::tpy::optional_to_ptr(std::get<0>(h.t)) == nullptr)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!std::get<0>(h.t).has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // main()

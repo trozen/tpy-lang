@@ -1016,10 +1016,14 @@ void temp_optional() {
 //     lr = lam(A(16))
 //     print("lambda", lr[0].v, lr[1])
 //     ho = HO((A(1), 2))
-//     # no read of the lent Optional element lowers yet, so the alias is not
-//     # observed here (BUGS.md#lent-optional-tuple-element-match-ice)
+//     # the lent Optional element is the stored object's pointer: a write
+//     # through it lands in `ho`
 //     orr = opt_get(ho)
-//     print("optional", orr[1])
+//     oe = orr[0]  # tpyc: ok
+//     if oe is not None:
+//         oe.v = 18
+//     s = ho.o[0]
+//     print("optional", orr[1], -1 if s is None else s.v)
 //     g1 = first((A(5), 6))
 //     print("generic.class", g1[0].v, g1[1])
 //     g2 = first_str()
@@ -1180,7 +1184,12 @@ void main() {
     std::cout << "lambda" << " " << std::get<0>(lr).v << " " << std::get<1>(lr) << "\n" << ::tpy::check_signals;
     HO ho = HO(std::tuple<std::optional<A>, int32_t>{A(1), 2});
     auto orr = ::tpyapp::main::opt_get(ho);
-    std::cout << "optional" << " " << std::get<1>(orr) << "\n" << ::tpy::check_signals;
+    A* oe = std::get<0>(orr);
+    if ((oe != nullptr)) {
+        oe->v = 18;
+    }
+    A* s = ::tpy::optional_to_ptr(std::get<0>(ho.o));
+    std::cout << "optional" << " " << std::get<1>(orr) << " " << (((s == nullptr)) ? (-1) : (s->v)) << "\n" << ::tpy::check_signals;
     std::tuple<A, int32_t> g1 = ::tpyapp::main::first<A>([] TPY_ALWAYS_INLINE_ATTR (auto&& __t) { return std::tuple<A*, int32_t>{&(std::get<0>(__t)), std::get<1>(__t)}; }(std::tuple<A, int32_t>{A(5), 6}));
     std::cout << "generic.class" << " " << std::get<0>(g1).v << " " << std::get<1>(g1) << "\n" << ::tpy::check_signals;
     std::tuple<std::string, int32_t> g2 = ::tpyapp::main::first_str();

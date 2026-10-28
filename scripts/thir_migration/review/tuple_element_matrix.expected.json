@@ -828,7 +828,7 @@
   "same"
  ],
  "x__optional_elem__T": [
-  "stmt.var_decl:decl.slot_type",
+  "ok",
   "",
   "",
   ""

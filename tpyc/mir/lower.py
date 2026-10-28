@@ -3427,8 +3427,7 @@ class _Lowering:
                  "tuple index disagreement")
         _plain(expr.index, {"value", "int_cpp"})
         # The render's pointer fact must agree with the layout MIR reads.
-        _require(expr, not expr.elem_pointer
-                 or member.cls is MIRClass.RECORD and member.is_pointer,
+        _require(expr, expr.elem_pointer == member.pointer_element,
                  "tuple element pointer disagreement")
         if member.cls is MIRClass.RECORD:
             self.reference(expr, member, expr.result_type)
