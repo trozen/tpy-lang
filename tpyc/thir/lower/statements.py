@@ -141,7 +141,7 @@ from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import read_record, verdict
-from ...sema.call_lends import expr_lends_storage
+from ...sema.call_lends import Retention, expr_lends_storage
 from ...sema.context import UnnamedHolder
 from ...sema.aug_hold import holds_by_value
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
@@ -318,6 +318,7 @@ from .context import (
     nested_def_prescan,
 )
 from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
+    arg_retention,
     _declared_call_at_owning_elem, declared_call_elem_copy_ok,
     own_element_copy_member, own_element_payload,
     _chained_subscript_recv_type, _container_comp_arg,
@@ -325,7 +326,7 @@ from .checks import (_dunder_call_receiver_ok, owned_literal_layout,
     _print_tuple_record_elem, _borrow_tuple_local_type, _container_lit_elem_ok,
     _assert_narrow_info, _borrow_dunder_source,
     check_polymorphic_rvalue_opt_rebind, _bytes_aug_concat_ok,
-    _class_const_aug_assign_ok, _container_aug_setitem_ok,
+    _class_const_aug_assign_ok, _container_aug_setitem_ok, aug_key_retention,
     _container_literal_decl_ok, _container_literal_shape_ok, _bytearray_recv,
     _bytearray_value_slot_init, _container_setitem_ok, _storage_decl_src,
     _deref_coerce_borrow_slot, _opt_ptr_addr_of_record_source,
@@ -355,7 +356,7 @@ from .convert import (
     view_to_owned)
 from .expressions import (
     _dunder_arg, _spell_brace, stamped, slot_payload_lent, lent_holder, _hoisted,
-    _select_result,
+    _select_result, _operand_use_of,
     _self_capture_cpp, _whole_optional_bare, _is_own_param, _lower_module_var,
     _module_var_access_pair, _slice_recv_ok, _slice_index_ok,
     _lower_slice_recv, _constructs_value, _flush_witness, _hoists_arg_temp,
@@ -596,7 +597,7 @@ def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
         # above (a str/int literal or a bare declared name): the generic
         # method-arg lowering renders it, and rejects what it cannot.
         lowered_value = _lower_call_arg(value_arg, fi.params[1].type, lc,
-                                        declared, method_arg=True)
+                                        declared, method_arg=True, retention=Retention.MEASURED)
     else:
         note_detail("setattr.value_shape")
         raise ThirUnsupported("stmt.assign")
@@ -608,7 +609,7 @@ def _lower_dyn_setattr_call(call: TpyMethodCall, lc: '_LowerCtx',
             use=_ExprUse(result=_ExprResultUse.BORROW_BIND)),
         method_cpp=escape_cpp_name(call.method),
         args=(_lower_call_arg(name_arg, fi.params[0].type, lc, declared,
-                              method_arg=True),
+                              method_arg=True, retention=Retention.MEASURED),
               lowered_value),
         loc=loc,
     )
@@ -3685,6 +3686,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
         init = _lower_expr(
             stmt.init, lc, declared,
             use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
+                         pos=SinkPos.LOCAL_DECL, forms=_NO_FORMS,
                          allow_temps=True))
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=init,
@@ -3702,7 +3704,10 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
         # `prescan.alias_sources`); a field source keeps the dedicated
         # borrow-source build.
         if isinstance(stmt.init, TpySubscript):
-            src = _lower_expr(stmt.init, lc, declared, subscript_prechecked=True)
+            src = _lower_expr(stmt.init, lc, declared,
+                              use=_ExprUse(pos=SinkPos.LOCAL_DECL,
+                                           forms=_NO_FORMS),
+                              subscript_prechecked=True)
             if (_tuple_name_elem_subscript(stmt.init, declared, lc.analyzer)
                     and src.reads_raw_pointer):
                 # A borrow-form tuple name's element: std::get yields the
@@ -3723,7 +3728,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
             # never reseated: a select's fresh-operand slot lives exactly as
             # long.
             src = _lower_expr(stmt.init, lc, declared,
-                              use=_ExprUse(forms=_ONLY_SELECT_SLOT))
+                              use=_ExprUse(pos=SinkPos.LOCAL_DECL,
+                                           forms=_ONLY_SELECT_SLOT))
         elif isinstance(stmt.init, TpyName):
             # A pointer-local source aliases through the deref
             # (`Point& alias = (*p);`) -- the shared pointer-name-source
@@ -3739,7 +3745,8 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
             _witness("decl.deref_coerce_alias")
             src = _lower_expr(stmt.init, lc, declared)
         else:
-            src = _lower_field_source(stmt.init, lc, declared)
+            src = _lower_field_source(stmt.init, lc, declared,
+                                      pos=SinkPos.LOCAL_DECL)
         return THIRVarDecl(
             name=stmt.name, resolved_type=vtype, init=src,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
@@ -3896,7 +3903,10 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
         # plain method returns the `T*` borrow form already -- so this read
         # takes the lift over the bare call render and the method arm does
         # not.
-        src = _lower_expr(stmt.init, lc, declared, allow_whole_optional=True)
+        src = _lower_expr(stmt.init, lc, declared,
+                          use=_ExprUse(pos=SinkPos.LOCAL_DECL,
+                                       forms=_NO_FORMS),
+                          allow_whole_optional=True)
         convert = THIRFormConvert(result_type=vtype, value=src,
                                   form=Form.BORROW, is_const=is_const,
                                   loc=loc)
@@ -8155,7 +8165,7 @@ def _lower_erased_handle_write(stmt: TpyVarDecl, init: TpyExpr,
                                        lc.analyzer) is None
             and _dyn_own_forward_call_arg(init, slot_t, lc.analyzer) is None):
         raise ThirUnsupported("res.erased_handle_source")
-    value = _lower_call_arg(init, slot_t, lc, declared)
+    value = _lower_call_arg(init, slot_t, lc, declared, retention=Retention.MEASURED)
     _witness("res.erased_handle_write")
     return THIRAssign(
         target=THIRName(name=stmt.name, result_type=slot_t, loc=stmt.loc),
@@ -8968,20 +8978,26 @@ def _setter_consumes_held_key(stmt: TpyAugAssign,
 
 
 def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
-                            declared: dict[str, TpyType]) -> _AugSubscript:
+                            declared: dict[str, TpyType], *,
+                            key_keep: 'Retention | None') -> _AugSubscript:
     sub = stmt.target
     assert isinstance(sub, TpySubscript)
     # The store's key as the variant sema resolved receives it, built
     # whichever node renders the store (`_record_key`).
     setter = sub.dunder(SubscriptDunder.SET)
-    read = _lower_expr(sub, lc, declared)
+    # The read's key takes the verdict the statement's admission took
+    # (`aug_key_retention`).
+    read = _lower_expr(sub, lc, declared, key_verdict=(key_keep,))
     assert isinstance(read, THIRSubscript)
     getter = sub.dunder(SubscriptDunder.GET)
     set_key = None
     if setter is not None and sub.setitem_index is not None:
         if _subscript_call(sub, SubscriptDunder.SET) is not None:
             set_key = _record_key(sub, sub.setitem_index, setter, lc,
-                                  declared)
+                                  declared,
+                                  keep=arg_retention(
+                                      setter, 0, None, lc.analyzer,
+                                      sub.setitem_index, recv=sub.obj))
         elif not (getter is not None and without_readonly(
                 getter.params[0].type) == without_readonly(
                     setter.params[0].type)):
@@ -11929,10 +11945,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             assert setitem is not None
             # The value is the explicit `recv.__setitem__(key, v)` call's
             # last argument, as the key is its first.
+            _set_i = len(setitem.params) - 1
             value = _dunder_arg(
                 stmt.target.obj, [stmt.target.index, stmt.value],
-                len(setitem.params) - 1, setitem, lc, declared,
-                temp_args=True)
+                _set_i, setitem, lc, declared, temp_args=True,
+                keep=arg_retention(setitem, _set_i, None, analyzer,
+                                   stmt.value, recv=stmt.target.obj))
             _witness("setitem.user_record")
             return _store_item(stmt, target, value, lc, loc)
         if isinstance(stmt.target, TpySubscript):
@@ -12422,12 +12440,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # generic `target = (target OP value)` tail as a THIRAssign
             # (`user.age = ::tpy::add_check<int32_t>(user.age, 1);`),
             # skipping the checked-subscript special arms below.
+            aug_key_keep = aug_key_retention(stmt, analyzer)
             aug_ok = (_typed_dict_write_target(
                           stmt.target, declared,
                           scope.admission_pointers(), narrowed, analyzer)
                       or _container_aug_setitem_ok(
                           stmt, declared, scope.admission_pointers(),
-                          narrowed, analyzer))
+                          narrowed, analyzer, key_keep=aug_key_keep))
             if aug_ok:
                 # Unreachable today (a wrapper union's elements are never
                 # the scalar family the aug gate requires), but the guard
@@ -12467,7 +12486,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # The operand is the explicit `c.__iadd__(v)` call's
                 # argument, converted to what the dunder's parameter takes.
                 val = _dunder_arg(stmt.target, [stmt.value], 0, _inp_fi, lc,
-                                  declared, temp_args=True)
+                                  declared, temp_args=True,
+                                  keep=arg_retention(_inp_fi, 0, None,
+                                                     lc.analyzer, stmt.value,
+                                                     recv=stmt.target))
                 _inp_bc = _bound_call_of(_inp_fi, _inp_fi.name)
                 recv, _ = _operator_receiver_pinned(stmt.resolved_inplace,
                                                     recv, val, lc)
@@ -12505,7 +12527,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     target_expr=_lower_expr(
                         stmt.target, lc, declared,
                         field_prechecked=True),
-                    value=_lower_expr(stmt.value, lc, declared), loc=loc)
+                    value=_lower_expr(stmt.value, lc, declared,
+                                      use=_ExprUse(pos=SinkPos.OPERAND,
+                                                   forms=_LEND_OK)),
+                    loc=loc)
         # `target OP= value` lowers to `target = (target OP value)` -- the
         # scalar branch -- and so does the bytes concat-and-assign
         # (`t = ::tpy::bytes_concat(t, v);`, the same resolved-binop arm with
@@ -12536,7 +12561,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("aug.class_const")
             elif (isinstance(stmt.target, TpySubscript)
                     and stmt.target.typed_dict_field is None):
-                aug_sub = _aug_subscript_operands(stmt, lc, declared)
+                aug_sub = _aug_subscript_operands(stmt, lc, declared,
+                                                  key_keep=aug_key_keep)
                 left = target = aug_sub.read
             else:
                 target = _lower_expr(
@@ -12568,11 +12594,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # A NAME-target aug is the same flushable statement (`total +=
             # take_mut(b)` hoists the vararg pack's std::array ahead of the
             # assign).
-            aug_value_use = (_ExprUse(allow_temps=True)
-                             if ((isinstance(stmt.target, TpySubscript)
-                                  and stmt.target.typed_dict_field is None)
-                                 or isinstance(stmt.target, TpyName))
-                             else _ExprUse())
+            aug_value_use = _operand_use_of(
+                stmt, stmt.value, analyzer,
+                allow_temps=((isinstance(stmt.target, TpySubscript)
+                              and stmt.target.typed_dict_field is None)
+                             or isinstance(stmt.target, TpyName)))
             _, aug_pin = _operator_literal_pins(
                 stmt.resolved_binop, None, stmt.value, lc, declared)
             _, aug_rview = _rb_operand_view_slots(stmt.resolved_binop)
@@ -13256,7 +13282,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 key = _lower_call_arg(
                     sub.index, deleter.params[0].type, lc, declared,
                     temp_args=True, method_arg=True, callee_fi=deleter,
-                    arg_index=0, member_shaped=True)
+                    retention=arg_retention(
+                        deleter, 0, None, analyzer, sub.index,
+                        recv=sub.obj))
                 calls.append(_flush_witness(
                     "flush.expr_stmt",
                     _record_dunder_call(sub, SubscriptDunder.DEL, receiver,
@@ -14880,13 +14908,17 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
         # A container-ELEMENT tuple read (`print(pairs[0])`) hands its
         # lvalue to TuplePrinter whole -- the borrow-bind consumption the
         # element gate keys on; every other wrap arg keeps the value use.
+        # A `forms=` replaces the sink's row, so the print sink's own lend
+        # verdict is restated on every row: the printer reads the value
+        # inside the statement.
+        print_position = _ExprUse(pos=SinkPos.PRINT_ARG, forms=_LEND_OK,
+                                  allow_temps=temps_ok)
         if wrap is PrintForm.TUPLE and isinstance(a, TpySubscript):
-            wrap_use = _ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                allow_temps=temps_ok)
+            wrap_use = replace(print_position,
+                               result=_ExprResultUse.BORROW_BIND)
         else:
-            wrap_use = _ExprUse(pos=SinkPos.PRINT_ARG,
-                                forms=_ONLY_INDIRECT_READ,
-                                allow_temps=temps_ok)
+            wrap_use = replace(print_position, pos=SinkPos.PRINT_ARG,
+                               forms=_ONLY_INDIRECT_READ | _LEND_OK)
         # The union STR row is DECLARED-type keyed (`::tpy::__str__(a)`
         # consumes the whole variant), so an assign-narrowed divergent
         # read is safe here -- the sink never sees the member type.
@@ -14925,23 +14957,20 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # record-call branch names another position and so drops the fold --
     # fine while the two shapes stay mutually exclusive (a record-call arg
     # is never a both-literal int binop); revisit if that ever changes.
+    # A print argument is streamed inside the print statement, so every one of
+    # these arms carries the dying-source admission on top of its own verdict.
+    use = _ExprUse(allow_temps=temps_ok, pos=SinkPos.PRINT_ARG,
+                   forms=_LEND_OK)
     if _print_tuple_record_elem(a, declared, lc.analyzer):
         # A pointer element read hands back the POINTER and print is a
         # value position, so the referent streams; an inline one already
         # IS the value.
         elem = _lower_expr(a, lc, declared,
-                           use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                        allow_temps=temps_ok),
+                           use=replace(use, result=_ExprResultUse.BORROW_BIND),
                            subscript_prechecked=True)
         return THIRPrintArg(elem, PrintForm.RAW, deref=elem.reads_raw_pointer)
-    # A print argument is streamed inside the print statement, so every one of
-    # these arms carries the dying-source admission on top of its own verdict.
-    use = _ExprUse(allow_temps=temps_ok, pos=SinkPos.PRINT_ARG,
-                                         forms=_LEND_OK)
     if _record_call_rvalue_operand(a, lc.analyzer):
-        use = _ExprUse(allow_temps=temps_ok,
-                       result=_ExprResultUse.BORROW_BIND,
-                       pos=SinkPos.PRINT_ARG, forms=_LEND_OK)
+        use = replace(use, result=_ExprResultUse.BORROW_BIND)
     elif isinstance(a, (TpyFieldAccess, TpySubscript, TpyCall,
                         TpyMethodCall)):
         at = lc.analyzer.get_expr_type(a)
@@ -14953,8 +14982,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
             # print.record_borrow_call): the bare member read, checked
             # getitem or borrowed result streams RAW, so it lowers under
             # BORROW_BIND like the record-call row.
-            use = _ExprUse(allow_temps=temps_ok,
-                           result=_ExprResultUse.BORROW_BIND)
+            use = replace(use, result=_ExprResultUse.BORROW_BIND)
     return THIRPrintArg(
         _lower_expr(a, lc, declared, use=use,
                     field_owned_str_ok=isinstance(a, TpyFieldAccess)),

@@ -98,7 +98,7 @@ def main() -> None:
         print("truthy: yes")
     # field read through a RECORD getter's result
     print("field_thru:", mk().rec.x)
-    # `acc += mk().data` is refused like `acc.extend(mk().data)` (BUGS.md#stub-arg-off-temporary-rejects)
+    # `acc += mk().data` is the bound twin's warned copy (records/stub_arg_off_temporary)
     text = "z"
     text += mk().head
     print("augassign_str:", text)

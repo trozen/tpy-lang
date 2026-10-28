@@ -1,9 +1,10 @@
 # The SETITEM-VALUE position of a borrow-returning @property read off a
 # TEMPORARY receiver: `d[1] = mk().items` would copy a borrow of storage the
 # statement kills into a container that outlives it, losing every later
-# mutation CPython shows through the alias. The tag names the SINK, from the
-# one `SinkForm.DYING_SOURCE_LEND` row; the sink table is in
-# docs/PROPERTY_DESIGN.md.
+# mutation CPython shows through the alias. The read is a borrow, as its
+# bound twin `h = mk(); d[1] = h.items` is, and the twin's value-shape gate
+# refuses both first (BUGS.md#getter-result-slot-shape-rejects); the sink
+# table is in docs/PROPERTY_DESIGN.md.
 from typing import Iterator
 from tpy import Own, int32
 
@@ -27,7 +28,7 @@ def mk() -> Own[H]:
 
 def main() -> None:
     d: dict[int32, list[int32]] = {}
-    d[1] = mk().items  # tpyc: error(/setitem_value.lends_from_temporary/)
+    d[1] = mk().items  # tpyc: error(/setitem\.container_value_shape/)
     print(len(d))
 
 

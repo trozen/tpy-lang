@@ -755,9 +755,12 @@ class THIRChainedCompareStmtExpr(THIRExpr):
     for an operand its pair renders inline (the first when simple, the last
     always); `pairs[i]` is the i-th comparison as a plain one lowers, over a
     `_cmpI` name for each bound operand, so its dunder, reflected form,
-    conversions and casts render as a plain comparison's do."""
+    conversions and casts render as a plain comparison's do. `by_value[i]`
+    binds operand i as `auto _cmpI`: a free-to-copy scalar read through a
+    temporary that dies before the pairs compare."""
     inits: tuple['THIRExpr | None', ...]
     pairs: tuple[THIRBinOp, ...]
+    by_value: tuple[bool, ...] = ()
 
 
 @dataclass(frozen=True)

@@ -1,0 +1,2 @@
+main.py:49: warning: Result borrows from temporary argument 'o'; the temporary is destroyed at end-of-statement
+main.py:49: error: in function 'main': this construct is not yet supported by C++ code generation (expr.field_access:operand.lends_from_temporary)

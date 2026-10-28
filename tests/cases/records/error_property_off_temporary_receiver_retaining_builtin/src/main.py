@@ -7,12 +7,11 @@
 # coro factory (its frame stores the argument); `len`, `sum`, `any`, `sorted`,
 # `str()` and `list()` read eagerly and are admitted, pinned by
 # records/property_read_temporary_transient.
-# The verdict is the callee's own retention facts, not the argument's type:
-# `return_borrows_from` and `addr_escapes_params` for a bodied callee, the
-# declared signature for a body-less stub; the two gaps that leaves are filed
-# as BUGS.md#native-stub-declares-no-param-retention.
-# The sibling positions and their tags are listed in
-# records/error_property_off_temporary_receiver_arg.
+# The verdict is the callee's own (`callee_retains_arg`): what sema measured
+# of a bodied callee, the signature of a body-less binding -- here its
+# `Iterator[T]` result; the gap a body leaves is filed as
+# BUGS.md#native-stub-declares-no-param-retention.
+# The sink table is in docs/PROPERTY_DESIGN.md.
 # WORKAROUND: bind the receiver first -- `h = mk()` then `reversed(h.data)`.
 from tpy import Own, int32
 

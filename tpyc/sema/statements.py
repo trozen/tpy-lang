@@ -89,7 +89,6 @@ from .calls import class_callee
 from .scope_tracker import register_binder, unregister_binder
 from .call_lends import (
     MayLend, ViewLend, borrowing_ctor_arg, call_callee, frame_operand_keys,
-    holds_no_pointer, value_may_point,
 )
 from .context import (
     CallOperands, OwnSlot, PendingLocal, expr_yields_non_null_ptr, LoopClauseEdges,
@@ -167,6 +166,7 @@ from ..value_category import (
     async_return_form, AsyncReturnForm, iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
     binds_fresh_call_value, binds_owned_value, consuming_iter_of,
+    holds_no_pointer, value_may_point,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory,

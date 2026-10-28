@@ -20,7 +20,7 @@ The policies are the one place that question is answered:
   source itself proven; it refuses anything else.
 - CONTRACT (`ContractLend`): what a callee may RETAIN under its declaration
   alone, order-free -- every operand less an `Own` slot and a pointer-free
-  one, nothing for an `Own` or fresh result.
+  one, nothing for a fresh result or an `Own` one holding no pointer.
 - VIEW (`ViewLend`): the operands a `str` / `bytes` view result may read.
 - RETURN (`ReturnLend`) and TEMPORARY (`TempLend`): the durability and
   view-temporariness questions of the LIFETIME loop -- MAY / VIEW with
@@ -44,7 +44,7 @@ the call-site source rule (`call_lend_sources`) read them.
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import Enum, Flag, auto
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..parse import (
@@ -56,26 +56,30 @@ from ..parse import (
 )
 from ..type_def_registry import (
     is_borrowing_view_type, is_bytearray_type, is_bytes_type, is_enum_type,
-    is_str_type, is_str_view_type, is_string_type, type_def_of,
+    is_str_type, is_str_view_type, is_string_type, is_varargs, get_type_def,
+    type_def_of,
 )
 from ..typesys import (
-    ConcreteFrameType, FunctionInfo, LiteralType, NominalType, OptionalType,
-    OwnType,
-    PendingGenericInstanceType, PendingNumType, PendingViewType, PtrType,
-    ReadonlyType, RecordInfo, TpyType, TupleType, UnionType,
-    contains_type_param, declares_no_writes, held_whole_borrow_sources, is_bufferless_scalar,
-    is_dyn_protocol, is_open_type_param_return, is_owned_leaf, is_protocol_type,
+    FunctionInfo, LiteralType, NominalType, OptionalType, OwnType,
+    PendingGenericInstanceType, PendingViewType, PtrType,
+    ReadonlyType, TpyType, TupleType, TypeParamRef, UnionType,
+    contains_type_param, declares_no_writes, held_whole_borrow_sources,
+    is_bodyless_binding, is_bufferless_scalar, is_void_like_type,
+    is_dyn_protocol, is_open_type_param_return, is_protocol_type,
     recorded_return_borrow_sources, return_borrow_fact_pending,
     substitute_type_params_structural,
-    unwrap_own, unwrap_qualifiers, unwrap_readonly, unwrap_ref_type,
+    bound_as_spelled, unwrap_own, unwrap_qualifiers, unwrap_readonly,
+    unwrap_ref_type,
     unwrap_send_sync, view_is_inherently_const,
 )
 from ..value_category import (
     CONTAINER_LITERAL_NODES, CallOperands, ExprTypeOf,
-    ValueCategoryAnalyzer, call_operands,
-    call_returns_cpp_ref, frame_factory_callee, getitem_call_of,
+    ValueCategoryAnalyzer, borrowing_ctor_arg, call_operands,
+    call_returns_cpp_ref, declared_result_is_value, frame_factory_callee,
+    getitem_call_of,
     lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
+    holds_no_pointer, may_hold_pointer, reference_may_hold_pointer,
 )
 from . import own_copy
 from .storage_walk import (
@@ -83,7 +87,7 @@ from .storage_walk import (
     Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at, operand_keys, storage_roots,
 )
 from ..storage_trace import Step, StepKind
-from .type_ops import signature_may_return_borrow
+from .type_ops import param_type_can_lend, signature_may_return_borrow
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -168,106 +172,6 @@ class LendSource(NamedTuple):
     how: Lent | None = None
 
 
-def holds_no_pointer(t: TpyType) -> bool:
-    """A value of this declared type holds nothing that can point into other
-    storage: a bufferless scalar (a number whose width is still pending
-    among them) or a value owning an opaque buffer (`is_owned_leaf`: `str`,
-    `String`, `bytes`, `int`)."""
-    t = unwrap_qualifiers(t)
-    return (is_bufferless_scalar(t) or isinstance(t, PendingNumType)
-            or is_owned_leaf(t))
-
-
-def leaves_hold_no_pointer(t: TpyType) -> bool:
-    """A binding of this declared type holds nothing that can point into
-    other storage: no leaf -- through tuple, Optional and union members
-    (`tuple[int32, int32]`, `str | None`) -- is a reference type, which a
-    binding refers to rather than owns, or a value that may point
-    (`value_may_point`)."""
-    t = unwrap_qualifiers(t)
-    if isinstance(t, (OptionalType, UnionType, TupleType)):
-        return all(leaves_hold_no_pointer(m) for m in t.inner_types())
-    return not (_is_reference_nominal(t) or value_may_point(t))
-
-
-def _is_reference_nominal(t: TpyType) -> bool:
-    # A generator or coroutine frame is no storage of its own: it keeps
-    # what it borrows.
-    return (isinstance(t, NominalType) and not t.is_value_type()
-            and not isinstance(t, ConcreteFrameType)
-            and not (is_protocol_type(t) or is_dyn_protocol(t)))
-
-
-def value_may_point(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
-    """A value of this declared type (a field, a moved `self` field, a type
-    argument) may be or hold a pointer into other storage. An allow-list:
-    it holds none only when it is pointer-free (`holds_no_pointer`), a
-    user value type whose type arguments, fields and bases hold none
-    (`_parts_may_hold_pointer`), a reference type -- which holds its own
-    storage; what its fields point at is `reference_may_hold_pointer`, and
-    for a moved `self` field BUGS.md#self-aimed-ptr-field-borrow-unrecorded
-    -- or an Optional / union / tuple of such members. Anything else (a
-    `Ptr`, a view, a callable, a native value type, a generator or coroutine frame, a
-    protocol, a type parameter, a type not settled yet) may point."""
-    t = unwrap_qualifiers(t)
-    if isinstance(t, (OptionalType, UnionType, TupleType)):
-        return any(value_may_point(m, seen) for m in t.inner_types())
-    if holds_no_pointer(t) or _is_reference_nominal(t):
-        return False
-    if isinstance(t, NominalType) and t.is_value_type():
-        td = type_def_of(t)
-        rec = td.record if td is not None else None
-        # A native value type's fields do not describe what it holds.
-        if (rec is not None and rec.is_value_type and not rec.is_native
-                and not rec.is_borrowing_view):
-            return _parts_may_hold_pointer(t, rec, seen)
-    return True
-
-
-def _parts_may_hold_pointer(t: NominalType, rec: RecordInfo | None,
-                            seen: frozenset[TpyType]) -> bool:
-    """Whether a record type may hold a pointer through a type argument
-    (`W[StrView]`), a field or a base class (`may_hold_pointer` of each).
-    A protocol it conforms to holds no storage of its own."""
-    if t in seen:
-        return False
-    seen = seen | {t}
-    args = [a for a in t.type_args if isinstance(a, TpyType)]
-    if any(may_hold_pointer(a, seen) for a in args):
-        return True
-    if rec is None:
-        return False
-    subst = dict(zip(rec.type_params, args))
-    return any(
-        may_hold_pointer(
-            substitute_type_params_structural(m, subst) if subst else m, seen)
-        for m in [*(f.type for f in rec.fields),
-                  *(p for p in rec.parents
-                    if not (is_protocol_type(p) or is_dyn_protocol(p)))])
-
-
-def reference_may_hold_pointer(t: NominalType,
-                               seen: frozenset[TpyType] = frozenset()) -> bool:
-    """Whether a reference-type value may hold a pointer into storage it
-    does not own (`_parts_may_hold_pointer`)."""
-    td = type_def_of(t)
-    return _parts_may_hold_pointer(t, td.record if td is not None else None,
-                                   seen)
-
-
-def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
-    """Whether a value of this type, a fresh one included, may be or hold a
-    pointer into storage it does not own: `value_may_point` for a value
-    type or a frame, `reference_may_hold_pointer` for a reference type,
-    through tuple, Optional and union members."""
-    t = unwrap_qualifiers(t)
-    if isinstance(t, (OptionalType, UnionType, TupleType)):
-        return any(may_hold_pointer(m, seen) for m in t.inner_types())
-    if _is_reference_nominal(t):
-        return reference_may_hold_pointer(t, seen)
-    return value_may_point(t, seen)
-
-
 def temp_element_can_back(slot: TpyType | None,
                           result: TpyType | None) -> bool:
     """Whether a call result of type `result` can point into the storage a
@@ -350,24 +254,6 @@ def call_lend_sources(ops: CallOperands,
 
 
 
-def borrowing_ctor_arg(call: TpyExpr) -> TpyExpr | None:
-    """The operand a BORROWING CONSTRUCTOR lends its result: the first
-    argument of the address-taking `Ptr[T](x)`, of a borrowing view's
-    constructor (`StrView(s)`, `Span[T](xs)`) and of a `@value_ptr_coercion`
-    callee (`take_ptr(x)`, whose `Ptr[T]` parameter takes `x`'s address).
-    None for any other call -- `Ptr[T]()` included, which points nowhere."""
-    if not isinstance(call, TpyCall) or not call.args:
-        return None
-    ct = call.call_type
-    if ct is not None and (isinstance(ct, PtrType)
-                           or is_borrowing_view_type(ct)):
-        return call.args[0]
-    fi = call.resolved_function_info
-    if fi is not None and fi.value_ptr_coercion:
-        return call.args[0]
-    return None
-
-
 def _ctor_lend(arg: TpyExpr,
               result: TpyType | None) -> LendSource:
     """The source a borrowing constructor (`borrowing_ctor_arg`) lends: its
@@ -440,10 +326,26 @@ def _callee_access(call: TpyExpr) -> CalleeAccess:
     return CalleeAccess.MEMBER
 
 
+def callee_fact(fi: FunctionInfo) -> CalleeFact:
+    """THE classification of a resolved callee by the borrow facts it
+    carries: a callable value, a body not analyzed yet, a callee recording
+    no fact (a body-less binding), or its recorded sources (empty or not).
+    `callee_lend_fact` and the retention verdict (`retention_channel`) both
+    read it."""
+    if fi.is_callable_value:
+        return CalleeFact.CALLABLE
+    if return_borrow_fact_pending(fi):
+        return CalleeFact.PENDING
+    if fi.root.return_borrows_from is None:
+        return CalleeFact.STUB
+    return (CalleeFact.RECORDED if recorded_return_borrow_sources(fi)
+            else CalleeFact.KNOWN_EMPTY)
+
+
 def callee_lend_fact(call: TpyExpr) -> CalleeLend:
     """THE classification of what a call's callee says about the operands
-    its result may point into; every call policy maps this one value to its
-    own answer rather than re-deciding it."""
+    its result may point into (`callee_fact`); every call policy maps this
+    one value to its own answer rather than re-deciding it."""
     access = _callee_access(call)
     ops = call_operands(call)
     if ops is None:
@@ -453,17 +355,10 @@ def callee_lend_fact(call: TpyExpr) -> CalleeLend:
     rt = fi.return_type
     declares_view = rt is not None and is_borrowing_view_type(
         unwrap_readonly(rt))
-    sources = recorded_return_borrow_sources(fi)
-    if fi.is_callable_value:
-        kind = CalleeFact.CALLABLE
-    elif return_borrow_fact_pending(fi):
-        kind = CalleeFact.PENDING
-    elif fi.root.return_borrows_from is None:
-        kind = CalleeFact.STUB
-    else:
-        kind = CalleeFact.RECORDED if sources else CalleeFact.KNOWN_EMPTY
     fresh = isinstance(call, TpyCallLike) and call.result_form.is_fresh
-    return CalleeLend(kind, ops, sources, declares_view, fresh, access)
+    return CalleeLend(callee_fact(fi), ops,
+                      recorded_return_borrow_sources(fi), declares_view,
+                      fresh, access)
 
 
 # The callee facts that record a `return_borrows_from`, empty or not.
@@ -503,14 +398,16 @@ def _points_by_value(t: TpyType) -> bool:
             or escaping_borrow_tuple(t) is not None)
 
 
-def _result_points(analyzer: ValueCategoryAnalyzer,
-                   fi: FunctionInfo) -> bool:
+def _result_points(fi: FunctionInfo) -> bool:
     """Whether a call's result may point into existing storage, whether or
-    not an operand lends it: a C++ reference (a constructor's is a fresh
-    object), or a result pointing by value (`_points_by_value`)."""
-    return not fi.is_constructor and (
-        call_returns_cpp_ref(analyzer, fi)
-        or _points_by_value(fi.return_type))
+    not an operand lends it: a C++ reference (what a constructor builds is
+    a fresh object, `_builds_object`), or a result pointing by value
+    (`_points_by_value`)."""
+    rt = fi.return_type
+    return not _builds_object(fi) and (
+        call_returns_cpp_ref(None, fi)
+        or (rt is not None
+            and _points_by_value(unwrap_readonly(unwrap_send_sync(rt)))))
 
 
 def _declared_own(t: TpyType | None) -> bool:
@@ -527,14 +424,20 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
     holds no pointer (`type_of`: it reaches the callee as a copy). Read
     from the signature, never from what the callee's body is proven to
     return, so the answer does not depend on which body was analyzed
-    first. Nothing for a fresh result or one declared owned whole; every
-    operand for a call no callee resolves. `lend` is the call's
-    `callee_lend_fact`; `expr_type` and `temp_backing` are
-    `call_lend_sources`'; a temp-backed element stays whatever its type, as
-    the storage dying with the statement."""
+    first. Nothing for a fresh result; for one declared owned whole, the
+    operands it carries (`_owned_result_carries`, the rule a body-less
+    binding's result channel reads too); every operand for a call no
+    callee resolves. `lend` is the call's `callee_lend_fact`; `expr_type`
+    and `temp_backing` are `call_lend_sources`'; a temp-backed element
+    stays whatever its type, as the storage dying with the statement."""
     if lend.fresh:
         return []
     ops = lend.ops
+    owned = ops is not None and _declared_own(ops.fi.root.return_type)
+    result = ops.fi.return_type if ops is not None else None
+    # No operand (None: any) when the owned result can carry no pointer.
+    if owned and not _owned_result_carries(result, None):
+        return []
     if ops is None:
         if not isinstance(call, (TpyCall, TpyMethodCall)):
             return []
@@ -543,8 +446,6 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
                 + [LendSource(i, a, None) for i, a in enumerate(call.args)]
                 + [LendSource(-2, a, None)
                    for a in (call.kwargs or {}).values()])
-    elif _declared_own(ops.fi.root.return_type):
-        return []
     else:
         declared = ops.fi.root.params
         srcs = [src for src in call_lend_sources(ops, None,
@@ -554,7 +455,266 @@ def _contract_sources(call: TpyExpr, lend: CalleeLend, type_of: ExprTypeOf,
                         and _declared_own(declared[src.idx].type))]
     return [s for s in srcs
             if s.temp_backed or (t := type_of(s.expr)) is None
-            or not holds_no_pointer(t)]
+            or (_owned_result_carries(result, t) if owned
+                else not holds_no_pointer(t))]
+
+
+def _component_may_point(t: TpyType | None) -> bool:
+    """Whether a value handed to a callee at a slot of this (substituted)
+    type -- the value itself, or the elements, keys and values it hands
+    over (`Own` peeled, a protocol by its type arguments) -- may hold a
+    pointer by value (`may_hold_pointer`). A copy of such a value is the
+    borrow it carries. Unknown (no slot, a protocol with no type argument)
+    may."""
+    if t is None:
+        return True
+    # A container literal not decided yet holds what the container it
+    # spells holds.
+    t = bound_as_spelled(unwrap_qualifiers(t), lists=True)
+    if isinstance(t, PendingViewType):
+        # A `str` / `bytes` whose form is not decided yet (a `T` slot
+        # instantiated at a `str` local or literal): a `str` / `bytes`
+        # parameter, whose view a binding never keeps.
+        return False
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(_component_may_point(m) for m in t.inner_types())
+    if is_varargs(t):
+        # A `*args` pack's backing array is the call's own storage, never
+        # kept; what a binding may keep is a copy of an element.
+        return _component_may_point(t.type_args[0])
+    if is_protocol_type(t) or is_dyn_protocol(t):
+        args = [a for a in getattr(t, "type_args", ()) if isinstance(a, TpyType)]
+        return not args or any(_component_may_point(a) for a in args)
+    return may_hold_pointer(t)
+
+
+def _owned_result_carries(result: TpyType | None,
+                          operand: TpyType | None) -> bool:
+    """Whether an owned result -- one pointing into no operand's storage --
+    still carries the borrows of an operand handed to it at type `operand`
+    (a slot, or the argument's own type): only through a pointer copied out
+    of it, so when the result may hold a pointer (`may_hold_pointer`) and
+    the operand's components may hold one (`_component_may_point`). A copy
+    of a borrow is the borrow; an unknown type may."""
+    return ((result is None or may_hold_pointer(result))
+            and _component_may_point(operand))
+
+
+def _builds_object(fi: FunctionInfo) -> bool:
+    """A constructor slot: what the call hands back is the object it
+    builds, not its declared return (`str(v)`, `list(xs)`)."""
+    return fi.is_constructor or (
+        fi.is_method and fi.name == "__init__" and not fi.is_staticmethod)
+
+
+def _retention_slot(fi: FunctionInfo, index: int, call: TpyExpr | None,
+                    type_of: ExprTypeOf | None,
+                    arg: TpyExpr | None,
+                    recv: TpyExpr | None) -> TpyType | None:
+    """The substituted type at which callee `fi` takes operand `index` (-1:
+    the receiver, typed at `call`), or None when unknown. A bare type
+    parameter or structural protocol slot is instantiated at its argument
+    `arg`'s type. A slot still naming its owning type's parameters is
+    substituted at the type the call reaches the callee through: the
+    receiver's (`recv`, else the member call's), or the one a constructor
+    builds."""
+    owner = None
+    if recv is None and isinstance(call, TpyMethodCall):
+        recv = call.obj
+    if type_of is not None:
+        owner = (type_of(recv) if recv is not None
+                 else type_of(call) if call is not None and _builds_object(fi)
+                 else None)
+    if index == -1:
+        return owner
+    slot = fi.params[index].type if 0 <= index < len(fi.params) else None
+    bare_slot = unwrap_qualifiers(slot) if slot is not None else None
+    if (arg is not None and type_of is not None
+            and (isinstance(bare_slot, TypeParamRef)
+                 or (bare_slot is not None and is_protocol_type(bare_slot)
+                     and not getattr(bare_slot, "type_args", None)))):
+        return type_of(arg) or slot
+    if slot is None or owner is None or not contains_type_param(slot):
+        return slot
+    bare = unwrap_qualifiers(owner)
+    td = type_def_of(bare) if isinstance(bare, NominalType) else None
+    rec = td.record if td is not None else None
+    if rec is None or len(rec.type_params) != len(bare.type_args):
+        return slot
+    return substitute_type_params_structural(
+        slot, dict(zip(rec.type_params, bare.type_args)))
+
+
+def _stub_result_retains(fi: FunctionInfo, index: int, slot: TpyType | None,
+                         call: TpyExpr | None,
+                         type_of: ExprTypeOf | None) -> bool:
+    """The RESULT channel of a body-less binding: whether its result may
+    keep operand `index`. What the binding declares (`borrows=` /
+    `element_of=`, stamped with the iterator and receiver conventions at
+    registration) holds first; a declared borrow at a value-shaped
+    instantiation is a fresh value (`declared_result_is_value`) unless the
+    value may hold a pointer (a view result). A borrowing constructor keeps
+    its first argument (`borrowing_ctor_arg`); a result that is nothing
+    keeps nothing; a reference or a pointing-by-value result borrows the
+    receiver of a method and the lendable operands of a free binding; an
+    owned result that may hold a pointer carries the borrows of the
+    operands whose components may hold one (`_owned_result_carries`)."""
+    root = fi.root
+    stamped = root.return_borrows_from or frozenset()
+    if root.borrow_declared:
+        return index in stamped and (
+            not declared_result_is_value(fi)
+            or fi.return_type is None or may_hold_pointer(fi.return_type))
+    if index in stamped:
+        return True
+    if (call is not None and index == 0
+            and borrowing_ctor_arg(call) is not None):
+        return True
+    if _builds_object(fi):
+        result = type_of(call) if call is not None and type_of else None
+    else:
+        result = fi.return_type
+        if result is None or is_void_like_type(result):
+            return False
+        if _result_points(fi):
+            if fi.is_method and not fi.is_staticmethod:
+                return index == -1
+            return slot is None or param_type_can_lend(slot)
+    return _owned_result_carries(result, slot)
+
+
+def _declared_result_points_nowhere(fi: FunctionInfo, call: TpyExpr | None,
+                                    type_of: ExprTypeOf | None) -> bool:
+    """Whether a binding's result channel is a declared borrow whose value
+    form holds no pointer: where an argument lends nothing the result binds
+    as that value (`ResultForm`), which then keeps nothing of it. A view
+    result (`Span`, `StrView`) is still the pointer as a value."""
+    if not fi.root.borrow_declared:
+        return False
+    result = (type_of(call) if call is not None and type_of is not None
+              else None) or fi.return_type
+    return result is not None and not may_hold_pointer(result)
+
+
+def _runs_binding(fi: FunctionInfo) -> bool:
+    """Whether what a call to `fi` runs is a binding's code rather than a
+    TPy body sema measures: a body-less binding, or a `...` def registered
+    as the callee itself (a builtin exception's `__init__`) -- not a
+    protocol's, which a conformer's body answers. Whether a TPy body backs
+    the callee decides, not the render: a user operator dunder carries its
+    set's shared operator spelling as a `cpp_template`, yet runs its body."""
+    body = fi.root.body
+    if body is not None and not is_bodyless_binding(body):
+        return False
+    if is_bodyless_binding(fi):
+        return True
+    if body is None:
+        return False
+    td = get_type_def(fi.owning_type_qname) if fi.owning_type_qname else None
+    return td is None or td.protocol is None
+
+
+def callee_retains_arg(fi: 'FunctionInfo | None', index: int,
+                       call: TpyExpr | None = None,
+                       type_of: ExprTypeOf | None = None,
+                       arg: TpyExpr | None = None,
+                       recv: TpyExpr | None = None) -> bool:
+    """THE retention verdict: whether callee `fi`, substituted at `call`,
+    may keep operand `index` (-1: the receiver) alive past the call -- so
+    a borrow of storage the statement kills may not be handed to it.
+
+    A callee with a body answers from what sema measured of it: its result
+    borrows the parameter (`return_borrows_from`) or the body took the
+    parameter's address (`addr_escapes_params`). A fact not computed yet,
+    an unresolved callee and a callable value retain (fail closed).
+
+    A body-less binding answers from its signature and binding keywords,
+    never from its name, in three channels:
+    - RESULT (`_stub_result_retains`), whatever else it declares --
+      DECLARED_RESULT when the binding declares the borrow and the
+      result's value form holds no pointer;
+    - COPIES: a callee that may write anything may keep a copy of every
+      value it is handed (`@readonly` is no exemption: it may stash into
+      a global), and a copy of a borrow is the borrow -- so the operand is
+      kept when its slot's components may hold a pointer
+      (`_component_may_point`). `transient` / `@pure` promise it keeps
+      nothing; the receiver is not kept this way (what it holds points
+      outside it);
+    - ADDRESS: never. A binding does not keep the address of a plain
+      reference parameter (or of any part of it) nor the view behind a
+      `str` / `bytes` parameter; one that does spells the parameter
+      `Ptr[T]` / `StrView` / `Span` (docs/NATIVE_INTEROP.md).
+    `type_of` types the receiver and a constructor's result at `call`, and
+    the argument `arg` a bare type-parameter or protocol slot is
+    instantiated at; without them those answers fail closed. `recv` is the
+    receiver of a member call no call node states (an operator's dunder,
+    a subscript's)."""
+    return retention_channel(fi, index, call, type_of, arg,
+                             recv) is not None
+
+
+class Retention(Flag):
+    """The channels through which a callee keeps an argument
+    (`retention_channel`); a binding may keep one through several."""
+    # A bodied callee's measured facts (or none computed yet), an
+    # unresolved callee, a callable value or a frame's receiver.
+    MEASURED = auto()
+    # A body-less binding's result keeps it.
+    RESULT = auto()
+    # A body-less binding's DECLARED borrow (`borrows=` / `element_of=`)
+    # whose value form holds no pointer keeps it: the result binds as a
+    # borrow only where every argument it names lends (`ResultForm`), so
+    # an argument that lends nothing is not held past the call.
+    DECLARED_RESULT = auto()
+    # A body-less binding may keep a copy of it, and so of every pointer it
+    # holds; the receiver is never kept this way.
+    COPIES = auto()
+
+
+def retention_channel(fi: 'FunctionInfo | None', index: int,
+                      call: TpyExpr | None = None,
+                      type_of: ExprTypeOf | None = None,
+                      arg: TpyExpr | None = None,
+                      recv: TpyExpr | None = None) -> Retention | None:
+    """`callee_retains_arg`'s verdict with every channel that keeps the
+    operand, None when the callee keeps nothing of it. The callee is
+    classified once (`callee_fact`); the channels are computed from it."""
+    if fi is None or index < -1:
+        return Retention.MEASURED
+    kind = callee_fact(fi)
+    # A generator or coroutine frame keeps its receiver, which no fact
+    # names (BUGS.md#generator-method-receiver-borrow-unrepresented).
+    if kind is CalleeFact.CALLABLE or (index == -1 and _frame_callee(fi)):
+        return Retention.MEASURED
+    root = fi.root
+    # The one place this verdict departs from the classification: whether
+    # a binding's code runs (`_runs_binding`), not whether it records a
+    # fact. A binding's conventions stamped at registration classify it
+    # RECORDED, which the storage walk reads as its recorded sources; here
+    # they are one declaration among a binding's channels (TODO.md "The
+    # result channel of the retention verdict as the storage walk's STUB
+    # answer").
+    if not _runs_binding(fi):
+        # A body sema measures; none measured yet (PENDING) or none
+        # recorded (STUB) fails closed.
+        if (kind not in _RECORDS_A_FACT
+                or index in recorded_return_borrow_sources(fi)
+                or index in root.addr_escapes_params):
+            return Retention.MEASURED
+        return None
+    if arg is None and isinstance(call, (TpyCall, TpyMethodCall)) and (
+            0 <= index < len(call.args)):
+        arg = call.args[index]
+    slot = _retention_slot(fi, index, call, type_of, arg, recv)
+    keeps = Retention(0)
+    if _stub_result_retains(fi, index, slot, call, type_of):
+        keeps |= (Retention.DECLARED_RESULT
+                  if _declared_result_points_nowhere(fi, call, type_of)
+                  else Retention.RESULT)
+    if not (index == -1 or fi.is_pure or fi.is_transient or root.is_pure
+            or root.is_transient or not _component_may_point(slot)):
+        keeps |= Retention.COPIES
+    return keeps or None
 
 
 def _immutable_at(ctx: 'SemanticContext', expr: TpyExpr) -> bool:
@@ -568,11 +728,16 @@ def _immutable_at(ctx: 'SemanticContext', expr: TpyExpr) -> bool:
             or view_is_inherently_const(t))
 
 
+def _frame_callee(fi: FunctionInfo) -> bool:
+    """Whether a call to `fi` builds a generator or coroutine frame."""
+    return fi.is_async or frame_factory_callee(fi)
+
+
 def _builds_frame(call: TpyExpr) -> bool:
     """Whether the call builds a generator or coroutine frame (a generator
     expression builds one through the call sema made for it)."""
     fi = call_callee(call)
-    return fi is not None and (fi.is_async or frame_factory_callee(fi))
+    return fi is not None and _frame_callee(fi)
 
 
 class MayLend(CallPolicy):
@@ -679,7 +844,7 @@ class MayLend(CallPolicy):
             indices = indices | {-1}
         srcs = call_lend_sources(ops, indices, held_whole_borrow_sources(fi),
                                  expr_type=type_of, temp_backing=True)
-        if not srcs and (getter or _result_points(ctx, fi)):
+        if not srcs and (getter or _result_points(fi)):
             return None
         # A readonly method writes nothing through its receiver, so a write
         # through its result is not one it lends of the receiver -- unless the
@@ -1353,7 +1518,7 @@ class MustLend(CallPolicy):
         elif not isinstance(call, (TpyCall, TpyMethodCall)):
             return None
         elif (lend.kind not in _RECORDS_A_FACT
-                or not _result_points(self.ctx, lend.ops.fi)):
+                or not _result_points(lend.ops.fi)):
             return None
         if lend.kind is CalleeFact.UNRESOLVED:
             return None

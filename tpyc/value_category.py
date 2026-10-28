@@ -19,7 +19,7 @@ from typing import Any, Callable, NamedTuple, Protocol
 
 from .typesys import element_access, pointer_repr_optional, pointer_variant_union
 from .typesys import (
-    FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
+    AnyType, FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
     TypeParamRef, OwnType, UnionType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_bodyless_binding, is_open_type_param_return, is_primitive_type, is_protocol_type,
@@ -29,6 +29,9 @@ from .typesys import (
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
     param_takes_ownership, answers_as_call, dyn_protocol_borrow_result,
+    ConcreteFrameType, PendingNumType, RecordInfo, is_bufferless_scalar,
+    is_dyn_protocol, is_owned_leaf, substitute_type_params_structural,
+    unwrap_qualifiers,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -42,8 +45,108 @@ from .parse import (
 )
 from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
-                                is_str_type, is_str_view_type)
+                                is_str_type, is_str_view_type, type_def_of)
 from . import qnames
+
+
+def holds_no_pointer(t: TpyType) -> bool:
+    """A value of this declared type holds nothing that can point into other
+    storage: a bufferless scalar (a number whose width is still pending
+    among them) or a value owning an opaque buffer (`is_owned_leaf`: `str`,
+    `String`, `bytes`, `int`)."""
+    t = unwrap_qualifiers(t)
+    return (is_bufferless_scalar(t) or isinstance(t, PendingNumType)
+            or is_owned_leaf(t))
+
+
+def leaves_hold_no_pointer(t: TpyType) -> bool:
+    """A binding of this declared type holds nothing that can point into
+    other storage: no leaf -- through tuple, Optional and union members
+    (`tuple[int32, int32]`, `str | None`) -- is a reference type, which a
+    binding refers to rather than owns, or a value that may point
+    (`value_may_point`)."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return all(leaves_hold_no_pointer(m) for m in t.inner_types())
+    return not (_is_reference_nominal(t) or value_may_point(t))
+
+
+def _is_reference_nominal(t: TpyType) -> bool:
+    # A generator or coroutine frame is no storage of its own: it keeps
+    # what it borrows.
+    return (isinstance(t, NominalType) and not t.is_value_type()
+            and not isinstance(t, ConcreteFrameType)
+            and not (is_protocol_type(t) or is_dyn_protocol(t)))
+
+
+def value_may_point(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
+    """A value of this declared type (a field, a moved `self` field, a type
+    argument) may be or hold a pointer into other storage. An allow-list:
+    it holds none only when it is pointer-free (`holds_no_pointer`), a
+    user value type whose type arguments, fields and bases hold none
+    (`_parts_may_hold_pointer`), a reference type -- which holds its own
+    storage; what its fields point at is `reference_may_hold_pointer`, and
+    for a moved `self` field BUGS.md#self-aimed-ptr-field-borrow-unrecorded
+    -- or an Optional / union / tuple of such members. Anything else (a
+    `Ptr`, a view, a callable, a native value type, a generator or coroutine frame, a
+    protocol, a type parameter, a type not settled yet) may point."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(value_may_point(m, seen) for m in t.inner_types())
+    if holds_no_pointer(t) or _is_reference_nominal(t):
+        return False
+    if isinstance(t, NominalType) and t.is_value_type():
+        td = type_def_of(t)
+        rec = td.record if td is not None else None
+        # A native value type's fields do not describe what it holds.
+        if (rec is not None and rec.is_value_type and not rec.is_native
+                and not rec.is_borrowing_view):
+            return _parts_may_hold_pointer(t, rec, seen)
+    return True
+
+
+def _parts_may_hold_pointer(t: NominalType, rec: RecordInfo | None,
+                            seen: frozenset[TpyType]) -> bool:
+    """Whether a record type may hold a pointer through a type argument
+    (`W[StrView]`), a field or a base class (`may_hold_pointer` of each).
+    A protocol it conforms to holds no storage of its own."""
+    if t in seen:
+        return False
+    seen = seen | {t}
+    args = [a for a in t.type_args if isinstance(a, TpyType)]
+    if any(may_hold_pointer(a, seen) for a in args):
+        return True
+    if rec is None:
+        return False
+    subst = dict(zip(rec.type_params, args))
+    return any(
+        may_hold_pointer(
+            substitute_type_params_structural(m, subst) if subst else m, seen)
+        for m in [*(f.type for f in rec.fields),
+                  *(p for p in rec.parents
+                    if not (is_protocol_type(p) or is_dyn_protocol(p)))])
+
+
+def reference_may_hold_pointer(t: NominalType,
+                               seen: frozenset[TpyType] = frozenset()) -> bool:
+    """Whether a reference-type value may hold a pointer into storage it
+    does not own (`_parts_may_hold_pointer`)."""
+    td = type_def_of(t)
+    return _parts_may_hold_pointer(t, td.record if td is not None else None,
+                                   seen)
+
+
+def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
+    """Whether a value of this type, a fresh one included, may be or hold a
+    pointer into storage it does not own: `value_may_point` for a value
+    type or a frame, `reference_may_hold_pointer` for a reference type,
+    through tuple, Optional and union members."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(may_hold_pointer(m, seen) for m in t.inner_types())
+    if _is_reference_nominal(t):
+        return reference_may_hold_pointer(t, seen)
+    return value_may_point(t, seen)
 
 
 class CallOperands(NamedTuple):
@@ -613,6 +716,14 @@ def accessor_lends_receiver_storage(analyzer: 'ValueCategoryAnalyzer',
     return terms is not None and terms.borrows_receiver
 
 
+def accessor_returns_ref(analyzer: 'ValueCategoryAnalyzer',
+                         expr: TpyExpr) -> bool:
+    """`expr` is a `@property` read rendering as a C++ lvalue reference --
+    the CATEGORY term of `_accessor_terms`, on its own."""
+    terms = _accessor_terms(analyzer, expr)
+    return terms is not None and terms.returns_ref
+
+
 def lends_from_dying_source(analyzer: 'ValueCategoryAnalyzer',
                             expr: TpyExpr) -> bool:
     """`expr` hands back a BORROW of storage that dies at the end of the
@@ -628,7 +739,7 @@ def lends_from_dying_source(analyzer: 'ValueCategoryAnalyzer',
     DYING_SOURCE_LEND`, admitted by the transient sinks and by no sink that
     binds or holds a value past the full expression. An ARGUMENT is the one
     sink whose row is not the whole answer: it asks the CALLEE's own
-    retention facts (`arg_lend_ok`).
+    retention facts (`arg_retention`).
 
     The ACCESSOR spelling only, and that line is INTERIM: a spelled method
     borrowing from a temporary receiver stays on the conceded
@@ -638,11 +749,92 @@ def lends_from_dying_source(analyzer: 'ValueCategoryAnalyzer',
     rejects -- that entry's decision, not this predicate's. When the
     temporary-receiver tier is decided, `property_getter_of` is what gets
     widened; the fact itself is spelling-blind.
+
+    The reads that keep pointing into such storage lend it too: a field or
+    element read through one (`mk().ch.sub`) whose type may hold a pointer
+    or is a reference type -- a scalar or an owned leaf is copied out --
+    found on the place walk (`const_place`), and a select with such an
+    arm. A getter read through one borrows it when it borrows its
+    receiver.
     """
-    terms = _accessor_terms(analyzer, expr)
-    if terms is None:
+    e = peel_coerce(expr)
+    if isinstance(e, (TpyFieldAccess, TpySubscript)):
+        # A coercion that copies the field (`_coercion_copies`) hands on
+        # the field's own value, so the field's type decides; any other one
+        # -- a view or an address of it (`str_to_strview`,
+        # `record_to_const_ptr`) -- may point into the storage, so its
+        # coerced type decides too.
+        if (all(t is not None and leaves_hold_no_pointer(t)
+                for t in _handed_on_types(analyzer, expr))
+                or (isinstance(e, TpySubscript)
+                    and is_rvalue_source(analyzer, e))):
+            # Copied out, or a fresh value (a slice).
+            return False
+    # Typed by nothing, no handle ends the walk: what a `Ptr` or a view in
+    # dying storage points at may be that storage.
+    return const_place(expr, lambda _e: None,
+                       lambda node, _stepped: _dying_node(analyzer, node))
+
+
+def _handed_on_types(analyzer: 'ValueCategoryAnalyzer',
+                     expr: TpyExpr) -> list['TpyType | None']:
+    """The types whose values `expr` hands on from the read under its
+    coercions: the read's own, and the result of every coercion in the stack
+    that does not copy its operand (`_coercion_copies`)."""
+    types = []
+    while isinstance(expr, TpyCoerce):
+        if not _coercion_copies(expr):
+            types.append(analyzer.get_expr_type(expr))
+        expr = expr.expr
+    types.append(analyzer.get_expr_type(expr))
+    return types
+
+
+def _coercion_copies(expr: 'TpyCoerce') -> bool:
+    """A coercion whose result is a value of its own, never pointing into
+    its operand: one that builds a fresh value (`builds_fresh_value`), a
+    numeric widening (`widening_safe`), or the store into `Any`, a cell that
+    owns its contents (`_any_storage_form`)."""
+    c = expr.coercion
+    return (c.builds_fresh_value or c.widening_safe
+            or isinstance(unwrap_qualifiers(expr.expected_type), AnyType))
+
+
+def borrowing_ctor_arg(call: TpyExpr) -> TpyExpr | None:
+    """The operand a BORROWING CONSTRUCTOR lends its result: the first
+    argument of the address-taking `Ptr[T](x)`, of a borrowing view's
+    constructor (`StrView(s)`, `Span[T](xs)`) and of a `@value_ptr_coercion`
+    callee (`take_ptr(x)`, whose `Ptr[T]` parameter takes `x`'s address).
+    None for any other call -- `Ptr[T]()` included, which points nowhere."""
+    if not isinstance(call, TpyCall) or not call.args:
+        return None
+    ct = call.call_type
+    if ct is not None and (isinstance(ct, PtrType)
+                           or is_borrowing_view_type(ct)):
+        return call.args[0]
+    fi = call.resolved_function_info
+    if fi is not None and fi.value_ptr_coercion:
+        return call.args[0]
+    return None
+
+
+def _dying_node(analyzer: 'ValueCategoryAnalyzer', node: TpyExpr) -> bool:
+    """One node of `lends_from_dying_source`'s place walk: a getter read
+    borrowing a receiver that is a temporary or itself dying storage, or a
+    select with a dying arm."""
+    if isinstance(node, TpyIfExpr):
+        return (lends_from_dying_source(analyzer, node.then_expr)
+                or lends_from_dying_source(analyzer, node.else_expr))
+    if isinstance(node, TpyBinOp) and node.op in ("&&", "||"):
+        if not is_bool_type(analyzer.get_expr_type(node)):
+            return (lends_from_dying_source(analyzer, node.left)
+                    or lends_from_dying_source(analyzer, node.right))
         return False
-    return terms.borrows_receiver and is_rvalue_source(analyzer, expr.obj)
+    terms = _accessor_terms(analyzer, node)
+    if terms is None or not terms.borrows_receiver:
+        return False
+    return (is_rvalue_source(analyzer, node.obj)
+            or lends_from_dying_source(analyzer, node.obj))
 
 
 def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
@@ -664,21 +856,15 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
         return False
     # Field access: rvalue iff the object is rvalue (member of temporary).
     # A `__getattr__` access keeps the field-access node kind but RENDERS as
-    # a method call, so the accessor's return CONVENTION is a SECOND way for
-    # it to be one -- the node kind alone reads as an inert member read.
-    # Both are asked: an accessor handing back a C++ reference still borrows
-    # from its RECEIVER, so off a temporary the read names storage that dies
-    # at the end of the statement exactly as a plain member read off one
-    # does. The receiver disjunct is inert today -- sema admits only a value
-    # type, `Any` or `Own[T]` as a `__getattr__` return, so the convention
-    # never answers "reference" here -- and is kept so the accessor arms
-    # cannot drift if it widens.
+    # a method call, so it takes the accessor's return CONVENTION, as a
+    # getter read does: a reference it hands back is existing storage
+    # whatever its receiver -- off a temporary it is a borrow of DYING
+    # storage (`lends_from_dying_source`), never a fresh value to own.
     if isinstance(expr, TpyFieldAccess):
         hidden = expr.hidden_call
         if hidden is not None:
-            return (not call_returns_cpp_ref(analyzer,
-                                             hidden.resolved_function_info)
-                    or is_rvalue_source(analyzer, expr.obj))
+            return not call_returns_cpp_ref(analyzer,
+                                            hidden.resolved_function_info)
         return is_rvalue_source(analyzer, expr.obj)
     # Subscript into containers is an lvalue (returns T&).
     # Exceptions: slice calls (e.g. list_stepped_slice) and user-record
@@ -736,15 +922,13 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
             return expr.result_form is not ResultForm.BORROW
         terms = _accessor_terms(analyzer, expr)
         if terms is not None:
-            # The accessor pair above, one node kind over: a property read
-            # asks the RECEIVER as well as the convention, because a getter
-            # handing back a C++ reference still borrows from the object it
-            # was read off. The plain-method spelling deliberately does not
-            # (`BUGS.md#readonly-borrow-of-temporary-receiver` concedes that
-            # tier), so the disjunct stays keyed on the getter. The CATEGORY
-            # term is the narrow one -- see `_accessor_terms`.
-            _fi, returns_ref, _borrows = terms
-            return not returns_ref or is_rvalue_source(analyzer, expr.obj)
+            # A getter handing back a C++ reference hands back existing
+            # storage whatever its receiver: off a temporary, what it lends
+            # may outlive the receiver (a global), so it is a borrow of
+            # dying storage (`lends_from_dying_source`), never a fresh value
+            # a sink may own or move from. The CATEGORY term is the narrow
+            # one -- see `_accessor_terms`.
+            return not terms.returns_ref
         return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
     # Coercions: a rule that builds a fresh value yields a prvalue whatever the
     # source was; every other rule renders the inner through, so it inherits

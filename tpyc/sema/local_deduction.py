@@ -150,9 +150,15 @@ def view_source_is_temporary(ctx: 'SemanticContext', expr: TpyExpr) -> bool:
     explicit `StrView`/`BytesView` annotation bound to a temporary, while
     leaving pinned-view aliases of stable locals/fields valid.
     """
-    return any(leaf.kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE,
-                             LeafKind.UNPLACEABLE)
+    return any(leaf_is_temporary(leaf)
                for leaf in leaves(expr, TempLend(ctx), split=False))
+
+
+def leaf_is_temporary(leaf: Leaf) -> bool:
+    """One leaf of `view_source_is_temporary`'s climb that lacks durable
+    storage: a temporary, an unclassified view node or unplaceable."""
+    return leaf.kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE,
+                         LeafKind.UNPLACEABLE)
 
 
 def view_slot_source_is_temporary(ctx: 'SemanticContext', slot: 'TpyType',

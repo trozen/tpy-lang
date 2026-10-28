@@ -341,7 +341,7 @@ row's verdict.
 
 The ARGUMENT is the one position whose answer is not the position's. Whether an
 argument may hold such a borrow depends on what the CALLEE does with it, so the
-argument sink asks the callee's own retention facts (`arg_lend_ok`) instead of
+argument sink asks the callee's own retention facts (`arg_retention`) instead of
 reading a row -- `len(mk().data)` reads the argument during the call and is
 admitted, `reversed(mk().data)` hands back a lazy view of it and is refused.
 That is a question about a function, not about a position, which is why it is

@@ -1,0 +1,32 @@
+module: 2 3 2
+free: 4 99 2 10 1 77 10
+free_set_dict: 2 5 a-b
+free_scalar: 6 3
+bodied: 112
+any: 6 6 1 6 [6]
+p q
+print_str: ['p', 'q']
+ptr: 7 7
+op_cmp: True False True True
+op_arith: 14 8 -3 5
+op_str: Pt(3) bytearray(b'ab')
+op_view: False 46
+op_recv: 1
+op_aug: 46
+cmp_list: True False
+cmp_dict_set: True True
+cmp_tuple_opt: True True
+cmp_pos: True False [False] True
+chain_scalar: True True
+chain_durable: True True True True True
+chain_fresh: True True True True
+chain_member: True
+ctor_method: 4 5 1
+gen: [41, 2]
+async: 2
+error_return: 2
+comp: ['a-b', 'a-b']
+lambda: a+b
+with: 1 8
+try_finally: 2
+match: 2 10

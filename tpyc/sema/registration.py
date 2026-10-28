@@ -42,7 +42,7 @@ from ..typesys import (
     is_void_like_type,
     is_classvar_allowed_inner, CLASSVAR_INNER_TYPE_ERROR,
     STRVIEW, INT8, INT16, INT32, INT64, UINT8, UINT16, UINT32, UINT64, BIGINT, BOOL, NONE, VOID, TupleType, final_type_str_to_strview,
-    make_awaitable, unwrap_send_sync,
+    make_awaitable,
     make_cancellable,
     register_return_exception, is_return_exception,
     attach_type_param_bounds,
@@ -56,7 +56,7 @@ from ..typesys import (
     contains_type_kind_param,
     unwrap_readonly,
     unwrap_ref_type,
-    CallableType, is_bodyless_binding, emits_cpp_defaults,
+    is_bodyless_binding, emits_cpp_defaults,
     access_free, declared_result_readonly, strip_auto_readonly,
     twin_takes_variant_args, without_readonly,
 )
@@ -83,12 +83,12 @@ from ..type_def_registry import (
     attach_dynamic_type_def, TypeCategory, EnumInfo, enum_info_of, type_def_of,
     get_type_def, NativeMembers, latch_native_members,
     factory_qnames_in_module, protocol_info_of, return_exception_marker,
-    is_str_type, is_bytes_type, is_borrowing_view_type, is_owned_in_coro_frame,
-    is_varargs,
+    is_str_type, is_borrowing_view_type, is_owned_in_coro_frame,
 )
 from ..diagnostics import SemanticError
 from .method_expansion import expand_methods_for_record
-from .type_ops import VALUE_TYPE_PROTOCOL, signature_may_return_borrow
+from .type_ops import (VALUE_TYPE_PROTOCOL, param_type_can_lend,
+                       signature_may_return_borrow)
 from ..value_category import iterator_source_callee
 from .macros import run_macro_phase_for_record
 from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
@@ -911,21 +911,6 @@ def skipped_base_inits(registry: 'TypeRegistry', child_info: RecordInfo,
         if rec is not None and rec not in called:
             skipped.append((p, duty))
     return skipped
-
-
-def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
-    """Whether an argument at a parameter of this type can be storage a
-    callee's result borrows: a reference type or open `T` (passed by
-    reference), a view, a `str` / `bytes` view parameter, a `*args` pack, a
-    tuple with a borrowing element -- and, unless `callables` is off, a
-    callable, whose environment may hold references. The one predicate the
-    `borrows=` / `element_of=` validation and the generator frame's captures
-    read."""
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    return (not t.is_value_type() or is_str_type(t) or is_bytes_type(t)
-            or is_borrowing_view_type(t) or is_varargs(t)
-            or (isinstance(t, TupleType) and t.has_borrowing_element())
-            or (callables and (isinstance(t, CallableType) or is_fn_type(t))))
 
 
 def returns_borrow_rooted_at_self(func: 'TpyFunction') -> bool:

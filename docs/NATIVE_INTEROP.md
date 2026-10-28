@@ -689,10 +689,73 @@ The `transient` binding fact promises that the bound C++ reads or writes
 only its arguments as their declared mutability says, retains nothing after
 return or raise, reaches no other TPy storage and runs no user code. `pure`
 implies it. It is published as a stub callee's `TRANSIENT` contract for
-MIR's stub call contract; sema does not read it. Each use is an audit of
-the binding. The kwarg is a bool literal; it is rejected on a class-level
-`@native` (it describes a call, not a type's values) and on a binding
-that carries a TPy body.
+MIR's stub call contract, and sema's retention verdict reads it as "keeps
+no copy of an argument" (see "What a binding keeps of its arguments"
+below). Each use is an audit of the binding. The kwarg is a bool literal;
+it is rejected on a class-level `@native` (it describes a call, not a
+type's values) and on a binding that carries a TPy body.
+
+### What a binding keeps of its arguments
+
+A binding without a body has no code the compiler can read, so whether it
+keeps an argument past the call -- which decides whether a borrow of storage
+the statement kills (`mk().data`, a `@property` read off a temporary) may be
+handed to it -- is read off its SIGNATURE and the binding keywords above,
+never off its name. Three channels:
+
+- **The result.** What `borrows=` / `element_of=` declare (a declared borrow
+  at a value-shaped instantiation is a fresh value); an `Iterator[T]` return
+  keeps its reference arguments; a reference or view result keeps the
+  receiver of a method and the lendable arguments of a free binding; a
+  borrowing view's constructor keeps its first argument; an owned result
+  that may hold a pointer (`list(views) -> list[StrView]`) carries the
+  pointers of the arguments whose values may hold one. `transient=True` and
+  `pure` do not suppress this channel.
+- **Copies.** A binding may write anything and keep a copy of every value
+  it is handed (`@readonly` is no exemption: it may stash into a global),
+  and a copy of a pointer is the pointer. So an argument is kept when its
+  parameter's value -- or the elements, keys and values it hands over,
+  `Own` peeled, a protocol by its type arguments -- may hold a pointer:
+  `list[StrView].extend` keeps its argument's views, `list[Box].extend`
+  keeps nothing of a `Box`. `transient=True` and `pure` promise no copy.
+  The channels add up: a binding whose result keeps a view argument
+  (`borrows=("text",)`) may keep a copy of it as well.
+- **Addresses: never.** A binding never keeps the address of a plain
+  reference parameter (or of any part or backing storage of it), nor the
+  view behind a `str` / `bytes` parameter. One that does says so in the
+  parameter's TYPE: `Ptr[T]`, `StrView`, `Span[T]`. A `@native` method
+  declared `push(self, text: str)` whose C++ stores the `std::string_view`
+  is a wrong binding; spelled `text: StrView`, `s.push(mk().name)` is
+  refused because the view would outlive the temporary. (A keyword naming
+  the kept parameters is a later extension: TODO.md, "`retains=`".)
+
+A temporary's own storage at a kept parameter is refused too, as
+`arg.lends_from_temporary`, by the same rule that refuses a `StrView` local
+or container element bound to a temporary: `sink.stash(mk().text)` at
+`stash(self, text: StrView)` would keep a view of a field of the dying
+`mk()`. Refused alike: `StrView(mk().text)`, `mk().ch.text` behind a
+getter, `make_str()`, `mk().text.strip()`, `mk().names[0]` and a
+conditional with such an arm; accepted: a local, a parameter, `self.text`,
+a global and a literal. A subscript key is the dunder call's argument, so
+`sink[mk().text]` at `__getitem__(self, text: StrView)` is refused as
+`sink.__getitem__(mk().text)` is.
+
+A kept `Ptr[T]` parameter keeps the address it is handed, so a pointer to a
+field of a temporary is refused the same way: `s.stash_ptr(mk().ch.vsub)` at
+`stash_ptr(self, p: Ptr[readonly[ValSub]])`, where `vsub` is a `ValueType`
+field read through a getter, as `p: Ptr[readonly[ValSub]] = mk().ch.vsub` is.
+A value copy (`v = mk().ch.vsub`) and a bodied callee that keeps nothing of
+its `Ptr` parameter are accepted. A view held INSIDE a `ValueType` is not
+followed through the value (BUGS.md#value-carried-view-of-temporary-kept).
+
+A `*args` pack is the call's own storage and is never kept; its ELEMENTS
+follow the copies channel at the element type: `total(*xs: int32)` keeps
+nothing, and `keep(*xs: StrView)` given `StrView(mk().text)` is refused.
+
+A generic binding's `T` instantiated at `str` is a `str` parameter, whose
+view the binding never keeps -- but it may arrive in C++ as a
+`std::string_view`, so a binding that keeps a `T` value must not keep it
+when `T` is `str` (copy it into owned storage instead).
 
 ### Declaring a check point: `checks_signals=True`
 

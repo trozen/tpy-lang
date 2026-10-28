@@ -67,10 +67,10 @@ from ..typesys import (
     without_type_param_bounds,
 )
 from ..value_category import (binds_owned_value, call_operands,
-                              getitem_call_of, peel_coerce)
+                              getitem_call_of, leaves_hold_no_pointer,
+                              may_hold_pointer, peel_coerce)
 from .call_lends import (
     ContractLend, MayLend, borrowing_ctor_arg, frame_operand_keys,
-    leaves_hold_no_pointer, may_hold_pointer,
 )
 from .context import (
     BorrowKind, LoanInfo, UnnamedHolder,

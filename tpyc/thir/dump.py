@@ -407,7 +407,8 @@ def _expr(e: THIRExpr) -> str:
         return _membership(e)
     if isinstance(e, THIRChainedCompareStmtExpr):
         # The temps it binds, then the pairs over them.
-        binds = [f"_cmp{i} = {_expr(init)}" for i, init in enumerate(e.inits)
+        binds = [f"_cmp{i}{' [value]' if e.by_value and e.by_value[i] else ''}"
+                 f" = {_expr(init)}" for i, init in enumerate(e.inits)
                  if init is not None]
         pairs = " && ".join(_expr(p) for p in e.pairs)
         return f"chained_compare({'; '.join(binds + [pairs])})"

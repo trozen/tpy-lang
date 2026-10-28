@@ -58,7 +58,6 @@ from ...typesys import (
     ConcreteFrameType, ConcreteGenType,
     holds_borrowing_view, lands_in_view_member,
     collapse_tuple_own_elements,
-    recorded_return_borrow_sources,
     AnyType,
     BOOL,
     CallableType,
@@ -106,6 +105,7 @@ from ...typesys import (
 )
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
+from ...sema.call_lends import Retention, retention_channel
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...sema.alias_rebind import bare_tuple
 from ...sema.source_records import Disposition, verdict
@@ -136,7 +136,8 @@ from ...type_def_registry import (
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.types import resolve_pending_container
-from ...typesys import make_list, overload_variant_cpp_name
+from ...typesys import (make_list, overload_variant_cpp_name, ResolvedBinop,
+                         ResolvedUnaryop)
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...sema.dyn_erasure import (classify_dyn_own_arg, conformer_source,
@@ -3420,24 +3421,29 @@ def _owned_viewfam_rvalue_source(e: TpyExpr, analyzer) -> bool:
 
 def _record_aug_setitem_ok(
         stmt: TpyAugAssign, declared: dict[str, TpyType], pointers: set[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        narrowed: AbstractSet[str], analyzer, *,
+        key_keep: 'Retention | None') -> bool:
     """The record twin of `_setitem_target_ok` for the AUG pair only: a
     single-index subscript off a user record whose getter (the bare
     operator[] read render) and `__setitem__` (the fixed
     `::tpy::__setitem__` dunder spelling THIRSetItem emits) sema resolved. The scalar-element / value checks
-    stay with the caller."""
+    stay with the caller. `key_keep` is the key's retention verdict at the
+    getter (`aug_key_retention`), taken by the caller, which hands the same
+    answer to the read's render."""
     sub = stmt.target
     assert isinstance(sub, TpySubscript)
     if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
         return False
     if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
         return False
-    if _call_arm_variant(sub, SubscriptDunder.GET, analyzer) is None:
+    getter = _call_arm_variant(sub, SubscriptDunder.GET, analyzer)
+    if getter is None:
         return False
     # A receiver the statement evaluates once is read from its temp
     # (`TpyAugAssign.hold_parts`).
     if not _record_getitem_call_ok(
             sub, declared, analyzer, pointers,
+            keep=key_keep,
             held_recv_ok=any(sub.obj is p.expr for p in stmt.hold_parts)):
         return False
     # The same stamp the PLAIN record-setitem write reads -- one fact, so
@@ -3447,9 +3453,21 @@ def _record_aug_setitem_ok(
     return bool(_witness("setitem.record_aug"))
 
 
+def aug_key_retention(stmt: TpyAugAssign, analyzer) -> 'Retention | None':
+    """The retention verdict (`arg_retention`) of a subscript aug-assign's
+    key at the getter its read calls: asked once per statement, read by the
+    admission (`_record_aug_setitem_ok`) and by the read's render."""
+    sub = stmt.target
+    assert isinstance(sub, TpySubscript)
+    return arg_retention(_call_arm_variant(sub, SubscriptDunder.GET,
+                                           analyzer),
+                         0, None, analyzer, sub.index, recv=sub.obj)
+
+
 def _container_aug_setitem_ok(
         stmt: TpyAugAssign, declared: dict[str, TpyType], pointers: set[str],
-        narrowed: AbstractSet[str], analyzer) -> bool:
+        narrowed: AbstractSet[str], analyzer, *,
+        key_keep: 'Retention | None') -> bool:
     """An augmented container subscript write `c[k] OP= v` -> the
     read-modify-write pair `::tpy::__setitem__(c, k, <read> OP v);` with the
     read the CHECKED `::tpy::__getitem__(c, k)` -- the aug arm never takes
@@ -3471,7 +3489,8 @@ def _container_aug_setitem_ok(
             # `::tpy::__setitem__` dunder spelling THIRSetItem emits --
             # admitted when the record carries a __setitem__ method.
             or _record_aug_setitem_ok(stmt, declared, pointers,
-                                      narrowed, analyzer)):
+                                      narrowed, analyzer,
+                                      key_keep=key_keep)):
         return False
     if stmt.resolved_inplace is not None:
         return note_detail("setitem.aug_inplace")
@@ -4431,14 +4450,15 @@ def _native_own_scalar_lvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
 
 
 def _native_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
-                        locals_: dict[str, TpyType], analyzer,
+                        locals_: dict[str, TpyType], analyzer, *,
+                        retains: 'Retention | None',
                         **body_facts) -> bool:
     """The native / native_c / @cpp_template free-callee family's arg rows.
     Rows: `_NATIVE_ARG_SINK`. `body_facts` are the enclosing body's name
     sets (`_ArgReq`), which only the shared free-call tail reads here; the
     family threads no flush position."""
     return arg_ok(_NATIVE_ARG_SINK, a, ptype, locals_, analyzer,
-                  temps_ok=False, **body_facts)
+                  temps_ok=False, retains=retains, **body_facts)
 
 
 def _readonly_container_rvalue_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -4855,19 +4875,20 @@ def _plain_call_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                        overload=None,
                        frame_capturing: bool = False,
                        readonly_target: bool = False,
+                       retains: 'Retention | None',
                        **body_facts) -> bool:
     """The plain (non-native) free-callee family's arg rows -- the reference
     ladder the other families were copied from. Rows: `_PLAIN_ARG_SINK`;
     `body_facts` are the enclosing body's name sets (`_ArgReq`).
 
-    `overload` is the callee the RETENTION question may name -- the same one
-    the render side hands `arg_lend_ok`, so the in-place cell and the render
-    cannot answer it differently."""
+    `retains` is the verdict the render side took (`arg_retention`), so the
+    in-place cell and the render cannot answer it differently."""
     return arg_ok(_PLAIN_ARG_SINK, a, ptype, locals_, analyzer,
                   temps_ok=temps_ok, self_capturable=self_capturable,
                   index=index, overload=overload,
                   frame_capturing=frame_capturing,
-                  readonly_target=readonly_target, **body_facts)
+                  readonly_target=readonly_target, retains=retains,
+                  **body_facts)
 
 
 def _record_borrow_call_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -5316,20 +5337,22 @@ def _generic_plain_arg_ok(a: TpyExpr, ptype: 'TpyType | None', subst,
                           param_names: 'AbstractSet[str]' = frozenset(),
                           storage_tuple_locals: 'AbstractSet[str]'
                           = frozenset(),
-                          overload=None) -> bool:
+                          overload=None,
+                          retains: 'Retention | None') -> bool:
     """The generic free-callee family's arg rows, decided against the
     SUBSTITUTED slot -- which is why the sink is handed `resolved` as its
     slot and keeps the unsubstituted one as `open_ptype`.
     Rows: `_GENERIC_PLAIN_ARG_SINK`, prologue `_pre_generic_slot_family`.
     `overload` is the resolved stub, which the prologue reads for the one
-    verdict that depends on the CALLEE rather than the slot."""
+    verdict that depends on the CALLEE rather than the slot; `retains` is
+    the retention verdict the render takes too (`arg_retention`)."""
     resolved = (substitute_type_params_simple(ptype, subst)
                 if ptype is not None else None)
     return arg_ok(_GENERIC_PLAIN_ARG_SINK, a, resolved, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok,
                   storage_tuple_locals=storage_tuple_locals,
-                  open_ptype=ptype, overload=overload)
+                  open_ptype=ptype, overload=overload, retains=retains)
 
 
 def _container_literal_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -8788,12 +8811,16 @@ def _record_getitem_call_ok(sub: 'TpySubscript',
                             locals_: dict[str, TpyType], analyzer,
                             pointers: 'AbstractSet[str]',
                             binds_global: 'Callable[[str], bool] | None'
-                            = None, **shapes) -> bool:
+                            = None, *, keep: 'Retention | None',
+                            **shapes) -> bool:
     """The record-getitem arm's admission: the receiver and key the explicit
     `t.__getitem__(k)` call takes -- the key at the variant's parameter by
     the method-argument rows (`_METHOD_ARG_SINK`), a receiver by the method
     receiver rows -- beside the name / field / held shapes
-    `_record_getitem_idx_recv_ok` reads (`shapes` passes its flags)."""
+    `_record_getitem_idx_recv_ok` reads (`shapes` passes its flags).
+    `keep` is the key's retention verdict (`arg_retention`), taken by the
+    caller, which hands the same answer to the key's render
+    (`_record_key`)."""
     if _record_getitem_idx_recv_ok(sub, locals_, analyzer, pointers,
                                    **shapes):
         return True
@@ -8803,10 +8830,42 @@ def _record_getitem_call_ok(sub: 'TpySubscript',
     if not arg_ok(_METHOD_ARG_SINK, sub.index, getitem.params[0].type,
                   locals_, analyzer, param_names=frozenset(),
                   narrowed=frozenset(), temps_ok=False, index=0,
-                  overload=getitem, pointers=pointers):
+                  overload=getitem, pointers=pointers, retains=keep):
         return False
     return _dunder_call_receiver_ok(sub.obj, locals_, analyzer, pointers,
                                     binds_global)
+
+
+def arg_retention(fi: 'FunctionInfo | None', index: int,
+                  call: 'TpyExpr | None', analyzer,
+                  arg: 'TpyExpr | None' = None,
+                  recv: 'TpyExpr | None' = None) -> 'Retention | None':
+    """How the callee keeps argument `index` past the call
+    (`retention_channel`, the one retention verdict), None when it keeps
+    nothing -- so the argument may hold a borrow of storage this statement
+    kills. An argument with no parameter index fails closed. `recv` is a
+    member call's receiver where no call node states it (a subscript's key
+    at its dunder)."""
+    if index < 0:
+        return Retention.MEASURED
+    return retention_channel(fi, index, call, analyzer.get_expr_type, arg,
+                             recv)
+
+
+def operand_retention(resolved: ResolvedBinop | ResolvedUnaryop | None,
+                      operand: TpyExpr, recv: TpyExpr,
+                      analyzer) -> 'Retention | None':
+    """How the dunder an operator resolved to keeps one of its operands past
+    the operation (`retention_channel`, the one retention verdict), None
+    when it keeps nothing. The operand IS an argument of that dunder: its
+    receiver (-1) when it is `recv` -- the left operand, the right one of a
+    reflected dunder, a unary operator's only one -- else its parameter 0.
+    An operator with no dunder (a C++ operator over primitives) only reads
+    its operands."""
+    if resolved is None or resolved.method is None:
+        return None
+    return retention_channel(resolved.method, -1 if operand is recv else 0,
+                             None, analyzer.get_expr_type, operand, recv)
 
 
 def _dunder_call_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
@@ -10392,7 +10451,8 @@ def _stub_method_arg_ok(
         index: int = -1,
         overload=None,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
-        func_name: 'str | None' = None) -> bool:
+        func_name: 'str | None' = None,
+        retains: 'Retention | None') -> bool:
     """The builtin-stub receivers' call into the one method-arg sink --
     container, bytearray, str/bytes view, scalar, and the ptr-template arm,
     which all render their args through the builtin-stub loop. No resolved
@@ -10400,16 +10460,17 @@ def _stub_method_arg_ok(
     the record entry (`_record_method_arg_ok`); prologue + rows:
     `_METHOD_ARG_SINK`. The position's `temps_ok`, `index` and `overload`
     are accepted for the uniform family call and dropped
-    (BUGS.md#stub-value-union-insert-rejects).
+    (BUGS.md#stub-value-union-insert-rejects); `retains` is the retention
+    verdict the render takes too (`arg_retention`).
 
     This is the one entry that sets `stub_slot`, which the cells keyed on
     the stub's C++ read (`_x_insert_own_slot`, `_x_own_lvalue_flush`,
-    `_x_comp_slot_const`, `_x_arg_not_lent`, `_method_ctor_rvalue_arg`)
-    and the prologue's view fence."""
+    `_x_comp_slot_const`, `_method_ctor_rvalue_arg`) and the prologue's view
+    fence."""
     return arg_ok(_METHOD_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed, temps_ok=False,
                   movable_locals=movable_locals, func_name=func_name,
-                  stub_slot=True)
+                  stub_slot=True, retains=retains)
 
 
 def _opt_view_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10812,7 +10873,8 @@ def _method_call_arg_ok(
         param_names: 'set[str] | frozenset[str]',
         tparam_bounds: 'dict | None' = None,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
-        func_name: 'str | None' = None) -> bool:
+        func_name: 'str | None' = None,
+        retains: 'Retention | None') -> bool:
     if isinstance(a, TpyGeneratorExpression):
         # A genexpr arg renders its frame creation in place at any method
         # slot (`", ".join(str(x) for x in nums)` -- the render is
@@ -10833,7 +10895,8 @@ def _method_call_arg_ok(
                           param_names=param_names, narrowed=narrowed,
                           temps_ok=temps_ok, index=index,
                           overload=call.fi,
-                          movable_locals=movable_locals, func_name=func_name)
+                          movable_locals=movable_locals, func_name=func_name,
+                          retains=retains)
 
     if recv_type is not None and recv_type.is_pointer():
         # The ptr-template arm's args (`p.span(n)`): scalar positional
@@ -10842,7 +10905,7 @@ def _method_call_arg_ok(
                                    param_names=param_names,
                                    narrowed=narrowed,
                                    movable_locals=movable_locals,
-                                   func_name=func_name)
+                                   func_name=func_name, retains=retains)
     recv = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_type)))
     if isinstance(recv, OwnType):
         recv = unwrap_readonly(recv.wrapped)
@@ -10901,7 +10964,7 @@ def _method_call_arg_ok(
         temps_ok=temps_ok, narrowed=narrowed, param_names=param_names,
         frame_capturing=(mfi is not None
                          and (mfi.is_generator or mfi.is_async)),
-        movable_locals=movable_locals, func_name=func_name)
+        movable_locals=movable_locals, func_name=func_name, retains=retains)
 
 def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],
                                    analyzer, *, stmt_position: bool,
@@ -11141,13 +11204,11 @@ def _x_arg_not_lent(req: _ArgReq) -> bool:
     readonly[list[Rec]]) -> readonly[Rec]` bound `const Rec& r` into the
     temporary and printed garbage where CPython printed 1.
 
-    Reads the callee's recorded return-borrow sources for THIS position, off
-    the root fi like every other provenance reader. Facts that were never
-    computed DECLINE: a None there means the body has not been analyzed, and
-    "not measured" is not evidence of an owning result. A builtin stub slot
-    admits, as the slot-const guard beside it does -- the stub container
-    slots are const borrows and their results are minted, not borrows of what
-    they were handed.
+    Reads the one retention verdict for THIS position, the one the entry
+    took with the render (`retains`, a required argument of every entry:
+    "keeps nothing" is spelled by the caller, never implied). A binding that keeps it only through a declared borrow does
+    not hold it: an in-place rvalue lends nothing, so the result binds as a
+    value there (`ResultForm`).
 
     There is no hoisting alternative here on purpose: a named temporary would
     only move the question to how long THAT lives, which is a lifetime
@@ -11157,17 +11218,7 @@ def _x_arg_not_lent(req: _ArgReq) -> bool:
         # A generator / coroutine factory's argument never binds inline: the
         # render hoists it to a named temporary the frame can borrow.
         return True
-    if req.stub_slot:
-        return True
-    fi = req.overload
-    if fi is None:
-        # A body-less member-shaped callee (`measured_arg_callee` names
-        # none) has no retention fact to read; `arg_lend_ok` refuses the
-        # lend at render instead (BUGS.md#native-stub-declares-no-param-retention).
-        return True
-    if fi.root.return_borrows_from is None:
-        return False
-    return req.index not in recorded_return_borrow_sources(fi)
+    return not (req.retains or Retention(0)) & ~Retention.DECLARED_RESULT
 
 
 def _x_inline_container_literal(req: _ArgReq) -> bool:
@@ -13606,7 +13657,8 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                             index: int = -1,
                             overload=None,
                             movable_locals: 'set[str] | frozenset[str]' = frozenset(),
-                            func_name: 'str | None' = None) -> bool:
+                            func_name: 'str | None' = None,
+                            retains: 'Retention | None') -> bool:
     """The bare-protocol / Own[@dynamic P] receiver family's arg rows.
     Rows: `_PROTOCOL_ARG_SINK`. `overload` is the protocol method's resolved
     fi, passed as the record entry passes its own; no protocol row reads it
@@ -13615,7 +13667,8 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
     return arg_ok(_PROTOCOL_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed, temps_ok=temps_ok,
                   index=index, overload=overload,
-                  movable_locals=movable_locals, func_name=func_name)
+                  movable_locals=movable_locals, func_name=func_name,
+                  retains=retains)
 
 
 def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
@@ -14185,7 +14238,8 @@ def _record_method_arg_ok(
         param_names: 'AbstractSet[str]' = frozenset(),
         frame_capturing: bool = False,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
-        func_name: 'str | None' = None) -> bool:
+        func_name: 'str | None' = None,
+        retains: 'Retention | None') -> bool:
     """A user record's method call into the one method-arg sink: the position,
     the resolved overload and the flush slot the signature-reading rows want.
     Prologue + rows: `_METHOD_ARG_SINK`."""
@@ -14193,7 +14247,8 @@ def _record_method_arg_ok(
                   param_names=param_names, narrowed=narrowed,
                   temps_ok=temps_ok, index=index, overload=overload,
                   frame_capturing=frame_capturing,
-                  movable_locals=movable_locals, func_name=func_name)
+                  movable_locals=movable_locals, func_name=func_name,
+                  retains=retains)
 
 
 def _view_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyType],

@@ -623,7 +623,8 @@ def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
                 code = f"({_region.prefix}{code})"
         else:
             code = _emit_expr(init, state)
-        binds.append(f"auto&& _cmp{i} = {code};")
+        ref = "" if e.by_value and e.by_value[i] else "&&"
+        binds.append(f"auto{ref} _cmp{i} = {code};")
 
     def render_pair(i: int) -> str:
         if i == 0:

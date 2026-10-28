@@ -600,17 +600,17 @@
   "call(CALLEE, [method_call(%b, v, [])])"
  ],
  "array_i__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "array_i__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "array_i__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -630,14 +630,14 @@
   ""
  ],
  "array_i__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "array_i__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "array_i__mut__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -1320,17 +1320,17 @@
   "call(CALLEE, [method_call(%b, v, [])])"
  ],
  "array_i__ro__temp_accessor__ctor": [
-  "ok",
-  "",
-  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
- ],
- "array_i__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
+ "array_i__ro__temp_accessor__fn": [
+  "ok",
+  "",
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
+ ],
  "array_i__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -1350,14 +1350,14 @@
   ""
  ],
  "array_i__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "array_i__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "array_i__ro__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -3200,17 +3200,17 @@
   ""
  ],
  "bytearray__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
  "bytearray__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
  "bytearray__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -3230,12 +3230,12 @@
   ""
  ],
  "bytearray__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "bytearray__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -4205,12 +4205,12 @@
   ""
  ],
  "bytearray__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
  "bytearray__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -4230,12 +4230,12 @@
   ""
  ],
  "bytearray__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "bytearray__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.record_nonf1",
   "",
   ""
  ],
@@ -6680,44 +6680,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "deref_list__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "deref_list__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "deref_list__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__mut__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__mut__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_list__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "deref_list__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__mut__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -7600,44 +7600,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "deref_list__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "deref_list__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "deref_list__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__ro__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_list__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "deref_list__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_list__ro__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -8520,44 +8520,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "deref_rec__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "deref_rec__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "deref_rec__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__mut__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__mut__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_rec__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "deref_rec__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__mut__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -9440,44 +9440,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "deref_rec__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "deref_rec__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "deref_rec__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__ro__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "deref_rec__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "deref_rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "deref_rec__ro__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -10360,17 +10360,17 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "dict_si__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -10390,12 +10390,12 @@
   ""
  ],
  "dict_si__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "dict_si__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -11280,17 +11280,17 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "dict_si__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "dict_si__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "dict_si__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -11310,12 +11310,12 @@
   ""
  ],
  "dict_si__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "dict_si__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -12080,44 +12080,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "gen_rec__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "gen_rec__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "gen_rec__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__mut__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__mut__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "gen_rec__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "gen_rec__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__mut__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -12880,44 +12880,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "gen_rec__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "gen_rec__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "gen_rec__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__ro__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "gen_rec__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "gen_rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "gen_rec__ro__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -14800,17 +14800,17 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "list_i__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -14830,12 +14830,12 @@
   ""
  ],
  "list_i__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_i__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -15800,17 +15800,17 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "list_i__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "list_i__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "list_i__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -15830,12 +15830,12 @@
   ""
  ],
  "list_i__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_i__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -16800,32 +16800,32 @@
   ""
  ],
  "list_i_own__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__mut__temp_accessor__fn": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__mut__temp_accessor__gen": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__mut__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__mut__temp_accessor__nested": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16835,7 +16835,7 @@
   ""
  ],
  "list_i_own__mut__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17800,32 +17800,32 @@
   ""
  ],
  "list_i_own__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__ro__temp_accessor__fn": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__ro__temp_accessor__gen": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.arg_shape",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__ro__temp_accessor__nested": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17835,7 +17835,7 @@
   ""
  ],
  "list_i_own__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -18830,7 +18830,7 @@
   ""
  ],
  "list_i_ro__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -19720,17 +19720,17 @@
   ""
  ],
  "list_r__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -19750,12 +19750,12 @@
   ""
  ],
  "list_r__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_r__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -20640,17 +20640,17 @@
   ""
  ],
  "list_r__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "list_r__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "list_r__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -20670,12 +20670,12 @@
   ""
  ],
  "list_r__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "list_r__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -21815,22 +21815,22 @@
   ""
  ],
  "proto_p__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
  "proto_p__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "proto_p__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
  "proto_p__ro__temp_accessor__meth": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.method_call:method.arg_shape",
   "",
   ""
  ],
@@ -21845,7 +21845,7 @@
   ""
  ],
  "proto_p__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.protocol.static",
   "",
   ""
  ],
@@ -22770,44 +22770,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "rec__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "rec__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "rec__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__mut__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__mut__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "rec__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "rec__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__mut__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -23730,44 +23730,44 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "rec__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "rec__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
  "rec__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__ro__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "rec__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "rec__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec__ro__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -24480,7 +24480,7 @@
   ""
  ],
  "rec_opt__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -25410,32 +25410,32 @@
   ""
  ],
  "rec_own__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__mut__temp_accessor__fn": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__mut__temp_accessor__gen": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__mut__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__mut__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__mut__temp_accessor__nested": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25445,7 +25445,7 @@
   ""
  ],
  "rec_own__mut__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26370,32 +26370,32 @@
   ""
  ],
  "rec_own__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__ro__temp_accessor__fn": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__ro__temp_accessor__gen": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "rec_own__ro__temp_accessor__nested": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.own_record_f1",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26405,7 +26405,7 @@
   ""
  ],
  "rec_own__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -27330,14 +27330,14 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "rec_ro__ro__temp_accessor__ctor": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) print(%k0.tag [raw])"
  ],
  "rec_ro__ro__temp_accessor__fn": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec_ro__ro__temp_accessor__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -27345,29 +27345,29 @@
   ""
  ],
  "rec_ro__ro__temp_accessor__genrec": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec_ro__ro__temp_accessor__meth": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec_ro__ro__temp_accessor__nested": [
-  "reject:expr.call:call.ctor_arg.record_f1",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [method_call(call(mk_b, []), v, [])]) -> Own[DynP])])]) print(method_call(method_call(m"
  ],
  "rec_ro__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "rec_ro__ro__temp_accessor__static": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [method_call(call(mk_b, []), v, [])])"
  ],
  "rec_ro__ro__temp_field__ctor": [
   "reject:expr.call:call.ctor_arg.record_f1",
@@ -28570,17 +28570,17 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "set_i__mut__temp_accessor__ctor": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -28600,12 +28600,12 @@
   ""
  ],
  "set_i__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "set_i__mut__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -29530,17 +29530,17 @@
   "call(CALLEE, [%xs[coerce(lit(0) -> int32)] [borrow]])"
  ],
  "set_i__ro__temp_accessor__ctor": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:call.ctor_arg.container",
   "",
   ""
  ],
  "set_i__ro__temp_accessor__fn": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
  "set_i__ro__temp_accessor__gen": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.generic_arg_shape",
   "",
   ""
  ],
@@ -29560,12 +29560,12 @@
   ""
  ],
  "set_i__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
  "set_i__ro__temp_accessor__static": [
-  "reject:expr.method_call:arg.lends_from_temporary",
+  "reject:expr.call:call.arg_shape.container",
   "",
   ""
  ],
@@ -30560,7 +30560,7 @@
   ""
  ],
  "span_i__mut__temp_accessor__proto": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -31560,7 +31560,7 @@
   ""
  ],
  "span_i__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -37560,7 +37560,7 @@
   ""
  ],
  "uni_rec__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],

@@ -3455,16 +3455,17 @@ class ExpressionAnalyzer:
         (`optional_safe_eq`) keeps the operator's own render."""
         if expr.optional_safe_eq:
             return False
-        if result.is_reverse:
-            received = self.receive_dunder_operand(expr.left, left_type,
-                                                   result, scope)
-            if received is not None:
-                expr.left = received
-        else:
+        receiver = result.receiver_of(expr.left, expr.right)
+        if receiver is expr.left:
             received = self.receive_dunder_operand(expr.right, right_type,
                                                    result, scope)
             if received is not None:
                 expr.right = received
+        else:
+            received = self.receive_dunder_operand(expr.left, left_type,
+                                                   result, scope)
+            if received is not None:
+                expr.left = received
         if received is None:
             return False
         # Received as the explicit call's argument, so recorded as that
@@ -3472,8 +3473,7 @@ class ExpressionAnalyzer:
         self.calls.commit_facts(
             expr, result.method,
             CallOperands(result.method, None, [received]),
-            receiver=expr.right if result.is_reverse else expr.left,
-            receiver_type=result.receiver_type)
+            receiver=receiver, receiver_type=result.receiver_type)
         return True
 
     def _pending_binop(self, expr: TpyBinOp, left_type: TpyType,

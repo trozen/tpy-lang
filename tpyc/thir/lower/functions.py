@@ -140,6 +140,7 @@ from .context import (
 )
 from .checks import (
     _builtin_container_type,
+    arg_retention,
     _ctor_shape_ok,
     _stub_template_param,
     _nondef_ctor_field,
@@ -1679,7 +1680,8 @@ def _lower_stub_base_init(expr: TpyMethodCall, ri: RecordInfo, base_type: TpyTyp
         # construction, whichever class on the way inherits it.
         _witness("baseinit.stub_default")
         return THIRBaseInit(base_cpp=base_cpp, args=(), base=record_owner(base_info))
-    args = tuple(_lower_call_arg(a, p.type, lc, declared, callee_fi=fi, arg_index=i)
+    args = tuple(_lower_call_arg(a, p.type, lc, declared, callee_fi=fi,
+                                 retention=arg_retention(fi, i, expr, analyzer, a))
                  for i, (a, p) in enumerate(zip(expr.args, fi.params)))
     _witness("baseinit.stub_template")
     init = THIRCall(result_type=base_type, callee="__init__", args=args,

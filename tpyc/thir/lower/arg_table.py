@@ -42,6 +42,7 @@ from ...compilation_context import get_current_compiler
 if TYPE_CHECKING:
     from ...compiler import Compiler
     from ...parse.nodes import TpyExpr
+    from ...sema.call_lends import Retention
     from ...typesys import TpyType
 
 
@@ -67,6 +68,12 @@ class _ArgReq(NamedTuple):
     # a flush slot -- so the walk takes it per call.
     mutated_slots: bool
     temps_ok: bool
+    # The callee's retention verdict for THIS argument (`arg_retention`),
+    # taken once by the entry; None: the callee keeps nothing of it. No
+    # default, so a constructor that forgets the verdict fails at
+    # construction instead of reading as "keeps nothing". Per-call like
+    # `index`; passed by keyword.
+    retains: 'Retention | None'
     # The enclosing body's owning-tuple locals. Per-call context like
     # `locals_` / `narrowed`, not a capability: the borrow-tuple rows read it
     # to tell a storage-form tuple name from a borrow-form one.
@@ -255,17 +262,26 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            = frozenset(),
            bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None,
            stub_slot: bool = False,
-           ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
+           ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset(),
+           retains: 'Retention | None'
            ) -> bool:
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
     req = _ArgReq(a, ptype, locals_, analyzer, param_names, narrowed,
                   sink.mutated_slots and is_mutated, temps_ok,
-                  storage_tuple_locals, self_capturable, open_ptype, index,
-                  overload, frame_capturing, mutation_unknown,
-                  inline_narrowed, movable_locals, pointers, func_name,
-                  readonly_target, own_borrow_tuple_locals, own_param_names,
-                  frame_local_names, bare_tuple_names, stub_slot,
-                  ptr_tuple_locals)
+                  retains=retains,
+                  storage_tuple_locals=storage_tuple_locals,
+                  self_capturable=self_capturable, open_ptype=open_ptype,
+                  index=index, overload=overload,
+                  frame_capturing=frame_capturing,
+                  mutation_unknown=mutation_unknown,
+                  inline_narrowed=inline_narrowed,
+                  movable_locals=movable_locals, pointers=pointers,
+                  func_name=func_name, readonly_target=readonly_target,
+                  own_borrow_tuple_locals=own_borrow_tuple_locals,
+                  own_param_names=own_param_names,
+                  frame_local_names=frame_local_names,
+                  bare_tuple_names=bare_tuple_names, stub_slot=stub_slot,
+                  ptr_tuple_locals=ptr_tuple_locals)
     return _walk(sink, req)
 
 

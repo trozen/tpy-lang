@@ -1056,17 +1056,24 @@ def select_arm_keys(expr: TpyExpr) -> list[LoanKey] | None:
             if isinstance(lk, LoanKey)]
 
 
-def operand_keys(expr: TpyExpr) -> list[StorageKey]:
-    """The loan keys one argument position lends. A `*args` pack occupies
-    one slot while holding many operands, and a callee that borrows the
-    pack borrows every element, so it lends one key per keyed element; a
-    forwarded pack (`f(*xs)`) lends the source pack itself."""
+def pack_operands(expr: TpyExpr) -> list[tuple[TpyExpr, bool]]:
+    """The operands one argument position hands over, each with whether it
+    is SPREAD: a `*args` pack occupies one slot while holding many
+    operands, and a forwarded pack (`f(*xs)`) hands its source's
+    elements, so the source is the operand, spread. Any other argument is
+    its own single operand."""
     if isinstance(expr, TpyVarargPack):
-        operands = [a.expr if isinstance(a, TpyStarUnpack) else a
-                    for a in expr.args]
-    else:
-        operands = [expr]
-    return [k for k in map(borrow_key, operands) if k is not None]
+        return [(a.expr, True) if isinstance(a, TpyStarUnpack) else (a, False)
+                for a in expr.args]
+    return [(expr, False)]
+
+
+def operand_keys(expr: TpyExpr) -> list[StorageKey]:
+    """The loan keys one argument position lends: a callee that borrows a
+    pack borrows every element, so it lends one key per keyed operand
+    (`pack_operands`), a forwarded pack the source pack itself."""
+    return [k for k in (borrow_key(e) for e, _spread in pack_operands(expr))
+            if k is not None]
 
 
 def storage_key(expr: TpyExpr) -> StorageKey | None:

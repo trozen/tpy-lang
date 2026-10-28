@@ -17,6 +17,7 @@ import pytest
 
 from ..compilation_context import _current_compiler, activate_compiler
 from ..parse.nodes import TpyIntLiteral, TpyName, TpyStrLiteral
+from ..sema.call_lends import Retention
 from ..typesys import (CHAR, INT32, STRVIEW, ConcreteCoroType, NominalType,
                        OptionalType, OwnType, PtrType, RecursiveUnionInfo,
                        TupleType, TypeParamRef, UnionType)
@@ -62,7 +63,7 @@ def _fake_compiler():
 def _call(sink, verdict_src=None):
     return arg_ok(sink, verdict_src, None, {}, None,
                   param_names=frozenset(), narrowed=frozenset(),
-                  temps_ok=False)
+                  temps_ok=False, retains=None)
 
 
 def _yes(req):
@@ -133,7 +134,8 @@ class TestProtocolSinkShape:
 
         def _req(temps_ok):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, index=0, overload=None)
+                           False, temps_ok, retains=None, index=0,
+                           overload=None)
 
         assert cell.extra(_req(True)) is True
         assert cell.extra(_req(False)) is False
@@ -190,7 +192,7 @@ class TestNativeSinkShape:
         # histograms on the strings it returns.
         assert callable(_NATIVE_ARG_SINK.note)
         req = _ArgReq(None, OptionalType(INT32), {}, None, frozenset(),
-                      frozenset(), False, False)
+                      frozenset(), False, False, retains=None)
         assert _NATIVE_ARG_SINK.note(req) == "call.native_arg.optptr"
 
     def test_witnessing_cells_are_pinned(self):
@@ -221,7 +223,7 @@ class TestNativeSinkShape:
         sink = _ArgSink(family="t_stl", note="x.y",
                         rows=(_ArgRow("t_stl1", _spy),))
         assert arg_ok(sink, None, None, {}, None, param_names=frozenset(),
-                      narrowed=frozenset(), temps_ok=False,
+                      narrowed=frozenset(), temps_ok=False, retains=None,
                       storage_tuple_locals=frozenset({"pairs"})) is False
         assert seen == [frozenset({"pairs"})]
 
@@ -461,7 +463,8 @@ class TestMethodArgSinkShape:
 
         def _req(temps_ok, overload, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, index=0, overload=overload,
+                           False, temps_ok, retains=None, index=0,
+                           overload=overload,
                            stub_slot=stub)
 
         assert cell.extra(_req(False, None, stub=True)) is True  # stub slot
@@ -482,7 +485,8 @@ class TestMethodArgSinkShape:
 
         def _req(overload, index=0, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=index, overload=overload,
+                           False, False, retains=None, index=index,
+                           overload=overload,
                            stub_slot=stub)
 
         fi = types.SimpleNamespace(const_borrow_params=frozenset({0}))
@@ -495,29 +499,31 @@ class TestMethodArgSinkShape:
 
     def test_the_inline_literal_cell_declines_a_lending_callee(self):
         # The second half of that cell's guard: a literal bound IN PLACE dies
-        # at the end of the full expression, so a callee whose return borrows
-        # THIS parameter may not have it -- and a callee whose facts were
-        # never computed declines too, since "not measured" is not evidence
-        # of an owning result.
+        # at the end of the full expression, so a callee that keeps THIS
+        # argument may not have it. The cell reads the verdict its entry
+        # took once with the render (`retains`); an entry naming no callee
+        # leaves the render's own verdict to refuse.
         cell = next(r for r in _METHOD_ARG_SINK.rows
                     if r.row == "container_literal_method")
 
-        def _fi(borrows):
-            root = types.SimpleNamespace(const_borrow_params=frozenset({0, 1}),
-                                         return_borrows_from=borrows)
-            root.root = root
-            return root
+        const_slot = types.SimpleNamespace(const_borrow_params=frozenset({0}))
 
-        def _req(overload, index=0, stub=False):
+        def _req(retains, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=index, overload=overload,
-                           stub_slot=stub)
+                           False, False, index=0,
+                           overload=None if stub else const_slot,
+                           stub_slot=stub, retains=retains)
 
-        assert cell.extra(_req(None, stub=True)) is True         # stub slot
-        assert cell.extra(_req(_fi(frozenset()))) is True         # owns it
-        assert cell.extra(_req(_fi(frozenset({1})))) is True      # other arg
-        assert cell.extra(_req(_fi(frozenset({0})))) is False     # lends it
-        assert cell.extra(_req(_fi(None))) is False               # unknown
+        assert cell.extra(_req(None, stub=True)) is True          # no callee
+        assert cell.extra(_req(None)) is True                     # keeps none
+        assert cell.extra(_req(Retention.MEASURED)) is False      # keeps it
+        assert cell.extra(_req(Retention.RESULT, stub=True)) is False
+        assert cell.extra(_req(Retention.COPIES, stub=True)) is False
+        # A declared borrow binds the result as a value where the argument
+        # lends nothing, as an in-place literal does (`d.get(k, [2])`).
+        assert cell.extra(_req(Retention.DECLARED_RESULT, stub=True)) is True
+        assert cell.extra(_req(Retention.DECLARED_RESULT | Retention.COPIES,
+                               stub=True)) is False
 
     def test_guarded_cells_are_pinned(self):
         # Eleven of these carry `_x_insert_own_slot`: their `Own[T]` slot
@@ -562,7 +568,8 @@ class TestMethodArgSinkShape:
 
         def _req(overload, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=0, overload=overload,
+                           False, False, retains=None, index=0,
+                           overload=overload,
                            stub_slot=stub)
 
         assert cell.extra(_req(None, stub=True)) is True
@@ -578,7 +585,7 @@ class TestMethodArgSinkShape:
 
         def _req(temps_ok, frame):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, index=0,
+                           False, temps_ok, retains=None, index=0,
                            frame_capturing=frame)
 
         assert cell.extra(_req(True, True)) is True
@@ -826,7 +833,7 @@ class TestPlainSinkShape:
     def test_note_tail_is_the_slot_drilldown(self):
         assert callable(_PLAIN_ARG_SINK.note)
         req = _ArgReq(None, OptionalType(INT32), {}, None, frozenset(),
-                      frozenset(), False, False)
+                      frozenset(), False, False, retains=None)
         assert _PLAIN_ARG_SINK.note(req) == "call.arg_shape.optional"
 
     def test_witnessing_cells_are_pinned(self):
@@ -929,10 +936,11 @@ class TestPlainSinkShape:
         sink = _ArgSink(family="t_self", note="x.y",
                         rows=(_ArgRow("t_self1", _spy),))
         assert arg_ok(sink, None, None, {}, None, param_names=frozenset(),
-                      narrowed=frozenset(), temps_ok=False,
+                      narrowed=frozenset(), temps_ok=False, retains=None,
                       self_capturable=True) is False
         assert arg_ok(sink, None, None, {}, None, param_names=frozenset(),
-                      narrowed=frozenset(), temps_ok=False) is False
+                      narrowed=frozenset(), temps_ok=False,
+                      retains=None) is False
         assert seen == [True, False]
 
 
@@ -1078,7 +1086,8 @@ class TestGenericPrologueLegs:
     def _pre(self, a, open_ptype, resolved, analyzer=None, locals_=None):
         return _pre_generic_slot_family(
             _ArgReq(a, resolved, locals_ or {}, analyzer, frozenset(),
-                    frozenset(), False, False, open_ptype=open_ptype))
+                    frozenset(), False, False, retains=None,
+                    open_ptype=open_ptype))
 
     def test_a_missing_slot_rejects_with_the_slot_tag(self):
         compiler = _fake_compiler()
@@ -1130,7 +1139,7 @@ class TestGenericOpenSlot:
         with activate_compiler(_fake_compiler()):
             assert arg_ok(sink, None, INT32, {}, None,
                           param_names=frozenset(), narrowed=frozenset(),
-                          temps_ok=False,
+                          temps_ok=False, retains=None,
                           open_ptype=TypeParamRef("T")) is False
         assert seen == [TypeParamRef("T")]
 
@@ -1160,7 +1169,7 @@ class TestRecordMethodContext:
         with activate_compiler(_fake_compiler()):
             assert arg_ok(sink, None, INT32, {}, None,
                           param_names=frozenset(), narrowed=frozenset(),
-                          temps_ok=False, index=2, overload="FI",
+                          temps_ok=False, retains=None, index=2, overload="FI",
                           frame_capturing=True) is False
         assert seen == [(2, "FI", True)]
 
@@ -1217,7 +1226,7 @@ class TestContainerPrologueLegs:
     def _pre(self, a, ptype, analyzer=None):
         return _pre_container_slot_family(
             _ArgReq(a, ptype, {}, analyzer, frozenset(), frozenset(),
-                    False, False, stub_slot=True))
+                    False, False, retains=None, stub_slot=True))
 
     def test_own_view_slot_rejects_a_non_literal_source(self):
         # `set[StrView].add(name)`: the AST hoists a copy+move view temp,
@@ -1253,7 +1262,7 @@ class TestContainerPrologueLegs:
         u = UnionType((INT32, CHAR))
         analyzer = types.SimpleNamespace(get_expr_type=lambda e: u)
         req = _ArgReq(TpyName("x"), OwnType(u), {"x": u}, analyzer,
-                      frozenset(), frozenset(), False, False)
+                      frozenset(), frozenset(), False, False, retains=None)
         assert _pre_container_slot_family(req) is True
         # A name the body did not bind is not that shape, so it keeps the
         # family's named reject rather than falling through to the rows.
@@ -1273,7 +1282,7 @@ class TestContainerPrologueLegs:
         u = UnionType((INT32, CHAR))
         analyzer = types.SimpleNamespace(get_expr_type=lambda e: u)
         req = _ArgReq(TpyName("x"), u, {"x": u}, analyzer,
-                      frozenset(), frozenset(), False, False)
+                      frozenset(), frozenset(), False, False, retains=None)
         assert _pre_container_slot_family(req) is None
         assert self._pre(TpyIntLiteral(4), u) is None
 
@@ -1494,7 +1503,7 @@ class TestWalkProperties:
                           or False),))
         with activate_compiler(_fake_compiler()):
             arg_ok(sink, None, INT32, {}, None, param_names=frozenset(),
-                   narrowed=frozenset(), temps_ok=False,
+                   narrowed=frozenset(), temps_ok=False, retains=None,
                    is_mutated=is_mutated)
         assert seen == [holds and is_mutated]
 
@@ -1826,7 +1835,8 @@ class TestRecordCtorFork:
             names_with=lambda fact, prior=False: frozenset(), func=None)
         expressions._record_ctor_arg_supported(
             TpyName("x"), INT32, 0, None, lc, {},
-            _ExprUse(allow_temps=allow_temps, record_ctor=ctor_use))
+            _ExprUse(allow_temps=allow_temps, record_ctor=ctor_use),
+            retains=None)
         return picked[0]
 
     def test_a_direct_position_takes_the_full_family(self, monkeypatch):
@@ -1872,7 +1882,7 @@ class TestRecordCtorContext:
         with activate_compiler(_fake_compiler()):
             assert arg_ok(sink, None, INT32, {}, None,
                           param_names=frozenset(), narrowed=frozenset(),
-                          temps_ok=False, is_mutated=True,
+                          temps_ok=False, retains=None, is_mutated=True,
                           mutation_unknown=True,
                           inline_narrowed={"n": ("N", True)},
                           movable_locals={"m"}, pointers={"p"},
@@ -1905,7 +1915,8 @@ class TestRecordCtorContext:
         with activate_compiler(_fake_compiler()):
             for sink in (off, on):
                 arg_ok(sink, None, INT32, {}, None, param_names=frozenset(),
-                       narrowed=frozenset(), temps_ok=False, is_mutated=True)
+                       narrowed=frozenset(), temps_ok=False, retains=None,
+                       is_mutated=True)
         assert seen == [False, True]
 
 
@@ -2196,16 +2207,16 @@ class TestSinkVocabulary:
         and is blind to exactly that: two sites once spelled
         `forms=_LEND_OK` at CALL_ARG, a binding sink, and one of them admitted
         `reversed(mk().items)`. Both are gone -- the argument sink's verdict
-        comes from `arg_lend_ok` now -- which is why the exception below is
+        comes from `arg_retention` now -- which is why the exception below is
         spelled as the predicate's name and not as a site's.
 
         So this is a SOURCE scan rather than a table read: every
         `_ExprUse(...)` / `replace(...)` group in `tpyc/thir/lower` whose
         `forms=` can mention the lend must name a TRANSIENT sink, spelled as
         a literal `pos=SinkPos.X` in the same group -- unless the verdict came
-        from `arg_lend_ok`, which is the one sanctioned way an argument admits
+        from `arg_retention`, which is the one sanctioned way an argument admits
         it (it asks the CALLEE's retention facts, not the position; see
-        `arg_lend_ok` in lower/expressions.py and
+        `arg_retention` in lower/checks.py and
         `BUGS.md#native-stub-declares-no-param-retention`).
 
         "Can mention" and "spelled as a literal" are both wider than they read.
@@ -2226,9 +2237,9 @@ class TestSinkVocabulary:
                    if SinkForm.DYING_SOURCE_LEND not in _POS_FORMS[p]}
         # The names a `forms=` value may mention to mean "the argument sink's
         # verdict, taken from the callee" -- `_lend_forms` is the local
-        # `_lower_free_call_arg` computes from `arg_lend_ok` once and hands to
+        # `_lower_free_call_arg` computes from `arg_retention` once and hands to
         # each of its arms.
-        VIA_PREDICATE = {"arg_lend_ok", "_lend_forms"}
+        VIA_PREDICATE = {"arg_retention", "_lend_forms"}
         LEND = {"_LEND_OK", "DYING_SOURCE_LEND"}
         # ... plus any context.py helper whose own body can return the lend:
         # `forms=_recv_forms(..)` hands it out just as `forms=_LEND_OK` does.
@@ -2288,7 +2299,7 @@ class TestSinkVocabulary:
         assert not offenders, (
             "a `forms=` site re-admits SinkForm.DYING_SOURCE_LEND at a sink "
             "whose row refuses it, or at one it does not name; the verdict at "
-            "an argument belongs to `arg_lend_ok`, and at any other binding "
+            "an argument belongs to `arg_retention`, and at any other binding "
             "sink there is no verdict to hand out: " + "; ".join(offenders))
 
     def test_every_form_is_admitted_somewhere(self):

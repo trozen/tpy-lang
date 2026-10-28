@@ -39,8 +39,8 @@ is explained.
 | No `@override` on properties | Properties are inherited but not overridable |
 | Optional[non-value] narrowing | Pre-existing: `if obj.node is not None: obj.node.val` generates invalid C++ for non-value Optional. Affects both fields and properties |
 | `str` / `BigInt` return by value | General method return convention -- not property-specific. Use `-> StrView` for zero-copy str |
-| Read off a TEMPORARY receiver: every BINDING position | `v = mk().items`, and the same at a call argument, a `return`, a `with` manager, a `match` subject, a field write, a `d[k] = ...` value, a module global or frame slot, a for-each or comprehension iterable, a ternary arm and the constructor member-init list, are located rejects (`<sink>.lends_from_temporary`). What the getter lends can OUTLIVE the receiver -- a global, a longer-lived object -- and CPython aliases it, so owning a copy loses every later mutation and binding a reference dangles. TRANSIENT reads stay admitted: `print(len(mk().items))`, `mk().items[0]`, `f"{mk().name}"`, a `+=` source, a dict key, a membership needle. Workaround: bind the receiver first, `h = mk()` then `v = h.items`. The spelled-method twin keeps its conceded warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`). Pinned by the `records/error_property_off_temporary_receiver*` family, whose `_arg` header carries the tag table |
-| An ARGUMENT asks the CALLEE, not the position | The lend is admitted at an argument only where the callee provably READS it during the call: `len`, `sum`, `any`, `sorted`, `str()`, `list()` and a user function taking a view admit; `reversed`, `enumerate`, `zip`, `map`, `filter`, `itertools.islice` and every generator or coro factory RETAIN what they are given and reject. Sema owns the fact per parameter (`return_borrows_from`, `addr_escapes_params`); a body-less `@native` / `@cpp_template` stub returning an `Iterator` is stamped at registration as retaining its iterable arguments, any other stub has no per-parameter fact and answers from its declared signature, whose two gaps are `BUGS.md#native-stub-declares-no-param-retention`. Pinned by `records/error_property_off_temporary_receiver_retaining_builtin` |
+| Read off a TEMPORARY receiver: every BINDING position | `v = mk().items`, a field or element read through it that is not a scalar copied out (`z = mk().ch.sub`; `a = mk().ch.x` compiles), and the same at an argument the callee keeps, a `return`, a `with` manager, a `match` subject, a field write, a `d[k] = ...` value, a module global or frame slot, a for-each or comprehension iterable, a ternary arm and the constructor member-init list, are located rejects (`<sink>.lends_from_temporary`). What the getter lends can OUTLIVE the receiver -- a global, a longer-lived object -- and CPython aliases it, so owning a copy loses every later mutation and binding a reference dangles. TRANSIENT reads stay admitted: `print(len(mk().items))`, `mk().items[0]`, `f"{mk().name}"`, a `+=` source, a dict key, a membership needle. Workaround: bind the receiver first, `h = mk()` then `v = h.items`. The spelled-method twin keeps its conceded warn-and-emit tier (`BUGS.md#readonly-borrow-of-temporary-receiver`). Pinned by the `records/error_property_off_temporary_receiver*` family, whose `_arg` header carries the tag table |
+| An ARGUMENT asks the CALLEE, not the position | A reference-returning getter read off a temporary is a borrow, as its bound twin `h = mk(); h.items` is, and an argument the callee does not keep takes it as the twin does: `acc += mk().data`, `acc.extend(mk().data)` and `list(mk().data)` copy the elements with the twin's warning, `"-".join(mk().names)`, `ss.update(mk().s)` and `len(mk().items)` read it in place. One verdict says whether the callee keeps an argument (`callee_retains_arg`, `tpyc/sema/call_lends.py`): a callee with a body by what sema measured (`return_borrows_from`, `addr_escapes_params`), a body-less binding by its signature -- its result, and the copies it may keep of a value holding a pointer (docs/NATIVE_INTEROP.md, "What a binding keeps of its arguments"). `reversed`, `enumerate`, `zip`, `map`, `filter`, `itertools.islice`, every generator or coro factory and `list[StrView].extend` keep what they are given and reject. The TPy-body gap is `BUGS.md#native-stub-declares-no-param-retention`. Pinned by `records/stub_arg_off_temporary` and `records/error_property_off_temporary_receiver_retaining_builtin` |
 | Aggregate ELEMENT slot, even off a NAMED receiver | `t = (b.rec, 1)`, `[b.rec for i in range(1)]`, a dict key or value, a set element: a getter whose read renders as a C++ lvalue REFERENCE has no element render, because the slot must pick between STORAGE (a copy, where CPython aliases) and BORROW (a `Rec&` element, which no C++ container can hold). A VIEW getter is not affected when the element slot OWNS -- `xs: list[str] = [b.name]` renders `{std::string(b.name())}`, as the field spelling and the method twin do. The unannotated `xs = [b.name]` infers `list[StrView]` and rejects like every other source at a view-typed element slot (`BUGS.md#view-element-slot-admits-no-source`). Pinned by `records/error_property_elem_lends_storage` |
 | Computed pointer-repr Optional getter | The Phase-5 "storage type" getter-return convention (row above) holds only when the body returns a stored optional FIELD; a computed `-> Rec \| None` (returning a plain field or `None`) emits uncompilable C++. Toolchain-caught. See the BUGS.md `@property` pointer-repr `Optional` entry |
 
@@ -57,17 +57,16 @@ a case under `tests/cases/records/`:
 |------|-----|-------------|
 | local decl | `local_decl.lends_from_temporary` | (the base case) |
 | branch-first decl | `local_decl.lends_from_temporary` | `_hoisted_decl` |
-| free-call argument | `arg.lends_from_temporary` | `_arg` |
-| stub-method argument | `arg.lends_from_temporary` | `_method_arg` |
-| retaining builtin | `arg.lends_from_temporary` | `_retaining_builtin` |
+| argument the callee keeps | `arg.lends_from_temporary` | `_retaining_builtin`, `error_stub_arg_keeps_view_of_temporary`, `error_native_stash_view_of_temporary` |
+| field / element read through the read | the sink's own tag (`local_decl.lends_from_temporary` at a decl) | `error_property_off_temporary_field_read` |
 | for-each / comprehension | `foreach.iter_lends_from_temporary` | `_foreach`, `_comp` |
 | field store | `assign.field_write_lends_from_temporary`; a VIEW field answers first in sema (`Cannot bind ... to a temporary view source`) | `error_property_view_store_temporary` |
-| setitem value | `setitem_value.lends_from_temporary` | `_setitem` |
+| setitem value | the bound twin's value-shape gate refuses first (`setitem.container_value_shape`, `setitem.record_value_shape`, `setitem.optional_value_shape`: BUGS.md#getter-result-slot-shape-rejects), and a tuple element (`d[1] = (mk().ch, 1)`) is refused at the element as `unspecified.lends_from_temporary`; since a reference getter read is a borrow, no shape reaches `setitem_value.lends_from_temporary` | `_setitem` |
 | `with` manager | `with_manager.lends_from_temporary` | `_with` |
 | return | `return.lends_from_temporary` | `_return` |
 | match subject | `match_subject.lends_from_temporary` | `_match` |
 | global slot | `global_slot_write.lends_from_temporary` | `_global` |
-| frame slot | `frame_slot_write.lends_from_temporary` | `_frame` |
+| frame slot | a record or container stops at the twin's `res.alias_bind`; a view field (`v = mk().ch.s`) is refused at the read as `unspecified.lends_from_temporary`; no shape reaches `frame_slot_write.lends_from_temporary` | `_frame` |
 
 One label to know about: an ANNOTATED module global (`SLOT: list[int32] =
 mk().items`) takes the global-slot row, while an INFERRED one (`v = mk().name`)
@@ -88,9 +87,11 @@ the Known Limitations row above.
 
 THE METHOD TWIN: the fact is the accessor spelling's only, so wherever the twin
 compiles it keeps its conceded warn-and-emit tier
-(`BUGS.md#readonly-borrow-of-temporary-receiver`). Two positions refuse both
-spellings, and neither for this rule: the free-call argument and the stub-method
-argument stop at the argument-SHAPE gate first. The whole matrix of
+(`BUGS.md#readonly-borrow-of-temporary-receiver`). Where the callee keeps
+nothing, the free-call argument (`_arg`) and the stub-method argument
+(`_method_arg`) stop where the bound twin `h.items` does, at the
+argument-SHAPE gate (`BUGS.md#getter-result-slot-shape-rejects`). The whole
+matrix of
 accessor-vs-twin verdicts is the committed table beside
 `scripts/thir_migration/review/property_position_sweep.py`.
 

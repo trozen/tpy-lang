@@ -43,7 +43,7 @@ from ..value_category import (
     CONTAINER_LITERAL_NODES, getitem_call_of, is_iterator_protocol,
     is_rvalue_source,
     peel_coerce, peel_value_wrappers, const_place,
-    property_access_returns_cpp_ref, returns_borrow)
+    accessor_returns_ref, returns_borrow)
 from . import own_copy
 from .alias_rebind import (ElemPath, bare_tuple, declared_call_paths,
                            is_reference_leaf,
@@ -3290,12 +3290,11 @@ class TypeCompatibility:
             return self.is_lvalue(expr.then_expr) and self.is_lvalue(expr.else_expr)
         # A `@property` read is a method call from the moment sema resolves
         # it, so node kind no longer separates it from the field read it
-        # wraps -- the getter's RETURN CONVENTION does. One that hands back a
-        # reference into its receiver's storage is the field access arm
-        # above, spelled as a call, and answers the same way: an lvalue
-        # exactly when the receiver it reaches through is one.
-        if property_access_returns_cpp_ref(self.ctx, expr):
-            return self.is_lvalue(expr.obj)
+        # wraps -- the getter's RETURN CONVENTION does, as the value
+        # category reads it (`accessor_returns_ref`): a reference it hands
+        # back is existing storage whatever the receiver.
+        if accessor_returns_ref(self.ctx, expr):
+            return True
         # Everything else (calls, literals, operators) are rvalues
         return False
 

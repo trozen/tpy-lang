@@ -9130,6 +9130,13 @@ class ResolvedBinop:
     # decided where the operator is (`decide_operator` warns).
     wide_literal: 'IntLiteralType | None' = None
 
+    def receiver_of[E](self, left: E, right: E) -> E:
+        """The one of an operator's (left, right) operands -- a binary
+        operator's, or an augmented assignment's target and value -- the
+        dunder runs on: the left one, the right one of a reflected dunder.
+        The other is its argument."""
+        return right if self.is_reverse else left
+
     @property
     def result_ignores_operand(self) -> bool:
         """The result's type does not depend on the operand's ({0}): the

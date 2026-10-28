@@ -600,7 +600,7 @@
   ""
  ],
  "array_i__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -620,8 +620,8 @@
   ""
  ],
  "array_i__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "array_i__ctor__temp_field__decl_alias": [
@@ -1055,7 +1055,7 @@
   ""
  ],
  "array_i__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -1080,8 +1080,8 @@
   ""
  ],
  "array_i__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "array_i__fn__temp_field__decl_alias": [
@@ -1755,7 +1755,7 @@
   ""
  ],
  "array_i__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -1780,8 +1780,8 @@
   ""
  ],
  "array_i__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "array_i__meth__temp_field__decl_alias": [
@@ -2190,7 +2190,7 @@
   ""
  ],
  "array_i__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -2215,8 +2215,8 @@
   ""
  ],
  "array_i__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies Array[int32, 2] into owned storage (tuple element 0); use copy() to make ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "array_i__nested__temp_field__decl_alias": [
@@ -3010,7 +3010,7 @@
   ""
  ],
  "bytearray__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -3030,8 +3030,8 @@
   "method_call(method_call(call(mk_b, []), v, []), native tpy::bytearray_append, [coerce(lit(9) -> int32)])"
  ],
  "bytearray__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "bytearray__ctor__temp_field__decl_alias": [
@@ -3600,7 +3600,7 @@
   ""
  ],
  "bytearray__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -3625,8 +3625,8 @@
   ""
  ],
  "bytearray__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "bytearray__fn__temp_field__decl_alias": [
@@ -4470,7 +4470,7 @@
   ""
  ],
  "bytearray__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -4495,8 +4495,8 @@
   ""
  ],
  "bytearray__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "bytearray__meth__temp_field__decl_alias": [
@@ -5040,7 +5040,7 @@
   ""
  ],
  "bytearray__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -5065,8 +5065,8 @@
   ""
  ],
  "bytearray__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies bytearray into owned storage (tuple element 0); use copy() to make this e",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "bytearray__nested__temp_field__decl_alias": [
@@ -5860,7 +5860,7 @@
   ""
  ],
  "deref_list__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -5880,8 +5880,8 @@
   ""
  ],
  "deref_list__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_list__ctor__temp_field__decl_alias": [
@@ -6450,7 +6450,7 @@
   ""
  ],
  "deref_list__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -6475,8 +6475,8 @@
   ""
  ],
  "deref_list__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_list__fn__temp_field__decl_alias": [
@@ -7320,7 +7320,7 @@
   ""
  ],
  "deref_list__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -7345,8 +7345,8 @@
   ""
  ],
  "deref_list__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_list__meth__temp_field__decl_alias": [
@@ -7890,7 +7890,7 @@
   ""
  ],
  "deref_list__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -7915,8 +7915,8 @@
   ""
  ],
  "deref_list__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DL into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_list__nested__temp_field__decl_alias": [
@@ -8710,7 +8710,7 @@
   ""
  ],
  "deref_rec__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -8730,8 +8730,8 @@
   ""
  ],
  "deref_rec__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_rec__ctor__temp_field__decl_alias": [
@@ -9300,7 +9300,7 @@
   ""
  ],
  "deref_rec__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -9325,8 +9325,8 @@
   ""
  ],
  "deref_rec__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_rec__fn__temp_field__decl_alias": [
@@ -10170,7 +10170,7 @@
   ""
  ],
  "deref_rec__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -10195,8 +10195,8 @@
   ""
  ],
  "deref_rec__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_rec__meth__temp_field__decl_alias": [
@@ -10740,7 +10740,7 @@
   ""
  ],
  "deref_rec__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -10765,8 +10765,8 @@
   ""
  ],
  "deref_rec__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies DR into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "deref_rec__nested__temp_field__decl_alias": [
@@ -11500,7 +11500,7 @@
   ""
  ],
  "dict_si__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -11520,8 +11520,8 @@
   ""
  ],
  "dict_si__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "dict_si__ctor__temp_field__decl_alias": [
@@ -12020,7 +12020,7 @@
   ""
  ],
  "dict_si__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -12045,8 +12045,8 @@
   ""
  ],
  "dict_si__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "dict_si__fn__temp_field__decl_alias": [
@@ -12820,7 +12820,7 @@
   ""
  ],
  "dict_si__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -12845,8 +12845,8 @@
   ""
  ],
  "dict_si__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "dict_si__meth__temp_field__decl_alias": [
@@ -13320,7 +13320,7 @@
   ""
  ],
  "dict_si__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -13345,8 +13345,8 @@
   ""
  ],
  "dict_si__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies dict[str, int32] into owned storage (tuple element 0); use copy() to make",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "dict_si__nested__temp_field__decl_alias": [
@@ -14110,7 +14110,7 @@
   ""
  ],
  "gen_rec__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -14130,7 +14130,7 @@
   "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__temp_accessor__tuple_elem": [
-  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
   "",
   ""
  ],
@@ -14665,7 +14665,7 @@
   ""
  ],
  "gen_rec__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -14690,7 +14690,7 @@
   ""
  ],
  "gen_rec__fn__temp_accessor__tuple_elem": [
-  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
   "",
   ""
  ],
@@ -15500,7 +15500,7 @@
   ""
  ],
  "gen_rec__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -15525,7 +15525,7 @@
   ""
  ],
  "gen_rec__meth__temp_accessor__tuple_elem": [
-  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
   "",
   ""
  ],
@@ -16035,7 +16035,7 @@
   ""
  ],
  "gen_rec__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -16060,7 +16060,7 @@
   ""
  ],
  "gen_rec__nested__temp_accessor__tuple_elem": [
-  "sema:cannot copy non-copyable type 'Box[R]' into owned storage (tuple element 0) (use",
+  "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
   "",
   ""
  ],
@@ -16825,7 +16825,7 @@
   ""
  ],
  "list_i__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -16845,8 +16845,8 @@
   "method_call(method_call(call(mk_b, []), v, []), push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_i__ctor__temp_field__decl_alias": [
@@ -17380,7 +17380,7 @@
   ""
  ],
  "list_i__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -17405,8 +17405,8 @@
   ""
  ],
  "list_i__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_i__fn__temp_field__decl_alias": [
@@ -18215,7 +18215,7 @@
   ""
  ],
  "list_i__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -18240,8 +18240,8 @@
   ""
  ],
  "list_i__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_i__meth__temp_field__decl_alias": [
@@ -18750,7 +18750,7 @@
   ""
  ],
  "list_i__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -18775,8 +18775,8 @@
   ""
  ],
  "list_i__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies list[int32] into owned storage (tuple element 0); use copy() to make this",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_i__nested__temp_field__decl_alias": [
@@ -19445,7 +19445,7 @@
   ""
  ],
  "list_r__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -19465,8 +19465,8 @@
   "method_call(method_call(call(mk_b, []), v, []), push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_r__ctor__temp_field__decl_alias": [
@@ -19935,7 +19935,7 @@
   ""
  ],
  "list_r__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -19960,8 +19960,8 @@
   ""
  ],
  "list_r__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_r__fn__temp_field__decl_alias": [
@@ -20670,7 +20670,7 @@
   ""
  ],
  "list_r__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -20695,8 +20695,8 @@
   ""
  ],
  "list_r__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_r__meth__temp_field__decl_alias": [
@@ -21140,7 +21140,7 @@
   ""
  ],
  "list_r__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -21165,8 +21165,8 @@
   ""
  ],
  "list_r__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape",
-  "copies list[R] into owned storage (tuple element 0); use copy() to make this exp",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "list_r__nested__temp_field__decl_alias": [
@@ -21990,7 +21990,7 @@
   ""
  ],
  "rec__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -22010,8 +22010,8 @@
   "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "rec__ctor__temp_field__decl_alias": [
@@ -22610,7 +22610,7 @@
   ""
  ],
  "rec__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -22635,8 +22635,8 @@
   ""
  ],
  "rec__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "rec__fn__temp_field__decl_alias": [
@@ -23510,7 +23510,7 @@
   ""
  ],
  "rec__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -23535,8 +23535,8 @@
   ""
  ],
  "rec__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "rec__meth__temp_field__decl_alias": [
@@ -24110,7 +24110,7 @@
   ""
  ],
  "rec__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.slot_type",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -24135,8 +24135,8 @@
   ""
  ],
  "rec__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies R into owned storage (tuple element 0); use copy() to make this explicit",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "rec__nested__temp_field__decl_alias": [
@@ -25135,7 +25135,7 @@
   ""
  ],
  "set_i__ctor__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -25155,8 +25155,8 @@
   "method_call(method_call(call(mk_b, []), v, []), insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__ctor__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "set_i__ctor__temp_field__decl_alias": [
@@ -25690,7 +25690,7 @@
   ""
  ],
  "set_i__fn__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -25715,8 +25715,8 @@
   ""
  ],
  "set_i__fn__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "set_i__fn__temp_field__decl_alias": [
@@ -26525,7 +26525,7 @@
   ""
  ],
  "set_i__meth__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -26550,8 +26550,8 @@
   ""
  ],
  "set_i__meth__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "set_i__meth__temp_field__decl_alias": [
@@ -27060,7 +27060,7 @@
   ""
  ],
  "set_i__nested__temp_accessor__decl_reassigned": [
-  "reject:expr.method_call:unspecified.lends_from_temporary",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -27085,8 +27085,8 @@
   ""
  ],
  "set_i__nested__temp_accessor__tuple_elem": [
-  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
-  "copies set[int32] into owned storage (tuple element 0); use copy() to make this ",
+  "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
+  "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
  "set_i__nested__temp_field__decl_alias": [

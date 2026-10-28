@@ -1,0 +1,4 @@
+main.py:66: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:68: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:72: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
+main.py:66: error: in function 'main': this construct is not yet supported by C++ code generation (expr.field_access:local_decl.lends_from_temporary)

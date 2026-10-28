@@ -99,6 +99,7 @@ from ...typesys import (
 )
 from ...type_def_registry import is_borrowing_view_type
 from ...value_category import property_access_returns_cpp_ref
+from ...sema.call_lends import Retention
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.forms import is_plain_nonvalue
@@ -941,7 +942,7 @@ def _lower_for_iter_setup(stmt: 'rcfg.AsyncForIterSetup', func, lc,
             raise ThirUnsupported("res.for_range_shape")
         for i, arg in enumerate(it.args):
             region_exprs[arg] = _lower_call_arg(
-                arg, fi.params[i].type, lc, declared)
+                arg, fi.params[i].type, lc, declared, retention=Retention.MEASURED)
         return
 
     # ITERABLE result use, matching the sync for-head: the skeleton's
@@ -2387,7 +2388,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         a, fi.params[i].type, lc, declared,
                         frame_capturing=True, temp_args=True,
                         readonly_target=(dcbp is not None and i in dcbp),
-                        callee_fi=fi))
+                        callee_fi=fi, retention=Retention.MEASURED))
                 await_args[operand] = tuple(lowered_args)
                 if lowered_args:
                     _witness("res.await_args")

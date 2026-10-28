@@ -1,0 +1,11 @@
+main.py:422: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:307: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:311: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:183: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:184: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:185: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:257: warning: '+=' on 'g' falls back to '__add__' (Grow has no '__iadd__'): the object is updated in place, where Python rebinds 'g' -- define '__iadd__', or write 'g = g + ...'
+main.py:317: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:360: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:401: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
+main.py:414: warning: copies Box elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

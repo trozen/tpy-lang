@@ -188,7 +188,7 @@
   ""
  ],
  "augassign_list__items__prop__temp": [
-  "expr.call:arg.lends_from_temporary",
+  "ok",
   ""
  ],
  "augassign_recv__rec__meth__named": [
@@ -220,7 +220,7 @@
   ""
  ],
  "call_arg__items__prop__temp": [
-  "stmt.expr_stmt:arg.lends_from_temporary",
+  "stmt.expr_stmt:call.arg_shape.container",
   ""
  ],
  "call_arg__n__meth__named": [
@@ -284,7 +284,7 @@
   ""
  ],
  "call_arg__rec__prop__temp": [
-  "stmt.expr_stmt:arg.lends_from_temporary",
+  "ok",
   ""
  ],
  "call_arg__text__meth__named": [
@@ -508,7 +508,7 @@
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__items__prop__temp": [
-  "expr.method_call:method.ret_type",
+  "expr.call:call.ctor_arg.container",
   "copies list[int32] into field; use copy() to make this explicit"
  ],
  "ctor_arg__n__meth__named": [
@@ -556,7 +556,7 @@
   "copies R into field; use copy() to make this explicit"
  ],
  "ctor_arg__rec__prop__temp": [
-  "expr.method_call:unspecified.lends_from_temporary",
+  "ok",
   "copies R into field; use copy() to make this explicit"
  ],
  "ctor_arg__text__meth__named": [
@@ -1212,7 +1212,7 @@
   "copies R into owned storage; use copy() to make this explicit"
  ],
  "list_elem__rec__prop__temp": [
-  "expr.container_literal:container_elem.accessor_lends_storage",
+  "expr.container_literal",
   "copies R into owned storage; use copy() to make this explicit"
  ],
  "list_elem__text__meth__named": [
@@ -1676,7 +1676,7 @@
   ""
  ],
  "meth_arg__rec__prop__temp": [
-  "stmt.expr_stmt:unspecified.lends_from_temporary",
+  "ok",
   ""
  ],
  "meth_arg__text__meth__named": [

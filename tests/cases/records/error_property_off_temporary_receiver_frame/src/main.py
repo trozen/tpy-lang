@@ -2,7 +2,10 @@
 # TEMPORARY receiver: a generator's local lives in the frame, which outlives
 # every statement in the body, so the slot would hold a copy of a borrow whose
 # storage the header statement kills -- silently, where CPython keeps the
-# alias. The sink table is in docs/PROPERTY_DESIGN.md.
+# alias. The read is a borrow, as its bound twin `h = mk(); v = h.items` is,
+# and the frame's alias binding refuses both first
+# (BUGS.md#getter-result-slot-shape-rejects). The sink table is in
+# docs/PROPERTY_DESIGN.md.
 from typing import Iterator
 from tpy import Own, int32
 
@@ -25,7 +28,7 @@ def mk() -> Own[H]:
 
 
 def gen() -> Iterator[int32]:
-    v = mk().items  # tpyc: error(/frame_slot_write.lends_from_temporary/)
+    v = mk().items  # tpyc: error(/res\.alias_bind/)
     yield len(v)
 
 
