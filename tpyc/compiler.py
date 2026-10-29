@@ -4081,7 +4081,7 @@ class Compiler:
             .cpp then holds that init alone).
         """
         with activate_compiler(self):
-            hpp_path, cpp_path, _codegen = self._generate_code_impl(
+            hpp_path, cpp_path, _sources, _codegen = self._generate_code_impl(
                 compiled, output_dir, entry_module_name, options, flat)
             return hpp_path, cpp_path
 
@@ -4089,21 +4089,25 @@ class Compiler:
                                   entry_module_name: str | None = None,
                                   options: CodeGenOptions | None = None,
                                   flat: bool = False
-                                  ) -> 'tuple[Path | None, Path | None, CodeGenContext]':
-        """`generate_code` plus the codegen ctx the files were emitted from.
+                                  ) -> 'tuple[Path | None, Path | None, ModuleSources, CodeGenContext]':
+        """`generate_code` plus the sources written and the codegen ctx they
+        were emitted from.
 
-        The file-writing sibling of `generate_code_and_thir`: the snippet-test
-        harness reads MIR verdicts off the THIR caches of the very emission it
-        snapshots, so it needs the ctx without paying a second codegen pass."""
+        The snippet-test harness reads MIR verdicts off the THIR caches of the
+        very emission it snapshots, and `-vv` prints the sources it writes:
+        neither may pay a second codegen pass, which would build each
+        resumable frame again over the AST the first build's pre-pass
+        rewrote (TODO.md "frame-dup-prepass-locals")."""
         with activate_compiler(self):
-            hpp_path, cpp_path, codegen = self._generate_code_impl(
+            hpp_path, cpp_path, sources, codegen = self._generate_code_impl(
                 compiled, output_dir, entry_module_name, options, flat)
-            return hpp_path, cpp_path, codegen.ctx
+            return hpp_path, cpp_path, sources, codegen.ctx
 
     def _generate_code_impl(self, compiled: CompiledModule, output_dir: Path,
                             entry_module_name: str | None,
                             options: CodeGenOptions | None,
-                            flat: bool) -> 'tuple[Path | None, Path | None, CodeGenerator]':
+                            flat: bool
+                            ) -> 'tuple[Path | None, Path | None, ModuleSources, CodeGenerator]':
         mod_name = compiled.name
         sources, codegen = self._produce_module_sources(compiled, options)
 
@@ -4118,7 +4122,7 @@ class Compiler:
 
         layout = BuildLayout(output_dir, entry_module_name, flat=flat)
         hpp_path, cpp_path = self.write_module_sources(sources, layout, mod_name)
-        return hpp_path, cpp_path, codegen
+        return hpp_path, cpp_path, sources, codegen
 
     def generate_module_sources(self, compiled: CompiledModule,
                                 options: CodeGenOptions | None = None) -> ModuleSources:

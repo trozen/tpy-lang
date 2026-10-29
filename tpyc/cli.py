@@ -995,25 +995,21 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                     print(cpp_code)
                 continue
 
-            # -vv: show generated C++ inline
-            if args.verbose >= 2:
-                with stamp_codegen_error_file(source_name,
-                                              compiled.is_entry_point):
-                    hpp_code, cpp_code, inl_code = compiler.generate_inl_and_code_to_strings(compiled, options=options)
-                print(f"// === include/{compiled.name}.hpp ===")
-                print(hpp_code)
-                if inl_code:
-                    print(f"// === include/{compiled.name}_inl.hpp ===")
-                    print(inl_code)
-                if cpp_code:
-                    print(f"// === src/{compiled.name}.cpp ===")
-                    print(cpp_code)
-
             t_file_start = time.monotonic()
             with stamp_codegen_error_file(source_name,
                                           compiled.is_entry_point):
-                hpp_path, cpp_path, mod_ctx = compiler.generate_code_and_context(
+                hpp_path, cpp_path, sources, mod_ctx = compiler.generate_code_and_context(
                     compiled, output_dir, options=options, flat=explicit_output)
+            # -vv: show generated C++ inline
+            if args.verbose >= 2:
+                print(f"// === include/{compiled.name}.hpp ===")
+                print(sources.hpp)
+                if sources.inl:
+                    print(f"// === include/{compiled.name}_inl.hpp ===")
+                    print(sources.inl)
+                if sources.cpp:
+                    print(f"// === src/{compiled.name}.cpp ===")
+                    print(sources.cpp)
             if compiler.is_user_module(compiled):
                 mir_inputs.append((compiled, mod_ctx))
             t_file = time.monotonic() - t_file_start

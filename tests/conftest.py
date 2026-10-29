@@ -1338,7 +1338,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         local_contexts = []
         for mod in local_mods:
             with _codegen_error_from(mod):
-                hpp_path, cpp_path, mod_ctx = compiler.generate_code_and_context(
+                hpp_path, cpp_path, _sources, mod_ctx = compiler.generate_code_and_context(
                     mod, output_dir, entry_module_name=entry_module.name,
                     options=req.codegen_options
                 )
